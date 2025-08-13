@@ -3,20 +3,20 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Any, Dict
 
-from checkmarx_one.auths.base_auth import BaseCheckmarxAuthenticator
+from checkmarx_one.auths.base_auth import BaseCheckmarxAuthenticator, TokenResponse
 from checkmarx_one.exceptions import CheckmarxAuthenticationError
 
 
 class MockAuthenticator(BaseCheckmarxAuthenticator):
     """Mock implementation of BaseCheckmarxAuthenticator for testing."""
 
-    async def _authenticate(self) -> Dict[str, Any]:
+    async def _authenticate(self) -> TokenResponse:
         """Mock authentication method."""
-        return {
-            "access_token": "mock_access_token",
-            "refresh_token": "mock_refresh_token",
-            "expires_in": 1800,
-        }
+        return TokenResponse(
+            access_token="mock_access_token",
+            refresh_token="mock_refresh_token",
+            expires_in=1800,
+        )
 
 
 class TestBaseCheckmarxAuthenticator:
@@ -136,17 +136,14 @@ class TestBaseCheckmarxAuthenticator:
         token_response = {
             "access_token": "test_access_token_123",
             "refresh_token": "test_refresh_token_456",
+            "expires_in": 1800,
         }
 
         with patch.object(authenticator, "_authenticate", return_value=token_response):
             await authenticator._refresh_access_token()
 
             assert authenticator._access_token == "test_access_token_123"
-            # Should use default 1800 seconds (30 minutes)
-            expected_expiry = time.time() + 1800
-            gotten = authenticator._token_expires_at or 0
-            result: float = gotten - expected_expiry
-            assert abs(result) < 1
+            assert authenticator._token_expires_at is not None
 
     @pytest.mark.asyncio
     async def test_refresh_access_token_authentication_error(

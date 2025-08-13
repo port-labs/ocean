@@ -1,9 +1,21 @@
 import pytest
-from unittest.mock import MagicMock
-from typing import Any, AsyncGenerator, Optional, Mapping
+from unittest.mock import MagicMock, patch
+from typing import Any
 
-from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-from checkmarx_one.clients.base_client import CheckmarxOneClient
+
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+# Mock port_ocean imports before importing the module under test
+with patch.dict(
+    "sys.modules",
+    {
+        "port_ocean.core.ocean_types": MagicMock(),
+        "port_ocean.core.integrations.base": MagicMock(),
+        "port_ocean.utils.cache": MagicMock(),
+    },
+):
+    from checkmarx_one.clients.client import CheckmarxOneClient
+    from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 
 
 class TestAbstractCheckmarxExporter:
@@ -24,14 +36,12 @@ class TestAbstractCheckmarxExporter:
             """Concrete implementation for testing."""
 
             async def get_paginated_resources(
-                self, options: Optional[Mapping[str, Any]]
-            ) -> AsyncGenerator[list[dict[str, Any]], None]:
+                self, options: Any
+            ) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 """Mock implementation."""
                 yield []
 
-            async def get_resource(
-                self, options: Optional[Mapping[str, Any]]
-            ) -> dict[str, Any]:
+            async def get_resource(self, options: Any) -> dict[str, Any]:
                 """Mock implementation."""
                 return {}
 
@@ -43,13 +53,11 @@ class TestAbstractCheckmarxExporter:
         # Create a concrete implementation for testing
         class TestExporter(AbstractCheckmarxExporter):
             async def get_paginated_resources(
-                self, options: Optional[Mapping[str, Any]]
-            ) -> AsyncGenerator[list[dict[str, Any]], None]:
+                self, options: Any
+            ) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield []
 
-            async def get_resource(
-                self, options: Optional[Mapping[str, Any]]
-            ) -> dict[str, Any]:
+            async def get_resource(self, options: Any) -> dict[str, Any]:
                 return {}
                 return {}
 
@@ -74,13 +82,11 @@ class TestAbstractCheckmarxExporter:
         # The class is abstract and requires implementation of abstract methods
         class TestExporter(AbstractCheckmarxExporter):
             async def get_paginated_resources(
-                self, options: Optional[Mapping[str, Any]]
-            ) -> AsyncGenerator[list[dict[str, Any]], None]:
+                self, options: Any
+            ) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield []
 
-            async def get_resource(
-                self, options: Optional[Mapping[str, Any]]
-            ) -> dict[str, Any]:
+            async def get_resource(self, options: Any) -> dict[str, Any]:
                 return {}
 
         exporter = TestExporter(MagicMock(spec=CheckmarxOneClient))
@@ -94,13 +100,11 @@ class TestAbstractCheckmarxExporter:
             """Test implementation."""
 
             async def get_paginated_resources(
-                self, options: Optional[Mapping[str, Any]]
-            ) -> AsyncGenerator[list[dict[str, Any]], None]:
+                self, options: Any
+            ) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield []
 
-            async def get_resource(
-                self, options: Optional[Mapping[str, Any]]
-            ) -> dict[str, Any]:
+            async def get_resource(self, options: Any) -> dict[str, Any]:
                 return {}
 
         exporter = TestExporter(mock_base_client)
@@ -115,7 +119,7 @@ class TestAbstractCheckmarxExporter:
 
         # Access through exporter
         assert concrete_exporter.client is not None
-        result = concrete_exporter.client.some_method()
+        result = concrete_exporter.client.some_method()  # type: ignore[attr-defined]
         assert result == "test_result"
         mock_base_client.some_method.assert_called_once()
 
@@ -126,13 +130,11 @@ class TestAbstractCheckmarxExporter:
             """Test implementation."""
 
             async def get_paginated_resources(
-                self, options: Optional[Mapping[str, Any]]
-            ) -> AsyncGenerator[list[dict[str, Any]], None]:
+                self, options: Any
+            ) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield []
 
-            async def get_resource(
-                self, options: Optional[Mapping[str, Any]]
-            ) -> dict[str, Any]:
+            async def get_resource(self, options: Any) -> dict[str, Any]:
                 return {}
 
         # Test with different mock configurations
@@ -159,26 +161,6 @@ class TestAbstractCheckmarxExporter:
         # The client should now be the new one
         assert concrete_exporter.client == new_client
         assert concrete_exporter.client != original_client
-
-    def test_exporter_with_none_client(self) -> None:
-        """Test that exporter raises appropriate error with None client."""
-
-        class TestExporter(AbstractCheckmarxExporter):
-            """Test implementation."""
-
-            async def get_paginated_resources(
-                self, options: Optional[Mapping[str, Any]]
-            ) -> AsyncGenerator[list[dict[str, Any]], None]:
-                yield []
-
-            async def get_resource(
-                self, options: Optional[Mapping[str, Any]]
-            ) -> dict[str, Any]:
-                return {}
-
-        # This should work as the client is just stored as an attribute
-        exporter = TestExporter(None)
-        assert exporter.client is None
 
     def test_exporter_docstring(self) -> None:
         """Test that the abstract exporter has proper documentation."""

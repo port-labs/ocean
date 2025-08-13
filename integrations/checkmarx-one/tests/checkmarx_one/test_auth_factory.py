@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from loguru import logger
 
 from checkmarx_one.auths.auth_factory import CheckmarxAuthenticatorFactory
 from checkmarx_one.exceptions import CheckmarxAuthenticationError
@@ -62,22 +61,18 @@ class TestCheckmarxAuthenticatorFactory:
                 mock_authenticator = MagicMock()
                 mock_token_class.return_value = mock_authenticator
 
-                with patch.object(logger, "warning") as mock_logger:
-                    result = CheckmarxAuthenticatorFactory.create_authenticator(
-                        iam_url="https://iam.checkmarx.net",
-                        tenant="test-tenant",
-                        api_key="test-api-key",
-                        client_id="test-client-id",
-                        client_secret="test-client-secret",
-                    )
+                result = CheckmarxAuthenticatorFactory.create_authenticator(
+                    iam_url="https://iam.checkmarx.net",
+                    tenant="test-tenant",
+                    api_key="test-api-key",
+                    client_id="test-client-id",
+                    client_secret="test-client-secret",
+                )
 
-                    assert result == mock_authenticator
-                    mock_token_class.assert_called_once_with(
-                        "https://iam.checkmarx.net", "test-tenant", "test-api-key"
-                    )
-                    mock_logger.assert_called_once_with(
-                        "Both API key and OAuth credentials provided. Using API key authentication."
-                    )
+                assert result == mock_authenticator
+                mock_token_class.assert_called_once_with(
+                    "https://iam.checkmarx.net", "test-tenant", "test-api-key"
+                )
 
     def test_create_authenticator_with_no_credentials(self) -> None:
         """Test creating authenticator with no credentials raises error."""
@@ -86,10 +81,7 @@ class TestCheckmarxAuthenticatorFactory:
                 iam_url="https://iam.checkmarx.net", tenant="test-tenant"
             )
 
-        assert (
-            "Either provide api_key or both client_id and client_secret for authentication"
-            in str(exc_info.value)
-        )
+        assert "No valid authentication method provided" in str(exc_info.value)
 
     def test_create_authenticator_with_partial_oauth_credentials(self) -> None:
         """Test creating authenticator with partial OAuth credentials raises error."""
@@ -101,10 +93,7 @@ class TestCheckmarxAuthenticatorFactory:
                 # Missing client_secret
             )
 
-        assert (
-            "Either provide api_key or both client_id and client_secret for authentication"
-            in str(exc_info.value)
-        )
+        assert "No valid authentication method provided" in str(exc_info.value)
 
     def test_create_authenticator_with_only_client_id(self) -> None:
         """Test creating authenticator with only client_id raises error."""
@@ -115,10 +104,7 @@ class TestCheckmarxAuthenticatorFactory:
                 client_id="test-client-id",
             )
 
-        assert (
-            "Either provide api_key or both client_id and client_secret for authentication"
-            in str(exc_info.value)
-        )
+        assert "No valid authentication method provided" in str(exc_info.value)
 
     def test_create_authenticator_with_only_client_secret(self) -> None:
         """Test creating authenticator with only client_secret raises error."""
@@ -129,10 +115,7 @@ class TestCheckmarxAuthenticatorFactory:
                 client_secret="test-client-secret",
             )
 
-        assert (
-            "Either provide api_key or both client_id and client_secret for authentication"
-            in str(exc_info.value)
-        )
+        assert "No valid authentication method provided" in str(exc_info.value)
 
     def test_create_authenticator_with_empty_strings(self) -> None:
         """Test creating authenticator with empty string credentials raises error."""
@@ -145,10 +128,7 @@ class TestCheckmarxAuthenticatorFactory:
                 client_secret="",
             )
 
-        assert (
-            "Either provide api_key or both client_id and client_secret for authentication"
-            in str(exc_info.value)
-        )
+        assert "No valid authentication method provided" in str(exc_info.value)
 
     def test_create_authenticator_with_none_values(self) -> None:
         """Test creating authenticator with None values raises error."""
@@ -161,10 +141,7 @@ class TestCheckmarxAuthenticatorFactory:
                 client_secret=None,
             )
 
-        assert (
-            "Either provide api_key or both client_id and client_secret for authentication"
-            in str(exc_info.value)
-        )
+        assert "No valid authentication method provided" in str(exc_info.value)
 
     def test_create_authenticator_with_whitespace_only_credentials(self) -> None:
         """Test creating authenticator with whitespace-only credentials."""

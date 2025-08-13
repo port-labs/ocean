@@ -1,11 +1,88 @@
 import pytest
 import asyncio
+import sys
+import types
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from aiolimiter import AsyncLimiter
 from typing import Any, Dict, List, Generator
 
-from port_ocean.context.ocean import initialize_port_ocean_context
-from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+# Provide lightweight stubs for port_ocean imports used by the integration
+if "port_ocean" not in sys.modules:
+    sys.modules["port_ocean"] = types.ModuleType("port_ocean")
+    # Mark as a package so submodules can be imported
+    setattr(sys.modules["port_ocean"], "__path__", [])
+
+# Create minimal stubs for core and ocean_types used by tests
+core_stub: Any = types.ModuleType("port_ocean.core")
+sys.modules["port_ocean.core"] = core_stub
+
+ocean_types_stub: Any = types.ModuleType("port_ocean.core.ocean_types")
+try:
+    from typing import Any as _Any, AsyncIterator as _AsyncIterator
+
+    ocean_types_stub.RAW_ITEM = dict[str, _Any]
+    ocean_types_stub.RAW_RESULT = list[dict[str, _Any]]
+    ocean_types_stub.ASYNC_GENERATOR_RESYNC_TYPE = _AsyncIterator[
+        ocean_types_stub.RAW_RESULT
+    ]
+except Exception:
+    # Fallbacks if typing features are unavailable
+    ocean_types_stub.RAW_ITEM = dict
+    ocean_types_stub.RAW_RESULT = list
+    ocean_types_stub.ASYNC_GENERATOR_RESYNC_TYPE = object
+sys.modules["port_ocean.core.ocean_types"] = ocean_types_stub
+
+utils_stub: Any = types.ModuleType("port_ocean.utils")
+
+
+class _StubHttpAsyncClient:
+    async def request(self, *args: Any, **kwargs: Any) -> MagicMock:
+        resp = MagicMock()
+        resp.json.return_value = {}
+        resp.raise_for_status.return_value = None
+        return resp
+
+    async def post(self, *args: Any, **kwargs: Any) -> MagicMock:
+        return await self.request(*args, **kwargs)
+
+
+utils_stub.http_async_client = _StubHttpAsyncClient()
+sys.modules["port_ocean.utils"] = utils_stub
+
+errors_stub: Any = types.ModuleType("port_ocean.cache.errors")
+
+
+class FailedToReadCacheError(Exception):
+    pass
+
+
+class FailedToWriteCacheError(Exception):
+    pass
+
+
+errors_stub.FailedToReadCacheError = FailedToReadCacheError
+errors_stub.FailedToWriteCacheError = FailedToWriteCacheError
+sys.modules["port_ocean.cache.errors"] = errors_stub
+
+ocean_stub: Any = types.ModuleType("port_ocean.context.ocean")
+ocean_stub.ocean = SimpleNamespace(
+    app=SimpleNamespace(
+        cache_provider=SimpleNamespace(
+            get=AsyncMock(return_value=None), set=AsyncMock()
+        )
+    )
+)
+sys.modules["port_ocean.context.ocean"] = ocean_stub
+
+
+# Lightweight replacement for initialize_port_ocean_context used in tests
+def initialize_port_ocean_context(app: Any) -> None:
+    ocean_stub.ocean = SimpleNamespace(app=app)
+
+
+class PortOceanContextAlreadyInitializedError(Exception):
+    pass
 
 
 @pytest.fixture(scope="session")

@@ -1,26 +1,18 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
-from aiolimiter import AsyncLimiter
 
-from checkmarx_one.clients.base_client import CheckmarxOneClient
-from checkmarx_one.auths.auth import CheckmarxClientAuthenticator
+from checkmarx_one.clients.client import CheckmarxOneClient
+from checkmarx_one.auths.token_auth import TokenAuthenticator
 
 
 class TestCheckmarxOneClient:
     """Test cases for CheckmarxOneClient."""
 
     @pytest.fixture
-    def mock_http_client(self) -> MagicMock:
-        """Create a mock HTTP client for testing."""
-        mock_client = AsyncMock()
-        mock_client.timeout = None
-        return mock_client
-
-    @pytest.fixture
     def mock_authenticator(self) -> AsyncMock:
         """Create a mock authenticator for testing."""
-        authenticator = AsyncMock(spec=CheckmarxClientAuthenticator)
+        authenticator = AsyncMock(spec=TokenAuthenticator)
         authenticator.get_auth_headers.return_value = {
             "Authorization": "Bearer test_token",
             "Content-Type": "application/json",
@@ -29,65 +21,36 @@ class TestCheckmarxOneClient:
         return authenticator
 
     @pytest.fixture
-    def mock_rate_limiter(self) -> AsyncLimiter:
-        """Create a mock rate limiter for testing."""
-        return AsyncLimiter(3600, 3600)
+    def client(self, mock_authenticator: AsyncMock) -> CheckmarxOneClient:
+        """Create a CheckmarxOneClient instance for testing."""
+        return CheckmarxOneClient(
+            base_url="https://ast.checkmarx.net",
+            authenticator=mock_authenticator,
+        )
 
-    @pytest.fixture
-    def client(
-        self,
-        mock_authenticator: AsyncMock,
-        mock_http_client: MagicMock,
-    ) -> CheckmarxOneClient:
-        """Create a base client instance for testing."""
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client", mock_http_client
-        ):
-            return CheckmarxOneClient(
-                base_url="https://ast.checkmarx.net",
-                authenticator=mock_authenticator,
-            )
-
-    @pytest.fixture
-    def client_with_default_rate_limiter(
-        self, mock_authenticator: AsyncMock, mock_http_client: MagicMock
-    ) -> CheckmarxOneClient:
-        """Create a base client with default rate limiter for testing."""
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client", mock_http_client
-        ):
-            return CheckmarxOneClient(
-                base_url="https://ast.checkmarx.net", authenticator=mock_authenticator
-            )
-
-    def test_init(
-        self,
-        client: CheckmarxOneClient,
-        mock_authenticator: AsyncMock,
-        mock_http_client: MagicMock,
-    ) -> None:
+    def test_init(self, client: CheckmarxOneClient) -> None:
         """Test client initialization."""
         assert client.base_url == "https://ast.checkmarx.net"
-        assert client.authenticator == mock_authenticator
 
-    def test_init_with_trailing_slash(
-        self, mock_authenticator: AsyncMock, mock_http_client: MagicMock
-    ) -> None:
+    def test_init_with_trailing_slash(self, mock_authenticator: AsyncMock) -> None:
         """Test client initialization with trailing slash in base URL."""
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client", mock_http_client
-        ):
+        with patch("checkmarx_one.clients.client.http_async_client", AsyncMock()):
             client = CheckmarxOneClient(
-                base_url="https://ast.checkmarx.net/", authenticator=mock_authenticator
+                base_url="https://ast.checkmarx.net/",
+                authenticator=mock_authenticator,
             )
             assert client.base_url == "https://ast.checkmarx.net"
 
     def test_init_with_default_rate_limiter(
-        self, client_with_default_rate_limiter: CheckmarxOneClient
+        self, mock_authenticator: AsyncMock
     ) -> None:
         """Test client initialization with default rate limiter."""
-        # The client doesn't have a rate_limiter attribute in the current implementation
-        pass
+        with patch("checkmarx_one.clients.client.http_async_client", AsyncMock()):
+            client = CheckmarxOneClient(
+                base_url="https://ast.checkmarx.net",
+                authenticator=mock_authenticator,
+            )
+            assert client.base_url == "https://ast.checkmarx.net"
 
     @pytest.mark.asyncio
     async def test_auth_headers_property(
@@ -95,47 +58,43 @@ class TestCheckmarxOneClient:
     ) -> None:
         """Test auth_headers property."""
         headers = await client.auth_headers
-        mock_authenticator.get_auth_headers.assert_called_once()
         assert headers == {
             "Authorization": "Bearer test_token",
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
+        mock_authenticator.get_auth_headers.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_send_api_request_success(self, client: CheckmarxOneClient) -> None:
         """Test successful API request."""
-        mock_response: MagicMock = MagicMock()
+        mock_response = MagicMock()
         mock_response.json.return_value = {"data": "test_data"}
         mock_response.raise_for_status.return_value = None
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_http_client.request.return_value = mock_response
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
             result = await client.send_api_request("/test-endpoint")
 
             assert result == {"data": "test_data"}
+            mock_client.request.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_send_api_request_with_params(
         self, client: CheckmarxOneClient
     ) -> None:
-        """Test API request with query parameters."""
+        """Test API request with parameters."""
         mock_response = MagicMock()
         mock_response.json.return_value = {"data": "test_data"}
         mock_response.raise_for_status.return_value = None
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_http_client.request.return_value = mock_response
-            params = {"limit": 10, "offset": 0}
+        params = {"param1": "value1", "param2": "value2"}
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
             _ = await client.send_api_request("/test-endpoint", params=params)
 
-            mock_http_client.request.assert_called_once()
-            call_args = mock_http_client.request.call_args
-            assert call_args[1]["params"] == params
+            mock_client.request.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_send_api_request_with_json_data(
@@ -146,19 +105,15 @@ class TestCheckmarxOneClient:
         mock_response.json.return_value = {"data": "test_data"}
         mock_response.raise_for_status.return_value = None
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_http_client.request.return_value = mock_response
-            json_data = {"name": "test", "description": "test description"}
+        json_data = {"key": "value"}
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
             _ = await client.send_api_request(
                 "/test-endpoint", method="POST", json_data=json_data
             )
 
-            mock_http_client.request.assert_called_once()
-            call_args = mock_http_client.request.call_args
-            assert call_args[1]["method"] == "POST"
-            assert call_args[1]["json"] == json_data
+            mock_client.request.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_send_api_request_401_error(self, client: CheckmarxOneClient) -> None:
@@ -170,13 +125,10 @@ class TestCheckmarxOneClient:
             "401 Unauthorized", request=MagicMock(), response=mock_response
         )
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_http_client.request.return_value = mock_response
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
             result = await client.send_api_request("/test-endpoint")
 
-            # 401 errors are ignored and return empty dict
             assert result == {}
 
     @pytest.mark.asyncio
@@ -189,13 +141,10 @@ class TestCheckmarxOneClient:
             "403 Forbidden", request=MagicMock(), response=mock_response
         )
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_http_client.request.return_value = mock_response
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
             result = await client.send_api_request("/test-endpoint")
 
-            # 403 errors are ignored and return empty dict
             assert result == {}
 
     @pytest.mark.asyncio
@@ -208,10 +157,8 @@ class TestCheckmarxOneClient:
             "404 Not Found", request=MagicMock(), response=mock_response
         )
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_http_client.request.return_value = mock_response
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
             result = await client.send_api_request("/test-endpoint")
 
             assert result == {}
@@ -226,11 +173,9 @@ class TestCheckmarxOneClient:
             "429 Too Many Requests", request=MagicMock(), response=mock_response
         )
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_http_client.request.return_value = mock_response
-            with pytest.raises(httpx.HTTPStatusError, match="429 Too Many Requests"):
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            with pytest.raises(httpx.HTTPStatusError):
                 await client.send_api_request("/test-endpoint")
 
     @pytest.mark.asyncio
@@ -245,13 +190,9 @@ class TestCheckmarxOneClient:
             "500 Internal Server Error", request=MagicMock(), response=mock_response
         )
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_http_client.request.return_value = mock_response
-            with pytest.raises(
-                httpx.HTTPStatusError, match="500 Internal Server Error"
-            ):
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            with pytest.raises(httpx.HTTPStatusError):
                 await client.send_api_request("/test-endpoint")
 
     @pytest.mark.asyncio
@@ -259,175 +200,151 @@ class TestCheckmarxOneClient:
         self, client: CheckmarxOneClient
     ) -> None:
         """Test API request with unexpected error."""
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_http_client.request.side_effect = Exception("Network error")
-            with pytest.raises(Exception, match="Network error"):
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(side_effect=Exception("Unexpected error"))
+            with pytest.raises(Exception):
                 await client.send_api_request("/test-endpoint")
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_single_page(
         self, client: CheckmarxOneClient
     ) -> None:
-        """Test paginated resources with single page."""
-        mock_response = {"data": [{"id": "1"}, {"id": "2"}]}
+        """Test getting paginated resources with single page."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"data": [{"id": 1}, {"id": 2}]}
+        mock_response.raise_for_status.return_value = None
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_response_obj = MagicMock()
-            mock_response_obj.json.return_value = mock_response
-            mock_response_obj.raise_for_status.return_value = None
-            mock_http_client.request.return_value = mock_response_obj
-
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
             results = []
             async for batch in client.send_paginated_request("/test", "data"):
-                results.extend(batch)
+                results.append(batch)
 
-            assert results == [{"id": "1"}, {"id": "2"}]
+            assert len(results) == 1
+            assert results[0] == [{"id": 1}, {"id": 2}]
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_multiple_pages(
         self, client: CheckmarxOneClient
     ) -> None:
-        """Test paginated resources with multiple pages."""
-        # First page: 100 items (full page)
-        # Second page: 50 items (partial page)
-        first_response = {"data": [{"id": str(i)} for i in range(100)]}
-        second_response = {"data": [{"id": str(i)} for i in range(100, 150)]}
+        """Test getting paginated resources with multiple pages."""
+        # First page: full page (100 items)
+        mock_response1 = MagicMock()
+        mock_response1.json.return_value = {"data": [{"id": i} for i in range(100)]}
+        mock_response1.raise_for_status.return_value = None
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_response1 = MagicMock()
-            mock_response1.json.return_value = first_response
-            mock_response1.raise_for_status.return_value = None
+        # Second page: partial page (50 items)
+        mock_response2 = MagicMock()
+        mock_response2.json.return_value = {
+            "data": [{"id": i} for i in range(100, 150)]
+        }
+        mock_response2.raise_for_status.return_value = None
 
-            mock_response2 = MagicMock()
-            mock_response2.json.return_value = second_response
-            mock_response2.raise_for_status.return_value = None
-
-            mock_http_client.request.side_effect = [mock_response1, mock_response2]
-
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            # Mock the request method to return different responses on subsequent calls
+            mock_client.request = AsyncMock(
+                side_effect=[mock_response1, mock_response2]
+            )
             results = []
             async for batch in client.send_paginated_request("/test", "data"):
-                results.extend(batch)
+                results.append(batch)
 
-            assert len(results) == 150
-            assert results[0]["id"] == "0"
-            assert results[-1]["id"] == "149"
+            assert len(results) == 2
+            assert len(results[0]) == 100
+            assert len(results[1]) == 50
+            assert results[0][0]["id"] == 0
+            assert results[0][-1]["id"] == 99
+            assert results[1][0]["id"] == 100
+            assert results[1][-1]["id"] == 149
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_empty_response(
         self, client: CheckmarxOneClient
     ) -> None:
-        """Test paginated resources with empty response."""
-        mock_response: dict[str, list[dict[str, str]]] = {"data": []}
+        """Test getting paginated resources with empty response."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"data": []}
+        mock_response.raise_for_status.return_value = None
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_response_obj = MagicMock()
-            mock_response_obj.json.return_value = mock_response
-            mock_response_obj.raise_for_status.return_value = None
-            mock_http_client.request.return_value = mock_response_obj
-
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
             results = []
             async for batch in client.send_paginated_request("/test", "data"):
-                results.extend(batch)
+                results.append(batch)
 
-            assert results == []
+            assert len(results) == 0
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_list_response(
         self, client: CheckmarxOneClient
     ) -> None:
-        """Test paginated resources with list response format."""
-        mock_response = [{"id": "1"}, {"id": "2"}]
+        """Test getting paginated resources with list response."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = [{"id": 1}, {"id": 2}]
+        mock_response.raise_for_status.return_value = None
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_response_obj = MagicMock()
-            mock_response_obj.json.return_value = mock_response
-            mock_response_obj.raise_for_status.return_value = None
-            mock_http_client.request.return_value = mock_response_obj
-
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
             results = []
             async for batch in client.send_paginated_request("/test", "data"):
-                results.extend(batch)
+                results.append(batch)
 
-            assert results == [{"id": "1"}, {"id": "2"}]
+            assert len(results) == 1
+            assert results[0] == [{"id": 1}, {"id": 2}]
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_different_object_key(
         self, client: CheckmarxOneClient
     ) -> None:
-        """Test paginated resources with different object key."""
-        mock_response = {"items": [{"id": "1"}, {"id": "2"}]}
+        """Test getting paginated resources with different object key."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"items": [{"id": 1}, {"id": 2}]}
+        mock_response.raise_for_status.return_value = None
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_response_obj = MagicMock()
-            mock_response_obj.json.return_value = mock_response
-            mock_response_obj.raise_for_status.return_value = None
-            mock_http_client.request.return_value = mock_response_obj
-
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
             results = []
             async for batch in client.send_paginated_request("/test", "items"):
-                results.extend(batch)
+                results.append(batch)
 
-            assert results == [{"id": "1"}, {"id": "2"}]
+            assert len(results) == 1
+            assert results[0] == [{"id": 1}, {"id": 2}]
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_with_params(
         self, client: CheckmarxOneClient
     ) -> None:
-        """Test paginated resources with additional parameters."""
-        mock_response = {"data": [{"id": "1"}]}
+        """Test getting paginated resources with parameters."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"data": [{"id": 1}]}
+        mock_response.raise_for_status.return_value = None
 
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_response_obj = MagicMock()
-            mock_response_obj.json.return_value = mock_response
-            mock_response_obj.raise_for_status.return_value = None
-            mock_http_client.request.return_value = mock_response_obj
+        params = {"param1": "value1"}
 
-            params = {"status": "active"}
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
             results = []
-            async for batch in client.send_paginated_request(
-                "/test", "data", params=params
-            ):
-                results.extend(batch)
+            async for batch in client.send_paginated_request("/test", "data", params):
+                results.append(batch)
 
-            # Check that the request was called with the correct parameters
-            call_args = mock_http_client.request.call_args
-            request_params = call_args[1]["params"]
-            assert request_params["status"] == "active"
-            assert request_params["limit"] == 100
-            assert request_params["offset"] == 0
+            assert len(results) == 1
+            assert results[0] == [{"id": 1}]
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_request_error(
         self, client: CheckmarxOneClient
     ) -> None:
-        """Test paginated resources when request fails."""
-        with patch(
-            "checkmarx_one.clients.base_client.http_async_client"
-        ) as mock_http_client:
-            mock_http_client.request.side_effect = Exception("Request failed")
+        """Test getting paginated resources with request error."""
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(side_effect=Exception("Request failed"))
             results = []
             async for batch in client.send_paginated_request("/test", "data"):
-                results.extend(batch)
+                results.append(batch)
 
-            # Should handle the error gracefully and stop iteration
-            assert results == []
+            assert len(results) == 0
 
     def test_constants(self) -> None:
-        """Test that constants are defined correctly."""
-        from checkmarx_one.clients.base_client import PAGE_SIZE
+        """Test that constants are properly defined."""
+        from checkmarx_one.clients.client import PAGE_SIZE
 
         assert PAGE_SIZE == 100

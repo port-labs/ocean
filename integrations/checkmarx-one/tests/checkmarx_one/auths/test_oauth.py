@@ -67,7 +67,6 @@ class TestOAuthAuthenticator:
                 "access_token": "test-access-token",
                 "refresh_token": "test-refresh-token",
                 "expires_in": 1800,
-                "token_type": "Bearer",
             }
 
             # Verify the HTTP call
@@ -139,10 +138,8 @@ class TestOAuthAuthenticator:
         ) as mock_client:
             mock_client.post.return_value = mock_response
 
-            result = await oauth_authenticator._authenticate()
-
-            # Should still return the response even if it contains an error
-            assert result == {"error": "invalid_client"}
+            with pytest.raises(KeyError):
+                await oauth_authenticator._authenticate()
 
     @pytest.mark.asyncio
     async def test_authenticate_empty_response(
@@ -158,9 +155,8 @@ class TestOAuthAuthenticator:
         ) as mock_client:
             mock_client.post.return_value = mock_response
 
-            result = await oauth_authenticator._authenticate()
-
-            assert result == {}
+            with pytest.raises(KeyError):
+                await oauth_authenticator._authenticate()
 
     @pytest.mark.asyncio
     async def test_authenticate_with_different_credentials(self) -> None:
@@ -174,7 +170,11 @@ class TestOAuthAuthenticator:
             )
 
         mock_response = MagicMock(spec=Response)
-        mock_response.json.return_value = {"access_token": "custom-token"}
+        mock_response.json.return_value = {
+            "access_token": "custom-token",
+            "refresh_token": "custom-refresh",
+            "expires_in": 3600,
+        }
         mock_response.raise_for_status.return_value = None
 
         with patch.object(authenticator, "http_client", AsyncMock()) as mock_client:
@@ -182,7 +182,11 @@ class TestOAuthAuthenticator:
 
             result = await authenticator._authenticate()
 
-            assert result == {"access_token": "custom-token"}
+            assert result == {
+                "access_token": "custom-token",
+                "refresh_token": "custom-refresh",
+                "expires_in": 3600,
+            }
             mock_client.post.assert_called_once_with(
                 "https://custom.iam.checkmarx.net/auth/realms/custom-tenant/protocol/openid-connect/token",
                 data={
@@ -247,7 +251,11 @@ class TestOAuthAuthenticator:
             )
 
         mock_response = MagicMock(spec=Response)
-        mock_response.json.return_value = {"access_token": "special-token"}
+        mock_response.json.return_value = {
+            "access_token": "special-token",
+            "refresh_token": "special-refresh",
+            "expires_in": 1800,
+        }
         mock_response.raise_for_status.return_value = None
 
         with patch.object(authenticator, "http_client", AsyncMock()) as mock_client:
@@ -255,7 +263,11 @@ class TestOAuthAuthenticator:
 
             result = await authenticator._authenticate()
 
-            assert result == {"access_token": "special-token"}
+            assert result == {
+                "access_token": "special-token",
+                "refresh_token": "special-refresh",
+                "expires_in": 1800,
+            }
             mock_client.post.assert_called_once_with(
                 "https://iam.checkmarx.net/auth/realms/test-tenant/protocol/openid-connect/token",
                 data={
