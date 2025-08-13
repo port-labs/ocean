@@ -92,6 +92,7 @@ pytest-timeout = "^2.3.1"
 cryptography = ">=43.0.1,<45.0.0"
 memray = "^1.17.2"
 faker = "^37.3.0"
+types-aiofiles = "^24.1.0.20250809"
 
 [tool.towncrier]
 directory = "changelog"

@@ -1,9 +1,10 @@
 import os
+from typing import Any, AsyncGenerator
 import uuid
 
 import aiofiles
 import httpx
-import ijson
+import ijson  # type: ignore[import-untyped]
 from cryptography.fernet import Fernet
 
 import port_ocean.context.ocean as ocean_context
@@ -15,7 +16,9 @@ class Stream:
         self.headers = response.headers
         self.status_code = response.status_code
 
-    async def _byte_stream(self, chunk_size: int | None = None):
+    async def _byte_stream(
+        self, chunk_size: int | None = None
+    ) -> AsyncGenerator[bytes, None]:
         if chunk_size is None:
             chunk_size = ocean_context.ocean.config.streaming.chunk_size
 
@@ -50,7 +53,7 @@ class Stream:
         self,
         target_items: str = "",
         max_buffer_size_mb: int | None = None,
-    ):
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if max_buffer_size_mb is None:
             max_buffer_size_mb = ocean_context.ocean.config.streaming.max_buffer_size_mb
 

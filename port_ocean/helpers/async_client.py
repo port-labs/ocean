@@ -52,7 +52,7 @@ class OceanAsyncClient(httpx.AsyncClient):
             **(self._transport_kwargs or {}),
         )
 
-    async def get_stream(self, url, **kwargs):
+    async def get_stream(self, url: str, **kwargs: Any) -> Stream:
         req = self.build_request("GET", url, **kwargs)
         response = await self.send(req, stream=True)
         response.raise_for_status()
