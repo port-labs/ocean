@@ -227,15 +227,6 @@ class TestCheckmarxScanResultExporter:
 
         assert len(results) == 0
 
-    @pytest.mark.asyncio
-    async def test_get_scan_results_missing_scan_id_raises(
-        self, scan_result_exporter: CheckmarxScanResultExporter
-    ) -> None:
-        """Test that missing scan_id raises ValueError."""
-        with pytest.raises(ValueError, match="scan_id is required"):
-            async for _ in scan_result_exporter.get_paginated_resources({}):
-                pass
-
     def test_scan_result_exporter_inheritance(
         self, scan_result_exporter: CheckmarxScanResultExporter
     ) -> None:

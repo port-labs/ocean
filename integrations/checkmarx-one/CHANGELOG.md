@@ -12,5 +12,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Added Checkmarx-One ocean integration with the Project, Scan, and Scan Result Kinds
-
-<!-- towncrier release notes end -->

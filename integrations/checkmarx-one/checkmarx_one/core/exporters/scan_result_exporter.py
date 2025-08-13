@@ -31,7 +31,6 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         # Note: The API documentation doesn't show a direct endpoint for getting a single result
         # This method assumes there might be a way to get individual results
         # For now, we'll use the general results endpoint with filtering
-        assert options is not None and "scan_id" in options and "result_id" in options
         params = {
             "scan-id": options["scan_id"],
             "limit": 1,
@@ -65,9 +64,6 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         Yields:
             Batches of scan results
         """
-
-        if not options or not options.get("scan_id"):
-            raise ValueError("scan_id is required for getting scan results")
 
         params: dict[str, Any] = self._get_params(options)
 

@@ -15,7 +15,6 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
         options: SingleScanOptions,
     ) -> RAW_ITEM:
         """Get a specific scan by ID."""
-        assert options is not None and "scan_id" in options
         response = await self.client.send_api_request(f"/scans/{options['scan_id']}")
         logger.info(f"Fetched scan with ID: {options['scan_id']}")
         return response

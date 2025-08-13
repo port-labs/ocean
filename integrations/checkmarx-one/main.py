@@ -89,4 +89,5 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for results_batch in scan_result_exporter.get_paginated_resources(
                 options
             ):
+                logger.debug(f"Received batch with {len(results_batch)} scan results")
                 yield results_batch
