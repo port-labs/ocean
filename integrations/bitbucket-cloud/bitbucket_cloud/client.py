@@ -133,6 +133,7 @@ class BitbucketClient:
             if values := response.get(data_key, []):
                 yield values
             url = response.get("next")
+            params = None
             if not url:
                 break
 
@@ -191,6 +192,7 @@ class BitbucketClient:
             url = response.get("next")
             if not url:
                 break
+            params = None
 
     async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all projects in the workspace."""
