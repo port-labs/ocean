@@ -38,4 +38,6 @@ class CheckmarxAuthenticatorFactory:
             logger.debug(f"Creating API key authenticator for tenant {tenant}")
             return TokenAuthenticator(iam_url, tenant, api_key)
 
-        raise CheckmarxAuthenticationError("No valid API key provided. Only token authentication is supported for now.")
+        raise CheckmarxAuthenticationError(
+            "No valid API key provided. Only token authentication is supported for now."
+        )

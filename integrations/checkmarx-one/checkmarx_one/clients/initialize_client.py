@@ -32,7 +32,9 @@ class CheckmarxOneClientSingleton:
             logger.info(f"Initializing Checkmarx One client for {base_url}")
 
             if not api_key:
-                raise CheckmarxAuthenticationError("No valid API key provided. Only token authentication is supported.")
+                raise CheckmarxAuthenticationError(
+                    "No valid API key provided. Only token authentication is supported."
+                )
 
             authenticator = CheckmarxAuthenticatorFactory.create_authenticator(
                 iam_url=iam_url,
