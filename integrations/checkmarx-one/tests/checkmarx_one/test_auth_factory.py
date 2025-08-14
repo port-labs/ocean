@@ -37,7 +37,6 @@ class TestCheckmarxAuthenticatorFactory:
 
         assert "No valid API key provided" in str(exc_info.value)
 
-
     def test_create_authenticator_with_only_client_id(self) -> None:
         """Test creating authenticator with only client_id raises error."""
         with pytest.raises(CheckmarxAuthenticationError) as exc_info:
@@ -47,7 +46,6 @@ class TestCheckmarxAuthenticatorFactory:
             )
 
         assert "No valid API key provided" in str(exc_info.value)
-
 
     def test_create_authenticator_with_empty_strings(self) -> None:
         """Test creating authenticator with empty string credentials raises error."""
