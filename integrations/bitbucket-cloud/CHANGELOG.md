@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.63 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 0.1.62 (2025-08-13)
+
+
+### Bug Fixes
+
+- Fixed bug in pagination where params were not being reset after each batch of data is fetched
+
+
 ## 0.1.61 (2025-08-13)
 
 
