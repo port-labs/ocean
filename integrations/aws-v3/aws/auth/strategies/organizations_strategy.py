@@ -5,6 +5,7 @@ from aiobotocore.session import AioSession
 from loguru import logger
 import asyncio
 from typing import Any, AsyncIterator, Dict, List
+from botocore.utils import ArnParser
 
 
 class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
@@ -53,8 +54,11 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
         if not organization_role_arn.startswith("arn:aws:iam::"):
             raise AWSSessionError("account_role_arn must be a valid ARN")
 
-        # ARN format: arn:aws:iam::account:role/role-name
-        self._organization_role_name = organization_role_arn.split("/")[-1]
+        arn_data = ArnParser().parse_arn(arn=organization_role_arn)
+        if not isinstance(arn_data["resource"], str):
+            raise AWSSessionError("account_role_arn must be a valid ARN")
+
+        self._organization_role_name = arn_data["resource"]
         return self._organization_role_name
 
     def _build_role_arn(self, account_id: str) -> str:
