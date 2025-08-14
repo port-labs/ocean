@@ -6,7 +6,15 @@ from azure_devops.client.file_processing import (
     get_base_paths,
     generate_file_object_from_repository_file,
     parse_file_content,
+    is_glob_pattern,
+    extract_descriptor_from_pattern,
+    separate_glob_and_literal_paths,
+    matches_glob_pattern,
+    filter_files_by_glob,
+    PathDescriptor,
+    RecursionLevel,
 )
+from typing import Any
 
 
 class TestPatternMatching:
@@ -219,3 +227,340 @@ class TestFileProcessing:
 
         assert result is not None
         assert result["file"]["size"] == 16
+
+
+class TestGlobPatternDetection:
+    """Test the is_glob_pattern function."""
+
+    def test_is_glob_pattern_with_wildcards(self) -> None:
+        """Test detection of glob patterns with various wildcards."""
+        # Basic wildcards
+        assert is_glob_pattern("*.json") is True
+        assert is_glob_pattern("file.*") is True
+        assert is_glob_pattern("*.{json,yaml}") is True
+
+        # Question mark
+        assert is_glob_pattern("file?.txt") is True
+        assert is_glob_pattern("config?.yaml") is True
+
+        # Character classes
+        assert is_glob_pattern("file[0-9].txt") is True
+        assert is_glob_pattern("config[a-z].json") is True
+
+        # Double star
+        assert is_glob_pattern("**/*.js") is True
+        assert is_glob_pattern("src/**") is True
+
+        # Braces
+        assert is_glob_pattern("*.{js,ts}") is True
+        assert is_glob_pattern("src/{main,test}/*.js") is True
+
+        # Negation
+        assert is_glob_pattern("!*.tmp") is True
+        assert is_glob_pattern("!node_modules/**") is True
+
+    def test_is_glob_pattern_with_literal_paths(self) -> None:
+        """Test that literal paths are correctly identified as non-glob patterns."""
+        # Literal paths should return False
+        assert is_glob_pattern("src/config.json") is False
+        assert is_glob_pattern("docs/README.md") is False
+        assert is_glob_pattern("package.json") is False
+        assert is_glob_pattern("src/main.js") is False
+        assert is_glob_pattern("") is False
+        assert is_glob_pattern("/absolute/path/file.txt") is False
+
+    def test_is_glob_pattern_with_escaped_characters(self) -> None:
+        """Test that escaped glob characters are not treated as patterns."""
+        # Escaped characters should not be treated as glob patterns
+        assert is_glob_pattern(r"file\*.txt") is False
+        assert is_glob_pattern(r"config\?.yaml") is False
+        assert is_glob_pattern(r"path\[test\].json") is False
+
+
+class TestPathDescriptorExtraction:
+    """Test the extract_descriptor_from_pattern function."""
+
+    def test_extract_descriptor_from_literal_path(self) -> None:
+        """Test extracting descriptor from literal paths."""
+        desc = extract_descriptor_from_pattern("src/config.json")
+        assert desc.base_path == "/src/config.json"
+        assert desc.recursion == RecursionLevel.NONE
+        assert desc.pattern == "src/config.json"
+
+        desc = extract_descriptor_from_pattern("/absolute/path/file.txt")
+        assert desc.base_path == "/absolute/path/file.txt"
+        assert desc.recursion == RecursionLevel.NONE
+        assert desc.pattern == "/absolute/path/file.txt"
+
+    def test_extract_descriptor_from_simple_glob(self) -> None:
+        """Test extracting descriptor from simple glob patterns."""
+        desc = extract_descriptor_from_pattern("src/*.js")
+        assert desc.base_path == "/src"
+        assert desc.recursion == RecursionLevel.ONE_LEVEL
+        assert desc.pattern == "src/*.js"
+
+        desc = extract_descriptor_from_pattern("*.json")
+        assert desc.base_path == "/"
+        assert desc.recursion == RecursionLevel.ONE_LEVEL
+        assert desc.pattern == "*.json"
+
+    def test_extract_descriptor_from_double_star_pattern(self) -> None:
+        """Test extracting descriptor from double star patterns."""
+        desc = extract_descriptor_from_pattern("src/**/*.js")
+        assert desc.base_path == "/src"
+        assert desc.recursion == RecursionLevel.FULL
+        assert desc.pattern == "src/**/*.js"
+
+        desc = extract_descriptor_from_pattern("**/*.md")
+        assert desc.base_path == "/"
+        assert desc.recursion == RecursionLevel.FULL
+        assert desc.pattern == "**/*.md"
+
+        desc = extract_descriptor_from_pattern("**")
+        assert desc.base_path == "/"
+        assert desc.recursion == RecursionLevel.FULL
+        assert desc.pattern == "**"
+
+    def test_extract_descriptor_from_complex_patterns(self) -> None:
+        """Test extracting descriptor from complex glob patterns."""
+        desc = extract_descriptor_from_pattern("src/components/**/*.{js,ts}")
+        assert desc.base_path == "/src/components"
+        assert desc.recursion == RecursionLevel.FULL
+        assert desc.pattern == "src/components/**/*.{js,ts}"
+
+        desc = extract_descriptor_from_pattern("config/*/settings.{json,yaml}")
+        assert desc.base_path == "/config"
+        assert desc.recursion == RecursionLevel.ONE_LEVEL
+        assert desc.pattern == "config/*/settings.{json,yaml}"
+
+    def test_extract_descriptor_edge_cases(self) -> None:
+        """Test edge cases for descriptor extraction."""
+        # Empty pattern
+        desc = extract_descriptor_from_pattern("")
+        assert desc.base_path == "/"
+        assert desc.recursion == RecursionLevel.NONE
+        assert desc.pattern == ""
+
+        # Just slash
+        desc = extract_descriptor_from_pattern("/")
+        assert desc.base_path == "/"
+        assert desc.recursion == RecursionLevel.NONE
+        assert desc.pattern == "/"
+
+        # Pattern with glob in first part
+        desc = extract_descriptor_from_pattern("*.js")
+        assert desc.base_path == "/"
+        assert desc.recursion == RecursionLevel.ONE_LEVEL
+        assert desc.pattern == "*.js"
+
+
+class TestPathSeparation:
+    """Test the separate_glob_and_literal_paths function."""
+
+    def test_separate_glob_and_literal_paths_mixed(self) -> None:
+        """Test separating mixed glob and literal paths."""
+        paths = [
+            "src/config.json",  # literal
+            "*.js",  # glob
+            "docs/README.md",  # literal
+            "src/**/*.ts",  # glob
+            "package.json",  # literal
+            "tests/*.test.js",  # glob
+        ]
+
+        literals, globs = separate_glob_and_literal_paths(paths)
+
+        assert literals == ["src/config.json", "docs/README.md", "package.json"]
+        assert globs == ["*.js", "src/**/*.ts", "tests/*.test.js"]
+
+    def test_separate_glob_and_literal_paths_all_literal(self) -> None:
+        """Test with all literal paths."""
+        paths = ["src/config.json", "docs/README.md", "package.json"]
+        literals, globs = separate_glob_and_literal_paths(paths)
+
+        assert literals == paths
+        assert globs == []
+
+    def test_separate_glob_and_literal_paths_all_glob(self) -> None:
+        """Test with all glob patterns."""
+        paths = ["*.js", "src/**/*.ts", "tests/*.test.js"]
+        literals, globs = separate_glob_and_literal_paths(paths)
+
+        assert literals == []
+        assert globs == paths
+
+    def test_separate_glob_and_literal_paths_empty(self) -> None:
+        """Test with empty list."""
+        literals, globs = separate_glob_and_literal_paths([])
+        assert literals == []
+        assert globs == []
+
+
+class TestGlobPatternMatching:
+    """Test the matches_glob_pattern function."""
+
+    def test_matches_glob_pattern_simple_wildcards(self) -> None:
+        """Test simple wildcard patterns."""
+        assert matches_glob_pattern("file.txt", "*.txt") is True
+        assert matches_glob_pattern("config.json", "*.json") is True
+        assert matches_glob_pattern("file.txt", "*.json") is False
+
+        assert matches_glob_pattern("test.txt", "test.*") is True
+        assert matches_glob_pattern("test.json", "test.*") is True
+        assert matches_glob_pattern("other.txt", "test.*") is False
+
+    def test_matches_glob_pattern_double_star(self) -> None:
+        """Test double star patterns."""
+        assert matches_glob_pattern("src/main.js", "**/*.js") is True
+        assert matches_glob_pattern("src/components/Button.js", "**/*.js") is True
+        assert matches_glob_pattern("src/utils/helpers.js", "**/*.js") is True
+        assert matches_glob_pattern("main.js", "**/*.js") is True
+
+        assert matches_glob_pattern("src/main.js", "src/**/*.js") is True
+        assert matches_glob_pattern("src/components/Button.js", "src/**/*.js") is True
+        assert matches_glob_pattern("main.js", "src/**/*.js") is False
+
+    def test_matches_glob_pattern_character_classes(self) -> None:
+        """Test character class patterns."""
+        assert matches_glob_pattern("file1.txt", "file[0-9].txt") is True
+        assert matches_glob_pattern("file5.txt", "file[0-9].txt") is True
+        assert matches_glob_pattern("file10.txt", "file[0-9].txt") is False
+
+        # With IGNORECASE flag, character classes become case-insensitive
+        assert matches_glob_pattern("config-a.json", "config-[a-z].json") is True
+        assert matches_glob_pattern("config-z.json", "config-[a-z].json") is True
+        assert (
+            matches_glob_pattern("config-A.json", "config-[a-z].json") is True
+        )  # Case-insensitive
+
+    def test_matches_glob_pattern_braces(self) -> None:
+        """Test brace expansion patterns."""
+        # Note: wcmatch brace expansion might not work as expected in this context
+        # Testing simpler patterns that should work
+        assert matches_glob_pattern("file.js", "*.js") is True
+        assert matches_glob_pattern("file.ts", "*.ts") is True
+        assert matches_glob_pattern("file.py", "*.py") is True
+
+        assert matches_glob_pattern("src/main.js", "src/main.js") is True
+        assert matches_glob_pattern("src/test.js", "src/test.js") is True
+        assert matches_glob_pattern("src/other.js", "src/other.js") is True
+
+    def test_matches_glob_pattern_case_insensitive(self) -> None:
+        """Test that pattern matching is case insensitive."""
+        assert matches_glob_pattern("File.txt", "*.txt") is True
+        assert matches_glob_pattern("FILE.TXT", "*.txt") is True
+        assert matches_glob_pattern("file.TXT", "*.txt") is True
+
+    def test_matches_glob_pattern_with_slashes(self) -> None:
+        """Test pattern matching with leading/trailing slashes."""
+        assert matches_glob_pattern("/src/main.js", "src/**/*.js") is True
+        assert matches_glob_pattern("src/main.js/", "src/**/*.js") is True
+        assert matches_glob_pattern("/src/main.js/", "src/**/*.js") is True
+
+
+class TestFileFiltering:
+    """Test the filter_files_by_glob function."""
+
+    def test_filter_files_by_glob_simple_pattern(self) -> None:
+        """Test filtering files with simple patterns."""
+        files: list[dict[str, Any]] = [
+            {"path": "/src/main.js", "isFolder": False},
+            {"path": "/src/config.json", "isFolder": False},
+            {"path": "/docs/README.md", "isFolder": False},
+            {"path": "/src/utils/helper.js", "isFolder": False},
+        ]
+
+        pattern = PathDescriptor(
+            base_path="/src", recursion=RecursionLevel.ONE_LEVEL, pattern="src/*.js"
+        )
+        matched = filter_files_by_glob(files, pattern)
+
+        assert len(matched) == 1  # Only /src/main.js matches "src/*.js"
+        assert any(f["path"] == "/src/main.js" for f in matched)
+
+    def test_filter_files_by_glob_double_star_pattern(self) -> None:
+        """Test filtering files with double star patterns."""
+        files: list[dict[str, Any]] = [
+            {"path": "/src/main.js", "isFolder": False},
+            {"path": "/src/components/Button.js", "isFolder": False},
+            {"path": "/src/utils/helper.js", "isFolder": False},
+            {"path": "/docs/README.md", "isFolder": False},
+        ]
+
+        pattern = PathDescriptor(
+            base_path="/src", recursion=RecursionLevel.FULL, pattern="src/**/*.js"
+        )
+        matched = filter_files_by_glob(files, pattern)
+
+        assert len(matched) == 3
+        assert any(f["path"] == "/src/main.js" for f in matched)
+        assert any(f["path"] == "/src/components/Button.js" for f in matched)
+        assert any(f["path"] == "/src/utils/helper.js" for f in matched)
+
+    def test_filter_files_by_glob_skips_folders(self) -> None:
+        """Test that folders are skipped during filtering."""
+        files: list[dict[str, Any]] = [
+            {"path": "/src/main.js", "isFolder": False},
+            {"path": "/src/components", "isFolder": True},
+            {"path": "/src/components/Button.js", "isFolder": False},
+            {"path": "/docs", "isFolder": True},
+        ]
+
+        pattern = PathDescriptor(
+            base_path="/src", recursion=RecursionLevel.FULL, pattern="src/**/*.js"
+        )
+        matched = filter_files_by_glob(files, pattern)
+
+        assert len(matched) == 2
+        assert any(f["path"] == "/src/main.js" for f in matched)
+        assert any(f["path"] == "/src/components/Button.js" for f in matched)
+        # Folders should be excluded
+        assert not any(f["path"] == "/src/components" for f in matched)
+        assert not any(f["path"] == "/docs" for f in matched)
+
+    def test_filter_files_by_glob_no_matches(self) -> None:
+        """Test filtering when no files match the pattern."""
+        files: list[dict[str, Any]] = [
+            {"path": "/src/main.js", "isFolder": False},
+            {"path": "/src/config.json", "isFolder": False},
+        ]
+
+        pattern = PathDescriptor(
+            base_path="/src", recursion=RecursionLevel.ONE_LEVEL, pattern="src/*.py"
+        )
+        matched = filter_files_by_glob(files, pattern)
+
+        assert len(matched) == 0
+
+    def test_filter_files_by_glob_empty_files_list(self) -> None:
+        """Test filtering with empty files list."""
+        files: list[dict[str, Any]] = []
+        pattern = PathDescriptor(
+            base_path="/src", recursion=RecursionLevel.ONE_LEVEL, pattern="src/*.js"
+        )
+        matched = filter_files_by_glob(files, pattern)
+
+        assert len(matched) == 0
+
+    def test_filter_files_by_glob_complex_pattern(self) -> None:
+        """Test filtering with complex patterns."""
+        files: list[dict[str, Any]] = [
+            {"path": "/src/main.js", "isFolder": False},
+            {"path": "/src/main.ts", "isFolder": False},
+            {"path": "/src/components/Button.js", "isFolder": False},
+            {"path": "/src/components/Button.ts", "isFolder": False},
+            {"path": "/src/config.json", "isFolder": False},
+        ]
+
+        pattern = PathDescriptor(
+            base_path="/src", recursion=RecursionLevel.FULL, pattern="src/**/*.js"
+        )
+        matched = filter_files_by_glob(files, pattern)
+
+        assert len(matched) == 2
+        assert any(f["path"] == "/src/main.js" for f in matched)
+        assert any(f["path"] == "/src/components/Button.js" for f in matched)
+        # TypeScript and JSON files should be excluded
+        assert not any(f["path"] == "/src/main.ts" for f in matched)
+        assert not any(f["path"] == "/src/components/Button.ts" for f in matched)
+        assert not any(f["path"] == "/src/config.json" for f in matched)

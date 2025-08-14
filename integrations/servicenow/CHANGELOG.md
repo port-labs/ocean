@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.1 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 0.2.0 (2025-08-13)
+
+
+### Bug Fixes
+
+- Fixed pagination loop issue caused by repeating the initial header params in subsequent requests
+
+
+## 0.1.179 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 0.1.178 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+## 0.1.177 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
+
+
+## 0.1.176 (2025-08-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.1
+
+
+## 0.1.175 (2025-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.0
+
+
 ## 0.1.174 (2025-08-04)
 
 

@@ -15,12 +15,12 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: The Snyk API token used for authentication. To create a token, see the <a href="https://docs.snyk.io/getting-started/how-to-obtain-and-authenticate-with-your-snyk-api-token" target="_blank">Snyk documentation</a>
+    description: The Snyk API token used for authentication. To create a token, see the <a href="https://docs.snyk.io/snyk-api/authentication-for-api#how-to-obtain-your-personal-token" target="_blank">Snyk documentation</a>
   - name: webhookSecret
     required: false
     type: string
     sensitive: true
-    description: Snyk webhook secret (optional). This is used to secure webhook communication between Snyk and Port. To learn more, see the <a href="https://docs.snyk.io/snyk-api/snyk-webhooks/validation-and-versioning-of-payloads" target="_blank">Snyk documentation</a>
+    description: Snyk webhook secret (optional). This is used to secure webhook communication between Snyk and Port. To learn more, see the <a href="https://docs.snyk.io/snyk-api/using-specific-snyk-apis/webhooks-apis/validation-and-versioning-of-payloads" target="_blank">Snyk documentation</a>
   - name: apiUrl
     type: string
     required: false

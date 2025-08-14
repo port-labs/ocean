@@ -49,15 +49,19 @@ class LaunchDarklyClient:
     async def get_paginated_resource(
         self, kind: str, resource_path: str | None = None, page_size: int = PAGE_SIZE
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-
-        kind = kind + "s" if not kind.endswith("s") else kind + "es"
+        """
+        Fetch and paginate through resources from a LaunchDarkly API endpoint.
+        Docs: https://launchdarkly.com/docs/guides/api/api-migration-guide#working-with-paginated-endpoints
+        """
+        kind = f"{kind}s" if not kind.endswith("s") else f"{kind}es"
 
         url = kind if not resource_path else f"{kind}/{resource_path}"
         url = url.replace("auditlogs", ObjectKind.AUDITLOG)
-        params = {"limit": page_size}
+        params: Optional[dict[str, Any]] = {"limit": page_size}
 
         while url:
             try:
+                logger.debug(f"Fetching {kind} from LaunchDarkly: {url}")
                 response = await self.send_api_request(
                     endpoint=url, query_params=params
                 )
@@ -65,11 +69,15 @@ class LaunchDarklyClient:
                 logger.info(f"Received batch with {len(items)} items")
                 yield items
 
-                if "_links" in response and "next" in response["_links"]:
-                    url = response["_links"]["next"]["href"]
+                if next_link := response.get("_links", {}).get("next"):
+                    url = next_link["href"]
+                    logger.debug(f"Fetching next page of {kind}: {url}")
+                    params = None
                 else:
-                    total_count = response.get("totalCount")
-                    logger.info(f"Fetched {total_count} {kind} from Launchdarkly")
+                    total_count = response.get("totalCount", len(items))
+                    logger.info(
+                        f"Successfully fetched all {total_count} {kind} from LaunchDarkly."
+                    )
                     break
 
             except httpx.HTTPStatusError as e:
@@ -103,8 +111,6 @@ class LaunchDarklyClient:
                 json=json_data,
             )
             response.raise_for_status()
-
-            logger.debug(f"Successfully retrieved data for endpoint: {endpoint}")
 
             return response.json()
 

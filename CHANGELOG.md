@@ -6,6 +6,59 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.27.6 (2025-08-13)
+
+### Improvements
+
+- Add streaming requests.
+
+## 0.27.5 (2024-08-13)
+
+
+### Improvements
+
+- Bump fastapi to version 0.116.0 - fix Starlette has possible denial-of-service vector when parsing large files in multipart forms (< 0.47.2)
+
+## 0.27.4 (2025-08-12)
+### Bug Fixes
+
+- Fix kafka broker list for Terraform
+
+## 0.27.3 (2025-08-11)
+
+### Bug Fixes
+
+- Items to parse can be set when there is an item object on the root level by set the itemsToParseName param
+
+## 0.27.2 (2025-08-07)
+
+### Bug Fixes
+
+- Move the items to parse logic to be yielded from the generator to support ocean's logic.
+
+## 0.27.1 (2025-08-10)
+
+### Bug Fixes
+
+- Ensure deletion metrics always being sent on reconceliation
+
+## 0.27.0 (2025-08-03)
+
+### Improvements
+
+- Enhanced webhook event processing with GroupQueue implementation
+
+Introduced GroupQueue to ensure exclusive processing per group while allowing parallel processing across different groups
+Multiple workers can now process webhook events from different groups concurrently, improving throughput
+FIFO ordering is maintained within each group to preserve event sequence integrity
+Added automatic lock timeout mechanism to recover from frozen or hung workers
+Implemented context-based group tracking using ContextVar for cleaner worker-to-group association
+
+- Performance optimizations
+Configurable number of workers per webhook path (event_workers_count)
+Reduced contention by allowing concurrent processing of independent groups
+Improved resource cleanup and state management after processing
+
 ## 0.26.3 (2025-08-04)
 
 ### Bug Fixes

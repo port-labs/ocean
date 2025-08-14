@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.2.9-beta (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 1.2.8-beta (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 1.2.7-beta (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+## 1.2.6-beta (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
+
+
+## 1.2.5-beta (2025-08-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.1
+
+
+## 1.2.4-beta (2025-08-06)
+
+
+### Improvements
+
+- Improved folder kind ingestion performance by using the GitHub Search API to efficiently retrieve repository information.
+
+
+## 1.2.3-beta (2025-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.0
+
+
 ## 1.2.2-beta (2025-08-04)
 
 
