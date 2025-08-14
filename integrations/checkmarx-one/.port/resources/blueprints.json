@@ -1,0 +1,973 @@
+[
+  {
+    "identifier": "checkmarxProject",
+    "title": "Checkmarx Project",
+    "icon": "Checkmarx",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Project Name"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated At"
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags"
+        },
+        "repoUrl": {
+          "type": "string",
+          "title": "Repository URL"
+        },
+        "mainBranch": {
+          "type": "string",
+          "title": "Main Branch"
+        },
+        "origin": {
+          "type": "string",
+          "title": "Origin"
+        },
+        "criticality": {
+          "type": "string",
+          "title": "Criticality"
+        }
+      },
+      "required": ["name"]
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "checkmarxScan",
+    "title": "Checkmarx Scan",
+    "icon": "Checkmarx",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["Running", "Completed", "Failed", "Canceled", "Queued"]
+        },
+        "branch": {
+          "type": "string",
+          "title": "Branch"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated At"
+        },
+        "projectId": {
+          "type": "string",
+          "title": "Project ID"
+        },
+        "userAgent": {
+          "type": "string",
+          "title": "User Agent"
+        },
+        "configs": {
+          "type": "object",
+          "title": "Configurations"
+        },
+        "statusDetails": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "title": "Status Details"
+        }
+      },
+      "required": ["status", "projectId"]
+    },
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "checkmarxProject",
+        "many": false,
+        "required": true
+      }
+    }
+  },
+  {
+    "calculationProperties": {},
+    "identifier": "checkmarxSscs-secret-detection",
+    "title": "Checkmarx Scan Result for SSCS",
+    "icon": "AppRunner",
+    "schema": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "enum": [
+            "sast",
+            "sca",
+            "kics",
+            "containers",
+            "sscs-secret-detection",
+            "sscs-scorecard"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL",
+            "INFO"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": [
+            "TO_VERIFY",
+            "CONFIRMED",
+            "URGENT",
+            "NOT_EXPLOITABLE",
+            "PROPOSED_NOT_EXPLOITABLE",
+            "FALSE_POSITIVE"
+          ]
+        },
+        "confidenceLevel": {
+          "type": "number",
+          "title": "Confidence Level",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "cweId": {
+          "type": "string",
+          "title": "CWE ID"
+        },
+        "fileName": {
+          "type": "string",
+          "title": "File Name"
+        },
+        "line": {
+          "type": "number",
+          "title": "Line Number"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "NEW",
+            "RECURRENT",
+            "FIXED"
+          ]
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "firstFoundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "First Found At"
+        },
+        "foundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Found At"
+        },
+        "similarityId": {
+          "type": "string",
+          "title": "Similarity ID"
+        },
+        "cvssScore": {
+          "type": "number",
+          "title": "CVSS Score"
+        },
+        "cveName": {
+          "type": "string",
+          "title": "CVE Name"
+        },
+        "packageName": {
+          "type": "string",
+          "title": "Package Name"
+        },
+        "packageVersion": {
+          "type": "string",
+          "title": "Package Version"
+        },
+        "imageName": {
+          "type": "string",
+          "title": "Image Name"
+        },
+        "imageTag": {
+          "type": "string",
+          "title": "Image Tag"
+        },
+        "ruleId": {
+          "type": "string",
+          "title": "Rule ID"
+        },
+        "ruleName": {
+          "type": "string",
+          "title": "Rule Name"
+        },
+        "remediation": {
+          "type": "string",
+          "title": "Remediation"
+        },
+        "remediationLink": {
+          "type": "string",
+          "format": "url",
+          "title": "Remediation Link"
+        }
+      },
+      "required": [
+        "type",
+        "severity",
+        "state",
+        "description"
+      ]
+    },
+    "relations": {
+      "scan": {
+        "title": "Scan",
+        "target": "checkmarxScan",
+        "many": false,
+        "required": false
+      }
+    }
+  },
+  {
+    "calculationProperties": {},
+    "identifier": "checkmarxSscs-scorecard",
+    "title": "Checkmarx Scan Result for SSCS",
+    "icon": "AppRunner",
+    "schema": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "enum": ["sast", "sca", "kics", "containers", "sscs-secret-detection", "sscs-scorecard"]
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL", "INFO"]
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": ["TO_VERIFY", "CONFIRMED", "URGENT", "NOT_EXPLOITABLE", "PROPOSED_NOT_EXPLOITABLE", "FALSE_POSITIVE"]
+        },
+        "confidenceLevel": {
+          "type": "number",
+          "title": "Confidence Level",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "cweId": {
+          "type": "string",
+          "title": "CWE ID"
+        },
+        "fileName": {
+          "type": "string",
+          "title": "File Name"
+        },
+        "line": {
+          "type": "number",
+          "title": "Line Number"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["NEW", "RECURRENT", "FIXED"]
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "firstFoundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "First Found At"
+        },
+        "foundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Found At"
+        },
+        "similarityId": {
+          "type": "string",
+          "title": "Similarity ID"
+        },
+        "cvssScore": {
+          "type": "number",
+          "title": "CVSS Score"
+        },
+        "cveName": {
+          "type": "string",
+          "title": "CVE Name"
+        },
+        "packageName": {
+          "type": "string",
+          "title": "Package Name"
+        },
+        "packageVersion": {
+          "type": "string",
+          "title": "Package Version"
+        },
+        "imageName": {
+          "type": "string",
+          "title": "Image Name"
+        },
+        "imageTag": {
+          "type": "string",
+          "title": "Image Tag"
+        },
+        "ruleId": {
+          "type": "string",
+          "title": "Rule ID"
+        },
+        "ruleName": {
+          "type": "string",
+          "title": "Rule Name"
+        },
+        "remediation": {
+          "type": "string",
+          "title": "Remediation"
+        },
+        "remediationLink": {
+          "type": "string",
+          "format": "url",
+          "title": "Remediation Link"
+        }
+      },
+      "required": ["type", "severity", "state", "description"]
+    },
+    "relations": {
+      "scan": {
+        "title": "Scan",
+        "target": "checkmarxScan",
+        "many": false,
+        "required": false
+      }
+    }
+  },
+  {
+    "calculationProperties": {},
+    "identifier": "checkmarxSast",
+    "title": "Checkmarx Scan Result for SAST",
+    "icon": "AppRunner",
+    "schema": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "enum": [
+            "sast",
+            "sca",
+            "kics",
+            "containers",
+            "sscs-secret-detection",
+            "sscs-scorecard"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": [
+            "TO_VERIFY",
+            "CONFIRMED",
+            "URGENT",
+            "NOT_EXPLOITABLE",
+            "PROPOSED_NOT_EXPLOITABLE",
+            "FALSE_POSITIVE"
+          ]
+        },
+        "confidenceLevel": {
+          "type": "number",
+          "title": "Confidence Level",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "cweId": {
+          "type": "string",
+          "title": "CWE ID"
+        },
+        "fileName": {
+          "type": "string",
+          "title": "File Name"
+        },
+        "line": {
+          "type": "number",
+          "title": "Line Number"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "NEW",
+            "RECURRENT",
+            "FIXED"
+          ]
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "firstFoundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "First Found At"
+        },
+        "foundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Found At"
+        },
+        "similarityId": {
+          "type": "string",
+          "title": "Similarity ID"
+        },
+        "cvssScore": {
+          "type": "number",
+          "title": "CVSS Score"
+        },
+        "cveName": {
+          "type": "string",
+          "title": "CVE Name"
+        },
+        "packageName": {
+          "type": "string",
+          "title": "Package Name"
+        },
+        "packageVersion": {
+          "type": "string",
+          "title": "Package Version"
+        },
+        "imageName": {
+          "type": "string",
+          "title": "Image Name"
+        },
+        "imageTag": {
+          "type": "string",
+          "title": "Image Tag"
+        },
+        "ruleId": {
+          "type": "string",
+          "title": "Rule ID"
+        },
+        "ruleName": {
+          "type": "string",
+          "title": "Rule Name"
+        },
+        "remediation": {
+          "type": "string",
+          "title": "Remediation"
+        },
+        "remediationLink": {
+          "type": "string",
+          "format": "url",
+          "title": "Remediation Link"
+        }
+      },
+      "required": [
+        "type",
+        "severity",
+        "state",
+        "description"
+      ]
+    },
+    "relations": {
+      "scan": {
+        "title": "Scan",
+        "target": "checkmarxScan",
+        "many": false,
+        "required": false
+      }
+    }
+  },
+  {
+    "calculationProperties": {},
+    "identifier": "checkmarxSca",
+    "title": "Checkmarx Scan Result for SCA",
+    "icon": "AppRunner",
+    "schema": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "enum": [
+            "sast",
+            "sca",
+            "kics",
+            "containers",
+            "sscs-secret-detection",
+            "sscs-scorecard"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL",
+            "INFO"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": [
+            "TO_VERIFY",
+            "CONFIRMED",
+            "URGENT",
+            "NOT_EXPLOITABLE",
+            "PROPOSED_NOT_EXPLOITABLE",
+            "FALSE_POSITIVE"
+          ]
+        },
+        "confidenceLevel": {
+          "type": "number",
+          "title": "Confidence Level",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "cweId": {
+          "type": "string",
+          "title": "CWE ID"
+        },
+        "fileName": {
+          "type": "string",
+          "title": "File Name"
+        },
+        "line": {
+          "type": "number",
+          "title": "Line Number"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "NEW",
+            "RECURRENT",
+            "FIXED"
+          ]
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "firstFoundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "First Found At"
+        },
+        "foundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Found At"
+        },
+        "similarityId": {
+          "type": "string",
+          "title": "Similarity ID"
+        },
+        "cvssScore": {
+          "type": "number",
+          "title": "CVSS Score"
+        },
+        "cveName": {
+          "type": "string",
+          "title": "CVE Name"
+        },
+        "packageName": {
+          "type": "string",
+          "title": "Package Name"
+        },
+        "packageVersion": {
+          "type": "string",
+          "title": "Package Version"
+        },
+        "imageName": {
+          "type": "string",
+          "title": "Image Name"
+        },
+        "imageTag": {
+          "type": "string",
+          "title": "Image Tag"
+        },
+        "ruleId": {
+          "type": "string",
+          "title": "Rule ID"
+        },
+        "ruleName": {
+          "type": "string",
+          "title": "Rule Name"
+        },
+        "remediation": {
+          "type": "string",
+          "title": "Remediation"
+        },
+        "remediationLink": {
+          "type": "string",
+          "format": "url",
+          "title": "Remediation Link"
+        }
+      },
+      "required": [
+        "type",
+        "severity",
+        "state",
+        "description"
+      ]
+    },
+    "relations": {
+      "scan": {
+        "title": "Scan",
+        "target": "checkmarxScan",
+        "many": false,
+        "required": false
+      }
+    }
+  },
+  {
+    "calculationProperties": {},
+    "identifier": "checkmarxKics",
+    "title": "Checkmarx Scan Result for KICS",
+    "icon": "AppRunner",
+    "schema": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "enum": [
+            "sast",
+            "sca",
+            "kics",
+            "containers",
+            "sscs-secret-detection",
+            "sscs-scorecard"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL",
+            "INFO"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": [
+            "TO_VERIFY",
+            "CONFIRMED",
+            "URGENT",
+            "NOT_EXPLOITABLE",
+            "PROPOSED_NOT_EXPLOITABLE",
+            "FALSE_POSITIVE"
+          ]
+        },
+        "confidenceLevel": {
+          "type": "number",
+          "title": "Confidence Level",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "cweId": {
+          "type": "string",
+          "title": "CWE ID"
+        },
+        "fileName": {
+          "type": "string",
+          "title": "File Name"
+        },
+        "line": {
+          "type": "number",
+          "title": "Line Number"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "NEW",
+            "RECURRENT",
+            "FIXED"
+          ]
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "firstFoundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "First Found At"
+        },
+        "foundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Found At"
+        },
+        "similarityId": {
+          "type": "string",
+          "title": "Similarity ID"
+        },
+        "cvssScore": {
+          "type": "number",
+          "title": "CVSS Score"
+        },
+        "cveName": {
+          "type": "string",
+          "title": "CVE Name"
+        },
+        "packageName": {
+          "type": "string",
+          "title": "Package Name"
+        },
+        "packageVersion": {
+          "type": "string",
+          "title": "Package Version"
+        },
+        "imageName": {
+          "type": "string",
+          "title": "Image Name"
+        },
+        "imageTag": {
+          "type": "string",
+          "title": "Image Tag"
+        },
+        "ruleId": {
+          "type": "string",
+          "title": "Rule ID"
+        },
+        "ruleName": {
+          "type": "string",
+          "title": "Rule Name"
+        },
+        "remediation": {
+          "type": "string",
+          "title": "Remediation"
+        },
+        "remediationLink": {
+          "type": "string",
+          "format": "url",
+          "title": "Remediation Link"
+        }
+      },
+      "required": [
+        "type",
+        "severity",
+        "state",
+        "description"
+      ]
+    },
+    "relations": {
+      "scan": {
+        "title": "Scan",
+        "target": "checkmarxScan",
+        "many": false,
+        "required": false
+      }
+    }
+  },
+  {
+    "calculationProperties": {},
+    "identifier": "checkmarxContainers",
+    "title": "Checkmarx Scan Result",
+    "icon": "AppRunner",
+    "schema": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "enum": [
+            "sast",
+            "sca",
+            "kics",
+            "containers",
+            "sscs-secret-detection",
+            "sscs-scorecard"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL",
+            "INFO"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": [
+            "TO_VERIFY",
+            "CONFIRMED",
+            "URGENT",
+            "NOT_EXPLOITABLE",
+            "PROPOSED_NOT_EXPLOITABLE",
+            "FALSE_POSITIVE"
+          ]
+        },
+        "confidenceLevel": {
+          "type": "number",
+          "title": "Confidence Level",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "cweId": {
+          "type": "string",
+          "title": "CWE ID"
+        },
+        "fileName": {
+          "type": "string",
+          "title": "File Name"
+        },
+        "line": {
+          "type": "number",
+          "title": "Line Number"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "NEW",
+            "RECURRENT",
+            "FIXED"
+          ]
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "firstFoundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "First Found At"
+        },
+        "foundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Found At"
+        },
+        "similarityId": {
+          "type": "string",
+          "title": "Similarity ID"
+        },
+        "cvssScore": {
+          "type": "number",
+          "title": "CVSS Score"
+        },
+        "cveName": {
+          "type": "string",
+          "title": "CVE Name"
+        },
+        "packageName": {
+          "type": "string",
+          "title": "Package Name"
+        },
+        "packageVersion": {
+          "type": "string",
+          "title": "Package Version"
+        },
+        "imageName": {
+          "type": "string",
+          "title": "Image Name"
+        },
+        "imageTag": {
+          "type": "string",
+          "title": "Image Tag"
+        },
+        "ruleId": {
+          "type": "string",
+          "title": "Rule ID"
+        },
+        "ruleName": {
+          "type": "string",
+          "title": "Rule Name"
+        },
+        "remediation": {
+          "type": "string",
+          "title": "Remediation"
+        },
+        "remediationLink": {
+          "type": "string",
+          "format": "url",
+          "title": "Remediation Link"
+        }
+      },
+      "required": [
+        "type",
+        "severity",
+        "state",
+        "description"
+      ]
+    },
+    "relations": {
+      "scan": {
+        "title": "Scan",
+        "target": "checkmarxScan",
+        "many": false,
+        "required": false
+      }
+    }
+  }
+]
