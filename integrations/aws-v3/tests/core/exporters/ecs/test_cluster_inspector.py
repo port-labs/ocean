@@ -172,9 +172,7 @@ class TestECSClusterInspector:
         with patch.object(
             inspector, "_run_action", side_effect=mock_results
         ) as mock_run_action:
-            result = await inspector.inspect(
-                cluster_arn, ["GetClusterPendingTasksAction"]
-            )
+            await inspector.inspect(cluster_arn, ["GetClusterPendingTasksAction"])
 
         # Verify _run_action was called for each action
         assert mock_run_action.call_count == 2

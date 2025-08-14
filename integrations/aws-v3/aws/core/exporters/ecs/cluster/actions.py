@@ -7,12 +7,17 @@ from aws.core.helpers.utils import extract_resource_name_from_arn
 class ECSClusterDetailsAction(IBatchAction):
     """Single action that handles all ECS cluster details in one API call"""
 
+    async def _execute(self, cluster_arn: str) -> Dict[str, Any]:
+        """Support single-cluster execution by delegating to batch implementation."""
+        clusters = await self._execute_batch([cluster_arn])
+        return clusters[0] if clusters else {}
+
     async def _execute_batch(self, cluster_arns: List[str]) -> List[Dict[str, Any]]:
         """Execute describe_clusters for multiple clusters in a single API call"""
         if not cluster_arns:
             return []
 
-        response = await self.client.describe_clusters(
+        response = await self.client.describe_clusters(  # type: ignore[attr-defined]
             clusters=cluster_arns,
             include=["TAGS", "SETTINGS", "CONFIGURATIONS", "STATISTICS", "ATTACHMENTS"],
         )
@@ -31,7 +36,7 @@ class GetClusterPendingTasksAction(IAction):
         """Get up to 100 pending task ARNs for a cluster"""
         cluster_name = extract_resource_name_from_arn(cluster_arn)
 
-        response = await self.client.list_tasks(
+        response = await self.client.list_tasks(  # type: ignore[attr-defined]
             cluster=cluster_arn, desiredStatus="PENDING", maxResults=100
         )
 

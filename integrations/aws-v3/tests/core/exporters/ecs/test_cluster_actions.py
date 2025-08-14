@@ -176,7 +176,7 @@ class TestGetClusterPendingTasksAction:
     ) -> None:
         """Test successful execution of list_tasks with no pending tasks."""
         # Mock response
-        expected_response = {"taskArns": []}
+        expected_response: dict[str, list[str]] = {"taskArns": []}
         action.client.list_tasks.return_value = expected_response
 
         # Execute
@@ -185,7 +185,7 @@ class TestGetClusterPendingTasksAction:
         )
 
         # Verify
-        expected_result = {"pendingTaskArns": []}
+        expected_result: dict[str, list[str]] = {"pendingTaskArns": []}
         assert result == expected_result
 
         # Verify logging

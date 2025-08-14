@@ -18,7 +18,7 @@ class IAction(ABC):
     async def _execute(self, identifier: str) -> Dict[str, Any]: ...
 
 
-class IBatchAction(ABC):
+class IBatchAction(IAction):
     """Interface for actions that support batch execution"""
 
     def __init__(self, client: AioBaseClient) -> None:
@@ -31,6 +31,9 @@ class IBatchAction(ABC):
 
     @abstractmethod
     async def _execute_batch(self, identifiers: List[str]) -> List[Dict[str, Any]]: ...
+
+    @abstractmethod
+    async def _execute(self, identifier: str) -> Dict[str, Any]: ...
 
 
 class IActionMap(Protocol):

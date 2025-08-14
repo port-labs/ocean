@@ -32,7 +32,7 @@ class TestECSClusterOptions:
     def test_single_options_validation_missing_cluster_arn(self) -> None:
         """Test SingleECSClusterExporterOptions validation with missing cluster_arn."""
         with pytest.raises(ValidationError):
-            SingleECSClusterExporterOptions(
+            SingleECSClusterExporterOptions(  # type: ignore[call-arg]
                 region="us-west-2",
                 # Missing cluster_arn
                 include=[],
@@ -130,7 +130,7 @@ class TestECSClusterModels:
         """Test ECSClusterProperties extra='forbid' behavior."""
         # Should not allow extra fields
         with pytest.raises(ValidationError):
-            ECSClusterProperties(
+            ECSClusterProperties(  # type: ignore[call-arg]
                 clusterArn="arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster",
                 clusterName="test-cluster",
                 unknownField="unknown-value",  # This should cause validation error
@@ -166,7 +166,7 @@ class TestECSClusterModels:
     def test_ecs_cluster_extra_fields(self) -> None:
         """Test ECSCluster extra field handling."""
         # Should allow extra fields due to extra='ignore'
-        cluster = ECSCluster(
+        cluster = ECSCluster(  # type: ignore[call-arg]
             Properties=ECSClusterProperties(
                 clusterArn="arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster"
             ),
