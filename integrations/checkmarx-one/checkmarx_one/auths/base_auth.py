@@ -73,9 +73,9 @@ class BaseCheckmarxAuthenticator(ABC):
 
             if cached_data:
                 cached_time = cached_data.get("cached_at", 0)
-                cached_expires_at = cached_data["expires_in"] / 60  # in minutes
+                cached_expires_at = cached_data["expires_in"]  # in seconds
                 current_time = time.time()
-                if current_time - cached_time < cached_expires_at - 1:
+                if (current_time - cached_time) < (cached_expires_at - 60):
                     logger.info(f"Using cached token for tenant {self.tenant}")
                     return cached_data
                 else:
