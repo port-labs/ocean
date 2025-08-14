@@ -48,23 +48,9 @@ configurations:
     description: Your Checkmarx One tenant name (required for authentication URL)
 
   - name: checkmarxApiKey
-    required: false
+    required: true
     type: string
     sensitive: true
     description: |
-      Checkmarx One API Key (choose this OR OAuth credentials).
+      Checkmarx One API Key.
       Generate in: Settings > Identity and Access Management > API Keys
-
-  - name: checkmarxClientId
-    required: false
-    type: string
-    sensitive: true
-    description: |
-      OAuth2 Client ID (alternative to API Key).
-      Generate in: Settings > Identity and Access Management > OAuth2 Clients
-
-  - name: checkmarxClientSecret
-    required: false
-    type: string
-    sensitive: true
-    description: OAuth2 Client Secret (required with Client ID)

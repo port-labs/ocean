@@ -33,8 +33,6 @@ class TestInitializeClient:
             "checkmarx_base_url": "https://ast.checkmarx.net",
             "checkmarx_iam_url": "https://iam.checkmarx.net",
             "checkmarx_tenant": "test-tenant",
-            "checkmarx_client_id": "test-client-id",
-            "checkmarx_client_secret": "test-client-secret",
         }
 
     @patch("checkmarx_one.clients.initialize_client.ocean")
@@ -49,31 +47,6 @@ class TestInitializeClient:
     ) -> None:
         """Test client initialization with API key authentication."""
         mock_ocean.integration_config = mock_ocean_config
-        mock_authenticator = MagicMock()
-        mock_auth_factory.create_authenticator.return_value = mock_authenticator
-        mock_client = MagicMock(spec=CheckmarxOneClient)
-        mock_client_class.return_value = mock_client
-
-        result = get_checkmarx_client()
-
-        assert result == mock_client
-        mock_client_class.assert_called_once_with(
-            base_url="https://ast.checkmarx.net",
-            authenticator=mock_authenticator,
-        )
-
-    @patch("checkmarx_one.clients.initialize_client.ocean")
-    @patch("checkmarx_one.clients.initialize_client.CheckmarxAuthenticatorFactory")
-    @patch("checkmarx_one.clients.initialize_client.CheckmarxOneClient")
-    def test_init_client_with_oauth(
-        self,
-        mock_client_class: MagicMock,
-        mock_auth_factory: MagicMock,
-        mock_ocean: MagicMock,
-        mock_ocean_oauth_config: dict[str, str],
-    ) -> None:
-        """Test client initialization with OAuth authentication."""
-        mock_ocean.integration_config = mock_ocean_oauth_config
         mock_authenticator = MagicMock()
         mock_auth_factory.create_authenticator.return_value = mock_authenticator
         mock_client = MagicMock(spec=CheckmarxOneClient)
@@ -283,32 +256,15 @@ class TestInitializeClient:
 
         get_checkmarx_client()
 
-        mock_logger.info.assert_any_call("Using API key authentication")
-
-    @patch("checkmarx_one.clients.initialize_client.ocean")
-    @patch("checkmarx_one.clients.initialize_client.CheckmarxAuthenticatorFactory")
-    @patch("checkmarx_one.clients.initialize_client.CheckmarxOneClient")
-    @patch("checkmarx_one.clients.initialize_client.logger")
-    def test_init_client_logs_oauth_auth(
-        self,
-        mock_logger: MagicMock,
-        mock_client_class: MagicMock,
-        mock_auth_factory: MagicMock,
-        mock_ocean: MagicMock,
-        mock_ocean_oauth_config: dict[str, str],
-    ) -> None:
-        """Test that OAuth authentication is logged."""
-        mock_ocean.integration_config = mock_ocean_oauth_config
-        mock_authenticator = MagicMock()
-        mock_auth_factory.create_authenticator.return_value = mock_authenticator
-        mock_client = MagicMock(spec=CheckmarxOneClient)
-        mock_client_class.return_value = mock_client
-
-        get_checkmarx_client()
-
-        mock_logger.info.assert_any_call(
-            "Using OAuth authentication with client: test-client-id"
+        mock_auth_factory.create_authenticator.assert_called_once_with(
+            iam_url="https://iam.checkmarx.net",
+            tenant="test-tenant",
+            api_key="test-api-key",
         )
+
+    def test_init_client_logs_oauth_auth(self) -> None:
+        """This integration no longer supports OAuth; this test is removed."""
+        pass
 
     @patch("checkmarx_one.clients.initialize_client.ocean")
     @patch("checkmarx_one.clients.initialize_client.CheckmarxAuthenticatorFactory")

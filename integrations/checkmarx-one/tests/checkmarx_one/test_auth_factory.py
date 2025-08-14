@@ -28,52 +28,6 @@ class TestCheckmarxAuthenticatorFactory:
                     "https://iam.checkmarx.net", "test-tenant", "test-api-key"
                 )
 
-    def test_create_authenticator_with_oauth(self) -> None:
-        """Test creating authenticator with OAuth credentials."""
-        with patch("port_ocean.utils.http_async_client", MagicMock()):
-            with patch(
-                "checkmarx_one.auths.auth_factory.OAuthAuthenticator"
-            ) as mock_oauth_class:
-                mock_authenticator = MagicMock()
-                mock_oauth_class.return_value = mock_authenticator
-
-                result = CheckmarxAuthenticatorFactory.create_authenticator(
-                    iam_url="https://iam.checkmarx.net",
-                    tenant="test-tenant",
-                    client_id="test-client-id",
-                    client_secret="test-client-secret",
-                )
-
-                assert result == mock_authenticator
-                mock_oauth_class.assert_called_once_with(
-                    "https://iam.checkmarx.net",
-                    "test-tenant",
-                    "test-client-id",
-                    "test-client-secret",
-                )
-
-    def test_create_authenticator_with_both_credentials(self) -> None:
-        """Test creating authenticator with both API key and OAuth credentials."""
-        with patch("port_ocean.utils.http_async_client", MagicMock()):
-            with patch(
-                "checkmarx_one.auths.auth_factory.TokenAuthenticator"
-            ) as mock_token_class:
-                mock_authenticator = MagicMock()
-                mock_token_class.return_value = mock_authenticator
-
-                result = CheckmarxAuthenticatorFactory.create_authenticator(
-                    iam_url="https://iam.checkmarx.net",
-                    tenant="test-tenant",
-                    api_key="test-api-key",
-                    client_id="test-client-id",
-                    client_secret="test-client-secret",
-                )
-
-                assert result == mock_authenticator
-                mock_token_class.assert_called_once_with(
-                    "https://iam.checkmarx.net", "test-tenant", "test-api-key"
-                )
-
     def test_create_authenticator_with_no_credentials(self) -> None:
         """Test creating authenticator with no credentials raises error."""
         with pytest.raises(CheckmarxAuthenticationError) as exc_info:
@@ -81,19 +35,8 @@ class TestCheckmarxAuthenticatorFactory:
                 iam_url="https://iam.checkmarx.net", tenant="test-tenant"
             )
 
-        assert "No valid authentication method provided" in str(exc_info.value)
+        assert "No valid API key provided" in str(exc_info.value)
 
-    def test_create_authenticator_with_partial_oauth_credentials(self) -> None:
-        """Test creating authenticator with partial OAuth credentials raises error."""
-        with pytest.raises(CheckmarxAuthenticationError) as exc_info:
-            CheckmarxAuthenticatorFactory.create_authenticator(
-                iam_url="https://iam.checkmarx.net",
-                tenant="test-tenant",
-                client_id="test-client-id",
-                # Missing client_secret
-            )
-
-        assert "No valid authentication method provided" in str(exc_info.value)
 
     def test_create_authenticator_with_only_client_id(self) -> None:
         """Test creating authenticator with only client_id raises error."""
@@ -101,21 +44,10 @@ class TestCheckmarxAuthenticatorFactory:
             CheckmarxAuthenticatorFactory.create_authenticator(
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",
-                client_id="test-client-id",
             )
 
-        assert "No valid authentication method provided" in str(exc_info.value)
+        assert "No valid API key provided" in str(exc_info.value)
 
-    def test_create_authenticator_with_only_client_secret(self) -> None:
-        """Test creating authenticator with only client_secret raises error."""
-        with pytest.raises(CheckmarxAuthenticationError) as exc_info:
-            CheckmarxAuthenticatorFactory.create_authenticator(
-                iam_url="https://iam.checkmarx.net",
-                tenant="test-tenant",
-                client_secret="test-client-secret",
-            )
-
-        assert "No valid authentication method provided" in str(exc_info.value)
 
     def test_create_authenticator_with_empty_strings(self) -> None:
         """Test creating authenticator with empty string credentials raises error."""
@@ -124,11 +56,9 @@ class TestCheckmarxAuthenticatorFactory:
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",
                 api_key="",
-                client_id="",
-                client_secret="",
             )
 
-        assert "No valid authentication method provided" in str(exc_info.value)
+        assert "No valid API key provided" in str(exc_info.value)
 
     def test_create_authenticator_with_none_values(self) -> None:
         """Test creating authenticator with None values raises error."""
@@ -137,11 +67,9 @@ class TestCheckmarxAuthenticatorFactory:
                 iam_url="https://iam.checkmarx.net",
                 tenant="test-tenant",
                 api_key=None,
-                client_id=None,
-                client_secret=None,
             )
 
-        assert "No valid authentication method provided" in str(exc_info.value)
+        assert "No valid API key provided" in str(exc_info.value)
 
     def test_create_authenticator_with_whitespace_only_credentials(self) -> None:
         """Test creating authenticator with whitespace-only credentials."""
@@ -157,8 +85,6 @@ class TestCheckmarxAuthenticatorFactory:
                     iam_url="https://iam.checkmarx.net",
                     tenant="test-tenant",
                     api_key="   ",
-                    client_id="   ",
-                    client_secret="   ",
                 )
 
                 assert result == mock_authenticator
@@ -189,31 +115,7 @@ class TestCheckmarxAuthenticatorFactory:
                 )
 
     def test_create_authenticator_with_special_characters(self) -> None:
-        """Test creating authenticator with special characters in credentials."""
-        with patch("port_ocean.utils.http_async_client", MagicMock()):
-            with patch(
-                "checkmarx_one.auths.auth_factory.OAuthAuthenticator"
-            ) as mock_oauth_class:
-                mock_authenticator = MagicMock()
-                mock_oauth_class.return_value = mock_authenticator
-
-                result = CheckmarxAuthenticatorFactory.create_authenticator(
-                    iam_url="https://iam.checkmarx.net",
-                    tenant="test-tenant",
-                    client_id="client@id",
-                    client_secret="secret@123!",
-                )
-
-                assert result == mock_authenticator
-                mock_oauth_class.assert_called_once_with(
-                    "https://iam.checkmarx.net",
-                    "test-tenant",
-                    "client@id",
-                    "secret@123!",
-                )
-
-    def test_create_authenticator_prefers_api_key_over_oauth(self) -> None:
-        """Test that API key is preferred over OAuth when both are provided."""
+        """Test creating token authenticator with special characters in API key."""
         with patch("port_ocean.utils.http_async_client", MagicMock()):
             with patch(
                 "checkmarx_one.auths.auth_factory.TokenAuthenticator"
@@ -221,40 +123,25 @@ class TestCheckmarxAuthenticatorFactory:
                 mock_authenticator = MagicMock()
                 mock_token_class.return_value = mock_authenticator
 
-                with patch(
-                    "checkmarx_one.auths.auth_factory.OAuthAuthenticator"
-                ) as mock_oauth_class:
-                    result = CheckmarxAuthenticatorFactory.create_authenticator(
-                        iam_url="https://iam.checkmarx.net",
-                        tenant="test-tenant",
-                        api_key="test-api-key",
-                        client_id="test-client-id",
-                        client_secret="test-client-secret",
-                    )
+                result = CheckmarxAuthenticatorFactory.create_authenticator(
+                    iam_url="https://iam.checkmarx.net",
+                    tenant="test-tenant",
+                    api_key="secret@123!",
+                )
 
-                    assert result == mock_authenticator
-                    mock_token_class.assert_called_once()
-                    mock_oauth_class.assert_not_called()
+                assert result == mock_authenticator
+                mock_token_class.assert_called_once_with(
+                    "https://iam.checkmarx.net",
+                    "test-tenant",
+                    "secret@123!",
+                )
 
-    def test_create_authenticator_oauth_when_no_api_key(self) -> None:
-        """Test that OAuth is used when no API key is provided."""
+    def test_create_authenticator_raises_error_when_no_api_key(self) -> None:
+        """Test that an error is raised when no API key is provided (only token auth supported)."""
         with patch("port_ocean.utils.http_async_client", MagicMock()):
-            with patch(
-                "checkmarx_one.auths.auth_factory.OAuthAuthenticator"
-            ) as mock_oauth_class:
-                mock_authenticator = MagicMock()
-                mock_oauth_class.return_value = mock_authenticator
-
-                with patch(
-                    "checkmarx_one.auths.auth_factory.TokenAuthenticator"
-                ) as mock_token_class:
-                    result = CheckmarxAuthenticatorFactory.create_authenticator(
-                        iam_url="https://iam.checkmarx.net",
-                        tenant="test-tenant",
-                        client_id="test-client-id",
-                        client_secret="test-client-secret",
-                    )
-
-                    assert result == mock_authenticator
-                    mock_oauth_class.assert_called_once()
-                    mock_token_class.assert_not_called()
+            with pytest.raises(CheckmarxAuthenticationError) as exc_info:
+                CheckmarxAuthenticatorFactory.create_authenticator(
+                    iam_url="https://iam.checkmarx.net",
+                    tenant="test-tenant",
+                )
+            assert "No valid API key provided" in str(exc_info.value)

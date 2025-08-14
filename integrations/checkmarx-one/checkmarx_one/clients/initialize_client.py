@@ -28,28 +28,22 @@ class CheckmarxOneClientSingleton:
             tenant = config["checkmarx_tenant"]
 
             api_key = config.get("checkmarx_api_key")
-            client_id = config.get("checkmarx_client_id")
-            client_secret = config.get("checkmarx_client_secret")
 
             logger.info(f"Initializing Checkmarx One client for {base_url}")
+
+            if not api_key:
+                raise CheckmarxAuthenticationError("No valid API key provided. Only token authentication is supported.")
 
             authenticator = CheckmarxAuthenticatorFactory.create_authenticator(
                 iam_url=iam_url,
                 tenant=tenant,
                 api_key=api_key,
-                client_id=client_id,
-                client_secret=client_secret,
             )
 
             client = CheckmarxOneClient(
                 base_url=base_url,
                 authenticator=authenticator,
             )
-
-            if api_key:
-                logger.info("Using API key authentication")
-            else:
-                logger.info(f"Using OAuth authentication with client: {client_id}")
 
             cls._instance = client
             return cls._instance
