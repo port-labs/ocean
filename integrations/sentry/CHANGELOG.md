@@ -7,10 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.0 (2025-08-12)
+## 0.2.0 (2025-08-13)
 
 
 - Added rate limiter with exception-driven retry logic
+
+
+## 0.1.190 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
 
 
 ## 0.1.189 (2025-08-11)
