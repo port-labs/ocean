@@ -8,11 +8,8 @@ from typing import Any, AsyncIterator, Dict, List
 from botocore.utils import ArnParser
 
 
-class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
-    """Mixin for organizations health checking with batching and concurrency."""
-
-    DEFAULT_CONCURRENCY = 10
-    DEFAULT_BATCH_SIZE = 10
+class OrganizationDiscoveryMixin(AWSSessionStrategy):
+    """Mixin for organizations discovery."""
 
     def __init__(self, provider: CredentialProvider, config: dict[str, Any]):
         self.provider = provider
@@ -28,6 +25,11 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
     def valid_arns(self) -> list[str]:
         """Get the list of valid ARNs that passed health check."""
         return getattr(self, "_valid_arns", [])
+
+    @property
+    def valid_sessions(self) -> dict[str, AioSession]:
+        """Get the dictionary of valid sessions that passed health check."""
+        return getattr(self, "_valid_sessions", {})
 
     def _get_organization_account_role_arn(self) -> str:
         """Get the organization account role ARN from the configuration."""
@@ -64,7 +66,7 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
     def _build_role_arn(self, account_id: str) -> str:
         """Build the role ARN for the organization account."""
         role_name = self._get_organization_account_role_name()
-        return f"arn:aws:iam::{account_id}:role/{role_name}"
+        return f"arn:aws:iam::{account_id}:{role_name}"
 
     async def _get_organization_session(self) -> AioSession:
         """Get or create the organization session for the management account."""
@@ -93,7 +95,7 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             logger.error(f"Failed to assume organization role: {e}")
             raise AWSSessionError(f"Cannot assume organization role: {e}")
 
-    async def _discover_accounts(self) -> List[Dict[str, str]]:
+    async def discover_accounts(self) -> List[Dict[str, str]]:
         """Discover all accounts in the AWS Organization."""
         if self._discovered_accounts:
             return self._discovered_accounts
@@ -140,6 +142,21 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                 logger.error(f"Error discovering accounts: {e}")
                 raise AWSSessionError(f"Failed to discover accounts: {e}")
 
+    def _add_account_to_valid_accounts(
+        self, account_id: str, session: AioSession
+    ) -> None:
+        """Add an account to the list of valid accounts."""
+        role_arn = self._build_role_arn(account_id)
+        self._valid_arns.append(role_arn)
+        self._valid_sessions[role_arn] = session
+
+
+class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin):
+    """Mixin for organizations health checking with batching and concurrency."""
+
+    DEFAULT_CONCURRENCY = 10
+    DEFAULT_BATCH_SIZE = 10
+
     async def _can_assume_role_in_account(self, account_id: str) -> AioSession | None:
         """Check if we can assume the specified role in a given account."""
         role_arn = self._build_role_arn(account_id)
@@ -168,7 +185,7 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
         """Perform health check by discovering accounts and validating role assumption."""
         try:
             # Discover accounts first
-            accounts = await self._discover_accounts()
+            accounts = await self.discover_accounts()
             if not accounts:
                 logger.warning("No accounts discovered in the organization")
                 return False
@@ -207,12 +224,10 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                     try:
                         account_id, session = await task
                         if session:
-                            role_arn = self._build_role_arn(account_id)
-                            self._valid_arns.append(role_arn)
-                            self._valid_sessions[role_arn] = session
+                            self._add_account_to_valid_accounts(account_id, session)
                             successful += 1
                             logger.debug(
-                                f"Role '{role_arn}' assumption validated for account {account_id}"
+                                f"Role '{self._build_role_arn(account_id)}' assumption validated for account {account_id}"
                             )
                     except Exception as e:
                         logger.warning(
@@ -223,10 +238,10 @@ class OrganizationsHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
                     f"Batch {batch_num}/{total_batches}: {successful}/{len(batch)} accounts validated"
                 )
             logger.info(
-                f"Health check complete: {len(self._valid_arns)}/{len(accounts)} accounts accessible"
+                f"Health check complete: {len(self.valid_arns)}/{len(accounts)} accounts accessible"
             )
 
-            if not self._valid_arns:
+            if not self.valid_arns:
                 raise AWSSessionError("No accounts are accessible after health check")
 
             return True
@@ -251,21 +266,21 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
         self, **kwargs: Any
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
         """Get sessions for all accessible accounts."""
-        if not (self._valid_arns and self._valid_sessions):
+        if not (self.valid_arns and self.valid_sessions):
             await self.healthcheck()
 
-        if not (self._valid_arns and self._valid_sessions):
+        if not (self.valid_arns and self.valid_sessions):
             raise AWSSessionError(
                 "Account sessions not initialized. Run healthcheck first."
             )
 
-        logger.info(f"Providing {len(self._valid_arns)} pre-validated AWS sessions")
+        logger.info(f"Providing {len(self.valid_arns)} pre-validated AWS sessions")
 
         # Map role ARNs back to account information
         account_map = {account["Id"]: account for account in self._discovered_accounts}
 
-        for role_arn in self._valid_arns:
-            session = self._valid_sessions[role_arn]
+        for role_arn in self.valid_arns:
+            session = self.valid_sessions[role_arn]
             account_id = extract_account_from_arn(role_arn)
 
             # Get account info from discovered accounts
@@ -280,5 +295,5 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
             yield account_info, session
 
         logger.debug(
-            f"Session provision complete: {len(self._valid_arns)} sessions yielded"
+            f"Session provision complete: {len(self.valid_arns)} sessions yielded"
         )
