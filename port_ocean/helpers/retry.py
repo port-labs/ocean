@@ -415,7 +415,14 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         return min(total_backoff, self._retry_config.max_backoff_wait)
 
     def _parse_retry_header(self, header_value: str) -> Optional[float]:
-        """Parse retry header value and return sleep time in seconds."""
+        """Parse retry header value and return sleep time in seconds.
+
+        Args:
+            header_value: The header value to parse (e.g., "30", "2023-12-01T12:00:00Z")
+
+        Returns:
+            Sleep time in seconds if parsing succeeds, None if the header value cannot be parsed
+        """
         if header_value.isdigit():
             return float(header_value)
 
