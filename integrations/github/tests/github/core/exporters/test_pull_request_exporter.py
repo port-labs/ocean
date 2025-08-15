@@ -5,7 +5,6 @@ from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.clients.http.rest_client import GithubRestClient
 from port_ocean.context.event import event_context
 from github.core.options import SinglePullRequestOptions, ListPullRequestOptions
-from datetime import datetime, timezone
 
 TEST_PULL_REQUESTS = [
     {
@@ -173,7 +172,7 @@ class TestPullRequestExporter:
     ) -> None:
         """Test that the since parameter correctly filters closed PRs and interacts with max_results."""
         exporter = RestPullRequestExporter(rest_client)
-        
+
         # Test data with mixed timestamps - some recent, some old
         test_prs = [
             {
@@ -264,7 +263,9 @@ class TestPullRequestExporter:
 
         # Should only return 3 PRs (limited by max_results=3), even though since=30 allows 6 recent PRs
         flat_results = [pr for batch in results for pr in batch]
-        assert len(flat_results) == 3  # Limited by max_results=3, not by since filtering
+        assert (
+            len(flat_results) == 3
+        )  # Limited by max_results=3, not by since filtering
         assert flat_results[0]["id"] == 1  # First recent PR
         assert flat_results[1]["id"] == 3  # Second recent PR
         assert flat_results[2]["id"] == 4  # Third recent PR

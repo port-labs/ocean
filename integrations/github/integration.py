@@ -77,6 +77,8 @@ class GithubPullRequestSelector(Selector):
     max_results: int = Field(
         alias="maxResults",
         default=100,
+        ge=1,
+        le=300,
         description="Limit the number of pull requests returned",
     )
     since: int = Field(
