@@ -235,7 +235,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             pull_request_exporter.get_paginated_resources(
                 ListPullRequestOptions(
                     repo_name=repo["name"],
-                    state=config.selector.state,
+                    states=list(config.selector.states),
+                    max_results=config.selector.max_results,
+                    since=config.selector.since,
                 )
             )
             for repo in repos

@@ -52,7 +52,10 @@ def checkrun_validator_webhook_processor(
 def pull_request_resource_config() -> GithubPullRequestConfig:
     return GithubPullRequestConfig(
         kind="pull-request",
-        selector=GithubPullRequestSelector(query="true", state="open"),
+        selector=GithubPullRequestSelector(
+            query="true",
+            states=["open"],
+        ),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
