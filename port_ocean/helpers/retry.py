@@ -69,10 +69,10 @@ class RetryConfig:
             base_delay: Base delay for exponential backoff
             jitter_ratio: Jitter ratio for backoff (0-0.5)
             respect_retry_after_header: Whether to respect Retry-After header
-            retryable_methods: HTTP methods that can be retried
-            retry_status_codes: Base HTTP status codes that can be retried
+            retryable_methods: HTTP methods that can be retried (overrides defaults if provided)
+            retry_status_codes: DEPRECATED - use additional_retry_status_codes instead
             retry_after_headers: Custom headers to check for retry timing (e.g., ['X-RateLimit-Reset', 'Retry-After'])
-            additional_retry_status_codes: Additional status codes to retry (appended to base codes)
+            additional_retry_status_codes: Additional status codes to retry (extends system defaults)
         """
         self.max_attempts = max_attempts
         self.max_backoff_wait = max_backoff_wait
@@ -80,34 +80,35 @@ class RetryConfig:
         self.jitter_ratio = jitter_ratio
         self.respect_retry_after_header = respect_retry_after_header
 
+        # Default retryable methods - always include these unless explicitly overridden
+        default_methods = frozenset(
+            ["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"]
+        )
         self.retryable_methods = (
-            frozenset(retryable_methods)
-            if retryable_methods
-            else frozenset(["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"])
+            frozenset(retryable_methods) if retryable_methods else default_methods
         )
 
-        base_codes = (
-            frozenset(retry_status_codes)
-            if retry_status_codes
-            else frozenset(
-                [
-                    HTTPStatus.TOO_MANY_REQUESTS,
-                    HTTPStatus.BAD_GATEWAY,
-                    HTTPStatus.SERVICE_UNAVAILABLE,
-                    HTTPStatus.GATEWAY_TIMEOUT,
-                    HTTPStatus.UNAUTHORIZED,
-                    HTTPStatus.BAD_REQUEST,
-                ]
-            )
+        # Default retry status codes - always include these for system reliability
+        default_status_codes = frozenset(
+            [
+                HTTPStatus.TOO_MANY_REQUESTS,
+                HTTPStatus.BAD_GATEWAY,
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                HTTPStatus.GATEWAY_TIMEOUT,
+                HTTPStatus.UNAUTHORIZED,
+                HTTPStatus.BAD_REQUEST,
+            ]
         )
 
+        # Additional status codes to retry (extends defaults)
         additional_codes = (
             frozenset(additional_retry_status_codes)
             if additional_retry_status_codes
             else frozenset()
         )
 
-        self.retry_status_codes = base_codes | additional_codes
+        # Combine defaults with additional codes for extensibility
+        self.retry_status_codes = default_status_codes | additional_codes
         self.retry_after_headers = retry_after_headers or ["Retry-After"]
 
         if jitter_ratio < 0 or jitter_ratio > 0.5:

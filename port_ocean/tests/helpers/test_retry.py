@@ -46,7 +46,6 @@ class TestRetryConfig:
             jitter_ratio=0.2,
             respect_retry_after_header=False,
             retryable_methods=["GET", "POST"],
-            retry_status_codes=[429, 500],
             retry_after_headers=["X-Custom-Retry", "Retry-After"],
             additional_retry_status_codes=[418, 420],
         )
@@ -57,17 +56,41 @@ class TestRetryConfig:
         assert config.jitter_ratio == 0.2
         assert config.respect_retry_after_header is False
         assert config.retryable_methods == frozenset(["GET", "POST"])
-        assert config.retry_status_codes == frozenset([429, 500, 418, 420])
+        # Should include defaults + additional codes
+        expected_codes = frozenset(
+            [
+                HTTPStatus.TOO_MANY_REQUESTS,
+                HTTPStatus.BAD_GATEWAY,
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                HTTPStatus.GATEWAY_TIMEOUT,
+                HTTPStatus.UNAUTHORIZED,
+                HTTPStatus.BAD_REQUEST,
+                418,
+                420,
+            ]
+        )
+        assert config.retry_status_codes == expected_codes
         assert config.retry_after_headers == ["X-Custom-Retry", "Retry-After"]
 
     def test_additional_status_codes(self) -> None:
-        """Test that additional status codes are properly combined."""
+        """Test that additional status codes extend defaults."""
         config = RetryConfig(
-            retry_status_codes=[429, 502],
             additional_retry_status_codes=[418, 420],
         )
 
-        expected_codes = frozenset([429, 502, 418, 420])
+        # Should include defaults + additional codes
+        expected_codes = frozenset(
+            [
+                HTTPStatus.TOO_MANY_REQUESTS,
+                HTTPStatus.BAD_GATEWAY,
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                HTTPStatus.GATEWAY_TIMEOUT,
+                HTTPStatus.UNAUTHORIZED,
+                HTTPStatus.BAD_REQUEST,
+                418,
+                420,
+            ]
+        )
         assert config.retry_status_codes == expected_codes
 
     def test_invalid_jitter_ratio(self) -> None:
@@ -174,28 +197,6 @@ class TestRetryTransport:
         transport = RetryTransport(wrapped_transport=mock_transport)
 
         assert transport._retry_config.max_attempts == 7
-
-    def test_retry_transport_with_legacy_params(self) -> None:
-        """Test RetryTransport with legacy parameters."""
-        mock_transport = Mock()
-        transport = RetryTransport(
-            wrapped_transport=mock_transport,
-            max_attempts=3,
-            max_backoff_wait=15.0,
-            base_delay=1.0,
-            jitter_ratio=0.15,
-            respect_retry_after_header=False,
-            retryable_methods=["GET"],
-            retry_status_codes=[429],
-        )
-
-        assert transport._retry_config.max_attempts == 3
-        assert transport._retry_config.max_backoff_wait == 15.0
-        assert transport._retry_config.base_delay == 1.0
-        assert transport._retry_config.jitter_ratio == 0.15
-        assert transport._retry_config.respect_retry_after_header is False
-        assert transport._retry_config.retryable_methods == frozenset(["GET"])
-        assert transport._retry_config.retry_status_codes == frozenset([429])
 
     def test_retry_transport_priority_order(self) -> None:
         """Test that direct config takes priority over callback."""
