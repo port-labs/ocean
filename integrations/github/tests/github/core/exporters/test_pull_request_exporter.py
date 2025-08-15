@@ -14,7 +14,7 @@ TEST_PULL_REQUESTS = [
         "title": "Fix bug in login",
         "state": "open",
         "html_url": "https://github.com/test-org/repo1/pull/101",
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": "2025-08-15T15:08:15Z",
     },
     {
         "id": 2,
@@ -22,7 +22,7 @@ TEST_PULL_REQUESTS = [
         "title": "Add new feature",
         "state": "open",
         "html_url": "https://github.com/test-org/repo1/pull/102",
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": "2025-08-15T15:08:15Z",
     },
 ]
 
@@ -81,7 +81,7 @@ class TestPullRequestExporter:
         ) as mock_paginated:
             async with event_context("test_event"):
                 options = ListPullRequestOptions(
-                    states=states, repo_name="repo1", max_results=10
+                    states=states, repo_name="repo1", max_results=10, since=60
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -138,7 +138,7 @@ class TestPullRequestExporter:
         ):
             async with event_context("test_event"):
                 options = ListPullRequestOptions(
-                    states=["closed"], repo_name="repo1", max_results=5
+                    states=["closed"], repo_name="repo1", max_results=5, since=60
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -156,7 +156,7 @@ class TestPullRequestExporter:
         ):
             async with event_context("test_event"):
                 options = ListPullRequestOptions(
-                    states=["closed"], repo_name="repo1", max_results=5
+                    states=["closed"], repo_name="repo1", max_results=5, since=60
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -167,3 +167,104 @@ class TestPullRequestExporter:
         # Should be first 3 from batch1 + first 2 from batch2
         expected_prs = many_prs[:3] + many_prs[3:5]
         assert flat_results == [{**pr, "__repository": "repo1"} for pr in expected_prs]
+
+    async def test_since_parameter_filters_closed_prs(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """Test that the since parameter correctly filters closed PRs and interacts with max_results."""
+        exporter = RestPullRequestExporter(rest_client)
+        
+        # Test data with mixed timestamps - some recent, some old
+        test_prs = [
+            {
+                "id": 1,
+                "number": 101,
+                "title": "Recent PR 1",
+                "state": "closed",
+                "html_url": "https://github.com/test-org/repo1/pull/101",
+                "updated_at": "2025-08-10T15:08:15Z",  # Most recent (within 30 days)
+            },
+            {
+                "id": 3,
+                "number": 103,
+                "title": "Recent PR 2",
+                "state": "closed",
+                "html_url": "https://github.com/test-org/repo1/pull/103",
+                "updated_at": "2025-08-05T15:08:15Z",  # Second most recent (within 30 days)
+            },
+            {
+                "id": 4,
+                "number": 104,
+                "title": "Recent PR 3",
+                "state": "closed",
+                "html_url": "https://github.com/test-org/repo1/pull/104",
+                "updated_at": "2025-08-01T15:08:15Z",  # Third most recent (within 30 days)
+            },
+            {
+                "id": 5,
+                "number": 105,
+                "title": "Recent PR 4",
+                "state": "closed",
+                "html_url": "https://github.com/test-org/repo1/pull/105",
+                "updated_at": "2025-07-28T15:08:15Z",  # Fourth most recent (within 30 days)
+            },
+            {
+                "id": 6,
+                "number": 106,
+                "title": "Recent PR 5",
+                "state": "closed",
+                "html_url": "https://github.com/test-org/repo1/pull/106",
+                "updated_at": "2025-07-25T15:08:15Z",  # Fifth most recent (within 30 days)
+            },
+            {
+                "id": 2,
+                "number": 102,
+                "title": "Old PR 1",
+                "state": "closed",
+                "html_url": "https://github.com/test-org/repo1/pull/102",
+                "updated_at": "2025-01-15T15:08:15Z",  # Old (outside 90 days)
+            },
+        ]
+
+        # Test the integration flow where both max_results and since work together
+        async def mock_closed_prs_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield test_prs
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_closed_prs_request
+        ):
+            async with event_context("test_event"):
+                # Test 1: since=30 days with max_results=10 (should get only 5 PRs due to since filtering)
+                options = ListPullRequestOptions(
+                    states=["closed"], repo_name="repo1", max_results=10, since=30
+                )
+                results = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        # Should only return 2 PRs (limited by since=30), even though max_results=10 would allow more
+        flat_results = [pr for batch in results for pr in batch]
+        assert len(flat_results) == 5  # Limited by since=30, not by max_results
+        assert flat_results[0]["id"] == 1  # Recent PR 1
+        assert flat_results[1]["id"] == 3  # Recent PR 2
+
+        # Test 2: since=30 days with max_results=3 (should get only 3 PRs due to max_results limiting)
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_closed_prs_request
+        ):
+            async with event_context("test_event"):
+                options = ListPullRequestOptions(
+                    states=["closed"], repo_name="repo1", max_results=3, since=90
+                )
+                results = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        # Should only return 3 PRs (limited by max_results=3), even though since=30 allows 6 recent PRs
+        flat_results = [pr for batch in results for pr in batch]
+        assert len(flat_results) == 3  # Limited by max_results=3, not by since filtering
+        assert flat_results[0]["id"] == 1  # First recent PR
+        assert flat_results[1]["id"] == 3  # Second recent PR
+        assert flat_results[2]["id"] == 4  # Third recent PR

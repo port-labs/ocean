@@ -79,6 +79,12 @@ class GithubPullRequestSelector(Selector):
         default=100,
         description="Limit the number of pull requests returned",
     )
+    since: int = Field(
+        default=60,
+        ge=1,
+        le=90,
+        description="Only fetch pull requests created within the last N days (1-90 days)",
+    )
 
 
 class GithubPullRequestConfig(ResourceConfig):

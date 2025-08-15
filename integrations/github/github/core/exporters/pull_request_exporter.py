@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from github.helpers.utils import enrich_with_repository, extract_repo_params
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
@@ -8,9 +9,6 @@ from github.clients.http.rest_client import GithubRestClient
 
 
 class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
-    MAX_CLOSED_PR_AGE_DAYS = 60  # only include closed PRs updated in last 60 days
-    MAX_CLOSED_PULL_REQUESTS_TO_EXPORT = 100
-    CLOSED_PULL_REQUESTS_PER_PAGE = 100
 
     async def get_resource[
         ExporterOptionsT: SinglePullRequestOptions
@@ -33,6 +31,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, extras = extract_repo_params(dict(options))
         states = extras["states"]
         max_results = extras["max_results"]
+        since = extras["since"]
 
         logger.info(f"Starting pull request export for repository {repo_name}")
 
@@ -44,7 +43,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
         if "closed" in states:
             async for closed_batch in self._fetch_closed_pull_requests(
-                repo_name, max_results
+                repo_name, max_results, since
             ):
                 yield closed_batch
 
@@ -66,7 +65,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             yield batch
 
     async def _fetch_closed_pull_requests(
-        self, repo_name: str, max_results: int
+        self, repo_name: str, max_results: int, since: int
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         endpoint = self._build_pull_request_paginated_endpoint(repo_name)
         params = {
@@ -101,5 +100,22 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
                 f"(total so far: {total_count + batch_count}/{max_results})"
             )
 
-            yield [enrich_with_repository(pr, repo_name) for pr in limited_batch]
+            yield [
+                enrich_with_repository(pr, repo_name)
+                for pr in self._filter_prs_by_updated_at(limited_batch, since)
+            ]
             total_count += batch_count
+
+    def _filter_prs_by_updated_at(
+        self, prs: list[dict[str, Any]], since: int
+    ) -> list[dict[str, Any]]:
+        cutoff = datetime.now(UTC) - timedelta(days=since)
+
+        return [
+            pr
+            for pr in prs
+            if datetime.strptime(pr["updated_at"], "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=UTC
+            )
+            >= cutoff
+        ]
