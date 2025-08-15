@@ -4,22 +4,21 @@ from aiobotocore.client import AioBaseClient
 from typing import Type, Protocol
 
 
-class IAction(ABC):
-    name: str
+class Action(ABC):
 
     def __init__(self, client: AioBaseClient) -> None:
         self.client: AioBaseClient = client
 
-    async def execute(self, identifier: str) -> Dict[str, Any]:
+    async def execute(self, identifier: Any) -> Dict[str, Any]:
         response = await self._execute(identifier)
         return response
 
     @abstractmethod
-    async def _execute(self, identifier: str) -> Dict[str, Any]: ...
+    async def _execute(self, identifier: Any) -> Dict[str, Any]: ...
 
 
-class IActionMap(Protocol):
-    defaults: List[Type[IAction]]
-    optional: List[Type[IAction]]
+class ActionMap(Protocol):
+    defaults: List[Type[Action]]
+    options: List[Type[Action]]
 
-    def merge(self, include: List[str]) -> List[Type[IAction]]: ...
+    def merge(self, include: List[str]) -> List[Type[Action]]: ...

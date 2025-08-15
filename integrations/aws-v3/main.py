@@ -7,8 +7,8 @@ from integration import AWSResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
 from aws.core.exporters.s3 import S3BucketExporter
 from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
-from aws.core.helpers.kinds import ObjectKind
-from aws.core.exporters.s3.bucket.options import PaginatedS3BucketExporterOptions
+from aws.core.helpers.types import ObjectKind
+from aws.core.exporters.s3.bucket.models import PaginatedBucketRequest
 from loguru import logger
 
 if TYPE_CHECKING:
@@ -16,25 +16,15 @@ if TYPE_CHECKING:
 
 
 async def _handle_global_resource_resync(
-    kind: str,
     regions: List[str],
     options_factory: Callable[[str], Any],
     exporter: "IResourceExporter",
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for region in regions:
-        try:
-            options = options_factory(region)
-            async for batch in exporter.get_paginated_resources(options):
-                yield batch
-            return
-        except Exception as e:
-            if is_access_denied_exception(e):
-                logger.warning(
-                    f"Access denied in region '{region}' for kind '{kind}', skipping."
-                )
-                continue
-            else:
-                raise e
+        options = options_factory(region)
+        async for batch in exporter.get_paginated_resources(options):
+            yield batch
+        return
 
 
 @ocean.on_resync(ObjectKind.S3_BUCKET)
@@ -42,8 +32,8 @@ async def resync_s3_bucket(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     aws_resource_config = cast(AWSResourceConfig, event.resource_config)
 
-    def options_factory(region: str) -> PaginatedS3BucketExporterOptions:
-        return PaginatedS3BucketExporterOptions(
+    def options_factory(region: str) -> PaginatedBucketRequest:
+        return PaginatedBucketRequest(
             region=region, include=aws_resource_config.selector.include_actions
         )
 
@@ -56,7 +46,8 @@ async def resync_s3_bucket(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         exporter = S3BucketExporter(session)
 
         async for batch in _handle_global_resource_resync(
-            kind, regions, options_factory, exporter
+            regions, options_factory, exporter
         ):
             logger.info(f"Found {len(batch)} S3 buckets for account {account['Id']}")
+            logger.info(batch[:10])
             yield batch

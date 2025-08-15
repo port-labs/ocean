@@ -1,7 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Any, AsyncGenerator, TYPE_CHECKING, Dict
+from typing import Any, AsyncGenerator, TYPE_CHECKING, Dict, Type
 from aiobotocore.session import AioSession
 from aws.core.helpers.types import SupportedServices
+from aws.core.interfaces.action import ActionMap
+from aws.core.modeling.resource_builder import ResourceBuilder
+from aws.core.modeling.resource_models import ResourceModel
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from aiobotocore.client import AioBaseClient
@@ -9,7 +13,9 @@ if TYPE_CHECKING:
 
 class IResourceExporter(ABC):
 
-    SERVICE_NAME: SupportedServices
+    _service_name: SupportedServices
+    _model: Type[ResourceBuilder[ResourceModel[BaseModel], Any]]
+    _actions_map: Type[ActionMap]
 
     def __init__(self, session: AioSession) -> None:
         self.session = session

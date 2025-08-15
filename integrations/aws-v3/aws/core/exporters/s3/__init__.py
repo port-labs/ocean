@@ -1,11 +1,11 @@
 from aws.core.exporters.s3.bucket.exporter import S3BucketExporter
-from aws.core.exporters.s3.bucket.options import (
-    SingleS3BucketExporterOptions,
-    PaginatedS3BucketExporterOptions,
+from aws.core.exporters.s3.bucket.models import (
+    SingleBucketRequest,
+    PaginatedBucketRequest,
 )
 
 __all__ = [
     "S3BucketExporter",
-    "SingleS3BucketExporterOptions",
-    "PaginatedS3BucketExporterOptions",
+    "SingleBucketRequest",
+    "PaginatedBucketRequest",
 ]
