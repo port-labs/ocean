@@ -263,11 +263,9 @@ class LaunchDarklyClient:
         Optimized with controlled concurrency and batching.
         """
 
-        # Added this based on LaunchDarkly's rate limit & your network
         MAX_CONCURRENT_REQUESTS = 5
         sem = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
-        # Cache environments per project
         env_cache: Dict[str, List[Dict[str, Any]]] = {}
 
         async def fetch_env_dep(project_key: str, flag_key: str, env: Dict[str, Any]):
@@ -284,16 +282,13 @@ class LaunchDarklyClient:
                     )
                     continue
                 enriched_dep = {}
-                # Main flag info
                 enriched_dep["flagKey"] = flag_key
                 enriched_dep["projectKey"] = project_key
 
-                # Dependent flag info
                 enriched_dep["dependentFlagKey"] = dep["key"]
                 enriched_dep["dependentFlagName"] = dep.get("name", "")
                 enriched_dep["dependentProjectKey"] = project_key
 
-                # Context info
                 enriched_dep["environmentKey"] = env["key"]
                 enriched_dep["relationshipType"] = dep.get("relationshipType", "is_depended_on_by")
                 
@@ -306,20 +301,16 @@ class LaunchDarklyClient:
             results = await asyncio.gather(
                 *(fetch_env_dep(project_key, flag_key, env) for env in environments)
             )
-            # Flatten results
             return [dep for env_deps in results for dep in env_deps]
 
         async for projects in self.get_paginated_projects():
             for project in projects:
                 project_key = project["key"]
 
-                # Cache environments for this project
                 if project_key not in env_cache:
                     env_cache[project_key] = await self.fetch_environments_for_project(project)
 
                 environments = env_cache[project_key]
-
-            # Get all feature flags for this project
             async for flags_batch in self.get_paginated_resource(
                 ObjectKind.FEATURE_FLAG, resource_path=project_key
             ):
@@ -328,17 +319,13 @@ class LaunchDarklyClient:
 
                 logger.info(f"Received {len(flags_batch)} feature flags for project {project_key}")
 
-                # Process in batches
                 batch_size = 10
                 for i in range(0, len(flags_batch), batch_size):
                     batch = flags_batch[i:i + batch_size]
-
-                    # Fetch dependencies for all flags in batch concurrently
                     deps_batches = await asyncio.gather(
                         *(fetch_flag_env_deps(project_key, flag, environments) for flag in batch)
                     )
 
-                    # Flatten and yield only non-empty results
                     all_dependencies = [dep for deps in deps_batches for dep in deps if deps]
                     if all_dependencies:
                         yield all_dependencies
@@ -357,26 +344,25 @@ class LaunchDarklyClient:
             dependent_flags = await self.get_feature_flag_dependencies(projectKey, featureFlagKey)
             logger.info(f"Received {len(dependent_flags)} dependencies for flag {featureFlagKey}")
             formatted = []
-            # Handle the case where dependent_flags might be None
             if dependent_flags is None:
                 return []
-                
-            # Now iterate through the iterable directly
             for dep in dependent_flags:
                 dep_key = dep.get("key")
                 if not dep_key:
                     logger.warning(f"Skipping dependency without key for {projectKey}/{featureFlagKey}: {dep}")
                     continue
-                # Preserve original dependency data and only enrich with necessary fields
+
                 enriched_dep = dep.copy()
-                # Add required fields for entity identification
                 enriched_dep["flagKey"] = featureFlagKey
                 enriched_dep["__projectKey"] = projectKey
-                # Ensure we have a relationship type if not already present
+
                 if "relationshipType" not in enriched_dep:
                     enriched_dep["relationshipType"] = "is_depended_on_by"
+
                 formatted.append(enriched_dep)
+
             return formatted
+
         except Exception as e:
             logger.error(f"Error fetching dependencies for {projectKey}/{featureFlagKey}: {e}")
             return []
