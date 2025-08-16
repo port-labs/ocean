@@ -1,10 +1,11 @@
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
+from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
-# https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-s3-bucket.html#aws-resource-s3-bucket-syntax
 
+class BucketProperties(BaseModel):
 
-class S3BucketProperties(BaseModel, extra="forbid"):
+    BucketName: str = Field(default_factory=str)
     AccessControl: Optional[str] = None
     VersioningConfiguration: Optional[Dict[str, Any]] = None
     Tags: Optional[List[Dict[str, Any]]] = None
@@ -17,12 +18,23 @@ class S3BucketProperties(BaseModel, extra="forbid"):
     DomainName: Optional[str] = None
     DualStackDomainName: Optional[str] = None
     WebsiteURL: Optional[str] = None
-    BucketName: Optional[str] = None
     PublicAccessBlockConfiguration: Optional[Dict[str, Any]] = None
     OwnershipControls: Optional[Dict[str, Any]] = None
     CorsConfiguration: Optional[Dict[str, Any]] = None
 
+    class Config:
+        extra = "forbid"
 
-class S3Bucket(BaseModel, extra="ignore"):
+
+class Bucket(ResourceModel[BucketProperties]):
     Type: str = "AWS::S3::Bucket"
-    Properties: S3BucketProperties = Field(default_factory=S3BucketProperties)
+    Properties: BucketProperties = Field(default_factory=BucketProperties)
+
+
+class SingleBucketRequest(ResourceRequestModel):
+    """Options for exporting a single S3 bucket."""
+
+    bucket_name: str = Field(..., description="The name of the S3 bucket to export")
+
+
+class PaginatedBucketRequest(ResourceRequestModel): ...

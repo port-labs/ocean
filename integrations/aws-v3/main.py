@@ -8,9 +8,8 @@ from aws.auth.session_factory import get_all_account_sessions
 from aws.core.exporters.s3 import S3BucketExporter
 from aws.core.exporters.ecs import ECSClusterExporter
 from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
-from aws.core.helpers.kinds import ObjectKind
-from aws.core.exporters.s3.bucket.options import PaginatedS3BucketExporterOptions
-from aws.core.exporters.ecs.cluster.options import PaginatedECSClusterExporterOptions
+from aws.core.helpers.types import ObjectKind
+from aws.core.exporters.s3.bucket.models import PaginatedBucketRequest
 from loguru import logger
 
 if TYPE_CHECKING:
@@ -65,8 +64,8 @@ async def resync_s3_bucket(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     aws_resource_config = cast(AWSResourceConfig, event.resource_config)
 
-    def options_factory(region: str) -> PaginatedS3BucketExporterOptions:
-        return PaginatedS3BucketExporterOptions(
+    def options_factory(region: str) -> PaginatedBucketRequest:
+        return PaginatedBucketRequest(
             region=region, include=aws_resource_config.selector.include_actions
         )
 
@@ -79,7 +78,7 @@ async def resync_s3_bucket(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         exporter = S3BucketExporter(session)
 
         async for batch in _handle_global_resource_resync(
-            kind, regions, options_factory, exporter
+            regions, options_factory, exporter
         ):
             logger.info(f"Found {len(batch)} S3 buckets for account {account['Id']}")
             yield batch

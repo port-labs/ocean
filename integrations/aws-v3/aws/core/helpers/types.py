@@ -1,3 +1,9 @@
+from enum import StrEnum
 from typing import Literal
 
-SupportedServices = Literal["sqs", "resource-groups", "s3", "ec2", "ecs"]
+
+class ObjectKind(StrEnum):
+    S3_BUCKET = "AWS::S3::Bucket"
+
+
+SupportedServices = Literal["s3", "ecs", "ec2", "sqs"]
