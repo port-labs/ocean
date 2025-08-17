@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.108-post1 (2025-08-17)
+==========================
+
+### Improvements
+
+- Removed core dependency
+
 0.2.107-post1 (2025-08-17)
 ==========================
 
