@@ -25,6 +25,7 @@ pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
 types-aiofiles = "^24.1.0.20250708"
+yamllint = "^1.37.1"
 
 [tool.towncrier]
 directory = "changelog"
