@@ -376,7 +376,7 @@ class TestOrganizationsHealthCheckMixin:
     ) -> None:
         """Test _get_organization_account_role_name extracts role name correctly."""
         role_name = strategy._get_organization_account_role_name()
-        assert role_name == "OrganizationAccountAccessRole"
+        assert role_name == "role/OrganizationAccountAccessRole"
 
     def test_get_organization_account_role_name_invalid_arn(
         self, strategy: OrganizationsStrategy
@@ -420,7 +420,7 @@ class TestOrganizationsHealthCheckMixin:
     async def test_discover_accounts_success(
         self, strategy: OrganizationsStrategy, mock_aiosession: AsyncMock
     ) -> None:
-        """Test _discover_accounts discovers accounts successfully."""
+        """Test discover_accounts discovers accounts successfully."""
         mock_org_client = AsyncMock()
         mock_paginator = AsyncMock()
 
@@ -460,7 +460,7 @@ class TestOrganizationsHealthCheckMixin:
             with patch.object(
                 strategy, "_get_organization_session", return_value=mock_aiosession
             ):
-                accounts = await strategy._discover_accounts()
+                accounts = await strategy.discover_accounts()
 
                 assert len(accounts) == 2  # Only active accounts
                 assert accounts[0]["Id"] == "123456789012"
@@ -482,7 +482,7 @@ class TestOrganizationsHealthCheckMixin:
     async def test_discover_accounts_access_denied(
         self, strategy: OrganizationsStrategy, mock_aiosession: AsyncMock
     ) -> None:
-        """Test _discover_accounts handles access denied error."""
+        """Test discover_accounts handles access denied error."""
         mock_org_client = AsyncMock()
         mock_org_client.get_paginator.side_effect = Exception("AccessDeniedException")
 
@@ -494,7 +494,7 @@ class TestOrganizationsHealthCheckMixin:
                 with pytest.raises(
                     AWSSessionError, match="Failed to discover accounts"
                 ):
-                    await strategy._discover_accounts()
+                    await strategy.discover_accounts()
 
     @pytest.mark.asyncio
     async def test_can_assume_role_in_account_success(
@@ -530,29 +530,29 @@ class TestOrganizationsHealthCheckMixin:
             {"Id": "123456789013", "Name": "Test Account 2", "Status": "ACTIVE"},
         ]
 
-        with patch.object(strategy, "_discover_accounts", return_value=mock_accounts):
+        with patch.object(strategy, "discover_accounts", return_value=mock_accounts):
             with patch.object(
                 strategy, "_can_assume_role_in_account", return_value=mock_aiosession
             ):
                 result = await strategy.healthcheck()
                 assert result is True
                 assert (
-                    len(strategy._valid_arns) == 2
+                    len(strategy.valid_arns) == 2
                 )  # Only account ARNs are added during health check
-                assert len(strategy._valid_sessions) == 2
+                assert len(strategy.valid_sessions) == 2
                 # Verify the account ARNs are correctly formatted
                 expected_arns = [
                     "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole",
                     "arn:aws:iam::123456789013:role/OrganizationAccountAccessRole",
                 ]
-                assert strategy._valid_arns == expected_arns
+                assert strategy.valid_arns == expected_arns
 
     @pytest.mark.asyncio
     async def test_healthcheck_no_accounts(
         self, strategy: OrganizationsStrategy
     ) -> None:
         """Test healthcheck fails when no accounts discovered."""
-        with patch.object(strategy, "_discover_accounts", return_value=[]):
+        with patch.object(strategy, "discover_accounts", return_value=[]):
             result = await strategy.healthcheck()
             assert result is False
 
@@ -566,7 +566,7 @@ class TestOrganizationsHealthCheckMixin:
             {"Id": "123456789013", "Name": "Test Account 2", "Status": "ACTIVE"},
         ]
 
-        with patch.object(strategy, "_discover_accounts", return_value=mock_accounts):
+        with patch.object(strategy, "discover_accounts", return_value=mock_accounts):
             with patch.object(
                 strategy,
                 "_can_assume_role_in_account",
@@ -575,14 +575,14 @@ class TestOrganizationsHealthCheckMixin:
                 result = await strategy.healthcheck()
                 assert result is True
                 assert (
-                    len(strategy._valid_arns) == 1
+                    len(strategy.valid_arns) == 1
                 )  # Only successful account ARN is added
-                assert len(strategy._valid_sessions) == 1
+                assert len(strategy.valid_sessions) == 1
                 # Verify the account ARN is correctly formatted
                 expected_arn = (
                     "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole"
                 )
-                assert strategy._valid_arns == [expected_arn]
+                assert strategy.valid_arns == [expected_arn]
 
 
 class TestOrganizationsStrategy:
@@ -617,7 +617,7 @@ class TestOrganizationsStrategy:
             {"Id": "123456789013", "Name": "Test Account 2", "Status": "ACTIVE"},
         ]
 
-        with patch.object(strategy, "_discover_accounts", return_value=mock_accounts):
+        with patch.object(strategy, "discover_accounts", return_value=mock_accounts):
             with patch.object(
                 strategy, "_can_assume_role_in_account", return_value=mock_aiosession
             ):
@@ -641,7 +641,7 @@ class TestOrganizationsStrategy:
             {"Id": "123456789013", "Name": "Test Account 2", "Status": "ACTIVE"},
         ]
 
-        with patch.object(strategy, "_discover_accounts", return_value=mock_accounts):
+        with patch.object(strategy, "discover_accounts", return_value=mock_accounts):
             with patch.object(
                 strategy,
                 "_can_assume_role_in_account",
