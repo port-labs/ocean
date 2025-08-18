@@ -10,7 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- added more logs to sync metrics
+- added more logs to sync metrics in order to investigate reconciliation pending bug
 
 ## 0.27.7 (2025-08-15)
 
