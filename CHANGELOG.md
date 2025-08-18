@@ -6,11 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-## 0.27.8 (2025-08-18)
+## 0.27.9 (2025-08-19)
 
 ### Improvements
 
 - Added ingest url support
+
+## 0.27.8 (2025-08-18)
+
+### Improvements
+
+- added more logs to sync metrics in order to investigate reconciliation pending bug
 
 ## 0.27.7 (2025-08-15)
 
