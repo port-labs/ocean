@@ -7,6 +7,24 @@ from typing import Generator
 from bitbucket_cloud.webhook_processors.webhook_client import BitbucketWebhookClient
 
 
+@pytest.fixture(autouse=True, scope="session")
+def mock_initialize_client() -> Generator[None, None, None]:
+    """Mock the initialize_client module to prevent client creation during imports."""
+    with (
+        patch("initialize_client.init_client") as mock_init_client,
+        patch("initialize_client.init_webhook_client") as mock_init_webhook_client,
+    ):
+        # Create mock clients
+        mock_client = MagicMock()
+        mock_webhook_client = MagicMock()
+
+        # Configure the mocks
+        mock_init_client.return_value = mock_client
+        mock_init_webhook_client.return_value = mock_webhook_client
+
+        yield
+
+
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None | MagicMock:
     """Fixture to initialize the PortOcean context."""

@@ -3,16 +3,16 @@ import logging
 import sys
 import threading
 import time
+from copy import deepcopy
 from datetime import datetime
 from logging.handlers import MemoryHandler
+from traceback import format_exception
 from typing import Any
 
 from loguru import logger
 
 from port_ocean import Ocean
 from port_ocean.context.ocean import ocean
-from copy import deepcopy
-from traceback import format_exception
 
 
 def _serialize_record(record: logging.LogRecord) -> dict[str, Any]:
@@ -53,7 +53,6 @@ class HTTPMemoryHandler(MemoryHandler):
         return None
 
     def emit(self, record: logging.LogRecord) -> None:
-
         self._serialized_buffer.append(_serialize_record(record))
         super().emit(record)
 
@@ -106,4 +105,4 @@ class HTTPMemoryHandler(MemoryHandler):
         try:
             await _ocean.port_client.ingest_integration_logs(logs_to_send)
         except Exception as e:
-            logger.debug(f"Failed to send logs to Port with error: {e}")
+            logger.error(f"Failed to send logs to Port with error: {e}")

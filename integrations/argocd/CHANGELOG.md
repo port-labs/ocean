@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.209 (2025-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.7
+
+
+## 0.1.208 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 0.1.207 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 0.1.206 (2025-08-13)
+
+
+### Improvements
+
+- fixed the description in the spec.yaml
+
+## 0.1.205 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+## 0.1.204 (2025-08-11)
+
+
+### Fix
+
+- Optimized resource aggregation and deployment history ingestion to avoid OOMs by replacing nested loops with efficient extend() usage
+
+
+## 0.1.203 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
+
+
 ## 0.1.202 (2025-08-07)
 
 

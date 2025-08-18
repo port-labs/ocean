@@ -1,14 +1,14 @@
 [tool.poetry]
 name = "bitbucket-server"
 
-version = "0.1.35-beta"
+version = "0.1.41-beta"
 
 description = "Bitbucket Server integration for Port"
 authors = ["Ayodeji Adeoti <ayodeji.adeoti@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.27.1", extras = ["cli"]}
+port_ocean = {version = "^0.27.7", extras = ["cli"]}
 aiolimiter = "^1.2.1"
 
 [tool.poetry.group.dev.dependencies]
