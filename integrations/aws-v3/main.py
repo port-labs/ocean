@@ -28,6 +28,7 @@ async def _process_single_region(
     exporter: "IResourceExporter",
     account_id: str,
     kind: str,
+    is_global: bool = False,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     try:
         options = options_factory(region)
@@ -36,11 +37,16 @@ async def _process_single_region(
                 f"Found {len(batch)} {kind} for account {account_id} in region {region}"
             )
             yield batch
+
+        if is_global:
+            logger.info(f"Found {kind} resources in region {region}")
+            return
     except Exception as e:
         if is_access_denied_exception(e):
             logger.warning(
                 f"Access denied in region '{region}' for kind '{kind}', skipping."
             )
+            yield []
         else:
             raise e
 
@@ -51,31 +57,19 @@ async def _handle_global_resource_resync(
     options_factory: Callable[[str], Any],
     exporter: "IResourceExporter",
     account_id: str,
-    max_concurrent: int = 10,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(
-        f"Processing {kind} across {len(regions)} regions for account {account_id}"
+        f"Processing global resource {kind} across {len(regions)} regions for account {account_id}"
     )
-    semaphore = asyncio.Semaphore(max_concurrent)
 
-    tasks = [
-        semaphore_async_iterator(
-            semaphore,
-            partial(
-                _process_single_region,
-                region,
-                options_factory,
-                exporter,
-                account_id,
-                kind,
-            ),
-        )
-        for region in regions
-    ]
-
-    async for batch in stream_async_iterators_tasks(*tasks):
-        if batch:
+    for region in regions:
+        async for batch in _process_single_region(
+            region, options_factory, exporter, account_id, kind, is_global=True
+        ):
             yield batch
+
+    logger.info(f"No {kind} resources found in any region for account {account_id}")
+    yield []
 
 
 async def _handle_regional_resource_resync(
