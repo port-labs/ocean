@@ -73,6 +73,13 @@ class MetricsSettings(BaseOceanModel, extra=Extra.allow):
     webhook_url: str | None = Field(default=None)
 
 
+class StreamingSettings(BaseOceanModel, extra=Extra.allow):
+    enabled: bool = Field(default=False)
+    max_buffer_size_mb: int = Field(default=1024 * 1024 * 20)  # 20 mb
+    chunk_size: int = Field(default=1024 * 64)  # 64 kb
+    location: str = Field(default="/tmp/ocean/streaming")
+
+
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     _integration_config_model: BaseModel | None = None
 
@@ -111,6 +118,10 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
     lakehouse_enabled: bool = False
+    yield_items_to_parse: bool = False
+    yield_items_to_parse_batch_size: int = 10
+
+    streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
 
     @validator("process_execution_mode")
     def validate_process_execution_mode(

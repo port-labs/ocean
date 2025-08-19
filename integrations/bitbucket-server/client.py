@@ -57,7 +57,11 @@ class BitbucketClient:
         )
 
     async def _send_api_request(
-        self, method: str, path: str, payload: Optional[dict[str, Any]] = None
+        self,
+        method: str,
+        path: str,
+        payload: Optional[dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any] | None:
         """
         Send an HTTP request to the Bitbucket API with rate limiting.
@@ -76,7 +80,9 @@ class BitbucketClient:
                 logger.info(
                     f"Sending {method} request to {url} with payload: {payload}"
                 )
-                response = await self.client.request(method, url, json=payload)
+                response = await self.client.request(
+                    method, url, params=params, json=payload
+                )
                 response.raise_for_status()
                 return response.json()
             except httpx.HTTPStatusError as e:
@@ -116,7 +122,7 @@ class BitbucketClient:
         while True:
             params["start"] = start
             try:
-                data = await self._send_api_request("GET", path, payload=params)
+                data = await self._send_api_request("GET", path, params=params)
                 if not data:
                     break
                 values: list[dict[str, Any]] = data.get("values", [])
@@ -127,11 +133,10 @@ class BitbucketClient:
                     yield [data]
                 else:
                     yield values
-
-                if data.get("isLastPage", True):
+                if next_page := data.get("nextPageStart"):
+                    start = next_page
+                if data.get("isLastPage") or not next_page:
                     break
-
-                start += page_size
             except httpx.HTTPError as e:
                 logger.error(f"Error fetching paginated resource: {e}")
                 break
@@ -184,8 +189,7 @@ class BitbucketClient:
         """
         logger.info(f"Getting projects with filter: {projects_filter}")
         if projects_filter:
-            project_batch = await self._get_projects_with_filter(projects_filter)
-            yield project_batch
+            yield await self._get_projects_with_filter(projects_filter)
         else:
             async for project_batch in self._get_all_projects():
                 yield project_batch

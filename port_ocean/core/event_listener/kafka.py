@@ -16,6 +16,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
+from pydantic import validator
 
 
 class KafkaEventListenerSettings(EventListenerSettings):
@@ -45,6 +46,19 @@ class KafkaEventListenerSettings(EventListenerSettings):
     authentication_mechanism: str = "SCRAM-SHA-512"
     kafka_security_enabled: bool = True
     consumer_poll_timeout: int = 1
+
+    @validator("brokers")
+    @classmethod
+    def parse_brokers(cls, v: str) -> str:
+        # If it's a JSON array string, parse and join
+        if v.strip().startswith("[") and v.strip().endswith("]"):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return ",".join(parsed)
+            except json.JSONDecodeError:
+                pass
+        return v
 
     def get_changelog_destination_details(self) -> dict[str, Any]:
         """
