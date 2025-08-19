@@ -1,0 +1,35 @@
+name: Claude Generic
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        required: true
+        description: "The command to run"
+
+permissions:
+  contents: read
+  packages: write
+        
+jobs:
+  claude-generic:
+    env:
+      GITHUB_TOKEN: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure Git 
+        run: |
+          git config --global user.name "Port Claude AI"
+          git config --global user.email "port-claude-ai@port.io"
+
+      - uses: anthropics/claude-code-base-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_tools: "Bash(git:*),Bash(gh:*),Bash(jq:*),Edit,GlobTool,GrepTool,BatchTool,WebFetch"
+          system_prompt: |
+            You are a integration developer. You will follow the commands, and open a PR if relevant.
+            Do NOT make any changes directly to main EVER, only through a PR via a new branch.
+          prompt: ${{ inputs.command }}
