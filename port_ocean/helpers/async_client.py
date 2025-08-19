@@ -38,6 +38,7 @@ class OceanAsyncClient(httpx.AsyncClient):
             wrapped_transport=httpx.AsyncHTTPTransport(**kwargs),
             retry_config=self._retry_config,
             logger=logger,
+            **(self._transport_kwargs or {}),
         )
 
     def _init_proxy_transport(  # type: ignore[override]
@@ -47,6 +48,7 @@ class OceanAsyncClient(httpx.AsyncClient):
             wrapped_transport=httpx.AsyncHTTPTransport(proxy=proxy, **kwargs),
             retry_config=self._retry_config,
             logger=logger,
+            **(self._transport_kwargs or {}),
         )
 
     async def get_stream(self, url: str, **kwargs: Any) -> Stream:
