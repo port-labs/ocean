@@ -34,34 +34,20 @@ class OceanAsyncClient(httpx.AsyncClient):
         if transport is not None:
             return super()._init_transport(transport=transport, **kwargs)
 
-        if self._retry_config is not None:
-            return self._transport_class(
-                wrapped_transport=httpx.AsyncHTTPTransport(**kwargs),
-                retry_config=self._retry_config,
-                logger=logger,
-            )
-        else:
-            return self._transport_class(
-                wrapped_transport=httpx.AsyncHTTPTransport(**kwargs),
-                logger=logger,
-                **(self._transport_kwargs or {}),
-            )
+        return self._transport_class(
+            wrapped_transport=httpx.AsyncHTTPTransport(**kwargs),
+            retry_config=self._retry_config,
+            logger=logger,
+        )
 
     def _init_proxy_transport(  # type: ignore[override]
         self, proxy: httpx.Proxy, **kwargs: Any
     ) -> httpx.AsyncBaseTransport:
-        if self._retry_config is not None:
-            return self._transport_class(
-                wrapped_transport=httpx.AsyncHTTPTransport(proxy=proxy, **kwargs),
-                retry_config=self._retry_config,
-                logger=logger,
-            )
-        else:
-            return self._transport_class(
-                wrapped_transport=httpx.AsyncHTTPTransport(proxy=proxy, **kwargs),
-                logger=logger,
-                **(self._transport_kwargs or {}),
-            )
+        return self._transport_class(
+            wrapped_transport=httpx.AsyncHTTPTransport(proxy=proxy, **kwargs),
+            retry_config=self._retry_config,
+            logger=logger,
+        )
 
     async def get_stream(self, url: str, **kwargs: Any) -> Stream:
         req = self.build_request("GET", url, **kwargs)

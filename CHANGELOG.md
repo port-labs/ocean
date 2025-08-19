@@ -11,7 +11,9 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Improved retry transport to support custom retry config for integrations
+- Made HTTP retry config extensible with new RetryConfig class and callback to apply per-integration policies without code changes.
+- Added rate-limit aware retries through configurable retry-after headers (e.g., X-RateLimit-Reset) and additional retry status codes that extend safe defaults.
+- Control max_attempts/base_delay/jitter_ratio/max_backoff_wait and override retryable_methods via callback.
 
 ## 0.27.8 (2025-08-18)
 
