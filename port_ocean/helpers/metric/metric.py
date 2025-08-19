@@ -1,21 +1,22 @@
 import os
-from typing import Any, TYPE_CHECKING, Optional, Dict, List, Tuple
-from fastapi import APIRouter
-from port_ocean.exceptions.context import ResourceContextNotFoundError
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
 import prometheus_client
-from httpx import AsyncClient
-from fastapi.responses import PlainTextResponse
-from loguru import logger
-from port_ocean.context import metric_resource, resource
-from prometheus_client import Gauge
 import prometheus_client.openmetrics
 import prometheus_client.openmetrics.exposition
 import prometheus_client.parser
-from prometheus_client import multiprocess
+from fastapi import APIRouter
+from fastapi.responses import PlainTextResponse
+from httpx import AsyncClient
+from loguru import logger
+from prometheus_client import Gauge, multiprocess
+
+from port_ocean.context import metric_resource, resource
+from port_ocean.exceptions.context import ResourceContextNotFoundError
 
 if TYPE_CHECKING:
-    from port_ocean.config.settings import MetricsSettings, IntegrationSettings
     from port_ocean.clients.port.client import PortClient
+    from port_ocean.config.settings import IntegrationSettings, MetricsSettings
 
 
 class MetricPhase:
@@ -294,6 +295,7 @@ class Metrics:
         if kinds is None:
             return None
 
+        logger.info("Reporting sync metrics for kinds", kinds=kinds)
         metrics = []
 
         if blueprints is None:
@@ -302,6 +304,8 @@ class Metrics:
         for kind, blueprint in zip(kinds, blueprints):
             metric = self.generate_metrics(metric_name, kind, blueprint)
             metrics.extend(metric)
+
+        logger.info("Generated metrics", metrics=metrics, kinds=kinds)
 
         try:
             await self.port_client.post_integration_sync_metrics(metrics)

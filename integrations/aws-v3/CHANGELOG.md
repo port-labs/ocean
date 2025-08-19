@@ -7,12 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.0-dev (2025-08-08)
+## 0.3.1-dev (2025-08-20)
 
 
 ### Features
 
 - Added Support S3 Exporter
+
+
+## 0.3.0-dev (2025-08-19)
+
+
+### Features
+
+- Add support for AWS Organizations
+
+
+## 0.2.10-dev (2025-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.8
+
+
+## 0.2.9-dev (2025-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.7
+
+
+## 0.2.8-dev (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 0.2.7-dev (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 0.2.6-dev (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+## 0.2.5-dev (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
 
 
 ## 0.2.4-dev (2025-08-07)

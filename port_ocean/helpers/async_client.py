@@ -4,6 +4,7 @@ import httpx
 from loguru import logger
 
 from port_ocean.helpers.retry import RetryTransport
+from port_ocean.helpers.stream import Stream
 
 
 class OceanAsyncClient(httpx.AsyncClient):
@@ -50,3 +51,9 @@ class OceanAsyncClient(httpx.AsyncClient):
             logger=logger,
             **(self._transport_kwargs or {}),
         )
+
+    async def get_stream(self, url: str, **kwargs: Any) -> Stream:
+        req = self.build_request("GET", url, **kwargs)
+        response = await self.send(req, stream=True)
+        response.raise_for_status()
+        return Stream(response)

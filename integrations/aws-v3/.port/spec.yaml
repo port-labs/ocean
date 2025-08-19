@@ -13,6 +13,11 @@ configurations:
     type: array
     sensitive: true
     description: An array of AWS Account Role ARNs, used for multi-account access.
+  - name: useOrganizations
+    required: false
+    default: false
+    type: boolean
+    description: When enabled, uses AWS Organizations API to automatically discover all accounts. Requires the first role ARN from accountRoleArn to be the organization management account role.
   - name: externalId
     required: false
     type: string
