@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Callable, Optional
+from typing import List, Dict, Any, Callable, Optional, cast
 from loguru import logger
 import asyncio
 from aws.core.interfaces.action import Action, ActionMap, BatchAPIAction
@@ -140,7 +140,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
 
         # Convert Dict[str, Any] to PropertiesData for type compatibility
         properties_data: List[PropertiesData] = [
-            PropertiesData(**result) for result in identifier_results
+            cast(PropertiesData, result) for result in identifier_results
         ]
         builder.with_properties(properties_data)
 
