@@ -10,11 +10,16 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
         
 jobs:
   claude-generic:
     env:
       GITHUB_TOKEN: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    permissions:
+      contents: write
+      pull-requests: write 
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -26,7 +31,7 @@ jobs:
       - uses: anthropics/claude-code-base-action@beta
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          allowed_tools: "Bash(git:*),Bash(gh:*),Bash(jq:*),Edit,GlobTool,GrepTool,BatchTool,WebFetch"
+          allowed_tools: "Bash(git:*),Bash(gh:*),Bash(jq:*),Edit(*),GlobTool,GrepTool,BatchTool,WebFetch,WebSearch"
           system_prompt: |
             You are a integration developer. You will follow the commands, and open a PR if relevant.
             Do NOT make any changes directly to main EVER, only through a PR via a new branch.
