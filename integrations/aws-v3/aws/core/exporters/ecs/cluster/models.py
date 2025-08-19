@@ -17,7 +17,7 @@ class ECSClusterProperties(BaseModel):
     defaultCapacityProviderStrategy: Optional[List[Dict[str, Any]]] = None
     tags: Optional[List[Dict[str, Any]]] = None
     settings: Optional[List[Dict[str, Any]]] = None
-    configurations: Optional[List[Dict[str, Any]]] = None  # AWS returns this as a list
+    configurations: Optional[List[Dict[str, Any]]] = None
     statistics: Optional[List[Dict[str, Any]]] = None
     attachments: Optional[List[Dict[str, Any]]] = None
     attachmentsStatus: Optional[str] = None
@@ -25,7 +25,7 @@ class ECSClusterProperties(BaseModel):
     pendingTaskArns: Optional[List[str]] = None
 
     class Config:
-        extra = "forbid"  # Be explicit about allowed fields
+        extra = "forbid"
 
 
 class ECSCluster(ResourceModel[ECSClusterProperties]):
