@@ -1,11 +1,25 @@
-from typing import Any, Self
+from typing import Self, TypedDict
 from aws.core.modeling.resource_models import ResourceModel
 from pydantic import BaseModel
 
 
+class PropertiesData(TypedDict, total=False):
+    """Type-safe properties data"""
+
+    pass  # Will be extended by specific resource types
+
+
+class MetadataData(TypedDict, total=False):
+    """Type-safe metadata data"""
+
+    __Region: str
+    __AccountId: str
+    __Kind: str
+
+
 class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: BaseModel]:
     """
-    Builder class for constructing AWS resource models with strongly-typed properties.
+    Builder class for constructing AWS resource models with strongly-typed properties and metadata.
 
     Provides a fluent interface to set multiple fields on the `Properties`
     attribute of a given resource model, which is expected to be a subclass of
@@ -16,20 +30,25 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         TProperties: A Pydantic `BaseModel` representing the resource's properties.
 
     Example:
-        >>> builder = ModelBuilder(MyResourceModel(Type="...", Properties=MyProperties()))
-        >>> resource = builder.with_data({"Name": "example", "Size": 42}).build()
+        >>> builder = ResourceBuilder(MyResourceModel(Type="...", Properties=MyProperties()), "eu-west-1", "123456789")
+        >>> resource = builder.with_properties({"Name": "example"}).with_metadata({"__Kind": "AWS::S3::Bucket"}).build()
     """
 
-    def __init__(self, model: ResourceModelT) -> None:
+    def __init__(self, model: ResourceModelT, region: str, account_id: str) -> None:
         """
-        Initialize the builder with a resource model instance.
+        Initialize the builder with a resource model instance and context.
 
         Args:
             model: An instance of a resource model to be built or modified.
+            region: The AWS region for this resource.
+            account_id: The AWS account ID for this resource.
         """
         self._model = model
+        self._region = region
+        self._account_id = account_id
+        self._props_set = False
 
-    def with_data(self, data: dict[str, Any]) -> Self:
+    def with_properties(self, data: PropertiesData) -> Self:
         """
         Set multiple fields in the resource's `Properties` attribute.
 
@@ -39,9 +58,27 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         Returns:
             Self: The builder instance for method chaining.
         """
-        for k, v in data.items():
-            setattr(self._model.Properties, k, v)
+        current_properties = self._model.Properties.dict()
+        updated_properties = {**current_properties, **data}
+
+        self._model.Properties = self._model.Properties.__class__(**updated_properties)
         self._props_set = True
+        return self
+
+    def with_metadata(self, data: MetadataData) -> Self:
+        """
+        Set metadata fields on the resource with type safety.
+
+        Args:
+            data: A dictionary of metadata fields and their corresponding values to set.
+
+        Returns:
+            Self: The builder instance for method chaining.
+        """
+        current_data = self._model.dict()
+        updated_data = {**current_data, **data}
+
+        self._model = self._model.__class__(**updated_data)
         return self
 
     def build(self) -> ResourceModelT:
@@ -55,4 +92,7 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
             raise ValueError(
                 "No data has been set for the resource model, use `with_data` to set data."
             )
-        return self._model
+
+        return self._model.copy(
+            update={"__Region": self._region, "__AccountId": self._account_id}
+        )

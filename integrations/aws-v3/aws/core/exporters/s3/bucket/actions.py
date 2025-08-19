@@ -1,11 +1,14 @@
 from typing import Dict, Any, List, Type
-
-
-from aws.core.interfaces.action import Action, ActionMap
+from aws.core.interfaces.action import (
+    Action,
+    DataAction,
+    APIAction,
+    ActionMap,
+)
 from loguru import logger
 
 
-class GetBucketPublicAccessBlockAction(Action):
+class GetBucketPublicAccessBlockAction(APIAction):
     async def _execute(self, bucket_name: str) -> Dict[str, Any]:
         response = await self.client.get_public_access_block(Bucket=bucket_name)  # type: ignore
         logger.info(
@@ -16,7 +19,7 @@ class GetBucketPublicAccessBlockAction(Action):
         }
 
 
-class GetBucketOwnershipControlsAction(Action):
+class GetBucketOwnershipControlsAction(APIAction):
     async def _execute(self, bucket_name: str) -> Dict[str, Any]:
         response = await self.client.get_bucket_ownership_controls(Bucket=bucket_name)  # type: ignore
         logger.info(
@@ -25,14 +28,14 @@ class GetBucketOwnershipControlsAction(Action):
         return {"OwnershipControls": response["OwnershipControls"]}
 
 
-class GetBucketEncryptionAction(Action):
+class GetBucketEncryptionAction(APIAction):
     async def _execute(self, bucket_name: str) -> Dict[str, Any]:
         response = await self.client.get_bucket_encryption(Bucket=bucket_name)  # type: ignore
         logger.info(f"Successfully fetched bucket encryption for bucket {bucket_name}")
         return {"BucketEncryption": response["ServerSideEncryptionConfiguration"]}
 
 
-class GetBucketTaggingAction(Action):
+class GetBucketTaggingAction(APIAction):
     async def _execute(self, bucket_name: str) -> dict[str, Any]:
         try:
             response = await self.client.get_bucket_tagging(Bucket=bucket_name)  # type: ignore
@@ -44,8 +47,8 @@ class GetBucketTaggingAction(Action):
             raise
 
 
-class GetBucketNameAction(Action):
-    async def _execute(self, bucket_name: str) -> Dict[str, Any]:
+class GetBucketNameAction(DataAction):
+    async def _transform_data(self, bucket_name: str) -> Dict[str, Any]:
         return {"BucketName": bucket_name}
 
 

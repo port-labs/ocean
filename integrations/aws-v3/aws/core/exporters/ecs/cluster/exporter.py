@@ -1,56 +1,60 @@
-from aws.core.interfaces.exporter import IResourceExporter
-from aws.core.exporters.ecs.cluster.options import (
-    SingleECSClusterExporterOptions,
-    PaginatedECSClusterExporterOptions,
+from typing import Any, AsyncGenerator, Type
+
+from aws.core.client.proxy import AioBaseClientProxy
+from aws.core.exporters.ecs.cluster.actions import ECSClusterActionsMap
+from aws.core.exporters.ecs.cluster.models import ECSCluster
+from aws.core.exporters.ecs.cluster.models import (
+    SingleECSClusterRequest,
+    PaginatedECSClusterRequest,
 )
 from aws.core.helpers.types import SupportedServices
-from aws.core.client.proxy import AioBaseClientProxy
-from aws.core.exporters.ecs.cluster.inspector import ECSClusterInspector
-from typing import Any, AsyncGenerator
-from aws.core.exporters.ecs.cluster.models import ECSCluster
+from aws.core.interfaces.exporter import IResourceExporter
+from aws.core.modeling.resource_inspector import ResourceInspector
 
 
 class ECSClusterExporter(IResourceExporter):
-    SERVICE_NAME: SupportedServices = "ecs"
+    _service_name: SupportedServices = "ecs"
+    _model_cls: Type[ECSCluster] = ECSCluster
+    _actions_map: Type[ECSClusterActionsMap] = ECSClusterActionsMap
 
-    async def get_resource(
-        self, options: SingleECSClusterExporterOptions
-    ) -> dict[str, Any]:
+    async def get_resource(self, options: SingleECSClusterRequest) -> dict[str, Any]:
         """Fetch detailed attributes of a single ECS cluster."""
 
         async with AioBaseClientProxy(
-            self.session, options.region, self.SERVICE_NAME
+            self.session, options.region, self._service_name
         ) as proxy:
-            inspector = ECSClusterInspector(proxy.client)
-            response: ECSCluster = await inspector.inspect(
-                options.cluster_arn, options.include
-            )
 
-            return response.dict()
+            inspector = ResourceInspector(
+                proxy.client,
+                self._actions_map(),
+                lambda: self._model_cls(),
+                options.region,
+                self.account_id,
+            )
+            response = await inspector.inspect(options.cluster_arn, options.include)
+
+            return response.dict(exclude_none=True)
 
     async def get_paginated_resources(
-        self, options: PaginatedECSClusterExporterOptions
+        self, options: PaginatedECSClusterRequest
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Yield pages of ECS cluster information, fetched using pagination."""
+        """Yield pages of ECS cluster information with automatic batch optimization."""
 
         async with AioBaseClientProxy(
-            self.session, options.region, self.SERVICE_NAME
+            self.session, options.region, self._service_name
         ) as proxy:
-            inspector = ECSClusterInspector(proxy.client)
+            inspector = ResourceInspector(
+                proxy.client,
+                self._actions_map(),
+                lambda: self._model_cls(),
+                options.region,
+                self.account_id,
+            )
             paginator = proxy.get_paginator("list_clusters", "clusterArns")
 
-            from loguru import logger
+            async for cluster_arns in paginator.paginate():
+                if not cluster_arns:
+                    continue
 
-            try:
-                async for cluster_arns in paginator.paginate():
-                    if not cluster_arns:
-                        continue
-
-                    clusters: list[ECSCluster] = await inspector.inspect_batch(
-                        cluster_arns, options.include
-                    )
-                    results = [cluster.dict(exclude_none=True) for cluster in clusters]
-                    yield results
-            except Exception as e:
-                logger.error(f"Error during ECS cluster pagination: {e}")
-                raise
+                clusters = await inspector.inspect_batch(cluster_arns, options.include)
+                yield [cluster.dict(exclude_none=True) for cluster in clusters]

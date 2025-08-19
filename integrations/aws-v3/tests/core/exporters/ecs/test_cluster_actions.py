@@ -4,9 +4,11 @@ import pytest
 from aws.core.exporters.ecs.cluster.actions import (
     ECSClusterDetailsAction,
     GetClusterPendingTasksAction,
+    GetClusterArnAction,
     ECSClusterActionsMap,
 )
-from aws.core.interfaces.action import IAction, IBatchAction
+from aws.core.interfaces.action import Action, BatchAPIAction
+
 
 # Type ignore for mock ECS client methods throughout this file
 # mypy: disable-error-code=attr-defined
@@ -28,8 +30,8 @@ class TestECSClusterDetailsAction:
         return ECSClusterDetailsAction(mock_client)
 
     def test_inheritance(self, action: ECSClusterDetailsAction) -> None:
-        """Test that the action inherits from IBatchAction."""
-        assert isinstance(action, IBatchAction)
+        """Test that the action inherits from BatchAPIAction."""
+        assert isinstance(action, BatchAPIAction)
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.cluster.actions.logger")
@@ -130,8 +132,8 @@ class TestGetClusterPendingTasksAction:
         return GetClusterPendingTasksAction(mock_client)
 
     def test_inheritance(self, action: GetClusterPendingTasksAction) -> None:
-        """Test that the action inherits from IAction."""
-        assert isinstance(action, IAction)
+        """Test that the action inherits from Action."""
+        assert isinstance(action, Action)
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.cluster.actions.logger")
@@ -245,21 +247,23 @@ class TestECSClusterActionsMap:
         """Test that defaults contains the correct action."""
         actions_map = ECSClusterActionsMap()
         assert ECSClusterDetailsAction in actions_map.defaults
-        assert len(actions_map.defaults) == 1
+        assert GetClusterArnAction in actions_map.defaults
+        assert len(actions_map.defaults) == 2
 
-    def test_optional_contains_get_cluster_pending_tasks_action(self) -> None:
-        """Test that optional contains the correct action."""
+    def test_options_contains_get_cluster_pending_tasks_action(self) -> None:
+        """Test that options contains the correct action."""
         actions_map = ECSClusterActionsMap()
-        assert GetClusterPendingTasksAction in actions_map.optional
-        assert len(actions_map.optional) == 1
+        assert GetClusterPendingTasksAction in actions_map.options
+        assert len(actions_map.options) == 1
 
     def test_merge_with_empty_include(self) -> None:
         """Test merge with empty include list."""
         actions_map = ECSClusterActionsMap()
         result = actions_map.merge([])
 
-        assert len(result) == 1
+        assert len(result) == 2
         assert ECSClusterDetailsAction in result
+        assert GetClusterArnAction in result
         assert GetClusterPendingTasksAction not in result
 
     def test_merge_with_pending_tasks_action(self) -> None:
@@ -267,8 +271,9 @@ class TestECSClusterActionsMap:
         actions_map = ECSClusterActionsMap()
         result = actions_map.merge(["GetClusterPendingTasksAction"])
 
-        assert len(result) == 2
+        assert len(result) == 3
         assert ECSClusterDetailsAction in result
+        assert GetClusterArnAction in result
         assert GetClusterPendingTasksAction in result
 
     def test_merge_with_unknown_action(self) -> None:
@@ -276,8 +281,9 @@ class TestECSClusterActionsMap:
         actions_map = ECSClusterActionsMap()
         result = actions_map.merge(["UnknownAction"])
 
-        assert len(result) == 1
+        assert len(result) == 2
         assert ECSClusterDetailsAction in result
+        assert GetClusterArnAction in result
         assert GetClusterPendingTasksAction not in result
 
     def test_merge_with_multiple_actions(self) -> None:
@@ -285,6 +291,7 @@ class TestECSClusterActionsMap:
         actions_map = ECSClusterActionsMap()
         result = actions_map.merge(["GetClusterPendingTasksAction", "UnknownAction"])
 
-        assert len(result) == 2
+        assert len(result) == 3
         assert ECSClusterDetailsAction in result
+        assert GetClusterArnAction in result
         assert GetClusterPendingTasksAction in result

@@ -17,40 +17,35 @@ class Action(ABC):
     async def _execute(self, identifier: Any) -> Dict[str, Any]: ...
 
 
-class IBatchAction(IAction):
-    """Interface for actions that support batch execution"""
+class DataAction(Action):
+    """Actions that transform/derive data (no API calls) - always fast"""
 
-    def __init__(self, client: AioBaseClient) -> None:
-        self.client: AioBaseClient = client
-
-    async def execute_batch(self, identifiers: List[str]) -> List[Dict[str, Any]]:
-        """Execute action for multiple identifiers in batch"""
-        response = await self._execute_batch(identifiers)
-        return response
+    async def _execute(self, identifier: Any) -> Dict[str, Any]:
+        return await self._transform_data(identifier)
 
     @abstractmethod
-    async def _execute_batch(self, identifiers: List[str]) -> List[Dict[str, Any]]: ...
+    async def _transform_data(self, identifier: Any) -> Dict[str, Any]: ...
+
+
+class APIAction(Action):
+    """Actions that make single API calls to external services"""
+
+    @abstractmethod
+    async def _execute(self, identifier: Any) -> Dict[str, Any]: ...
+
+
+class BatchAPIAction(Action):
+    """Actions that support efficient batch API calls"""
+
+    async def execute_batch(self, identifiers: List[str]) -> List[Dict[str, Any]]:
+        """Execute action for multiple identifiers using efficient batch API"""
+        return await self._execute_batch(identifiers)
 
     @abstractmethod
     async def _execute(self, identifier: str) -> Dict[str, Any]: ...
 
-
-class IBatchAction(IAction):
-    """Interface for actions that support batch execution"""
-
-    def __init__(self, client: AioBaseClient) -> None:
-        self.client: AioBaseClient = client
-
-    async def execute_batch(self, identifiers: List[str]) -> List[Dict[str, Any]]:
-        """Execute action for multiple identifiers in batch"""
-        response = await self._execute_batch(identifiers)
-        return response
-
     @abstractmethod
     async def _execute_batch(self, identifiers: List[str]) -> List[Dict[str, Any]]: ...
-
-    @abstractmethod
-    async def _execute(self, identifier: str) -> Dict[str, Any]: ...
 
 
 class ActionMap(Protocol):

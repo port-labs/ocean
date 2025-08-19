@@ -1,11 +1,8 @@
-from pydantic import Field
-from aws.core.exporters.ecs.base_options import ExporterOptions
+from aws.core.exporters.ecs.cluster.models import (
+    SingleECSClusterRequest,
+    PaginatedECSClusterRequest,
+)
 
-
-class SingleECSClusterExporterOptions(ExporterOptions):
-    """Options for exporting a single ECS cluster."""
-
-    cluster_arn: str = Field(..., description="The ARN of the ECS cluster to export")
-
-
-class PaginatedECSClusterExporterOptions(ExporterOptions): ...
+# Re-export the request models for backward compatibility
+SingleECSClusterExporterOptions = SingleECSClusterRequest
+PaginatedECSClusterExporterOptions = PaginatedECSClusterRequest

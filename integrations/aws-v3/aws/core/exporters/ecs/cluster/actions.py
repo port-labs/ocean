@@ -1,19 +1,22 @@
 from typing import Dict, Any, List, Type
-from aws.core.interfaces.action import IAction, IActionMap, IBatchAction
+from aws.core.interfaces.action import (
+    Action,
+    DataAction,
+    APIAction,
+    BatchAPIAction,
+    ActionMap,
+)
 from loguru import logger
 from aws.core.helpers.utils import extract_resource_name_from_arn
 
 
-class ECSClusterDetailsAction(IBatchAction):
-    """Single action that handles all ECS cluster details in one API call"""
+class ECSClusterDetailsAction(BatchAPIAction):
 
     async def _execute(self, cluster_arn: str) -> Dict[str, Any]:
-        """Support single-cluster execution by delegating to batch implementation."""
         clusters = await self._execute_batch([cluster_arn])
         return clusters[0] if clusters else {}
 
     async def _execute_batch(self, cluster_arns: List[str]) -> List[Dict[str, Any]]:
-        """Execute describe_clusters for multiple clusters in a single API call"""
         if not cluster_arns:
             return []
 
@@ -29,8 +32,7 @@ class ECSClusterDetailsAction(IBatchAction):
         return clusters
 
 
-class GetClusterPendingTasksAction(IAction):
-    """Action to get pending task ARNs for a cluster"""
+class GetClusterPendingTasksAction(APIAction):
 
     async def _execute(self, cluster_arn: str) -> Dict[str, Any]:
         """Get up to 100 pending task ARNs for a cluster"""
@@ -45,15 +47,26 @@ class GetClusterPendingTasksAction(IAction):
         return {"pendingTaskArns": task_arns}
 
 
-class ECSClusterActionsMap(IActionMap):
-    defaults: List[Type[IAction]] = [
+class GetClusterArnAction(DataAction):
+    async def _transform_data(self, cluster_arn: str) -> Dict[str, Any]:
+        return {"clusterArn": cluster_arn}
+
+
+class ECSClusterActionsMap(ActionMap):
+    defaults: List[Type[Action]] = [
+        GetClusterArnAction,
         ECSClusterDetailsAction,
     ]
-    optional: List[Type[IAction]] = [
+
+    options: List[Type[Action]] = [
         GetClusterPendingTasksAction,
     ]
 
-    def merge(self, include: List[str]) -> List[Type[IAction]]:
+    def merge(self, include: List[str]) -> List[Type[Action]]:
+        """Merge default actions with requested optional actions."""
+        if not include:
+            return self.defaults
+
         return self.defaults + [
-            action for action in self.optional if action.__name__ in include
+            action for action in self.options if action.__name__ in include
         ]

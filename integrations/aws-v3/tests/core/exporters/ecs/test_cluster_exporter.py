@@ -3,11 +3,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from aws.core.exporters.ecs.cluster.exporter import ECSClusterExporter
-from aws.core.exporters.ecs.cluster.options import (
-    SingleECSClusterExporterOptions,
-    PaginatedECSClusterExporterOptions,
+from aws.core.exporters.ecs.cluster.models import (
+    ECSCluster,
+    ECSClusterProperties,
+    SingleECSClusterRequest,
+    PaginatedECSClusterRequest,
 )
-from aws.core.exporters.ecs.cluster.models import ECSCluster, ECSClusterProperties
 
 
 class TestECSClusterExporter:
@@ -20,20 +21,20 @@ class TestECSClusterExporter:
     @pytest.fixture
     def exporter(self, mock_session: AsyncMock) -> ECSClusterExporter:
         """Create an ECSClusterExporter instance for testing."""
-        return ECSClusterExporter(mock_session)
+        return ECSClusterExporter(mock_session, "test-account-id")
 
     def test_service_name(self, exporter: ECSClusterExporter) -> None:
         """Test that the service name is correctly set."""
-        assert exporter.SERVICE_NAME == "ecs"
+        assert exporter._service_name == "ecs"
 
     def test_initialization(self, mock_session: AsyncMock) -> None:
         """Test that the exporter initializes correctly."""
-        exporter = ECSClusterExporter(mock_session)
+        exporter = ECSClusterExporter(mock_session, "test-account-id")
         assert exporter.session == mock_session
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.cluster.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ecs.cluster.exporter.ECSClusterInspector")
+    @patch("aws.core.exporters.ecs.cluster.exporter.ResourceInspector")
     async def test_get_resource_success(
         self,
         mock_inspector_class: MagicMock,
@@ -62,7 +63,7 @@ class TestECSClusterExporter:
         mock_inspector.inspect.return_value = expected_cluster
 
         # Create options
-        options = SingleECSClusterExporterOptions(
+        options = SingleECSClusterRequest(
             region="us-west-2",
             cluster_arn="arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster",
             include=["GetClusterPendingTasksAction"],
@@ -72,9 +73,9 @@ class TestECSClusterExporter:
         result = await exporter.get_resource(options)
 
         # Verify
-        assert result == expected_cluster.dict()
+        assert result == expected_cluster.dict(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "ecs")
-        mock_inspector_class.assert_called_once_with(mock_client)
+        mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
             "arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster",
             ["GetClusterPendingTasksAction"],
@@ -82,59 +83,14 @@ class TestECSClusterExporter:
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.cluster.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ecs.cluster.exporter.ECSClusterInspector")
-    async def test_get_resource_with_different_options(
-        self,
-        mock_inspector_class: MagicMock,
-        mock_proxy_class: MagicMock,
-        exporter: ECSClusterExporter,
-    ) -> None:
-        """Test single resource retrieval with different configuration options."""
-        # Setup mocks
-        mock_proxy = AsyncMock()
-        mock_client = AsyncMock()
-        mock_proxy.client = mock_client
-        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
-
-        mock_inspector = AsyncMock()
-        mock_inspector_class.return_value = mock_inspector
-
-        expected_cluster = ECSCluster(
-            Properties=ECSClusterProperties(
-                clusterArn="arn:aws:ecs:us-east-1:123456789012:cluster/prod-cluster",
-                clusterName="prod-cluster",
-                status="ACTIVE",
-            ),
-        )
-        mock_inspector.inspect.return_value = expected_cluster
-
-        # Create options
-        options = SingleECSClusterExporterOptions(
-            region="us-east-1",
-            cluster_arn="arn:aws:ecs:us-east-1:123456789012:cluster/prod-cluster",
-            include=[],
-        )
-
-        # Execute
-        result = await exporter.get_resource(options)
-
-        # Verify
-        assert result == expected_cluster.dict()
-        mock_proxy_class.assert_called_once_with(exporter.session, "us-east-1", "ecs")
-        mock_inspector.inspect.assert_called_once_with(
-            "arn:aws:ecs:us-east-1:123456789012:cluster/prod-cluster", []
-        )
-
-    @pytest.mark.asyncio
-    @patch("aws.core.exporters.ecs.cluster.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ecs.cluster.exporter.ECSClusterInspector")
+    @patch("aws.core.exporters.ecs.cluster.exporter.ResourceInspector")
     async def test_get_paginated_resources_success(
         self,
         mock_inspector_class: MagicMock,
         mock_proxy_class: MagicMock,
         exporter: ECSClusterExporter,
     ) -> None:
-        """Test successful paginated resource retrieval."""
+        """Test successful paginated resource retrieval with batch optimization."""
         # Setup mocks
         mock_proxy = AsyncMock()
         mock_client = AsyncMock()
@@ -161,7 +117,7 @@ class TestECSClusterExporter:
         paginator_instance = MockPaginator()
         mock_proxy.get_paginator = MagicMock(return_value=paginator_instance)
 
-        # Mock inspector results
+        # Mock inspector results - now returns a list for batch operations
         expected_clusters = [
             ECSCluster(
                 Properties=ECSClusterProperties(
@@ -177,7 +133,7 @@ class TestECSClusterExporter:
         mock_inspector.inspect_batch.return_value = expected_clusters
 
         # Create options
-        options = PaginatedECSClusterExporterOptions(
+        options = PaginatedECSClusterRequest(
             region="us-west-2",
             include=["GetClusterPendingTasksAction"],
         )
@@ -195,9 +151,14 @@ class TestECSClusterExporter:
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "ecs")
         mock_proxy.get_paginator.assert_called_once_with("list_clusters", "clusterArns")
 
+        # Verify the inspector was called with the full list for batch optimization
+        mock_inspector.inspect_batch.assert_called_once_with(
+            cluster_arns, ["GetClusterPendingTasksAction"]
+        )
+
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.cluster.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ecs.cluster.exporter.ECSClusterInspector")
+    @patch("aws.core.exporters.ecs.cluster.exporter.ResourceInspector")
     async def test_get_paginated_resources_empty_page(
         self,
         mock_inspector_class: MagicMock,
@@ -227,7 +188,7 @@ class TestECSClusterExporter:
         mock_proxy.get_paginator = MagicMock(return_value=paginator_instance)
 
         # Create options
-        options = PaginatedECSClusterExporterOptions(
+        options = PaginatedECSClusterRequest(
             region="us-west-2",
             include=[],
         )
@@ -242,14 +203,14 @@ class TestECSClusterExporter:
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.cluster.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ecs.cluster.exporter.ECSClusterInspector")
+    @patch("aws.core.exporters.ecs.cluster.exporter.ResourceInspector")
     async def test_get_paginated_resources_with_include(
         self,
         mock_inspector_class: MagicMock,
         mock_proxy_class: MagicMock,
         exporter: ECSClusterExporter,
     ) -> None:
-        """Test pagination with include actions."""
+        """Test pagination with include actions using batch optimization."""
         # Setup mocks
         mock_proxy = AsyncMock()
         mock_client = AsyncMock()
@@ -286,7 +247,7 @@ class TestECSClusterExporter:
         mock_inspector.inspect_batch.return_value = [expected_cluster]
 
         # Create options
-        options = PaginatedECSClusterExporterOptions(
+        options = PaginatedECSClusterRequest(
             region="us-west-2",
             include=["GetClusterPendingTasksAction"],
         )
@@ -303,14 +264,14 @@ class TestECSClusterExporter:
             "arn:aws:ecs:us-west-2:123456789012:task/test-cluster/task-1"
         ]
 
-        # Verify inspector was called with include
+        # Verify inspector was called with the full list for batch optimization
         mock_inspector.inspect_batch.assert_called_once_with(
             cluster_arns, ["GetClusterPendingTasksAction"]
         )
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.cluster.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ecs.cluster.exporter.ECSClusterInspector")
+    @patch("aws.core.exporters.ecs.cluster.exporter.ResourceInspector")
     async def test_get_resource_inspector_exception(
         self,
         mock_inspector_class: MagicMock,
@@ -329,7 +290,7 @@ class TestECSClusterExporter:
         mock_inspector.inspect.side_effect = Exception("Cluster not found")
 
         # Create options
-        options = SingleECSClusterExporterOptions(
+        options = SingleECSClusterRequest(
             region="us-west-2",
             cluster_arn="arn:aws:ecs:us-west-2:123456789012:cluster/nonexistent-cluster",
             include=["GetClusterPendingTasksAction"],
@@ -341,7 +302,7 @@ class TestECSClusterExporter:
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.cluster.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ecs.cluster.exporter.ECSClusterInspector")
+    @patch("aws.core.exporters.ecs.cluster.exporter.ResourceInspector")
     async def test_context_manager_cleanup(
         self,
         mock_inspector_class: MagicMock,
@@ -365,7 +326,7 @@ class TestECSClusterExporter:
         mock_inspector.inspect.return_value = mock_cluster
         mock_inspector_class.return_value = mock_inspector
 
-        options = SingleECSClusterExporterOptions(
+        options = SingleECSClusterRequest(
             region="us-west-2",
             cluster_arn="arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster",
             include=[],

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 
 
 class ResourceModel[PropertiesT: BaseModel](BaseModel):
@@ -9,10 +9,14 @@ class ResourceModel[PropertiesT: BaseModel](BaseModel):
     Attributes:
         Type (str): The AWS resource type identifier (e.g., "AWS::S3::Bucket").
         Properties (PropertiesT): The properties of the AWS resource, typed as a Pydantic model.
+        __Region (str): The AWS region where the resource is located.
+        __AccountId (str): The AWS account ID that owns the resource.
     """
 
     Type: str
     Properties: PropertiesT
+    __Region: Optional[str] = None
+    __AccountId: Optional[str] = None
 
     class Config:
         extra = "ignore"

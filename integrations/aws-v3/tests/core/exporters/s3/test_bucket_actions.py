@@ -9,7 +9,7 @@ from aws.core.exporters.s3.bucket.actions import (
     GetBucketEncryptionAction,
     GetBucketTaggingAction,
 )
-from aws.core.interfaces.action import IAction
+from aws.core.interfaces.action import Action
 
 # Type ignore for mock S3 client methods throughout this file
 # mypy: disable-error-code=attr-defined
@@ -32,7 +32,7 @@ class TestGetBucketPublicAccessBlockAction:
 
     def test_inheritance(self, action: GetBucketPublicAccessBlockAction) -> None:
         """Test that the action inherits from IAction."""
-        assert isinstance(action, IAction)
+        assert isinstance(action, Action)
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.actions.logger")
@@ -114,8 +114,8 @@ class TestGetBucketOwnershipControlsAction:
         return GetBucketOwnershipControlsAction(mock_client)
 
     def test_inheritance(self, action: GetBucketOwnershipControlsAction) -> None:
-        """Test that the action inherits from IAction."""
-        assert isinstance(action, IAction)
+        """Test that the action inherits from Action."""
+        assert isinstance(action, Action)
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.actions.logger")
@@ -157,8 +157,8 @@ class TestGetBucketEncryptionAction:
         return GetBucketEncryptionAction(mock_client)
 
     def test_inheritance(self, action: GetBucketEncryptionAction) -> None:
-        """Test that the action inherits from IAction."""
-        assert isinstance(action, IAction)
+        """Test that the action inherits from Action."""
+        assert isinstance(action, Action)
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.actions.logger")
@@ -230,8 +230,8 @@ class TestGetBucketTaggingAction:
         return GetBucketTaggingAction(mock_client)
 
     def test_inheritance(self, action: GetBucketTaggingAction) -> None:
-        """Test that the action inherits from IAction."""
-        assert isinstance(action, IAction)
+        """Test that the action inherits from Action."""
+        assert isinstance(action, Action)
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.actions.logger")

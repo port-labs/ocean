@@ -194,7 +194,7 @@ class TestECSClusterModels:
                 {"capacityProvider": "FARGATE", "weight": 1}
             ],
             settings=[{"name": "containerInsights", "value": "enabled"}],
-            configuration={"executeCommandConfiguration": {"logging": "DEFAULT"}},
+            configurations=[{"executeCommandConfiguration": {"logging": "DEFAULT"}}],
             statistics=[{"name": "cpuUtilization", "value": "75.5"}],
             tags=[{"key": "Environment", "value": "test"}],
             attachments=[{"id": "attachment-1", "type": "capacity-provider"}],
@@ -223,9 +223,9 @@ class TestECSClusterModels:
         assert properties.settings == [
             {"name": "containerInsights", "value": "enabled"}
         ]
-        assert properties.configuration == {
-            "executeCommandConfiguration": {"logging": "DEFAULT"}
-        }
+        assert properties.configurations == [
+            {"executeCommandConfiguration": {"logging": "DEFAULT"}}
+        ]
         assert properties.statistics == [{"name": "cpuUtilization", "value": "75.5"}]
         assert properties.tags == [{"key": "Environment", "value": "test"}]
         assert properties.attachments == [
