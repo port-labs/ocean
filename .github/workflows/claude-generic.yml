@@ -15,6 +15,7 @@ jobs:
   claude-generic:
     env:
       GITHUB_TOKEN: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
