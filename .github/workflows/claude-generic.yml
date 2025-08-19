@@ -10,12 +10,16 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
         
 jobs:
   claude-generic:
     env:
       GITHUB_TOKEN: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
-      GH_TOKEN: ${{ secrets.PORT_MACHINE_USER_GITHUB_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    permissions:
+      contents: write
+      pull-requests: write 
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
