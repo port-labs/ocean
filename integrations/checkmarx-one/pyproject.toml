@@ -1,16 +1,13 @@
 [tool.poetry]
-name = "aws-v3"
-version = "0.2.10-dev"
-description = "AWS"
-authors = ["Shariff Mohammed <mohammed.s@getport.io>"]
+name = "checkmarx-one"
+version = "0.1.0-dev"
+description = "An integration for checkmarx project, scan and scan results types"
+authors = ["victor adebayo <victor.adebayo@port.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.27.8", extras = ["cli"]}
-aiobotocore = "^2.23.0"
-boto3-stubs = {extras = ["sts"], version = "^1.39.3"}
-types-aiobotocore = {extras = ["sts"], version = "^2.23.0"}
-aiofiles = "^24.1.0"
+port_ocean = { version = "^0.27.7", extras = ["cli"] }
+aiolimiter = "^1.2.1"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
@@ -24,8 +21,6 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
-types-aiofiles = "^24.1.0.20250708"
-yamllint = "^1.37.1"
 
 [tool.towncrier]
 directory = "changelog"
@@ -90,8 +85,6 @@ disallow_untyped_defs = true
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
-target-version = "py312"
-
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

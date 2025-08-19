@@ -140,7 +140,7 @@ class TestResyncStrategyFactory:
                     async for _ in strategy.get_account_sessions():
                         break
                 assert isinstance(strategy, SingleAccountStrategy)
-                assert isinstance(strategy.provider, StaticCredentialProvider)
+                assert isinstance(strategy.provider, AssumeRoleProvider)
                 mock_healthcheck.assert_called_once()
 
     @pytest.mark.asyncio
@@ -157,7 +157,7 @@ class TestResyncStrategyFactory:
                     async for _ in strategy.get_account_sessions():
                         break
                 assert isinstance(strategy, SingleAccountStrategy)
-                assert isinstance(strategy.provider, StaticCredentialProvider)
+                assert isinstance(strategy.provider, AssumeRoleProvider)
                 mock_healthcheck.assert_called_once()
 
     @pytest.mark.asyncio
@@ -176,7 +176,7 @@ class TestResyncStrategyFactory:
 
             # Should prioritize multi-account when account_role_arn is present
             assert isinstance(strategy, MultiAccountStrategy)
-            assert isinstance(strategy.provider, AssumeRoleProvider)
+            assert isinstance(strategy.provider, StaticCredentialProvider)
 
 
 class TestGetAllAccountSessions:
