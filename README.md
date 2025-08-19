@@ -8,6 +8,8 @@
 Ocean is an innovative solution developed by Port to seamlessly integrate various third-party systems with our developer portal product,
 empowering engineers to effortlessly prioritize key features and streamline the integration process.
 
+Our vision is to create a unified ecosystem where developers can easily connect and manage all their tools and services through a single, intuitive interface.
+
 ## Prerequisites
 
 - Python 3.11
