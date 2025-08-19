@@ -1,4 +1,4 @@
-from typing import Self, TypedDict
+from typing import Self, TypedDict, List
 from aws.core.modeling.resource_models import ResourceModel
 from pydantic import BaseModel
 
@@ -31,7 +31,7 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
 
     Example:
         >>> builder = ResourceBuilder(MyResourceModel(Type="...", Properties=MyProperties()), "eu-west-1", "123456789")
-        >>> resource = builder.with_properties({"Name": "example"}).with_metadata({"__Kind": "AWS::S3::Bucket"}).build()
+        >>> resource = builder.with_properties([{"Name": "example"}, {"Tags": [{"Key": "Env", "Value": "prod"}]}]).with_metadata({"__Kind": "AWS::S3::Bucket"}).build()
     """
 
     def __init__(self, model: ResourceModelT, region: str, account_id: str) -> None:
@@ -46,23 +46,34 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         self._model = model
         self._region = region
         self._account_id = account_id
+
         self._props_set = False
 
-    def with_properties(self, data: PropertiesData) -> Self:
+    def with_properties(self, properties: List[PropertiesData]) -> Self:
         """
-        Set multiple fields in the resource's `Properties` attribute.
+        Set properties in the resource's `Properties` attribute.
+        Merges multiple property dictionaries into the model.
 
         Args:
-            data: A dictionary of property names and their corresponding values to set.
+            properties: A list of property dictionaries to merge.
 
         Returns:
             Self: The builder instance for method chaining.
         """
-        current_properties = self._model.Properties.dict()
-        updated_properties = {**current_properties, **data}
+        all_properties = {}
+        for props in properties:
+            if props:
+                all_properties.update(props)
 
-        self._model.Properties = self._model.Properties.__class__(**updated_properties)
-        self._props_set = True
+        if all_properties:
+            current_properties = self._model.Properties.dict()
+            updated_properties = {**current_properties, **all_properties}
+
+            self._model.Properties = self._model.Properties.__class__(
+                **updated_properties
+            )
+            self._props_set = True
+
         return self
 
     def with_metadata(self, data: MetadataData) -> Self:
@@ -90,7 +101,7 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         """
         if not self._props_set:
             raise ValueError(
-                "No data has been set for the resource model, use `with_data` to set data."
+                "No data has been set for the resource model, use `with_properties` to set data."
             )
 
         return self._model.copy(

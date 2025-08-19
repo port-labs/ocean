@@ -1,13 +1,9 @@
-from typing import List, Dict, Any, Callable, Optional, AsyncIterator
+from typing import List, Dict, Any, Callable, Optional
 from loguru import logger
 import asyncio
 from aws.core.interfaces.action import Action, ActionMap, BatchAPIAction
 from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.modeling.resource_models import ResourceModel
-from port_ocean.utils.async_iterators import (
-    stream_async_iterators_tasks,
-    semaphore_async_iterator,
-)
 
 
 class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
@@ -25,7 +21,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         model_factory: Callable[[], ResourceModelT],
         region: Optional[str] = None,
         account_id: Optional[str] = None,
-        max_concurrent_requests: int = 20,
+        max_concurrent_requests: int = 15,
     ) -> None:
         """
         Initialize the ResourceInspector.
@@ -96,7 +92,6 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             if isinstance(action, BatchAPIAction):
                 return await action.execute_batch(identifiers)
 
-            # Execute individual calls concurrently
             return await self._execute(action, identifiers)
 
         except Exception as e:
@@ -129,24 +124,20 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             List of built resource models.
         """
         valid_results = [result for result in action_results if result]
-
         if not valid_results:
             return []
 
-        results_per_identifier = list(zip(*valid_results))
+        return [
+            self._build_model(identifier_results)
+            for identifier_results in zip(*valid_results)
+        ]
 
-        models = []
-        for identifier_results in results_per_identifier:
-            region = self.region or ""
-            account_id = self.account_id or ""
-            builder: ResourceBuilder[ResourceModelT, Any] = ResourceBuilder(
-                self.model_factory(), region, account_id
-            )
+    def _build_model(self, identifier_results: List[Dict[str, Any]]) -> ResourceModelT:
+        """Build a resource model from identifier results using ResourceBuilder."""
+        builder = ResourceBuilder(
+            self.model_factory(), self.region or "", self.account_id or ""
+        )
 
-            for result in identifier_results:
-                if result:
-                    builder.with_properties(result)
+        builder.with_properties(identifier_results)
 
-            models.append(builder.build())
-
-        return models
+        return builder.build()
