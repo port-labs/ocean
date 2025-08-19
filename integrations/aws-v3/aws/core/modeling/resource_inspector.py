@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Callable, Optional
 from loguru import logger
 import asyncio
 from aws.core.interfaces.action import Action, ActionMap, BatchAPIAction
-from aws.core.modeling.resource_builder import ResourceBuilder
+from aws.core.modeling.resource_builder import ResourceBuilder, PropertiesData
 from aws.core.modeling.resource_models import ResourceModel
 
 
@@ -134,10 +134,14 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
 
     def _build_model(self, identifier_results: List[Dict[str, Any]]) -> ResourceModelT:
         """Build a resource model from identifier results using ResourceBuilder."""
-        builder = ResourceBuilder(
+        builder: ResourceBuilder[ResourceModelT, Any] = ResourceBuilder(
             self.model_factory(), self.region or "", self.account_id or ""
         )
 
-        builder.with_properties(identifier_results)
+        # Convert Dict[str, Any] to PropertiesData for type compatibility
+        properties_data: List[PropertiesData] = [
+            PropertiesData(**result) for result in identifier_results
+        ]
+        builder.with_properties(properties_data)
 
         return builder.build()

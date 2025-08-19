@@ -1,4 +1,4 @@
-from typing import Self, TypedDict, List
+from typing import Self, TypedDict, List, Any
 from aws.core.modeling.resource_models import ResourceModel
 from pydantic import BaseModel
 
@@ -60,7 +60,7 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         Returns:
             Self: The builder instance for method chaining.
         """
-        all_properties = {}
+        all_properties: dict[str, Any] = {}
         for props in properties:
             if props:
                 all_properties.update(props)
