@@ -11,7 +11,7 @@ permissions:
   contents: write
   packages: write
   pull-requests: write
-        
+
 jobs:
   claude-generic:
     env:
@@ -19,12 +19,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     permissions:
       contents: write
-      pull-requests: write 
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Configure Git 
+      - name: Configure Git
         run: |
           git config --global user.name "Port Claude AI"
           git config --global user.email "port-claude-ai@port.io"
