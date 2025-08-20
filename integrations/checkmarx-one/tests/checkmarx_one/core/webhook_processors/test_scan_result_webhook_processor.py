@@ -6,6 +6,7 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from checkmarx_one.core.webhook_processors.scan_result_webhook_processor import (
     ScanResultWebhookProcessor,
 )
+from checkmarx_one.utils import CheckmarxEventType
 
 
 class TestScanResultWebhookProcessor:
@@ -16,7 +17,7 @@ class TestScanResultWebhookProcessor:
     @pytest.fixture
     def valid_completed_scan_payload(self) -> dict[str, Any]:
         return {
-            "event_type": "Completed Scan",
+            "event_type": CheckmarxEventType.SCAN_COMPLETED,
             "scan": {
                 "id": "test-scan-id",
                 "status": "completed",
@@ -27,7 +28,7 @@ class TestScanResultWebhookProcessor:
     @pytest.fixture
     def invalid_payload(self) -> dict[str, Any]:
         return {
-            "event_type": "Failed Scan",  # Wrong event type
+            "event_type": CheckmarxEventType.SCAN_FAILED,  # Wrong event type
             "scan": {
                 "id": "test-scan-id",
                 "status": "failed",
@@ -100,6 +101,8 @@ class TestScanResultWebhookProcessor:
         self, processor: ScanResultWebhookProcessor
     ) -> None:
         """Test that payloads missing required fields are rejected."""
-        incomplete_payload = {"event_type": "Completed Scan"}  # Missing scan
+        incomplete_payload = {
+            "event_type": CheckmarxEventType.SCAN_COMPLETED
+        }  # Missing scan
         result = await processor.validate_payload(incomplete_payload)
         assert result is False

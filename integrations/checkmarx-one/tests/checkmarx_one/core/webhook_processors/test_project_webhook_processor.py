@@ -6,6 +6,7 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from checkmarx_one.core.webhook_processors.project_webhook_processor import (
     ProjectWebhookProcessor,
 )
+from checkmarx_one.utils import CheckmarxEventType
 
 
 class TestProjectWebhookProcessor:
@@ -16,7 +17,7 @@ class TestProjectWebhookProcessor:
     @pytest.fixture
     def valid_project_payload(self) -> dict[str, Any]:
         return {
-            "event_type": "Project Created",
+            "event_type": CheckmarxEventType.PROJECT_CREATED,
             "project": {
                 "id": "test-project-id",
                 "name": "Test Project",
@@ -27,7 +28,7 @@ class TestProjectWebhookProcessor:
     @pytest.fixture
     def invalid_payload(self) -> dict[str, Any]:
         return {
-            "event_type": "Completed Scan",  # Wrong event type
+            "event_type": CheckmarxEventType.SCAN_COMPLETED,  # Wrong event type
             "scan": {"id": "test-scan-id"},
         }
 
@@ -86,6 +87,8 @@ class TestProjectWebhookProcessor:
         self, processor: ProjectWebhookProcessor
     ) -> None:
         """Test that payloads missing required fields are rejected."""
-        incomplete_payload = {"event_type": "Project Created"}  # Missing project
+        incomplete_payload = {
+            "event_type": CheckmarxEventType.PROJECT_CREATED
+        }  # Missing project
         result = await processor.validate_payload(incomplete_payload)
         assert result is False

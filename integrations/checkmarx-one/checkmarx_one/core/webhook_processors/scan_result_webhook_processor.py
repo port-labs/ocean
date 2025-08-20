@@ -5,7 +5,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from loguru import logger
-from checkmarx_one.utils import ObjectKind
+from checkmarx_one.utils import CheckmarxEventType, ObjectKind
 from checkmarx_one.exporter_factory import create_scan_result_exporter
 from checkmarx_one.core.options import ListScanResultOptions
 from .abstract_webhook_processor import CheckmarxOneAbstractWebhookProcessor
@@ -17,7 +17,7 @@ class ScanResultWebhookProcessor(CheckmarxOneAbstractWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Validate that the event is a scan completion event that may have results."""
         event_type = event.payload.get("event_type", "")
-        return event_type == "Completed Scan"
+        return event_type == CheckmarxEventType.SCAN_COMPLETED
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.SCAN_RESULT]

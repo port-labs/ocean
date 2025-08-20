@@ -5,7 +5,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from loguru import logger
-from checkmarx_one.utils import ObjectKind
+from checkmarx_one.utils import CheckmarxEventType, ObjectKind
 from checkmarx_one.exporter_factory import create_project_exporter
 from checkmarx_one.core.options import SingleProjectOptions
 from .abstract_webhook_processor import CheckmarxOneAbstractWebhookProcessor
@@ -16,10 +16,8 @@ class ProjectWebhookProcessor(CheckmarxOneAbstractWebhookProcessor):
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Validate that the event is a project creation event."""
-        # Check if the event type indicates project creation
-        # Based on Checkmarx One documentation, this would be "Project Created"
         event_type = event.payload.get("event_type", "")
-        return event_type == "Project Created"
+        return event_type == CheckmarxEventType.PROJECT_CREATED
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.PROJECT]
