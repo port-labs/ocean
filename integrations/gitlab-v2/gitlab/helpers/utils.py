@@ -63,3 +63,25 @@ def parse_file_content(
             "Returning raw content."
         )
         return content
+
+
+def enrich_resources_with_project(
+    resources: list[dict[str, Any]], project_map: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """
+    Enrich resources with their corresponding project data.
+
+    Args:
+        resources: List of resources that have a 'project_id' field
+        project_map: Dictionary mapping project IDs to project data
+
+    Returns:
+        List of resources enriched with '__project' field containing project data.
+        Resources without matching projects are included with '__project' set to None.
+    """
+    enriched_resources = []
+    for resource in resources:
+        project_id = str(resource["project_id"])
+        enriched_resource = {**resource, "__project": project_map.get(project_id)}
+        enriched_resources.append(enriched_resource)
+    return enriched_resources
