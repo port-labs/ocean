@@ -20,6 +20,7 @@ query OrgMemberQuery(
         nodes {{
           login
           email
+          name
         }}
         pageInfo {{
         ...PageInfoFields
@@ -34,6 +35,7 @@ FETCH_GITHUB_USER_GQL = """
             user(login: $login) {
                 login
                 email
+                name
             }
         }
         """
@@ -61,6 +63,8 @@ query getTeamMembers(
         members(first: $memberFirst, after: $memberAfter){{
           nodes{{
             login
+            name
+            email
             isSiteAdmin
           }}
 
