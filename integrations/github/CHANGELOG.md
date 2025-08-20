@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.3.1-beta (2025-08-19)
+
+
+### Improvements
+
+- Include name in GraphQL response for User and Team Member Kind
+
+
 ## 1.3.0-beta (2025-08-18)
 
 
