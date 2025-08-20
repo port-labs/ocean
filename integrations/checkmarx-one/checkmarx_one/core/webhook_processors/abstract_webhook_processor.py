@@ -27,7 +27,7 @@ class CheckmarxOneAbstractWebhookProcessor(AbstractWebhookProcessor):
         If no secret is configured, validation is bypassed.
         """
 
-        secret = ocean.integration_config["webhook_secret"]
+        secret = ocean.integration_config.get("webhook_secret")
 
         if not secret:
             logger.warning(
