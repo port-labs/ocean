@@ -1,26 +1,17 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-# Mock port_ocean imports before importing the module under test
-with patch.dict(
-    "sys.modules",
-    {
-        "port_ocean.core.ocean_types": MagicMock(),
-        "port_ocean.core.integrations.base": MagicMock(),
-        "port_ocean.utils.cache": MagicMock(),
-    },
-):
-    from checkmarx_one.exporter_factory import (
-        create_project_exporter,
-        create_scan_exporter,
-        create_scan_result_exporter,
-    )
-    from checkmarx_one.clients.client import CheckmarxOneClient
-    from checkmarx_one.core.exporters.project_exporter import CheckmarxProjectExporter
-    from checkmarx_one.core.exporters.scan_exporter import CheckmarxScanExporter
-    from checkmarx_one.core.exporters.scan_result_exporter import (
-        CheckmarxScanResultExporter,
-    )
+from checkmarx_one.exporter_factory import (
+    create_project_exporter,
+    create_scan_exporter,
+    create_scan_result_exporter,
+)
+from checkmarx_one.clients.client import CheckmarxOneClient
+from checkmarx_one.core.exporters.project_exporter import CheckmarxProjectExporter
+from checkmarx_one.core.exporters.scan_exporter import CheckmarxScanExporter
+from checkmarx_one.core.exporters.scan_result_exporter import (
+    CheckmarxScanResultExporter,
+)
 
 
 class TestExporterFactory:

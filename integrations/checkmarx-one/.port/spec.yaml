@@ -54,3 +54,12 @@ configurations:
     description: |
       Checkmarx One API Key.
       Generate in: Settings > Identity and Access Management > API Keys
+
+  - name: webhook_secret
+    required: false
+    type: string
+    sensitive: true
+    description: |
+      Webhook secret for authenticating incoming webhook requests.
+      This should match the secret configured in your Checkmarx One webhook settings.
+      If not provided, webhook signature verification will be skipped.

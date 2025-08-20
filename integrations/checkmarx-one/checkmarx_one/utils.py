@@ -14,3 +14,10 @@ class IgnoredError(NamedTuple):
     status: int | str
     message: Optional[str] = None
     type: Optional[str] = None
+
+
+class CheckmarxEventType:
+    PROJECT_CREATED = "project.created"
+    SCAN_COMPLETED = "scan.completed"
+    SCAN_FAILED = "scan.failed"
+    SCAN_PARTIAL = "scan.partial"
