@@ -62,6 +62,7 @@ class SyncState:
 class MetricResourceKind:
     RECONCILIATION = "__reconciliation__"
     RESYNC = "__resync__"
+    RUNTIME = "__runtime__"
 
 
 # Registry for core and custom metrics
@@ -279,7 +280,7 @@ class Metrics:
         try:
             return metric_resource.metric_resource.metric_resource_kind
         except ResourceContextNotFoundError:
-            return "__runtime__"
+            return MetricResourceKind.RUNTIME
 
     def generate_latest(self) -> str:
         return prometheus_client.openmetrics.exposition.generate_latest(
