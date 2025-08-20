@@ -1,5 +1,3 @@
-from typing import Any
-import pytest
 
 from gitlab.helpers.utils import enrich_resources_with_project
 
