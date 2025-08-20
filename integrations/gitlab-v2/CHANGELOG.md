@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.20 (2025-08-20)
+
+
+### Improvements
+
+- Enrich pipelines with project data when resyncing pipelines.
+
+
 ## 0.2.19 (2025-08-18)
 
 

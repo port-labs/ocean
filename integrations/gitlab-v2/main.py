@@ -9,7 +9,7 @@ from port_ocean.utils.async_iterators import (
 )
 import asyncio
 from gitlab.clients.client_factory import create_gitlab_client
-from gitlab.helpers.utils import ObjectKind
+from gitlab.helpers.utils import ObjectKind, enrich_resources_with_project
 from integration import (
     GitLabFilesResourceConfig,
     ProjectResourceConfig,
@@ -118,17 +118,9 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             projects_batch, "pipelines"
         ):
             if pipelines_batch:
-                enriched_pipelines = []
-
-                for pipeline in pipelines_batch:
-                    project_id = str(pipeline["project_id"])
-                    if project_id in project_map:
-                        enriched_pipeline = {
-                            **pipeline,
-                            "__project": project_map[project_id],
-                        }
-                        enriched_pipelines.append(enriched_pipeline)
-
+                enriched_pipelines = enrich_resources_with_project(
+                    pipelines_batch, project_map
+                )
                 if enriched_pipelines:
                     yield enriched_pipelines
 
