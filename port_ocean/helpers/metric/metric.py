@@ -296,7 +296,6 @@ class Metrics:
         if kinds is None:
             return None
 
-        logger.info("Reporting sync metrics for kinds", kinds=kinds)
         metrics = []
 
         if blueprints is None:
@@ -305,8 +304,6 @@ class Metrics:
         for kind, blueprint in zip(kinds, blueprints):
             metric = self.generate_metrics(metric_name, kind, blueprint)
             metrics.extend(metric)
-
-        logger.info("Generated metrics", metrics=metrics, kinds=kinds)
 
         try:
             await self.port_client.post_integration_sync_metrics(metrics)
