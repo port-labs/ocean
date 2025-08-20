@@ -5,7 +5,7 @@ import types
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from aiolimiter import AsyncLimiter
-from typing import Any, Dict, List, Generator
+from typing import Any, Dict, List, Generator, Callable
 
 # Provide lightweight stubs for port_ocean imports used by the integration
 if "port_ocean" not in sys.modules:
@@ -48,6 +48,21 @@ class _StubHttpAsyncClient:
 
 
 utils_stub.http_async_client = _StubHttpAsyncClient()
+
+# Create cache stub
+cache_stub: Any = types.ModuleType("port_ocean.utils.cache")
+sys.modules["port_ocean.utils.cache"] = cache_stub
+
+
+def cache_iterator_result() -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        return func
+
+    return decorator
+
+
+cache_stub.cache_iterator_result = cache_iterator_result
+
 sys.modules["port_ocean.utils"] = utils_stub
 
 errors_stub: Any = types.ModuleType("port_ocean.cache.errors")
@@ -74,6 +89,108 @@ ocean_stub.ocean = SimpleNamespace(
     )
 )
 sys.modules["port_ocean.context.ocean"] = ocean_stub
+
+# Create webhook stubs
+handlers_stub: Any = types.ModuleType("port_ocean.core.handlers")
+sys.modules["port_ocean.core.handlers"] = handlers_stub
+
+webhook_stub: Any = types.ModuleType("port_ocean.core.handlers.webhook")
+sys.modules["port_ocean.core.handlers.webhook"] = webhook_stub
+
+
+# Create WebhookEvent class stub
+class WebhookEvent:
+    def __init__(
+        self,
+        payload: Dict[str, Any],
+        headers: Dict[str, Any],
+        _original_request: Any = None,
+    ) -> None:
+        self.payload = payload
+        self.headers = headers
+        self._original_request = _original_request
+
+
+class EventPayload:
+    pass
+
+
+class EventHeaders:
+    pass
+
+
+class WebhookEventRawResults:
+    def __init__(
+        self,
+        updated_raw_results: List[Dict[str, Any]],
+        deleted_raw_results: List[Dict[str, Any]],
+    ) -> None:
+        self.updated_raw_results = updated_raw_results
+        self.deleted_raw_results = deleted_raw_results
+
+
+webhook_stub.WebhookEvent = WebhookEvent
+webhook_stub.EventPayload = EventPayload
+webhook_stub.EventHeaders = EventHeaders
+webhook_stub.WebhookEventRawResults = WebhookEventRawResults
+
+# Create webhook_event module stub
+webhook_event_stub: Any = types.ModuleType(
+    "port_ocean.core.handlers.webhook.webhook_event"
+)
+sys.modules["port_ocean.core.handlers.webhook.webhook_event"] = webhook_event_stub
+webhook_event_stub.WebhookEvent = WebhookEvent
+webhook_event_stub.EventPayload = EventPayload
+webhook_event_stub.EventHeaders = EventHeaders
+webhook_event_stub.WebhookEventRawResults = WebhookEventRawResults
+
+# Create port_app_config stubs
+port_app_config_stub: Any = types.ModuleType("port_ocean.core.handlers.port_app_config")
+sys.modules["port_ocean.core.handlers.port_app_config"] = port_app_config_stub
+
+models_stub: Any = types.ModuleType("port_ocean.core.handlers.port_app_config.models")
+sys.modules["port_ocean.core.handlers.port_app_config.models"] = models_stub
+
+
+class ResourceConfig:
+    def __init__(self, **kwargs: Any) -> None:
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
+models_stub.ResourceConfig = ResourceConfig
+
+# Create abstract webhook processor stub
+abstract_webhook_processor_stub: Any = types.ModuleType(
+    "port_ocean.core.handlers.webhook.abstract_webhook_processor"
+)
+sys.modules["port_ocean.core.handlers.webhook.abstract_webhook_processor"] = (
+    abstract_webhook_processor_stub
+)
+
+
+class AbstractWebhookProcessor:
+    async def authenticate(
+        self, payload: Dict[str, Any], headers: Dict[str, Any]
+    ) -> bool:
+        return True
+
+    async def should_process_event(self, event: WebhookEvent) -> bool:
+        return True
+
+    async def validate_payload(self, payload: Dict[str, Any]) -> bool:
+        return True
+
+    async def get_matching_kinds(self, event: WebhookEvent) -> List[str]:
+        return []
+
+    async def handle_event(
+        self, payload: Dict[str, Any], resource_config: ResourceConfig
+    ) -> WebhookEventRawResults:
+        return WebhookEventRawResults([], [])
+
+
+abstract_webhook_processor_stub.AbstractWebhookProcessor = AbstractWebhookProcessor
 
 
 # Lightweight replacement for initialize_port_ocean_context used in tests
