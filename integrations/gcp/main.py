@@ -104,12 +104,16 @@ async def setup_real_time_request_controllers() -> None:
     global PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE
     global BACKGROUND_TASK_THRESHOLD
     if not ocean.event_listener_type == "ONCE":
-        (
-            PROJECT_V3_GET_REQUESTS_RATE_LIMITER,
-            PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE,
-        ) = typing.cast(
-            tuple[PersistentAsyncLimiter, asyncio.BoundedSemaphore],
-            await resolve_request_controllers(AssetTypesWithSpecialHandling.PROJECT),
+        default_quota = int(
+            ocean.integration_config.get("search_all_resources_per_minute_quota", 400)
+        )
+        effective_quota = max(int(default_quota * 0.8), 1)
+
+        PROJECT_V3_GET_REQUESTS_RATE_LIMITER = PersistentAsyncLimiter.get_limiter(
+            max_rate=effective_quota
+        )
+        PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE = asyncio.BoundedSemaphore(
+            effective_quota
         )
         BACKGROUND_TASK_THRESHOLD = float(
             PROJECT_V3_GET_REQUESTS_RATE_LIMITER.max_rate * 10
@@ -199,7 +203,7 @@ async def process_realtime_event(
     do not time out while waiting for rate-limited operations to complete. It is triggered
     by the real-time events handler when a new event is received.
 
-    ROJECT_V3_GET_REQUESTS_RATE_LIMITER is provided as a static value instead of being dynamic because all real-time events
+    PROJECT_V3_GET_REQUESTS_RATE_LIMITER is provided as a static value instead of being dynamic because all real-time events
     needs to share the same instance of the limiter and it had to be instantiated on start for this to be possible.
     The dynamic initialization of the limiter will make it impossible to share the same instance across all event context.
     """
