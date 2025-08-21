@@ -18,7 +18,7 @@ jobs:
         folder: ${{ fromJson(needs.detect-changes.outputs.integrations) }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install poetry
         run: pipx install 'poetry>=1.0.0,<2.0.0'
