@@ -16,7 +16,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.infra == 'true' }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure AWS Credentials 🔒
         id: aws-credentials
