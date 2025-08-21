@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.66 (2025-08-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.9
+
+
+## 0.1.65 (2025-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.8
+
+
+## 0.1.64 (2025-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.7
+
+
+## 0.1.63 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 0.1.62 (2025-08-13)
+
+
+### Bug Fixes
+
+- Fixed bug in pagination where params were not being reset after each batch of data is fetched
+
+
+## 0.1.61 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 0.1.60 (2025-08-11)
+
+
+### Features
+
+- Added support for multi-token rotation, modified rate limiter class by adding `can_acquire()` method to check availability without consuming slots and updated client.py to use the token manager when applicable while maintaining backward compatibility and test coverage
+
+
+## 0.1.59 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
 ## 0.1.58 (2025-08-11)
 
 
@@ -75,8 +139,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Bug Fix
-- Fixed bug in file kind live events where tracked file does not get upserted to port
 
+- Fixed bug in file kind live events where tracked file does not get upserted to port
 - Fixed bug in file kind live event causing tracked file not getting deleted from port when file has been deleted from bitbucket repo.
 
 

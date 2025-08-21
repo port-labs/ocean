@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.3.2-beta (2025-08-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.9
+
+
+## 1.3.1-beta (2025-08-19)
+
+
+### Improvements
+
+- Include name in GraphQL response for User and Team Member Kind
+
+
+## 1.3.0-beta (2025-08-18)
+
+
+### Improvements
+
+- Added maxResults and since config options to include closed PRs during export
+- Added Batch limiting (max 100 closed PRs) to prevent performance issues
+- Modified Webhook processor to update (not delete) closed PRs when maxResults flag is enabled
+
+
+## 1.2.11-beta (2025-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.8
+
+
+## 1.2.10-beta (2025-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.7
+
+
+## 1.2.9-beta (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 1.2.8-beta (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 1.2.7-beta (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
 ## 1.2.6-beta (2025-08-11)
 
 
