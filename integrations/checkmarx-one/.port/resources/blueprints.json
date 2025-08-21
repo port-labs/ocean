@@ -104,7 +104,7 @@
     "calculationProperties": {},
     "identifier": "checkmarxSscs-secret-detection",
     "title": "Checkmarx Scan Result for SSCS",
-    "icon": "AppRunner",
+    "icon": "Checkmarx",
     "schema": {
       "properties": {
         "type": {
@@ -254,7 +254,7 @@
     "calculationProperties": {},
     "identifier": "checkmarxSscs-scorecard",
     "title": "Checkmarx Scan Result for SSCS",
-    "icon": "AppRunner",
+    "icon": "Checkmarx",
     "schema": {
       "properties": {
         "type": {
@@ -375,7 +375,7 @@
     "calculationProperties": {},
     "identifier": "checkmarxSast",
     "title": "Checkmarx Scan Result for SAST",
-    "icon": "AppRunner",
+    "icon": "Checkmarx",
     "schema": {
       "properties": {
         "type": {
@@ -524,7 +524,7 @@
     "calculationProperties": {},
     "identifier": "checkmarxSca",
     "title": "Checkmarx Scan Result for SCA",
-    "icon": "AppRunner",
+    "icon": "Checkmarx",
     "schema": {
       "properties": {
         "type": {
@@ -674,7 +674,7 @@
     "calculationProperties": {},
     "identifier": "checkmarxKics",
     "title": "Checkmarx Scan Result for KICS",
-    "icon": "AppRunner",
+    "icon": "Checkmarx",
     "schema": {
       "properties": {
         "type": {
@@ -824,7 +824,7 @@
     "calculationProperties": {},
     "identifier": "checkmarxContainers",
     "title": "Checkmarx Scan Result",
-    "icon": "AppRunner",
+    "icon": "Checkmarx",
     "schema": {
       "properties": {
         "type": {
