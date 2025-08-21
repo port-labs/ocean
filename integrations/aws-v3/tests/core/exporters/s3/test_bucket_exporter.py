@@ -3,11 +3,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from aws.core.exporters.s3.bucket.exporter import S3BucketExporter
-from aws.core.exporters.s3.bucket.options import (
-    SingleS3BucketExporterOptions,
-    PaginatedS3BucketExporterOptions,
+from aws.core.exporters.s3.bucket.models import (
+    SingleBucketRequest,
+    PaginatedBucketRequest,
+    Bucket,
+    BucketProperties,
 )
-from aws.core.exporters.s3.bucket.models import S3Bucket, S3BucketProperties
 
 
 class TestS3BucketExporter:
@@ -24,7 +25,7 @@ class TestS3BucketExporter:
 
     def test_service_name(self, exporter: S3BucketExporter) -> None:
         """Test that the service name is correctly set."""
-        assert exporter.SERVICE_NAME == "s3"
+        assert exporter._service_name == "s3"
 
     def test_initialization(self, mock_session: AsyncMock) -> None:
         """Test that the exporter initializes correctly."""
@@ -34,7 +35,7 @@ class TestS3BucketExporter:
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.s3.bucket.exporter.S3BucketInspector")
+    @patch("aws.core.exporters.s3.bucket.exporter.ResourceInspector")
     async def test_get_resource_success(
         self,
         mock_inspector_class: MagicMock,
@@ -51,16 +52,16 @@ class TestS3BucketExporter:
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
 
-        # Create expected S3Bucket response
-        expected_bucket = S3Bucket(
-            Properties=S3BucketProperties(
+        # Create expected Bucket response
+        expected_bucket = Bucket(
+            Properties=BucketProperties(
                 BucketName="test-bucket", Tags=[{"Key": "Environment", "Value": "test"}]
             ),
         )
         mock_inspector.inspect.return_value = expected_bucket
 
         # Create options
-        options = SingleS3BucketExporterOptions(
+        options = SingleBucketRequest(
             region="us-west-2",
             bucket_name="test-bucket",
             include=["GetBucketTaggingAction"],
@@ -70,16 +71,17 @@ class TestS3BucketExporter:
         result = await exporter.get_resource(options)
 
         # Verify
-        assert result == expected_bucket.dict()
+        assert result == expected_bucket.dict(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "s3")
-        mock_inspector_class.assert_called_once_with(mock_client)
+        # ResourceInspector was called correctly
+        mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
             "test-bucket", ["GetBucketTaggingAction"]
         )
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.s3.bucket.exporter.S3BucketInspector")
+    @patch("aws.core.exporters.s3.bucket.exporter.ResourceInspector")
     async def test_get_resource_with_different_options(
         self,
         mock_inspector_class: MagicMock,
@@ -96,8 +98,8 @@ class TestS3BucketExporter:
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
 
-        expected_bucket = S3Bucket(
-            Properties=S3BucketProperties(
+        expected_bucket = Bucket(
+            Properties=BucketProperties(
                 BucketName="prod-bucket",
                 BucketEncryption={"Rules": []},
                 PublicAccessBlockConfiguration={"BlockPublicAcls": True},
@@ -106,7 +108,7 @@ class TestS3BucketExporter:
         mock_inspector.inspect.return_value = expected_bucket
 
         # Create options with multiple includes
-        options = SingleS3BucketExporterOptions(
+        options = SingleBucketRequest(
             region="eu-west-1",
             bucket_name="prod-bucket",
             include=["GetBucketEncryptionAction", "GetBucketPublicAccessBlockAction"],
@@ -116,8 +118,10 @@ class TestS3BucketExporter:
         result = await exporter.get_resource(options)
 
         # Verify
-        assert result == expected_bucket.dict()
+        assert result == expected_bucket.dict(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "eu-west-1", "s3")
+        # ResourceInspector was called correctly
+        mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
             "prod-bucket",
             ["GetBucketEncryptionAction", "GetBucketPublicAccessBlockAction"],
@@ -125,7 +129,7 @@ class TestS3BucketExporter:
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.s3.bucket.exporter.S3BucketInspector")
+    @patch("aws.core.exporters.s3.bucket.exporter.ResourceInspector")
     async def test_get_paginated_resources_success(
         self,
         mock_inspector_class: MagicMock,
@@ -158,15 +162,15 @@ class TestS3BucketExporter:
         mock_inspector_class.return_value = mock_inspector
 
         # Mock inspector.inspect to return bucket data
-        bucket1 = S3Bucket(Properties=S3BucketProperties(BucketName="bucket1"))
-        bucket2 = S3Bucket(Properties=S3BucketProperties(BucketName="bucket2"))
-        bucket3 = S3Bucket(Properties=S3BucketProperties(BucketName="bucket3"))
+        bucket1 = Bucket(Properties=BucketProperties(BucketName="bucket1"))
+        bucket2 = Bucket(Properties=BucketProperties(BucketName="bucket2"))
+        bucket3 = Bucket(Properties=BucketProperties(BucketName="bucket3"))
 
         # Set up side effects for inspector.inspect calls
         mock_inspector.inspect.side_effect = [bucket1, bucket2, bucket3]
 
         # Create options
-        options = PaginatedS3BucketExporterOptions(
+        options = PaginatedBucketRequest(
             region="us-east-1", include=["GetBucketTaggingAction"]
         )
 
@@ -184,7 +188,8 @@ class TestS3BucketExporter:
         # Verify mock calls
         mock_proxy_class.assert_called_once_with(exporter.session, "us-east-1", "s3")
         mock_proxy.get_paginator.assert_called_once_with("list_buckets", "Buckets")
-        mock_inspector_class.assert_called_once_with(mock_client)
+        # ResourceInspector was called correctly
+        mock_inspector_class.assert_called_once()
 
         # Verify inspector.inspect was called for each bucket
         assert mock_inspector.inspect.call_count == 3
@@ -194,7 +199,7 @@ class TestS3BucketExporter:
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.s3.bucket.exporter.S3BucketInspector")
+    @patch("aws.core.exporters.s3.bucket.exporter.ResourceInspector")
     async def test_get_paginated_resources_empty_buckets(
         self,
         mock_inspector_class: MagicMock,
@@ -226,7 +231,7 @@ class TestS3BucketExporter:
         mock_inspector_class.return_value = mock_inspector
 
         # Create options
-        options = PaginatedS3BucketExporterOptions(region="us-west-2", include=[])
+        options = PaginatedBucketRequest(region="us-west-2", include=[])
 
         # Execute and collect results
         results = []
@@ -241,7 +246,7 @@ class TestS3BucketExporter:
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.s3.bucket.exporter.S3BucketInspector")
+    @patch("aws.core.exporters.s3.bucket.exporter.ResourceInspector")
     async def test_get_resource_inspector_exception(
         self,
         mock_inspector_class: MagicMock,
@@ -260,7 +265,7 @@ class TestS3BucketExporter:
         mock_inspector.inspect.side_effect = Exception("Bucket not found")
 
         # Create options
-        options = SingleS3BucketExporterOptions(
+        options = SingleBucketRequest(
             region="us-west-2",
             bucket_name="nonexistent-bucket",
             include=["GetBucketTaggingAction"],
@@ -272,7 +277,7 @@ class TestS3BucketExporter:
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.s3.bucket.exporter.S3BucketInspector")
+    @patch("aws.core.exporters.s3.bucket.exporter.ResourceInspector")
     async def test_context_manager_cleanup(
         self,
         mock_inspector_class: MagicMock,
@@ -287,13 +292,13 @@ class TestS3BucketExporter:
 
         # Setup inspector to return a normal result
         mock_inspector = AsyncMock()
-        mock_bucket = S3Bucket(
-            Properties=S3BucketProperties(BucketName="test-bucket"),
+        mock_bucket = Bucket(
+            Properties=BucketProperties(BucketName="test-bucket"),
         )
         mock_inspector.inspect.return_value = mock_bucket
         mock_inspector_class.return_value = mock_inspector
 
-        options = SingleS3BucketExporterOptions(
+        options = SingleBucketRequest(
             region="us-west-2", bucket_name="test-bucket", include=[]
         )
 

@@ -6,7 +6,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from integration import AWSResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
 from aws.core.exporters.s3 import S3BucketExporter
-from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
+from aws.core.helpers.utils import get_allowed_regions
 from aws.core.helpers.types import ObjectKind
 from aws.core.exporters.s3.bucket.models import PaginatedBucketRequest
 from loguru import logger
@@ -49,5 +49,4 @@ async def resync_s3_bucket(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             regions, options_factory, exporter
         ):
             logger.info(f"Found {len(batch)} S3 buckets for account {account['Id']}")
-            logger.info(batch[:10])
             yield batch
