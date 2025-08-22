@@ -38,6 +38,7 @@ from gcp_core.utils import (
     get_current_resource_config,
     get_credentials_json,
     resolve_request_controllers,
+    get_initial_quota_for_project_via_rest,
 )
 
 PROJECT_V3_GET_REQUESTS_RATE_LIMITER: PersistentAsyncLimiter
@@ -104,11 +105,7 @@ async def setup_real_time_request_controllers() -> None:
     global PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE
     global BACKGROUND_TASK_THRESHOLD
     if not ocean.event_listener_type == "ONCE":
-        default_quota = int(
-            ocean.integration_config.get("search_all_resources_per_minute_quota", 400)
-        )
-        effective_quota = max(int(default_quota * 0.8), 1)
-
+        effective_quota = await get_initial_quota_for_project_via_rest()
         PROJECT_V3_GET_REQUESTS_RATE_LIMITER = PersistentAsyncLimiter.get_limiter(
             max_rate=effective_quota
         )

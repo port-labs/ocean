@@ -2,6 +2,7 @@ import enum
 import base64
 import os
 import typing
+from typing import List, Dict
 from collections.abc import MutableSequence
 from typing import Any, TypedDict, Tuple, Optional
 from gcp_core.errors import ResourceNotFoundError
@@ -21,6 +22,11 @@ from gcp_core.helpers.ratelimiter.overrides import (
     PubSubAdministratorPerMinutePerProject,
     ProjectGetRequestsPerMinutePerProject,
 )
+from google.auth import default as google_auth_default
+from google.auth.transport.requests import Request as GoogleAuthRequest
+import asyncio
+from port_ocean.utils.async_http import http_async_client
+from httpx import HTTPError
 
 search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
 pubsub_administrator_per_minute_per_project = PubSubAdministratorPerMinutePerProject()
@@ -30,6 +36,12 @@ EXTRA_PROJECT_FIELD = "__project"
 DEFAULT_CREDENTIALS_FILE_PATH = (
     f"{Path.home()}/.config/gcloud/application_default_credentials.json"
 )
+
+CLOUD_QUOTAS_SCOPE = "https://www.googleapis.com/auth/cloud-platform.read-only"
+CLOUD_QUOTAS_BASE_URL = "https://cloudquotas.googleapis.com/v1/"
+_QUOTA_PERCENTAGE = 0.8
+_INITIAL_QUOTA_MAX_RETRIES = 3
+_INITIAL_QUOTA_TIMEOUT = 10.0
 
 if typing.TYPE_CHECKING:
     from asyncio import BoundedSemaphore
@@ -238,3 +250,58 @@ async def resolve_request_controllers(
 ) -> Tuple[(AsyncLimiter | PersistentAsyncLimiter), "BoundedSemaphore"]:
     service_account_project_id = get_service_account_project_id()
     return await get_quotas_for_project(service_account_project_id, kind)
+
+
+async def _get_oauth_token(scope: str = CLOUD_QUOTAS_SCOPE) -> str:
+    """
+    Get OAuth token for the given scope.
+    """
+    creds, _ = google_auth_default(scopes=[scope])
+    if not creds.valid or creds.expired:
+        await asyncio.to_thread(creds.refresh, GoogleAuthRequest())
+    return str(creds.token)
+
+
+async def fetch_quota_info_rest(
+    name: str
+) -> List[Dict[str, Any]]:
+    """
+    Fetch quota info from the REST API.
+    """
+    token = await _get_oauth_token()
+    url = f"{CLOUD_QUOTAS_BASE_URL}{name}"
+    headers = {"Authorization": f"Bearer {token}"}
+    backoff = 1.0
+    for _ in range(_INITIAL_QUOTA_MAX_RETRIES):
+        try:
+            response = await http_async_client.get(url, headers=headers, timeout=_INITIAL_QUOTA_TIMEOUT)
+            response.raise_for_status()
+            data = response.json()
+            dims = data.get("dimensionsInfos", [])
+            return dims if isinstance(dims, list) else []
+        except (HTTPError, Exception) as e:
+            logger.error(f"[fetch_quota_info_rest] Error: {e}")
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 10.0)
+            continue
+    return []
+
+
+async def get_initial_quota_for_project_via_rest() -> int:
+    project_id = get_service_account_project_id()
+    name = (
+        f"projects/{project_id}/locations/global/services/"
+        f"cloudresourcemanager.googleapis.com/quotaInfos/ProjectV3GetRequestsPerMinutePerProject"
+    )
+    dims = await fetch_quota_info_rest(name)
+    logger.debug(f"[get_initial_quota_for_project_via_rest] dims: {dims}")
+    if not dims:
+        default_quota = int(
+            ocean.integration_config.get("search_all_resources_per_minute_quota", 400)
+        )
+        logger.debug(f"[get_initial_quota_for_project_via_rest] no dims, using default_quota: {default_quota}")
+        return max(int(default_quota * _QUOTA_PERCENTAGE), 1)
+
+    least = min(dims, key=lambda info: int(info["details"]["value"]))
+    value = int(least["details"]["value"])
+    return max(int(round(value * _QUOTA_PERCENTAGE)), 1)
