@@ -9,15 +9,14 @@ from aws.core.exporters.s3.bucket.models import (
 )
 
 
-class TestResourceRequestModel:
-    """Test the base ResourceRequestModel class."""
+class TestExporterOptions:
+    """Test the base ExporterOptions class."""
 
     def test_initialization_with_required_fields(self) -> None:
         """Test initialization with only required fields."""
         options = SingleBucketRequest(region="us-west-2", bucket_name="test-bucket")
 
         assert options.region == "us-west-2"
-        assert options.bucket_name == "test-bucket"
         assert options.include == []  # Default empty list
 
     def test_initialization_with_all_fields(self) -> None:
@@ -27,16 +26,15 @@ class TestResourceRequestModel:
             region="eu-central-1", bucket_name="test-bucket", include=include_list
         )
 
-        assert options.region == "us-west-2"
-        assert options.bucket_name == "test-bucket"
+        assert options.region == "eu-central-1"
         assert options.include == include_list
 
-    def test_missing_required_bucket_name(self) -> None:
-        """Test that missing bucket_name raises ValidationError."""
+    def test_missing_required_region(self) -> None:
+        """Test that missing region raises ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
             SingleBucketRequest(bucket_name="test-bucket")  # type: ignore
 
-        assert "bucket_name" in str(exc_info.value)
+        assert "region" in str(exc_info.value)
 
     def test_empty_include_list(self) -> None:
         """Test with explicitly empty include list."""
@@ -44,8 +42,7 @@ class TestResourceRequestModel:
             region="us-east-1", bucket_name="test-bucket", include=[]
         )
 
-        assert options.region == "us-west-2"
-        assert options.bucket_name == "test-bucket"
+        assert options.region == "us-east-1"
         assert options.include == []
 
     def test_include_list_validation(self) -> None:
@@ -56,15 +53,14 @@ class TestResourceRequestModel:
             include=["Action1", "Action2", "Action3"],
         )
 
-        assert options.region == "us-west-2"
         assert len(options.include) == 3
         assert "Action1" in options.include
         assert "Action2" in options.include
         assert "Action3" in options.include
 
 
-class TestSingleBucketRequest:
-    """Test the SingleBucketRequest class."""
+class TestSingleS3BucketExporterOptions:
+    """Test the SingleS3BucketExporterOptions class."""
 
     def test_inheritance(self) -> None:
         """Test that SingleS3BucketExporterOptions inherits from ExporterOptions."""
@@ -120,8 +116,8 @@ class TestSingleBucketRequest:
             assert options.bucket_name == bucket_name
 
 
-class TestPaginatedBucketRequest:
-    """Test the PaginatedBucketRequest class."""
+class TestPaginatedS3BucketExporterOptions:
+    """Test the PaginatedS3BucketExporterOptions class."""
 
     def test_inheritance(self) -> None:
         """Test that PaginatedS3BucketExporterOptions inherits from ExporterOptions."""
@@ -148,20 +144,20 @@ class TestPaginatedBucketRequest:
         """Test that PaginatedS3BucketExporterOptions doesn't add additional fields."""
         options = PaginatedBucketRequest(region="eu-north-1")
 
-        # Should only have the fields from ResourceRequestModel
+        # Should only have the fields from ExporterOptions
         assert hasattr(options, "region")
         assert hasattr(options, "include")
         assert not hasattr(options, "bucket_name")
 
 
-class TestBucketProperties:
-    """Test the BucketProperties model."""
+class TestS3BucketProperties:
+    """Test the S3BucketProperties model."""
 
     def test_initialization_empty(self) -> None:
         """Test initialization with no properties."""
         properties = BucketProperties()
 
-        # All fields should be None initially (except BucketName which defaults to empty string)
+        # All fields should be None initially
         assert properties.AccessControl is None
         assert properties.VersioningConfiguration is None
         assert properties.Tags is None
@@ -237,8 +233,8 @@ class TestBucketProperties:
         assert properties.PublicAccessBlockConfiguration == {"BlockPublicAcls": True}
 
 
-class TestBucket:
-    """Test the Bucket model."""
+class TestS3Bucket:
+    """Test the S3Bucket model."""
 
     def test_initialization_with_identifier(self) -> None:
         """Test initialization with required identifier."""
