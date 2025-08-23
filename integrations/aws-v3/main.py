@@ -28,7 +28,6 @@ async def _process_single_region(
     exporter: "IResourceExporter",
     account_id: str,
     kind: str,
-    is_global: bool = False,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     try:
         options = options_factory(region)
@@ -37,10 +36,6 @@ async def _process_single_region(
                 f"Found {len(batch)} {kind} for account {account_id} in region {region}"
             )
             yield batch
-
-        if is_global:
-            logger.info(f"Found {kind} resources in region {region}")
-            return
     except Exception as e:
         if is_access_denied_exception(e):
             logger.warning(
@@ -63,13 +58,18 @@ async def _handle_global_resource_resync(
     )
 
     for region in regions:
+        found_resources = False
         async for batch in _process_single_region(
-            region, options_factory, exporter, account_id, kind, is_global=True
+            region, options_factory, exporter, account_id, kind
         ):
             yield batch
+            found_resources = True
 
-    logger.info(f"No {kind} resources found in any region for account {account_id}")
-    yield []
+        if found_resources:
+            logger.info(
+                f"Found {kind} resources in region {region}, stopping global resource processing"
+            )
+            return
 
 
 async def _handle_regional_resource_resync(
