@@ -17,8 +17,9 @@ class IResourceExporter(ABC):
     _model: Type[ResourceBuilder[ResourceModel[BaseModel], Any]]
     _actions_map: Type[ActionMap]
 
-    def __init__(self, session: AioSession) -> None:
+    def __init__(self, session: AioSession, account_id: str) -> None:
         self.session = session
+        self.account_id = account_id
         self._client: AioBaseClient | None = None
 
     @abstractmethod

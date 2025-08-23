@@ -43,14 +43,16 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .Properties.Arn
-          title: .Identifier
+          identifier: .Properties.clusterArn
+          title: .Properties.clusterName
           blueprint: '"cloudResource"'
           properties:
-            kind: .__Kind
-            region: .__Region
-            tags: .Properties.Tags
-            arn: .Properties.Arn
-            link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
-          relations:
-            account: .__AccountId
+            kind: .Type
+            tags: .Properties.tags
+            arn: .Properties.clusterArn
+            status: .Properties.status
+            activeServicesCount: .Properties.activeServicesCount
+            pendingTasksCount: .Properties.pendingTasksCount
+            runningTasksCount: .Properties.runningTasksCount
+            registeredContainerInstancesCount: .Properties.registeredContainerInstancesCount
+            capacityProviders: .Properties.capacityProviders

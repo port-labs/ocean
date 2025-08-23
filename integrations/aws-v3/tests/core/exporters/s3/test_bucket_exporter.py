@@ -19,19 +19,28 @@ class TestS3BucketExporter:
         return AsyncMock()
 
     @pytest.fixture
-    def exporter(self, mock_session: AsyncMock) -> S3BucketExporter:
+    def mock_account_id(self) -> str:
+        """Create a mock account ID for testing."""
+        return "123456789012"
+
+    @pytest.fixture
+    def exporter(
+        self, mock_session: AsyncMock, mock_account_id: str
+    ) -> S3BucketExporter:
         """Create an S3BucketExporter instance for testing."""
-        return S3BucketExporter(mock_session)
+        return S3BucketExporter(mock_session, mock_account_id)
 
     def test_service_name(self, exporter: S3BucketExporter) -> None:
         """Test that the service name is correctly set."""
         assert exporter._service_name == "s3"
 
-    def test_initialization(self, mock_session: AsyncMock) -> None:
+    def test_initialization(
+        self, mock_session: AsyncMock, mock_account_id: str
+    ) -> None:
         """Test that the exporter initializes correctly."""
-        exporter = S3BucketExporter(mock_session)
+        exporter = S3BucketExporter(mock_session, mock_account_id)
         assert exporter.session == mock_session
-        assert exporter._client is None
+        assert exporter.account_id == mock_account_id
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
