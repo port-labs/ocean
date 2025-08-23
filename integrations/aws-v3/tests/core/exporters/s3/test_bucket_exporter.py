@@ -4,10 +4,10 @@ import pytest
 
 from aws.core.exporters.s3.bucket.exporter import S3BucketExporter
 from aws.core.exporters.s3.bucket.models import (
-    Bucket,
-    BucketProperties,
     SingleBucketRequest,
     PaginatedBucketRequest,
+    Bucket,
+    BucketProperties,
 )
 
 
@@ -82,6 +82,7 @@ class TestS3BucketExporter:
         # Verify
         assert result == expected_bucket.dict(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "s3")
+        # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
             "test-bucket", ["GetBucketTaggingAction"]
@@ -128,6 +129,8 @@ class TestS3BucketExporter:
         # Verify
         assert result == expected_bucket.dict(exclude_none=True)
         mock_proxy_class.assert_called_once_with(exporter.session, "eu-west-1", "s3")
+        # ResourceInspector was called correctly
+        mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
             "prod-bucket",
             ["GetBucketEncryptionAction", "GetBucketPublicAccessBlockAction"],
@@ -194,6 +197,7 @@ class TestS3BucketExporter:
         # Verify mock calls
         mock_proxy_class.assert_called_once_with(exporter.session, "us-east-1", "s3")
         mock_proxy.get_paginator.assert_called_once_with("list_buckets", "Buckets")
+        # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
 
         # Verify inspector.inspect was called for each bucket

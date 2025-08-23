@@ -31,7 +31,7 @@ class TestGetBucketPublicAccessBlockAction:
         return GetBucketPublicAccessBlockAction(mock_client)
 
     def test_inheritance(self, action: GetBucketPublicAccessBlockAction) -> None:
-        """Test that the action inherits from IAction."""
+        """Test that the action inherits from Action."""
         assert isinstance(action, Action)
 
     @pytest.mark.asyncio

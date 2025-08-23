@@ -91,6 +91,8 @@ class ResyncStateUpdater:
             value=int(status == IntegrationStateStatus.Completed),
         )
 
+        ocean.metrics.sync_state = status.value
+
         await ocean.metrics.send_metrics_to_webhook(
             kind=ocean.metrics.current_resource_kind()
         )

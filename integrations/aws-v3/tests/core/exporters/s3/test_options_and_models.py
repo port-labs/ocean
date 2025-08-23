@@ -7,7 +7,6 @@ from aws.core.exporters.s3.bucket.models import (
     SingleBucketRequest,
     PaginatedBucketRequest,
 )
-from aws.core.modeling.resource_models import ResourceRequestModel
 
 
 class TestResourceRequestModel:
@@ -25,7 +24,7 @@ class TestResourceRequestModel:
         """Test initialization with all fields."""
         include_list = ["GetBucketTaggingAction", "GetBucketEncryptionAction"]
         options = SingleBucketRequest(
-            region="us-west-2", bucket_name="test-bucket", include=include_list
+            region="eu-central-1", bucket_name="test-bucket", include=include_list
         )
 
         assert options.region == "us-west-2"
@@ -35,14 +34,14 @@ class TestResourceRequestModel:
     def test_missing_required_bucket_name(self) -> None:
         """Test that missing bucket_name raises ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
-            SingleBucketRequest()  # type: ignore
+            SingleBucketRequest(bucket_name="test-bucket")  # type: ignore
 
         assert "bucket_name" in str(exc_info.value)
 
     def test_empty_include_list(self) -> None:
         """Test with explicitly empty include list."""
         options = SingleBucketRequest(
-            region="us-west-2", bucket_name="test-bucket", include=[]
+            region="us-east-1", bucket_name="test-bucket", include=[]
         )
 
         assert options.region == "us-west-2"
@@ -52,7 +51,7 @@ class TestResourceRequestModel:
     def test_include_list_validation(self) -> None:
         """Test include list with various values."""
         options = SingleBucketRequest(
-            region="us-west-2",
+            region="ap-southeast-1",
             bucket_name="test-bucket",
             include=["Action1", "Action2", "Action3"],
         )
@@ -68,10 +67,10 @@ class TestSingleBucketRequest:
     """Test the SingleBucketRequest class."""
 
     def test_inheritance(self) -> None:
-        """Test that SingleBucketRequest inherits from ResourceRequestModel."""
+        """Test that SingleS3BucketExporterOptions inherits from ExporterOptions."""
         options = SingleBucketRequest(region="us-west-2", bucket_name="test-bucket")
 
-        assert isinstance(options, ResourceRequestModel)
+        assert isinstance(options, SingleBucketRequest)
 
     def test_initialization_with_required_fields(self) -> None:
         """Test initialization with required fields."""
@@ -125,10 +124,10 @@ class TestPaginatedBucketRequest:
     """Test the PaginatedBucketRequest class."""
 
     def test_inheritance(self) -> None:
-        """Test that PaginatedBucketRequest inherits from ResourceRequestModel."""
+        """Test that PaginatedS3BucketExporterOptions inherits from ExporterOptions."""
         options = PaginatedBucketRequest(region="us-west-2")
 
-        assert isinstance(options, ResourceRequestModel)
+        assert isinstance(options, PaginatedBucketRequest)
 
     def test_initialization_with_required_fields(self) -> None:
         """Test initialization with only required fields."""
@@ -146,7 +145,7 @@ class TestPaginatedBucketRequest:
         assert options.include == include_list
 
     def test_no_additional_fields(self) -> None:
-        """Test that PaginatedBucketRequest doesn't add additional fields."""
+        """Test that PaginatedS3BucketExporterOptions doesn't add additional fields."""
         options = PaginatedBucketRequest(region="eu-north-1")
 
         # Should only have the fields from ResourceRequestModel
@@ -167,7 +166,7 @@ class TestBucketProperties:
         assert properties.VersioningConfiguration is None
         assert properties.Tags is None
         assert properties.BucketEncryption is None
-        assert properties.BucketName == ""  # Defaults to empty string, not None
+        assert properties.BucketName == ""  # Default empty string
         assert properties.PublicAccessBlockConfiguration is None
 
     def test_initialization_with_properties(self) -> None:
