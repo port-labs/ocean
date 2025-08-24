@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "aws-v3"
-version = "0.3.1-dev"
+version = "0.3.2-dev"
 description = "AWS"
 authors = ["Shariff Mohammed <mohammed.s@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.27.9", extras = ["cli"]}
+port_ocean = {version = "^0.27.10", extras = ["cli"]}
 aiobotocore = "^2.23.0"
 boto3-stubs = {extras = ["sts"], version = "^1.39.3"}
 types-aiobotocore = {extras = ["sts"], version = "^2.23.0"}
