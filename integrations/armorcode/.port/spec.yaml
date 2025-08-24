@@ -1,0 +1,30 @@
+description: Armorcode integration for Port Ocean
+icon: Armorcode
+title: Armorcode
+features:
+  - type: exporter
+    section: Code Quality & Security
+    resources:
+      - kind: product
+      - kind: sub-product
+      - kind: finding
+configurations:
+  - name: armorcodeApiKey
+    required: true
+    type: string
+    sensitive: true
+    description: "Armorcode API key for authentication"
+  - name: armorcodeApiBaseUrl
+    type: string
+    required: false
+    description: The base URL for the Armorcode API.
+    default: https://app.armorcode.com
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: Secret used to sign and validate incoming webhooks from Armorcode.
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
