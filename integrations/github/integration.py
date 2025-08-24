@@ -70,9 +70,22 @@ class GithubFolderResourceConfig(ResourceConfig):
 
 
 class GithubPullRequestSelector(Selector):
-    state: Literal["open", "closed", "all"] = Field(
-        default="open",
-        description="Filter by pull request state (e.g., open, closed, all)",
+    states: list[Literal["open", "closed"]] = Field(
+        default=["open"],
+        description="Filter by pull request state (e.g., open, closed)",
+    )
+    max_results: int = Field(
+        alias="maxResults",
+        default=100,
+        ge=1,
+        le=300,
+        description="Limit the number of pull requests returned",
+    )
+    since: int = Field(
+        default=60,
+        ge=1,
+        le=90,
+        description="Only fetch pull requests created within the last N days (1-90 days)",
     )
 
 

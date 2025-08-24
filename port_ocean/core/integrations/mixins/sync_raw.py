@@ -977,6 +977,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             ocean.metrics.initialize_metrics(kinds)
             await ocean.metrics.report_sync_metrics(kinds=kinds, blueprints=blueprints)
 
+            async with metric_resource_context(MetricResourceKind.RUNTIME):
+                ocean.metrics.sync_state = SyncState.SYNCING
+                await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RUNTIME)
+                await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RUNTIME])
+
             # Clear cache
             await ocean.app.cache_provider.clear()
 
@@ -1011,8 +1016,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.warning(
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
                 )
+
+                async with metric_resource_context(MetricResourceKind.RUNTIME):
+                    ocean.metrics.sync_state = SyncState.FAILED
+                    await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RUNTIME)
+                    await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RUNTIME])
                 raise
             else:
+                async with metric_resource_context(MetricResourceKind.RECONCILIATION):
+                    ocean.metrics.sync_state = SyncState.SYNCING
+                    await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RECONCILIATION)
+                    await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
+
                 success = await self.resync_reconciliation(
                     creation_results,
                     did_fetched_current_state,
@@ -1020,9 +1035,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     app_config,
                     silent,
                 )
-                await ocean.metrics.report_sync_metrics(
-                    kinds=[MetricResourceKind.RECONCILIATION]
-                )
+
+                async with metric_resource_context(MetricResourceKind.RECONCILIATION):
+                    ocean.metrics.sync_state = SyncState.COMPLETED if success else SyncState.FAILED
+                    await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RECONCILIATION)
+                    await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
+
                 return success
             finally:
                 await ocean.app.cache_provider.clear()

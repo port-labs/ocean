@@ -212,7 +212,7 @@ class IntegrationClientMixin:
     async def post_integration_sync_metrics(
         self, metrics: list[dict[str, Any]]
     ) -> None:
-        logger.info("starting POST metrics request", metrics=metrics)
+        logger.debug("starting POST metrics request", metrics=metrics)
         metrics_attributes = await self.get_metrics_attributes()
         headers = await self.auth.headers()
         url = metrics_attributes["ingestUrl"] + "/syncMetrics"
@@ -224,7 +224,7 @@ class IntegrationClientMixin:
             },
         )
         handle_port_status_code(response, should_log=False)
-        logger.info("Finished POST metrics request")
+        logger.debug("Finished POST metrics request")
 
     async def put_integration_sync_metrics(self, kind_metrics: dict[str, Any]) -> None:
         logger.debug("starting PUT metrics request", kind_metrics=kind_metrics)
