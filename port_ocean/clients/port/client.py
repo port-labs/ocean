@@ -1,3 +1,5 @@
+from typing import Any
+
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
@@ -10,11 +12,10 @@ from port_ocean.clients.port.types import (
     KafkaCreds,
 )
 from port_ocean.clients.port.utils import (
-    handle_port_status_code,
     get_internal_http_client,
+    handle_port_status_code,
 )
 from port_ocean.exceptions.clients import KafkaCredentialsNotFound
-from typing import Any
 
 
 class PortClient(
@@ -32,6 +33,7 @@ class PortClient(
         integration_identifier: str,
         integration_type: str,
         integration_version: str,
+        ingest_url: str,
     ):
         self.api_url = f"{base_url}/v1"
         self.client = get_internal_http_client(self)
@@ -43,6 +45,7 @@ class PortClient(
             integration_identifier,
             integration_type,
             integration_version,
+            ingest_url,
         )
         EntityClientMixin.__init__(self, self.auth, self.client)
         IntegrationClientMixin.__init__(
