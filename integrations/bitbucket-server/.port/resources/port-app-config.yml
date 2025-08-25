@@ -40,7 +40,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id | tostring
+          identifier: (.toRef.repository.slug // .toRef.repository.project.key) + "-" + (.id|tostring)
           title: .title
           blueprint: '"bitbucketPullRequest"'
           properties:
