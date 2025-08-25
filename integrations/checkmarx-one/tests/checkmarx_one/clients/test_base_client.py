@@ -337,11 +337,11 @@ class TestCheckmarxOneClient:
         """Test getting paginated resources with request error."""
         with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
             mock_client.request = AsyncMock(side_effect=Exception("Request failed"))
-            results = []
-            async for batch in client.send_paginated_request("/test", "data"):
-                results.append(batch)
 
-            assert len(results) == 0
+            with pytest.raises(Exception, match="Request failed"):
+                results = []
+                async for batch in client.send_paginated_request("/test", "data"):
+                    results.append(batch)
 
     def test_constants(self) -> None:
         """Test that constants are properly defined."""
