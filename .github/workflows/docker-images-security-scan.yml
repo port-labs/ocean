@@ -136,7 +136,7 @@ jobs:
 
       - name: Send slack alert if vulnerabilities found
         if: ${{ env.VULNERABILITIES_COUNT != '0' }}
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@v2.1.1
         with:
           webhook-type: incoming-webhook
           payload: |
