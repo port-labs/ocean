@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator
 import pytest
 from unittest.mock import patch, AsyncMock
+from datetime import datetime, UTC, timedelta
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
 from github.clients.http.rest_client import GithubRestClient
 from port_ocean.context.event import event_context
@@ -24,6 +25,19 @@ TEST_PULL_REQUESTS = [
         "updated_at": "2025-08-15T15:08:15Z",
     },
 ]
+
+
+
+
+@pytest.fixture
+def mock_datetime():
+    """Fixture that mocks the datetime module for consistent testing."""
+    with patch("github.core.exporters.pull_request_exporter.datetime") as mock_dt:
+        mock_dt.now.return_value = datetime(2025, 8, 19, 12, 0, 0, tzinfo=UTC)
+        mock_dt.UTC = UTC
+        mock_dt.timedelta = timedelta
+        mock_dt.strptime = datetime.strptime
+        yield mock_dt
 
 
 @pytest.mark.asyncio
@@ -168,7 +182,7 @@ class TestPullRequestExporter:
         assert flat_results == [{**pr, "__repository": "repo1"} for pr in expected_prs]
 
     async def test_since_parameter_filters_closed_prs(
-        self, rest_client: GithubRestClient
+        self, rest_client: GithubRestClient, mock_datetime
     ) -> None:
         """Test that the since parameter correctly filters closed PRs and interacts with max_results."""
         exporter = RestPullRequestExporter(rest_client)
