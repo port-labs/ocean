@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.2-dev (2025-08-21)
+
+## 0.1.3-dev (2025-08-25)
 
 
 ### Improvements
@@ -15,8 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated blueprint icons to Checkmarx
 
 
-## 0.1.1-dev (2025-08-20)
+## 0.1.2-dev (2025-08-24)
 
+### Improvements
+
+- Bumped ocean version to ^0.27.10
+
+
+## 0.1.1-dev (2025-08-20)
 
 ### Improvements
 
