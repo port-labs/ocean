@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "gitlab-v2"
-version = "0.2.19"
+version = "0.2.21"
 description = "Gitlab"
 authors = ["Shariff <mohammed.s@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.27.8", extras = ["cli"]}
+port_ocean = {version = "^0.27.10", extras = ["cli"]}
 pyyaml = "^6.0.2"
 aiolimiter = "^1.2.1"
 
