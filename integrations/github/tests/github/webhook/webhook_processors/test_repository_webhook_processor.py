@@ -119,7 +119,7 @@ class TestRepositoryWebhookProcessor:
 
             # Verify exporter was called with correct repo name
             mock_exporter.get_resource.assert_called_once_with(
-                SingleRepositoryOptions(name="test-repo", included_property=None)
+                SingleRepositoryOptions(name="test-repo", included_relationships=[])
             )
 
         assert isinstance(result, WebhookEventRawResults)
@@ -133,16 +133,16 @@ class TestRepositoryWebhookProcessor:
             assert result.deleted_raw_results == [repo_data]
 
     @pytest.mark.parametrize(
-        "include_property",
-        ["teams", "collaborators"],
+        "include_relationships",
+        [["teams"], ["collaborators"], ["teams", "collaborators"]],
     )
-    async def test_handle_event_with_included_property(
+    async def test_handle_event_with_included_relationships(
         self,
         repository_webhook_processor: RepositoryWebhookProcessor,
         resource_config: GithubRepositoryConfig,
-        include_property: Literal["teams", "collaborators"],
+        include_relationships: list[Literal["teams", "collaborators"]],
     ) -> None:
-        """Test that webhook processor handles included_property correctly."""
+        """Test that webhook processor handles included_relationships correctly."""
         repo_data = {
             "id": 1,
             "name": "test-repo",
@@ -150,8 +150,7 @@ class TestRepositoryWebhookProcessor:
             "description": "Test repository",
         }
 
-        # Create a resource config with included_property set
-        resource_config.selector.include = include_property
+        resource_config.selector.include = include_relationships
 
         payload = {"action": "created", "repository": repo_data}
 
@@ -167,10 +166,9 @@ class TestRepositoryWebhookProcessor:
                 payload, resource_config
             )
 
-        # Verify exporter was called with correct repo name and included_property
         mock_exporter.get_resource.assert_called_once_with(
             SingleRepositoryOptions(
-                name="test-repo", included_property=include_property
+                name="test-repo", included_relationships=include_relationships
             )
         )
 

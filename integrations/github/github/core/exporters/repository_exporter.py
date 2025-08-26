@@ -19,18 +19,18 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         ExporterOptionsT: SingleRepositoryOptions
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
         name = options["name"]
-        included_property = options.get("included_property")
+        included_relationships = options.get("included_relationships")
 
         endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{name}"
         response = await self.client.send_api_request(endpoint)
 
         logger.info(f"Fetched repository with identifier: {name}")
 
-        if not included_property:
+        if not included_relationships:
             return response
 
         return await self.enrich_repository_with_selected_relationship(
-            response, str(included_property)
+            response, included_relationships
         )
 
     @cache_iterator_result()
@@ -40,7 +40,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         """Get all repositories in the organization with pagination."""
 
         params = dict(options)
-        included_property = options.get("included_property")
+        included_relationships = options.get("included_relationships")
 
         async for repos in self.client.send_paginated_request(
             f"{self.client.base_url}/orgs/{self.client.organization}/repos", params
@@ -48,14 +48,16 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             logger.info(
                 f"Fetched batch of {len(repos)} repositories from organization {self.client.organization}"
             )
-            if not included_property:
+            if not included_relationships:
                 yield repos
             else:
-                logger.info(f"Enriching repository with {included_property}")
+                logger.info(f"Enriching repository with {included_relationships}")
+                
+                relationships_list = list(included_relationships)
                 batch = await asyncio.gather(
                     *[
                         self.enrich_repository_with_selected_relationship(
-                            repo, str(included_property)
+                            repo, relationships_list
                         )
                         for repo in repos
                     ]
@@ -63,17 +65,18 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 yield batch
 
     async def enrich_repository_with_selected_relationship(
-        self, repository: Dict[str, Any], included_property: str
+        self, repository: Dict[str, Any], included_relationships: list[str]
     ) -> RAW_ITEM:
         """Enrich repository with selected relationship."""
 
-        match included_property:
-            case "collaborators":
-                return await self._enrich_repository_with_collaborators(repository)
-            case "teams":
-                return await self._enrich_repository_with_teams(repository)
-            case _:
-                pass
+        enrichment_methods = {
+            "collaborators": self._enrich_repository_with_collaborators,
+            "teams": self._enrich_repository_with_teams,
+        }
+
+        for relationship in included_relationships:
+            if method := enrichment_methods.get(relationship):
+                repository = await method(repository)
 
         return repository
 
