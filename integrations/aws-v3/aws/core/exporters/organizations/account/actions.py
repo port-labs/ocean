@@ -1,15 +1,15 @@
-from typing import List, Type, Dict, Any
+from typing import Any, List, Type
+
 from loguru import logger
+
 from aws.core.interfaces.action import Action, APIAction, ActionMap
 
 
 class ListTagsAction(APIAction):
     """List tags for an AWS Organizations account."""
 
-    async def _execute(self, identifier: str) -> Dict[str, Any]:
+    async def _execute(self, identifier: str) -> dict[str, Any]:
         """List tags for the specified account."""
-        logger.info(f"Listing tags for account {identifier}")
-
         response = await self.client.list_tags_for_resource(ResourceId=identifier)  # type: ignore
 
         logger.info(f"Found {len(response['Tags'])} tags for account {identifier}")

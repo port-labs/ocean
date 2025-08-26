@@ -71,7 +71,7 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
                 all_properties.update(props)
 
         if all_properties:
-            current_properties = self._model.Properties.dict()
+            current_properties = self._model.Properties.dict(exclude_none=True)
             updated_properties = {**current_properties, **all_properties}
 
             self._model.Properties = self._model.Properties.__class__(

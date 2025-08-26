@@ -39,8 +39,7 @@ class TestOrganizationsAccountExporter:
     async def test_get_paginated_resources(
         self, mock_exporter: OrganizationsAccountExporter
     ) -> None:
-        """Test that get_paginated_resources yields accounts correctly."""
-        # Mock the session factory to return a single account
+        """Test that get_paginated_resources raises NotImplementedError."""
         mock_account_info: AccountInfo = {
             "Id": "123456789012",
             "Name": "Test Account",
@@ -50,42 +49,14 @@ class TestOrganizationsAccountExporter:
             "JoinedTimestamp": 1672531200,
             "Status": "ACTIVE",
         }
-        mock_session = AsyncMock()
 
-        # Mock the client proxy and resource inspector
-        mock_proxy = AsyncMock()
-        mock_inspector = AsyncMock()
-        mock_result = AsyncMock()
-        mock_result.dict.return_value = {
-            "Id": "123456789012",
-            "Name": "Test Account",
-            "Email": "test@example.com",
-            "Status": "ACTIVE",
-        }
+        options = PaginatedAccountRequest(
+            region="us-east-1", account_data=mock_account_info
+        )
 
-        mock_inspector.inspect.return_value = mock_result
-        mock_proxy.__aenter__.return_value = mock_proxy
-        mock_session.__aenter__.return_value = mock_proxy
-
-        # Mock the session factory
-        with pytest.MonkeyPatch().context() as m:
-            m.setattr(
-                "aws.auth.session_factory.get_all_account_sessions",
-                lambda: iter([(mock_account_info, mock_session)]),
-            )
-            m.setattr(
-                "aws.core.exporters.organizations.account.exporter.ResourceInspector",
-                lambda *args, **kwargs: mock_inspector,
-            )
-
-            options = PaginatedAccountRequest(
-                region="us-east-1", account_data=mock_account_info
-            )
-
-            # Test the method - should return empty since accounts don't support pagination
-            results = []
+        # Test that get_paginated_resources raises NotImplementedError
+        with pytest.raises(
+            NotImplementedError, match="Account resources don't support pagination"
+        ):
             async for batch in mock_exporter.get_paginated_resources(options):
-                results.extend(batch)
-
-            # get_paginated_resources is not used for accounts - returns empty
-            assert len(results) == 0
+                pass

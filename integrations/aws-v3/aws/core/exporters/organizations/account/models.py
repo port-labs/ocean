@@ -7,17 +7,19 @@ from aws.auth.types import AccountInfo
 class AccountProperties(BaseModel):
     """Properties for an AWS Organizations Account resource."""
 
-    Arn: Optional[str] = None
-    Email: Optional[str] = None
     Id: Optional[str] = None
+    Arn: Optional[str] = None
+    Name: Optional[str] = None
+    Email: Optional[str] = None
     JoinedMethod: Optional[str] = None
     JoinedTimestamp: Optional[int] = None
-    Name: Optional[str] = None
     Status: Optional[str] = None
+
     Tags: Optional[list[dict[str, str]]] = None
 
     class Config:
         extra = "forbid"
+        exclude_none = True
 
 
 class Account(ResourceModel[AccountProperties]):

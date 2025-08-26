@@ -1,6 +1,4 @@
 from typing import Any, AsyncGenerator, Type
-
-
 from aws.core.exporters.organizations.account.actions import (
     OrganizationsAccountActionsMap,
 )
@@ -12,6 +10,7 @@ from aws.core.exporters.organizations.account.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
+from aws.core.modeling.resource_builder import ResourceBuilder
 
 
 class OrganizationsAccountExporter(IResourceExporter):
@@ -28,45 +27,34 @@ class OrganizationsAccountExporter(IResourceExporter):
 
     async def get_resource(self, options: SingleAccountRequest) -> dict[str, Any]:
         """Fetch single account using the provided account data."""
-        if not options.include:
-            # Use ResourceBuilder for consistency
-            from aws.core.modeling.resource_builder import ResourceBuilder
-            
-            builder = ResourceBuilder(
-                self._model_cls(), 
-                account_id=options.account_id
-            )
-            
-            properties_data = [options.account_data]
-            builder.with_properties(properties_data)
-            
-            account_model = builder.build()
-            return account_model.dict(exclude_none=True)
+        builder: Any = ResourceBuilder(self._model_cls(), account_id=options.account_id)
 
-        async with self.session.create_client(
-            "organizations", region_name=None
-        ) as client:
-            inspector = ResourceInspector(
-                client,
-                self._actions_map(),
-                lambda: self._model_cls(),
-                account_id=options.account_id,
-            )
+        properties_data: list[Any] = [options.account_data]
 
-            enriched_model = await inspector.inspect(
-                options.account_id, options.include
-            )
+        if options.include:
+            async with self.session.create_client(
+                "organizations", region_name=None
+            ) as client:
+                inspector = ResourceInspector(
+                    client,
+                    self._actions_map(),
+                    lambda: self._model_cls(),
+                    account_id=options.account_id,
+                )
 
-            account_model = self._model_cls()
-            merged_properties = {
-                **options.account_data,
-                **enriched_model.Properties.dict(),
-            }
-            account_model.Properties = account_model.Properties.__class__(
-                **merged_properties
-            )
+                enriched_model = await inspector.inspect(
+                    options.account_id, options.include
+                )
 
-            return account_model.dict(exclude_none=True)
+                action_properties = enriched_model.Properties.dict(exclude_none=True)
+
+                if action_properties:
+                    properties_data.append(action_properties)
+
+        builder.with_properties(properties_data)
+        account_model = builder.build()
+
+        return account_model.dict(exclude_none=True)
 
     async def get_paginated_resources(
         self, options: PaginatedAccountRequest
