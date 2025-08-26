@@ -68,6 +68,7 @@ class TestCheckmarxScanResultExporter:
             "severity": "HIGH",
             "state": "CONFIRMED",
             "status": "NEW",
+            "type": "sast",
         }
 
     @pytest.fixture

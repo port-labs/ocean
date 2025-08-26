@@ -14,6 +14,7 @@ with patch.dict(
         create_project_exporter,
         create_scan_exporter,
         create_scan_result_exporter,
+        create_api_sec_exporter,
     )
     from checkmarx_one.clients.client import CheckmarxOneClient
     from checkmarx_one.core.exporters.project_exporter import CheckmarxProjectExporter
@@ -21,6 +22,7 @@ with patch.dict(
     from checkmarx_one.core.exporters.scan_result_exporter import (
         CheckmarxScanResultExporter,
     )
+    from checkmarx_one.core.exporters.api_sec_exporter import CheckmarxApiSecExporter
 
 
 class TestExporterFactory:
@@ -51,6 +53,30 @@ class TestExporterFactory:
         mock_get_client.assert_called_once()
 
     @patch("checkmarx_one.exporter_factory.get_checkmarx_client")
+    def test_create_scan_result_exporter(self, mock_get_client: MagicMock) -> None:
+        """Test creating a scan result exporter."""
+        mock_client = MagicMock(spec=CheckmarxOneClient)
+        mock_get_client.return_value = mock_client
+
+        result = create_scan_result_exporter()
+
+        assert isinstance(result, CheckmarxScanResultExporter)
+        assert result.client == mock_client
+        mock_get_client.assert_called_once()
+
+    @patch("checkmarx_one.exporter_factory.get_checkmarx_client")
+    def test_create_api_sec_exporter(self, mock_get_client: MagicMock) -> None:
+        """Test creating an API security exporter."""
+        mock_client = MagicMock(spec=CheckmarxOneClient)
+        mock_get_client.return_value = mock_client
+
+        result = create_api_sec_exporter()
+
+        assert isinstance(result, CheckmarxApiSecExporter)
+        assert result.client == mock_client
+        mock_get_client.assert_called_once()
+
+    @patch("checkmarx_one.exporter_factory.get_checkmarx_client")
     def test_factory_functions_return_different_instances(
         self, mock_get_client: MagicMock
     ) -> None:
@@ -61,10 +87,14 @@ class TestExporterFactory:
         project_exporter = create_project_exporter()
         scan_exporter = create_scan_exporter()
         scan_result_exporter = create_scan_result_exporter()
+        api_sec_exporter = create_api_sec_exporter()
 
         assert project_exporter is not scan_exporter
         assert project_exporter is not scan_result_exporter
+        assert project_exporter is not api_sec_exporter
         assert scan_exporter is not scan_result_exporter
+        assert scan_exporter is not api_sec_exporter
+        assert scan_result_exporter is not api_sec_exporter
 
     @patch("checkmarx_one.exporter_factory.get_checkmarx_client")
     def test_factory_functions_with_different_clients(
@@ -74,17 +104,25 @@ class TestExporterFactory:
         mock_client1 = MagicMock(spec=CheckmarxOneClient)
         mock_client2 = MagicMock(spec=CheckmarxOneClient)
         mock_client3 = MagicMock(spec=CheckmarxOneClient)
+        mock_client4 = MagicMock(spec=CheckmarxOneClient)
 
         # Reset the mock to return different clients on subsequent calls
-        mock_get_client.side_effect = [mock_client1, mock_client2, mock_client3]
+        mock_get_client.side_effect = [
+            mock_client1,
+            mock_client2,
+            mock_client3,
+            mock_client4,
+        ]
 
         project_exporter = create_project_exporter()
         scan_exporter = create_scan_exporter()
         scan_result_exporter = create_scan_result_exporter()
+        api_sec_exporter = create_api_sec_exporter()
 
         assert project_exporter.client == mock_client1
         assert scan_exporter.client == mock_client2
         assert scan_result_exporter.client == mock_client3
+        assert api_sec_exporter.client == mock_client4
 
     def test_create_project_exporter_docstring(self) -> None:
         """Test that create_project_exporter has proper documentation."""
@@ -95,6 +133,16 @@ class TestExporterFactory:
         """Test that create_scan_exporter has proper documentation."""
         assert create_scan_exporter.__doc__ is not None
         assert "Create a scan exporter" in create_scan_exporter.__doc__
+
+    def test_create_scan_result_exporter_docstring(self) -> None:
+        """Test that create_scan_result_exporter has proper documentation."""
+        assert create_scan_result_exporter.__doc__ is not None
+        assert "Create a scan result exporter" in create_scan_result_exporter.__doc__
+
+    def test_create_api_sec_exporter_docstring(self) -> None:
+        """Test that create_api_sec_exporter has proper documentation."""
+        assert create_api_sec_exporter.__doc__ is not None
+        assert "Create an API security exporter" in create_api_sec_exporter.__doc__
 
     @patch("checkmarx_one.exporter_factory.get_checkmarx_client")
     def test_factory_functions_call_init_client_once(
@@ -107,8 +155,9 @@ class TestExporterFactory:
         create_project_exporter()
         create_scan_exporter()
         create_scan_result_exporter()
+        create_api_sec_exporter()
 
-        assert mock_get_client.call_count == 3
+        assert mock_get_client.call_count == 4
 
     @patch("checkmarx_one.exporter_factory.get_checkmarx_client")
     def test_factory_functions_with_exception_handling(
@@ -126,6 +175,9 @@ class TestExporterFactory:
         with pytest.raises(Exception, match="Connection failed"):
             create_scan_result_exporter()
 
+        with pytest.raises(Exception, match="Connection failed"):
+            create_api_sec_exporter()
+
     @patch("checkmarx_one.exporter_factory.get_checkmarx_client")
     def test_factory_functions_return_correct_types(
         self, mock_get_client: MagicMock
@@ -137,7 +189,9 @@ class TestExporterFactory:
         project_exporter = create_project_exporter()
         scan_exporter = create_scan_exporter()
         scan_result_exporter = create_scan_result_exporter()
+        api_sec_exporter = create_api_sec_exporter()
 
         assert isinstance(project_exporter, CheckmarxProjectExporter)
         assert isinstance(scan_exporter, CheckmarxScanExporter)
         assert isinstance(scan_result_exporter, CheckmarxScanResultExporter)
+        assert isinstance(api_sec_exporter, CheckmarxApiSecExporter)
