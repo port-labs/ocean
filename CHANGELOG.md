@@ -6,6 +6,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.28.0 (2025-08-19)
+
+### Improvements
+
+- Made HTTP retry config extensible with new RetryConfig class and callback to apply per-integration policies without code changes.
+- Added rate-limit aware retries through configurable retry-after headers (e.g., X-RateLimit-Reset) and additional retry status codes that extend safe defaults.
+- Control max_attempts/base_delay/jitter_ratio/max_backoff_wait and override retryable_methods via callback.
+
+## 0.27.10 (2025-08-24)
+
+### Improvements
+
+- Added ingest url support
+
+## 0.27.9 (2025-08-20)
+
+### Improvements
+
+- Fixed reconciliation metrics not updating properly during sync
+- Removed premature cleanup of Prometheus metrics after subprocess finish to fix reconciliation stuck on pending
+- Enhanced sync state tracking across different phases
+
+## 0.27.8 (2025-08-18)
+
+### Improvements
+
+- added more logs to sync metrics in order to investigate reconciliation pending bug
+
+## 0.27.7 (2025-08-15)
+
+### Improvements
+
+- fixed log level in ingest logs
+
 ## 0.27.6 (2025-08-13)
 
 ### Improvements
