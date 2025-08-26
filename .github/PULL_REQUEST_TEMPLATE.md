@@ -35,6 +35,7 @@ Please leave one option from the following and delete the rest:
 ### Integration testing checklist
 
 - [ ] Integration able to create all default resources from scratch
+- [ ] Completed a full resync from a freshly installed integration and it completed successfully
 - [ ] Resync able to create entities
 - [ ] Resync able to update entities
 - [ ] Resync able to detect and delete entities
