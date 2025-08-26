@@ -180,3 +180,54 @@ class CheckmarxOneClient:
             except Exception as e:
                 logger.error(f"Error in paginated request to {endpoint}: {str(e)}")
                 raise
+
+    async def send_paginated_request_api_sec(
+        self,
+        endpoint: str,
+        object_key: str,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[List[dict[str, Any]], None]:
+        """
+        Get paginated resources from Checkmarx One API Security.
+
+        Args:
+            endpoint: API endpoint path
+            object_key: Key in response containing the items
+            params: Additional query parameters
+
+        Yields:
+            Batches of resources
+        """
+
+        params = params or {}
+
+        next_page_number: int = 1
+
+        has_next_page = True
+
+        while has_next_page:
+            page_params = {
+                **params,
+                "page": next_page_number,
+                "per_page": PAGE_SIZE,
+            }
+
+            try:
+                response = await self.send_api_request(endpoint, params=page_params)
+                has_next_page = response.get("has_next", False)
+                next_page_number = response.get("next_page_number", 1)
+                items: List[dict[str, Any]] = response.get(
+                    "entries", []
+                ) or response.get(object_key, [])
+
+                if not items:
+                    break
+
+                yield items
+
+                if not has_next_page:
+                    break
+
+            except Exception as e:
+                logger.error(f"Error in paginated request to {endpoint}: {str(e)}")
+                raise

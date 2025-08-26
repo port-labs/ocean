@@ -37,9 +37,21 @@ class CheckmarxOneResultSelector(Selector):
         description="Filter scan results by status",
     )
     exclude_result_types: Optional[List[Literal["DEV_AND_TEST", "NONE"]]] = Field(
-        default=["DEV_AND_TEST"],
+        default=None,
         description="Filter scan results by exclude result types",
     )
+
+
+class CheckmarxOneApiSecSelector(Selector):
+    filtering: Optional[str] = Field(
+        default=None,
+        description="Filter API sec risks by fields",
+    )
+    searching: Optional[str] = Field(
+        default=None,
+        description="Full text search for API sec risks",
+    )
+    sorting: Optional[str] = Field(default=None, description="Sort API sec risks")
 
 
 class CheckmarxOneProjectSelector(Selector):
@@ -73,7 +85,7 @@ class CheckmarxOneSastResourcesConfig(ResourceConfig):
 
 class CheckmarxOneApiSecResourcesConfig(ResourceConfig):
     kind: Literal["apisec"]
-    selector: CheckmarxOneResultSelector
+    selector: CheckmarxOneApiSecSelector
 
 
 class CheckmarxOneScanSelector(Selector):
@@ -95,7 +107,6 @@ ScanResultConfigType = Union[
     CheckmarxOneKicsResourcesConfig,
     CheckmarxOneContainersResourcesConfig,
     CheckmarxOneSastResourcesConfig,
-    CheckmarxOneApiSecResourcesConfig,
 ]
 
 
@@ -104,7 +115,10 @@ class CheckmarxOnePortAppConfig(PortAppConfig):
         CheckmarxOneProjectResourcesConfig
         | CheckmarxOneScanResourcesConfig
         | ScanResultConfigType
-    ] = Field(default_factory=list)
+        | CheckmarxOneApiSecResourcesConfig
+    ] = Field(
+        default_factory=list
+    )  # type: ignore
 
 
 class CheckmarxOneIntegration(BaseIntegration):
