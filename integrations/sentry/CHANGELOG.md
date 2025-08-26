@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.0 (2025-08-25)
 
 
-- Added rate limiter with exception-driven retry logic
+- Added rate limiter with using `RetryConfig`
 
 
 ## 0.1.196 (2025-08-25)

@@ -35,7 +35,7 @@ class SentryRateLimiter:
 
     def __init__(
         self,
-        max_concurrent: int = 10,
+        max_concurrent: int = 5,
         minimum_limit_remaining: int = 1,
     ) -> None:
         """
@@ -60,6 +60,7 @@ class SentryRateLimiter:
         """Calculates the time in seconds until the rate limit window resets."""
         if self._reset_time:
             return self._reset_time - time.time()
+        logger.debug("Rate limit reset time is not set")
         return 0.0
 
     async def __aenter__(self) -> "SentryRateLimiter":
