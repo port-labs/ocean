@@ -162,18 +162,18 @@ class TestS3BucketProperties:
         assert properties.VersioningConfiguration is None
         assert properties.Tags is None
         assert properties.BucketEncryption is None
-        assert properties.BucketName == ""  # Default empty string
+        assert properties.Name == ""  # Default empty string
         assert properties.PublicAccessBlockConfiguration is None
 
     def test_initialization_with_properties(self) -> None:
         """Test initialization with some properties."""
         properties = BucketProperties(
-            BucketName="test-bucket",
+            Name="test-bucket",
             Tags=[{"Key": "Environment", "Value": "test"}],
             PublicAccessBlockConfiguration={"BlockPublicAcls": True},
         )
 
-        assert properties.BucketName == "test-bucket"
+        assert properties.Name == "test-bucket"
         assert properties.Tags == [{"Key": "Environment", "Value": "test"}]
         assert properties.PublicAccessBlockConfiguration == {"BlockPublicAcls": True}
 
@@ -184,15 +184,15 @@ class TestS3BucketProperties:
     def test_dict_exclude_none(self) -> None:
         """Test dict() with exclude_none=True."""
         properties = BucketProperties(
-            BucketName="test-bucket", Tags=[{"Key": "Project", "Value": "demo"}]
+            Name="test-bucket", Tags=[{"Key": "Project", "Value": "demo"}]
         )
 
         result = properties.dict(exclude_none=True)
 
         # Should only include non-None fields
-        assert "BucketName" in result
+        assert "Name" in result
         assert "Tags" in result
-        assert result["BucketName"] == "test-bucket"
+        assert result["Name"] == "test-bucket"
         assert result["Tags"] == [{"Key": "Project", "Value": "demo"}]
 
         # None fields should be excluded
@@ -212,12 +212,12 @@ class TestS3BucketProperties:
             },
             Location={"LocationConstraint": "us-west-2"},
             Policy={"Version": "2012-10-17"},
-            Arn="arn:aws:s3:::test-bucket",
+            BucketArn="arn:aws:s3:::test-bucket",
             RegionalDomainName="test-bucket.s3.us-west-2.amazonaws.com",
             DomainName="test-bucket.s3.amazonaws.com",
             DualStackDomainName="test-bucket.s3.dualstack.us-west-2.amazonaws.com",
             WebsiteURL="http://test-bucket.s3-website-us-west-2.amazonaws.com",
-            BucketName="test-bucket",
+            Name="test-bucket",
             PublicAccessBlockConfiguration={"BlockPublicAcls": True},
             OwnershipControls={"Rules": []},
             CorsConfiguration={"CORSRules": []},
@@ -228,8 +228,8 @@ class TestS3BucketProperties:
         assert properties.VersioningConfiguration == {"Status": "Enabled"}
         assert properties.Tags == [{"Key": "Owner", "Value": "team"}]
         assert properties.BucketEncryption == {"Rules": []}
-        assert properties.BucketName == "test-bucket"
-        assert properties.Arn == "arn:aws:s3:::test-bucket"
+        assert properties.Name == "test-bucket"
+        assert properties.BucketArn == "arn:aws:s3:::test-bucket"
         assert properties.PublicAccessBlockConfiguration == {"BlockPublicAcls": True}
 
 
@@ -238,34 +238,34 @@ class TestS3Bucket:
 
     def test_initialization_with_identifier(self) -> None:
         """Test initialization with required identifier."""
-        bucket = Bucket(Properties=BucketProperties(BucketName="test-bucket"))
+        bucket = Bucket(Properties=BucketProperties(Name="test-bucket"))
 
         assert bucket.Type == "AWS::S3::Bucket"
-        assert bucket.Properties.BucketName == "test-bucket"
+        assert bucket.Properties.Name == "test-bucket"
         assert isinstance(bucket.Properties, BucketProperties)
 
     def test_initialization_with_properties(self) -> None:
         """Test initialization with custom properties."""
         properties = BucketProperties(
-            BucketName="custom-bucket", Tags=[{"Key": "Team", "Value": "engineering"}]
+            Name="custom-bucket", Tags=[{"Key": "Team", "Value": "engineering"}]
         )
         bucket = Bucket(Properties=properties)
 
         assert bucket.Properties == properties
-        assert bucket.Properties.BucketName == "custom-bucket"
+        assert bucket.Properties.Name == "custom-bucket"
         assert bucket.Properties.Tags == [{"Key": "Team", "Value": "engineering"}]
 
     def test_type_is_fixed(self) -> None:
         """Test that Type is always AWS::S3::Bucket."""
-        bucket1 = Bucket(Properties=BucketProperties(BucketName="bucket1"))
-        bucket2 = Bucket(Properties=BucketProperties(BucketName="bucket2"))
+        bucket1 = Bucket(Properties=BucketProperties(Name="bucket1"))
+        bucket2 = Bucket(Properties=BucketProperties(Name="bucket2"))
 
         assert bucket1.Type == "AWS::S3::Bucket"
         assert bucket2.Type == "AWS::S3::Bucket"
 
     def test_dict_exclude_none(self) -> None:
         """Test dict() with exclude_none=True."""
-        properties = BucketProperties(BucketName="test-bucket")
+        properties = BucketProperties(Name="test-bucket")
         bucket = Bucket(Properties=properties)
 
         result = bucket.dict(exclude_none=True)
@@ -274,12 +274,12 @@ class TestS3Bucket:
         assert "Properties" in result
 
         assert result["Type"] == "AWS::S3::Bucket"
-        assert result["Properties"]["BucketName"] == "test-bucket"
+        assert result["Properties"]["Name"] == "test-bucket"
 
     def test_properties_default_factory(self) -> None:
         """Test that Properties uses default factory."""
-        bucket1 = Bucket(Properties=BucketProperties(BucketName="bucket1"))
-        bucket2 = Bucket(Properties=BucketProperties(BucketName="bucket2"))
+        bucket1 = Bucket(Properties=BucketProperties(Name="bucket1"))
+        bucket2 = Bucket(Properties=BucketProperties(Name="bucket2"))
 
         # Should be different instances
         assert bucket1.Properties is not bucket2.Properties
@@ -292,7 +292,7 @@ class TestS3Bucket:
         """Test that bucket can be serialized and deserialized."""
         original_bucket = Bucket(
             Properties=BucketProperties(
-                BucketName="roundtrip-bucket",
+                Name="roundtrip-bucket",
                 Tags=[{"Key": "Test", "Value": "roundtrip"}],
                 BucketEncryption={
                     "Rules": [
@@ -314,10 +314,7 @@ class TestS3Bucket:
 
         # Verify they're equivalent
         assert recreated_bucket.Type == original_bucket.Type
-        assert (
-            recreated_bucket.Properties.BucketName
-            == original_bucket.Properties.BucketName
-        )
+        assert recreated_bucket.Properties.Name == original_bucket.Properties.Name
         assert recreated_bucket.Properties.Tags == original_bucket.Properties.Tags
         assert (
             recreated_bucket.Properties.BucketEncryption

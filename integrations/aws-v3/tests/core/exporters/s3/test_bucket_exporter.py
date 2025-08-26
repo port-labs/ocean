@@ -64,7 +64,7 @@ class TestS3BucketExporter:
         # Create expected Bucket response
         expected_bucket = Bucket(
             Properties=BucketProperties(
-                BucketName="test-bucket", Tags=[{"Key": "Environment", "Value": "test"}]
+                Name="test-bucket", Tags=[{"Key": "Environment", "Value": "test"}]
             ),
         )
         mock_inspector.inspect.return_value = expected_bucket
@@ -109,7 +109,7 @@ class TestS3BucketExporter:
 
         expected_bucket = Bucket(
             Properties=BucketProperties(
-                BucketName="prod-bucket",
+                Name="prod-bucket",
                 BucketEncryption={"Rules": []},
                 PublicAccessBlockConfiguration={"BlockPublicAcls": True},
             ),
@@ -171,9 +171,9 @@ class TestS3BucketExporter:
         mock_inspector_class.return_value = mock_inspector
 
         # Mock inspector.inspect to return bucket data
-        bucket1 = Bucket(Properties=BucketProperties(BucketName="bucket1"))
-        bucket2 = Bucket(Properties=BucketProperties(BucketName="bucket2"))
-        bucket3 = Bucket(Properties=BucketProperties(BucketName="bucket3"))
+        bucket1 = Bucket(Properties=BucketProperties(Name="bucket1"))
+        bucket2 = Bucket(Properties=BucketProperties(Name="bucket2"))
+        bucket3 = Bucket(Properties=BucketProperties(Name="bucket3"))
 
         # Set up side effects for inspector.inspect calls
         mock_inspector.inspect.side_effect = [bucket1, bucket2, bucket3]
@@ -302,7 +302,7 @@ class TestS3BucketExporter:
         # Setup inspector to return a normal result
         mock_inspector = AsyncMock()
         mock_bucket = Bucket(
-            Properties=BucketProperties(BucketName="test-bucket"),
+            Properties=BucketProperties(Name="test-bucket"),
         )
         mock_inspector.inspect.return_value = mock_bucket
         mock_inspector_class.return_value = mock_inspector
@@ -315,9 +315,9 @@ class TestS3BucketExporter:
         result = await exporter.get_resource(options)
 
         # Verify the result is a dictionary with the correct structure
-        assert result["Properties"]["BucketName"] == "test-bucket"
+        assert result["Properties"]["Name"] == "test-bucket"
         assert result["Type"] == "AWS::S3::Bucket"
-        assert result["Properties"]["BucketName"] == "test-bucket"
+        assert result["Properties"]["Name"] == "test-bucket"
 
         # Verify the inspector was called correctly
         mock_inspector.inspect.assert_called_once_with("test-bucket", [])
