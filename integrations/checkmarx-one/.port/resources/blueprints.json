@@ -101,7 +101,6 @@
     }
   },
   {
-    "calculationProperties": {},
     "identifier": "checkmarxSast",
     "title": "Checkmarx SASTs",
     "icon": "Checkmarx",
@@ -188,7 +187,6 @@
       "required": [
         "type",
         "id",
-        "severity",
         "state",
         "description"
       ]
@@ -203,7 +201,6 @@
     }
   },
   {
-    "calculationProperties": {},
     "identifier": "checkmarxSca",
     "title": "Checkmarx SCAs",
     "icon": "Checkmarx",
@@ -300,7 +297,6 @@
       "required": [
         "type",
         "id",
-        "severity",
         "state",
         "description"
       ]
@@ -315,7 +311,6 @@
     }
   },
   {
-    "calculationProperties": {},
     "identifier": "checkmarxKics",
     "title": "Checkmarx KICS",
     "icon": "Checkmarx",
@@ -416,7 +411,6 @@
       "required": [
         "type",
         "id",
-        "severity",
         "state",
         "description"
       ]
@@ -431,7 +425,6 @@
     }
   },
   {
-    "calculationProperties": {},
     "identifier": "checkmarxContainers",
     "title": "Checkmarx Container Security",
     "icon": "Checkmarx",
@@ -532,7 +525,6 @@
       "required": [
         "type",
         "id",
-        "severity",
         "state",
         "description"
       ]
@@ -547,7 +539,6 @@
     }
   },
   {
-    "calculationProperties": {},
     "identifier": "checkmarxApiSec",
     "title": "Checkmarx API Security",
     "icon": "Checkmarx",
@@ -637,7 +628,6 @@
       "required": [
         "riskId",
         "apiId",
-        "severity",
         "name",
         "status",
         "state"

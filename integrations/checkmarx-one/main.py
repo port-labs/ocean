@@ -16,7 +16,7 @@ from checkmarx_one.core.options import (
 )
 from integration import (
     CheckmarxOneScanResourcesConfig,
-    CheckmarxOneScanResultResourcesConfig,
+    ScanResultConfigType,
 )
 from checkmarx_one.utils import ObjectKind, ALLOWED_KINDS_FOR_SCAN_RESULT
 
@@ -63,9 +63,7 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     scan_exporter = create_scan_exporter()
     scan_result_exporter = create_scan_result_exporter()
-    selector = cast(
-        CheckmarxOneScanResultResourcesConfig, event.resource_config
-    ).selector
+    selector = cast(ScanResultConfigType, event.resource_config).selector
     options = ListScanResultOptions(
         scan_id="",
         kind=kind,
@@ -83,7 +81,10 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for results_batch in scan_result_exporter.get_paginated_resources(
                 options
             ):
-                logger.debug(f"Received batch with {len(results_batch)} scan results")
+                logger.debug(
+                    f"Received batch with {len(results_batch)} scan results for kind: {kind}"
+                )
+                logger.debug(results_batch)
                 yield results_batch
 
 

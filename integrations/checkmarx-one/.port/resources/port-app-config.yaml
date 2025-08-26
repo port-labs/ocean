@@ -49,14 +49,14 @@ resources:
         mappings:
           identifier: .id
           title: .description
-          blueprint: "checkmarxContainers"
+          blueprint: '"checkmarxContainers"'
           properties:
             type: .type
             firstScanId: .firstScanId
             id: .id
             status: .status
             state: .state
-            severity: .severity
+            severity: (.severity // empty)
             confidenceLevel: .confidenceLevel
             created: .created
             description: .description
@@ -77,14 +77,14 @@ resources:
         mappings:
           identifier: .id
           title: .description
-          blueprint: "checkmarxKics"
+          blueprint: '"checkmarxKics"'
           properties:
             type: .type
             firstScanId: .firstScanId
             id: .id
             status: .status
             state: .state
-            severity: .severity
+            severity: (.severity // empty)
             confidenceLevel: .confidenceLevel
             created: .created
             description: .description
@@ -105,14 +105,14 @@ resources:
         mappings:
           identifier: .id
           title: .description
-          blueprint: "checkmarxSca"
+          blueprint: '"checkmarxSca"'
           properties:
             type: .type
             firstScanId: .firstScanId
             id: .id
             status: .status
             state: .state
-            severity: .severity
+            severity: (.severity // empty)
             confidenceLevel: .confidenceLevel
             created: .created
             description: .description
@@ -132,14 +132,14 @@ resources:
         mappings:
           identifier: .id
           title: .description
-          blueprint: "checkmarxSast"
+          blueprint: '"checkmarxSast"'
           properties:
             type: .type
             firstScanId: .firstScanId
             id: .id
             status: .status
             state: .state
-            severity: .severity
+            severity: (.severity // empty)
             confidenceLevel: .confidenceLevel
             created: .created
             description: .description
@@ -156,11 +156,11 @@ resources:
         mappings:
           identifier: .risk_id
           title: .name
-          blueprint: "checkmarxApiSec"
+          blueprint: '"checkmarxApiSec"'
           properties:
             riskId: .risk_id
             apiId: .api_id
-            severity: .severity
+            severity: (.severity // empty)
             name: .name
             status: .status
             httpMethod: .http_method

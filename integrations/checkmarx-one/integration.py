@@ -1,4 +1,4 @@
-from typing import Literal, Optional, List
+from typing import Literal, Optional, List, Union
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -42,8 +42,37 @@ class CheckmarxOneResultSelector(Selector):
     )
 
 
-class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
-    kind: Literal["scan_result"]
+class CheckmarxOneProjectSelector(Selector):
+    pass
+
+
+class CheckmarxOneProjectResourcesConfig(ResourceConfig):
+    kind: Literal["project"]
+    selector: CheckmarxOneProjectSelector
+
+
+class CheckmarxOneScaResourcesConfig(ResourceConfig):
+    kind: Literal["sca"]
+    selector: CheckmarxOneResultSelector
+
+
+class CheckmarxOneKicsResourcesConfig(ResourceConfig):
+    kind: Literal["kics"]
+    selector: CheckmarxOneResultSelector
+
+
+class CheckmarxOneContainersResourcesConfig(ResourceConfig):
+    kind: Literal["containers"]
+    selector: CheckmarxOneResultSelector
+
+
+class CheckmarxOneSastResourcesConfig(ResourceConfig):
+    kind: Literal["sast"]
+    selector: CheckmarxOneResultSelector
+
+
+class CheckmarxOneApiSecResourcesConfig(ResourceConfig):
+    kind: Literal["apisec"]
     selector: CheckmarxOneResultSelector
 
 
@@ -60,11 +89,21 @@ class CheckmarxOneScanResourcesConfig(ResourceConfig):
     selector: CheckmarxOneScanSelector
 
 
+# Union type for all scan result configs
+ScanResultConfigType = Union[
+    CheckmarxOneScaResourcesConfig,
+    CheckmarxOneKicsResourcesConfig,
+    CheckmarxOneContainersResourcesConfig,
+    CheckmarxOneSastResourcesConfig,
+    CheckmarxOneApiSecResourcesConfig,
+]
+
+
 class CheckmarxOnePortAppConfig(PortAppConfig):
     resources: List[
-        CheckmarxOneScanResultResourcesConfig
+        CheckmarxOneProjectResourcesConfig
         | CheckmarxOneScanResourcesConfig
-        | ResourceConfig
+        | ScanResultConfigType
     ] = Field(default_factory=list)
 
 
