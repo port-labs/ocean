@@ -5,6 +5,7 @@ from typing import NamedTuple, Optional
 class ObjectKind(StrEnum):
     """Enum for Checkmarx One resource kinds."""
 
+    APPLICATION = "application"
     PROJECT = "project"
     SCAN = "scan"
     SCAN_RESULT = "scan_result"

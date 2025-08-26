@@ -1,0 +1,24 @@
+{
+  "identifier": "scan-abc-123-def-456",
+  "title": "sample-web-app - Completed - 2024-01-23",
+  "blueprint": "checkmarxScan",
+  "properties": {
+    "status": "Completed",
+    "branch": "main",
+    "createdAt": "2024-01-23T09:15:00.000Z",
+    "updatedAt": "2024-01-23T09:45:00.000Z",
+    "projectName": "sample-web-app",
+    "initiator": "developer@company.com",
+    "tags": {
+      "trigger": "manual",
+      "environment": "development"
+    },
+    "engines": ["sast", "sca", "kics"],
+    "sourceType": "git",
+    "sourceOrigin": "https://github.com/company/sample-web-app.git",
+    "scanTypes": ["sast", "sca", "kics"]
+  },
+  "relations": {
+    "project": "project-123-456-789"
+  }
+}

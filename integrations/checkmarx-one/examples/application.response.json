@@ -1,0 +1,19 @@
+{
+  "id": "12345-6789-abcd-efgh",
+  "name": "My Application",
+  "description": "A sample application for demonstration",
+  "criticality": 3,
+  "rules": [
+    {
+      "type": "Project",
+      "value": "project-pattern-*"
+    }
+  ],
+  "tags": {
+    "team": "security",
+    "environment": "production",
+    "business_unit": "engineering"
+  },
+  "createdAt": "2024-01-15T10:30:00.000Z",
+  "updatedAt": "2024-01-20T14:45:00.000Z"
+}

@@ -1,0 +1,36 @@
+{
+  "id": "scan-abc-123-def-456",
+  "status": "Completed",
+  "statusDetails": [
+    {
+      "name": "general",
+      "status": "Completed"
+    },
+    {
+      "name": "sast",
+      "status": "Completed"
+    },
+    {
+      "name": "sca", 
+      "status": "Completed"
+    },
+    {
+      "name": "kics",
+      "status": "Completed"
+    }
+  ],
+  "branch": "main",
+  "createdAt": "2024-01-23T09:15:00.000Z",
+  "updatedAt": "2024-01-23T09:45:00.000Z",
+  "projectId": "project-123-456-789",
+  "projectName": "sample-web-app",
+  "initiator": "developer@company.com",
+  "tags": {
+    "trigger": "manual",
+    "environment": "development"
+  },
+  "engines": ["sast", "sca", "kics"],
+  "sourceType": "git",
+  "sourceOrigin": "https://github.com/company/sample-web-app.git",
+  "scanTypes": ["sast", "sca", "kics"]
+}

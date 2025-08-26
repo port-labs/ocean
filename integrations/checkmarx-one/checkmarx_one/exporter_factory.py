@@ -1,9 +1,16 @@
 from checkmarx_one.clients.initialize_client import get_checkmarx_client
+from checkmarx_one.core.exporters.application_exporter import CheckmarxApplicationExporter
 from checkmarx_one.core.exporters.project_exporter import CheckmarxProjectExporter
 from checkmarx_one.core.exporters.scan_exporter import CheckmarxScanExporter
 from checkmarx_one.core.exporters.scan_result_exporter import (
     CheckmarxScanResultExporter,
 )
+
+
+def create_application_exporter() -> CheckmarxApplicationExporter:
+    """Create an application exporter with initialized client."""
+    client = get_checkmarx_client()
+    return CheckmarxApplicationExporter(client)
 
 
 def create_project_exporter() -> CheckmarxProjectExporter:

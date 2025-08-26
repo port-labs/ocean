@@ -5,20 +5,41 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from checkmarx_one.exporter_factory import (
+    create_application_exporter,
     create_project_exporter,
     create_scan_exporter,
     create_scan_result_exporter,
 )
 from checkmarx_one.core.options import (
+    ListApplicationOptions,
     ListProjectOptions,
     ListScanOptions,
     ListScanResultOptions,
 )
 from integration import (
+    CheckmarxOneApplicationResourcesConfig,
+    CheckmarxOneProjectResourcesConfig,
     CheckmarxOneScanResourcesConfig,
     CheckmarxOneScanResultResourcesConfig,
 )
 from checkmarx_one.utils import ObjectKind
+
+
+@ocean.on_resync(ObjectKind.APPLICATION)
+async def on_application_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync applications from Checkmarx One."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    application_exporter = create_application_exporter()
+
+    config = cast(CheckmarxOneApplicationResourcesConfig, event.resource_config)
+    selector = config.selector
+
+    options = ListApplicationOptions(criticality=selector.criticality)
+
+    async for applications_batch in application_exporter.get_paginated_resources(options):
+        logger.debug(f"Received batch with {len(applications_batch)} applications")
+        yield applications_batch
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -27,7 +48,14 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     project_exporter = create_project_exporter()
-    options = ListProjectOptions()
+
+    config = cast(CheckmarxOneProjectResourcesConfig, event.resource_config)
+    selector = config.selector
+
+    options = ListProjectOptions(
+        application_ids=selector.application_ids,
+        groups=selector.groups
+    )
 
     async for projects_batch in project_exporter.get_paginated_resources(options):
         logger.debug(f"Received batch with {len(projects_batch)} projects")

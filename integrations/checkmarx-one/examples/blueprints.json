@@ -1,0 +1,512 @@
+[
+  {
+    "identifier": "checkmarxProject",
+    "title": "Checkmarx Project", 
+    "icon": "checkmarx",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Project Name"
+        },
+        "applicationIds": {
+          "type": "array",
+          "title": "Application IDs",
+          "items": {
+            "type": "string"
+          }
+        },
+        "repoUrl": {
+          "type": "string",
+          "format": "url", 
+          "title": "Repository URL",
+          "icon": "Git"
+        },
+        "mainBranch": {
+          "type": "string",
+          "title": "Main Branch",
+          "icon": "GitVersion"
+        },
+        "origin": {
+          "type": "string",
+          "title": "Origin"
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags"
+        },
+        "groups": {
+          "type": "array", 
+          "title": "Groups",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "icon": "Clock"
+        },
+        "updatedAt": {
+          "type": "string", 
+          "format": "date-time",
+          "title": "Updated At",
+          "icon": "Clock"
+        },
+        "criticality": {
+          "type": "number",
+          "title": "Project Criticality",
+          "minimum": 1,
+          "maximum": 3
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {
+      "totalScans": {
+        "title": "Total Scans",
+        "type": "number", 
+        "target": "checkmarxScan",
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      },
+      "criticalVulnerabilities": {
+        "title": "Critical Vulnerabilities",
+        "type": "number",
+        "target": "checkmarxScanResult", 
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "severity",
+              "operator": "=",
+              "value": "CRITICAL"
+            },
+            {
+              "property": "state",
+              "operator": "!=",
+              "value": "FALSE_POSITIVE"
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      },
+      "highVulnerabilities": {
+        "title": "High Vulnerabilities", 
+        "type": "number",
+        "target": "checkmarxScanResult",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "severity", 
+              "operator": "=",
+              "value": "HIGH"
+            },
+            {
+              "property": "state",
+              "operator": "!=", 
+              "value": "FALSE_POSITIVE"
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      },
+      "lastScanDate": {
+        "title": "Last Scan Date",
+        "type": "string",
+        "format": "date-time",
+        "target": "checkmarxScan",
+        "calculationSpec": {
+          "calculationBy": "property",
+          "func": "max",
+          "property": "createdAt"
+        }
+      }
+    },
+    "relations": {
+      "application": {
+        "target": "checkmarxApplication",
+        "required": false,
+        "title": "Application", 
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "checkmarxApplication",
+    "title": "Checkmarx Application",
+    "icon": "checkmarx",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Application Name"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "criticality": {
+          "type": "number",
+          "title": "Criticality Level",
+          "minimum": 1,
+          "maximum": 3,
+          "enumColors": {
+            "1": "lightGray",
+            "2": "yellow", 
+            "3": "red"
+          }
+        },
+        "rules": {
+          "type": "array",
+          "title": "Rules",
+          "items": {
+            "type": "object"
+          }
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "icon": "Clock"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time", 
+          "title": "Updated At",
+          "icon": "Clock"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {
+      "totalProjects": {
+        "title": "Total Projects",
+        "type": "number",
+        "target": "checkmarxProject",
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      }
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "checkmarxScan",
+    "title": "Checkmarx Scan",
+    "icon": "checkmarx",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Scan Status",
+          "enum": [
+            "Queued",
+            "Running", 
+            "Completed",
+            "Failed",
+            "Canceled",
+            "Partial"
+          ],
+          "enumColors": {
+            "Queued": "lightGray",
+            "Running": "blue",
+            "Completed": "green", 
+            "Failed": "red",
+            "Canceled": "orange",
+            "Partial": "yellow"
+          }
+        },
+        "branch": {
+          "type": "string",
+          "title": "Branch",
+          "icon": "GitVersion"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "icon": "Clock"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated At", 
+          "icon": "Clock"
+        },
+        "projectName": {
+          "type": "string",
+          "title": "Project Name"
+        },
+        "initiator": {
+          "type": "string",
+          "title": "Initiator",
+          "icon": "User"
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags"
+        },
+        "engines": {
+          "type": "array",
+          "title": "Scan Engines",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sourceType": {
+          "type": "string",
+          "title": "Source Type",
+          "enum": ["upload", "git"]
+        },
+        "sourceOrigin": {
+          "type": "string", 
+          "title": "Source Origin"
+        },
+        "scanTypes": {
+          "type": "array",
+          "title": "Scan Types", 
+          "items": {
+            "type": "string",
+            "enum": ["sast", "sca", "kics", "container-security", "api-security", "dast"]
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {
+      "totalVulnerabilities": {
+        "title": "Total Vulnerabilities",
+        "type": "number",
+        "target": "checkmarxScanResult",
+        "calculationSpec": {
+          "calculationBy": "entities", 
+          "func": "count"
+        }
+      },
+      "criticalCount": {
+        "title": "Critical Issues",
+        "type": "number",
+        "target": "checkmarxScanResult",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "severity",
+              "operator": "=", 
+              "value": "CRITICAL"
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      },
+      "highCount": {
+        "title": "High Issues",
+        "type": "number",
+        "target": "checkmarxScanResult",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "severity",
+              "operator": "=",
+              "value": "HIGH"
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      }
+    },
+    "relations": {
+      "project": {
+        "target": "checkmarxProject",
+        "required": false,
+        "title": "Project",
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "checkmarxScanResult",
+    "title": "Checkmarx Scan Result", 
+    "icon": "checkmarx",
+    "schema": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Result Type",
+          "enum": [
+            "sast",
+            "sca", 
+            "kics",
+            "container-security",
+            "api-security",
+            "dast"
+          ],
+          "enumColors": {
+            "sast": "blue",
+            "sca": "green",
+            "kics": "purple", 
+            "container-security": "orange",
+            "api-security": "teal",
+            "dast": "pink"
+          }
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": [
+            "CRITICAL",
+            "HIGH", 
+            "MEDIUM",
+            "LOW",
+            "INFO"
+          ],
+          "enumColors": {
+            "CRITICAL": "red",
+            "HIGH": "red",
+            "MEDIUM": "yellow",
+            "LOW": "lightGray",
+            "INFO": "lightGray"
+          }
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": [
+            "TO_VERIFY",
+            "CONFIRMED", 
+            "URGENT",
+            "NOT_EXPLOITABLE",
+            "PROPOSED_NOT_EXPLOITABLE",
+            "FALSE_POSITIVE"
+          ],
+          "enumColors": {
+            "TO_VERIFY": "yellow",
+            "CONFIRMED": "red",
+            "URGENT": "red",
+            "NOT_EXPLOITABLE": "green",
+            "PROPOSED_NOT_EXPLOITABLE": "lightGray",
+            "FALSE_POSITIVE": "lightGray"
+          }
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "NEW",
+            "RECURRENT", 
+            "FIXED"
+          ],
+          "enumColors": {
+            "NEW": "red",
+            "RECURRENT": "orange",
+            "FIXED": "green"
+          }
+        },
+        "data": {
+          "type": "object",
+          "title": "Vulnerability Data"
+        },
+        "description": {
+          "type": "string", 
+          "title": "Description"
+        },
+        "similarityId": {
+          "type": "string",
+          "title": "Similarity ID"
+        },
+        "cweId": {
+          "type": "string",
+          "title": "CWE ID"
+        },
+        "cveId": {
+          "type": "string",
+          "title": "CVE ID"
+        },
+        "vulnerabilityId": {
+          "type": "string",
+          "title": "Vulnerability ID"
+        },
+        "packageData": {
+          "type": "object",
+          "title": "Package Data"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time", 
+          "title": "Created",
+          "icon": "Clock"
+        },
+        "firstFoundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "First Found At",
+          "icon": "Clock"
+        },
+        "foundAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Found At",
+          "icon": "Clock"
+        },
+        "firstScanId": {
+          "type": "string",
+          "title": "First Scan ID"
+        },
+        "comments": {
+          "type": "array",
+          "title": "Comments",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "scan": {
+        "target": "checkmarxScan", 
+        "required": false,
+        "title": "Scan",
+        "many": false
+      },
+      "project": {
+        "target": "checkmarxProject",
+        "required": false,
+        "title": "Project",
+        "many": false
+      }
+    }
+  }
+]

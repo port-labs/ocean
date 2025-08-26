@@ -1,0 +1,46 @@
+{
+  "identifier": "result-sast-789-xyz",
+  "title": "SQL_Injection - HIGH",
+  "blueprint": "checkmarxScanResult",
+  "properties": {
+    "type": "sast",
+    "severity": "HIGH",
+    "state": "TO_VERIFY",
+    "status": "NEW",
+    "data": {
+      "queryId": 12345,
+      "queryName": "SQL_Injection",
+      "group": "SQL Injection",
+      "resultHash": "abc123def456",
+      "languageName": "JavaScript",
+      "nodes": [
+        {
+          "id": "node1",
+          "line": 45,
+          "name": "db.query",
+          "column": 12,
+          "length": 8,
+          "method": "executeQuery",
+          "nodeID": 1,
+          "domType": "Method Call",
+          "typeFullName": "Database.query",
+          "fileName": "src/database.js",
+          "fullName": "executeQuery"
+        }
+      ]
+    },
+    "description": "Potential SQL Injection vulnerability detected in database query execution",
+    "similarityId": "12345678901234567890",
+    "cweId": "89",
+    "vulnerabilityId": "CX_SQL_INJECTION_001",
+    "created": "2024-01-23T09:30:00.000Z",
+    "firstFoundAt": "2024-01-23T09:30:00.000Z",
+    "foundAt": "2024-01-23T09:30:00.000Z",
+    "firstScanId": "scan-abc-123-def-456",
+    "comments": []
+  },
+  "relations": {
+    "scan": "scan-abc-123-def-456",
+    "project": "project-123-456-789"
+  }
+}
