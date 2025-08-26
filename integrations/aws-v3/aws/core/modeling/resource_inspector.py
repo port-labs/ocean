@@ -19,8 +19,8 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         client: Any,
         actions_map: ActionMap,
         model_factory: Callable[[], ResourceModelT],
+        account_id: str,
         region: Optional[str] = None,
-        account_id: Optional[str] = None,
         max_concurrent_requests: int = 15,
     ) -> None:
         """
@@ -31,7 +31,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             actions_map: The map of available actions for the resource.
             model_factory: A callable that returns a new instance of the resource model.
             region: The AWS region for this resource (optional).
-            account_id: The AWS account ID for this resource (optional).
+            account_id: The AWS account ID for this resource.
         """
         self.client = client
         self.actions_map = actions_map
@@ -135,10 +135,9 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
     def _build_model(self, identifier_results: List[Dict[str, Any]]) -> ResourceModelT:
         """Build a resource model from identifier results using ResourceBuilder."""
         builder: ResourceBuilder[ResourceModelT, Any] = ResourceBuilder(
-            self.model_factory(), self.region or "", self.account_id or ""
+            self.model_factory(), account_id=self.account_id, region=self.region
         )
 
-        # Convert Dict[str, Any] to PropertiesData for type compatibility
         properties_data: List[PropertiesData] = [
             cast(PropertiesData, result) for result in identifier_results
         ]

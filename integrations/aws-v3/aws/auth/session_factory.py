@@ -4,10 +4,11 @@ from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
+from aws.auth.types import AccountInfo
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from aiobotocore.session import AioSession
-from typing import Any, TypedDict, AsyncIterator
+from typing import Any, AsyncIterator
 from aws.auth.providers.assume_role_with_web_identity_provider import (
     AssumeRoleWithWebIdentityProvider,
 )
@@ -57,7 +58,7 @@ class ResyncStrategyFactory:
             return OrganizationsStrategy
 
         # If we have any role ARNs, use multi-account strategy
-        if len(account_role_arn) > 0:
+        if account_role_arn:
             return MultiAccountStrategy
 
         # Default to single account strategy
@@ -83,12 +84,7 @@ class ResyncStrategyFactory:
         return strategy
 
 
-class AccountInfo(TypedDict):
-    Id: str
-    Name: str
-
-
 async def get_all_account_sessions() -> AsyncIterator[tuple[AccountInfo, AioSession]]:
     strategy = await ResyncStrategyFactory.create()
     async for account_info, session in strategy.get_account_sessions():
-        yield AccountInfo(Id=account_info["Id"], Name=account_info["Name"]), session
+        yield account_info, session

@@ -1,4 +1,5 @@
 from aws.auth.strategies.base import AWSSessionStrategy, HealthCheckMixin
+from aws.auth.types import AccountInfo
 from aiobotocore.session import AioSession
 from loguru import logger
 from typing import Any, AsyncIterator
@@ -13,6 +14,7 @@ class SingleAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
 
         self._session: AioSession | None = None
         self.account_id: str | None = None
+        self.account_arn: str | None = None
 
     async def healthcheck(self) -> bool:
         try:
@@ -30,6 +32,7 @@ class SingleAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             async with session.create_client("sts", region_name=None) as sts:
                 identity = await sts.get_caller_identity()
                 self.account_id = identity["Account"]
+                self.account_arn = identity["Arn"]
                 logger.info(f"Validated single account: {self.account_id}")
             self._session = session
             return True
@@ -43,7 +46,7 @@ class SingleAccountStrategy(SingleAccountHealthCheckMixin):
 
     async def get_account_sessions(
         self,
-    ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
+    ) -> AsyncIterator[tuple[AccountInfo, AioSession]]:
         if not self._session:
             await self.healthcheck()
         if not self._session:
@@ -53,8 +56,11 @@ class SingleAccountStrategy(SingleAccountHealthCheckMixin):
         account_id = self.account_id
         if account_id is None:
             raise AWSSessionError("Account ID is not set for single account session.")
-        account_info = {
+        if self.account_arn is None:
+            raise AWSSessionError("Account ARN is not set for single account session.")
+
+        account_info: AccountInfo = {
             "Id": account_id,
-            "Name": f"Account {account_id}",
+            "Arn": self.account_arn,
         }
         yield account_info, self._session

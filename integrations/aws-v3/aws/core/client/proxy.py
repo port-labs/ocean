@@ -8,7 +8,7 @@ from aws.core.client.paginator import AsyncPaginator
 class AioBaseClientProxy:
 
     def __init__(
-        self, session: AioSession, region: str, service_name: SupportedServices
+        self, session: AioSession, region: str | None, service_name: SupportedServices
     ) -> None:
         self.session = session
         self.region = region

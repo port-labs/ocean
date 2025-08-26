@@ -1,4 +1,4 @@
-from typing import Self, TypedDict, List, Any
+from typing import Self, TypedDict, List, Any, Optional
 from aws.core.modeling.resource_models import ResourceModel
 from pydantic import BaseModel
 
@@ -30,18 +30,23 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         TProperties: A Pydantic `BaseModel` representing the resource's properties.
 
     Example:
-        >>> builder = ResourceBuilder(MyResourceModel(Type="...", Properties=MyProperties()), "eu-west-1", "123456789")
+        >>> builder = ResourceBuilder(MyResourceModel(Type="...", Properties=MyProperties()), "123456789", "eu-west-1")
         >>> resource = builder.with_properties([{"Name": "example"}, {"Tags": [{"Key": "Env", "Value": "prod"}]}]).with_metadata({"__Kind": "AWS::S3::Bucket"}).build()
     """
 
-    def __init__(self, model: ResourceModelT, region: str, account_id: str) -> None:
+    def __init__(
+        self,
+        model: ResourceModelT,
+        account_id: str,
+        region: Optional[str] = None,
+    ) -> None:
         """
         Initialize the builder with a resource model instance and context.
 
         Args:
             model: An instance of a resource model to be built or modified.
-            region: The AWS region for this resource.
             account_id: The AWS account ID for this resource.
+            region: The AWS region for this resource (optional for global services).
         """
         self._model = model
         self._region = region
@@ -104,6 +109,8 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
                 "No data has been set for the resource model, use `with_properties` to set data."
             )
 
-        return self._model.copy(
-            update={"__Region": self._region, "__AccountId": self._account_id}
-        )
+        update_data = {"__AccountId": self._account_id}
+        if self._region:
+            update_data["__Region"] = self._region
+
+        return self._model.copy(update=update_data)

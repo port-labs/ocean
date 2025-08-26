@@ -29,12 +29,12 @@ class TestExporterOptions:
         assert options.region == "eu-central-1"
         assert options.include == include_list
 
-    def test_missing_required_region(self) -> None:
-        """Test that missing region raises ValidationError."""
-        with pytest.raises(ValidationError) as exc_info:
-            SingleBucketRequest(bucket_name="test-bucket")  # type: ignore
+    def test_optional_region(self) -> None:
+        """Test that region is optional and defaults to None."""
+        options = SingleBucketRequest(bucket_name="test-bucket")
 
-        assert "region" in str(exc_info.value)
+        assert options.bucket_name == "test-bucket"
+        assert options.region is None
 
     def test_empty_include_list(self) -> None:
         """Test with explicitly empty include list."""
@@ -94,12 +94,12 @@ class TestSingleS3BucketExporterOptions:
 
         assert "bucket_name" in str(exc_info.value)
 
-    def test_missing_region(self) -> None:
-        """Test that missing region raises ValidationError."""
-        with pytest.raises(ValidationError) as exc_info:
-            SingleBucketRequest(bucket_name="test-bucket")  # type: ignore
+    def test_optional_region_paginated(self) -> None:
+        """Test that region is optional for paginated requests too."""
+        options = PaginatedBucketRequest()
 
-        assert "region" in str(exc_info.value)
+        assert options.region is None
+        assert options.include == []
 
     def test_bucket_name_validation(self) -> None:
         """Test bucket name with various valid formats."""

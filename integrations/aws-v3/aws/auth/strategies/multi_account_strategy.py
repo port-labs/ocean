@@ -1,4 +1,5 @@
 from aws.auth.strategies.base import AWSSessionStrategy, HealthCheckMixin
+from aws.auth.types import AccountInfo
 from aws.auth.utils import (
     normalize_arn_list,
     AWSSessionError,
@@ -106,7 +107,7 @@ class MultiAccountStrategy(MultiAccountHealthCheckMixin):
 
     async def get_account_sessions(
         self, **kwargs: Any
-    ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
+    ) -> AsyncIterator[tuple[AccountInfo, AioSession]]:
         if not (self._valid_arns and self._valid_sessions):
             await self.healthcheck()
         if not (self._valid_arns and self._valid_sessions):
@@ -119,9 +120,9 @@ class MultiAccountStrategy(MultiAccountHealthCheckMixin):
         for arn in self._valid_arns:
             session = self._valid_sessions[arn]
             account_id = extract_account_from_arn(arn)
-            account_info = {
+            account_info: AccountInfo = {
                 "Id": account_id,
-                "Name": f"Account {account_id}",
+                "Arn": arn,
             }
             yield account_info, session
 

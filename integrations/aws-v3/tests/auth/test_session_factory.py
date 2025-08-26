@@ -306,7 +306,8 @@ class TestGetAllAccountSessions:
                 mock_session = AsyncMock()
                 mock_sts_client = AsyncMock()
                 mock_sts_client.get_caller_identity.return_value = {
-                    "Account": "123456789012"
+                    "Account": "123456789012",
+                    "Arn": "arn:aws:iam::123456789012:root",
                 }
                 # Use MagicMock for create_client and set up async context manager
                 mock_session.create_client = MagicMock()
@@ -318,6 +319,7 @@ class TestGetAllAccountSessions:
                 async def fake_healthcheck(self: SingleAccountStrategy) -> bool:
                     self._session = mock_session
                     self.account_id = "123456789012"
+                    self.account_arn = "arn:aws:iam::123456789012:root"
                     return True
 
                 with patch.object(
@@ -340,7 +342,8 @@ class TestGetAllAccountSessions:
                             sessions.append((account_info, session))
                         assert len(sessions) == 1
                         assert sessions[0][0]["Id"] == "123456789012"
-                        assert sessions[0][0]["Name"] == "Account 123456789012"
+                        assert sessions[0][0]["Arn"] == "arn:aws:iam::123456789012:root"
+                        # Name is optional for single account strategy
                         assert sessions[0][1] == mock_session
 
     @pytest.mark.asyncio

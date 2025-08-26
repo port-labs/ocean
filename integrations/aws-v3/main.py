@@ -9,8 +9,10 @@ from port_ocean.utils.async_iterators import (
 )
 from integration import AWSResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
+from aws.auth.types import AccountInfo
 from aws.core.exporters.s3 import S3BucketExporter
 from aws.core.exporters.ecs import ECSClusterExporter
+from aws.core.exporters.organizations import OrganizationsAccountExporter
 from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
 from aws.core.helpers.types import ObjectKind
 from aws.core.exporters.s3.bucket.models import PaginatedBucketRequest
@@ -147,3 +149,30 @@ async def resync_ecs_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             kind, regions, options_factory, exporter, account["Id"]
         ):
             yield batch
+
+
+@ocean.on_resync(ObjectKind.AWS_ACCOUNT)
+async def resync_aws_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync AWS accounts - simplified approach."""
+
+    from aws.core.exporters.organizations.account.models import SingleAccountRequest
+
+    aws_resource_config = cast(AWSResourceConfig, event.resource_config)
+    logger.info(f"Starting resync for {kind} resources")
+
+    def options_factory(account_data: AccountInfo) -> SingleAccountRequest:
+        return SingleAccountRequest(
+            account_id=account_data["Id"],
+            include=aws_resource_config.selector.include_actions,
+            account_data=account_data,
+        )
+
+    async for account, session in get_all_account_sessions():
+        logger.info(f"Resyncing {kind} for account {account['Id']}")
+
+        exporter = OrganizationsAccountExporter(session, account["Id"])
+
+        options = options_factory(account)
+        account_data = await exporter.get_resource(options)
+
+        yield [account_data]

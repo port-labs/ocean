@@ -56,6 +56,7 @@ class TestSingleAccountStrategy:
     ) -> None:
         """Test get_account_sessions uses account_id when available."""
         strategy.account_id = "123456789012"
+        strategy.account_arn = "arn:aws:iam::123456789012:root"  # Mock the ARN
         strategy._session = mock_aiosession
         sessions = []
         async for account_info, session in strategy.get_account_sessions():
@@ -64,7 +65,7 @@ class TestSingleAccountStrategy:
         assert len(sessions) == 1
         account_info, session = sessions[0]
         assert account_info["Id"] == "123456789012"
-        assert account_info["Name"] == "Account 123456789012"
+        assert account_info["Arn"] == "arn:aws:iam::123456789012:root"
         assert session == mock_aiosession
 
 
@@ -111,6 +112,7 @@ class TestSingleAccountHealthCheckMixin:
         mock_sts_client = AsyncMock()
         mock_sts_client.get_caller_identity.return_value = {
             "Account": "123456789012",
+            "Arn": "arn:aws:iam::123456789012:root",
         }
 
         with patch.object(mock_aiosession, "create_client") as mock_create_client:
@@ -183,7 +185,8 @@ class TestMultiAccountStrategy:
         assert len(sessions) == 1
         account_info, session = sessions[0]
         assert account_info["Id"] == "123456789012"
-        assert account_info["Name"] == "Account 123456789012"
+        assert account_info["Arn"] == "arn:aws:iam::123456789012:role/test-role"
+        # Name is optional for multi account strategy
         assert session == mock_aiosession
 
 
@@ -613,8 +616,18 @@ class TestOrganizationsStrategy:
     ) -> None:
         """Test get_account_sessions yields account info and sessions."""
         mock_accounts = [
-            {"Id": "123456789012", "Name": "Test Account 1", "Status": "ACTIVE"},
-            {"Id": "123456789013", "Name": "Test Account 2", "Status": "ACTIVE"},
+            {
+                "Id": "123456789012",
+                "Name": "Test Account 1",
+                "Arn": "arn:aws:organizations::123456789012:account/123456789012",
+                "Status": "ACTIVE",
+            },
+            {
+                "Id": "123456789013",
+                "Name": "Test Account 2",
+                "Arn": "arn:aws:organizations::123456789013:account/123456789013",
+                "Status": "ACTIVE",
+            },
         ]
 
         with patch.object(strategy, "discover_accounts", return_value=mock_accounts):
@@ -637,8 +650,18 @@ class TestOrganizationsStrategy:
     ) -> None:
         """Test get_account_sessions skips accounts where role assumption fails."""
         mock_accounts = [
-            {"Id": "123456789012", "Name": "Test Account 1", "Status": "ACTIVE"},
-            {"Id": "123456789013", "Name": "Test Account 2", "Status": "ACTIVE"},
+            {
+                "Id": "123456789012",
+                "Name": "Test Account 1",
+                "Arn": "arn:aws:organizations::123456789012:account/123456789012",
+                "Status": "ACTIVE",
+            },
+            {
+                "Id": "123456789013",
+                "Name": "Test Account 2",
+                "Arn": "arn:aws:organizations::123456789013:account/123456789013",
+                "Status": "ACTIVE",
+            },
         ]
 
         with patch.object(strategy, "discover_accounts", return_value=mock_accounts):
