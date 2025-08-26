@@ -34,6 +34,7 @@ class GetBucketEncryptionAction(APIAction):
         logger.info(f"Successfully fetched bucket encryption for bucket {bucket_name}")
         return {"BucketEncryption": response["ServerSideEncryptionConfiguration"]}
 
+
 class GetBucketLocationAction(APIAction):
     async def _execute(self, bucket_name: str) -> Dict[str, Any]:
         response = await self.client.get_bucket_location(Bucket=bucket_name)  # type: ignore
