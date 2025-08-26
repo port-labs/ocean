@@ -9,7 +9,6 @@ from pydantic.main import BaseModel
 
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
 from port_ocean.core.event_listener import EventListenerSettingsType
-
 from port_ocean.core.models import (
     CachingStorageMode,
     CreatePortResourcesOrigin,
@@ -47,6 +46,7 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     client_secret: str = Field(..., sensitive=True)
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
     port_app_config_cache_ttl: int = 60
+    ingest_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://ingest.getport.io")
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
@@ -71,6 +71,13 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
 class MetricsSettings(BaseOceanModel, extra=Extra.allow):
     enabled: bool = Field(default=False)
     webhook_url: str | None = Field(default=None)
+
+
+class StreamingSettings(BaseOceanModel, extra=Extra.allow):
+    enabled: bool = Field(default=False)
+    max_buffer_size_mb: int = Field(default=1024 * 1024 * 20)  # 20 mb
+    chunk_size: int = Field(default=1024 * 64)  # 64 kb
+    location: str = Field(default="/tmp/ocean/streaming")
 
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
@@ -113,6 +120,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     lakehouse_enabled: bool = False
     yield_items_to_parse: bool = False
     yield_items_to_parse_batch_size: int = 10
+
+    streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
 
     @validator("process_execution_mode")
     def validate_process_execution_mode(

@@ -4,6 +4,7 @@ from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
 from typing import Any, AsyncIterator, Generator
 from bitbucket_cloud.client import BitbucketClient
+from bitbucket_cloud.helpers.token_manager import TokenManager
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 
 
@@ -270,3 +271,209 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
                 f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
                 params={"state": "OPEN", "pagelen": 50},
             )
+
+
+@pytest.mark.asyncio
+async def test_client_init_with_multiple_tokens() -> None:
+    """Test client initialization with multiple workspace tokens."""
+    multiple_tokens = "token1,token2,token3"
+    client = BitbucketClient(
+        workspace="test_workspace",
+        host="https://api.bitbucket.org/2.0",
+        workspace_token=multiple_tokens,
+    )
+
+    assert client.token_manager is not None
+    assert len(client.token_manager.tokens) == 3
+    assert client.token_manager.tokens == ["token1", "token2", "token3"]
+    assert client.token_manager.current_token == "token1"
+    assert len(client.token_manager.rate_limiters) == 3
+
+    # Check that headers are set correctly
+    assert "Bearer token1" in client.headers["Authorization"]
+
+
+@pytest.mark.asyncio
+async def test_client_init_with_single_token_in_multiple_format() -> None:
+    """Test client initialization with single token that has commas/spaces."""
+    single_token = "  token1  "
+    client = BitbucketClient(
+        workspace="test_workspace",
+        host="https://api.bitbucket.org/2.0",
+        workspace_token=single_token,
+    )
+
+    # Should be treated as single token (no token manager)
+    assert client.token_manager is None
+    assert "Bearer token1" in client.headers["Authorization"]
+
+
+@pytest.mark.asyncio
+async def test_token_manager_rotation() -> None:
+    """Test token manager rotation logic."""
+    tokens = ["token1", "token2", "token3"]
+    manager = TokenManager(tokens, 100, 100)
+
+    assert manager.current_token == "token1"
+    assert manager.current_index == 0
+
+    manager._rotate_to_next_token()
+    assert manager.current_token == "token2"
+    assert manager.current_index == 1
+
+    manager._rotate_to_next_token()
+    assert manager.current_token == "token3"
+    assert manager.current_index == 2
+
+    # Should wrap around
+    manager._rotate_to_next_token()
+    assert manager.current_token == "token1"
+    assert manager.current_index == 0
+
+
+@pytest.mark.asyncio
+async def test_fetch_with_token_rotation() -> None:
+    """Test that fetch_paginated_api_with_rate_limiter works with token rotation."""
+    # Create a client with multiple tokens
+    client = BitbucketClient(
+        workspace="test_workspace",
+        host="https://api.bitbucket.org/2.0",
+        workspace_token="token1,token2",
+    )
+
+    mock_data = {"values": [{"id": 1}, {"id": 2}], "next": None}
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "_send_api_request", new_callable=AsyncMock
+            ) as mock_request,
+            patch.object(client, "_update_authorization_header") as mock_update_header,
+        ):
+            mock_request.return_value = mock_data
+
+            batches = []
+            async for batch in client._fetch_paginated_api_with_rate_limiter(
+                f"{client.base_url}/test/endpoint"
+            ):
+                batches.append(batch)
+
+            assert len(batches) == 1
+            assert batches[0] == [{"id": 1}, {"id": 2}]
+
+            # Verify that authorization header was updated
+            mock_update_header.assert_called_with("token1")
+
+
+@pytest.mark.asyncio
+async def test_update_authorization_header(mock_client: BitbucketClient) -> None:
+    """Test that authorization header is updated correctly."""
+    new_token = "new_test_token"
+
+    # Patch the client.headers.update method specifically
+    with patch.object(mock_client.client.headers, "update") as mock_update:
+        mock_client._update_authorization_header(new_token)
+
+        # Verify that the client's headers were updated correctly
+        assert mock_client.headers["Authorization"] == f"Bearer {new_token}"
+
+        # Verify that the update method was called on the mock http client
+        mock_update.assert_called_with(mock_client.headers)
+
+
+@pytest.mark.asyncio
+async def test_token_rate_limiter_context_direct_usage() -> None:
+    """Test that TokenRateLimiterContext can be used directly without wrapper method."""
+    from bitbucket_cloud.helpers.token_manager import TokenRateLimiterContext
+
+    tokens = ["token1", "token2", "token3"]
+    manager = TokenManager(tokens, 100, 100)
+
+    # Test direct instantiation and usage
+    async with TokenRateLimiterContext(manager) as ctx:
+        selected_token = ctx.get_token()
+        assert selected_token in tokens
+        assert isinstance(selected_token, str)
+        assert len(selected_token) > 0
+
+    # Verify context cleanup
+    assert (
+        ctx.selected_token == selected_token
+    )  # Token should still be available after exit
+
+
+@pytest.mark.asyncio
+async def test_get_headers() -> None:
+    """Test the authentication headers with different authentication types."""
+    # Test bearer token headers
+    client = BitbucketClient(
+        workspace="test_workspace",
+        host="https://api.bitbucket.org/2.0",
+        workspace_token="test_token",
+    )
+    expected_bearer = {
+        "Accept": "application/json",
+        "Content_Type": "application/json",
+        "Authorization": "Bearer test_token",
+    }
+    assert client.headers == expected_bearer
+
+    # Test basic auth headers
+    client = BitbucketClient(
+        workspace="test_workspace",
+        host="https://api.bitbucket.org/2.0",
+        username="test_user",
+        app_password="test_password",
+    )
+    # Basic auth headers should contain Authorization with Basic prefix
+    assert "Authorization" in client.headers
+    assert client.headers["Authorization"].startswith("Basic ")
+    assert client.headers["Accept"] == "application/json"
+    assert client.headers["Content_Type"] == "application/json"
+
+
+@pytest.mark.asyncio
+async def test_client_init_with_invalid_workspace_tokens() -> None:
+    """Test that invalid workspace tokens raise appropriate exceptions."""
+    from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
+
+    # Test with separators only
+    with pytest.raises(
+        MissingIntegrationCredentialException, match="No valid tokens found"
+    ):
+        BitbucketClient(
+            workspace="test-workspace",
+            host="https://api.bitbucket.org/2.0",
+            workspace_token=",,,",
+        )
+
+    # Test with whitespace only
+    with pytest.raises(
+        MissingIntegrationCredentialException, match="No valid tokens found"
+    ):
+        BitbucketClient(
+            workspace="test-workspace",
+            host="https://api.bitbucket.org/2.0",
+            workspace_token="   ",
+        )
+
+    # Test with mixed separators and whitespace
+    with pytest.raises(
+        MissingIntegrationCredentialException, match="No valid tokens found"
+    ):
+        BitbucketClient(
+            workspace="test-workspace",
+            host="https://api.bitbucket.org/2.0",
+            workspace_token=" , , ,",
+        )
+
+    # Test with empty string (should hit the general auth error, not token validation)
+    with pytest.raises(
+        MissingIntegrationCredentialException,
+        match="Either workspace token or both username and app password must be provided",
+    ):
+        BitbucketClient(
+            workspace="test-workspace",
+            host="https://api.bitbucket.org/2.0",
+            workspace_token="",
+        )

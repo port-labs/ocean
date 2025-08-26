@@ -1,3 +1,4 @@
+from aws.auth.strategies.organizations_strategy import OrganizationsStrategy
 from aws.auth.providers.base import CredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 from aws.auth.providers.static_provider import StaticCredentialProvider
@@ -12,7 +13,7 @@ from aws.auth.providers.assume_role_with_web_identity_provider import (
 )
 import os
 
-StrategyType = SingleAccountStrategy | MultiAccountStrategy
+StrategyType = SingleAccountStrategy | MultiAccountStrategy | OrganizationsStrategy
 
 
 class ResyncStrategyFactory:
@@ -34,30 +35,45 @@ class ResyncStrategyFactory:
             )
             return AssumeRoleWithWebIdentityProvider(config=config)
 
+        if config.get("aws_access_key_id") and config.get("aws_secret_access_key"):
+            logger.info(
+                "[SessionStrategyFactory] Using StaticCredentialProvider (found aws_access_key_id and aws_secret_access_key)"
+            )
+            return StaticCredentialProvider(config=config)
+
         logger.info("[SessionStrategyFactory] Using AssumeRoleProvider")
         return AssumeRoleProvider(config=config)
+
+    @classmethod
+    def _detect_strategy_type(cls, config: dict[str, Any]) -> type[StrategyType]:
+        """
+        Detect the appropriate strategy type based on the global configuration.
+        """
+        account_role_arn = config.get("account_role_arn", [])
+        use_organizations = config.get("use_organizations", False)
+
+        # If organizations flag is enabled, use organizations strategy
+        if use_organizations:
+            return OrganizationsStrategy
+
+        # If we have any role ARNs, use multi-account strategy
+        if len(account_role_arn) > 0:
+            return MultiAccountStrategy
+
+        # Default to single account strategy
+        return SingleAccountStrategy
 
     @classmethod
     async def create(cls) -> StrategyType:
         if cls._cached_strategy is not None:
             return cls._cached_strategy
         config = ocean.integration_config or {}
-        account_role_arn = config.get("account_role_arn")
-        is_multi_account = bool(account_role_arn and len(account_role_arn) > 0)
 
         provider: CredentialProvider
         strategy_cls: type[StrategyType]
 
-        if is_multi_account:
-            logger.info("[SessionStrategyFactory] Using MultiAccountStrategy")
-            provider = cls._detect_provider_type(config=config)
-            strategy_cls = MultiAccountStrategy
-        else:
-            logger.info(
-                "[SessionStrategyFactory] Using StaticCredentialProvider (no org role ARN found)"
-            )
-            provider = StaticCredentialProvider(config=config)
-            strategy_cls = SingleAccountStrategy
+        provider = cls._detect_provider_type(config)
+        strategy_cls = cls._detect_strategy_type(config)
 
         logger.info(f"Initializing {strategy_cls.__name__}")
         strategy = strategy_cls(provider=provider, config=config)

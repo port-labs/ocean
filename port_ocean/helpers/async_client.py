@@ -3,7 +3,8 @@ from typing import Any, Type
 import httpx
 from loguru import logger
 
-from port_ocean.helpers.retry import RetryTransport
+from port_ocean.helpers.retry import RetryTransport, RetryConfig
+from port_ocean.helpers.stream import Stream
 
 
 class OceanAsyncClient(httpx.AsyncClient):
@@ -17,10 +18,12 @@ class OceanAsyncClient(httpx.AsyncClient):
         self,
         transport_class: Type[RetryTransport] = RetryTransport,
         transport_kwargs: dict[str, Any] | None = None,
+        retry_config: RetryConfig | None = None,
         **kwargs: Any,
     ):
         self._transport_kwargs = transport_kwargs
         self._transport_class = transport_class
+        self._retry_config = retry_config
         super().__init__(**kwargs)
 
     def _init_transport(  # type: ignore[override]
@@ -32,9 +35,8 @@ class OceanAsyncClient(httpx.AsyncClient):
             return super()._init_transport(transport=transport, **kwargs)
 
         return self._transport_class(
-            wrapped_transport=httpx.AsyncHTTPTransport(
-                **kwargs,
-            ),
+            wrapped_transport=httpx.AsyncHTTPTransport(**kwargs),
+            retry_config=self._retry_config,
             logger=logger,
             **(self._transport_kwargs or {}),
         )
@@ -43,10 +45,14 @@ class OceanAsyncClient(httpx.AsyncClient):
         self, proxy: httpx.Proxy, **kwargs: Any
     ) -> httpx.AsyncBaseTransport:
         return self._transport_class(
-            wrapped_transport=httpx.AsyncHTTPTransport(
-                proxy=proxy,
-                **kwargs,
-            ),
+            wrapped_transport=httpx.AsyncHTTPTransport(proxy=proxy, **kwargs),
+            retry_config=self._retry_config,
             logger=logger,
             **(self._transport_kwargs or {}),
         )
+
+    async def get_stream(self, url: str, **kwargs: Any) -> Stream:
+        req = self.build_request("GET", url, **kwargs)
+        response = await self.send(req, stream=True)
+        response.raise_for_status()
+        return Stream(response)
