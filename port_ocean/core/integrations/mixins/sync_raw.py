@@ -455,16 +455,16 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             ],
             value=number_of_transformed_entities,
         )
-
-        ocean.metrics.inc_metric(
-            name=MetricType.OBJECT_COUNT_NAME,
-            labels=[
-                ocean.metrics.current_resource_kind(),
-                MetricPhase.TRANSFORM,
-                MetricPhase.TransformResult.FILTERED_OUT,
-            ],
-            value=number_of_raw_results - number_of_transformed_entities,
-        )
+        if number_of_raw_results > number_of_transformed_entities :
+            ocean.metrics.inc_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.TRANSFORM,
+                    MetricPhase.TransformResult.FILTERED_OUT,
+                ],
+                value=number_of_raw_results - number_of_transformed_entities,
+            )
 
         return passed_entities, errors
 
