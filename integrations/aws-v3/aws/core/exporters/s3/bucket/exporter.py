@@ -69,7 +69,6 @@ class S3BucketExporter(IResourceExporter):
 
             async for buckets in paginator.paginate():
                 logger.info(f"S3 list_buckets returned {len(buckets)} buckets")
-                bucket_names = [bucket["Name"] for bucket in buckets]
 
                 tasks = [
                     self._process_bucket(bucket, inspector, options.include)
