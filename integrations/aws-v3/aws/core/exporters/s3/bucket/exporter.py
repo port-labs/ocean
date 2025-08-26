@@ -1,4 +1,5 @@
 import asyncio
+import json
 from typing import Any, AsyncGenerator, Type
 
 from aws.core.client.proxy import AioBaseClientProxy
@@ -11,6 +12,11 @@ from aws.core.exporters.s3.bucket.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
+
+
+def serialize_datetime_objects(data: Any) -> Any:
+    """Convert datetime objects to ISO strings for JSON serialization."""
+    return json.loads(json.dumps(data, default=str))
 
 
 class S3BucketExporter(IResourceExporter):
@@ -30,7 +36,21 @@ class S3BucketExporter(IResourceExporter):
             )
             response = await inspector.inspect(options.bucket_name, options.include)
 
-            return response.dict(exclude_none=True)
+            return serialize_datetime_objects(response.dict(exclude_none=True))
+
+    async def _process_bucket(
+        self,
+        bucket: dict[str, Any],
+        inspector: ResourceInspector[Bucket],
+        include: list[str],
+    ) -> dict[str, Any]:
+        """Process a single bucket with its list data and actions."""
+        action_result = await inspector.inspect(bucket["Name"], include)
+        action_data = action_result.dict(exclude_none=True)
+
+        action_data["Properties"].update(bucket)
+
+        return serialize_datetime_objects(action_data)
 
     async def get_paginated_resources(
         self, options: PaginatedBucketRequest
@@ -46,11 +66,10 @@ class S3BucketExporter(IResourceExporter):
             paginator = proxy.get_paginator("list_buckets", "Buckets")
 
             async for buckets in paginator.paginate():
-                print(buckets[:10])
-                bucket_names = [bucket["Name"] for bucket in buckets]
-
                 tasks = [
-                    inspector.inspect(name, options.include) for name in bucket_names
+                    self._process_bucket(bucket, inspector, options.include)
+                    for bucket in buckets
                 ]
-                results = await asyncio.gather(*tasks)
-                yield [result.dict(exclude_none=True) for result in results]
+                bucket_results = await asyncio.gather(*tasks)
+
+                yield bucket_results
