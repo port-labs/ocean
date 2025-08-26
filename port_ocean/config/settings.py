@@ -9,7 +9,6 @@ from pydantic.main import BaseModel
 
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
 from port_ocean.core.event_listener import EventListenerSettingsType
-
 from port_ocean.core.models import (
     CachingStorageMode,
     CreatePortResourcesOrigin,
@@ -47,6 +46,7 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     client_secret: str = Field(..., sensitive=True)
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
     port_app_config_cache_ttl: int = 60
+    ingest_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://ingest.getport.io")
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
