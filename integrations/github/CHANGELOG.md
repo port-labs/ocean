@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 1.3.0-beta (2025-08-18)
+## 1.4.1-beta (2025-08-27)
 
 
 - Added GitHub API rate limiting with concurrency control
@@ -21,6 +21,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced API reliability by automatically handling 403/429 rate limit responses
 - Improved error handling to distinguish between rate limit and permission errors
 - Added rate limit monitoring and comprehensive logging
+
+
+## 1.3.5-beta (2025-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.0
+
+
+## 1.3.4-beta (2025-08-25)
+
+
+### Bug Fixes
+
+- Improved test reliability by using fixture-based datetime mocking instead of inline patching
+- Consolidated datetime mocking logic into reusable fixture
+
+
+## 1.3.3-beta (2025-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.10
+
+
+## 1.3.2-beta (2025-08-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.9
+
+
+## 1.3.1-beta (2025-08-19)
+
+
+### Improvements
+
+- Include name in GraphQL response for User and Team Member Kind
+
+
+## 1.3.0-beta (2025-08-18)
+
+
+### Improvements
+
+- Added maxResults and since config options to include closed PRs during export
+- Added Batch limiting (max 100 closed PRs) to prevent performance issues
+- Modified Webhook processor to update (not delete) closed PRs when maxResults flag is enabled
 
 
 ## 1.2.11-beta (2025-08-18)

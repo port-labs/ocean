@@ -94,7 +94,7 @@ class CheckmarxOneClient:
             API response as dictionary
         """
 
-        url = urljoin(f"{self.base_url}/api", endpoint.lstrip("/"))
+        url = urljoin(self.base_url, f"/api{endpoint}")
 
         try:
             logger.debug(f"Making {method} request to {url}")
@@ -179,4 +179,4 @@ class CheckmarxOneClient:
 
             except Exception as e:
                 logger.error(f"Error in paginated request to {endpoint}: {str(e)}")
-                break
+                raise
