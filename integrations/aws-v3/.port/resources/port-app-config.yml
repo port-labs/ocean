@@ -56,3 +56,21 @@ resources:
             runningTasksCount: .Properties.runningTasksCount
             registeredContainerInstancesCount: .Properties.registeredContainerInstancesCount
             capacityProviders: .Properties.capacityProviders
+
+  - kind: AWS::Organizations::Account
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Id
+          title: .Properties.Id
+          blueprint: '"awsAccount"'
+          properties:
+            accountArn: .Properties.Arn
+            accountName: .Properties.Name
+            email: .Properties.Email
+            joinedMethod: .Properties.JoinedMethod
+            joinedTimestamp: .Properties.JoinedTimestamp
+            status: .Properties.Status
+            tags: .Properties.Tags
