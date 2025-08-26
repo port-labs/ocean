@@ -120,7 +120,8 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     included_relationships = config.selector.include
 
     options = ListRepositoryOptions(
-        type=repository_type, included_relationships=included_relationships
+        type=repository_type,
+        included_relationships=cast(list[str], included_relationships),
     )
 
     async for repositories in exporter.get_paginated_resources(options):

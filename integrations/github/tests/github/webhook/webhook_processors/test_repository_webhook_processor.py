@@ -1,4 +1,4 @@
-from typing import Dict, Literal
+from typing import Dict, Literal, List, cast
 import pytest
 from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -140,7 +140,7 @@ class TestRepositoryWebhookProcessor:
         self,
         repository_webhook_processor: RepositoryWebhookProcessor,
         resource_config: GithubRepositoryConfig,
-        include_relationships: list[Literal["teams", "collaborators"]],
+        include_relationships: List[Literal["collaborators", "teams"]],
     ) -> None:
         """Test that webhook processor handles included_relationships correctly."""
         repo_data = {
@@ -168,7 +168,8 @@ class TestRepositoryWebhookProcessor:
 
         mock_exporter.get_resource.assert_called_once_with(
             SingleRepositoryOptions(
-                name="test-repo", included_relationships=include_relationships
+                name="test-repo",
+                included_relationships=cast(list[str], include_relationships),
             )
         )
 

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.4.0-beta (2025-08-26)
+
+
+### Improvements
+
+- Enhanced repository selector to support multiple relationship types simultaneously
+- Changed `included_property` to `included_relationships` to allow specifying both "collaborators" and "teams" in a single configuration
+- Improved repository enrichment logic to handle multiple relationships efficiently
+
+
 ## 1.3.3-beta (2025-08-24)
 
 

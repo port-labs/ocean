@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Dict, TYPE_CHECKING
+from typing import Any, Dict, TYPE_CHECKING, cast
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
@@ -29,8 +29,8 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         if not included_relationships:
             return response
 
-        return await self.enrich_repository_with_selected_relationship(
-            response, included_relationships
+        return await self.enrich_repository_with_selected_relationships(
+            response, cast(list[str], included_relationships)
         )
 
     @cache_iterator_result()
@@ -52,22 +52,21 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 yield repos
             else:
                 logger.info(f"Enriching repository with {included_relationships}")
-                
-                relationships_list = list(included_relationships)
+
                 batch = await asyncio.gather(
                     *[
-                        self.enrich_repository_with_selected_relationship(
-                            repo, relationships_list
+                        self.enrich_repository_with_selected_relationships(
+                            repo, cast(list[str], included_relationships)
                         )
                         for repo in repos
                     ]
                 )
                 yield batch
 
-    async def enrich_repository_with_selected_relationship(
+    async def enrich_repository_with_selected_relationships(
         self, repository: Dict[str, Any], included_relationships: list[str]
     ) -> RAW_ITEM:
-        """Enrich repository with selected relationship."""
+        """Enrich repository with selected relationships."""
 
         enrichment_methods = {
             "collaborators": self._enrich_repository_with_collaborators,
