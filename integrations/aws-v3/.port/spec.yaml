@@ -36,3 +36,8 @@ configurations:
     type: string
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
+  - name: use_organizations
+    required: false
+    type: boolean
+    default: false
+    description: When enabled, uses AWS Organizations API to automatically discover all accounts. Requires the first role ARN from accountRoleArn to be the organization management account role.
