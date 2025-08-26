@@ -25,12 +25,12 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield projects
 
 
-@ocean.on_resync(kind=ObjectKind.FEATURE_FLAG)
-async def on_resync_flags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = LaunchDarklyClient.create_from_ocean_configuration()
-    async for flags in client.get_paginated_feature_flags():
-        logger.info(f"Received {kind} batch with {len(flags)} items")
-        yield flags
+# @ocean.on_resync(kind=ObjectKind.FEATURE_FLAG)
+# async def on_resync_flags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+#     client = LaunchDarklyClient.create_from_ocean_configuration()
+#     async for flags in client.get_paginated_feature_flags():
+#         logger.info(f"Received {kind} batch with {len(flags)} items")
+#         yield flags
 
 
 @ocean.on_resync(kind=ObjectKind.ENVIRONMENT)
@@ -41,6 +41,26 @@ async def on_resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield environments
 
 
+@ocean.on_resync(kind=ObjectKind.FEATURE_FLAG)
+async def on_resync_flags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = LaunchDarklyClient.create_from_ocean_configuration()
+    async for flags_batch in client.get_paginated_feature_flags():
+        logger.info(f"Received {kind} batch with {len(flags_batch)} items")
+        
+        # Create tasks for processing flags in parallel
+        tasks = []
+        for flag in flags_batch:
+            project_key = flag.get("__projectKey")
+            if project_key:
+                tasks.append(client.process_flag(flag, project_key))
+            else:
+                # For flags without project key, just pass them through
+                tasks.append(asyncio.create_task(asyncio.sleep(0, result=flag)))
+        
+        # Wait for all tasks to complete
+        processed_flags = await asyncio.gather(*tasks)
+        yield processed_flags
+        
 @ocean.on_resync(kind=ObjectKind.FEATURE_FLAG_STATUS)
 async def on_resync_feature_flag_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LaunchDarklyClient.create_from_ocean_configuration()

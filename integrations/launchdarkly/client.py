@@ -243,6 +243,34 @@ class LaunchDarklyClient:
         logger.info(f"Received {len(feature_flag_dependencies)} dependencies for flag {featureFlagKey}")
         return feature_flag_dependencies.get("items", [])
 
+    async def process_flag(self, flag, project_key):
+        """Process a feature flag and enrich it with dependency information."""
+        flag_entity = flag.copy()
+        flag_entity["projectKey"] = project_key
+        
+        
+        try:
+            dependencies = await self.get_feature_flag_dependencies(project_key, flag["key"])
+            flag_entity["_dependencies"] = []
+            
+            for dep in dependencies:
+                if not dep.get("key"):
+                    logger.warning(f"Skipping dependency without key for {project_key}/{flag['key']}: {dep}")
+                    continue
+                
+                flag_entity["_dependencies"].append({
+                    "dependentFlagKey": dep["key"],
+                    "projectKey": project_key,
+                    "relationshipType": dep.get("relationshipType", "is_depended_on_by")
+                })
+                
+            logger.info(f"Added {len(flag_entity['_dependencies'])} dependencies to flag {flag['key']}")
+        except Exception as e:
+            logger.error(f"Error processing dependencies for {project_key}/{flag['key']}: {e}")
+            flag_entity["_dependencies"] = []
+        
+        return flag_entity
+
     async def get_feature_flag_dependencies_by_environment(
         self, projectKey: str, featureFlagKey: str, environmentKey: str
     ) -> list[dict[str, Any]]:

@@ -100,6 +100,18 @@
         "target": "launchDarklyProject",
         "required": true,
         "many": false
+      },
+      "dependsOn": {
+      "title": "Depends On",
+      "target": "launchDarklyFeatureFlag",
+      "required": false,
+      "many": true
+      },
+      "dependedOnBy": {
+        "title": "Depended On By",
+        "target": "launchDarklyFeatureFlag",
+        "required": false,
+        "many": true
       }
     }
   },

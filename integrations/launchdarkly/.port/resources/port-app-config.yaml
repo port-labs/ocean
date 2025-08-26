@@ -35,6 +35,8 @@ resources:
             archived: .archived
           relations:
             project: .__projectKey
+            dependsOn: "._dependencies | map(select(.relationshipType == \"depends_on\")) | map(.dependentFlagKey + \"-\" + .projectKey) | join(\",\")"
+            dependedOnBy: "._dependencies | map(select(.relationshipType == \"is_depended_on_by\")) | map(.dependentFlagKey + \"-\" + .projectKey) | join(\",\")"
   - kind: environment
     selector:
       query: 'true'
@@ -92,4 +94,5 @@ resources:
             relationshipType: .relationshipType
           relations:
             sourceFlag: .flagKey + "-" + .projectKey
+            environment: .environmentKey + "-" + .projectKey
             relatedFlag: .dependentFlagKey + "-" + .dependentProjectKey
