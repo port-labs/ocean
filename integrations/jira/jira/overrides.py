@@ -27,6 +27,7 @@ class JiraIssueSelector(Selector):
         description="Additional fields to be included in the API response",
         default="*all",
     )
+    expand: str | None = None
 
 
 class JiraIssueConfig(ResourceConfig):
