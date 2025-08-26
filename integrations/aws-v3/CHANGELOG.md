@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.4-dev (2025-08-26)
+
+
+### Improvements
+
+- Add use_organizations flag to the integration
+
+
 ## 0.3.3-dev (2025-08-25)
 
 
