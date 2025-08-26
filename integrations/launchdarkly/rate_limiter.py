@@ -17,7 +17,7 @@ class LaunchDarklyRateLimiter:
 
     def __init__(
         self,
-        max_concurrent: int = 10,
+        max_concurrent: int = 5,
         minimum_limit_remaining: int = 1,
     ) -> None:
         """
@@ -42,6 +42,7 @@ class LaunchDarklyRateLimiter:
         """Calculates the time in seconds until the rate limit window resets."""
         if self._reset_time:
             return max(0.0, float(self._reset_time) - time.time())
+        logger.debug("Rate limit reset time is not set")
         return 0.0
 
     async def __aenter__(self) -> "LaunchDarklyRateLimiter":
@@ -52,7 +53,7 @@ class LaunchDarklyRateLimiter:
             if self._remaining and self._remaining <= self._minimum_limit_remaining:
                 sleep_duration = self.seconds_until_reset
                 if sleep_duration > 0:
-                    logger.info(
+                    logger.debug(
                         f"Proactively sleeping for {sleep_duration:.2f}s as rate limit "
                         f"remaining ({self._remaining}) is near threshold "
                         f"({self._minimum_limit_remaining})."
@@ -82,12 +83,12 @@ class LaunchDarklyRateLimiter:
                 remaining = headers.get("X-Ratelimit-Route-Remaining") or headers.get(
                     "X-Ratelimit-Global-Remaining"
                 )
-                reset_ms = headers.get("X-Ratelimit-Reset")
+                reset_after_ms = headers.get("X-Ratelimit-Reset")
 
-                if limit and remaining and reset_ms:
+                if limit and remaining and reset_after_ms:
                     self._limit = int(limit)
                     self._remaining = int(remaining)
-                    self._reset_time = float(reset_ms) / 1000.0
+                    self._reset_time = float(reset_after_ms) / 1000.0
                     logger.debug(
                         f"LaunchDarkly rate limit updated. "
                         f"Remaining: {self._remaining}. "
