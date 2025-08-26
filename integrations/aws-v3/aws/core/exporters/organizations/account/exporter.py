@@ -29,10 +29,18 @@ class OrganizationsAccountExporter(IResourceExporter):
     async def get_resource(self, options: SingleAccountRequest) -> dict[str, Any]:
         """Fetch single account using the provided account data."""
         if not options.include:
-            account_model = self._model_cls()
-            account_model.Properties = account_model.Properties.__class__(
-                **options.account_data
+            # Use ResourceBuilder for consistency
+            from aws.core.modeling.resource_builder import ResourceBuilder
+            
+            builder = ResourceBuilder(
+                self._model_cls(), 
+                account_id=options.account_id
             )
+            
+            properties_data = [options.account_data]
+            builder.with_properties(properties_data)
+            
+            account_model = builder.build()
             return account_model.dict(exclude_none=True)
 
         async with self.session.create_client(
