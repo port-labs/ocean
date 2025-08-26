@@ -29,6 +29,7 @@ class ListScanResultOptions(TypedDict):
     """Options for listing scan results."""
 
     scan_id: Required[str]
+    kind: Required[str]
     severity: NotRequired[
         Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
     ]

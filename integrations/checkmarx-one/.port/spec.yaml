@@ -8,7 +8,11 @@ features:
     resources:
       - kind: project
       - kind: scan
-      - kind: scan_result
+      - kind: containers
+      - kind: kics
+      - kind: sca
+      - kind: sast
+      - kind: apisec
 configurations:
   - name: checkmarxBaseUrl
     required: true

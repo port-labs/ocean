@@ -7,7 +7,19 @@ class ObjectKind(StrEnum):
 
     PROJECT = "project"
     SCAN = "scan"
-    SCAN_RESULT = "scan_result"
+    CONTAINERS = "containers"
+    KICS = "kics"
+    SCA = "sca"
+    SAST = "sast"
+    API_SEC = "apisec"
+
+
+ALLOWED_KINDS_FOR_SCAN_RESULT = [
+    ObjectKind.SAST,
+    ObjectKind.CONTAINERS,
+    ObjectKind.KICS,
+    ObjectKind.SCA,
+]
 
 
 class IgnoredError(NamedTuple):

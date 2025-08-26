@@ -82,6 +82,7 @@ class TestCheckmarxScanResultExporter:
                 "severity": "LOW",
                 "state": "TO_VERIFY",
                 "status": "RECURRENT",
+                "type": "sast",
             },
         ]
 
@@ -127,7 +128,7 @@ class TestCheckmarxScanResultExporter:
         mock_client.send_paginated_request = mock_paginated_resources
 
         results: List[List[dict[str, Any]]] = []
-        list_options = ListScanResultOptions(scan_id="scan-1")
+        list_options = ListScanResultOptions(scan_id="scan-1", kind="sast")
         async for batch in scan_result_exporter.get_paginated_resources(list_options):
             results.append(batch)
 
@@ -161,6 +162,7 @@ class TestCheckmarxScanResultExporter:
         results: List[List[dict[str, Any]]] = []
         list_options = ListScanResultOptions(
             scan_id="scan-1",
+            kind="sast",
             severity=["CRITICAL", "HIGH"],
             state=["TO_VERIFY", "CONFIRMED"],
             status=["NEW", "RECURRENT"],
@@ -198,7 +200,7 @@ class TestCheckmarxScanResultExporter:
         mock_client.send_paginated_request = mock_paginated_resources
 
         results: List[List[dict[str, Any]]] = []
-        list_options = ListScanResultOptions(scan_id="scan-1")
+        list_options = ListScanResultOptions(scan_id="scan-1", kind="sast")
         async for batch in scan_result_exporter.get_paginated_resources(list_options):
             results.append(batch)
 
@@ -221,7 +223,7 @@ class TestCheckmarxScanResultExporter:
         mock_client.send_paginated_request = mock_paginated_resources
 
         results: List[List[dict[str, Any]]] = []
-        list_options = ListScanResultOptions(scan_id="scan-1")
+        list_options = ListScanResultOptions(scan_id="scan-1", kind="sast")
         async for batch in scan_result_exporter.get_paginated_resources(list_options):
             results.append(batch)
 

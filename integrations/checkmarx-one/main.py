@@ -18,7 +18,7 @@ from integration import (
     CheckmarxOneScanResourcesConfig,
     CheckmarxOneScanResultResourcesConfig,
 )
-from checkmarx_one.utils import ObjectKind
+from checkmarx_one.utils import ObjectKind, ALLOWED_KINDS_FOR_SCAN_RESULT
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -52,10 +52,14 @@ async def on_scan_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield scans_batch
 
 
-@ocean.on_resync(ObjectKind.SCAN_RESULT)
+@ocean.on_resync()
 async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync scan results from Checkmarx One."""
     logger.info(f"Starting resync for kind: {kind}")
+
+    if kind not in ALLOWED_KINDS_FOR_SCAN_RESULT:
+        logger.info(f"Skipping resync for kind: {kind}")
+        return
 
     scan_exporter = create_scan_exporter()
     scan_result_exporter = create_scan_result_exporter()
@@ -64,6 +68,7 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ).selector
     options = ListScanResultOptions(
         scan_id="",
+        kind=kind,
         severity=selector.severity,
         state=selector.state,
         status=selector.status,
@@ -80,3 +85,11 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 logger.debug(f"Received batch with {len(results_batch)} scan results")
                 yield results_batch
+
+
+@ocean.on_resync(ObjectKind.API_SEC)
+async def on_api_sec_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync API security from Checkmarx One."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    yield []

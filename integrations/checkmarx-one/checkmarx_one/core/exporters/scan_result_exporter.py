@@ -79,6 +79,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
                     options["scan_id"],
                 )
                 for result in results
+                if result["type"] == options["kind"]
             ]
             yield batch
 
