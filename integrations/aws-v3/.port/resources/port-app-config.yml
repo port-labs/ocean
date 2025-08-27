@@ -78,4 +78,3 @@ resources:
             arn: '"arn:aws:ec2:" + .__Region + ":" + .__AccountId + ":instance/" + .Properties.InstanceId'
           relations:
             account: .__AccountId
-
