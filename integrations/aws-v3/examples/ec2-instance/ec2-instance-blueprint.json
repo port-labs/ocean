@@ -23,7 +23,7 @@
       },
       "privateIpAddress": {
         "type": "string",
-        "title": "Private IP Address", 
+        "title": "Private IP Address",
         "description": "The private IP address assigned to the instance",
         "format": "ip"
       },
@@ -117,4 +117,3 @@
     }
   }
 }
-

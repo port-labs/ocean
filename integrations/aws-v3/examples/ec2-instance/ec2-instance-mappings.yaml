@@ -33,4 +33,3 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__AccountId
-
