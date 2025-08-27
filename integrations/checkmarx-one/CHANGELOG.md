@@ -7,13 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.6-dev (2025-08-27)
+## 0.1.7-dev (2025-08-27)
 
 
 ### Improvements
 
 - Added API sec exporter and separated scan results kinds
-
 
 
 ## 0.1.6-dev (2025-08-27)
