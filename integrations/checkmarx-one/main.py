@@ -21,7 +21,7 @@ from integration import (
     CheckmarxOneApiSecResourcesConfig,
     ScanResultConfigType,
 )
-from checkmarx_one.utils import ObjectKind, ALLOWED_KINDS_FOR_SCAN_RESULT
+from checkmarx_one.utils import ObjectKind
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -55,14 +55,103 @@ async def on_scan_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield scans_batch
 
 
-@ocean.on_resync()
-async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync scan results from Checkmarx One."""
+@ocean.on_resync(ObjectKind.KICS)
+async def on_kics_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync KICS from Checkmarx One."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    if kind not in ALLOWED_KINDS_FOR_SCAN_RESULT:
-        logger.debug(f"Skipping resync for kind not for scan results: {kind}")
-        return
+    scan_exporter = create_scan_exporter()
+    scan_result_exporter = create_scan_result_exporter()
+    selector = cast(ScanResultConfigType, event.resource_config).selector
+    options = ListScanResultOptions(
+        scan_id="",
+        kind=kind,
+        severity=selector.severity,
+        state=selector.state,
+        status=selector.status,
+        exclude_result_types=selector.exclude_result_types,
+    )
+
+    scan_options = ListScanOptions()
+
+    async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
+        for scan_data in scan_data_list:
+            options.update({"scan_id": scan_data["id"]})
+            async for results_batch in scan_result_exporter.get_paginated_resources(
+                options
+            ):
+                logger.info(
+                    f"Received batch with {len(results_batch)} scan results for kind: {kind}"
+                )
+                yield results_batch
+
+
+@ocean.on_resync(ObjectKind.CONTAINERS)
+async def on_container_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync containers from Checkmarx One."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    scan_exporter = create_scan_exporter()
+    scan_result_exporter = create_scan_result_exporter()
+    selector = cast(ScanResultConfigType, event.resource_config).selector
+    options = ListScanResultOptions(
+        scan_id="",
+        kind=kind,
+        severity=selector.severity,
+        state=selector.state,
+        status=selector.status,
+        exclude_result_types=selector.exclude_result_types,
+    )
+
+    scan_options = ListScanOptions()
+
+    async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
+        for scan_data in scan_data_list:
+            options.update({"scan_id": scan_data["id"]})
+            async for results_batch in scan_result_exporter.get_paginated_resources(
+                options
+            ):
+                logger.info(
+                    f"Received batch with {len(results_batch)} scan results for kind: {kind}"
+                )
+                yield results_batch
+
+
+@ocean.on_resync(ObjectKind.SCA)
+async def on_sca_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync SCA from Checkmarx One."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    scan_exporter = create_scan_exporter()
+    scan_result_exporter = create_scan_result_exporter()
+    selector = cast(ScanResultConfigType, event.resource_config).selector
+    options = ListScanResultOptions(
+        scan_id="",
+        kind=kind,
+        severity=selector.severity,
+        state=selector.state,
+        status=selector.status,
+        exclude_result_types=selector.exclude_result_types,
+    )
+
+    scan_options = ListScanOptions()
+
+    async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
+        for scan_data in scan_data_list:
+            options.update({"scan_id": scan_data["id"]})
+            async for results_batch in scan_result_exporter.get_paginated_resources(
+                options
+            ):
+                logger.info(
+                    f"Received batch with {len(results_batch)} scan results for kind: {kind}"
+                )
+                yield results_batch
+
+
+@ocean.on_resync(ObjectKind.SAST)
+async def on_sast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync SAST from Checkmarx One."""
+    logger.info(f"Starting resync for kind: {kind}")
 
     scan_exporter = create_scan_exporter()
     scan_result_exporter = create_scan_result_exporter()
