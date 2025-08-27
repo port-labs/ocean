@@ -185,7 +185,7 @@ class TestMultiAccountStrategy:
         assert len(sessions) == 1
         account_info, session = sessions[0]
         assert account_info["Id"] == "123456789012"
-        assert account_info["Arn"] == "arn:aws:iam::123456789012:role/test-role"
+        assert account_info["Arn"] == "arn:aws:iam::123456789012:root"
         # Name is optional for multi account strategy
         assert session == mock_aiosession
 

@@ -1,4 +1,21 @@
 resources:
+  - kind: AWS::Organizations::Account
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Id
+          title: .Properties.Id
+          blueprint: '"awsAccount"'
+          properties:
+            accountArn: .Properties.Arn
+            accountName: .Properties.Name
+            email: .Properties.Email
+            joinedMethod: .Properties.JoinedMethod
+            joinedTimestamp: .Properties.JoinedTimestamp
+            status: .Properties.Status
+
   - kind: AWS::S3::Bucket
     selector:
       query: 'true'
@@ -19,40 +36,26 @@ resources:
             encryption: .Properties.BucketEncryption
             publicAccessBlockConfiguration: .Properties.PublicAccessBlockConfiguration
             tags: .Properties.Tags
+          relations:
+            account: .__AccountId
 
   - kind: AWS::ECS::Cluster
     selector:
       query: 'true'
       includeActions:
         - GetClusterPendingTasksAction
-      port:
-            entity:
-              mappings:
-                identifier: .Properties.clusterArn
-                title: .Properties.clusterName
-                blueprint: '"ecsCluster"'
-                properties:
-                  status: .Properties.status
-                  activeServicesCount: .Properties.activeServicesCount
-                  pendingTasksCount: .Properties.pendingTasksCount
-                  runningTasksCount: .Properties.runningTasksCount
-                  tags: .Properties.tags
-                  pendingTaskArns: .Properties.pendingTaskArns
-
-  - kind: AWS::Organizations::Account
-    selector:
-      query: 'true'
     port:
       entity:
         mappings:
-          identifier: .Properties.Id
-          title: .Properties.Id
-          blueprint: '"awsAccount"'
+          identifier: .Properties.clusterArn
+          title: .Properties.clusterName
+          blueprint: '"ecsCluster"'
           properties:
-            accountArn: .Properties.Arn
-            accountName: .Properties.Name
-            email: .Properties.Email
-            joinedMethod: .Properties.JoinedMethod
-            joinedTimestamp: .Properties.JoinedTimestamp
-            status: .Properties.Status
-            tags: .Properties.Tags
+            status: .Properties.status
+            activeServicesCount: .Properties.activeServicesCount
+            pendingTasksCount: .Properties.pendingTasksCount
+            runningTasksCount: .Properties.runningTasksCount
+            tags: .Properties.tags
+            pendingTaskArns: .Properties.pendingTaskArns
+          relations:
+            account: .__AccountId

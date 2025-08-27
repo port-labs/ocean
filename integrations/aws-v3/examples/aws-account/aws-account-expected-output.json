@@ -1,0 +1,31 @@
+{
+  "identifier": "123456789012",
+  "title": "Production Account",
+  "blueprint": "awsAccount",
+  "properties": {
+    "accountArn": "arn:aws:organizations::123456789012:account/o-exampleorgid/123456789012",
+    "accountName": "Production Account",
+    "email": "admin@mycompany.com",
+    "joinedMethod": "INVITED",
+    "joinedTimestamp": "2023-01-15T10:30:00.000Z",
+    "status": "ACTIVE",
+    "tags": [
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Team",
+        "Value": "platform"
+      },
+      {
+        "Key": "CostCenter",
+        "Value": "engineering"
+      },
+      {
+        "Key": "Owner",
+        "Value": "platform-team"
+      }
+    ]
+  }
+}

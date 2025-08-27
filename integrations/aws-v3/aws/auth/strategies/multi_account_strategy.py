@@ -122,7 +122,7 @@ class MultiAccountStrategy(MultiAccountHealthCheckMixin):
             account_id = extract_account_from_arn(arn)
             account_info: AccountInfo = {
                 "Id": account_id,
-                "Arn": arn,
+                "Arn": f"arn:aws:iam::{account_id}:root",
             }
             yield account_info, session
 

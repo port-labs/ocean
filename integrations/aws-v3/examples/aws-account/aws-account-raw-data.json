@@ -1,0 +1,31 @@
+{
+  "Type": "AWS::Organizations::Account",
+  "Properties": {
+    "Id": "123456789012",
+    "Arn": "arn:aws:organizations::123456789012:account/o-exampleorgid/123456789012",
+    "Name": "Production Account",
+    "Email": "admin@mycompany.com",
+    "JoinedMethod": "INVITED",
+    "JoinedTimestamp": "2023-01-15T10:30:00.000Z",
+    "Status": "ACTIVE",
+    "Tags": [
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Team",
+        "Value": "platform"
+      },
+      {
+        "Key": "CostCenter",
+        "Value": "engineering"
+      },
+      {
+        "Key": "Owner",
+        "Value": "platform-team"
+      }
+    ]
+  },
+  "__AccountId": "123456789012"
+}
