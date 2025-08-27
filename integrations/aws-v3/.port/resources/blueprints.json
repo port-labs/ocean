@@ -1,5 +1,58 @@
 [
   {
+    "identifier": "awsAccount",
+    "title": "AWS Account",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "accountArn": {
+          "type": "string",
+          "title": "Account ARN",
+          "description": "The Amazon Resource Name (ARN) of the account"
+        },
+        "accountName": {
+          "type": "string",
+          "title": "Account Name",
+          "description": "The name of the AWS account"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "description": "The email address associated with the account"
+        },
+        "joinedMethod": {
+          "type": "string",
+          "title": "Joined Method",
+          "description": "How the account joined the organization",
+          "enum": ["INVITED", "CREATED"]
+        },
+        "joinedTimestamp": {
+          "type": "string",
+          "title": "Joined Timestamp",
+          "description": "When the account joined the organization",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the account",
+          "enum": ["ACTIVE", "SUSPENDED", "PENDING_CLOSURE"]
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the account",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
     "identifier": "s3Bucket",
     "title": "S3 Bucket",
     "icon": "AWS",
