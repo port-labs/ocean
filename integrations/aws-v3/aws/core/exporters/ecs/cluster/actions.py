@@ -1,7 +1,6 @@
 from typing import Dict, Any, List, Type
 from aws.core.interfaces.action import (
     Action,
-    DataAction,
     APIAction,
     BatchAPIAction,
     ActionMap,
