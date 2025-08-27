@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 - Added GitHub API rate limiting with concurrency control
-- Implemented GitHubRateLimiter with smart backoff strategies based on GitHub's rate limit headers
+- Implemented GitHubRateLimiter based on GitHub's rate limit headers
 - Added separate rate limit tracking for Rest and GraphQL endpoints
 - Added semaphore-based concurrency control (default: 10 concurrent requests)
 - Integrated rate limiting into base client with configurable parameters
