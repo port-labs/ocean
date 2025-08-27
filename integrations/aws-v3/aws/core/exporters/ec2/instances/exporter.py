@@ -109,6 +109,4 @@ class EC2InstanceExporter(IResourceExporter):
                 ]
                 instance_results = await asyncio.gather(*tasks)
 
-                logger.info(instance_results)
-
                 yield instance_results

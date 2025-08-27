@@ -174,7 +174,6 @@ async def resync_ec2_instance(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for batch in _handle_regional_resource_resync(
             kind, regions, options_factory, exporter, account["Id"]
         ):
-            logger.info(batch)
             yield batch
 
 
