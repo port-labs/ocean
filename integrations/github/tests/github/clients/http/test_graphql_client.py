@@ -33,7 +33,7 @@ class TestGithubGraphQLClient:
         mock_config.client_timeout = 30.0  # Set a proper float value for timeout
 
         with patch(
-            "httpx.AsyncClient.request",
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
             with pytest.raises(GraphQLErrorGroup) as exc_info:

@@ -5,25 +5,6 @@ from pydantic import BaseModel, Field
 
 
 @dataclass
-class PauseUntil:
-    resume_at: Optional[float] = None
-
-    def is_active(self) -> bool:
-        return self.resume_at is not None and self.resume_at > time.time()
-
-    def seconds_remaining(self) -> float:
-        if self.resume_at is None:
-            return 0.0
-        return max(0.0, self.resume_at - time.time())
-
-    def set(self, seconds_from_now: float) -> None:
-        self.resume_at = time.time() + seconds_from_now
-
-    def clear(self) -> None:
-        self.resume_at = None
-
-
-@dataclass
 class RateLimitInfo:
     remaining: int
     reset_time: int

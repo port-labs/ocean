@@ -1,11 +1,9 @@
-import time
 import asyncio
 from typing import List, Optional, Dict, Any, Type
 import httpx
 from loguru import logger
 from github.clients.rate_limiter.utils import (
     GitHubRateLimiterConfig,
-    PauseUntil,
     RateLimitInfo,
     RateLimiterRequiredHeaders,
 )
@@ -18,7 +16,6 @@ class GitHubRateLimiter:
         self._semaphore = asyncio.Semaphore(config.max_concurrent)
         self._rate_limit_info: Optional[RateLimitInfo] = None
 
-        self._pause = PauseUntil()
         self._block_lock = asyncio.Lock()
         self._current_resource: Optional[str] = None
 
@@ -26,8 +23,8 @@ class GitHubRateLimiter:
         await self._semaphore.acquire()
 
         async with self._block_lock:
-            if self._pause.is_active():
-                delay = self._pause.seconds_remaining()
+            if self._rate_limit_info and (self._rate_limit_info.remaining <= 1):
+                delay = self._rate_limit_info.seconds_until_reset
                 if delay > 0:
                     logger.warning(
                         f"{self.api_type} requests paused for {delay:.1f}s due to earlier rate limit"
@@ -40,21 +37,24 @@ class GitHubRateLimiter:
         exc_type: Optional[Type[BaseException]],
         exc_val: Optional[BaseException],
         exc_tb: Optional[Any],
-    ) -> Optional[bool]:
-        try:
-            if exc_type is not None and exc_val is not None:
-                if isinstance(exc_val, httpx.HTTPStatusError):
-                    backoff_time = self._handle_rate_limit_error(exc_val.response)
-                    if backoff_time:
-                        logger.warning(
-                            f"Rate limit hit for {self.api_type}, waiting {backoff_time:.1f} seconds"
-                        )
-                        await asyncio.sleep(backoff_time)
-                        return True
-        finally:
-            self._semaphore.release()
+    ) -> None:
 
-        return None
+        self._semaphore.release()
+
+    def get_rate_limit_status_codes(self) -> List[int]:
+        return [403, 429]
+
+    def is_rate_limit_response(self, response: httpx.Response) -> bool:
+        status_code = response.status_code
+        headers = response.headers
+
+        if status_code not in self.get_rate_limit_status_codes():
+            return False
+
+        return status_code == 429 or (
+            headers.get("X-RateLimit-Remaining") == "0"
+            and headers.get("X-RateLimit-Reset") is not None
+        )
 
     def _parse_rate_limit_headers(
         self, headers: RateLimiterRequiredHeaders
@@ -70,46 +70,6 @@ class GitHubRateLimiter:
             limit=int(headers.x_ratelimit_limit),
             remaining=int(headers.x_ratelimit_remaining),
             reset_time=int(headers.x_ratelimit_reset),
-        )
-
-    def _get_backoff_time(self, response: httpx.Response) -> Optional[float]:
-        buffer = 5.0  # Add 5 seconds to whatever GitHub says
-
-        retry_after = response.headers.get("Retry-After")
-        if retry_after:
-            return float(retry_after) + buffer
-
-        reset_time = response.headers.get("X-RateLimit-Reset")
-        if reset_time:
-            return float(reset_time) - time.time() + buffer
-
-        return None
-
-    def get_rate_limit_status_codes(self) -> List[int]:
-        return [403, 429]
-
-    def _handle_rate_limit_error(self, response: httpx.Response) -> Optional[float]:
-        if response.status_code in self.get_rate_limit_status_codes():
-            backoff_time = self._get_backoff_time(response)
-            if backoff_time:
-                self._pause.set(backoff_time)
-                logger.warning(
-                    f"{self.api_type} rate limit hit. "
-                    f"Pausing all {self.api_type} requests for {backoff_time:.1f}s"
-                )
-                return backoff_time
-        return None
-
-    def is_rate_limit_response(self, response: httpx.Response) -> bool:
-        status_code = response.status_code
-        headers = response.headers
-
-        if status_code not in self.get_rate_limit_status_codes():
-            return False
-
-        return status_code == 429 or (
-            headers.get("X-RateLimit-Remaining") == "0"
-            and headers.get("X-RateLimit-Reset") is not None
         )
 
     def update_rate_limits(
@@ -153,6 +113,3 @@ class GitHubRateLimiter:
             f"({info['utilization_percentage']:.1f}% used) - "
             f"resets in {info['seconds_until_reset']}s"
         )
-
-    def is_paused(self) -> bool:
-        return self._pause.is_active()

@@ -4,6 +4,9 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel, PrivateAttr, Field
 from dateutil.parser import parse
 
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.retry import RetryConfig
+from port_ocean.helpers.async_client import OceanAsyncClient
 import httpx
 
 
@@ -45,4 +48,15 @@ class AbstractGitHubAuthenticator(ABC):
 
     @property
     def client(self) -> httpx.AsyncClient:
-        return httpx.AsyncClient()
+        retry_config = RetryConfig(
+            retry_after_headers=[
+                "Retry-After",
+                "X-RateLimit-Reset",
+            ],
+            additional_retry_status_codes=[403],
+        )
+
+        return OceanAsyncClient(
+            retry_config=retry_config,
+            timeout=ocean.config.client_timeout,
+        )
