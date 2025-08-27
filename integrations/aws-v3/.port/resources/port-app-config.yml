@@ -72,8 +72,8 @@ resources:
           properties:
             instanceType: .Properties.InstanceType
             state: .Properties.State.Name
-            publicIp: .Properties.PublicIpAddress
-            privateIp: .Properties.PrivateIpAddress
+            publicIpAddress: .Properties.PublicIpAddress
+            privateIpAddress: .Properties.PrivateIpAddress
             tags: .Properties.Tags
             arn: '"arn:aws:ec2:" + .__Region + ":" + .__AccountId + ":instance/" + .Properties.InstanceId'
           relations:
