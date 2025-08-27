@@ -48,14 +48,8 @@ class GetClusterPendingTasksAction(APIAction):
         return {"pendingTaskArns": task_arns}
 
 
-class GetClusterArnAction(DataAction):
-    async def _transform_data(self, cluster_arn: str) -> Dict[str, Any]:
-        return {"clusterArn": cluster_arn}
-
-
 class ECSClusterActionsMap(ActionMap):
     defaults: List[Type[Action]] = [
-        GetClusterArnAction,
         ECSClusterDetailsAction,
     ]
 
