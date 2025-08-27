@@ -424,7 +424,7 @@
     }
   },
   {
-    "identifier": "checkmarxContainers",
+    "identifier": "checkmarxContainerSec",
     "title": "Checkmarx Container Security",
     "icon": "Checkmarx",
     "schema": {

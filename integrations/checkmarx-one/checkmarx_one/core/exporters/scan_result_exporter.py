@@ -5,6 +5,7 @@ from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from port_ocean.utils.cache import cache_iterator_result
 from checkmarx_one.core.options import SingleScanResultOptions, ListScanResultOptions
+from checkmarx_one.utils import ObjectKind
 
 
 class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
@@ -89,7 +90,8 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         Yields:
             Batches of scan results
         """
-
+        if options["kind"] == ObjectKind.CONTAINERS.value:
+            options["kind"] = "containers"
         params: dict[str, Any] = self._get_params(options)
 
         async for batch in self._enrich_batch(params, options["scan_id"]):

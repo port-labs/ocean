@@ -63,8 +63,6 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind not in ALLOWED_KINDS_FOR_SCAN_RESULT:
         logger.debug(f"Skipping resync for kind not for scan results: {kind}")
         return
-    if kind == "containersec":
-        kind = "containers"
 
     scan_exporter = create_scan_exporter()
     scan_result_exporter = create_scan_result_exporter()
