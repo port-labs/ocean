@@ -499,14 +499,13 @@ class TestCheckmarxOneClient:
 
         with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
             mock_client.request = AsyncMock(return_value=mock_response)
-            results = []
-            async for batch in client.send_paginated_request_api_sec(
-                "/test", "entries"
-            ):
-                results.append(batch)
 
-            assert len(results) == 1
-            assert results[0] == [{"risk_id": "1"}]
+            with pytest.raises(KeyError, match="next_page_number"):
+                results = []
+                async for batch in client.send_paginated_request_api_sec(
+                    "/test", "entries"
+                ):
+                    results.append(batch)
 
     @pytest.mark.asyncio
     async def test_send_paginated_request_api_sec_request_error(

@@ -8,7 +8,7 @@ features:
     resources:
       - kind: project
       - kind: scan
-      - kind: containers
+      - kind: containersec
       - kind: kics
       - kind: sca
       - kind: sast

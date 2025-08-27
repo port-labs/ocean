@@ -74,7 +74,7 @@ class CheckmarxOneKicsResourcesConfig(ResourceConfig):
 
 
 class CheckmarxOneContainersResourcesConfig(ResourceConfig):
-    kind: Literal["containers"]
+    kind: Literal["containersec"]
     selector: CheckmarxOneResultSelector
 
 

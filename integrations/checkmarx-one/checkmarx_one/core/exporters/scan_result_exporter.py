@@ -17,6 +17,32 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         scan_result["__scan_id"] = scan_id
         return scan_result
 
+    @cache_iterator_result()
+    async def _enrich_batch(
+        self, params: dict[str, Any], scan_id: str
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """
+        Enrich a yield batch of scan results.
+
+        Args:
+            results: Raw scan results from the API
+            scan_id: The scan ID to enrich results with
+
+        Returns:
+            Enriched batch of scan results
+        """
+        async for results in self.client.send_paginated_request(
+            "/results", "results", params
+        ):
+            batch = [
+                self._enrich_scan_result_with_scan_id(
+                    result,
+                    scan_id,
+                )
+                for result in results
+            ]
+            yield batch
+
     async def get_resource(self, options: SingleScanResultOptions) -> RAW_ITEM:
         """
         Get a specific scan result by ID.
@@ -42,7 +68,6 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         )
         return self._enrich_scan_result_with_scan_id(response, options["scan_id"])
 
-    @cache_iterator_result()
     async def get_paginated_resources(
         self,
         options: ListScanResultOptions,
@@ -67,21 +92,9 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
 
         params: dict[str, Any] = self._get_params(options)
 
-        async for results in self.client.send_paginated_request(
-            "/results", "results", params
-        ):
-            logger.info(
-                f"Fetched batch of {len(results)} scan results for scan {options['scan_id']}"
-            )
-            batch = [
-                self._enrich_scan_result_with_scan_id(
-                    result,
-                    options["scan_id"],
-                )
-                for result in results
-                if result["type"] == options["kind"]
-            ]
-            yield batch
+        async for batch in self._enrich_batch(params, options["scan_id"]):
+            data = [result for result in batch if result["type"] == options["kind"]]
+            yield data
 
     def _get_params(self, options: ListScanResultOptions) -> dict[str, Any]:
         params: dict[str, Any] = {

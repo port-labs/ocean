@@ -41,7 +41,7 @@ resources:
           relations:
             project: .projectId
 
-  - kind: containers
+  - kind: containersec
     selector:
       query: 'true'
     port:

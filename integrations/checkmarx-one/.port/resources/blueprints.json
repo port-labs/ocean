@@ -52,8 +52,7 @@
       "properties": {
         "status": {
           "type": "string",
-          "title": "Status",
-          "enum": ["Running", "Completed", "Failed", "Canceled", "Queued"]
+          "title": "Status"
         },
         "branch": {
           "type": "string",

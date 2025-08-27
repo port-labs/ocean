@@ -7,7 +7,7 @@ class ObjectKind(StrEnum):
 
     PROJECT = "project"
     SCAN = "scan"
-    CONTAINERS = "containers"
+    CONTAINERS = "containersec"
     KICS = "kics"
     SCA = "sca"
     SAST = "sast"

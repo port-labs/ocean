@@ -61,8 +61,10 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     if kind not in ALLOWED_KINDS_FOR_SCAN_RESULT:
-        logger.info(f"Skipping resync for kind: {kind}")
+        logger.debug(f"Skipping resync for kind not for scan results: {kind}")
         return
+    if kind == "containersec":
+        kind = "containers"
 
     scan_exporter = create_scan_exporter()
     scan_result_exporter = create_scan_result_exporter()
@@ -84,10 +86,9 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for results_batch in scan_result_exporter.get_paginated_resources(
                 options
             ):
-                logger.debug(
+                logger.info(
                     f"Received batch with {len(results_batch)} scan results for kind: {kind}"
                 )
-                logger.debug(results_batch)
                 yield results_batch
 
 
@@ -114,7 +115,7 @@ async def on_api_sec_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for results_batch in api_sec_exporter.get_paginated_resources(
                 options
             ):
-                logger.debug(
+                logger.info(
                     f"Received batch with {len(results_batch)} API security risks for scan {scan_data['id']}"
                 )
                 yield results_batch

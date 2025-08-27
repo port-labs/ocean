@@ -40,7 +40,7 @@ class TestObjectKind:
         expected_values = {
             "project",
             "scan",
-            "containers",
+            "containersec",
             "kics",
             "sca",
             "sast",

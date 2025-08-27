@@ -215,7 +215,7 @@ class CheckmarxOneClient:
             try:
                 response = await self.send_api_request(endpoint, params=page_params)
                 has_next_page = response.get("has_next", False)
-                next_page_number = response.get("next_page_number", 1)
+                next_page_number = response["next_page_number"]
                 items: List[dict[str, Any]] = response.get(
                     "entries", []
                 ) or response.get(object_key, [])
