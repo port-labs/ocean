@@ -59,3 +59,23 @@ resources:
             pendingTaskArns: .Properties.pendingTaskArns
           relations:
             account: .__AccountId
+
+  - kind: AWS::EC2::Instance
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.InstanceId
+          title: .Properties.InstanceId
+          blueprint: '"ec2Instance"'
+          properties:
+            instanceType: .Properties.InstanceType
+            state: .Properties.State.Name
+            publicIp: .Properties.PublicIpAddress
+            privateIp: .Properties.PrivateIpAddress
+            tags: .Properties.Tags
+            arn: '"arn:aws:ec2:" + .__Region + ":" + .__AccountId + ":instance/" + .Properties.InstanceId'
+          relations:
+            account: .__AccountId
+

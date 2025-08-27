@@ -1,5 +1,58 @@
 [
   {
+    "identifier": "awsAccount",
+    "title": "AWS Account",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "accountArn": {
+          "type": "string",
+          "title": "Account ARN",
+          "description": "The Amazon Resource Name (ARN) of the account"
+        },
+        "accountName": {
+          "type": "string",
+          "title": "Account Name",
+          "description": "The name of the AWS account"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "description": "The email address associated with the account"
+        },
+        "joinedMethod": {
+          "type": "string",
+          "title": "Joined Method",
+          "description": "How the account joined the organization",
+          "enum": ["INVITED", "CREATED"]
+        },
+        "joinedTimestamp": {
+          "type": "string",
+          "title": "Joined Timestamp",
+          "description": "When the account joined the organization",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the account",
+          "enum": ["ACTIVE", "SUSPENDED", "PENDING_CLOSURE"]
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the account",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
     "identifier": "s3Bucket",
     "title": "S3 Bucket",
     "icon": "AWS",
@@ -88,10 +141,62 @@
             "type": "string"
           }
         }
-      },
-      "required": ["clusterName"]
+      }
     },
     "calculationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "ec2Instance",
+    "title": "EC2 Instance",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "instanceType": {
+          "type": "string",
+          "title": "Instance Type",
+          "description": "The type of the EC2 instance (e.g., t2.micro, m5.large)"
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "description": "The current state of the instance",
+          "enum": ["pending", "running", "shutting-down", "terminated", "stopping", "stopped"]
+        },
+        "publicIpAddress": {
+          "type": "string",
+          "title": "Public IP Address",
+          "description": "The public IP address of the EC2 instance"
+        },
+        "privateIpAddress": {
+          "type": "string",
+          "title": "Private IP Address",
+          "description": "The private IP address of the EC2 instance"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the EC2 instance",
+          "items": {
+            "type": "object"
+          }
+        },
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the EC2 instance"
+        }
+      },
+      "required": []
+    },
+    "calculationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

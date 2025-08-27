@@ -1,0 +1,56 @@
+{
+  "identifier": "i-1234567890abcdef0",
+  "title": "i-1234567890abcdef0",
+  "blueprint": "ec2Instance",
+  "properties": {
+    "instanceType": "t3.micro",
+    "state": "running",
+    "publicIpAddress": "203.0.113.12",
+    "privateIpAddress": "10.0.1.55",
+    "instanceArn": "arn:aws:ec2:us-west-2:123456789012:instance/i-1234567890abcdef0",
+    "imageId": "ami-0abcdef1234567890",
+    "launchTime": "2024-01-15T10:30:00.000Z",
+    "availabilityZone": "us-west-2a",
+    "vpcId": "vpc-12345678",
+    "subnetId": "subnet-12345678",
+    "securityGroups": [
+      {
+        "GroupId": "sg-12345678",
+        "GroupName": "web-servers"
+      },
+      {
+        "GroupId": "sg-87654321",
+        "GroupName": "ssh-access"
+      }
+    ],
+    "keyName": "production-keypair",
+    "platform": "Linux/UNIX",
+    "architecture": "x86_64",
+    "hypervisor": "xen",
+    "virtualizationType": "hvm",
+    "ebsOptimized": true,
+    "monitoring": "enabled",
+    "tags": [
+      {
+        "Key": "Name",
+        "Value": "WebServer-01"
+      },
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Project",
+        "Value": "ecommerce-platform"
+      },
+      {
+        "Key": "Owner",
+        "Value": "devops-team"
+      }
+    ]
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}
+

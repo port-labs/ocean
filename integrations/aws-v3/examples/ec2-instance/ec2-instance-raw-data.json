@@ -1,0 +1,110 @@
+{
+  "Type": "AWS::EC2::Instance",
+  "Properties": {
+    "InstanceId": "i-1234567890abcdef0",
+    "InstanceType": "t3.micro",
+    "State": {
+      "Name": "running",
+      "Code": 16
+    },
+    "PublicIpAddress": "203.0.113.12",
+    "PrivateIpAddress": "10.0.1.55",
+    "InstanceArn": "arn:aws:ec2:us-west-2:123456789012:instance/i-1234567890abcdef0",
+    "Tags": [
+      {
+        "Key": "Name",
+        "Value": "WebServer-01"
+      },
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Project",
+        "Value": "ecommerce-platform"
+      },
+      {
+        "Key": "Owner",
+        "Value": "devops-team"
+      }
+    ],
+    "ImageId": "ami-0abcdef1234567890",
+    "LaunchTime": "2024-01-15T10:30:00.000Z",
+    "AvailabilityZone": "us-west-2a",
+    "VpcId": "vpc-12345678",
+    "SubnetId": "subnet-12345678",
+    "SecurityGroups": [
+      {
+        "GroupId": "sg-12345678",
+        "GroupName": "web-servers"
+      },
+      {
+        "GroupId": "sg-87654321",
+        "GroupName": "ssh-access"
+      }
+    ],
+    "IamInstanceProfile": {
+      "Arn": "arn:aws:iam::123456789012:instance-profile/EC2-WebServer-Role",
+      "Id": "AIPAI23HZ27SI6FQMGNQ2"
+    },
+    "KeyName": "production-keypair",
+    "Platform": "Linux/UNIX",
+    "PlatformDetails": "Linux/UNIX",
+    "Architecture": "x86_64",
+    "Hypervisor": "xen",
+    "VirtualizationType": "hvm",
+    "Monitoring": {
+      "State": "enabled"
+    },
+    "NetworkInterfaces": [
+      {
+        "NetworkInterfaceId": "eni-12345678",
+        "SubnetId": "subnet-12345678",
+        "VpcId": "vpc-12345678",
+        "Description": "Primary network interface",
+        "OwnerId": "123456789012",
+        "Status": "in-use",
+        "MacAddress": "02:42:ac:11:00:02",
+        "PrivateIpAddress": "10.0.1.55",
+        "PrivateDnsName": "ip-10-0-1-55.us-west-2.compute.internal",
+        "SourceDestCheck": true,
+        "Groups": [
+          {
+            "GroupId": "sg-12345678",
+            "GroupName": "web-servers"
+          }
+        ]
+      }
+    ],
+    "EbsOptimized": true,
+    "BlockDeviceMappings": [
+      {
+        "DeviceName": "/dev/sda1",
+        "Ebs": {
+          "VolumeId": "vol-1234567890abcdef0",
+          "Status": "attached",
+          "AttachTime": "2024-01-15T10:30:00.000Z",
+          "DeleteOnTermination": true,
+          "Encrypted": true
+        }
+      }
+    ],
+    "CpuOptions": {
+      "CoreCount": 1,
+      "ThreadsPerCore": 2
+    },
+    "MetadataOptions": {
+      "State": "applied",
+      "HttpTokens": "required",
+      "HttpPutResponseHopLimit": 1,
+      "HttpEndpoint": "enabled"
+    },
+    "EnclaveOptions": {
+      "Enabled": false
+    },
+    "BootMode": "uefi-preferred"
+  },
+  "__AccountId": "123456789012",
+  "__Region": "us-west-2"
+}
+

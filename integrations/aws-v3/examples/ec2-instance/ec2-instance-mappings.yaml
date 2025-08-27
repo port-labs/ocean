@@ -1,0 +1,36 @@
+resources:
+  - kind: AWS::EC2::Instance
+    selector:
+      query: 'true'
+      includeActions:  # Optional actions to execute
+        - GetInstanceStatusAction
+        - GetInstanceMonitoringAction
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.InstanceId
+          title: .Properties.InstanceId
+          blueprint: '"ec2Instance"'
+          properties:
+            instanceType: .Properties.InstanceType
+            state: .Properties.State.Name
+            publicIpAddress: .Properties.PublicIpAddress
+            privateIpAddress: .Properties.PrivateIpAddress
+            instanceArn: .Properties.InstanceArn
+            imageId: .Properties.ImageId
+            launchTime: .Properties.LaunchTime
+            availabilityZone: .Properties.AvailabilityZone
+            vpcId: .Properties.VpcId
+            subnetId: .Properties.SubnetId
+            securityGroups: .Properties.SecurityGroups
+            keyName: .Properties.KeyName
+            platform: .Properties.Platform
+            architecture: .Properties.Architecture
+            hypervisor: .Properties.Hypervisor
+            virtualizationType: .Properties.VirtualizationType
+            ebsOptimized: .Properties.EbsOptimized
+            monitoring: .Properties.Monitoring.State
+            tags: .Properties.Tags
+          relations:
+            account: .__AccountId
+

@@ -1,0 +1,120 @@
+{
+  "identifier": "ec2Instance",
+  "title": "EC2 Instance",
+  "icon": "EC2",
+  "schema": {
+    "properties": {
+      "instanceType": {
+        "type": "string",
+        "title": "Instance Type",
+        "description": "The type of instance (e.g., t3.micro, t3.small)"
+      },
+      "state": {
+        "type": "string",
+        "title": "State",
+        "description": "The current state of the instance",
+        "enum": ["pending", "running", "shutting-down", "terminated", "stopping", "stopped"]
+      },
+      "publicIpAddress": {
+        "type": "string",
+        "title": "Public IP Address",
+        "description": "The public IP address assigned to the instance",
+        "format": "ip"
+      },
+      "privateIpAddress": {
+        "type": "string",
+        "title": "Private IP Address", 
+        "description": "The private IP address assigned to the instance",
+        "format": "ip"
+      },
+      "instanceArn": {
+        "type": "string",
+        "title": "Instance ARN",
+        "description": "The Amazon Resource Name (ARN) of the instance"
+      },
+      "imageId": {
+        "type": "string",
+        "title": "AMI ID",
+        "description": "The ID of the AMI used to launch the instance"
+      },
+      "launchTime": {
+        "type": "string",
+        "title": "Launch Time",
+        "description": "The time the instance was launched",
+        "format": "date-time"
+      },
+      "availabilityZone": {
+        "type": "string",
+        "title": "Availability Zone",
+        "description": "The Availability Zone of the instance"
+      },
+      "vpcId": {
+        "type": "string",
+        "title": "VPC ID",
+        "description": "The ID of the VPC in which the instance is running"
+      },
+      "subnetId": {
+        "type": "string",
+        "title": "Subnet ID",
+        "description": "The ID of the subnet in which the instance is running"
+      },
+      "securityGroups": {
+        "type": "array",
+        "title": "Security Groups",
+        "description": "The security groups for the instance"
+      },
+      "keyName": {
+        "type": "string",
+        "title": "Key Pair Name",
+        "description": "The name of the key pair used when the instance was launched"
+      },
+      "platform": {
+        "type": "string",
+        "title": "Platform",
+        "description": "The platform of the instance"
+      },
+      "architecture": {
+        "type": "string",
+        "title": "Architecture",
+        "description": "The architecture of the instance (i386 | x86_64 | arm64)"
+      },
+      "hypervisor": {
+        "type": "string",
+        "title": "Hypervisor",
+        "description": "The hypervisor type of the instance (ovm | xen)"
+      },
+      "virtualizationType": {
+        "type": "string",
+        "title": "Virtualization Type",
+        "description": "The virtualization type of the instance (hvm | paravirtual)"
+      },
+      "ebsOptimized": {
+        "type": "boolean",
+        "title": "EBS Optimized",
+        "description": "Indicates whether the instance is optimized for Amazon EBS I/O"
+      },
+      "monitoring": {
+        "type": "string",
+        "title": "Monitoring State",
+        "description": "The monitoring state for the instance (enabled | disabled)"
+      },
+      "tags": {
+        "type": "array",
+        "title": "Tags",
+        "description": "Tags assigned to the instance"
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}
+
