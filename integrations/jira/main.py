@@ -55,7 +55,8 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     if config.selector.fields:
         params["fields"] = config.selector.fields
-
+    if config.selector.expand:
+        params["expand"] = config.selector.expand
     async for issues in client.get_paginated_issues(params):
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
