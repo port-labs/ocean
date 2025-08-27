@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- publish aws-v3 initial version
+- publish aws-v3 initial version for closed beta
 
 
 ## 0.3.4-dev (2025-08-26)
