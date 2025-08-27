@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Dict, TYPE_CHECKING, cast
+from typing import Any, Dict, TYPE_CHECKING, cast, ClassVar
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
@@ -15,6 +15,11 @@ if TYPE_CHECKING:
 
 
 class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
+    _ENRICHMENT_METHODS: ClassVar[dict[str, str]] = {
+        "collaborators": "_enrich_repository_with_collaborators",
+        "teams": "_enrich_repository_with_teams",
+    }
+
     async def get_resource[
         ExporterOptionsT: SingleRepositoryOptions
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
@@ -38,7 +43,6 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         ExporterOptionsT: ListRepositoryOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
-
         params = dict(options)
         included_relationships = options.get("included_relationships")
 
@@ -51,8 +55,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             if not included_relationships:
                 yield repos
             else:
-                logger.info(f"Enriching repository with {included_relationships}")
-
+                logger.info(f"Enriching repositories with {included_relationships}")
                 batch = await asyncio.gather(
                     *[
                         self.enrich_repository_with_selected_relationships(
@@ -66,17 +69,20 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     async def enrich_repository_with_selected_relationships(
         self, repository: Dict[str, Any], included_relationships: list[str]
     ) -> RAW_ITEM:
-        """Enrich repository with selected relationships."""
-
-        enrichment_methods = {
-            "collaborators": self._enrich_repository_with_collaborators,
-            "teams": self._enrich_repository_with_teams,
-        }
+        """Enrich a repository with selected relationships."""
+        repo_name = repository["name"]
 
         for relationship in included_relationships:
-            if method := enrichment_methods.get(relationship):
+            method_name = self._ENRICHMENT_METHODS.get(relationship)
+            if method_name:
+                logger.debug(
+                    f"Applying relationship '{relationship}' using '{method_name}' "
+                    f"for repository '{repo_name}'"
+                )
+                method = getattr(self, method_name)
                 repository = await method(repository)
 
+        logger.info(f"Finished enrichment for repository '{repo_name}'")
         return repository
 
     async def _enrich_repository_with_collaborators(
