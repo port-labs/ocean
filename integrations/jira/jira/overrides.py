@@ -27,6 +27,10 @@ class JiraIssueSelector(Selector):
         description="Additional fields to be included in the API response",
         default="*all",
     )
+    expand: str | None = Field(
+        description="A comma-separated list of parameters to expand in the API response. Supported values depend on the Jira API and may include 'renderedFields', 'names', 'schema', etc.",
+        default=None,
+    )
 
 
 class JiraIssueConfig(ResourceConfig):
