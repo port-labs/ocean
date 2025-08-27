@@ -1,91 +1,97 @@
 [
   {
-    "identifier": "awsAccount",
-    "title": "AWS account",
+    "identifier": "s3Bucket",
+    "title": "S3 Bucket",
     "icon": "AWS",
     "schema": {
       "properties": {
         "arn": {
           "type": "string",
-          "title": "Arn"
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the bucket"
         },
-        "email": {
+        "region": {
           "type": "string",
-          "title": "Email"
+          "title": "Region",
+          "description": "The AWS region where the bucket is located"
         },
-        "status": {
-          "type": "array",
-          "title": "Status",
-          "default": ["ACTIVE"],
-          "items": {
-            "enum": ["ACTIVE", "SUSPENDED", "PENDING_CLOSURE"],
-            "enumColors": {
-              "ACTIVE": "green",
-              "SUSPENDED": "red",
-              "PENDING_CLOSURE": "yellow"
-            },
-            "type": "string"
-          }
-        },
-        "joined_method": {
+        "creationDate": {
           "type": "string",
-          "title": "Joined Method",
-          "enum": ["INVITED", "CREATED"],
-          "enumColors": {
-            "INVITED": "lightGray",
-            "CREATED": "lightGray"
-          }
-        },
-        "joined_timestamp": {
-          "type": "string",
-          "title": "Joined Timestamp",
+          "title": "Creation Date",
+          "description": "The date when the bucket was created",
           "format": "date-time"
+        },
+        "encryption": {
+          "type": "object",
+          "title": "Encryption",
+          "description": "The encryption configuration for the bucket"
+        },
+        "publicAccessBlockConfiguration": {
+          "type": "object",
+          "title": "Public Access Block Configuration",
+          "description": "The public access block configuration for the bucket"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the bucket",
+          "items": {
+            "type": "object"
+          }
         }
       },
       "required": []
     },
+    "calculationProperties": {},
     "relations": {}
   },
   {
-    "identifier": "cloudResource",
-    "title": "AWS Cloud Resource",
+    "identifier": "ecsCluster",
+    "title": "ECS Cluster",
     "icon": "AWS",
     "schema": {
       "properties": {
-        "kind": {
-          "title": "Kind",
-          "type": "string"
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the ECS cluster",
+          "enum": ["ACTIVE", "INACTIVE", "PROVISIONING", "DEPROVISIONING"]
+        },
+        "activeServicesCount": {
+          "type": "number",
+          "title": "Active Services Count",
+          "description": "The number of active services in the cluster"
+        },
+        "pendingTasksCount": {
+          "type": "number",
+          "title": "Pending Tasks Count",
+          "description": "The number of pending tasks in the cluster"
+        },
+        "runningTasksCount": {
+          "type": "number",
+          "title": "Running Tasks Count",
+          "description": "The number of running tasks in the cluster"
         },
         "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the cluster",
           "items": {
             "type": "object"
-          },
+          }
+        },
+        "pendingTaskArns": {
           "type": "array",
-          "title": "Tags"
-        },
-        "arn": {
-          "type": "string",
-          "title": "ARN"
-        },
-        "link": {
-          "type": "string",
-          "title": "Link",
-          "icon": "AWS",
-          "format": "url"
-        },
-        "region": {
-          "type": "string",
-          "title": "Region"
+          "title": "Pending Task ARNs",
+          "description": "The ARNs of pending tasks in the cluster",
+          "items": {
+            "type": "string"
+          }
         }
-      }
+      },
+      "required": ["clusterName"]
     },
-    "relations": {
-      "account": {
-        "title": "Account",
-        "target": "awsAccount",
-        "required": true,
-        "many": false
-      }
-    }
+    "calculationProperties": {},
+    "relations": {}
   }
 ]

@@ -4,7 +4,6 @@ import pytest
 from aws.core.exporters.ecs.cluster.actions import (
     ECSClusterDetailsAction,
     GetClusterPendingTasksAction,
-    GetClusterArnAction,
     ECSClusterActionsMap,
 )
 from aws.core.interfaces.action import Action, BatchAPIAction
@@ -243,55 +242,46 @@ class TestGetClusterPendingTasksAction:
 
 class TestECSClusterActionsMap:
 
-    def test_defaults_contains_ecs_cluster_details_action(self) -> None:
-        """Test that defaults contains the correct action."""
+    def test_defaults_contains_required_actions(self) -> None:
+        """Test that defaults contains the required actions."""
         actions_map = ECSClusterActionsMap()
         assert ECSClusterDetailsAction in actions_map.defaults
-        assert GetClusterArnAction in actions_map.defaults
-        assert len(actions_map.defaults) == 2
+        assert len(actions_map.defaults) == 1
 
-    def test_options_contains_get_cluster_pending_tasks_action(self) -> None:
-        """Test that options contains the correct action."""
+    def test_options_contains_optional_actions(self) -> None:
+        """Test that options contains the optional actions."""
         actions_map = ECSClusterActionsMap()
         assert GetClusterPendingTasksAction in actions_map.options
         assert len(actions_map.options) == 1
 
-    def test_merge_with_empty_include(self) -> None:
-        """Test merge with empty include list."""
+    def test_merge_without_include(self) -> None:
+        """Test merge without include returns only defaults."""
         actions_map = ECSClusterActionsMap()
         result = actions_map.merge([])
-
-        assert len(result) == 2
+        assert len(result) == 1
         assert ECSClusterDetailsAction in result
-        assert GetClusterArnAction in result
         assert GetClusterPendingTasksAction not in result
 
     def test_merge_with_pending_tasks_action(self) -> None:
         """Test merge with GetClusterPendingTasksAction included."""
         actions_map = ECSClusterActionsMap()
         result = actions_map.merge(["GetClusterPendingTasksAction"])
-
-        assert len(result) == 3
+        assert len(result) == 2
         assert ECSClusterDetailsAction in result
-        assert GetClusterArnAction in result
         assert GetClusterPendingTasksAction in result
 
     def test_merge_with_unknown_action(self) -> None:
-        """Test merge with unknown action name."""
+        """Test merge with unknown action returns only defaults."""
         actions_map = ECSClusterActionsMap()
         result = actions_map.merge(["UnknownAction"])
-
-        assert len(result) == 2
+        assert len(result) == 1
         assert ECSClusterDetailsAction in result
-        assert GetClusterArnAction in result
         assert GetClusterPendingTasksAction not in result
 
     def test_merge_with_multiple_actions(self) -> None:
-        """Test merge with multiple action names."""
+        """Test merge with multiple actions."""
         actions_map = ECSClusterActionsMap()
         result = actions_map.merge(["GetClusterPendingTasksAction", "UnknownAction"])
-
-        assert len(result) == 3
+        assert len(result) == 2
         assert ECSClusterDetailsAction in result
-        assert GetClusterArnAction in result
         assert GetClusterPendingTasksAction in result

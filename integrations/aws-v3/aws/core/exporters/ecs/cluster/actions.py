@@ -13,8 +13,9 @@ from aws.core.helpers.utils import extract_resource_name_from_arn
 class ECSClusterDetailsAction(BatchAPIAction):
 
     async def _execute(self, cluster_arn: str) -> Dict[str, Any]:
-        clusters = await self._execute_batch([cluster_arn])
-        return clusters[0] if clusters else {}
+        raise NotImplementedError(
+            "Single execution not supported for ECSClusterDetailsAction. Use execute_batch instead."
+        )
 
     async def _execute_batch(self, cluster_arns: List[str]) -> List[Dict[str, Any]]:
         if not cluster_arns:
@@ -47,14 +48,8 @@ class GetClusterPendingTasksAction(APIAction):
         return {"pendingTaskArns": task_arns}
 
 
-class GetClusterArnAction(DataAction):
-    async def _transform_data(self, cluster_arn: str) -> Dict[str, Any]:
-        return {"clusterArn": cluster_arn}
-
-
 class ECSClusterActionsMap(ActionMap):
     defaults: List[Type[Action]] = [
-        GetClusterArnAction,
         ECSClusterDetailsAction,
     ]
 
