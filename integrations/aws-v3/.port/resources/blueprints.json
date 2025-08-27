@@ -96,7 +96,14 @@
       "required": []
     },
     "calculationProperties": {},
-    "relations": {}
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   },
   {
     "identifier": "ecsCluster",
@@ -144,7 +151,14 @@
       }
     },
     "calculationProperties": {},
-    "relations": {}
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   },
   {
     "identifier": "ec2Instance",

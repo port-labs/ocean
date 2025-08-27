@@ -13,6 +13,7 @@ from aws.core.exporters.ec2.instances.models import (
 )
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
+from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
@@ -52,18 +53,12 @@ class EC2InstanceExporter(IResourceExporter):
     ) -> dict[str, Any]:
         """Process a single instance with its describe_instances data and actions."""
 
-        # Follow ECS pattern: use ResourceBuilder to combine initial data with action data
-        from aws.core.modeling.resource_builder import ResourceBuilder
-
-        # Create builder with proper account ID
         builder: Any = ResourceBuilder(
             self._model_cls(), account_id=self.account_id, region=inspector.region
         )
 
-        # Add the initial describe_instances data as the first property
         properties_data: list[Any] = [instance]
 
-        # Add action data if any actions are included
         if include:
             action_result = await inspector.inspect(instance["InstanceId"], include)
             if action_result.Properties:
@@ -73,7 +68,6 @@ class EC2InstanceExporter(IResourceExporter):
 
         builder.with_properties(properties_data)
 
-        # Build the model with all data properly combined
         model = builder.build()
 
         return serialize_datetime_objects(model.dict(exclude_none=True))
@@ -100,7 +94,6 @@ class EC2InstanceExporter(IResourceExporter):
                     f"EC2 describe_instances returned {len(reservations)} reservations"
                 )
 
-                # Extract all instances from all reservations
                 instances = []
                 for reservation in reservations:
                     instances.extend(reservation.get("Instances", []))
@@ -110,7 +103,6 @@ class EC2InstanceExporter(IResourceExporter):
 
                 logger.info(f"Found {len(instances)} instances in reservations")
 
-                # Process instances concurrently using Regional Individual pattern
                 tasks = [
                     self._process_instance(instance, inspector, options.include)
                     for instance in instances
