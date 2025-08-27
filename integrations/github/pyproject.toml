@@ -116,6 +116,3 @@ exclude = '''
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-vv -n auto ./tests"
-markers = [
-    "no_mock_rate_limiter: mark test to not use mock rate limiter"
-]
