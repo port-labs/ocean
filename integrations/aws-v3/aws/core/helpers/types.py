@@ -5,6 +5,7 @@ from typing import Literal
 class ObjectKind(StrEnum):
     S3_BUCKET = "AWS::S3::Bucket"
     ECS_CLUSTER = "AWS::ECS::Cluster"
+    EC2_INSTANCE = "AWS::EC2::Instance"
     AWS_ACCOUNT = "AWS::Organizations::Account"
 
 
