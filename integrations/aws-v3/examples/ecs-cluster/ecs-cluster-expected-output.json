@@ -1,0 +1,86 @@
+{
+  "identifier": "arn:aws:ecs:us-west-2:123456789012:cluster/production-cluster",
+  "title": "production-cluster",
+  "blueprint": "ecsCluster",
+  "properties": {
+    "clusterName": "production-cluster",
+    "status": "ACTIVE",
+    "activeServicesCount": 5,
+    "pendingTasksCount": 2,
+    "runningTasksCount": 15,
+    "registeredContainerInstancesCount": 8,
+    "capacityProviders": [
+      "FARGATE",
+      "FARGATE_SPOT"
+    ],
+    "defaultCapacityProviderStrategy": [
+      {
+        "capacityProvider": "FARGATE",
+        "weight": 1,
+        "base": 1
+      },
+      {
+        "capacityProvider": "FARGATE_SPOT",
+        "weight": 1,
+        "base": 0
+      }
+    ],
+    "tags": [
+      {
+        "key": "Environment",
+        "value": "production"
+      },
+      {
+        "key": "Team",
+        "value": "platform"
+      },
+      {
+        "key": "CostCenter",
+        "value": "engineering"
+      }
+    ],
+    "settings": [
+      {
+        "name": "containerInsights",
+        "value": "enabled"
+      }
+    ],
+    "configurations": [
+      {
+        "name": "executeCommandConfiguration",
+        "type": "DEFAULT"
+      }
+    ],
+    "statistics": [
+      {
+        "name": "cpuUtilization",
+        "value": "75.5"
+      },
+      {
+        "name": "memoryUtilization",
+        "value": "68.2"
+      }
+    ],
+    "attachments": [
+      {
+        "id": "attachment-12345678",
+        "type": "eni",
+        "status": "ACTIVE",
+        "details": [
+          {
+            "name": "subnetId",
+            "value": "subnet-12345678"
+          }
+        ]
+      }
+    ],
+    "attachmentsStatus": "ACTIVE",
+    "serviceConnectDefaults": {
+      "namespace": "arn:aws:servicediscovery:us-west-2:123456789012:namespace/ns-12345678"
+    },
+    "pendingTaskArns": [
+      "arn:aws:ecs:us-west-2:123456789012:task/production-cluster/task-12345678",
+      "arn:aws:ecs:us-west-2:123456789012:task/production-cluster/task-87654321"
+    ]
+  }
+}

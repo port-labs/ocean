@@ -2,6 +2,8 @@ import asyncio
 import json
 from typing import Any, AsyncGenerator, Type
 
+from loguru import logger
+
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.s3.bucket.actions import S3BucketActionsMap
 from aws.core.exporters.s3.bucket.models import Bucket
@@ -66,6 +68,8 @@ class S3BucketExporter(IResourceExporter):
             paginator = proxy.get_paginator("list_buckets", "Buckets")
 
             async for buckets in paginator.paginate():
+                logger.info(f"S3 list_buckets returned {len(buckets)} buckets")
+
                 tasks = [
                     self._process_bucket(bucket, inspector, options.include)
                     for bucket in buckets

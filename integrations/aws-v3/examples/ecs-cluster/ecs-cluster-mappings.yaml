@@ -1,0 +1,29 @@
+resources:
+  - kind: AWS::ECS::Cluster
+    selector:
+      query: 'true'
+      includeActions:
+        - GetClusterPendingTasksAction
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.clusterArn
+          title: .Properties.clusterName
+          blueprint: '"ecsCluster"'
+          properties:
+            clusterName: .Properties.clusterName
+            status: .Properties.status
+            activeServicesCount: .Properties.activeServicesCount
+            pendingTasksCount: .Properties.pendingTasksCount
+            runningTasksCount: .Properties.runningTasksCount
+            registeredContainerInstancesCount: .Properties.registeredContainerInstancesCount
+            capacityProviders: .Properties.capacityProviders
+            defaultCapacityProviderStrategy: .Properties.defaultCapacityProviderStrategy
+            tags: .Properties.tags
+            settings: .Properties.settings
+            configurations: .Properties.configurations
+            statistics: .Properties.statistics
+            attachments: .Properties.attachments
+            attachmentsStatus: .Properties.attachmentsStatus
+            serviceConnectDefaults: .Properties.serviceConnectDefaults
+            pendingTaskArns: .Properties.pendingTaskArns

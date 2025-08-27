@@ -19,3 +19,22 @@ resources:
             encryption: .Properties.BucketEncryption
             publicAccessBlockConfiguration: .Properties.PublicAccessBlockConfiguration
             tags: .Properties.Tags
+
+  - kind: AWS::ECS::Cluster
+    selector:
+      query: 'true'
+      includeActions:
+        - GetClusterPendingTasksAction
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.clusterArn
+          title: .Properties.clusterName
+          blueprint: '"ecsCluster"'
+          properties:
+            status: .Properties.status
+            activeServicesCount: .Properties.activeServicesCount
+            pendingTasksCount: .Properties.pendingTasksCount
+            runningTasksCount: .Properties.runningTasksCount
+            tags: .Properties.tags
+            pendingTaskArns: .Properties.pendingTaskArns
