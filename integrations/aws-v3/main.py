@@ -17,6 +17,8 @@ from aws.core.helpers.utils import get_allowed_regions, is_access_denied_excepti
 from aws.core.helpers.types import ObjectKind
 from aws.core.exporters.s3.bucket.models import PaginatedBucketRequest
 from aws.core.exporters.ecs.cluster.models import PaginatedECSClusterRequest
+from aws.core.exporters.organizations.account.models import SingleAccountRequest
+
 from loguru import logger
 import asyncio
 
@@ -153,9 +155,6 @@ async def resync_ecs_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.AWS_ACCOUNT)
 async def resync_aws_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync AWS accounts - simplified approach."""
-
-    from aws.core.exporters.organizations.account.models import SingleAccountRequest
 
     aws_resource_config = cast(AWSResourceConfig, event.resource_config)
     logger.info(f"Starting resync for {kind} resources")
