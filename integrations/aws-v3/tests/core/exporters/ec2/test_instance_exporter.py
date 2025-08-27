@@ -44,8 +44,8 @@ class TestEC2InstanceExporter:
         assert exporter.account_id == mock_account_id
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.ec2.instance.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ec2.instance.exporter.ResourceInspector")
+    @patch("aws.core.exporters.ec2.instances.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ec2.instances.exporter.ResourceInspector")
     async def test_get_resource_success(
         self,
         mock_inspector_class: MagicMock,
@@ -90,8 +90,8 @@ class TestEC2InstanceExporter:
         mock_inspector.inspect.assert_called_once_with("i-1234567890abcdef0", [])
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.ec2.instance.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ec2.instance.exporter.ResourceInspector")
+    @patch("aws.core.exporters.ec2.instances.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ec2.instances.exporter.ResourceInspector")
     async def test_get_resource_with_different_options(
         self,
         mock_inspector_class: MagicMock,
@@ -140,8 +140,8 @@ class TestEC2InstanceExporter:
         )
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.ec2.instance.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ec2.instance.exporter.ResourceInspector")
+    @patch("aws.core.exporters.ec2.instances.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ec2.instances.exporter.ResourceInspector")
     async def test_get_paginated_resources_success(
         self,
         mock_inspector_class: MagicMock,
@@ -243,8 +243,8 @@ class TestEC2InstanceExporter:
         assert mock_inspector.inspect.call_count == 0
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.ec2.instance.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ec2.instance.exporter.ResourceInspector")
+    @patch("aws.core.exporters.ec2.instances.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ec2.instances.exporter.ResourceInspector")
     async def test_get_paginated_resources_empty_reservations(
         self,
         mock_inspector_class: MagicMock,
@@ -292,8 +292,8 @@ class TestEC2InstanceExporter:
         assert mock_inspector.inspect.call_count == 0
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.ec2.instance.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ec2.instance.exporter.ResourceInspector")
+    @patch("aws.core.exporters.ec2.instances.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ec2.instances.exporter.ResourceInspector")
     async def test_process_instance_with_exception(
         self,
         mock_inspector_class: MagicMock,
@@ -361,8 +361,8 @@ class TestEC2InstanceExporter:
         assert results[0]["Type"] == "AWS::EC2::Instance"
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.ec2.instance.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ec2.instance.exporter.ResourceInspector")
+    @patch("aws.core.exporters.ec2.instances.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ec2.instances.exporter.ResourceInspector")
     async def test_get_resource_inspector_exception(
         self,
         mock_inspector_class: MagicMock,
@@ -392,8 +392,8 @@ class TestEC2InstanceExporter:
             await exporter.get_resource(options)
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.ec2.instance.exporter.AioBaseClientProxy")
-    @patch("aws.core.exporters.ec2.instance.exporter.ResourceInspector")
+    @patch("aws.core.exporters.ec2.instances.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.ec2.instances.exporter.ResourceInspector")
     async def test_context_manager_cleanup(
         self,
         mock_inspector_class: MagicMock,

@@ -34,7 +34,7 @@ class TestGetInstanceStatusAction:
         assert isinstance(action, Action)
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.ec2.instance.actions.logger")
+    @patch("aws.core.exporters.ec2.instances.actions.logger")
     async def test_execute_success(
         self, mock_logger: MagicMock, action: GetInstanceStatusAction
     ) -> None:
@@ -64,7 +64,7 @@ class TestGetInstanceStatusAction:
         )
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.ec2.instance.actions.logger")
+    @patch("aws.core.exporters.ec2.instances.actions.logger")
     async def test_execute_no_status(
         self, mock_logger: MagicMock, action: GetInstanceStatusAction
     ) -> None:
