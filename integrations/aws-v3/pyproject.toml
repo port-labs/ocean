@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aws-v3"
-version = "0.3.3-dev"
+version = "0.3.4-dev"
 description = "AWS"
 authors = ["Shariff Mohammed <mohammed.s@getport.io>"]
 
