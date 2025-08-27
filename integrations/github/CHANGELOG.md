@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.4.0-beta (2025-08-27)
+
+
+- Added GitHub API rate limiting with concurrency control
+- Implemented GitHubRateLimiter based on GitHub's rate limit headers
+- Added separate rate limit tracking for Rest and GraphQL endpoints
+- Added semaphore-based concurrency control (default: 10 concurrent requests)
+- Integrated rate limiting into base client with configurable parameters
+
+### Improvements
+
+- Enhanced API reliability by automatically handling 403/429 rate limit responses
+- Improved error handling to distinguish between rate limit and permission errors
+- Added rate limit monitoring and comprehensive logging
+
+
 ## 1.3.5-beta (2025-08-26)
 
 
