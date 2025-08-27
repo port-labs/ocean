@@ -22,13 +22,11 @@ class GitHubRateLimiterConfig:
 
     Attributes:
         api_type: Type of GitHub API being used ("rest", "graphql", "search").
-        max_retries: Maximum number of retries on rate-limited requests.
         max_concurrent: Maximum number of concurrent in-flight requests.
     """
 
     api_type: Literal["rest", "graphql", "search"]
     max_concurrent: int
-    max_retries: int = 5
 
 
 class RateLimiterRequiredHeaders(BaseModel):

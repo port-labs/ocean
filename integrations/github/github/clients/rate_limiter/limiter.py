@@ -12,7 +12,6 @@ from github.clients.rate_limiter.utils import (
 class GitHubRateLimiter:
     def __init__(self, config: GitHubRateLimiterConfig) -> None:
         self.api_type = config.api_type
-        self.max_retries = config.max_retries
         self._semaphore = asyncio.Semaphore(config.max_concurrent)
         self._rate_limit_info: Optional[RateLimitInfo] = None
 

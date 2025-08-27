@@ -10,12 +10,10 @@ from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimit
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 
 
-@pytest.fixture(params=[("rest", 3, 5), ("graphql", 2, 3), ("search", 1, 2)])
+@pytest.fixture(params=[("rest", 5), ("graphql", 5), ("search", 5)])
 def client_config(request: SubRequest) -> GitHubRateLimiterConfig:
-    api_type, max_retries, max_concurrent = request.param
-    return GitHubRateLimiterConfig(
-        api_type=api_type, max_retries=max_retries, max_concurrent=max_concurrent
-    )
+    api_type, max_concurrent = request.param
+    return GitHubRateLimiterConfig(api_type=api_type, max_concurrent=max_concurrent)
 
 
 @pytest.fixture
@@ -208,9 +206,7 @@ class TestRateLimiter:
         """
         Because sleep happens while holding _block_lock, a task that triggers the pause blocks others.
         """
-        config = GitHubRateLimiterConfig(
-            api_type="rest", max_concurrent=5, max_retries=0
-        )
+        config = GitHubRateLimiterConfig(api_type="rest", max_concurrent=5)
         limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
 
         order: list[str] = []

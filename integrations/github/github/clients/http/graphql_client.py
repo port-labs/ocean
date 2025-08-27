@@ -22,7 +22,6 @@ class GithubGraphQLClient(AbstractGithubClient):
     def rate_limiter_config(self) -> GitHubRateLimiterConfig:
         return GitHubRateLimiterConfig(
             api_type="graphql",
-            max_retries=5,
             max_concurrent=5,
         )
 
