@@ -6,19 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.3.5 (2025-08-28)
+
+
+### Improvements
+
+- Publish aws-v3 initial version for closed beta
+
 ## 0.3.5-dev (2025-08-27)
 
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.1
-
-## 0.3.4 (2025-08-27)
-
-
-### Improvements
-
-- publish aws-v3 initial version for closed beta
 
 
 ## 0.3.4-dev (2025-08-26)
