@@ -105,10 +105,11 @@ class Ocean:
         This ensures Port is notified that the integration was interrupted.
         """
         try:
-            await self.resync_state_updater.update_after_resync(
-                IntegrationStateStatus.Aborted
-            )
-            logger.info("Resync status reported as aborted due to app shutdown")
+            if self.metrics.event_id != "":
+                await self.resync_state_updater.update_after_resync(
+                    IntegrationStateStatus.Aborted
+                )
+                logger.info("Resync status reported as aborted due to app shutdown")
         except Exception as e:
             logger.warning(f"Failed to report resync status on shutdown: {e}")
 
