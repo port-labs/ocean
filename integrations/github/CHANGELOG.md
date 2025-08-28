@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 1.4.1-beta (2025-08-28)
+## 1.4.2-beta (2025-08-28)
 
 
 ### Features
 
 - Enhanced branch exporter functionality with improved branch data processing and export capabilities
 - Improved branch webhook processor to handle branch-related events more efficiently
+
+
+## 1.4.1-beta (2025-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.2
 
 
 ## 1.4.0-beta (2025-08-27)
