@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Publish aws-v3 initial version for closed beta
 
+
+## 0.3.6-dev (2025-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.2
+
+
 ## 0.3.5-dev (2025-08-27)
 
 
