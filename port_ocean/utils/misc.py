@@ -1,11 +1,12 @@
-from enum import Enum
 import inspect
-from importlib.util import spec_from_file_location, module_from_spec
+from enum import Enum
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from time import time
 from types import ModuleType
-from typing import Callable, Any
+from typing import Any, Callable
 from uuid import uuid4
+
 import tomli
 import yaml
 
@@ -14,6 +15,7 @@ class IntegrationStateStatus(Enum):
     Running = "running"
     Failed = "failed"
     Completed = "completed"
+    Aborted = "aborted"
 
 
 def get_time(seconds_precision: bool = True) -> float:
