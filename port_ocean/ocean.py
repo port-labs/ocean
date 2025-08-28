@@ -97,7 +97,6 @@ class Ocean:
         )
         self.app_initialized = False
 
-        # Register signal handler to report resync status as aborted on shutdown
         signal_handler.register(self._report_resync_aborted)
 
     async def _report_resync_aborted(self) -> None:
