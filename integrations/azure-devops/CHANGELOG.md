@@ -10,8 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.4.0 (2025-08-28)
 
 
-No significant changes.
+### Bug Fix
 
+- Implemented rate limiter to handle both `X-RateLimit-Reset` and `Retry-After` headers
 
 ## 0.3.9 (2025-08-28)
 
