@@ -48,6 +48,7 @@ jobs:
 
       - name: Validate integration version format
         run: |
+          changed_dirs=$(git diff --name-only ocean-origin/main HEAD | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
           for dir in $changed_dirs; do
             pyproject_file=$(find $dir -name 'pyproject.toml' -not -path "**/.venv/*")
             if [ -n "$pyproject_file" ]; then
