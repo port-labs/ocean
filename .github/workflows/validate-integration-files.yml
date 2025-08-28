@@ -4,6 +4,12 @@ on:
   pull_request:
     paths:
       - "integrations/**"
+  workflow_dispatch:
+    inputs:
+      integration_type:
+        description: "Integration type to validate"
+        required: true
+        default: "aws-v3"
 
 jobs:
   validate-files:
