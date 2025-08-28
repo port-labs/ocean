@@ -37,7 +37,7 @@ DEFAULT_CREDENTIALS_FILE_PATH = (
     f"{Path.home()}/.config/gcloud/application_default_credentials.json"
 )
 
-CLOUD_QUOTAS_SCOPE = "https://www.googleapis.com/auth/cloud-platform.read-only"
+CLOUD_QUOTAS_SCOPE = "https://www.googleapis.com/auth/cloud-platform"
 CLOUD_QUOTAS_BASE_URL = "https://cloudquotas.googleapis.com/v1/"
 _QUOTA_PERCENTAGE = 0.8
 _INITIAL_QUOTA_MAX_RETRIES = 3
@@ -294,7 +294,6 @@ async def get_initial_quota_for_project_via_rest() -> int:
         f"cloudresourcemanager.googleapis.com/quotaInfos/ProjectV3GetRequestsPerMinutePerProject"
     )
     dims = await fetch_quota_info_rest(name)
-    logger.debug(f"[get_initial_quota_for_project_via_rest] dims: {dims}")
     if not dims:
         default_quota = int(
             ocean.integration_config.get("search_all_resources_per_minute_quota", 400)
@@ -306,4 +305,7 @@ async def get_initial_quota_for_project_via_rest() -> int:
 
     least = min(dims, key=lambda info: int(info["details"]["value"]))
     value = int(least["details"]["value"])
+    logger.debug(
+        f"[get_initial_quota_for_project_via_rest] initial quota for project: {least}"
+    )
     return max(int(round(value * _QUOTA_PERCENTAGE)), 1)
