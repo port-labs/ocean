@@ -45,6 +45,27 @@ jobs:
             fi
           done
 
+      - name: Validate integration version format
+        run: |
+          for dir in $changed_dirs; do
+            pyproject_file=$(find $dir -name 'pyproject.toml' -not -path "**/.venv/*")
+            if [ -n "$pyproject_file" ]; then
+              version=$(grep -E '^version = ".*"' "$pyproject_file" | cut -d'"' -f2)
+
+              # Define allowed version patterns
+              if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(post1|dev|beta))?$ ]]; then
+                echo "ERROR: Invalid version format in $pyproject_file: $version"
+                echo "Allowed formats:"
+                echo "  - Stable: 1.2.3 release version"
+                echo "  - Beta: 1.2.3-beta for pre-release"
+                echo "  - Dev: 1.2.3-dev for development"
+                echo "  - Deprecated: 1.2.3-post1 for deprecated version"
+                exit 1
+              fi
+              echo "Version format is valid: $version"
+            fi
+          done
+
       - name: Validate integration not duplicated
         run: |
           for integration in $(find integrations -name 'pyproject.yaml' -not -path "**/.venv/*"); do
