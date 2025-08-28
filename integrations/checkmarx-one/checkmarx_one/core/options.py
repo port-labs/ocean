@@ -1,10 +1,23 @@
 from typing import List, Literal, NotRequired, Optional, Required, TypedDict
 
 
+class ListApplicationOptions(TypedDict):
+    """Options for listing applications."""
+
+    criticality: NotRequired[Optional[List[Literal[1, 2, 3]]]]
+
+
+class SingleApplicationOptions(TypedDict):
+    """Options for fetching a single application."""
+
+    application_id: Required[str]
+
+
 class ListProjectOptions(TypedDict):
     """Options for listing projects."""
 
-    pass
+    application_ids: NotRequired[Optional[List[str]]]
+    groups: NotRequired[Optional[List[str]]]
 
 
 class SingleProjectOptions(TypedDict):

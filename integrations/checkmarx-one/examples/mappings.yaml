@@ -1,0 +1,115 @@
+resources:
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"checkmarxProject"'
+          identifier: '.id'
+          title: '.name'
+          properties:
+            name: '.name'
+            applicationIds: '.applicationIds'
+            repoUrl: '.repoUrl'
+            mainBranch: '.mainBranch'
+            origin: '.origin'
+            tags: '.tags'
+            groups: '.groups'
+            createdAt: '.createdAt'
+            updatedAt: '.updatedAt'
+            criticality: '.criticality'
+          relations:
+            application: '[.applicationIds[]? | select(. != null and . != "")]'
+
+  - kind: application
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"checkmarxApplication"'
+          identifier: '.id'
+          title: '.name'
+          properties:
+            name: '.name'
+            description: '.description'
+            criticality: '.criticality'
+            rules: '.rules'
+            tags: '.tags'
+            createdAt: '.createdAt'
+            updatedAt: '.updatedAt'
+
+  - kind: scan
+    selector:
+      query: 'true'
+      projectIds: []
+    port:
+      entity:
+        mappings:
+          blueprint: '"checkmarxScan"'
+          identifier: '.id'
+          title: '(.projectName // "Unknown") + " - " + (.status // "Unknown") + " - " + (.createdAt | split("T")[0])'
+          properties:
+            status: '.status'
+            branch: '.branch'
+            createdAt: '.createdAt'
+            updatedAt: '.updatedAt'
+            projectName: '.projectName'
+            initiator: '.initiator'
+            tags: '.tags'
+            engines: '.engines'
+            sourceType: '.sourceType'
+            sourceOrigin: '.sourceOrigin'
+            scanTypes: '[.engines[]? | select(. != null) | ascii_downcase]'
+          relations:
+            project: '.projectId'
+
+  - kind: scan_result
+    selector:
+      query: 'true'
+      severity: []
+      state: []
+      status: []
+      exclude_result_types: ["DEV_AND_TEST"]
+    port:
+      entity:
+        mappings:
+          blueprint: '"checkmarxScanResult"'
+          identifier: '.id'
+          title: >
+            if .type == "sast" then
+              (.data.queryName // "SAST Finding") + " - " + (.severity // "UNKNOWN")
+            elif .type == "sca" then
+              (.packageData.name // "SCA Finding") + " - " + (.severity // "UNKNOWN")
+            elif .type == "kics" then
+              (.data.queryName // "KICS Finding") + " - " + (.severity // "UNKNOWN") 
+            elif .type == "container-security" then
+              "Container Security - " + (.severity // "UNKNOWN")
+            elif .type == "api-security" then
+              "API Security - " + (.severity // "UNKNOWN")
+            elif .type == "dast" then
+              "DAST Finding - " + (.severity // "UNKNOWN")
+            else
+              "Security Finding - " + (.severity // "UNKNOWN")
+            end
+          properties:
+            type: '.type'
+            severity: '.severity'
+            state: '.state'
+            status: '.status'
+            data: '.data'
+            description: '.description'
+            similarityId: '.similarityId'
+            cweId: '.cweId'
+            cveId: '.cveId'
+            vulnerabilityId: '.vulnerabilityId'
+            packageData: '.packageData'
+            created: '.created'
+            firstFoundAt: '.firstFoundAt'
+            foundAt: '.foundAt'
+            firstScanId: '.firstScanId'
+            comments: '.comments'
+          relations:
+            scan: '.__scan_id'
+            project: '.projectId'

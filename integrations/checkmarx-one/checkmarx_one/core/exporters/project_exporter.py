@@ -24,15 +24,24 @@ class CheckmarxProjectExporter(AbstractCheckmarxExporter):
         Get projects from Checkmarx One.
 
         Args:
-            limit: Maximum number of projects per page
-            offset: Starting offset for pagination
+            options: Options dictionary containing:
+                - application_ids: Filter projects by application IDs
+                - groups: Filter projects by groups
 
         Yields:
             Batches of projects
         """
 
+        from typing import Any
+        params: dict[str, Any] = {}
+
+        if options.get("application_ids"):
+            params["application-ids"] = ",".join(options.get("application_ids", []))
+        if options.get("groups"):
+            params["groups"] = ",".join(options.get("groups", []))
+
         async for projects in self.client.send_paginated_request(
-            "/projects", "projects"
+            "/projects", "projects", params
         ):
             logger.info(f"Fetched batch of {len(projects)} projects")
             yield projects

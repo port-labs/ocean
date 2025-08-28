@@ -1,0 +1,17 @@
+{
+  "id": "project-123-456-789",
+  "name": "sample-web-app",
+  "applicationIds": ["12345-6789-abcd-efgh"],
+  "repoUrl": "https://github.com/company/sample-web-app.git",
+  "mainBranch": "main",
+  "origin": "git",
+  "tags": {
+    "tech_stack": "nodejs",
+    "owner": "development-team",
+    "criticality": "high"
+  },
+  "groups": ["web-apps", "customer-facing"],
+  "createdAt": "2024-01-10T08:00:00.000Z",
+  "updatedAt": "2024-01-22T16:30:00.000Z",
+  "criticality": 3
+}
