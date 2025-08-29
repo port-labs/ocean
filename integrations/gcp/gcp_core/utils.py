@@ -91,8 +91,8 @@ def should_use_snake_case() -> bool:
 
 
 def parse_protobuf_message(
-    message: proto.Message,
-    config: Optional[ProtoConfig] = None,
+        message: proto.Message,
+        config: Optional[ProtoConfig] = None,
 ) -> dict[str, Any]:
     """
     Parse protobuf message to dict, controlling field name case style.
@@ -107,7 +107,7 @@ def parse_protobuf_message(
 
 
 def parse_protobuf_messages(
-    messages: MutableSequence[proto.Message],
+        messages: MutableSequence[proto.Message],
 ) -> list[dict[str, Any]]:
     return [parse_protobuf_message(message) for message in messages]
 
@@ -122,7 +122,7 @@ class AssetTypesWithSpecialHandling(enum.StrEnum):
 
 
 def get_current_resource_config() -> (
-    typing.Union[ResourceConfig, GCPCloudResourceConfig]
+        typing.Union[ResourceConfig, GCPCloudResourceConfig]
 ):
     """
     Returns the current resource config, accessible only inside an event context
@@ -140,8 +140,8 @@ def get_credentials_json() -> str:
     else:
         try:
             file_path: str = (
-                os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-                or DEFAULT_CREDENTIALS_FILE_PATH
+                    os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+                    or DEFAULT_CREDENTIALS_FILE_PATH
             )
             with open(file_path, "r", encoding="utf-8") as file:
                 credentials_json = file.read()
@@ -184,8 +184,8 @@ def get_service_account_project_id() -> str:
 
 
 async def get_quotas_for_project(
-    project_id: str,
-    kind: str,
+        project_id: str,
+        kind: str,
 ) -> Tuple["AsyncLimiter", "BoundedSemaphore"]:
     try:
         match kind:
@@ -198,8 +198,8 @@ async def get_quotas_for_project(
                 )
                 return project_rate_limiter, project_semaphore
             case (
-                AssetTypesWithSpecialHandling.TOPIC
-                | AssetTypesWithSpecialHandling.SUBSCRIPTION
+            AssetTypesWithSpecialHandling.TOPIC
+            | AssetTypesWithSpecialHandling.SUBSCRIPTION
             ):
                 topic_rate_limiter = (
                     await pubsub_administrator_per_minute_per_project.limiter(
@@ -234,7 +234,7 @@ async def get_quotas_for_project(
 
 
 async def resolve_request_controllers(
-    kind: str,
+        kind: str,
 ) -> Tuple[(AsyncLimiter | PersistentAsyncLimiter), "BoundedSemaphore"]:
     service_account_project_id = get_service_account_project_id()
     return await get_quotas_for_project(service_account_project_id, kind)
