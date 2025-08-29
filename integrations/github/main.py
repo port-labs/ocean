@@ -74,6 +74,7 @@ from integration import (
     GithubRepositoryConfig,
     GithubTeamConfig,
     GithubFileResourceConfig,
+    GithubBranchConfig,
 )
 
 
@@ -331,6 +332,7 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     rest_client = create_github_client()
     repository_exporter = RestRepositoryExporter(rest_client)
     branch_exporter = RestBranchExporter(rest_client)
+    selector = cast(GithubBranchConfig, event.resource_config).selector
 
     repo_options = ListRepositoryOptions(
         type=cast(GithubPortAppConfig, event.port_app_config).repository_type
@@ -339,7 +341,11 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for repositories in repository_exporter.get_paginated_resources(repo_options):
         tasks = [
             branch_exporter.get_paginated_resources(
-                ListBranchOptions(repo_name=repo["name"])
+                ListBranchOptions(
+                    repo_name=repo["name"],
+                    detailed=selector.detailed,
+                    protection_rules=selector.protection_rules,
+                )
             )
             for repo in repositories
         ]
