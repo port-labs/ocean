@@ -324,10 +324,10 @@ class BitbucketClient:
         return repository
 
     async def get_directory_contents(
-    self,
-    project_key: str,
-    repo_slug: str,
-    path: str = "",
+        self,
+        project_key: str,
+        repo_slug: str,
+        path: str = "",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get contents of a directory in a repository.
@@ -340,18 +340,16 @@ class BitbucketClient:
         Yields:
             Lists of directory contents
         """
-        endpoint = f"projects/{project_key}/repos/{repo_slug}/files"
-        if path:
-            endpoint = f"{endpoint}/{path}"
+        endpoint = f"projects/{project_key}/repos/{repo_slug}/files/{path}"
 
         async for contents in self.get_paginated_resource(endpoint):
             yield contents
 
     async def get_file_content(
-    self,
-    project_key: str,
-    repo_slug: str,
-    path: str,
+        self,
+        project_key: str,
+        repo_slug: str,
+        path: str,
     ) -> str:
         """
         Get the content of a file in a repository.

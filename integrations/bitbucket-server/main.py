@@ -1,8 +1,9 @@
-from typing import cast
+from typing import cast, Union
 
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from integration import (
@@ -23,6 +24,8 @@ from webhook_processors.processors import (
 from webhook_processors.webhook_client import (
     initialize_client as initialize_webhook_client,
 )
+from helpers.folder import process_folder_patterns
+from helpers.file_kind import process_file_patterns
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -68,23 +71,29 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync folders based on configuration."""
+    logger.info("Resyncing folders")
     config = cast(
         Union[ResourceConfig, BitbucketServerFolderResourceConfig], event.resource_config
     )
     selector = cast(BitbucketServerFolderSelector, config.selector)
-    client = init_client()
+    logger.info(f"Folder patterns: {selector.folders}")
+    client = initialize_client()
 
     async for matching_folders in process_folder_patterns(selector.folders, client):
+        logger.info(f"Received {len(matching_folders)} folders")
         yield matching_folders
 
 @ocean.on_resync(ObjectKind.FILE)
 async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync files based on configuration."""
+    logger.info("Resyncing files")
     config = cast(
         Union[ResourceConfig, BitbucketServerFileResourceConfig], event.resource_config
     )
     selector = cast(BitbucketServerFileSelector, config.selector)
+    logger.info(f"File patterns: {selector.files}")
     async for file_result in process_file_patterns(selector.files):
+        logger.info(f"Received {len(file_result)} files")
         yield file_result
 
 @ocean.on_start()

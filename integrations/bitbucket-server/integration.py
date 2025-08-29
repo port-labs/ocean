@@ -8,7 +8,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic.fields import Field
+from pydantic import BaseModel, Field
 
 
 class ObjectKind(StrEnum):
