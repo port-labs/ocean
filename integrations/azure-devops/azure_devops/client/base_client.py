@@ -3,7 +3,9 @@ from typing import Any, AsyncGenerator, Optional
 import httpx
 from httpx import BasicAuth, Response
 from loguru import logger
-from port_ocean.utils import http_async_client
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
+from azure_devops.client.rate_limiter import AzureDevOpsRateLimiter
 
 PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
@@ -12,8 +14,19 @@ CONTINUATION_TOKEN_KEY = "continuationToken"
 
 class HTTPBaseClient:
     def __init__(self, personal_access_token: str) -> None:
-        self._client = http_async_client
+        self._client = OceanAsyncClient(
+            retry_config=RetryConfig(
+                retry_after_headers=[
+                    "X-RateLimit-Reset",
+                    "X-RateLimit-Limit",
+                    "X-RateLimit-Remaining",
+                    "Retry-After",
+                ],
+                additional_retry_status_codes=[429],
+            )
+        )
         self._personal_access_token = personal_access_token
+        self._rate_limiter = AzureDevOpsRateLimiter()
 
     async def send_request(
         self,
@@ -27,14 +40,15 @@ class HTTPBaseClient:
         self._client.follow_redirects = True
 
         try:
-            response = await self._client.request(
-                method=method,
-                url=url,
-                data=data,
-                params=params,
-                headers=headers,
-            )
-            response.raise_for_status()
+            async with self._rate_limiter:
+                response = await self._client.request(
+                    method=method,
+                    url=url,
+                    data=data,
+                    params=params,
+                    headers=headers,
+                )
+                response.raise_for_status()
         except httpx.HTTPStatusError as e:
             if response.status_code == 404:
                 logger.warning(f"Couldn't access url: {url}. Failed due to 404 error")
@@ -51,6 +65,9 @@ class HTTPBaseClient:
         except httpx.HTTPError as e:
             logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
             raise e
+        finally:
+            if "response" in locals() and response:
+                await self._rate_limiter.update_from_headers(response.headers)
         return response
 
     async def _get_paginated_by_top_and_continuation_token(
