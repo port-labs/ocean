@@ -107,13 +107,11 @@ class AzureDevOpsRateLimiter:
                     )
 
                 if reset_time:
-                    # X-RateLimit-Reset is typically a Unix timestamp in seconds
                     self._reset_time = float(reset_time)
                     logger.debug(
                         f"Rate limit resets at {self._reset_time} (in {self.seconds_until_reset:.2f}s)"
                     )
 
-                # Log comprehensive rate limit status when headers are present
                 if any([limit, remaining, reset_time]):
                     logger.debug(
                         f"Rate limit: {self._remaining}/{self._limit}, reset in {self.seconds_until_reset:.1f}s"
