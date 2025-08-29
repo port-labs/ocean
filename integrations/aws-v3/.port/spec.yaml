@@ -41,3 +41,7 @@ configurations:
     type: boolean
     default: false
     description: When enabled, uses AWS Organizations API to automatically discover all accounts. Requires the first role ARN from accountRoleArn to be the organization management account role.
+saas:
+  enabled: true
+  liveEvents:
+    enabled: false
