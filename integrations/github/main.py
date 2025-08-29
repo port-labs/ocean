@@ -37,6 +37,9 @@ from github.core.exporters.dependabot_exporter import RestDependabotAlertExporte
 from github.core.exporters.code_scanning_alert_exporter import (
     RestCodeScanningAlertExporter,
 )
+from github.core.exporters.secret_scanning_alert_exporter import (
+    RestSecretScanningAlertExporter,
+)
 from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
 from github.core.exporters.folder_exporter import (
     RestFolderExporter,
@@ -59,6 +62,7 @@ from github.core.options import (
     ListDependabotAlertOptions,
     ListCodeScanningAlertOptions,
     ListCollaboratorOptions,
+    ListSecretScanningAlertOptions,
 )
 from github.helpers.utils import ObjectKind, GithubClientType
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
@@ -74,6 +78,7 @@ from integration import (
     GithubRepositoryConfig,
     GithubTeamConfig,
     GithubFileResourceConfig,
+    GithubSecretScanningAlertConfig,
 )
 
 
@@ -520,6 +525,35 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ]
         async for collaborators in stream_async_iterators_tasks(*tasks):
             yield collaborators
+
+
+@ocean.on_resync(ObjectKind.SECRET_SCANNING_ALERT)
+async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all secret scanning alerts in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    secret_scanning_alert_exporter = RestSecretScanningAlertExporter(rest_client)
+
+    config = cast(GithubSecretScanningAlertConfig, event.resource_config)
+    repo_options = ListRepositoryOptions(
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
+    )
+
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        tasks = [
+            secret_scanning_alert_exporter.get_paginated_resources(
+                ListSecretScanningAlertOptions(
+                    repo_name=repo["name"],
+                    state=config.selector.state,
+                    hide_secret=config.selector.hide_secret,
+                )
+            )
+            for repo in repositories
+        ]
+        async for alerts in stream_async_iterators_tasks(*tasks):
+            yield alerts
 
 
 # Register webhook processors

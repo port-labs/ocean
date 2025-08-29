@@ -57,6 +57,9 @@ from github.webhook.webhook_processors.collaborator_webhook_processor import (
 from github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor import (
     CheckRunValidatorWebhookProcessor,
 )
+from github.webhook.webhook_processors.secret_scanning_alert_webhook_processor import (
+    SecretScanningAlertWebhookProcessor,
+)
 
 
 def register_live_events_webhooks(path: str = "/webhook") -> None:
@@ -82,3 +85,4 @@ def register_live_events_webhooks(path: str = "/webhook") -> None:
     ocean.add_webhook_processor(path, CollaboratorMembershipWebhookProcessor)
     ocean.add_webhook_processor(path, CollaboratorTeamWebhookProcessor)
     ocean.add_webhook_processor(path, CheckRunValidatorWebhookProcessor)
+    ocean.add_webhook_processor(path, SecretScanningAlertWebhookProcessor)

@@ -186,3 +186,21 @@ class SingleCollaboratorOptions(RepositoryIdentifier):
 
 class ListCollaboratorOptions(RepositoryIdentifier):
     """Options for listing collaborators."""
+
+
+class BaseSecretScanningAlertOptions(RepositoryIdentifier):
+    """Base options for secret scanning alerts."""
+
+    hide_secret: Required[bool]
+
+
+class SingleSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
+    """Options for fetching a single secret scanning alert."""
+
+    alert_number: Required[str]
+
+
+class ListSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
+    """Options for listing secret scanning alerts."""
+
+    state: Required[str]
