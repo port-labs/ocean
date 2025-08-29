@@ -1,4 +1,4 @@
-from typing import Literal, Optional, List
+from typing import Literal, Optional, List, Union
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -37,14 +37,55 @@ class CheckmarxOneResultSelector(Selector):
         description="Filter scan results by status",
     )
     exclude_result_types: Optional[List[Literal["DEV_AND_TEST", "NONE"]]] = Field(
-        default=["DEV_AND_TEST"],
+        default=None,
         description="Filter scan results by exclude result types",
     )
 
 
-class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
-    kind: Literal["scan_result"]
+class CheckmarxOneApiSecSelector(Selector):
+    filtering: Optional[str] = Field(
+        default=None,
+        description="Filter API sec risks by fields",
+    )
+    searching: Optional[str] = Field(
+        default=None,
+        description="Full text search for API sec risks",
+    )
+    sorting: Optional[str] = Field(default=None, description="Sort API sec risks")
+
+
+class CheckmarxOneProjectSelector(Selector):
+    pass
+
+
+class CheckmarxOneProjectResourcesConfig(ResourceConfig):
+    kind: Literal["project"]
+    selector: CheckmarxOneProjectSelector
+
+
+class CheckmarxOneScaResourcesConfig(ResourceConfig):
+    kind: Literal["sca"]
     selector: CheckmarxOneResultSelector
+
+
+class CheckmarxOneKicsResourcesConfig(ResourceConfig):
+    kind: Literal["kics"]
+    selector: CheckmarxOneResultSelector
+
+
+class CheckmarxOneContainersResourcesConfig(ResourceConfig):
+    kind: Literal["containersec"]
+    selector: CheckmarxOneResultSelector
+
+
+class CheckmarxOneSastResourcesConfig(ResourceConfig):
+    kind: Literal["sast"]
+    selector: CheckmarxOneResultSelector
+
+
+class CheckmarxOneApiSecResourcesConfig(ResourceConfig):
+    kind: Literal["apisec"]
+    selector: CheckmarxOneApiSecSelector
 
 
 class CheckmarxOneScanSelector(Selector):
@@ -60,12 +101,24 @@ class CheckmarxOneScanResourcesConfig(ResourceConfig):
     selector: CheckmarxOneScanSelector
 
 
+# Union type for all scan result configs
+ScanResultConfigType = Union[
+    CheckmarxOneScaResourcesConfig,
+    CheckmarxOneKicsResourcesConfig,
+    CheckmarxOneContainersResourcesConfig,
+    CheckmarxOneSastResourcesConfig,
+]
+
+
 class CheckmarxOnePortAppConfig(PortAppConfig):
     resources: List[
-        CheckmarxOneScanResultResourcesConfig
+        CheckmarxOneProjectResourcesConfig
         | CheckmarxOneScanResourcesConfig
-        | ResourceConfig
-    ] = Field(default_factory=list)
+        | ScanResultConfigType
+        | CheckmarxOneApiSecResourcesConfig
+    ] = Field(
+        default_factory=list
+    )  # type: ignore
 
 
 class CheckmarxOneIntegration(BaseIntegration):

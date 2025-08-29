@@ -29,6 +29,7 @@ class ListScanResultOptions(TypedDict):
     """Options for listing scan results."""
 
     scan_id: Required[str]
+    kind: Required[str]
     severity: NotRequired[
         Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
     ]
@@ -55,3 +56,18 @@ class SingleScanResultOptions(TypedDict):
 
     scan_id: Required[str]
     result_id: Required[str]
+
+
+class ListApiSecOptions(TypedDict):
+    """Options for listing API sec scan results."""
+
+    scan_id: Required[str]
+    filtering: NotRequired[Optional[str]]
+    searching: NotRequired[Optional[str]]
+    sorting: NotRequired[Optional[str]]
+
+
+class SingleApiSecOptions(TypedDict):
+    """Options for fetching a single API sec scan result."""
+
+    risk_id: Required[str]

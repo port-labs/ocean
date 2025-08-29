@@ -4,6 +4,7 @@ from checkmarx_one.core.exporters.scan_exporter import CheckmarxScanExporter
 from checkmarx_one.core.exporters.scan_result_exporter import (
     CheckmarxScanResultExporter,
 )
+from checkmarx_one.core.exporters.api_sec_exporter import CheckmarxApiSecExporter
 
 
 def create_project_exporter() -> CheckmarxProjectExporter:
@@ -22,3 +23,9 @@ def create_scan_result_exporter() -> CheckmarxScanResultExporter:
     """Create a scan result exporter with initialized client."""
     client = get_checkmarx_client()
     return CheckmarxScanResultExporter(client)
+
+
+def create_api_sec_exporter() -> CheckmarxApiSecExporter:
+    """Create an API security exporter with initialized client."""
+    client = get_checkmarx_client()
+    return CheckmarxApiSecExporter(client)

@@ -348,3 +348,209 @@ class TestCheckmarxOneClient:
         from checkmarx_one.clients.client import PAGE_SIZE
 
         assert PAGE_SIZE == 100
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_api_sec_single_page(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting API security paginated resources with single page."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "entries": [{"risk_id": "1"}, {"risk_id": "2"}],
+            "has_next": False,
+            "next_page_number": 1,
+        }
+        mock_response.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results = []
+            async for batch in client.send_paginated_request_api_sec(
+                "/test", "entries"
+            ):
+                results.append(batch)
+
+            assert len(results) == 1
+            assert results[0] == [{"risk_id": "1"}, {"risk_id": "2"}]
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_api_sec_multiple_pages(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting API security paginated resources with multiple pages."""
+        # First page: full page with has_next=True
+        mock_response1 = MagicMock()
+        mock_response1.json.return_value = {
+            "entries": [{"risk_id": str(i)} for i in range(100)],
+            "has_next": True,
+            "next_page_number": 2,
+        }
+        mock_response1.raise_for_status.return_value = None
+
+        # Second page: partial page with has_next=False
+        mock_response2 = MagicMock()
+        mock_response2.json.return_value = {
+            "entries": [{"risk_id": str(i)} for i in range(100, 150)],
+            "has_next": False,
+            "next_page_number": 3,
+        }
+        mock_response2.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(
+                side_effect=[mock_response1, mock_response2]
+            )
+            results = []
+            async for batch in client.send_paginated_request_api_sec(
+                "/test", "entries"
+            ):
+                results.append(batch)
+
+            assert len(results) == 2
+            assert len(results[0]) == 100
+            assert len(results[1]) == 50
+            assert results[0][0]["risk_id"] == "0"
+            assert results[0][-1]["risk_id"] == "99"
+            assert results[1][0]["risk_id"] == "100"
+            assert results[1][-1]["risk_id"] == "149"
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_api_sec_empty_response(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting API security paginated resources with empty response."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "entries": [],
+            "has_next": False,
+            "next_page_number": 1,
+        }
+        mock_response.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results = []
+            async for batch in client.send_paginated_request_api_sec(
+                "/test", "entries"
+            ):
+                results.append(batch)
+
+            assert len(results) == 0
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_api_sec_with_params(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting API security paginated resources with parameters."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "entries": [{"risk_id": "1"}],
+            "has_next": False,
+            "next_page_number": 1,
+        }
+        mock_response.raise_for_status.return_value = None
+
+        params = {"filtering": "test", "searching": "low"}
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results = []
+            async for batch in client.send_paginated_request_api_sec(
+                "/test", "entries", params
+            ):
+                results.append(batch)
+
+            assert len(results) == 1
+            assert results[0] == [{"risk_id": "1"}]
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_api_sec_with_object_key_fallback(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting API security paginated resources with object key fallback."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "data": [{"risk_id": "1"}, {"risk_id": "2"}],
+            "has_next": False,
+            "next_page_number": 1,
+        }
+        mock_response.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results = []
+            async for batch in client.send_paginated_request_api_sec("/test", "data"):
+                results.append(batch)
+
+            assert len(results) == 1
+            assert results[0] == [{"risk_id": "1"}, {"risk_id": "2"}]
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_api_sec_missing_pagination_fields(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting API security paginated resources with missing pagination fields."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "entries": [{"risk_id": "1"}],
+            # Missing has_next and next_page_number fields
+        }
+        mock_response.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+
+            with pytest.raises(KeyError, match="next_page_number"):
+                results = []
+                async for batch in client.send_paginated_request_api_sec(
+                    "/test", "entries"
+                ):
+                    results.append(batch)
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_api_sec_request_error(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting API security paginated resources with request error."""
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(side_effect=Exception("Request failed"))
+
+            with pytest.raises(Exception, match="Request failed"):
+                results = []
+                async for batch in client.send_paginated_request_api_sec(
+                    "/test", "entries"
+                ):
+                    results.append(batch)
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_api_sec_pagination_parameters(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test that API security pagination uses correct parameters."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "entries": [{"risk_id": "1"}],
+            "has_next": False,
+            "next_page_number": 1,
+        }
+        mock_response.raise_for_status.return_value = None
+
+        params = {"filtering": "test"}
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results = []
+            async for batch in client.send_paginated_request_api_sec(
+                "/test", "entries", params
+            ):
+                results.append(batch)
+
+            # Verify that the request was called with correct pagination parameters
+            call_args = mock_client.request.call_args
+            assert call_args is not None
+
+            # Check that the params dictionary contains the expected pagination parameters
+            actual_params = call_args.kwargs.get("params", {})
+            assert actual_params.get("page") == 1
+            assert actual_params.get("per_page") == 100  # PAGE_SIZE is 100
+            assert actual_params.get("filtering") == "test"

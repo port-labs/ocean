@@ -7,7 +7,11 @@ class ObjectKind(StrEnum):
 
     PROJECT = "project"
     SCAN = "scan"
-    SCAN_RESULT = "scan_result"
+    CONTAINERS = "containersec"
+    KICS = "kics"
+    SCA = "sca"
+    SAST = "sast"
+    API_SEC = "apisec"
 
 
 class IgnoredError(NamedTuple):
