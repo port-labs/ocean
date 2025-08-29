@@ -18,14 +18,11 @@ PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
 
 class GitLabClient:
-    DEFAULT_MIN_ACCESS_LEVEL = 30
-    DEFAULT_PARAMS: dict[str, Any] = {
-        "min_access_level": DEFAULT_MIN_ACCESS_LEVEL,  # Minimum access level to fetch groups
-        "all_available": True,  # Fetch all groups accessible to the user
-    }
-
-    def __init__(self, base_url: str, token: str) -> None:
+    def __init__(
+        self, base_url: str, token: str, default_params: dict[str, Any]
+    ) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
+        self.default_params = default_params
 
     async def get_project(self, project_path: str | int) -> dict[str, Any]:
         encoded_path = quote(str(project_path), safe="")
@@ -68,7 +65,7 @@ class GitLabClient:
         include_languages: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch projects and optionally enrich with languages and/or labels."""
-        request_params = self.DEFAULT_PARAMS | (params or {})
+        request_params = self.default_params | (params or {})
         async for projects_batch in self.rest.get_paginated_resource(
             "projects", params=request_params
         ):
@@ -90,7 +87,7 @@ class GitLabClient:
         Args:
             owned: If True, only fetch groups owned by the authenticated user
         """
-        params = {**self.DEFAULT_PARAMS, "owned": owned}
+        params = {**self.default_params, "owned": owned}
         async for batch in self.rest.get_paginated_resource("groups", params=params):
             yield batch
 

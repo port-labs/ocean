@@ -35,7 +35,8 @@ class TestGitLabClient:
     @pytest.fixture
     def client(self) -> GitLabClient:
         """Initialize GitLab client with test configuration"""
-        return GitLabClient("https://gitlab.example.com", "test-token")
+        default_params = {"min_access_level": 30, "all_available": True}
+        return GitLabClient("https://gitlab.example.com", "test-token", default_params)
 
     async def test_get_projects(self, client: GitLabClient) -> None:
         """Test project fetching and enrichment with languages and labels via REST."""
@@ -650,3 +651,120 @@ class TestGitLabClient:
             assert results[0]["id"] == 1
             assert results[0]["name"] == "Test Pipeline"
             mock_get_project_resource.assert_called_once_with("1", "pipelines")
+
+    async def test_default_params_with_min_access_level(self) -> None:
+        """Test that default_params includes min_access_level when configured."""
+        # Arrange
+        default_params = {"min_access_level": 30, "all_available": True}
+        client = GitLabClient(
+            "https://gitlab.example.com", "test-token", default_params
+        )
+
+        # Act & Assert
+        assert client.default_params == default_params
+        assert client.default_params["min_access_level"] == 30
+        assert client.default_params["all_available"] is True
+
+    async def test_default_params_without_min_access_level(self) -> None:
+        """Test that default_params excludes min_access_level when disabled."""
+        # Arrange
+        default_params = {"all_available": True}  # No min_access_level
+        client = GitLabClient(
+            "https://gitlab.example.com", "test-token", default_params
+        )
+
+        # Act & Assert
+        assert client.default_params == default_params
+        assert "min_access_level" not in client.default_params
+        assert client.default_params["all_available"] is True
+
+    async def test_get_groups_with_min_access_level(self) -> None:
+        """Test that get_groups uses min_access_level when configured."""
+        # Arrange
+        default_params = {"min_access_level": 40, "all_available": True}
+        client = GitLabClient(
+            "https://gitlab.example.com", "test-token", default_params
+        )
+        mock_groups = [{"id": 1, "name": "Test Group"}]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ) as mock_get_resource:
+            # Act
+            results = []
+            async for batch in client.get_groups():
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 1
+            assert results[0]["name"] == "Test Group"
+            mock_get_resource.assert_called_once_with(
+                "groups",
+                params={
+                    "min_access_level": 40,
+                    "all_available": True,
+                    "owned": False,
+                },
+            )
+
+    async def test_get_groups_without_min_access_level(self) -> None:
+        """Test that get_groups excludes min_access_level when disabled."""
+        # Arrange
+        default_params = {"all_available": True}  # No min_access_level
+        client = GitLabClient(
+            "https://gitlab.example.com", "test-token", default_params
+        )
+        mock_groups = [{"id": 1, "name": "Test Group"}]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ) as mock_get_resource:
+            # Act
+            results = []
+            async for batch in client.get_groups():
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 1
+            assert results[0]["name"] == "Test Group"
+            mock_get_resource.assert_called_once_with(
+                "groups",
+                params={
+                    "all_available": True,
+                    "owned": False,
+                },
+            )
+
+    async def test_get_projects_with_min_access_level(self) -> None:
+        """Test that get_projects uses min_access_level when configured."""
+        # Arrange
+        default_params = {"min_access_level": 50, "all_available": True}
+        client = GitLabClient(
+            "https://gitlab.example.com", "test-token", default_params
+        )
+        mock_projects = [{"id": 1, "name": "Test Project"}]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_projects]),
+        ) as mock_get_resource:
+            # Act
+            results = []
+            async for batch in client.get_projects():
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 1
+            assert results[0]["name"] == "Test Project"
+            mock_get_resource.assert_called_once_with(
+                "projects",
+                params={
+                    "min_access_level": 50,
+                    "all_available": True,
+                },
+            )

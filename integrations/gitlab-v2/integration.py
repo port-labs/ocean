@@ -1,5 +1,5 @@
 from typing import Literal, Any, Type, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers import APIPortAppConfig, JQEntityProcessor
@@ -21,6 +21,37 @@ from datetime import datetime, timedelta, timezone
 
 FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
+
+
+class GitlabAccessConfig(BaseModel):
+    """Configuration for GitLab access level filtering."""
+
+    use_min_access_level: bool = Field(
+        default=True,
+        alias="useMinAccessLevel",
+        description="Whether to apply min_access_level filtering. Set to false for admin tokens to see all resources.",
+    )
+    min_access_level: int = Field(
+        default=30,  # Developer level
+        alias="minAccessLevel",
+        description="Minimum access level for syncing (10=Guest, 20=Reporter, 30=Developer, 40=Maintainer, 50=Owner)",
+    )
+
+    @validator("min_access_level")
+    def validate_access_level(cls, value: int) -> int:
+        """Validate that min_access_level is a valid GitLab access level."""
+        valid_levels = [
+            10,
+            20,
+            30,
+            40,
+            50,
+        ]  # Guest, Reporter, Developer, Maintainer, Owner
+        if value not in valid_levels:
+            raise ValueError(
+                f"min_access_level must be one of: {valid_levels} (10=Guest, 20=Reporter, 30=Developer, 40=Maintainer, 50=Owner)"
+            )
+        return value
 
 
 class ProjectSelector(Selector):
@@ -149,6 +180,11 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitlabMergeRequestResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
+    access_config: GitlabAccessConfig = Field(
+        default_factory=GitlabAccessConfig,
+        alias="accessConfig",
+        description="Configuration for GitLab access level filtering",
+    )
 
 
 class GitManipulationHandler(JQEntityProcessor):
