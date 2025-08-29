@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.4.1-beta (2025-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.2
+
+
+## 1.4.0-beta (2025-08-27)
+
+
+- Enhanced repository selector to support multiple relationship types simultaneously
+- Changed `included_property` to `included_relationships` to allow specifying both "collaborators" and "teams" in a single configuration
+- Improved repository enrichment logic to handle multiple relationships efficiently
+
+
+## 1.3.6-beta (2025-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.1
+
+
+## 1.3.5-beta (2025-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.0
+
+
+## 1.3.4-beta (2025-08-25)
+
+
+### Bug Fixes
+
+- Improved test reliability by using fixture-based datetime mocking instead of inline patching
+- Consolidated datetime mocking logic into reusable fixture
+
+
 ## 1.3.3-beta (2025-08-24)
 
 
