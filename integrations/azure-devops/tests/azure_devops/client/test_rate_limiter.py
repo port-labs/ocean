@@ -204,7 +204,7 @@ class TestAzureDevOpsRateLimiter:
         """
         rate_limiter = AzureDevOpsRateLimiter(minimum_limit_remaining=5)
         rate_limiter._remaining = rate_limiter._minimum_limit_remaining + 10
-        rate_limiter._reset_time = time.time() + 60
+        # Don't set _reset_time to avoid triggering retry-after logic
 
         async with rate_limiter:
             pass
@@ -334,7 +334,15 @@ class TestAzureDevOpsRateLimiter:
         rate_limiter._remaining = 1
         rate_limiter._reset_time = reset_time
 
-        with patch("time.time", return_value=reset_time - 10.0):
+        # Mock time to ensure we trigger proactive wait, not retry-after
+        with patch("time.time") as mock_time:
+            # First call for should_wait_for_retry_after (should return 0)
+            # Second call for seconds_until_reset (should return 10)
+            mock_time.side_effect = [
+                reset_time,  # For should_wait_for_retry_after calculation (returns 0)
+                reset_time - 10.0,  # For seconds_until_reset calculation (returns 10)
+            ]
+
             async with rate_limiter:
                 pass
 
