@@ -93,7 +93,7 @@ class TestRestRepositoryExporter:
                     {"type": "all"},
                 )
 
-    async def test_get_paginated_resources_with_included_property(
+    async def test_get_paginated_resources_with_included_relationships(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:
         # Create a mock that returns different data based on the URL
@@ -111,7 +111,7 @@ class TestRestRepositoryExporter:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
                     type=mock_port_app_config.repository_type,
-                    included_property="collaborators",
+                    included_relationships=["collaborators"],
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
@@ -135,7 +135,7 @@ class TestRestRepositoryExporter:
                 # Verify the main repository request was called
                 mock_request.assert_any_call(
                     f"{rest_client.base_url}/orgs/{rest_client.organization}/repos",
-                    {"type": "all", "included_property": "collaborators"},
+                    {"type": "all", "included_relationships": ["collaborators"]},
                 )
 
                 # Verify collaborator requests were called for each repository
