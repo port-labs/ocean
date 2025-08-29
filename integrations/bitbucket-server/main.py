@@ -8,6 +8,10 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from integration import (
     BitbucketGenericResourceConfig,
     BitbucketPullRequestResourceConfig,
+    BitbucketServerFolderResourceConfig,
+    BitbucketServerFolderSelector,
+    BitbucketServerFileResourceConfig,
+    BitbucketServerFileSelector,
     ObjectKind,
 )
 from utils import initialize_client
@@ -61,6 +65,27 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received {len(user_batch)} users")
         yield user_batch
 
+@ocean.on_resync(ObjectKind.FOLDER)
+async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync folders based on configuration."""
+    config = cast(
+        Union[ResourceConfig, BitbucketServerFolderResourceConfig], event.resource_config
+    )
+    selector = cast(BitbucketServerFolderSelector, config.selector)
+    client = init_client()
+
+    async for matching_folders in process_folder_patterns(selector.folders, client):
+        yield matching_folders
+
+@ocean.on_resync(ObjectKind.FILE)
+async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync files based on configuration."""
+    config = cast(
+        Union[ResourceConfig, BitbucketServerFileResourceConfig], event.resource_config
+    )
+    selector = cast(BitbucketServerFileSelector, config.selector)
+    async for file_result in process_file_patterns(selector.files):
+        yield file_result
 
 @ocean.on_start()
 async def on_start() -> None:
