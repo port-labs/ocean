@@ -15,10 +15,8 @@ class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
         ExporterOptionsT: SingleSecretScanningAlertOptions
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
 
-        repo_name, extras = extract_repo_params(dict(options))
-        alert_number = extras["alert_number"]
-
-        params = extras["hide_secret"]
+        repo_name, params = extract_repo_params(dict(options))
+        alert_number = params.pop("alert_number")
 
         endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/secret-scanning/alerts/{alert_number}"
         response = await self.client.send_api_request(endpoint, params)
