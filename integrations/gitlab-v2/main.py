@@ -92,10 +92,9 @@ def _build_visibility_params() -> dict[str, Any]:
         Dictionary of parameters to pass to GitLab API calls
     """
     use_min_access_level, min_access_level = _get_visibility_config()
-    params = {}
     if use_min_access_level:
-        params["min_access_level"] = min_access_level
-    return params
+        return {"min_access_level": min_access_level}
+    return {}
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
