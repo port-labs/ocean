@@ -10,7 +10,12 @@ configurations:
     required: false
     type: string
     sensitive: false
-    description: AWS Account Role ARN, used for single account access and organizations.
+    description: AWS Account Role ARN for organizations access. When provided, the integration will attempt to use AWS Organizations to discover accounts, falling back to single account mode if organizations is not available.
+  - name: accountRoleArns
+    required: false
+    type: array
+    sensitive: false
+    description: Array of AWS Account Role ARNs for direct multi-account access. Use this when you don't have AWS Organizations enabled or want to specify exact accounts to access.
   - name: externalId
     required: false
     type: string
