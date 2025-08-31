@@ -1,20 +1,14 @@
-from typing import Dict, Any, List, Type
+from typing import Dict, Any, List, Type, Union
 from aws.core.interfaces.action import (
     Action,
-    APIAction,
-    BatchAPIAction,
+    BatchAction,
     ActionMap,
 )
 from loguru import logger
 from aws.core.helpers.utils import extract_resource_name_from_arn
 
 
-class ECSClusterDetailsAction(BatchAPIAction):
-
-    async def _execute(self, cluster_arn: str) -> Dict[str, Any]:
-        raise NotImplementedError(
-            "Single execution not supported for ECSClusterDetailsAction. Use execute_batch instead."
-        )
+class ECSClusterDetailsAction(BatchAction):
 
     async def _execute_batch(self, cluster_arns: List[str]) -> List[Dict[str, Any]]:
         if not cluster_arns:
@@ -32,7 +26,7 @@ class ECSClusterDetailsAction(BatchAPIAction):
         return clusters
 
 
-class GetClusterPendingTasksAction(APIAction):
+class GetClusterPendingTasksAction(Action):
 
     async def _execute(self, cluster_arn: str) -> Dict[str, Any]:
         """Get up to 100 pending task ARNs for a cluster"""
@@ -48,15 +42,15 @@ class GetClusterPendingTasksAction(APIAction):
 
 
 class ECSClusterActionsMap(ActionMap):
-    defaults: List[Type[Action]] = [
+    defaults: List[Type[Union[Action, BatchAction]]] = [
         ECSClusterDetailsAction,
     ]
 
-    options: List[Type[Action]] = [
+    options: List[Type[Union[Action, BatchAction]]] = [
         GetClusterPendingTasksAction,
     ]
 
-    def merge(self, include: List[str]) -> List[Type[Action]]:
+    def merge(self, include: List[str]) -> List[Type[Union[Action, BatchAction]]]:
         """Merge default actions with requested optional actions."""
         if not include:
             return self.defaults

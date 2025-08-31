@@ -6,7 +6,7 @@ from aws.core.exporters.ecs.cluster.actions import (
     GetClusterPendingTasksAction,
     ECSClusterActionsMap,
 )
-from aws.core.interfaces.action import Action, BatchAPIAction
+from aws.core.interfaces.action import Action, BatchAction
 
 
 # Type ignore for mock ECS client methods throughout this file
@@ -29,8 +29,8 @@ class TestECSClusterDetailsAction:
         return ECSClusterDetailsAction(mock_client)
 
     def test_inheritance(self, action: ECSClusterDetailsAction) -> None:
-        """Test that the action inherits from BatchAPIAction."""
-        assert isinstance(action, BatchAPIAction)
+        """Test that the action inherits from BatchAction."""
+        assert isinstance(action, BatchAction)
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.ecs.cluster.actions.logger")

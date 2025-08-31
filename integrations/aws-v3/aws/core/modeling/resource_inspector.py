@@ -1,7 +1,7 @@
-from typing import List, Dict, Any, Callable, Optional, cast
+from typing import List, Dict, Any, Callable, Optional, cast, Union
 from loguru import logger
 import asyncio
-from aws.core.interfaces.action import Action, ActionMap, BatchAPIAction
+from aws.core.interfaces.action import Action, ActionMap, BatchAction
 from aws.core.modeling.resource_builder import ResourceBuilder, PropertiesData
 from aws.core.modeling.resource_models import ResourceModel
 
@@ -21,7 +21,6 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         model_factory: Callable[[], ResourceModelT],
         region: Optional[str] = None,
         account_id: Optional[str] = None,
-        max_concurrent_requests: int = 15,
     ) -> None:
         """
         Initialize the ResourceInspector.
@@ -38,23 +37,21 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         self.model_factory = model_factory
         self.region = region
         self.account_id = account_id
-        self.max_concurrent_requests = max_concurrent_requests
 
     async def inspect(self, identifier: str, include: List[str]) -> ResourceModelT:
         """Inspect a single resource."""
         if not identifier:
             return self.model_factory()
 
-        # Execute actions and build models
+        # Execute actions directly for single resource
         action_classes = self.actions_map.merge(include)
         actions = [cls(self.client) for cls in action_classes]
 
         results = await asyncio.gather(
-            *(self._run_action(action, [identifier]) for action in actions)
+            *(action.execute(identifier) for action in actions)
         )
 
-        models = self._build_models(results)
-        return models[0] if models else self.model_factory()
+        return self._build_model(results)
 
     async def inspect_batch(
         self, identifiers: List[str], include: List[str]
@@ -74,13 +71,13 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         return self._build_models(results)
 
     async def _run_action(
-        self, action: Action, identifiers: List[str]
+        self, action: Union[Action, BatchAction], identifiers: List[str]
     ) -> List[Dict[str, Any]]:
         """
         Execute a single action for the given identifiers.
 
         Args:
-            action: The action instance to execute.
+            action: The action instance to execute (either Action or BatchAction).
             identifiers: The resource identifier(s) to pass to the action.
 
         Returns:
@@ -89,27 +86,17 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         try:
             logger.info(f"Running action {action.__class__.__name__} for {identifiers}")
 
-            if isinstance(action, BatchAPIAction):
+            if isinstance(action, BatchAction):
                 return await action.execute_batch(identifiers)
 
-            return await self._execute(action, identifiers)
+            if isinstance(action, Action):
+                # Execute individual API calls - concurrency is handled at the inspector level
+                return await asyncio.gather(*[action.execute(identifier) for identifier in identifiers])
+
 
         except Exception as e:
             logger.warning(f"Action {action.__class__.__name__} failed: {e}")
             return []
-
-    async def _execute(
-        self, action: Action, identifiers: List[str]
-    ) -> List[Dict[str, Any]]:
-        """Execute individual API calls concurrently with rate limiting."""
-        semaphore = asyncio.Semaphore(self.max_concurrent_requests)
-
-        async def execute_single(identifier: str) -> Dict[str, Any]:
-            async with semaphore:
-                return await action.execute(identifier)
-
-        tasks = [execute_single(identifier) for identifier in identifiers]
-        return await asyncio.gather(*tasks)
 
     def _build_models(
         self, action_results: List[List[Dict[str, Any]]]
