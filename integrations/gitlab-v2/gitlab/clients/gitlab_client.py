@@ -18,11 +18,13 @@ PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
 
 class GitLabClient:
-    def __init__(
-        self, base_url: str, token: str, default_params: dict[str, Any]
-    ) -> None:
+    DEFAULT_PARAMS: dict[str, Any] = {
+        "all_available": True,  # Fetch all resources accessible to the user
+    }
+
+    def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
-        self.default_params = default_params
+        self.default_params = self.DEFAULT_PARAMS
 
     async def get_project(self, project_path: str | int) -> dict[str, Any]:
         encoded_path = quote(str(project_path), safe="")
@@ -65,7 +67,11 @@ class GitLabClient:
         include_languages: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch projects and optionally enrich with languages and/or labels."""
-        request_params = self.default_params | (params or {})
+        # Merge with default params
+        request_params = {**self.DEFAULT_PARAMS}
+        if params:
+            request_params.update(params)
+
         async for projects_batch in self.rest.get_paginated_resource(
             "projects", params=request_params
         ):
@@ -80,16 +86,21 @@ class GitLabClient:
             yield enriched_batch
 
     async def get_groups(
-        self, owned: bool = False
+        self,
+        params: Optional[dict[str, Any]] = None,
+        max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch all groups accessible to the user.
+        """Fetch groups and optionally enrich with members."""
+        # Merge with default params
+        request_params = {**self.DEFAULT_PARAMS}
+        if params:
+            request_params.update(params)
 
-        Args:
-            owned: If True, only fetch groups owned by the authenticated user
-        """
-        params = {**self.default_params, "owned": owned}
-        async for batch in self.rest.get_paginated_resource("groups", params=params):
-            yield batch
+        async for groups_batch in self.rest.get_paginated_resource(
+            "groups", params=request_params
+        ):
+            logger.info(f"Received batch with {len(groups_batch)} groups")
+            yield groups_batch
 
     async def get_projects_resource(
         self,
@@ -188,12 +199,15 @@ class GitLabClient:
         return bool(response)
 
     async def get_parent_groups(
-        self, owned: bool = False
+        self,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         all_group_ids = set()
         top_level_groups = []
 
-        async for group_batch in self.get_groups(owned=owned):
+        async for group_batch in self.get_groups(
+            params=params,
+        ):
             group_ids_in_batch = {group["id"] for group in group_batch}
             for group in group_batch:
                 parent_id = group.get("parent_id")
@@ -214,6 +228,7 @@ class GitLabClient:
         path: str,
         repositories: list[str] | None = None,
         skip_parsing: bool = False,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         search_query = f"path:{path}"
         logger.info(f"Starting file search with path pattern: '{path}'")
@@ -228,7 +243,9 @@ class GitLabClient:
                     yield batch
         else:
             logger.info("Searching across groups")
-            async for top_level_groups in self.get_parent_groups():
+            async for top_level_groups in self.get_parent_groups(
+                params=params,
+            ):
                 logger.info(
                     f"Found {len(top_level_groups)} top-level searchable groups"
                 )
