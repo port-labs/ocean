@@ -91,8 +91,9 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
 
             if isinstance(action, Action):
                 # Execute individual API calls - concurrency is handled at the inspector level
-                return await asyncio.gather(*[action.execute(identifier) for identifier in identifiers])
-
+                return await asyncio.gather(
+                    *[action.execute(identifier) for identifier in identifiers]
+                )
 
         except Exception as e:
             logger.warning(f"Action {action.__class__.__name__} failed: {e}")

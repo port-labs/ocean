@@ -32,9 +32,6 @@ class BatchAction(ABC):
     async def _execute_batch(self, identifiers: List[str]) -> List[Dict[str, Any]]: ...
 
 
-
-
-
 class ActionMap(Protocol):
     defaults: List[Type[Union[Action, BatchAction]]]
     options: List[Type[Union[Action, BatchAction]]]
