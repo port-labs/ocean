@@ -2,6 +2,10 @@ from typing import Optional, Union, List
 from botocore.utils import ArnParser
 
 
+class AWSOrganizationsNotInUseError(Exception):
+    """Raised when AWS Organizations is not in use."""
+
+
 class AWSSessionError(Exception):
     """Raised when an AWS session or assume role operation fails."""
 
