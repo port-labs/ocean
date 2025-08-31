@@ -117,9 +117,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
-    async for groups_batch in client.get_groups(
-        params=_build_visibility_params()
-    ):
+    async for groups_batch in client.get_groups(params=_build_visibility_params()):
         logger.info(f"Received group batch with {len(groups_batch)} groups")
         yield groups_batch
 
@@ -128,9 +126,7 @@ async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
-    async for groups_batch in client.get_groups(
-        params=_build_visibility_params()
-    ):
+    async for groups_batch in client.get_groups(params=_build_visibility_params()):
         logger.info(f"Processing batch of {len(groups_batch)} groups for issues")
         async for issues_batch in client.get_groups_resource(groups_batch, "issues"):
             yield issues_batch
@@ -174,9 +170,7 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     states = selector.states
     updated_after = selector.updated_after_datetime
 
-    async for groups_batch in client.get_groups(
-        params=_build_visibility_params()
-    ):
+    async for groups_batch in client.get_groups(params=_build_visibility_params()):
         for state in states:
             logger.info(
                 f"Processing batch of {len(groups_batch)} groups for {state} merge requests"
@@ -200,9 +194,7 @@ async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     ).selector
     include_bot_members = bool(selector.include_bot_members)
 
-    async for groups_batch in client.get_groups(
-        params=_build_visibility_params()
-    ):
+    async for groups_batch in client.get_groups(params=_build_visibility_params()):
         for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
             current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
             logger.info(
@@ -223,9 +215,7 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(GitlabMemberResourceConfig, event.resource_config).selector
     include_bot_members = bool(selector.include_bot_members)
 
-    async for groups_batch in client.get_groups(
-        params=_build_visibility_params()
-    ):
+    async for groups_batch in client.get_groups(params=_build_visibility_params()):
         for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
             current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
             tasks = [

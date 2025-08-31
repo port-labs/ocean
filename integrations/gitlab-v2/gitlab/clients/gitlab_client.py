@@ -66,7 +66,7 @@ class GitLabClient:
         include_languages: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all projects accessible to the user.
-        
+
         Args:
             params: Optional parameters to pass to the GitLab API (e.g., min_access_level)
             max_concurrent: Maximum number of concurrent requests
@@ -94,7 +94,7 @@ class GitLabClient:
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user.
-        
+
         Args:
             params: Optional parameters to pass to the GitLab API (e.g., min_access_level)
         """
