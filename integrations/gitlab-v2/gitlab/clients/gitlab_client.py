@@ -65,8 +65,13 @@ class GitLabClient:
         max_concurrent: int = 10,
         include_languages: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch projects and optionally enrich with languages and/or labels."""
-        # Merge with default params
+        """Fetch all projects accessible to the user.
+        
+        Args:
+            params: Optional parameters to pass to the GitLab API (e.g., min_access_level)
+            max_concurrent: Maximum number of concurrent requests
+            include_languages: Whether to enrich projects with language information
+        """
         request_params = {**self.DEFAULT_PARAMS}
         if params:
             request_params.update(params)
@@ -87,10 +92,12 @@ class GitLabClient:
     async def get_groups(
         self,
         params: Optional[dict[str, Any]] = None,
-        max_concurrent: int = 10,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch groups and optionally enrich with members."""
-        # Merge with default params
+        """Fetch all groups accessible to the user.
+        
+        Args:
+            params: Optional parameters to pass to the GitLab API (e.g., min_access_level)
+        """
         request_params = {**self.DEFAULT_PARAMS}
         if params:
             request_params.update(params)
