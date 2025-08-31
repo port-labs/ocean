@@ -8,19 +8,14 @@ features:
 configurations:
   - name: accountRoleArn
     required: false
-    type: array
-    sensitive: true
-    description: An array of AWS Account Role ARNs, used for multi-account access.
-  - name: useOrganizations
-    required: false
-    default: false
-    type: boolean
-    description: When enabled, uses AWS Organizations API to automatically discover all accounts. Requires the first role ARN from accountRoleArn to be the organization management account role.
+    type: string
+    sensitive: false
+    description: AWS Account Role ARN, used for single account access and organizations.
   - name: externalId
     required: false
     type: string
-    sensitive: true
-    description: The external ID used for the AWS Account Read Role.
+    sensitive: false
+    description: The external ID used for the AWS Account Read Role used in assume role.
   - name: aws_access_key_id
     required: false
     type: string
@@ -36,11 +31,6 @@ configurations:
     type: string
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
-  - name: use_organizations
-    required: false
-    type: boolean
-    default: false
-    description: When enabled, uses AWS Organizations API to automatically discover all accounts. Requires the first role ARN from accountRoleArn to be the organization management account role.
 saas:
   enabled: true
   liveEvents:
