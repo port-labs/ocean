@@ -24,7 +24,6 @@ class GitLabClient:
 
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
-        self.default_params = self.DEFAULT_PARAMS
 
     async def get_project(self, project_path: str | int) -> dict[str, Any]:
         encoded_path = quote(str(project_path), safe="")
