@@ -2,16 +2,16 @@ from typing import Optional, Union, List
 from botocore.utils import ArnParser
 
 
-class AWSOrganizationsNotInUseError(Exception):
-    """Raised when AWS Organizations is not in use."""
-
-
 class AWSSessionError(Exception):
     """Raised when an AWS session or assume role operation fails."""
 
 
 class CredentialsProviderError(Exception):
     """Raised when there is a credentials provider or assume role error."""
+
+
+class AWSOrganizationsNotInUseError(Exception):
+    """Raised when AWS Organizations is not enabled or accessible."""
 
 
 def normalize_arn_list(arn_input: Optional[Union[str, List[str]]]) -> List[str]:
