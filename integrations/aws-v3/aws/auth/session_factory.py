@@ -49,18 +49,13 @@ class ResyncStrategyFactory:
         """
         Detect the appropriate strategy type based on the global configuration.
         """
-        account_role_arn = config.get("account_role_arn", [])
-        use_organizations = config.get("use_organizations", False)
 
-        # If organizations flag is enabled, use organizations strategy
-        if use_organizations:
+        if config.get("account_role_arn", None):
             return OrganizationsStrategy
 
-        # If we have any role ARNs, use multi-account strategy
-        if len(account_role_arn) > 0:
+        if len(config.get("account_role_arns", [])) > 0:
             return MultiAccountStrategy
 
-        # Default to single account strategy
         return SingleAccountStrategy
 
     @classmethod
