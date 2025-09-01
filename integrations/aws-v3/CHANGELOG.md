@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 1.0.0-beta (2025-08-31)
+
+### Features
+
+- Breaking changes: accountRoleArn -> accountRoleArns
+- accountRoleArn is now used for both multi-account (using organizations) and single-account modes
+- accountRoleArns is now used for multi-account mode for direct arn access
+
+
 ## 0.3.7-beta (2025-08-28)
 
 

@@ -308,7 +308,7 @@ class TestMultiAccountHealthCheckMixin:
     ) -> None:
         """Test healthcheck processes ARNs in batches."""
         # Add more ARNs to test batching
-        strategy.config["account_role_arn"] = [
+        strategy.config["account_role_arns"] = [
             f"arn:aws:iam::{i:012d}:role/test-role" for i in range(25)
         ]
         with patch.object(strategy, "_can_assume_role", return_value=mock_aiosession):
@@ -325,9 +325,7 @@ class TestOrganizationsHealthCheckMixin:
     def mock_organizations_config(self) -> dict[str, object]:
         """Create a mock organizations configuration."""
         return {
-            "account_role_arn": [
-                "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole"
-            ]
+            "account_role_arn": "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole"
         }
 
     @pytest.fixture
@@ -342,7 +340,7 @@ class TestOrganizationsHealthCheckMixin:
 
     def test_initialization(self, strategy: OrganizationsStrategy) -> None:
         """Test OrganizationsHealthCheckMixin initialization."""
-        assert strategy._organization_role_name is None
+        assert strategy._organization_role_details is None
         assert strategy._valid_arns == []
         assert strategy._valid_sessions == {}
         assert strategy._organization_session is None
@@ -367,26 +365,27 @@ class TestOrganizationsHealthCheckMixin:
         self, strategy: OrganizationsStrategy
     ) -> None:
         """Test _get_organization_account_role_arn raises error when empty list."""
-        strategy.config["account_role_arn"] = []
+        strategy.config["account_role_arn"] = ""
         with pytest.raises(AWSSessionError, match="account_role_arn is required"):
             strategy._get_organization_account_role_arn()
 
-    def test_get_organization_account_role_name(
+    def test_get_organization_account_role_details(
         self, strategy: OrganizationsStrategy
     ) -> None:
-        """Test _get_organization_account_role_name extracts role name correctly."""
-        role_name = strategy._get_organization_account_role_name()
-        assert role_name == "role/OrganizationAccountAccessRole"
+        """Test _get_organization_account_role_details extracts role details correctly."""
+        role_details = strategy._get_organization_account_role_details()
+        assert role_details["resource"] == "role/OrganizationAccountAccessRole"
+        assert role_details["account"] == "123456789012"
 
-    def test_get_organization_account_role_name_invalid_arn(
+    def test_get_organization_account_role_details_invalid_arn(
         self, strategy: OrganizationsStrategy
     ) -> None:
-        """Test _get_organization_account_role_name raises error for invalid ARN."""
-        strategy.config["account_role_arn"] = ["invalid-arn"]
+        """Test _get_organization_account_role_details raises error for invalid ARN."""
+        strategy.config["account_role_arn"] = "invalid-arn"
         with pytest.raises(
             AWSSessionError, match="account_role_arn must be a valid ARN"
         ):
-            strategy._get_organization_account_role_name()
+            strategy._get_organization_account_role_details()
 
     @pytest.mark.asyncio
     async def test_get_organization_session_success(
@@ -592,9 +591,7 @@ class TestOrganizationsStrategy:
     def mock_organizations_config(self) -> dict[str, object]:
         """Create a mock organizations configuration."""
         return {
-            "account_role_arn": [
-                "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole"
-            ]
+            "account_role_arn": "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole"
         }
 
     @pytest.fixture
