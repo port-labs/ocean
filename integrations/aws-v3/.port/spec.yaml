@@ -36,6 +36,7 @@ configurations:
     type: string
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
+disableDefaultInstallationMethods: true
 saas:
   enabled: true
   liveEvents:
