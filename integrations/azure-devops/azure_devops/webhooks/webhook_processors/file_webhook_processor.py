@@ -23,8 +23,9 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
+            repository = event.payload["resource"].get("repository", {})
             event_type = event.payload["eventType"]
-            return bool(PushEvents(event_type))
+            return repository.get("id") and bool(PushEvents(event_type))
         except ValueError:
             return False
 

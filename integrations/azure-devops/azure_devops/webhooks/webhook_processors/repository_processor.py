@@ -1,17 +1,19 @@
 from typing import Any, Optional, Dict
+
+from azure_devops.client.azure_devops_client import AzureDevopsClient
+from azure_devops.misc import Kind
+from azure_devops.webhooks.events import RepositoryEvents
+from azure_devops.webhooks.webhook_processors.base_processor import (
+    AzureDevOpsBaseWebhookProcessor,
+)
 from loguru import logger
+
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
 )
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from azure_devops.client.azure_devops_client import AzureDevopsClient
-from azure_devops.webhooks.webhook_processors.base_processor import (
-    AzureDevOpsBaseWebhookProcessor,
-)
-from azure_devops.misc import Kind
-from azure_devops.webhooks.events import RepositoryEvents
 
 
 class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
@@ -20,8 +22,9 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
+            repository = event.payload["resource"].get("repository", {})
             event_type = event.payload["eventType"]
-            return bool(RepositoryEvents(event_type))
+            return repository.get("id") and bool(RepositoryEvents(event_type))
         except ValueError:
             return False
 
@@ -36,9 +39,8 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             deleted_raw_results=[],
         )
 
-    async def _get_repository_data(
-        self, repository_id: str
-    ) -> Optional[Dict[str, Any]]:
+    @staticmethod
+    async def _get_repository_data(repository_id: str) -> Optional[Dict[str, Any]]:
         repository = await AzureDevopsClient.create_from_ocean_config().get_repository(
             repository_id
         )
