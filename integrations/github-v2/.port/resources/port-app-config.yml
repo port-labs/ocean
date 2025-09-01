@@ -1,0 +1,85 @@
+resources:
+  - kind: repository
+    selector:
+      query: 'true'
+      includeLanguages: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .full_name | gsub(" "; "")
+          title: .name
+          blueprint: '"githubRepository"'
+          properties:
+            name: .full_name
+            description: .description
+            created_at: .created_at
+            pushed_at: .pushed_at
+            git_url: .git_url
+            html_url: .html_url
+            language: .language
+            readme: file://README.md
+            url: .url
+  - kind: team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .slug
+          title: .name
+          blueprint: '"githubTeam"'
+          properties:
+            url: .html_url
+            description: .description
+  - kind: pull-request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"githubPullRequest"'
+          properties:
+            status: .state
+            createdAt: .created_at
+            updatedAt: .updated_at
+            mergedAt: .merged_at
+            link: .html_url
+          relations:
+            repository: .repository.full_name
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"githubIssue"'
+          properties:
+            title: .title
+            status: .state
+            createdAt: .created_at
+            link: .html_url
+          relations:
+            repository: .repository.full_name
+  - kind: workflow
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name // .workflow_name // "Workflow Run"
+          blueprint: '"githubWorkflow"'
+          properties:
+            workflowName: .name
+            path: .path
+            state: .state
+            created_at: .created_at
+            updated_at: .updated_at
+            html_url: .html_url
+            badge_url: .badge_url
+          relations:
+            repository: .repository.full_name
