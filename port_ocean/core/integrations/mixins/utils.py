@@ -120,7 +120,6 @@ class ProcessWrapper(multiprocessing.Process):
             logger.error(f"Process {self.pid} failed with exit code {self.exitcode}")
         else:
             logger.info(f"Process {self.pid} finished with exit code {self.exitcode}")
-        ocean.metrics.cleanup_prometheus_metrics(self.pid)
         return super().join()
 
 def clear_http_client_context() -> None:

@@ -3,14 +3,14 @@ from typing import List, NotRequired, Optional, Required, TypedDict
 
 class SingleRepositoryOptions(TypedDict):
     name: str
-    included_property: NotRequired[Optional[str]]
+    included_relationships: NotRequired[Optional[list[str]]]
 
 
 class ListRepositoryOptions(TypedDict):
     """Options for listing repositories."""
 
     type: str
-    included_property: NotRequired[Optional[str]]
+    included_relationships: NotRequired[Optional[list[str]]]
 
 
 class SingleFolderOptions(TypedDict):

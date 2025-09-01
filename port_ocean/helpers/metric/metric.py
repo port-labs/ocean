@@ -62,6 +62,7 @@ class SyncState:
 class MetricResourceKind:
     RECONCILIATION = "__reconciliation__"
     RESYNC = "__resync__"
+    RUNTIME = "__runtime__"
 
 
 # Registry for core and custom metrics
@@ -279,7 +280,7 @@ class Metrics:
         try:
             return metric_resource.metric_resource.metric_resource_kind
         except ResourceContextNotFoundError:
-            return "__runtime__"
+            return MetricResourceKind.RUNTIME
 
     def generate_latest(self) -> str:
         return prometheus_client.openmetrics.exposition.generate_latest(
@@ -295,7 +296,6 @@ class Metrics:
         if kinds is None:
             return None
 
-        logger.info("Reporting sync metrics for kinds", kinds=kinds)
         metrics = []
 
         if blueprints is None:
@@ -304,8 +304,6 @@ class Metrics:
         for kind, blueprint in zip(kinds, blueprints):
             metric = self.generate_metrics(metric_name, kind, blueprint)
             metrics.extend(metric)
-
-        logger.info("Generated metrics", metrics=metrics, kinds=kinds)
 
         try:
             await self.port_client.post_integration_sync_metrics(metrics)

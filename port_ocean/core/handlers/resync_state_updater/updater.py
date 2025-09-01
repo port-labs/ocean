@@ -1,10 +1,11 @@
 import datetime
 from typing import Any, Literal
+
 from port_ocean.clients.port.client import PortClient
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.metric.metric import MetricPhase, MetricType
 from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.time import get_next_occurrence
-from port_ocean.context.ocean import ocean
-from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 
 
 class ResyncStateUpdater:
@@ -91,9 +92,12 @@ class ResyncStateUpdater:
             value=int(status == IntegrationStateStatus.Completed),
         )
 
+        ocean.metrics.sync_state = status.value
+
         await ocean.metrics.send_metrics_to_webhook(
             kind=ocean.metrics.current_resource_kind()
         )
         await ocean.metrics.report_sync_metrics(
             kinds=[ocean.metrics.current_resource_kind()]
         )
+        ocean.metrics.event_id = ""
