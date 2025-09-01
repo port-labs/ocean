@@ -1,4 +1,3 @@
-import asyncio
 from typing import Any, AsyncGenerator, List, Dict, Optional
 from httpx import HTTPStatusError, AsyncClient
 from loguru import logger
@@ -62,11 +61,6 @@ class ArmorcodeClient:
                     f"Requested resource not found: {url}; message: {str(e)}"
                 )
                 return {}
-            elif e.response.status_code == 429:
-                logger.warning(
-                    f"Armorcode Client API rate limit reached. Waiting for {e.response.headers.get('Retry-After', 60)} seconds."
-                )
-                await asyncio.sleep(int(e.response.headers.get("Retry-After", 60)))
             logger.error(f"API request failed for {url}: {e}")
             raise
         except Exception as e:
@@ -144,13 +138,7 @@ class ArmorcodeClient:
         """
         endpoint = FINDINGS_ENDPOINT
         after_key = None
-        payload = {
-            "filters": {},
-            "ignoreDuplicate": True,
-            "ignoreMitigated": None,
-            "sort": "",
-            "ticketStatusRequired": True,
-        }
+        payload: dict[str, Any] = {}
 
         while True:
             try:

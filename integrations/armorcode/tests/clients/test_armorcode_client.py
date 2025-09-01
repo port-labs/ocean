@@ -107,25 +107,6 @@ async def test_send_api_request_with_params(armorcode_client: ArmorcodeClient) -
 
 
 @pytest.mark.asyncio
-async def test_send_api_request_rate_limit(armorcode_client: ArmorcodeClient) -> None:
-    sample_req = Request("GET", "https://app.armorcode.com/rate_limited")
-    mock_response = MagicMock(spec=Response)
-    mock_response.status_code = 429
-    mock_response.headers = {"Retry-After": "2"}
-    mock_response.raise_for_status.side_effect = HTTPStatusError(
-        "429", request=sample_req, response=mock_response
-    )
-
-    with patch.object(
-        armorcode_client.http_client, "request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.return_value = mock_response
-
-        with pytest.raises(HTTPStatusError):
-            await armorcode_client._send_api_request("rate_limited")
-
-
-@pytest.mark.asyncio
 async def test_send_api_request_unexpected_exception(
     armorcode_client: ArmorcodeClient,
 ) -> None:
