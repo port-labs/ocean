@@ -10,6 +10,10 @@ class CredentialsProviderError(Exception):
     """Raised when there is a credentials provider or assume role error."""
 
 
+class AWSOrganizationsNotInUseError(Exception):
+    """Raised when AWS Organizations is not enabled or accessible."""
+
+
 def normalize_arn_list(arn_input: Optional[Union[str, List[str]]]) -> List[str]:
     """Return a list of non-empty ARN strings from input (str, list, or None)."""
     if not arn_input:

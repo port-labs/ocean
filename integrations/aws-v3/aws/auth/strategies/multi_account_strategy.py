@@ -47,9 +47,9 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             return None
 
     async def healthcheck(self) -> bool:
-        arns = normalize_arn_list(self.config.get("account_role_arn", []))
+        arns = normalize_arn_list(self.config.get("account_role_arns", []))
         if not arns:
-            logger.error("No account_role_arn(s) provided for healthcheck")
+            logger.error("No account_role_arns provided for healthcheck")
             return False
 
         logger.info(f"Starting AWS account health check for {len(arns)} role ARNs")
