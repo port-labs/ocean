@@ -100,7 +100,6 @@ class TestExporterFactory:
         assert scan_exporter.client == mock_client2
         assert api_sec_exporter.client == mock_client3
 
-
     @patch("checkmarx_one.exporter_factory.get_checkmarx_client")
     def test_factory_functions_call_init_client_once(
         self, mock_get_client: MagicMock

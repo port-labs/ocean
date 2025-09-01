@@ -147,7 +147,7 @@ class TestCheckmarxScanExporter:
         mock_client.send_paginated_request = mock_paginated_resources
 
         results: List[List[dict[str, Any]]] = []
-        list_options = ListScanOptions(project_ids=["proj-1", "proj-2"])
+        list_options = ListScanOptions(project_names=["proj-1", "proj-2"])
         async for batch in scan_exporter.get_paginated_resources(list_options):
             results.append(batch)
 
@@ -155,7 +155,7 @@ class TestCheckmarxScanExporter:
         assert results[0] == sample_scans_batch
         assert call_args["endpoint"] == "/scans"
         assert call_args["object_key"] == "scans"
-        assert call_args["params"]["project-ids"] == "proj-1,proj-2"
+        assert call_args["params"]["project-names"] == ["proj-1", "proj-2"]
 
     @pytest.mark.asyncio
     async def test_get_scans_multiple_batches(

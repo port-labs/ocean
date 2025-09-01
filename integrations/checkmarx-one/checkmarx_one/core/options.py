@@ -1,4 +1,5 @@
 from typing import List, Literal, NotRequired, Optional, Required, TypedDict
+from datetime import datetime
 
 
 class ListProjectOptions(TypedDict):
@@ -16,7 +17,18 @@ class SingleProjectOptions(TypedDict):
 class ListScanOptions(TypedDict):
     """Options for listing scans."""
 
-    project_ids: NotRequired[Optional[List[str]]]
+    project_names: NotRequired[Optional[List[str]]]
+    branches: NotRequired[Optional[List[str]]]
+    statuses: NotRequired[
+        Optional[
+            List[
+                Literal[
+                    "Queued", "Running", "Completed", "Failed", "Partial", "Canceled"
+                ]
+            ]
+        ]
+    ]
+    from_date: NotRequired[Optional[str]]
 
 
 class SingleScanOptions(TypedDict):
@@ -29,9 +41,6 @@ class ListApiSecOptions(TypedDict):
     """Options for listing API sec scan results."""
 
     scan_id: Required[str]
-    filtering: NotRequired[Optional[str]]
-    searching: NotRequired[Optional[str]]
-    sorting: NotRequired[Optional[str]]
 
 
 class SingleApiSecOptions(TypedDict):

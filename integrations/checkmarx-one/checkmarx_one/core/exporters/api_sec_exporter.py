@@ -28,10 +28,8 @@ class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
             The API sec risk details
         """
 
-        params: dict[str, Any] = {}
-
         response = await self.client.send_api_request(
-            f"/apisec/static/api/risks/risk/{options['risk_id']}", params=params
+            f"/apisec/static/api/risks/risk/{options['risk_id']}",
         )
         logger.info(f"Fetched API sec risk {options['risk_id']}")
         return response
@@ -54,10 +52,9 @@ class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
             Batches of API sec risks
         """
 
-        params: dict[str, Any] = self._get_params(options)
         scan_id = options["scan_id"]
         async for results in self.client.send_paginated_request_api_sec(
-            f"/apisec/static/api/risks/{scan_id}", "entries", params
+            f"/apisec/static/api/risks/{scan_id}", "entries"
         ):
             logger.info(
                 f"Fetched batch of {len(results)} API sec risks for scan {options['scan_id']}"
@@ -70,15 +67,3 @@ class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
                 for result in results
             ]
             yield batch
-
-    def _get_params(self, options: ListApiSecOptions) -> dict[str, Any]:
-        params: dict[str, Any] = {}
-
-        # Add all supported query parameters from the API documentation
-        if filtering := options.get("filtering"):
-            params["filtering"] = filtering
-        if searching := options.get("searching"):
-            params["searching"] = searching
-        if sorting := options.get("sorting"):
-            params["sorting"] = sorting
-        return params

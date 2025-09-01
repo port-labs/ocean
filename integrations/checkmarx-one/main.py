@@ -45,7 +45,12 @@ async def on_scan_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = config.selector
 
     logger.info(selector)
-    options = ListScanOptions(project_ids=selector.project_ids)
+    options = ListScanOptions(
+        project_names=selector.project_names,
+        branches=selector.branches,
+        statuses=selector.statuses,
+        from_date=selector.from_date,
+    )
 
     async for scans_batch in scan_exporter.get_paginated_resources(options):
         logger.debug(f"Received batch with {len(scans_batch)} scans")
@@ -59,8 +64,6 @@ async def on_api_sec_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     scan_exporter = create_scan_exporter()
     api_sec_exporter = create_api_sec_exporter()
-    config = cast(CheckmarxOneApiSecResourcesConfig, event.resource_config)
-    selector = config.selector
 
     scan_options = ListScanOptions()
 
@@ -68,9 +71,6 @@ async def on_api_sec_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for scan_data in scan_data_list:
             options = ListApiSecOptions(
                 scan_id=scan_data["id"],
-                filtering=selector.filtering,
-                searching=selector.searching,
-                sorting=selector.sorting,
             )
             async for results_batch in api_sec_exporter.get_paginated_resources(
                 options

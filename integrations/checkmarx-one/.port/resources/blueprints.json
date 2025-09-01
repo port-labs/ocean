@@ -7,37 +7,45 @@
       "properties": {
         "name": {
           "type": "string",
-          "title": "Project Name"
+          "title": "Project Name",
+          "description": "The name of the Checkmarx project."
         },
         "createdAt": {
           "type": "string",
           "format": "date-time",
-          "title": "Created At"
+          "title": "Created At",
+          "description": "The date and time when the project was created."
         },
         "updatedAt": {
           "type": "string",
           "format": "date-time",
-          "title": "Updated At"
+          "title": "Updated At",
+          "description": "The date and time when the project was last updated."
         },
         "tags": {
           "type": "object",
-          "title": "Tags"
+          "title": "Tags",
+          "description": "A set of tags associated with the project."
         },
         "repoUrl": {
           "type": "string",
-          "title": "Repository URL"
+          "title": "Repository URL",
+          "description": "The URL of the repository associated with the project."
         },
         "mainBranch": {
           "type": "string",
-          "title": "Main Branch"
+          "title": "Main Branch",
+          "description": "The main branch of the project's repository."
         },
         "origin": {
           "type": "string",
-          "title": "Origin"
+          "title": "Origin",
+          "description": "The origin or source of the project."
         },
         "criticality": {
           "type": "string",
-          "title": "Criticality"
+          "title": "Criticality",
+          "description": "The criticality level of the project."
         }
       },
       "required": ["name"]
@@ -52,40 +60,56 @@
       "properties": {
         "status": {
           "type": "string",
-          "title": "Status"
+          "title": "Status",
+          "enum": [
+            "Queued",
+            "Running",
+            "Completed",
+            "Failed",
+            "Partial",
+            "Canceled"
+          ],
+          "description": "The status of the scan. Possible values: Queued, Running, Completed, Failed, Partial, Canceled."
         },
         "branch": {
           "type": "string",
-          "title": "Branch"
+          "title": "Branch",
+          "description": "The branch of the repository that was scanned."
         },
         "createdAt": {
           "type": "string",
           "format": "date-time",
-          "title": "Created At"
+          "title": "Created At",
+          "description": "The date and time when the scan was created."
         },
         "updatedAt": {
           "type": "string",
           "format": "date-time",
-          "title": "Updated At"
+          "title": "Updated At",
+          "description": "The date and time when the scan was last updated."
         },
         "projectId": {
           "type": "string",
-          "title": "Project ID"
+          "title": "Project ID",
+          "description": "The identifier of the project to which this scan belongs."
         },
         "userAgent": {
           "type": "string",
-          "title": "User Agent"
+          "title": "User Agent",
+          "description": "The user agent used to initiate the scan."
         },
         "configs": {
           "type": "object",
-          "title": "Configurations"
+          "title": "Configurations",
+          "description": "Configuration details for the scan."
         },
         "statusDetails": {
           "type": "array",
           "items": {
             "type": "object"
           },
-          "title": "Status Details"
+          "title": "Status Details",
+          "description": "Detailed status information for the scan."
         }
       },
       "required": ["status", "projectId"]
@@ -107,11 +131,13 @@
       "properties": {
         "riskId": {
           "type": "string",
-          "title": "Risk ID"
+          "title": "Risk ID",
+          "description": "The unique identifier for the API security risk."
         },
         "apiId": {
           "type": "string",
-          "title": "API ID"
+          "title": "API ID",
+          "description": "The identifier of the API associated with the risk."
         },
         "severity": {
           "type": "string",
@@ -121,11 +147,13 @@
             "medium",
             "high",
             "critical"
-          ]
+          ],
+          "description": "The severity level of the API security risk."
         },
         "name": {
           "type": "string",
-          "title": "Name"
+          "title": "Name",
+          "description": "The name of the API security risk."
         },
         "status": {
           "type": "string",
@@ -134,44 +162,54 @@
             "new",
             "recurrent",
             "fixed"
-          ]
+          ],
+          "description": "The status of the API security risk."
         },
         "httpMethod": {
           "type": "string",
-          "title": "HTTP Method"
+          "title": "HTTP Method",
+          "description": "The HTTP method associated with the API risk (e.g., GET, POST)."
         },
         "url": {
           "type": "string",
-          "title": "URL"
+          "title": "URL",
+          "description": "The URL endpoint associated with the API risk."
         },
         "origin": {
           "type": "string",
-          "title": "Origin"
+          "title": "Origin",
+          "description": "The origin or source of the API risk."
         },
         "documented": {
           "type": "boolean",
-          "title": "Documented"
+          "title": "Documented",
+          "description": "Indicates whether the API is documented."
         },
         "authenticated": {
           "type": "boolean",
-          "title": "Authenticated"
+          "title": "Authenticated",
+          "description": "Indicates whether the API requires authentication."
         },
         "discoveryDate": {
           "type": "string",
           "format": "date-time",
-          "title": "Discovery Date"
+          "title": "Discovery Date",
+          "description": "The date and time when the API risk was discovered."
         },
         "scanId": {
           "type": "string",
-          "title": "Scan ID"
+          "title": "Scan ID",
+          "description": "The identifier of the scan in which the risk was found."
         },
         "sastRiskId": {
           "type": "string",
-          "title": "SAST Risk ID"
+          "title": "SAST Risk ID",
+          "description": "The identifier of the related SAST risk, if available."
         },
         "projectId": {
           "type": "string",
-          "title": "Project ID"
+          "title": "Project ID",
+          "description": "The identifier of the project associated with the API risk."
         },
         "state": {
           "type": "string",
@@ -183,7 +221,8 @@
             "not_exploitable",
             "proposed_not_exploitable",
             "false_positive"
-          ]
+          ],
+          "description": "The state of the API security risk."
         }
       },
       "required": [

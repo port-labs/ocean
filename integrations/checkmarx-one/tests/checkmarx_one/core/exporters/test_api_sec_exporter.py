@@ -97,7 +97,7 @@ class TestCheckmarxApiSecExporter:
 
         assert result == expected_response
         mock_client.send_api_request.assert_called_once_with(
-            f"/apisec/static/api/risks/risk/{risk_id}", params={}
+            f"/apisec/static/api/risks/risk/{risk_id}"
         )
 
     @pytest.mark.asyncio
@@ -115,7 +115,7 @@ class TestCheckmarxApiSecExporter:
 
         assert result == expected_response
         mock_client.send_api_request.assert_called_once_with(
-            f"/apisec/static/api/risks/risk/{risk_id}", params={}
+            f"/apisec/static/api/risks/risk/{risk_id}"
         )
 
     @pytest.mark.asyncio
@@ -184,10 +184,8 @@ class TestCheckmarxApiSecExporter:
     ) -> None:
         """Test getting paginated API security risks with filtering parameter."""
         scan_id = "scan-123"
-        filtering = '[{"column":"name","values":"Test","operator":"eq"}]'
         options: ListApiSecOptions = {
             "scan_id": scan_id,
-            "filtering": filtering,
         }
         mock_results = [{"risk_id": "1", "name": "Test Risk"}]
 
@@ -213,7 +211,7 @@ class TestCheckmarxApiSecExporter:
         # Verify that the filtering parameter was passed correctly
         assert call_args["endpoint"] == f"/apisec/static/api/risks/{scan_id}"
         assert call_args["object_key"] == "entries"
-        assert call_args["params"] == {"filtering": filtering}
+        assert call_args["params"] is None
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_with_searching(
@@ -221,10 +219,8 @@ class TestCheckmarxApiSecExporter:
     ) -> None:
         """Test getting paginated API security risks with searching parameter."""
         scan_id = "scan-123"
-        searching = "high severity"
         options: ListApiSecOptions = {
             "scan_id": scan_id,
-            "searching": searching,
         }
         mock_results = [{"risk_id": "1", "name": "High Severity Risk"}]
 
@@ -250,7 +246,7 @@ class TestCheckmarxApiSecExporter:
         # Verify that the searching parameter was passed correctly
         assert call_args["endpoint"] == f"/apisec/static/api/risks/{scan_id}"
         assert call_args["object_key"] == "entries"
-        assert call_args["params"] == {"searching": searching}
+        assert call_args["params"] is None
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_with_sorting(
@@ -258,10 +254,8 @@ class TestCheckmarxApiSecExporter:
     ) -> None:
         """Test getting paginated API security risks with sorting parameter."""
         scan_id = "scan-123"
-        sorting = '[{"column":"name","order":"asc"}]'
         options: ListApiSecOptions = {
             "scan_id": scan_id,
-            "sorting": sorting,
         }
         mock_results = [{"risk_id": "1", "name": "A Risk"}]
 
@@ -287,7 +281,7 @@ class TestCheckmarxApiSecExporter:
         # Verify that the sorting parameter was passed correctly
         assert call_args["endpoint"] == f"/apisec/static/api/risks/{scan_id}"
         assert call_args["object_key"] == "entries"
-        assert call_args["params"] == {"sorting": sorting}
+        assert call_args["params"] is None
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_with_all_parameters(
@@ -295,14 +289,8 @@ class TestCheckmarxApiSecExporter:
     ) -> None:
         """Test getting paginated API security risks with all parameters."""
         scan_id = "scan-123"
-        filtering = '[{"column":"severity","values":"high","operator":"eq"}]'
-        searching = "critical"
-        sorting = '[{"column":"name","order":"desc"}]'
         options: ListApiSecOptions = {
             "scan_id": scan_id,
-            "filtering": filtering,
-            "searching": searching,
-            "sorting": sorting,
         }
         mock_results = [{"risk_id": "1", "name": "Critical Risk"}]
 
@@ -328,12 +316,7 @@ class TestCheckmarxApiSecExporter:
         # Verify that all parameters were passed correctly
         assert call_args["endpoint"] == f"/apisec/static/api/risks/{scan_id}"
         assert call_args["object_key"] == "entries"
-        expected_params = {
-            "filtering": filtering,
-            "searching": searching,
-            "sorting": sorting,
-        }
-        assert call_args["params"] == expected_params
+        assert call_args["params"] is None
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_empty_result(
@@ -356,90 +339,6 @@ class TestCheckmarxApiSecExporter:
 
         assert len(results) == 1
         assert len(results[0]) == 0
-
-    def test_get_params_with_no_options(
-        self, exporter: CheckmarxApiSecExporter
-    ) -> None:
-        """Test _get_params method with no optional parameters."""
-        options: ListApiSecOptions = {"scan_id": "scan-123"}
-
-        params = exporter._get_params(options)
-
-        assert params == {}
-
-    def test_get_params_with_filtering(self, exporter: CheckmarxApiSecExporter) -> None:
-        """Test _get_params method with filtering parameter."""
-        filtering = '[{"column":"name","values":"Test","operator":"eq"}]'
-        options: ListApiSecOptions = {
-            "scan_id": "scan-123",
-            "filtering": filtering,
-        }
-
-        params = exporter._get_params(options)
-
-        assert params == {"filtering": filtering}
-
-    def test_get_params_with_searching(self, exporter: CheckmarxApiSecExporter) -> None:
-        """Test _get_params method with searching parameter."""
-        searching = "high severity"
-        options: ListApiSecOptions = {
-            "scan_id": "scan-123",
-            "searching": searching,
-        }
-
-        params = exporter._get_params(options)
-
-        assert params == {"searching": searching}
-
-    def test_get_params_with_sorting(self, exporter: CheckmarxApiSecExporter) -> None:
-        """Test _get_params method with sorting parameter."""
-        sorting = '[{"column":"name","order":"asc"}]'
-        options: ListApiSecOptions = {
-            "scan_id": "scan-123",
-            "sorting": sorting,
-        }
-
-        params = exporter._get_params(options)
-
-        assert params == {"sorting": sorting}
-
-    def test_get_params_with_all_parameters(
-        self, exporter: CheckmarxApiSecExporter
-    ) -> None:
-        """Test _get_params method with all optional parameters."""
-        filtering = '[{"column":"severity","values":"high","operator":"eq"}]'
-        searching = "critical"
-        sorting = '[{"column":"name","order":"desc"}]'
-        options: ListApiSecOptions = {
-            "scan_id": "scan-123",
-            "filtering": filtering,
-            "searching": searching,
-            "sorting": sorting,
-        }
-
-        params = exporter._get_params(options)
-
-        expected_params = {
-            "filtering": filtering,
-            "searching": searching,
-            "sorting": sorting,
-        }
-        assert params == expected_params
-
-    def test_get_params_with_none_values(
-        self, exporter: CheckmarxApiSecExporter
-    ) -> None:
-        """Test _get_params method with None values for optional parameters."""
-        options: ListApiSecOptions = {
-            "scan_id": "scan-123",
-            "filtering": None,
-            "searching": None,
-            "sorting": None,
-        }
-
-        params = exporter._get_params(options)
-
-        assert params == {}
 
     def test_exporter_inheritance(self, exporter: CheckmarxApiSecExporter) -> None:
         """Test that the exporter inherits from AbstractCheckmarxExporter."""
