@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0 (2025-09-01)
+
+
+### Features
+
+### Bug Fixes
+
+- Fixed integration sync not completing due to unhandled 404 errors
+
+### Improvements
+
+- Added centralized API request handling with configurable error management
+- Implemented comprehensive test suite for client
+
+
 ## 0.1.196 (2025-08-28)
 
 
