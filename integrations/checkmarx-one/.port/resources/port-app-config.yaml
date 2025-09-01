@@ -40,7 +40,7 @@ resources:
           relations:
             project: .projectId
 
-  - kind: apisec
+  - kind: api-security
     selector:
       query: 'true'
     port:

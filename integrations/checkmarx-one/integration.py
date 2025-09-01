@@ -32,7 +32,7 @@ class CheckmarxOneProjectResourcesConfig(ResourceConfig):
 
 
 class CheckmarxOneApiSecResourcesConfig(ResourceConfig):
-    kind: Literal["apisec"]
+    kind: Literal["api-security"]
     selector: CheckmarxOneApiSecSelector
 
 
