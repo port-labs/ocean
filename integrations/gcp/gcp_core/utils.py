@@ -252,11 +252,13 @@ async def resolve_request_controllers(
     return await get_quotas_for_project(service_account_project_id, kind)
 
 
-async def _get_oauth_token(scope: str = CLOUD_QUOTAS_SCOPE) -> str:
+async def _get_oauth_token(scope: str = CLOUD_QUOTAS_SCOPE) -> Optional[str]:
     """
     Get OAuth token for the given scope.
     """
     creds, _ = google_auth_default(scopes=[scope])
+    if not creds:
+        return None
     if not creds.valid or creds.expired:
         await asyncio.to_thread(creds.refresh, GoogleAuthRequest())
     return str(creds.token)
@@ -267,6 +269,8 @@ async def fetch_quota_info_rest(name: str) -> List[Dict[str, Any]]:
     Fetch quota info from the REST API.
     """
     token = await _get_oauth_token()
+    if not token:
+        return []
     url = f"{CLOUD_QUOTAS_BASE_URL}{name}"
     headers = {"Authorization": f"Bearer {token}"}
     backoff = 1.0
@@ -277,8 +281,8 @@ async def fetch_quota_info_rest(name: str) -> List[Dict[str, Any]]:
             )
             response.raise_for_status()
             data = response.json()
-            dims = data.get("dimensionsInfos", [])
-            return dims if isinstance(dims, list) else []
+            quota_info = data.get("dimensionsInfos", [])
+            return quota_info if isinstance(quota_info, list) else []
         except (HTTPError, Exception) as e:
             logger.error(f"[fetch_quota_info_rest] Error: {e}")
             await asyncio.sleep(backoff)
@@ -293,17 +297,18 @@ async def get_initial_quota_for_project_via_rest() -> int:
         f"projects/{project_id}/locations/global/services/"
         f"cloudresourcemanager.googleapis.com/quotaInfos/ProjectV3GetRequestsPerMinutePerProject"
     )
-    dims = await fetch_quota_info_rest(name)
-    if not dims:
+    logger.debug(f"[get_initial_quota_for_project_via_rest] name: {name}")
+    quota_info = await fetch_quota_info_rest(name)
+    if not quota_info:
         default_quota = int(
             ocean.integration_config.get("search_all_resources_per_minute_quota", 400)
         )
         logger.debug(
-            f"[get_initial_quota_for_project_via_rest] no dims, using default_quota: {default_quota}"
+            f"[get_initial_quota_for_project_via_rest] no quota info, using default_quota: {default_quota}"
         )
         return max(int(default_quota * _QUOTA_PERCENTAGE), 1)
 
-    least = min(dims, key=lambda info: int(info["details"]["value"]))
+    least = min(quota_info, key=lambda info: int(info["details"]["value"]))
     value = int(least["details"]["value"])
     logger.debug(
         f"[get_initial_quota_for_project_via_rest] initial quota for project: {least}"
