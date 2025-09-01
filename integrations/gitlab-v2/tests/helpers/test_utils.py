@@ -11,9 +11,9 @@ class TestUtils:
             {"id": 3, "project_id": "789", "name": "Resource 3"},
         ]
         project_map = {
-            "123": {"id": "123", "name": "Project A"},
-            "456": {"id": "456", "name": "Project B"},
-            "789": {"id": "789", "name": "Project C"},
+            "123": {"path_with_namespace": "group/project-a"},
+            "456": {"path_with_namespace": "group/project-b"},
+            "789": {"path_with_namespace": "group/project-c"},
         }
 
         # Act
@@ -22,8 +22,8 @@ class TestUtils:
         # Assert
         assert len(result) == 3
         assert result[0]["id"] == 1
-        assert result[0]["__project"]["name"] == "Project A"
+        assert result[0]["__project"]["path_with_namespace"] == "group/project-a"
         assert result[1]["id"] == 2
-        assert result[1]["__project"]["name"] == "Project B"
+        assert result[1]["__project"]["path_with_namespace"] == "group/project-b"
         assert result[2]["id"] == 3
-        assert result[2]["__project"]["name"] == "Project C"
+        assert result[2]["__project"]["path_with_namespace"] == "group/project-c"

@@ -112,7 +112,10 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for projects_batch in client.get_projects():
         logger.info(f"Processing batch of {len(projects_batch)} projects for pipelines")
-        project_map = {str(project["id"]): project for project in projects_batch}
+        project_map = {
+            str(project["id"]): {"path_with_namespace": project["path_with_namespace"]}
+            for project in projects_batch
+        }
 
         async for pipelines_batch in client.get_projects_resource(
             projects_batch, "pipelines"
