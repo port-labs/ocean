@@ -16,7 +16,6 @@ from checkmarx_one.core.options import (
 )
 from integration import (
     CheckmarxOneScanResourcesConfig,
-    CheckmarxOneApiSecResourcesConfig,
 )
 from checkmarx_one.utils import ObjectKind
 
