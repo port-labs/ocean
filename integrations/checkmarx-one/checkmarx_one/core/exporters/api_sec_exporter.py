@@ -75,11 +75,10 @@ class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
         params: dict[str, Any] = {}
 
         # Add all supported query parameters from the API documentation
-        if options.get("filtering"):
-            params["filtering"] = options["filtering"]
-        if options.get("searching"):
-            params["searching"] = options["searching"]
-        if options.get("sorting"):
-            params["sorting"] = options["sorting"]
-
+        if filtering := options.get("filtering"):
+            params["filtering"] = filtering
+        if searching := options.get("searching"):
+            params["searching"] = searching
+        if sorting := options.get("sorting"):
+            params["sorting"] = sorting
         return params
