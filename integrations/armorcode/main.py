@@ -35,8 +35,3 @@ async def on_findings_resync(kind: str) -> AsyncGenerator[list[dict[str, Any]], 
     async for findings_batch in client.get_all_findings():
         logger.info(f"Yielding findings batch of size: {len(findings_batch)}")
         yield findings_batch
-
-
-@ocean.on_start()
-async def on_start() -> None:
-    logger.info("Starting Armorcode integration")
