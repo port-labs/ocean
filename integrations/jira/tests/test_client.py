@@ -169,15 +169,19 @@ async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_issues_with_jql_param(mock_jira_client: JiraClient) -> None:
-    params = {"jql": "project = TEST"}
+async def test_get_paginated_issues_with_jql_param(
+    mock_jira_client: JiraClient,
+) -> None:
+    params: dict[str, Any] = {"jql": "project = TEST"}
     async for issues in mock_jira_client.get_paginated_issues(params):
         assert issues is not None
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_issues_without_jql_param(mock_jira_client: JiraClient) -> None:
-    params = {}
+async def test_get_paginated_issues_without_jql_param(
+    mock_jira_client: JiraClient,
+) -> None:
+    params: dict[str, Any] = {}
     async for issues in mock_jira_client.get_paginated_issues(params):
         assert issues is not None
 
