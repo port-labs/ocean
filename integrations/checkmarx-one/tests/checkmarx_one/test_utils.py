@@ -26,10 +26,6 @@ class TestObjectKind:
         expected_members = {
             "PROJECT",
             "SCAN",
-            "CONTAINERS",
-            "KICS",
-            "SCA",
-            "SAST",
             "API_SEC",
         }
         actual_members = set(ObjectKind.__members__.keys())
@@ -40,11 +36,7 @@ class TestObjectKind:
         expected_values = {
             "project",
             "scan",
-            "containersec",
-            "kics",
-            "sca",
-            "sast",
-            "apisec",
+            "api-security",
         }
         actual_values = set(member.value for member in ObjectKind)
         assert actual_values == expected_values
@@ -59,14 +51,16 @@ class TestObjectKind:
     def test_enum_iteration(self) -> None:
         """Test iterating over enum members."""
         members = list(ObjectKind)
-        assert len(members) == 7
+        assert len(members) == 3
         assert ObjectKind.PROJECT in members
         assert ObjectKind.SCAN in members
+        assert ObjectKind.API_SEC in members
 
     def test_enum_membership(self) -> None:
         """Test checking membership in enum."""
         assert "project" in ObjectKind._value2member_map_
         assert "scan" in ObjectKind._value2member_map_
+        assert "api-security" in ObjectKind._value2member_map_
         assert "invalid" not in ObjectKind._value2member_map_
 
     def test_enum_from_value(self) -> None:
