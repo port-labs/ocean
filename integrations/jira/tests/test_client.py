@@ -169,6 +169,20 @@ async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_paginated_issues_with_jql_param(mock_jira_client: JiraClient) -> None:
+    params = {"jql": "project = TEST"}
+    async for issues in mock_jira_client.get_paginated_issues(params):
+        assert issues is not None
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_issues_without_jql_param(mock_jira_client: JiraClient) -> None:
+    params = {}
+    async for issues in mock_jira_client.get_paginated_issues(params):
+        assert issues is not None
+
+
+@pytest.mark.asyncio
 async def test_get_single_user(mock_jira_client: JiraClient) -> None:
     """Test get_single_user method"""
     user_data: dict[str, Any] = {
