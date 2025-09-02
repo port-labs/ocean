@@ -8,6 +8,7 @@ from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
 from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
+from aws.auth.strategies.organizations_strategy import OrganizationsStrategy
 
 from aws.auth.utils import AWSSessionError
 
@@ -166,7 +167,7 @@ class TestResyncStrategyFactory:
         mixed_config = {
             "aws_access_key_id": "test_access_key",
             "aws_secret_access_key": "test_secret_key",
-            "account_role_arn": ["arn:aws:iam::123456789012:role/test-role"],
+            "account_role_arns": ["arn:aws:iam::123456789012:role/test-role"],
         }
 
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
@@ -174,8 +175,26 @@ class TestResyncStrategyFactory:
 
             strategy = await ResyncStrategyFactory.create()
 
-            # Should prioritize multi-account when account_role_arn is present
+            # Should prioritize multi-account when account_role_arns is present
             assert isinstance(strategy, MultiAccountStrategy)
+            assert isinstance(strategy.provider, StaticCredentialProvider)
+
+    @pytest.mark.asyncio
+    async def test_create_with_string_account_role_arn(self) -> None:
+        """Test create handles config with string accountRoleArn (should prioritize organizations strategy)."""
+        string_config = {
+            "aws_access_key_id": "test_access_key",
+            "aws_secret_access_key": "test_secret_key",
+            "account_role_arn": "arn:aws:iam::123456789012:role/test-role",
+        }
+
+        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+            mock_ocean.integration_config = string_config
+
+            strategy = await ResyncStrategyFactory.create()
+
+            # Should prioritize organizations strategy when single string ARN is provided
+            assert isinstance(strategy, OrganizationsStrategy)
             assert isinstance(strategy.provider, StaticCredentialProvider)
 
 
@@ -398,7 +417,7 @@ class TestGetAllAccountSessions:
 def mock_multi_account_config() -> dict[str, object]:
     """Mocks multi-account AWS configuration."""
     return {
-        "account_role_arn": [
+        "account_role_arns": [
             "arn:aws:iam::123456789012:role/test-role-1",
             "arn:aws:iam::987654321098:role/test-role-2",
         ],
