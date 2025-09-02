@@ -57,6 +57,7 @@ from gitlab.webhook.webhook_processors.project_webhook_processor import (
 
 
 RESYNC_GROUP_MEMBERS_BATCH_SIZE = 10
+DEFAULT_MAX_CONCURRENT = 10
 
 
 @ocean.on_start()
@@ -105,7 +106,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for projects_batch in client.get_projects(
         params=_build_visibility_params(),
-        max_concurrent=10,
+        max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=include_languages,
     ):
         logger.info(f"Received project batch with {len(projects_batch)} projects")
@@ -136,7 +137,7 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_visibility_params(), max_concurrent=10, include_languages=False
+        params=_build_visibility_params(), max_concurrent=DEFAULT_MAX_CONCURRENT, include_languages=False
     ):
         logger.info(f"Processing batch of {len(projects_batch)} projects for pipelines")
         async for pipelines_batch in client.get_projects_resource(
@@ -154,7 +155,7 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_visibility_params(), max_concurrent=10, include_languages=False
+        params=_build_visibility_params(), max_concurrent=DEFAULT_MAX_CONCURRENT, include_languages=False
     ):
         logger.info(f"Processing batch of {len(projects_batch)} projects for jobs")
         async for jobs_batch in client.get_pipeline_jobs(projects_batch):
