@@ -1,14 +1,9 @@
 from typing import Dict, Any, List, Type
-from aws.core.interfaces.action import (
-    Action,
-    DataAction,
-    APIAction,
-    ActionMap,
-)
+from aws.core.interfaces.action import Action, SingleActionMap
 from loguru import logger
 
 
-class GetBucketPublicAccessBlockAction(APIAction):
+class GetBucketPublicAccessBlockAction(Action):
     async def _execute(self, bucket_name: str) -> Dict[str, Any]:
         response = await self.client.get_public_access_block(Bucket=bucket_name)  # type: ignore
         logger.info(
@@ -19,7 +14,7 @@ class GetBucketPublicAccessBlockAction(APIAction):
         }
 
 
-class GetBucketOwnershipControlsAction(APIAction):
+class GetBucketOwnershipControlsAction(Action):
     async def _execute(self, bucket_name: str) -> Dict[str, Any]:
         response = await self.client.get_bucket_ownership_controls(Bucket=bucket_name)  # type: ignore
         logger.info(
@@ -28,28 +23,28 @@ class GetBucketOwnershipControlsAction(APIAction):
         return {"OwnershipControls": response["OwnershipControls"]}
 
 
-class GetBucketEncryptionAction(APIAction):
+class GetBucketEncryptionAction(Action):
     async def _execute(self, bucket_name: str) -> Dict[str, Any]:
         response = await self.client.get_bucket_encryption(Bucket=bucket_name)  # type: ignore
         logger.info(f"Successfully fetched bucket encryption for bucket {bucket_name}")
         return {"BucketEncryption": response["ServerSideEncryptionConfiguration"]}
 
 
-class GetBucketLocationAction(APIAction):
+class GetBucketLocationAction(Action):
     async def _execute(self, bucket_name: str) -> Dict[str, Any]:
         response = await self.client.get_bucket_location(Bucket=bucket_name)  # type: ignore
         logger.info(f"Successfully fetched bucket location for bucket {bucket_name}")
         return {"BucketRegion": response["LocationConstraint"]}
 
 
-class GetBucketArnAction(DataAction):
-    async def _transform_data(self, bucket_name: str) -> Dict[str, Any]:
+class GetBucketArnAction(Action):
+    async def _execute(self, bucket_name: str) -> Dict[str, Any]:
         bucket_arn = f"arn:aws:s3:::{bucket_name}"
         logger.info(f"Constructed bucket ARN for bucket {bucket_name}")
         return {"BucketArn": bucket_arn}
 
 
-class GetBucketTaggingAction(APIAction):
+class GetBucketTaggingAction(Action):
     async def _execute(self, bucket_name: str) -> dict[str, Any]:
         try:
             response = await self.client.get_bucket_tagging(Bucket=bucket_name)  # type: ignore
@@ -61,7 +56,9 @@ class GetBucketTaggingAction(APIAction):
             raise
 
 
-class S3BucketActionsMap(ActionMap):
+class S3BucketActionsMap(SingleActionMap):
+    """Action map for S3 bucket operations - only Action types."""
+
     defaults: List[Type[Action]] = [
         GetBucketTaggingAction,
         GetBucketLocationAction,
