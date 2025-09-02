@@ -8,6 +8,8 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     SCAN = "scan"
     API_SEC = "api-security"
+    SCA = "sca"
+    CONTAINER_SECURITY = "container-security"
 
 
 class IgnoredError(NamedTuple):
