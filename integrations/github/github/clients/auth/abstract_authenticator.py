@@ -52,8 +52,7 @@ class AbstractGitHubAuthenticator(ABC):
             retry_after_headers=[
                 "Retry-After",
                 "X-RateLimit-Reset",
-            ],
-            additional_retry_status_codes=[403],
+            ]
         )
 
         return OceanAsyncClient(

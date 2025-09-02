@@ -40,6 +40,9 @@ class AbstractGithubClient(ABC):
             message="Unauthorized access to endpoint — authentication required or token invalid",
             type="UNAUTHORIZED",
         ),
+        # Note: While GitHub documentation mentions 403 as a rate limit code,
+        # in practice 403s are tied to permissions rather than rate limiting.
+        # Therefore we ignore 403s rather than retrying them as we do for rate limit errors.
         IgnoredError(
             status=403,
             message="Forbidden access to endpoint — insufficient permissions",
