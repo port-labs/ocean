@@ -90,7 +90,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
                 return await action.execute_batch(identifiers)
 
             if isinstance(action, Action):
-                # Execute individual API calls - concurrency is handled at the inspector level
+                
                 return await asyncio.gather(
                     *[action.execute(identifier) for identifier in identifiers]
                 )
