@@ -1,7 +1,10 @@
 from typing import Any, AsyncGenerator, Type
 
 from aws.core.client.proxy import AioBaseClientProxy
-from aws.core.exporters.ecs.cluster.actions import ECSClusterActionsMap
+from aws.core.exporters.ecs.cluster.actions import (
+    ECSClusterSingleActionsMap,
+    ECSClusterBatchActionsMap,
+)
 from aws.core.exporters.ecs.cluster.models import ECSCluster
 from aws.core.exporters.ecs.cluster.models import (
     SingleECSClusterRequest,
@@ -9,13 +12,17 @@ from aws.core.exporters.ecs.cluster.models import (
 )
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
-from aws.core.modeling.resource_inspector import ResourceInspector
+from aws.core.modeling.resource_inspector import (
+    SingleResourceInspector,
+    BatchResourceInspector,
+)
 
 
 class ECSClusterExporter(IResourceExporter):
     _service_name: SupportedServices = "ecs"
     _model_cls: Type[ECSCluster] = ECSCluster
-    _actions_map: Type[ECSClusterActionsMap] = ECSClusterActionsMap
+    _single_actions_map: Type[ECSClusterSingleActionsMap] = ECSClusterSingleActionsMap
+    _batch_actions_map: Type[ECSClusterBatchActionsMap] = ECSClusterBatchActionsMap
 
     async def get_resource(self, options: SingleECSClusterRequest) -> dict[str, Any]:
         """Fetch detailed attributes of a single ECS cluster."""
@@ -24,9 +31,9 @@ class ECSClusterExporter(IResourceExporter):
             self.session, options.region, self._service_name
         ) as proxy:
 
-            inspector = ResourceInspector(
+            inspector = SingleResourceInspector(
                 proxy.client,
-                self._actions_map(),
+                self._single_actions_map(),
                 lambda: self._model_cls(),
                 options.region,
                 self.account_id,
@@ -43,9 +50,9 @@ class ECSClusterExporter(IResourceExporter):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
-            inspector = ResourceInspector(
+            inspector = BatchResourceInspector(
                 proxy.client,
-                self._actions_map(),
+                self._batch_actions_map(),
                 lambda: self._model_cls(),
                 options.region,
                 self.account_id,

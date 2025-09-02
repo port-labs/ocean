@@ -13,7 +13,7 @@ from aws.core.exporters.s3.bucket.models import (
 )
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
-from aws.core.modeling.resource_inspector import ResourceInspector
+from aws.core.modeling.resource_inspector import SingleResourceInspector
 
 
 def serialize_datetime_objects(data: Any) -> Any:
@@ -33,7 +33,7 @@ class S3BucketExporter(IResourceExporter):
             self.session, options.region, self._service_name
         ) as proxy:
 
-            inspector = ResourceInspector(
+            inspector = SingleResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await inspector.inspect(options.bucket_name, options.include)
@@ -43,7 +43,7 @@ class S3BucketExporter(IResourceExporter):
     async def _process_bucket(
         self,
         bucket: dict[str, Any],
-        inspector: ResourceInspector[Bucket],
+        inspector: SingleResourceInspector[Bucket],
         include: list[str],
     ) -> dict[str, Any]:
         """Process a single bucket with its list data and actions."""
@@ -62,7 +62,7 @@ class S3BucketExporter(IResourceExporter):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
-            inspector = ResourceInspector(
+            inspector = SingleResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             paginator = proxy.get_paginator("list_buckets", "Buckets")
