@@ -9,12 +9,12 @@ class Action(ABC):
     def __init__(self, client: AioBaseClient) -> None:
         self.client: AioBaseClient = client
 
-    async def execute(self, identifier: Any) -> Dict[str, Any]:
+    async def execute(self, identifier: Any) -> List[Dict[str, Any]]:
         response = await self._execute(identifier)
         return response
 
     @abstractmethod
-    async def _execute(self, identifier: Any) -> Dict[str, Any]: ...
+    async def _execute(self, identifier: Any) -> List[Dict[str, Any]]: ...
 
 
 class ActionMap(Protocol):

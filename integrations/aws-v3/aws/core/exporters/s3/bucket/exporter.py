@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Any, AsyncGenerator, Type
+from typing import Any, AsyncGenerator, Type, List
 
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.s3.bucket.actions import S3BucketActionsMap
@@ -40,12 +40,12 @@ class S3BucketExporter(IResourceExporter):
 
     async def _process_bucket(
         self,
-        bucket: dict[str, Any],
+        buckets: List[dict[str, Any]],
         inspector: ResourceInspector[Bucket],
         include: list[str],
     ) -> dict[str, Any]:
         """Process a single bucket with its list data and actions."""
-        action_result = await inspector.inspect(bucket["Name"], include)
+        action_result = await inspector.inspect(buckets, include)
         action_data = action_result.dict(exclude_none=True)
 
         action_data["Properties"].update(bucket)
@@ -66,10 +66,6 @@ class S3BucketExporter(IResourceExporter):
             paginator = proxy.get_paginator("list_buckets", "Buckets")
 
             async for buckets in paginator.paginate():
-                tasks = [
-                    self._process_bucket(bucket, inspector, options.include)
-                    for bucket in buckets
-                ]
-                bucket_results = await asyncio.gather(*tasks)
-
+                action_result = await inspector.inspect(buckets, options.include)
+                bucket_results = action_result.dict(exclude_none=True)
                 yield bucket_results

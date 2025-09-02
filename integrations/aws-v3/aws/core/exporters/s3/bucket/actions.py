@@ -6,56 +6,76 @@ from loguru import logger
 
 
 class GetBucketPublicAccessBlockAction(Action):
-    async def _execute(self, bucket_name: str) -> Dict[str, Any]:
-        response = await self.client.get_public_access_block(Bucket=bucket_name)  # type: ignore
-        logger.info(
-            f"Successfully fetched bucket public access block for bucket {bucket_name}"
-        )
-        return {
-            "PublicAccessBlockConfiguration": response["PublicAccessBlockConfiguration"]
-        }
+    async def _execute(self, bucket_names: List[str]) -> List[Dict[str, Any]]:
+        results: List[Dict[str, Any]] = []
+        for bucket_name in bucket_names:
+            response = await self.client.get_public_access_block(Bucket=bucket_name)  # type: ignore
+            logger.info(
+                f"Successfully fetched bucket public access block for bucket {bucket_name}"
+            )
+            results.append({
+                "PublicAccessBlockConfiguration": response["PublicAccessBlockConfiguration"]
+            })
+        return results
 
 
 class GetBucketOwnershipControlsAction(Action):
-    async def _execute(self, bucket_name: str) -> Dict[str, Any]:
-        response = await self.client.get_bucket_ownership_controls(Bucket=bucket_name)  # type: ignore
-        logger.info(
-            f"Successfully fetched bucket ownership controls for bucket {bucket_name}"
-        )
-        return {"OwnershipControls": response["OwnershipControls"]}
+    async def _execute(self, bucket_names: List[str]) -> List[Dict[str, Any]]:
+        results: List[Dict[str, Any]] = []
+        for bucket_name in bucket_names:
+            response = await self.client.get_bucket_ownership_controls(Bucket=bucket_name)  # type: ignore[attr-defined]
+            logger.info(
+                f"Successfully fetched bucket ownership controls for bucket {bucket_name}"
+            )
+            results.append({"OwnershipControls": response.get("OwnershipControls", {})})
+        return results
 
 
 class GetBucketEncryptionAction(Action):
-    async def _execute(self, bucket_name: str) -> Dict[str, Any]:
-        response = await self.client.get_bucket_encryption(Bucket=bucket_name)  # type: ignore
-        logger.info(f"Successfully fetched bucket encryption for bucket {bucket_name}")
-        return {"BucketEncryption": response["ServerSideEncryptionConfiguration"]}
+    async def _execute(self, bucket_names: List[str]) -> List[Dict[str, Any]]:
+        results: List[Dict[str, Any]] = []
+        for bucket_name in bucket_names:
+            response = await self.client.get_bucket_encryption(Bucket=bucket_name)  # type: ignore
+            logger.info(f"Successfully fetched bucket encryption for bucket {bucket_name}")
+            results.append({"BucketEncryption": response["ServerSideEncryptionConfiguration"]})
+        return results
 
 
 class GetBucketLocationAction(Action):
-    async def _execute(self, bucket_name: str) -> Dict[str, Any]:
-        response = await self.client.get_bucket_location(Bucket=bucket_name)  # type: ignore
-        logger.info(f"Successfully fetched bucket location for bucket {bucket_name}")
-        return {"BucketRegion": response["LocationConstraint"]}
+    async def _execute(self, bucket_names: List[str]) -> List[Dict[str, Any]]:
+        results: List[Dict[str, Any]] = []
+        for bucket_name in bucket_names:
+            response = await self.client.get_bucket_location(Bucket=bucket_name)  # type: ignore
+            logger.info(f"Successfully fetched bucket location for bucket {bucket_name}")
+            results.append({"BucketRegion": response["LocationConstraint"]})
+        return results
 
 
 class GetBucketArnAction(Action):
-    async def _execute(self, bucket_name: str) -> Dict[str, Any]:
-        bucket_arn = f"arn:aws:s3:::{bucket_name}"
-        logger.info(f"Constructed bucket ARN for bucket {bucket_name}")
-        return {"BucketArn": bucket_arn}
+    async def _execute(self, bucket_names: List[str]) -> List[Dict[str, Any]]:
+        results: List[Dict[str, Any]] = []
+        for bucket_name in bucket_names:
+            bucket_arn = f"arn:aws:s3:::{bucket_name}"
+            logger.info(f"Constructed bucket ARN for bucket {bucket_name}")
+            results.append({"BucketArn": bucket_arn})
+        return results
 
 
 class GetBucketTaggingAction(Action):
-    async def _execute(self, bucket_name: str) -> dict[str, Any]:
-        try:
-            response = await self.client.get_bucket_tagging(Bucket=bucket_name)  # type: ignore
-            logger.info(f"Successfully fetched bucket tagging for bucket {bucket_name}")
-            return {"Tags": response.get("TagSet", [])}
-        except self.client.exceptions.ClientError as e:
-            if e.response.get("Error", {}).get("Code") == "NoSuchTagSet":
-                return {"Tags": []}
-            raise
+    async def _execute(self, bucket_names: List[str]) -> List[Dict[str, Any]]:
+        results: List[Dict[str, Any]] = []
+        for bucket_name in bucket_names:
+            try:
+                response = await self.client.get_bucket_tagging(Bucket=bucket_name)  # type: ignore
+                logger.info(f"Successfully fetched bucket tagging for bucket {bucket_name}")
+                results.append({"Tags": response.get("TagSet", [])})
+            except self.client.exceptions.ClientError as e:
+                if e.response.get("Error", {}).get("Code") == "NoSuchTagSet":
+                    logger.info(f"No tag set found for bucket {bucket_name}")
+                    results.append({"Tags": []})
+                else:
+                    raise
+        return results
 
 
 class S3BucketActionsMap(ActionMap):

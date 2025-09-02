@@ -50,8 +50,8 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         self.model_factory = model_factory
 
     async def inspect(
-        self, identifiers: str | List[str], include: List[str]
-    ) -> ResourceModelT:
+        self, identifiers: List[str], include: List[str]
+    ) -> List[ResourceModelT]:
         """
         Execute the specified actions for the given resource identifiers and
         aggregate their results into a resource model.
@@ -70,13 +70,16 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             *(self._run_action(action, identifiers) for action in actions)
         )
 
+        resources: List[ResourceModelT] = []
         for result in results:
-            if result:
-                self.builder_cls.with_data(result)
+            for item in result:
+                self.builder_cls.with_data(item)
+            built_resource = self.builder_cls.build()
+            resources.append(built_resource)
+        return resources
 
-        return self.builder_cls.build()
 
-    async def _run_action(self, action: "Action", identifiers: Any) -> Dict[str, Any]:
+    async def _run_action(self, action: "Action", identifiers: Any) -> List[Dict[str, Any]]:
         """
         Execute a single action for the given identifiers, handling exceptions gracefully.
 
@@ -92,4 +95,4 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             return await action.execute(identifiers)
         except Exception as e:
             logger.warning(f"{action.__class__.__name__} failed: {e}")
-            return {}
+            return []
