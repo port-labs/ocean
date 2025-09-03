@@ -77,14 +77,14 @@ jobs:
           echo "dockerfile_path=$dockerfile_path" >> $GITHUB_OUTPUT
 
           # Check if the 'version' variable contains any character other than digits and "."
-          if [[ ! "$version" =~ ^[0-9.]+$ ]]; then
-            # If 'version' contains non-numeric and non-dot characters, skip building 'latest' tag
+          if [[ ! "$version" =~ ^[0-9.]+$ && ! "$version" =~ ^[0-9.]+-beta[0-9]*$ ]]; then
+            # If 'version' contains non-numeric and non-dot characters (excluding beta), skip building 'latest' tag
             tags="ghcr.io/port-labs/port-ocean-$type:$version"
             echo "tags=$tags" >> $GITHUB_OUTPUT
             echo "is_dev_version=true" >> $GITHUB_OUTPUT
-            echo "Version contains non-numeric characters. Building without 'latest' tag."
+            echo "Version contains non-numeric characters (excluding beta). Building without 'latest' tag."
           else
-            # If 'version' contains only digits and dots, build with both 'latest' and version tags
+            # If 'version' contains only digits and dots or is a beta version, build with both 'latest' and version tags
             tags="ghcr.io/port-labs/port-ocean-$type:$version,ghcr.io/port-labs/port-ocean-$type:latest"
             echo "tags=$tags" >> $GITHUB_OUTPUT
             echo "is_dev_version=false" >> $GITHUB_OUTPUT
