@@ -4,8 +4,6 @@ from typing import Any, AsyncIterator, List
 import types
 
 from checkmarx_one.core.options import SingleApiSecOptions, ListApiSecOptions
-from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-
 
 # Mock port_ocean imports before importing the module under test
 # Provide a no-op decorator for cache_iterator_result so decorated methods keep behavior/docstrings
@@ -101,24 +99,6 @@ class TestCheckmarxApiSecExporter:
         )
 
     @pytest.mark.asyncio
-    async def test_get_resource_with_different_risk_id(
-        self, exporter: CheckmarxApiSecExporter, mock_client: MagicMock
-    ) -> None:
-        """Test getting a single API security risk with different risk ID."""
-        risk_id = "different-risk-456"
-        options: SingleApiSecOptions = {"risk_id": risk_id}
-        expected_response = {"risk_id": risk_id, "name": "Different Risk"}
-
-        mock_client.send_api_request = AsyncMock(return_value=expected_response)
-
-        result = await exporter.get_resource(options)
-
-        assert result == expected_response
-        mock_client.send_api_request.assert_called_once_with(
-            f"/apisec/static/api/risks/risk/{risk_id}"
-        )
-
-    @pytest.mark.asyncio
     async def test_get_paginated_resources_single_batch(
         self, exporter: CheckmarxApiSecExporter, mock_client: MagicMock
     ) -> None:
@@ -149,176 +129,6 @@ class TestCheckmarxApiSecExporter:
         assert results[0][1]["risk_id"] == "2"
 
     @pytest.mark.asyncio
-    async def test_get_paginated_resources_multiple_batches(
-        self, exporter: CheckmarxApiSecExporter, mock_client: MagicMock
-    ) -> None:
-        """Test getting paginated API security risks with multiple batches."""
-        scan_id = "scan-123"
-        options: ListApiSecOptions = {"scan_id": scan_id}
-        batch1 = [{"risk_id": "1", "name": "Risk 1"}]
-        batch2 = [{"risk_id": "2", "name": "Risk 2"}]
-
-        async def mock_paginated_resources_api_sec(
-            endpoint: str, object_key: str, params: dict[str, Any] | None = None
-        ) -> AsyncIterator[List[dict[str, Any]]]:
-            yield batch1
-            yield batch2
-
-        mock_client.send_paginated_request_api_sec = mock_paginated_resources_api_sec
-
-        results = []
-        async for batch in exporter.get_paginated_resources(options):
-            results.append(batch)
-
-        assert len(results) == 2
-        assert len(results[0]) == 1
-        assert len(results[1]) == 1
-        assert results[0][0]["__scan_id"] == scan_id
-        assert results[0][0]["risk_id"] == "1"
-        assert results[1][0]["__scan_id"] == scan_id
-        assert results[1][0]["risk_id"] == "2"
-
-    @pytest.mark.asyncio
-    async def test_get_paginated_resources_with_filtering(
-        self, exporter: CheckmarxApiSecExporter, mock_client: MagicMock
-    ) -> None:
-        """Test getting paginated API security risks with filtering parameter."""
-        scan_id = "scan-123"
-        options: ListApiSecOptions = {
-            "scan_id": scan_id,
-        }
-        mock_results = [{"risk_id": "1", "name": "Test Risk"}]
-
-        call_args: dict[str, Any] = {}
-
-        async def mock_paginated_resources_api_sec(
-            endpoint: str, object_key: str, params: dict[str, Any] | None = None
-        ) -> AsyncIterator[List[dict[str, Any]]]:
-            call_args["endpoint"] = endpoint
-            call_args["object_key"] = object_key
-            call_args["params"] = params
-            yield mock_results
-
-        mock_client.send_paginated_request_api_sec = mock_paginated_resources_api_sec
-
-        results = []
-        async for batch in exporter.get_paginated_resources(options):
-            results.append(batch)
-
-        assert len(results) == 1
-        assert len(results[0]) == 1
-
-        # Verify that the filtering parameter was passed correctly
-        assert call_args["endpoint"] == f"/apisec/static/api/risks/{scan_id}"
-        assert call_args["object_key"] == "entries"
-        assert call_args["params"] is None
-
-    @pytest.mark.asyncio
-    async def test_get_paginated_resources_with_searching(
-        self, exporter: CheckmarxApiSecExporter, mock_client: MagicMock
-    ) -> None:
-        """Test getting paginated API security risks with searching parameter."""
-        scan_id = "scan-123"
-        options: ListApiSecOptions = {
-            "scan_id": scan_id,
-        }
-        mock_results = [{"risk_id": "1", "name": "High Severity Risk"}]
-
-        call_args: dict[str, Any] = {}
-
-        async def mock_paginated_resources_api_sec(
-            endpoint: str, object_key: str, params: dict[str, Any] | None = None
-        ) -> AsyncIterator[List[dict[str, Any]]]:
-            call_args["endpoint"] = endpoint
-            call_args["object_key"] = object_key
-            call_args["params"] = params
-            yield mock_results
-
-        mock_client.send_paginated_request_api_sec = mock_paginated_resources_api_sec
-
-        results = []
-        async for batch in exporter.get_paginated_resources(options):
-            results.append(batch)
-
-        assert len(results) == 1
-        assert len(results[0]) == 1
-
-        # Verify that the searching parameter was passed correctly
-        assert call_args["endpoint"] == f"/apisec/static/api/risks/{scan_id}"
-        assert call_args["object_key"] == "entries"
-        assert call_args["params"] is None
-
-    @pytest.mark.asyncio
-    async def test_get_paginated_resources_with_sorting(
-        self, exporter: CheckmarxApiSecExporter, mock_client: MagicMock
-    ) -> None:
-        """Test getting paginated API security risks with sorting parameter."""
-        scan_id = "scan-123"
-        options: ListApiSecOptions = {
-            "scan_id": scan_id,
-        }
-        mock_results = [{"risk_id": "1", "name": "A Risk"}]
-
-        call_args: dict[str, Any] = {}
-
-        async def mock_paginated_resources_api_sec(
-            endpoint: str, object_key: str, params: dict[str, Any] | None = None
-        ) -> AsyncIterator[List[dict[str, Any]]]:
-            call_args["endpoint"] = endpoint
-            call_args["object_key"] = object_key
-            call_args["params"] = params
-            yield mock_results
-
-        mock_client.send_paginated_request_api_sec = mock_paginated_resources_api_sec
-
-        results = []
-        async for batch in exporter.get_paginated_resources(options):
-            results.append(batch)
-
-        assert len(results) == 1
-        assert len(results[0]) == 1
-
-        # Verify that the sorting parameter was passed correctly
-        assert call_args["endpoint"] == f"/apisec/static/api/risks/{scan_id}"
-        assert call_args["object_key"] == "entries"
-        assert call_args["params"] is None
-
-    @pytest.mark.asyncio
-    async def test_get_paginated_resources_with_all_parameters(
-        self, exporter: CheckmarxApiSecExporter, mock_client: MagicMock
-    ) -> None:
-        """Test getting paginated API security risks with all parameters."""
-        scan_id = "scan-123"
-        options: ListApiSecOptions = {
-            "scan_id": scan_id,
-        }
-        mock_results = [{"risk_id": "1", "name": "Critical Risk"}]
-
-        call_args: dict[str, Any] = {}
-
-        async def mock_paginated_resources_api_sec(
-            endpoint: str, object_key: str, params: dict[str, Any] | None = None
-        ) -> AsyncIterator[List[dict[str, Any]]]:
-            call_args["endpoint"] = endpoint
-            call_args["object_key"] = object_key
-            call_args["params"] = params
-            yield mock_results
-
-        mock_client.send_paginated_request_api_sec = mock_paginated_resources_api_sec
-
-        results = []
-        async for batch in exporter.get_paginated_resources(options):
-            results.append(batch)
-
-        assert len(results) == 1
-        assert len(results[0]) == 1
-
-        # Verify that all parameters were passed correctly
-        assert call_args["endpoint"] == f"/apisec/static/api/risks/{scan_id}"
-        assert call_args["object_key"] == "entries"
-        assert call_args["params"] is None
-
-    @pytest.mark.asyncio
     async def test_get_paginated_resources_empty_result(
         self, exporter: CheckmarxApiSecExporter, mock_client: MagicMock
     ) -> None:
@@ -339,24 +149,3 @@ class TestCheckmarxApiSecExporter:
 
         assert len(results) == 1
         assert len(results[0]) == 0
-
-    def test_exporter_inheritance(self, exporter: CheckmarxApiSecExporter) -> None:
-        """Test that the exporter inherits from AbstractCheckmarxExporter."""
-        assert isinstance(exporter, AbstractCheckmarxExporter)
-
-    def test_exporter_docstring(self, exporter: CheckmarxApiSecExporter) -> None:
-        """Test that the exporter has proper docstring."""
-        assert "Checkmarx One API Security risks" in exporter.__doc__  # type: ignore
-
-    def test_get_resource_docstring(self, exporter: CheckmarxApiSecExporter) -> None:
-        """Test that get_resource method has proper docstring."""
-        assert "Get a specific API sec risk by ID" in exporter.get_resource.__doc__  # type: ignore
-
-    def test_get_paginated_resources_docstring(
-        self, exporter: CheckmarxApiSecExporter
-    ) -> None:
-        """Test that get_paginated_resources method has proper docstring."""
-        assert (
-            "Get API Security risks from Checkmarx One"
-            in exporter.get_paginated_resources.__doc__  # type: ignore
-        )

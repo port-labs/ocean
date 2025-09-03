@@ -202,10 +202,10 @@ class TestScanWebhookProcessor:
         self, scan_webhook_processor: ScanWebhookProcessor
     ) -> None:
         """Test that authenticate method returns True."""
-        payload = EventPayload({"scanId": "scan-123", "projectId": "project-456"})
-        headers = EventHeaders(
-            {"x-cx-webhook-event": CheckmarxEventType.SCAN_COMPLETED}
-        )
+        payload: EventPayload = {"scanId": "scan-123", "projectId": "project-456"}
+        headers: EventHeaders = {
+            "x-cx-webhook-event": CheckmarxEventType.SCAN_COMPLETED
+        }
 
         result = await scan_webhook_processor.authenticate(payload, headers)
         assert result is True
