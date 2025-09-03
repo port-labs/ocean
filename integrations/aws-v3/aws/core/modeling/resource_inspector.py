@@ -143,10 +143,11 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
     def _build_model(self, identifier_results: List[Dict[str, Any]]) -> ResourceModelT:
         """Build a resource model from identifier results using ResourceBuilder."""
         builder: ResourceBuilder[ResourceModelT, Any] = ResourceBuilder(
-            self.model_factory(), self.region, self.account_id
+            self.model_factory()
         )
 
         builder.with_properties(identifier_results)
+        builder.with_metadata({"account_id": self.account_id, "region": self.region})
 
         model = builder.build()
 

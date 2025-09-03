@@ -19,23 +19,18 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         TProperties: A Pydantic `BaseModel` representing the resource's properties.
 
     Example:
-        >>> builder = ResourceBuilder(MyResourceModel(Type="...", Properties=MyProperties()), "eu-west-1", "123456789")
+        >>> builder = ResourceBuilder(MyResourceModel(Type="...", Properties=MyProperties()))
         >>> resource = builder.with_properties([{"Name": "example"}, {"Tags": [{"Key": "Env", "Value": "prod"}]}]).with_metadata({"__Kind": "AWS::S3::Bucket"}).build()
     """
 
-    def __init__(self, model: ResourceModelT, region: str, account_id: str) -> None:
+    def __init__(self, model: ResourceModelT) -> None:
         """
-        Initialize the builder with a resource model instance and context.
+        Initialize the builder with a resource model instance.
 
         Args:
             model: An instance of a resource model to be built or modified.
-            region: The AWS region for this resource.
-            account_id: The AWS account ID for this resource.
         """
         self._model = model
-        self._region = region
-        self._account_id = account_id
-
         self._props_set = False
 
     def with_properties(self, properties: List[Dict[str, Any]]) -> Self:
@@ -71,10 +66,8 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         Returns:
             Self: The builder instance for method chaining.
         """
-        current_data = self._model.dict()
-        updated_data = {**current_data, **data}
-
-        self._model = self._model.__class__(**updated_data)
+        for key, value in data.items():
+            setattr(self._model, key, value)
         return self
 
     def build(self) -> ResourceModelT:
@@ -88,8 +81,5 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
             raise ValueError(
                 "No data has been set for the resource model, use `with_properties` to set data."
             )
-
-        self._model.account_id = self._account_id
-        self._model.region = self._region
 
         return self._model
