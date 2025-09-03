@@ -167,7 +167,7 @@ class TestGetClusterPendingTasksAction:
 
         # Verify logging
         mock_logger.info.assert_called_once_with(
-            "Found 2 pending tasks for cluster test-cluster"
+            "Found 2 pending tasks for cluster arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster"
         )
 
     @pytest.mark.asyncio
@@ -191,7 +191,7 @@ class TestGetClusterPendingTasksAction:
 
         # Verify logging
         mock_logger.info.assert_called_once_with(
-            "Found 0 pending tasks for cluster test-cluster"
+            "Found 0 pending tasks for cluster arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster"
         )
 
     @pytest.mark.asyncio
