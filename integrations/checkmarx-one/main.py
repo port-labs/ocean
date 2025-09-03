@@ -18,6 +18,15 @@ from integration import (
     CheckmarxOneScanResourcesConfig,
 )
 from checkmarx_one.utils import ObjectKind
+from checkmarx_one.webhook.webhook_processors.project_webhook_processor import (
+    ProjectWebhookProcessor,
+)
+from checkmarx_one.webhook.webhook_processors.scan_webhook_processor import (
+    ScanWebhookProcessor,
+)
+from checkmarx_one.webhook.webhook_processors.api_security_webhook_processor import (
+    ApiSecurityWebhookProcessor,
+)
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -78,3 +87,9 @@ async def on_api_sec_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     f"Received batch with {len(results_batch)} API security risks for scan {scan_data['id']}"
                 )
                 yield results_batch
+
+
+# Register webhook processors for Checkmarx One events
+ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ScanWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ApiSecurityWebhookProcessor)
