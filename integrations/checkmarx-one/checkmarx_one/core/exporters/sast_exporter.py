@@ -52,7 +52,6 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
             logger.info(
                 f"Fetched batch of {len(results)} SAST results for scan {options['scan_id']}"
             )
-            # logger.warning(f"SAST results: {results}")
             yield results
 
     def _build_params(self, options: ListSastOptions) -> dict[str, Any]:
