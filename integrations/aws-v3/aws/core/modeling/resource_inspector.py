@@ -31,7 +31,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         # Single resource inspection
         inspector = ResourceInspector(client, actions_map, MyResourceModel, "123456789", "us-east-1")
         resource = await inspector.inspect("resource-name", include=["GetBucketTaggingAction"])
-        
+
         # Batch resource inspection
         resources = await inspector.inspect_batch(["bucket1", "bucket2"], include=["GetBucketTaggingAction"])
     """
