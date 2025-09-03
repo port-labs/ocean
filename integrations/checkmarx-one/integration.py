@@ -12,6 +12,38 @@ from pydantic import Field
 from datetime import datetime, timedelta, timezone
 
 
+class CheckmarxOneResultSelector(Selector):
+    severity: Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]] = (
+        Field(
+            default=None,
+            description="Filter scan results by severity level",
+        )
+    )
+    state: Optional[
+        List[
+            Literal[
+                "TO_VERIFY",
+                "CONFIRMED",
+                "URGENT",
+                "NOT_EXPLOITABLE",
+                "PROPOSED_NOT_EXPLOITABLE",
+                "FALSE_POSITIVE",
+            ]
+        ]
+    ] = Field(
+        default=None,
+        description="Filter scan results by state",
+    )
+    status: Optional[List[Literal["NEW", "RECURRENT", "FIXED"]]] = Field(
+        default=None,
+        description="Filter scan results by status",
+    )
+    exclude_result_types: Optional[Literal["DEV_AND_TEST", "NONE"]] = Field(
+        default="DEV_AND_TEST",
+        description="Filter scan results by exclude result types",
+    )
+
+
 class CheckmarxOneApiSecSelector(Selector):
     pass
 
@@ -69,11 +101,17 @@ class CheckmarxOneScanResourcesConfig(ResourceConfig):
     selector: CheckmarxOneScanSelector
 
 
+class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
+    kind: Literal["sca", "container-security"]
+    selector: CheckmarxOneResultSelector
+
+
 class CheckmarxOnePortAppConfig(PortAppConfig):
     resources: List[
         CheckmarxOneProjectResourcesConfig
         | CheckmarxOneScanResourcesConfig
         | CheckmarxOneApiSecResourcesConfig
+        | CheckmarxOneScanResultResourcesConfig
     ] = Field(
         default_factory=list
     )  # type: ignore

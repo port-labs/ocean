@@ -12,6 +12,13 @@ class ObjectKind(StrEnum):
     CONTAINER_SECURITY = "container-security"
 
 
+class ScanResultObjectKind(StrEnum):
+    """Enum for Checkmarx One resource kinds with special handling."""
+
+    SCA = "sca"
+    CONTAINER_SECURITY = "container-security"
+
+
 class IgnoredError(NamedTuple):
     status: int | str
     message: Optional[str] = None

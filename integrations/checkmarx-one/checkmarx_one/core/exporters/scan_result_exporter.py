@@ -3,7 +3,6 @@ from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-from port_ocean.utils.cache import cache_iterator_result
 from checkmarx_one.core.options import SingleScanResultOptions, ListScanResultOptions
 
 
@@ -20,7 +19,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         scan_result["__scan_id"] = scan_id
         return scan_result
 
-    async def _get_resource(self, options: SingleScanResultOptions) -> RAW_ITEM:
+    async def get_resource(self, options: SingleScanResultOptions) -> RAW_ITEM:
         """
         Get a specific scan result by ID.
 
@@ -45,8 +44,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         )
         return self._enrich_scan_result_with_scan_id(response, options["scan_id"])
 
-    @cache_iterator_result()
-    async def _get_paginated_resources(
+    async def _get_paginated_scan_results(
         self,
         options: ListScanResultOptions,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -56,12 +54,9 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         Args:
             options: Options dictionary containing:
                 - scan_id: Required scan ID to get results for
-                - limit: Maximum number of results per page (1-10000, default: 20)
-                - offset: Starting offset for pagination (default: 0)
                 - severity: Filter by severity (CRITICAL, HIGH, MEDIUM, LOW, INFO)
                 - state: Filter by state (TO_VERIFY, NOT_EXPLOITABLE, PROPOSED_NOT_EXPLOITABLE, CONFIRMED, URGENT)
                 - status: Filter by status (NEW, RECURRENT, FIXED)
-                - sort: Sort results by specified parameters (e.g., ["+severity", "-status"])
                 - exclude_result_types: Filter to exclude dev and test dependencies (DEV_AND_TEST, NONE)
 
         Yields:
@@ -77,6 +72,23 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
                 f"Fetched batch of {len(results)} scan results for scan {options['scan_id']}"
             )
             yield results
+
+    async def get_paginated_resources(
+        self, options: ListScanResultOptions
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """
+        Get paginated scan results from Checkmarx One.
+        """
+        async for results in self._get_paginated_scan_results(options):
+            batch = [
+                self._enrich_scan_result_with_scan_id(
+                    result,
+                    options["scan_id"],
+                )
+                for result in results
+                if result["type"] == options["type"]
+            ]
+            yield batch
 
     def _get_params(self, options: ListScanResultOptions) -> dict[str, Any]:
         params: dict[str, Any] = {

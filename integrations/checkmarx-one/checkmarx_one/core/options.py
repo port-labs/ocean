@@ -51,7 +51,7 @@ class SingleApiSecOptions(TypedDict):
 class ListScanResultOptions(TypedDict):
     """Options for listing scan results."""
 
-    type: Literal["sca", "container-security"]
+    type: str
     scan_id: Required[str]
     severity: NotRequired[
         Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
@@ -71,7 +71,7 @@ class ListScanResultOptions(TypedDict):
         ]
     ]
     status: NotRequired[Optional[List[Literal["NEW", "RECURRENT", "FIXED"]]]]
-    exclude_result_types: NotRequired[Optional[List[Literal["DEV_AND_TEST", "NONE"]]]]
+    exclude_result_types: NotRequired[Optional[Literal["DEV_AND_TEST", "NONE"]]]
 
 
 class SingleScanResultOptions(TypedDict):
