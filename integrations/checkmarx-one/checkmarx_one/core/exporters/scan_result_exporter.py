@@ -96,11 +96,26 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         }
 
         if options.get("severity"):
-            params["severity"] = options.get("severity")
+            severity = options.get("severity")
+            if isinstance(severity, list) and len(severity) == 1:
+                params["severity"] = severity[0]
+            else:
+                params["severity"] = severity
+
         if options.get("state"):
-            params["state"] = options.get("state")
+            state = options.get("state")
+            if isinstance(state, list) and len(state) == 1:
+                params["state"] = state[0]
+            else:
+                params["state"] = state
+
         if options.get("status"):
-            params["status"] = options.get("status")
+            status = options.get("status")
+            if isinstance(status, list) and len(status) == 1:
+                params["status"] = status[0]
+            else:
+                params["status"] = status
+
         if options.get("exclude_result_types"):
             params["exclude-result-types"] = options.get("exclude_result_types")
 

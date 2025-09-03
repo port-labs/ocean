@@ -91,7 +91,7 @@ resources:
           relations:
             scan: .__scan_id
 
-  - kind: container-security
+  - kind: containers
     selector:
       query: 'true'
     port:

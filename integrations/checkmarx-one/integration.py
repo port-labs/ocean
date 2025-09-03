@@ -102,7 +102,7 @@ class CheckmarxOneScanResourcesConfig(ResourceConfig):
 
 
 class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
-    kind: Literal["sca", "container-security"]
+    kind: Literal["sca", "containers"]
     selector: CheckmarxOneResultSelector
 
 

@@ -8,15 +8,13 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     SCAN = "scan"
     API_SEC = "api-security"
-    SCA = "sca"
-    CONTAINER_SECURITY = "container-security"
 
 
 class ScanResultObjectKind(StrEnum):
-    """Enum for Checkmarx One resource kinds with special handling."""
+    """Enum for Checkmarx One scan result resource kinds."""
 
     SCA = "sca"
-    CONTAINER_SECURITY = "container-security"
+    CONTAINERS = "containers"
 
 
 class IgnoredError(NamedTuple):

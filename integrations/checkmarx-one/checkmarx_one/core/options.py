@@ -77,6 +77,6 @@ class ListScanResultOptions(TypedDict):
 class SingleScanResultOptions(TypedDict):
     """Options for fetching a single scan result."""
 
-    type: Literal["sca", "container-security"]
+    type: Literal["sca", "containers"]
     scan_id: Required[str]
     result_id: Required[str]
