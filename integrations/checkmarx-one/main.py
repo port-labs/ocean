@@ -18,9 +18,6 @@ from integration import (
     CheckmarxOneScanResourcesConfig,
 )
 from checkmarx_one.utils import ObjectKind
-from checkmarx_one.webhook.webhook_processors.project_webhook_processor import (
-    ProjectWebhookProcessor,
-)
 from checkmarx_one.webhook.webhook_processors.scan_webhook_processor import (
     ScanWebhookProcessor,
 )
@@ -90,6 +87,5 @@ async def on_api_sec_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 # Register webhook processors for Checkmarx One events
-ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ScanWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ApiSecurityWebhookProcessor)

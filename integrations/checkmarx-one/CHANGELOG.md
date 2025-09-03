@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added webhook support for the Project, Scan, and API-Security kinds
+- Added webhook support for the Scan and API-Security kinds
 
 
 ## 0.1.8-dev (2025-08-29)
