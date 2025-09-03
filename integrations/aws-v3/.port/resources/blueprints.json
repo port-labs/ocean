@@ -88,8 +88,7 @@
             "type": "string"
           }
         }
-      },
-      "required": ["clusterName"]
+      }
     },
     "calculationProperties": {},
     "relations": {}

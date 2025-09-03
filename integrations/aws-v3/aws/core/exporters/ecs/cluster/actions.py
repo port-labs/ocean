@@ -5,7 +5,6 @@ from aws.core.interfaces.action import (
     ActionMap,
 )
 from loguru import logger
-from aws.core.helpers.utils import extract_resource_name_from_arn
 
 
 class ECSClusterDetailsAction(BatchAction):
@@ -30,14 +29,13 @@ class GetClusterPendingTasksAction(Action):
 
     async def _execute(self, cluster_arn: str) -> Dict[str, Any]:
         """Get up to 100 pending task ARNs for a cluster"""
-        cluster_name = extract_resource_name_from_arn(cluster_arn)
 
         response = await self.client.list_tasks(  # type: ignore[attr-defined]
             cluster=cluster_arn, desiredStatus="PENDING", maxResults=100
         )
 
         task_arns = response["taskArns"]
-        logger.info(f"Found {len(task_arns)} pending tasks for cluster {cluster_name}")
+        logger.info(f"Found {len(task_arns)} pending tasks for cluster {cluster_arn}")
         return {"pendingTaskArns": task_arns}
 
 

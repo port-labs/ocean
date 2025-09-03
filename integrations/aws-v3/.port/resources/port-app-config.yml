@@ -21,7 +21,6 @@ resources:
             encryption: .Properties.BucketEncryption
             publicAccessBlockConfiguration: .Properties.PublicAccessBlockConfiguration
             tags: .Properties.Tags
-
   - kind: AWS::ECS::Cluster
     selector:
       query: 'true'
