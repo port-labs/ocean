@@ -8,14 +8,17 @@ from checkmarx_one.exporter_factory import (
     create_project_exporter,
     create_scan_exporter,
     create_api_sec_exporter,
+    create_kics_exporter,
 )
 from checkmarx_one.core.options import (
     ListProjectOptions,
     ListScanOptions,
     ListApiSecOptions,
+    ListKicsOptions,
 )
 from integration import (
     CheckmarxOneScanResourcesConfig,
+    CheckmarxOneKicsResourcesConfig,
 )
 from checkmarx_one.utils import ObjectKind
 
@@ -76,5 +79,33 @@ async def on_api_sec_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 logger.info(
                     f"Received batch with {len(results_batch)} API security risks for scan {scan_data['id']}"
+                )
+                yield results_batch
+
+
+@ocean.on_resync(ObjectKind.KICS)
+async def on_kics_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync KICS (IaC Security) results from Checkmarx One."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    scan_exporter = create_scan_exporter()
+    kics_exporter = create_kics_exporter()
+
+    scan_options = ListScanOptions()
+    
+    # Get selector options from config
+    config = cast(CheckmarxOneKicsResourcesConfig, event.resource_config)
+    selector = config.selector
+
+    async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
+        for scan_data in scan_data_list:
+            options = ListKicsOptions(
+                scan_id=scan_data["id"],
+                severity=selector.severity,
+                status=selector.status,
+            )
+            async for results_batch in kics_exporter.get_paginated_resources(options):
+                logger.info(
+                    f"Received batch with {len(results_batch)} KICS results for scan {scan_data['id']}"
                 )
                 yield results_batch

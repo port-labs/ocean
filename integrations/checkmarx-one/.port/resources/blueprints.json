@@ -241,5 +241,118 @@
         "required": false
       }
     }
+  },
+  {
+    "identifier": "checkmarxKics",
+    "description": "Represents a KICS issue detected by Checkmarx One",
+    "title": "Checkmarx KICS",
+    "icon": "Checkmarx",
+    "schema": {
+      "properties": {
+        "firstScanId": {
+          "type": "string",
+          "title": "First Scan ID",
+          "description": "The identifier of the first scan in which this KICS issue was detected"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the KICS issue, indicating if it is new, recurring, or has been fixed.",
+          "enum": [
+            "NEW",
+            "RECURRENT",
+            "FIXED"
+          ],
+          "enumColors": {
+            "NEW": "lightGray",
+            "RECURRENT": "lightGray",
+            "FIXED": "lightGray"
+          }
+        },
+        "state": {
+          "type": "string",
+          "description": "The state of the KICS issue, reflecting its verification and remediation status",
+          "title": "State"
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL",
+            "INFO"
+          ],
+          "enumColors": {
+            "LOW": "lightGray",
+            "MEDIUM": "lightGray",
+            "HIGH": "lightGray",
+            "CRITICAL": "lightGray",
+            "INFO": "lightGray"
+          }
+        },
+        "confidenceLevel": {
+          "type": "number",
+          "title": "Confidence Level",
+          "description": "A percentage representing the confidence in the accuracy of the detected issue",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "description": "The date and time when the KICS issue was first identified",
+          "format": "date-time"
+        },
+        "description": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Description",
+          "description": "A description of the KICS issue."
+        },
+        "fileName": {
+          "type": "string",
+          "title": "File Name",
+          "description": "The name of the file where the KICS issue was found."
+        },
+        "lineNumber": {
+          "type": "string",
+          "title": "Line",
+          "description": "The line number in the file where the KICS issue occurs"
+        },
+        "platform": {
+          "type": "string",
+          "title": "Platform"
+        },
+        "issueType": {
+          "type": "string",
+          "title": "Issue Type",
+          "description": "The type or category of the KICS issue"
+        },
+        "expected_value": {
+          "type": "string",
+          "title": "Expected Value",
+          "description": "The value that was expected in the configuration"
+        },
+        "value": {
+          "type": "string",
+          "title": "Value",
+          "description": "The actual value found in the configuration that triggered the KICS issue"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "scan": {
+        "title": "Scan",
+        "target": "checkmarxScan",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

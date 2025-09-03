@@ -9,6 +9,7 @@ features:
       - kind: project
       - kind: scan
       - kind: api-security
+      - kind: kics
 configurations:
   - name: checkmarxBaseUrl
     required: false

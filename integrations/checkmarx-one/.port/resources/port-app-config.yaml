@@ -65,5 +65,31 @@ resources:
             sastRiskId: (.sast_risk_id // empty)
             projectId: .project_id
             state: .state
-        relations:
-          scan: .scan_id
+          relations:
+            scan: .scan_id
+
+  - kind: kics
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .ID
+          title: .description
+          blueprint: '"checkmarxKics"'
+          properties:
+            firstScanId: .firstScanID
+            status: .status
+            state: .state
+            severity: (.severity // empty)
+            confidenceLevel: .confidenceLevel # Not in the API response
+            created: .firstFoundAt
+            description: .description
+            fileName: (.fileName // empty)
+            line: (.line // empty)
+            platform: (.platform // empty)
+            issueType: (.issueType // empty)
+            expectedValue: (.expectedValue // empty)
+            value: (.value // empty)
+          relations:
+            scan: .__scan_id

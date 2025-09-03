@@ -69,11 +69,28 @@ class CheckmarxOneScanResourcesConfig(ResourceConfig):
     selector: CheckmarxOneScanSelector
 
 
+class CheckmarxOneKicsSelector(Selector):
+    severity: Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]] = Field(
+        default=None,
+        description="Filter KICS results by severity levels",
+    )
+    status: Optional[List[Literal["NEW", "RECURRENT", "FIXED"]]] = Field(
+        default=None,
+        description="Filter KICS results by status",
+    )
+
+
+class CheckmarxOneKicsResourcesConfig(ResourceConfig):
+    kind: Literal["kics"]
+    selector: CheckmarxOneKicsSelector
+
+
 class CheckmarxOnePortAppConfig(PortAppConfig):
     resources: List[
         CheckmarxOneProjectResourcesConfig
         | CheckmarxOneScanResourcesConfig
         | CheckmarxOneApiSecResourcesConfig
+        | CheckmarxOneKicsResourcesConfig
     ] = Field(
         default_factory=list
     )  # type: ignore

@@ -46,3 +46,11 @@ class SingleApiSecOptions(TypedDict):
     """Options for fetching a single API sec scan result."""
 
     risk_id: Required[str]
+
+
+class ListKicsOptions(TypedDict):
+    """Options for listing KICS scan results (IaC Security)."""
+
+    scan_id: Required[str]
+    severity: NotRequired[Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]]
+    status: NotRequired[Optional[List[Literal["NEW", "RECURRENT", "FIXED"]]]]

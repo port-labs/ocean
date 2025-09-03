@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.8-dev (2025-08-29)
+## 0.1.9-dev (2025-09-03)
 
+
+### Improvements
+
+- Added support for KICS results
+
+
+## 0.1.8-dev (2025-08-29)
 
 
 ### Improvements
