@@ -117,10 +117,11 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     config = cast(GithubRepositoryConfig, event.resource_config)
     repository_type = cast(GithubPortAppConfig, event.port_app_config).repository_type
-    included_property = config.selector.include
+    included_relationships = config.selector.include
 
     options = ListRepositoryOptions(
-        type=repository_type, included_property=included_property
+        type=repository_type,
+        included_relationships=cast(list[str], included_relationships),
     )
 
     async for repositories in exporter.get_paginated_resources(options):
