@@ -1,9 +1,8 @@
-from typing import Any, Dict, List
+from typing import Any, List
 from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-from port_ocean.utils.cache import cache_iterator_result
 from checkmarx_one.core.options import SingleSastOptions, ListSastOptions
 from checkmarx_one.utils import sast_visible_columns
 
@@ -22,17 +21,14 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
             "/sast-results/",
             params=params,
         )
-        if isinstance(response, dict):
+        if isinstance(response, dict) and "results" in response:
             results: List[dict[str, Any]] = response.get("results", [])
             item = results[0] if results else {}
         else:
             item = response
-        logger.info(
-            f"Fetched SAST result by result-id for scan {options['scan_id']}"
-        )
+        logger.info(f"Fetched SAST result by result-id for scan {options['scan_id']}")
         return item
 
-    @cache_iterator_result()
     async def get_paginated_resources(
         self,
         options: ListSastOptions,

@@ -22,6 +22,7 @@ def create_api_sec_exporter() -> CheckmarxApiSecExporter:
     client = get_checkmarx_client()
     return CheckmarxApiSecExporter(client)
 
+
 def create_sast_exporter() -> CheckmarxSastExporter:
     """Create a SAST exporter with initialized client."""
     client = get_checkmarx_client()

@@ -81,6 +81,7 @@ async def on_api_sec_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 )
                 yield results_batch
 
+
 @ocean.on_resync(ObjectKind.SAST)
 async def on_sast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync SAST from Checkmarx One."""
@@ -94,8 +95,9 @@ async def on_sast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for scan_data in scan_data_list:
             options = ListSastOptions(
                 scan_id=scan_data["id"],
-                
             )
             async for results_batch in sast_exporter.get_paginated_resources(options):
-                logger.info(f"Received batch with {len(results_batch)} SAST for scan {scan_data['id']}")
+                logger.info(
+                    f"Received batch with {len(results_batch)} SAST for scan {scan_data['id']}"
+                )
                 yield results_batch
