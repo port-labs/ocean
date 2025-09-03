@@ -46,3 +46,18 @@ class SingleApiSecOptions(TypedDict):
     """Options for fetching a single API sec scan result."""
 
     risk_id: Required[str]
+
+
+class ListSastOptions(TypedDict, total=False):
+    """Options for listing SAST scan results."""
+
+    # Required
+    scan_id: Required[str]
+    visible_columns: NotRequired[Optional[List[str]]]
+
+
+class SingleSastOptions(TypedDict):
+    """Options for fetching a single SAST scan result via filters."""
+
+    scan_id: Required[str]
+    result_id: Required[str]

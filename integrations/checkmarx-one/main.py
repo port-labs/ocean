@@ -6,11 +6,13 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from checkmarx_one.exporter_factory import (
     create_project_exporter,
+    create_sast_exporter,
     create_scan_exporter,
     create_api_sec_exporter,
 )
 from checkmarx_one.core.options import (
     ListProjectOptions,
+    ListSastOptions,
     ListScanOptions,
     ListApiSecOptions,
 )
@@ -77,4 +79,23 @@ async def on_api_sec_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 logger.info(
                     f"Received batch with {len(results_batch)} API security risks for scan {scan_data['id']}"
                 )
+                yield results_batch
+
+@ocean.on_resync(ObjectKind.SAST)
+async def on_sast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync SAST from Checkmarx One."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    sast_exporter = create_sast_exporter()
+    scan_exporter = create_scan_exporter()
+
+    scan_options = ListScanOptions()
+    async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
+        for scan_data in scan_data_list:
+            options = ListSastOptions(
+                scan_id=scan_data["id"],
+                
+            )
+            async for results_batch in sast_exporter.get_paginated_resources(options):
+                logger.info(f"Received batch with {len(results_batch)} SAST for scan {scan_data['id']}")
                 yield results_batch

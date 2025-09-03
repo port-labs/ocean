@@ -241,5 +241,102 @@
         "required": false
       }
     }
+  },
+  {
+    "identifier": "checkmarxSast",
+    "description": "Represents a Checkmarx Static Application Security Testing (SAST) finding in the catalogue",
+    "title": "Checkmarx SASTs",
+    "icon": "Checkmarx",
+    "schema": {
+      "properties": {
+        "firstScanId": {
+          "type": "string",
+          "title": "First Scan ID",
+          "description": "The identifier of the first scan in which this SAST finding appeared."
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the SAST finding",
+          "enum": [
+            "NEW",
+            "RECURRENT",
+            "FIXED"
+          ],
+          "enumColors": {
+            "NEW": "lightGray",
+            "RECURRENT": "lightGray",
+            "FIXED": "lightGray"
+          }
+        },
+        "state": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "State",
+          "description": "The state of the SAST finding"
+        },
+        "severity": {
+          "type": "string",
+          "description": "The severity level of the SAST finding",
+          "title": "Severity",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL"
+          ],
+          "enumColors": {
+            "LOW": "lightGray",
+            "MEDIUM": "lightGray",
+            "HIGH": "lightGray",
+            "CRITICAL": "lightGray"
+          }
+        },
+        "confidenceLevel": {
+          "type": "number",
+          "title": "Confidence Level",
+          "description": "The confidence level (0-100) assigned to the SAST finding",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "created": {
+          "type": "string",
+          "title": "Created At",
+          "description": "The date and time when the SAST finding was created",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "The description of the SAST result"
+        },
+        "nodes": {
+          "items": {
+            "type": "object"
+          },
+          "icon": "DefaultProperty",
+          "type": "array",
+          "title": "Nodes",
+          "description": "The list of nodes or code locations related to the SAST finding"
+        },
+        "cweId": {
+          "type": "string",
+          "title": "CWE ID",
+          "description": "The CWE (Common Weakness Enumeration) identifier associated with this SAST finding"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "scan": {
+        "title": "Scan",
+        "target": "checkmarxScan",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

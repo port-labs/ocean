@@ -20,6 +20,10 @@ class CheckmarxOneProjectSelector(Selector):
     pass
 
 
+class CheckmarxOneSastSelector(Selector):
+    pass
+
+
 class CheckmarxOneProjectResourcesConfig(ResourceConfig):
     kind: Literal["project"]
     selector: CheckmarxOneProjectSelector
@@ -28,6 +32,11 @@ class CheckmarxOneProjectResourcesConfig(ResourceConfig):
 class CheckmarxOneApiSecResourcesConfig(ResourceConfig):
     kind: Literal["api-security"]
     selector: CheckmarxOneApiSecSelector
+
+
+class CheckmarxOneSastResourcesConfig(ResourceConfig):
+    kind: Literal["sast"]
+    selector: CheckmarxOneSastSelector
 
 
 class CheckmarxOneScanSelector(Selector):
@@ -74,6 +83,7 @@ class CheckmarxOnePortAppConfig(PortAppConfig):
         CheckmarxOneProjectResourcesConfig
         | CheckmarxOneScanResourcesConfig
         | CheckmarxOneApiSecResourcesConfig
+        | CheckmarxOneSastResourcesConfig
     ] = Field(
         default_factory=list
     )  # type: ignore

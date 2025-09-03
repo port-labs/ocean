@@ -65,5 +65,27 @@ resources:
             sastRiskId: (.sast_risk_id // empty)
             projectId: .project_id
             state: .state
-        relations:
-          scan: .scan_id
+          relations:
+            scan: .scan_id
+
+  - kind: sast
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .resultHash
+          title: .queryName # This is the closest property to the name
+          blueprint: '"checkmarxSast"'
+          properties:
+            firstScanId: .firstScanID
+            status: .status
+            state: .state
+            severity: (.severity // empty)
+            confidenceLevel: .confidenceLevel
+            created: .firstFoundAt
+            description: .description # Not available in the API response
+            nodes: (.nodes // empty)
+            cweId: (.cweID // empty)
+          relations:
+            scan: .scanID
