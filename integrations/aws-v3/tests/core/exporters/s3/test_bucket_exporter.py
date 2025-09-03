@@ -170,13 +170,17 @@ class TestS3BucketExporter:
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
 
-        # Mock inspector.inspect_batch to return bucket data
+        # Mock inspector.inspect_batch to return bucket data for each page
         bucket1 = Bucket(Properties=BucketProperties(Name="bucket1"))
         bucket2 = Bucket(Properties=BucketProperties(Name="bucket2"))
         bucket3 = Bucket(Properties=BucketProperties(Name="bucket3"))
 
         # Set up side effects for inspector.inspect_batch calls
-        mock_inspector.inspect_batch.return_value = [bucket1, bucket2, bucket3]
+        # First call returns 2 buckets, second call returns 1 bucket
+        mock_inspector.inspect_batch.side_effect = [
+            [bucket1, bucket2],  # First page
+            [bucket3],  # Second page
+        ]
 
         # Create options
         options = PaginatedBucketRequest(
@@ -200,10 +204,17 @@ class TestS3BucketExporter:
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
 
-        # Verify inspector.inspect_batch was called once with all bucket names
-        assert mock_inspector.inspect_batch.call_count == 1
-        mock_inspector.inspect_batch.assert_called_once_with(
-            ["bucket1", "bucket2", "bucket3"], ["GetBucketTaggingAction"]
+        # Verify inspector.inspect_batch was called twice (once for each page)
+        assert mock_inspector.inspect_batch.call_count == 2
+
+        # First call with first page bucket names
+        mock_inspector.inspect_batch.assert_any_call(
+            ["bucket1", "bucket2"], ["GetBucketTaggingAction"]
+        )
+
+        # Second call with second page bucket names
+        mock_inspector.inspect_batch.assert_any_call(
+            ["bucket3"], ["GetBucketTaggingAction"]
         )
 
     @pytest.mark.asyncio
