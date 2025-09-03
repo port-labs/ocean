@@ -13,13 +13,13 @@ class CheckmarxKicsExporter(AbstractCheckmarxExporter):
         params: Dict[str, Any] = {
             "scan-id": options["scan_id"],
         }
-        
+
         # Apply optional filters if provided
-        if (severity := options.get("severity")):
+        if severity := options.get("severity"):
             params["severity"] = severity
-        if (status := options.get("status")):
+        if status := options.get("status"):
             params["status"] = status
-            
+
         return params
 
     async def get_resource(self, options: Dict[str, Any]) -> Any:

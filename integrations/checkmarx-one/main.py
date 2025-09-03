@@ -92,7 +92,7 @@ async def on_kics_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     kics_exporter = create_kics_exporter()
 
     scan_options = ListScanOptions()
-    
+
     # Get selector options from config
     config = cast(CheckmarxOneKicsResourcesConfig, event.resource_config)
     selector = config.selector

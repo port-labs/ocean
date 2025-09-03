@@ -54,16 +54,14 @@ class TestCheckmarxKicsExporter:
         options = ListKicsOptions(scan_id="scan-2")
         params = exporter._build_params(options)
         assert params == {"scan-id": "scan-2"}
-        
+
         # Test with filters
         options_with_filters = ListKicsOptions(
-            scan_id="scan-3",
-            severity=["HIGH", "CRITICAL"],
-            status=["NEW", "RECURRENT"]
+            scan_id="scan-3", severity=["HIGH", "CRITICAL"], status=["NEW", "RECURRENT"]
         )
         params_with_filters = exporter._build_params(options_with_filters)
         assert params_with_filters == {
             "scan-id": "scan-3",
             "severity": ["HIGH", "CRITICAL"],
-            "status": ["NEW", "RECURRENT"]
+            "status": ["NEW", "RECURRENT"],
         }

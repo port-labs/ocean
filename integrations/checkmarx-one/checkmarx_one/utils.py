@@ -2,7 +2,7 @@ from enum import StrEnum
 from typing import NamedTuple, Optional
 
 
-class  ObjectKind(StrEnum):
+class ObjectKind(StrEnum):
     """Enum for Checkmarx One resource kinds."""
 
     PROJECT = "project"
