@@ -57,7 +57,7 @@ class ResyncStrategyFactory:
             return OrganizationsStrategy
 
         # If we have any role ARNs, use multi-account strategy
-        if len(account_role_arn) > 0:
+        if account_role_arn and len(account_role_arn) > 0:
             return MultiAccountStrategy
 
         # Default to single account strategy

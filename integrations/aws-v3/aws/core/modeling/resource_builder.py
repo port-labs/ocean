@@ -1,6 +1,7 @@
 from typing import Any, Self
 from aws.core.modeling.resource_models import ResourceModel
 from pydantic import BaseModel
+from typing import Dict
 
 
 class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: BaseModel]:
@@ -29,7 +30,7 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         """
         self._model = model
 
-    def with_data(self, data: dict[str, Any]) -> Self:
+    def with_properties(self, data: dict[str, Any]) -> Self:
         """
         Set multiple fields in the resource's `Properties` attribute.
 
@@ -39,20 +40,21 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         Returns:
             Self: The builder instance for method chaining.
         """
-        for k, v in data.items():
-            setattr(self._model.Properties, k, v)
+
+        self._model.Properties = self._model.Properties.copy(update=data)
         self._props_set = True
         return self
 
-    def build(self) -> ResourceModelT:
+    def build(self) -> Dict[str, Any]:
         """
         Finalize and return the constructed resource model.
 
         Returns:
-            ResourceModelT: The built resource model instance.
+            Dict[str, Any]: The built resource model dictionary.
         """
         if not self._props_set:
             raise ValueError(
                 "No data has been set for the resource model, use `with_data` to set data."
             )
-        return self._model
+        resource = self._model.dict(exclude_none=True)
+        return resource

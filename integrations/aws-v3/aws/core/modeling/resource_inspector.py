@@ -1,9 +1,11 @@
-from typing import List, Dict, Any, Callable
+from typing import List, Dict, Any, Callable, Union
 from loguru import logger
 import asyncio
 from aws.core.interfaces.action import Action, ActionMap
 from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.modeling.resource_models import ResourceModel
+
+TIdentifier = Union[str, int, Dict[str, Any] | List[Dict[str, Any]]]
 
 
 class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
@@ -50,8 +52,8 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         self.model_factory = model_factory
 
     async def inspect(
-        self, identifiers: List[str], include: List[str]
-    ) -> List[ResourceModelT]:
+        self, identifiers: Any, include: List[str]
+    ) -> List[Dict[str, Any]]:
         """
         Execute the specified actions for the given resource identifiers and
         aggregate their results into a resource model.
@@ -66,20 +68,25 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         action_classes = self.actions_map.merge(include)
         actions = [cls(self.client) for cls in action_classes]
 
-        results = await asyncio.gather(
+        action_results = await asyncio.gather(
             *(self._run_action(action, identifiers) for action in actions)
         )
 
-        resources: List[ResourceModelT] = []
-        for result in results:
-            for item in result:
-                self.builder_cls.with_data(item)
-            built_resource = self.builder_cls.build()
+        resources: List[Dict[str, Any]] = []
+        for action_result in action_results:
+            # Clone the builder before applying building
+            builder = type(self.builder_cls)(self.model_factory())
+            for action_result_item in action_result:
+                if not action_result_item:
+                    continue
+                builder.with_properties(action_result_item)
+            built_resource = builder.build()
             resources.append(built_resource)
         return resources
 
-
-    async def _run_action(self, action: "Action", identifiers: Any) -> List[Dict[str, Any]]:
+    async def _run_action(
+        self, action: "Action", identifiers: Any
+    ) -> List[Dict[str, Any]]:
         """
         Execute a single action for the given identifiers, handling exceptions gracefully.
 
@@ -91,8 +98,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             Dict[str, Any]: The result of the action, or an empty dict if the action fails.
         """
         try:
-            logger.info(f"Running action {action.__class__.__name__} for {identifiers}")
             return await action.execute(identifiers)
         except Exception as e:
-            logger.warning(f"{action.__class__.__name__} failed: {e}")
+            logger.warning(f"{action.__class__.__name__} failed: {e}, skipping ...")
             return []

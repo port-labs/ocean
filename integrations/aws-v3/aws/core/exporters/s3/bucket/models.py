@@ -6,7 +6,7 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 class BucketProperties(BaseModel):
 
-    Name: str = Field(default_factory=str)
+    BucketName: str = Field(default_factory=str)
     BucketArn: Optional[str] = None
     BucketRegion: Optional[str] = None
     CreationDate: Optional[datetime] = None
@@ -27,6 +27,7 @@ class BucketProperties(BaseModel):
 
     class Config:
         extra = "forbid"
+        populate_by_name = True
 
 
 class Bucket(ResourceModel[BucketProperties]):

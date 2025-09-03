@@ -14,11 +14,6 @@ from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
 
 
-def serialize_datetime_objects(data: Any) -> Any:
-    """Convert datetime objects to ISO strings for JSON serialization."""
-    return json.loads(json.dumps(data, default=str))
-
-
 class S3BucketExporter(IResourceExporter):
     _service_name: SupportedServices = "s3"
     _model_cls: Type[Bucket] = Bucket
@@ -34,23 +29,11 @@ class S3BucketExporter(IResourceExporter):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            response = await inspector.inspect(options.bucket_name, options.include)
+            response = await inspector.inspect(
+                [{"Name": options.bucket_name}], options.include
+            )
 
-            return serialize_datetime_objects(response.dict(exclude_none=True))
-
-    async def _process_bucket(
-        self,
-        buckets: List[dict[str, Any]],
-        inspector: ResourceInspector[Bucket],
-        include: list[str],
-    ) -> dict[str, Any]:
-        """Process a single bucket with its list data and actions."""
-        action_result = await inspector.inspect(buckets, include)
-        action_data = action_result.dict(exclude_none=True)
-
-        action_data["Properties"].update(bucket)
-
-        return serialize_datetime_objects(action_data)
+            return response[0]
 
     async def get_paginated_resources(
         self, options: PaginatedBucketRequest
@@ -67,5 +50,4 @@ class S3BucketExporter(IResourceExporter):
 
             async for buckets in paginator.paginate():
                 action_result = await inspector.inspect(buckets, options.include)
-                bucket_results = action_result.dict(exclude_none=True)
-                yield bucket_results
+                yield action_result
