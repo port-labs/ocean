@@ -1,0 +1,20 @@
+resources:
+  - kind: AWS::Organizations::Account
+    selector:
+      query: 'true'
+      includeActions:
+        - ListTagsAction
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Id
+          title: .Properties.Name
+          blueprint: '"awsAccount"'
+          properties:
+            accountArn: .Properties.Arn
+            accountName: .Properties.Name
+            email: .Properties.Email
+            joinedMethod: .Properties.JoinedMethod
+            joinedTimestamp: .Properties.JoinedTimestamp
+            status: .Properties.Status
+            tags: .Properties.Tags

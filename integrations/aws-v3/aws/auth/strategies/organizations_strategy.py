@@ -1,10 +1,11 @@
 from aws.auth.strategies.base import AWSSessionStrategy, HealthCheckMixin
 from aws.auth.utils import AWSSessionError, extract_account_from_arn
 from aws.auth.providers.base import CredentialProvider
+from aws.auth.types import AccountInfo
 from aiobotocore.session import AioSession
 from loguru import logger
 import asyncio
-from typing import Any, AsyncIterator, Dict, List
+from typing import Any, AsyncIterator, List
 from botocore.utils import ArnParser
 
 
@@ -19,7 +20,7 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
         self._valid_arns: list[str] = []
         self._valid_sessions: dict[str, AioSession] = {}
         self._organization_session: AioSession | None = None
-        self._discovered_accounts: List[Dict[str, str]] = []
+        self._discovered_accounts: List[AccountInfo] = []
 
     @property
     def valid_arns(self) -> list[str]:
@@ -95,7 +96,7 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
             logger.error(f"Failed to assume organization role: {e}")
             raise AWSSessionError(f"Cannot assume organization role: {e}")
 
-    async def discover_accounts(self) -> List[Dict[str, str]]:
+    async def discover_accounts(self) -> List[AccountInfo]:
         """Discover all accounts in the AWS Organization."""
         if self._discovered_accounts:
             return self._discovered_accounts
@@ -114,14 +115,16 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
                     for account in page["Accounts"]:
                         # Only include active accounts
                         if account["Status"] == "ACTIVE":
-                            discovered_accounts.append(
-                                {
-                                    "Id": account["Id"],
-                                    "Name": account["Name"],
-                                    "Email": account.get("Email", ""),
-                                    "Arn": account.get("Arn", ""),
-                                }
-                            )
+                            account_info: AccountInfo = {
+                                "Id": account["Id"],
+                                "Name": account["Name"],
+                                "Arn": account["Arn"],
+                                "Status": account["Status"],
+                                "Email": account.get("Email", ""),
+                                "JoinedMethod": account.get("JoinedMethod", ""),
+                                "JoinedTimestamp": account.get("JoinedTimestamp"),
+                            }
+                            discovered_accounts.append(account_info)
 
                 logger.info(f"Discovered {len(discovered_accounts)} active accounts")
                 self._discovered_accounts = discovered_accounts
@@ -198,7 +201,7 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin
             semaphore = asyncio.Semaphore(self.DEFAULT_CONCURRENCY)
 
             async def check_account(
-                account: Dict[str, str],
+                account: AccountInfo,
             ) -> tuple[str, AioSession | None]:
                 async with semaphore:
                     session = await self._can_assume_role_in_account(account["Id"])
@@ -264,7 +267,7 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
 
     async def get_account_sessions(
         self, **kwargs: Any
-    ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
+    ) -> AsyncIterator[tuple[AccountInfo, AioSession]]:
         """Get sessions for all accessible accounts."""
         if not (self.valid_arns and self.valid_sessions):
             await self.healthcheck()
@@ -276,21 +279,14 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
 
         logger.info(f"Providing {len(self.valid_arns)} pre-validated AWS sessions")
 
-        # Map role ARNs back to account information
-        account_map = {account["Id"]: account for account in self._discovered_accounts}
+        accounts = self._discovered_accounts or await self.discover_accounts()
+        account_map = {account["Id"]: account for account in accounts}
 
         for role_arn in self.valid_arns:
             session = self.valid_sessions[role_arn]
             account_id = extract_account_from_arn(role_arn)
 
-            # Get account info from discovered accounts
-            account_info = account_map.get(
-                account_id,
-                {
-                    "Id": account_id,
-                    "Name": f"Account {account_id}",
-                },
-            )
+            account_info = account_map[account_id]
 
             yield account_info, session
 
