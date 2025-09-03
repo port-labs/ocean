@@ -65,11 +65,9 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         if not identifier:
             return self.model_factory()
 
-        # Execute actions directly for single resource
         action_classes = self.actions_map.merge(include)
         actions = [cls(self.client) for cls in action_classes]
 
-        # Filter to only Action types that support single execution
         single_actions = [action for action in actions if isinstance(action, Action)]
 
         if not single_actions:
@@ -88,7 +86,6 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         if not identifiers:
             return []
 
-        # Execute actions and build models
         action_classes = self.actions_map.merge(include)
         actions = [cls(self.client) for cls in action_classes]
 
