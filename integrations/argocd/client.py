@@ -9,13 +9,13 @@ from port_ocean.utils import http_async_client
 class ObjectKind(StrEnum):
     PROJECT = "project"
     APPLICATION = "application"
-    CLUSTER = "cluster"
 
 
 class ResourceKindsWithSpecialHandling(StrEnum):
     DEPLOYMENT_HISTORY = "deployment-history"
     KUBERNETES_RESOURCE = "kubernetes-resource"
     MANAGED_RESOURCE = "managed-resource"
+    CLUSTER = "cluster"
 
 
 DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
@@ -79,6 +79,12 @@ class ArgocdClient:
                 return {}
             raise e
 
+    @staticmethod
+    def _is_cluster_unreachable_exception(exception: Exception) -> bool:
+        return isinstance(
+            exception, httpx.HTTPError
+        ) and "connection attempts failed" in str(exception)
+
     async def get_resources(self, resource_kind: ObjectKind) -> list[dict[str, Any]]:
         url = f"{self.api_url}/{resource_kind}s"
         try:
@@ -86,7 +92,22 @@ class ArgocdClient:
             return response_data["items"] or []
         except Exception as e:
             logger.error(f"Failed to fetch resources of kind {resource_kind}: {e}")
-            if self.ignore_server_error:
+            is_cluster_unreachable = self._is_cluster_unreachable_exception(e)
+            if self.ignore_server_error or is_cluster_unreachable:
+                return []
+            raise e
+
+    async def get_clusters(self) -> list[dict[str, Any]]:
+        url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s"
+        try:
+            response_data = await self._send_api_request(url=url)
+            return response_data["items"] or []
+        except Exception as e:
+            is_cluster_unreachable = self._is_cluster_unreachable_exception(e)
+            if self.ignore_server_error or is_cluster_unreachable:
+                logger.warning(
+                    f"Cluster is unreachable. Skipping cluster ingestion: {e}"
+                )
                 return []
             raise e
 
