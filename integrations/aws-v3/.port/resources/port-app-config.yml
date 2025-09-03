@@ -21,5 +21,3 @@ resources:
             encryption: .Properties.BucketEncryption
             publicAccessBlockConfiguration: .Properties.PublicAccessBlockConfiguration
             tags: .Properties.Tags
-
-
