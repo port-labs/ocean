@@ -10,8 +10,30 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
     """
     Inspects AWS resources by executing actions and building resource models.
 
-    Provides a simple interface to execute multiple actions for resource identifiers
-    and aggregate their results into strongly-typed resource models.
+    This class orchestrates the execution of multiple `Action` and `BatchAction` implementations
+    (as defined in the provided `ActionMap`) for given resource identifiers. It supports both
+    single resource inspection and batch processing of multiple resources concurrently.
+
+    The class uses a builder pattern to construct strongly-typed resource models from action
+    results, automatically handling metadata like account ID and region.
+
+    Type Parameters:
+        ResourceModelT: A subclass of `ResourceModel` representing the resource type.
+
+    Args:
+        client: The AWS client instance used by actions to interact with AWS services.
+        actions_map: An `ActionMap` that provides the set of actions to execute.
+        model_factory: A callable that returns a new instance of the resource model.
+        account_id: The AWS account ID for this resource (required).
+        region: The AWS region for this resource (required).
+
+    Example:
+        # Single resource inspection
+        inspector = ResourceInspector(client, actions_map, MyResourceModel, "123456789", "us-east-1")
+        resource = await inspector.inspect("resource-name", include=["GetBucketTaggingAction"])
+
+        # Batch resource inspection
+        resources = await inspector.inspect_batch(["bucket1", "bucket2"], include=["GetBucketTaggingAction"])
     """
 
     def __init__(
@@ -43,15 +65,12 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         if not identifier:
             return self.model_factory()
 
-        # Execute single actions directly for single resource
         action_classes = self.actions_map.merge(include)
         actions = [cls(self.client) for cls in action_classes]
 
-        # Only execute Action types (single resource operations)
         single_actions = [action for action in actions if isinstance(action, Action)]
 
         if not single_actions:
-            # If no single actions, return empty model
             return self.model_factory()
 
         results = await asyncio.gather(
@@ -67,7 +86,6 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         if not identifiers:
             return []
 
-        # Execute actions and build models
         action_classes = self.actions_map.merge(include)
         actions = [cls(self.client) for cls in action_classes]
 
@@ -95,7 +113,6 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
                 f"Running action {action.__class__.__name__} for {len(identifiers)} identifiers"
             )
 
-            # Pure polymorphism - no type checking needed!
             return await action.execute_for_identifiers(identifiers)
 
         except Exception as e:
@@ -129,13 +146,8 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             self.model_factory(), self.region, self.account_id
         )
 
-        # Pass results directly to builder
         builder.with_properties(identifier_results)
 
-        # Set metadata using the builder
-        builder.with_metadata({"__AccountId": self.account_id, "__Region": self.region})
-
-        # Build the model
         model = builder.build()
 
         return model

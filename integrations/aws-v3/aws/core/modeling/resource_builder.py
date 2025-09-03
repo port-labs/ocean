@@ -55,7 +55,6 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
                 all_properties.update(props)
 
         if all_properties:
-            # Use setattr to set properties directly - more efficient than recreating object
             for key, value in all_properties.items():
                 setattr(self._model.Properties, key, value)
             self._props_set = True
@@ -90,8 +89,7 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
                 "No data has been set for the resource model, use `with_properties` to set data."
             )
 
-        # Set metadata using the Metadata field
-        self._model.Metadata.__Region = self._region
-        self._model.Metadata.__AccountId = self._account_id
+        self._model.account_id = self._account_id
+        self._model.region = self._region
 
         return self._model

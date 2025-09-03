@@ -1,4 +1,3 @@
-import asyncio
 import json
 from typing import Any, AsyncGenerator, Type
 
@@ -44,20 +43,6 @@ class S3BucketExporter(IResourceExporter):
 
             return serialize_datetime_objects(response.dict(exclude_none=True))
 
-    async def _process_bucket(
-        self,
-        bucket: dict[str, Any],
-        inspector: ResourceInspector[Bucket],
-        include: list[str],
-    ) -> dict[str, Any]:
-        """Process a single bucket with its list data and actions."""
-        action_result = await inspector.inspect(bucket["Name"], include)
-        action_data = action_result.dict(exclude_none=True)
-
-        action_data["Properties"].update(bucket)
-
-        return serialize_datetime_objects(action_data)
-
     async def get_paginated_resources(
         self, options: PaginatedBucketRequest
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -78,10 +63,34 @@ class S3BucketExporter(IResourceExporter):
             async for buckets in paginator.paginate():
                 logger.info(f"S3 list_buckets returned {len(buckets)} buckets")
 
-                tasks = [
-                    self._process_bucket(bucket, inspector, options.include)
-                    for bucket in buckets
-                ]
-                bucket_results = await asyncio.gather(*tasks)
+                # Extract bucket names for batch processing
+                bucket_names = [bucket["Name"] for bucket in buckets]
+
+                # Use batch processing - single call per action for all buckets
+                bucket_models = await inspector.inspect_batch(
+                    bucket_names, options.include
+                )
+
+                # Merge list_buckets metadata with action results
+                bucket_results = self._merge_bucket_metadata(buckets, bucket_models)
 
                 yield bucket_results
+
+    def _merge_bucket_metadata(
+        self, buckets: list[dict[str, Any]], bucket_models: list[Bucket]
+    ) -> list[dict[str, Any]]:
+        """Merge list_buckets metadata with action results."""
+        bucket_metadata = {bucket["Name"]: bucket for bucket in buckets}
+
+        bucket_results = []
+        for model in bucket_models:
+            result_dict = model.dict(exclude_none=True)
+
+            bucket_name = result_dict["Properties"]["Name"]
+            list_data = bucket_metadata[bucket_name].copy()
+
+            result_dict["Properties"].update(list_data)
+
+            bucket_results.append(serialize_datetime_objects(result_dict))
+
+        return bucket_results

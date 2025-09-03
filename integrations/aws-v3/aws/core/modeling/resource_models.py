@@ -2,16 +2,6 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 
-class ResourceMetadata(BaseModel):
-    """Base metadata for AWS resources."""
-
-    __Region: Optional[str] = None
-    __AccountId: Optional[str] = None
-
-    class Config:
-        extra = "ignore"
-
-
 class ResourceModel[PropertiesT: BaseModel](BaseModel):
     """
     Generic response model for AWS resources.
@@ -19,12 +9,14 @@ class ResourceModel[PropertiesT: BaseModel](BaseModel):
     Attributes:
         Type (str): The AWS resource type identifier (e.g., "AWS::S3::Bucket").
         Properties (PropertiesT): The properties of the AWS resource, typed as a Pydantic model.
-        Metadata (ResourceMetadata): The metadata for the resource (region, account ID, etc.).
+        account_id (str): The AWS account ID for this resource (aliased as __AccountId).
+        region (str): The AWS region for this resource (aliased as __Region).
     """
 
     Type: str
     Properties: PropertiesT
-    Metadata: ResourceMetadata = Field(default_factory=ResourceMetadata)
+    account_id: Optional[str] = Field(None, alias="__AccountId")
+    region: Optional[str] = Field(None, alias="__Region")
 
     class Config:
         extra = "ignore"
