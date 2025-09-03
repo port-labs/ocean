@@ -33,8 +33,12 @@ class S3BucketExporter(IResourceExporter):
             self.session, options.region, self._service_name
         ) as proxy:
 
-            inspector = SingleResourceInspector(
-                proxy.client, self._actions_map(), lambda: self._model_cls()
+            inspector = ResourceInspector(
+                proxy.client,
+                self._actions_map(),
+                lambda: self._model_cls(),
+                self.account_id,
+                options.region,
             )
             response = await inspector.inspect(options.bucket_name, options.include)
 
@@ -62,8 +66,12 @@ class S3BucketExporter(IResourceExporter):
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
-            inspector = SingleResourceInspector(
-                proxy.client, self._actions_map(), lambda: self._model_cls()
+            inspector = ResourceInspector(
+                proxy.client,
+                self._actions_map(),
+                lambda: self._model_cls(),
+                self.account_id,
+                options.region,
             )
             paginator = proxy.get_paginator("list_buckets", "Buckets")
 

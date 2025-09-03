@@ -1,20 +1,9 @@
-from typing import Self, TypedDict, List, Any, Optional
+from typing import Self, List, Any, Dict
 from aws.core.modeling.resource_models import ResourceModel
 from pydantic import BaseModel
 
 
-class PropertiesData(TypedDict, total=False):
-    """Type-safe properties data"""
-
-    pass  # Will be extended by specific resource types
-
-
-class MetadataData(TypedDict, total=False):
-    """Type-safe metadata data"""
-
-    __Region: str
-    __AccountId: str
-    __Kind: str
+# We use ResourceMetadata from resource_models instead of duplicating here
 
 
 class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: BaseModel]:
@@ -54,7 +43,7 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
 
         self._props_set = False
 
-    def with_properties(self, properties: List[PropertiesData]) -> Self:
+    def with_properties(self, properties: List[Dict[str, Any]]) -> Self:
         """
         Set properties in the resource's `Properties` attribute.
         Merges multiple property dictionaries into the model.
@@ -71,17 +60,14 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
                 all_properties.update(props)
 
         if all_properties:
-            current_properties = self._model.Properties.dict(exclude_none=True)
-            updated_properties = {**current_properties, **all_properties}
-
-            self._model.Properties = self._model.Properties.__class__(
-                **updated_properties
-            )
+            # Use setattr to set properties directly - more efficient than recreating object
+            for key, value in all_properties.items():
+                setattr(self._model.Properties, key, value)
             self._props_set = True
 
         return self
 
-    def with_metadata(self, data: MetadataData) -> Self:
+    def with_metadata(self, data: Dict[str, Any]) -> Self:
         """
         Set metadata fields on the resource with type safety.
 
@@ -109,8 +95,8 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
                 "No data has been set for the resource model, use `with_properties` to set data."
             )
 
-        update_data = {"__AccountId": self._account_id}
-        if self._region:
-            update_data["__Region"] = self._region
+        # Set metadata using the Metadata field
+        self._model.Metadata.__Region = self._region
+        self._model.Metadata.__AccountId = self._account_id
 
-        return self._model.copy(update=update_data)
+        return self._model

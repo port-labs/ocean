@@ -1,6 +1,9 @@
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+)
 
 
 class ECSClusterProperties(BaseModel):
@@ -33,6 +36,7 @@ class ECSCluster(ResourceModel[ECSClusterProperties]):
 
     Type: str = "AWS::ECS::Cluster"
     Properties: ECSClusterProperties = Field(default_factory=ECSClusterProperties)
+    # Metadata is inherited from ResourceModel base class
 
 
 class SingleECSClusterRequest(ResourceRequestModel):
