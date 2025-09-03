@@ -1,8 +1,8 @@
-from typing import List, Dict, Any, Callable, Optional, cast, Union
+from typing import List, Dict, Any, Callable, Union
 from loguru import logger
 import asyncio
 from aws.core.interfaces.action import Action, ActionMap, BatchAction
-from aws.core.modeling.resource_builder import ResourceBuilder, PropertiesData
+from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.modeling.resource_models import ResourceModel
 
 
@@ -19,8 +19,8 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         client: Any,
         actions_map: ActionMap,
         model_factory: Callable[[], ResourceModelT],
-        region: Optional[str] = None,
-        account_id: Optional[str] = None,
+        account_id: str,
+        region: str,
     ) -> None:
         """
         Initialize the ResourceInspector.
@@ -29,8 +29,8 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             client: The AWS client instance to be used by actions.
             actions_map: The map of available actions for the resource.
             model_factory: A callable that returns a new instance of the resource model.
-            region: The AWS region for this resource (optional).
-            account_id: The AWS account ID for this resource (optional).
+            account_id: The AWS account ID for this resource (required).
+            region: The AWS region for this resource (required).
         """
         self.client = client
         self.actions_map = actions_map
@@ -39,16 +39,23 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         self.account_id = account_id
 
     async def inspect(self, identifier: str, include: List[str]) -> ResourceModelT:
-        """Inspect a single resource."""
+        """Inspect a single resource using single actions only."""
         if not identifier:
             return self.model_factory()
 
-        # Execute actions directly for single resource
+        # Execute single actions directly for single resource
         action_classes = self.actions_map.merge(include)
         actions = [cls(self.client) for cls in action_classes]
 
+        # Only execute Action types (single resource operations)
+        single_actions = [action for action in actions if isinstance(action, Action)]
+
+        if not single_actions:
+            # If no single actions, return empty model
+            return self.model_factory()
+
         results = await asyncio.gather(
-            *(action.execute(identifier) for action in actions)
+            *(action.execute(identifier) for action in single_actions)
         )
 
         return self._build_model(results)
@@ -56,7 +63,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
     async def inspect_batch(
         self, identifiers: List[str], include: List[str]
     ) -> List[ResourceModelT]:
-        """Inspect multiple resources."""
+        """Inspect multiple resources using both Action and BatchAction types."""
         if not identifiers:
             return []
 
@@ -74,7 +81,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         self, action: Union[Action, BatchAction], identifiers: List[str]
     ) -> List[Dict[str, Any]]:
         """
-        Execute a single action for the given identifiers.
+        Execute a single action for the given identifiers using pure polymorphism.
 
         Args:
             action: The action instance to execute (either Action or BatchAction).
@@ -84,16 +91,12 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             List of results from the action execution.
         """
         try:
-            logger.info(f"Running action {action.__class__.__name__} for {identifiers}")
+            logger.info(
+                f"Running action {action.__class__.__name__} for {len(identifiers)} identifiers"
+            )
 
-            if isinstance(action, BatchAction):
-                return await action.execute_batch(identifiers)
-
-            if isinstance(action, Action):
-                
-                return await asyncio.gather(
-                    *[action.execute(identifier) for identifier in identifiers]
-                )
+            # Pure polymorphism - no type checking needed!
+            return await action.execute_for_identifiers(identifiers)
 
         except Exception as e:
             logger.warning(f"Action {action.__class__.__name__} failed: {e}")
@@ -123,13 +126,16 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
     def _build_model(self, identifier_results: List[Dict[str, Any]]) -> ResourceModelT:
         """Build a resource model from identifier results using ResourceBuilder."""
         builder: ResourceBuilder[ResourceModelT, Any] = ResourceBuilder(
-            self.model_factory(), self.region or "", self.account_id or ""
+            self.model_factory(), self.region, self.account_id
         )
 
-        # Convert Dict[str, Any] to PropertiesData for type compatibility
-        properties_data: List[PropertiesData] = [
-            cast(PropertiesData, result) for result in identifier_results
-        ]
-        builder.with_properties(properties_data)
+        # Pass results directly to builder
+        builder.with_properties(identifier_results)
 
-        return builder.build()
+        # Set metadata using the builder
+        builder.with_metadata({"__AccountId": self.account_id, "__Region": self.region})
+
+        # Build the model
+        model = builder.build()
+
+        return model

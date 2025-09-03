@@ -28,8 +28,8 @@ class ECSClusterExporter(IResourceExporter):
                 proxy.client,
                 self._actions_map(),
                 lambda: self._model_cls(),
-                options.region,
                 self.account_id,
+                options.region,
             )
             response = await inspector.inspect(options.cluster_arn, options.include)
 
@@ -47,8 +47,8 @@ class ECSClusterExporter(IResourceExporter):
                 proxy.client,
                 self._actions_map(),
                 lambda: self._model_cls(),
-                options.region,
                 self.account_id,
+                options.region,
             )
             paginator = proxy.get_paginator("list_clusters", "clusterArns")
 
