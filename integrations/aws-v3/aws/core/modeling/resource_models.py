@@ -36,14 +36,11 @@ class ResourceRequestModel(BaseModel):
     Base request parameters for exporting AWS resources.
 
     Attributes:
-        region (Optional[str]): The AWS region from which to export resources (optional for global services).
+        region (str): The AWS region from which to export resources.
         include (List[str]): List of resource types or names to include in the export.
     """
 
-    region: Optional[str] = Field(
-        None,
-        description="The AWS region to export resources from (optional for global services)",
-    )
+    region: str = Field(..., description="The AWS region to export resources from")
     include: List[str] = Field(
         default_factory=list, description="The resources to include in the export"
     )

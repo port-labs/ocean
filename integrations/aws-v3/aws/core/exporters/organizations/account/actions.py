@@ -1,11 +1,11 @@
-from typing import Any, List, Type
+from typing import Any, List, Type, Union
 
 from loguru import logger
 
-from aws.core.interfaces.action import Action, APIAction, ActionMap
+from aws.core.interfaces.action import Action, ActionMap, BatchAction
 
 
-class ListTagsAction(APIAction):
+class ListTagsAction(Action):
     """List tags for an AWS Organizations account."""
 
     async def _execute(self, identifier: str) -> dict[str, Any]:
@@ -17,10 +17,10 @@ class ListTagsAction(APIAction):
 
 
 class OrganizationsAccountActionsMap(ActionMap):
-    defaults: List[Type[Action]] = []
-    options: List[Type[Action]] = [ListTagsAction]
+    defaults: List[Type[Union[Action, BatchAction]]] = []  # No default actions needed
+    options: List[Type[Union[Action, BatchAction]]] = [ListTagsAction]
 
-    def merge(self, include: List[str]) -> List[Type[Action]]:
+    def merge(self, include: List[str]) -> List[Type[Union[Action, BatchAction]]]:
         """Merge default actions with requested optional actions."""
         if not include:
             return self.defaults

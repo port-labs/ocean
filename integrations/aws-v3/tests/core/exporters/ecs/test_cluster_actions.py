@@ -4,8 +4,7 @@ import pytest
 from aws.core.exporters.ecs.cluster.actions import (
     ECSClusterDetailsAction,
     GetClusterPendingTasksAction,
-    ECSClusterSingleActionsMap,
-    ECSClusterBatchActionsMap,
+    ECSClusterActionsMap,
 )
 from aws.core.interfaces.action import Action, BatchAction
 
@@ -241,78 +240,48 @@ class TestGetClusterPendingTasksAction:
         )
 
 
-class TestECSClusterSingleActionsMap:
+class TestECSClusterActionsMap:
 
     def test_defaults_contains_required_actions(self) -> None:
-        """Test that defaults contains the required actions for single operations."""
-        actions_map = ECSClusterSingleActionsMap()
-        # Single operations have no defaults - ECS cluster details are batch-only
-        assert len(actions_map.defaults) == 0
+        """Test that defaults contains the required actions."""
+        actions_map = ECSClusterActionsMap()
+        assert ECSClusterDetailsAction in actions_map.defaults
+        assert len(actions_map.defaults) == 1
 
     def test_options_contains_optional_actions(self) -> None:
-        """Test that options contains the optional actions for single operations."""
-        actions_map = ECSClusterSingleActionsMap()
+        """Test that options contains the optional actions."""
+        actions_map = ECSClusterActionsMap()
         assert GetClusterPendingTasksAction in actions_map.options
         assert len(actions_map.options) == 1
 
     def test_merge_without_include(self) -> None:
         """Test merge without include returns only defaults."""
-        actions_map = ECSClusterSingleActionsMap()
+        actions_map = ECSClusterActionsMap()
         result = actions_map.merge([])
-        assert len(result) == 0  # No defaults for single operations
+        assert len(result) == 1
+        assert ECSClusterDetailsAction in result
+        assert GetClusterPendingTasksAction not in result
 
     def test_merge_with_pending_tasks_action(self) -> None:
         """Test merge with GetClusterPendingTasksAction included."""
-        actions_map = ECSClusterSingleActionsMap()
+        actions_map = ECSClusterActionsMap()
         result = actions_map.merge(["GetClusterPendingTasksAction"])
-        assert len(result) == 1
+        assert len(result) == 2
+        assert ECSClusterDetailsAction in result
         assert GetClusterPendingTasksAction in result
 
     def test_merge_with_unknown_action(self) -> None:
         """Test merge with unknown action returns only defaults."""
-        actions_map = ECSClusterSingleActionsMap()
+        actions_map = ECSClusterActionsMap()
         result = actions_map.merge(["UnknownAction"])
-        assert len(result) == 0  # No defaults for single operations
+        assert len(result) == 1
+        assert ECSClusterDetailsAction in result
+        assert GetClusterPendingTasksAction not in result
 
     def test_merge_with_multiple_actions(self) -> None:
         """Test merge with multiple actions."""
-        actions_map = ECSClusterSingleActionsMap()
+        actions_map = ECSClusterActionsMap()
         result = actions_map.merge(["GetClusterPendingTasksAction", "UnknownAction"])
-        assert len(result) == 1
+        assert len(result) == 2
+        assert ECSClusterDetailsAction in result
         assert GetClusterPendingTasksAction in result
-
-
-class TestECSClusterBatchActionsMap:
-
-    def test_defaults_contains_required_actions(self) -> None:
-        """Test that defaults contains the required actions for batch operations."""
-        actions_map = ECSClusterBatchActionsMap()
-        assert ECSClusterDetailsAction in actions_map.defaults
-        assert len(actions_map.defaults) == 1
-
-    def test_options_contains_optional_actions(self) -> None:
-        """Test that options contains the optional actions for batch operations."""
-        actions_map = ECSClusterBatchActionsMap()
-        # No batch options currently - all batch operations are in defaults
-        assert len(actions_map.options) == 0
-
-    def test_merge_without_include(self) -> None:
-        """Test merge without include returns only defaults."""
-        actions_map = ECSClusterBatchActionsMap()
-        result = actions_map.merge([])
-        assert len(result) == 1
-        assert ECSClusterDetailsAction in result
-
-    def test_merge_with_unknown_action(self) -> None:
-        """Test merge with unknown action returns only defaults."""
-        actions_map = ECSClusterBatchActionsMap()
-        result = actions_map.merge(["UnknownAction"])
-        assert len(result) == 1
-        assert ECSClusterDetailsAction in result
-
-    def test_merge_with_multiple_actions(self) -> None:
-        """Test merge with multiple actions."""
-        actions_map = ECSClusterBatchActionsMap()
-        result = actions_map.merge(["UnknownAction1", "UnknownAction2"])
-        assert len(result) == 1
-        assert ECSClusterDetailsAction in result

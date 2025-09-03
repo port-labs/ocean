@@ -1,5 +1,9 @@
-from typing import Dict, Any, List, Type
-from aws.core.interfaces.action import Action, SingleActionMap
+from typing import Dict, Any, List, Type, Union
+from aws.core.interfaces.action import (
+    Action,
+    BatchAction,
+    ActionMap,
+)
 from loguru import logger
 
 
@@ -56,21 +60,19 @@ class GetBucketTaggingAction(Action):
             raise
 
 
-class S3BucketActionsMap(SingleActionMap):
-    """Action map for S3 bucket operations - only Action types."""
-
-    defaults: List[Type[Action]] = [
+class S3BucketActionsMap(ActionMap):
+    defaults: List[Type[Union[Action, BatchAction]]] = [
         GetBucketTaggingAction,
         GetBucketLocationAction,
         GetBucketArnAction,
     ]
-    options: List[Type[Action]] = [
+    options: List[Type[Union[Action, BatchAction]]] = [
         GetBucketPublicAccessBlockAction,
         GetBucketOwnershipControlsAction,
         GetBucketEncryptionAction,
     ]
 
-    def merge(self, include: List[str]) -> List[Type[Action]]:
+    def merge(self, include: List[str]) -> List[Type[Union[Action, BatchAction]]]:
         # Always include all defaults, and any options whose class name is in include
         return self.defaults + [
             action for action in self.options if action.__name__ in include

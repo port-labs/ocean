@@ -19,23 +19,18 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         TProperties: A Pydantic `BaseModel` representing the resource's properties.
 
     Example:
-        >>> builder = ResourceBuilder(MyResourceModel(Type="...", Properties=MyProperties()), "123456789", "eu-west-1")
+        >>> builder = ResourceBuilder(MyResourceModel(Type="...", Properties=MyProperties()), "eu-west-1", "123456789")
         >>> resource = builder.with_properties([{"Name": "example"}, {"Tags": [{"Key": "Env", "Value": "prod"}]}]).with_metadata({"__Kind": "AWS::S3::Bucket"}).build()
     """
 
-    def __init__(
-        self,
-        model: ResourceModelT,
-        account_id: str,
-        region: Optional[str] = None,
-    ) -> None:
+    def __init__(self, model: ResourceModelT, region: str, account_id: str) -> None:
         """
         Initialize the builder with a resource model instance and context.
 
         Args:
             model: An instance of a resource model to be built or modified.
+            region: The AWS region for this resource.
             account_id: The AWS account ID for this resource.
-            region: The AWS region for this resource (optional for global services).
         """
         self._model = model
         self._region = region

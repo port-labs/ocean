@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Union, Protocol
+from typing import Dict, Any, List, Union
 from abc import ABC, abstractmethod
 from aiobotocore.client import AioBaseClient
 from typing import Type, Protocol
@@ -47,25 +47,8 @@ class BatchAction(ABC):
     async def _execute_batch(self, identifiers: List[str]) -> List[Dict[str, Any]]: ...
 
 
-class SingleActionMap(Protocol):
-    """Protocol for action maps that only contain Action types for single resource operations."""
+class ActionMap(Protocol):
+    defaults: List[Type[Union[Action, BatchAction]]]
+    options: List[Type[Union[Action, BatchAction]]]
 
-    @property
-    def defaults(self) -> List[Type[Action]]: ...
-
-    @property
-    def options(self) -> List[Type[Action]]: ...
-
-    def merge(self, include: List[str]) -> List[Type[Action]]: ...
-
-
-class BatchActionMap(Protocol):
-    """Protocol for action maps that only contain BatchAction types for batch operations."""
-
-    @property
-    def defaults(self) -> List[Type[BatchAction]]: ...
-
-    @property
-    def options(self) -> List[Type[BatchAction]]: ...
-
-    def merge(self, include: List[str]) -> List[Type[BatchAction]]: ...
+    def merge(self, include: List[str]) -> List[Type[Union[Action, BatchAction]]]: ...

@@ -13,7 +13,7 @@ from aws.core.exporters.s3.bucket.models import (
 )
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
-from aws.core.modeling.resource_inspector import SingleResourceInspector
+from aws.core.modeling.resource_inspector import ResourceInspector
 
 
 def serialize_datetime_objects(data: Any) -> Any:
@@ -47,7 +47,7 @@ class S3BucketExporter(IResourceExporter):
     async def _process_bucket(
         self,
         bucket: dict[str, Any],
-        inspector: SingleResourceInspector[Bucket],
+        inspector: ResourceInspector[Bucket],
         include: list[str],
     ) -> dict[str, Any]:
         """Process a single bucket with its list data and actions."""

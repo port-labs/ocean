@@ -32,8 +32,8 @@ class Account(ResourceModel[AccountProperties]):
 class SingleAccountRequest(ResourceRequestModel):
     """Options for exporting a single AWS account."""
 
-    region: Optional[str] = Field(
-        None, description="The AWS region (optional for global services)"
+    region: str = Field(
+        "", description="The AWS region (empty string for global services)"
     )
     account_id: str = Field(..., description="The ID of the AWS account to export")
     account_data: AccountInfo = Field(
@@ -44,8 +44,8 @@ class SingleAccountRequest(ResourceRequestModel):
 class PaginatedAccountRequest(ResourceRequestModel):
     """Options for exporting paginated AWS accounts."""
 
-    region: Optional[str] = Field(
-        None, description="The AWS region (optional for global services)"
+    region: str = Field(
+        "", description="The AWS region (empty string for global services)"
     )
     account_data: AccountInfo = Field(
         ..., description="Account data from authentication strategy"

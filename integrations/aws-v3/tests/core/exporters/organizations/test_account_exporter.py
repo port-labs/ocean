@@ -56,7 +56,8 @@ class TestOrganizationsAccountExporter:
 
         # Test that get_paginated_resources raises NotImplementedError
         with pytest.raises(
-            NotImplementedError, match="Account resources don't support pagination"
+            NotImplementedError,
+            match="Account discovery is performed by the authentication strategy.",
         ):
             async for batch in mock_exporter.get_paginated_resources(options):
                 pass

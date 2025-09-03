@@ -7,7 +7,7 @@ from aws.core.exporters.organizations.account.actions import (
     ListTagsAction,
     OrganizationsAccountActionsMap,
 )
-from aws.core.interfaces.action import APIAction
+from aws.core.interfaces.action import Action
 
 # Type ignore for mock Organizations client methods throughout this file
 # mypy: disable-error-code=attr-defined
@@ -28,8 +28,8 @@ class TestListTagsAction:
         return ListTagsAction(mock_client)
 
     def test_inheritance(self, action: ListTagsAction) -> None:
-        """Test that the action inherits from APIAction."""
-        assert isinstance(action, APIAction)
+        """Test that the action inherits from Action."""
+        assert isinstance(action, Action)
 
     @pytest.mark.asyncio
     async def test_execute_success_with_tags(self, action: ListTagsAction) -> None:

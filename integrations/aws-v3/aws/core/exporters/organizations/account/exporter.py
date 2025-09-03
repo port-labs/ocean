@@ -10,7 +10,7 @@ from aws.core.exporters.organizations.account.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
-from aws.core.modeling.resource_builder import ResourceBuilder
+from aws.core.client.proxy import AioBaseClientProxy
 
 
 class OrganizationsAccountExporter(IResourceExporter):
@@ -26,41 +26,30 @@ class OrganizationsAccountExporter(IResourceExporter):
     _actions_map: Type[OrganizationsAccountActionsMap] = OrganizationsAccountActionsMap
 
     async def get_resource(self, options: SingleAccountRequest) -> dict[str, Any]:
-        """Fetch single account using the provided account data."""
-        builder: Any = ResourceBuilder(self._model_cls(), account_id=options.account_id)
+        """Fetch single account using the standard ResourceInspector pattern."""
+        async with AioBaseClientProxy(self.session, None, self._service_name) as proxy:
+            inspector = ResourceInspector(
+                proxy.client,
+                self._actions_map(),
+                lambda: self._model_cls(),
+                options.account_id,
+                "",  # region is empty string for global services like Organizations
+            )
 
-        properties_data: list[Any] = [options.account_data]
+            # Always call ResourceInspector (even if no actions)
+            result = await inspector.inspect(options.account_id, options.include)
 
-        if options.include:
-            async with self.session.create_client(
-                "organizations", region_name=None
-            ) as client:
-                inspector = ResourceInspector(
-                    client,
-                    self._actions_map(),
-                    lambda: self._model_cls(),
-                    account_id=options.account_id,
-                )
+            # Always inject authentication data
+            for key, value in options.account_data.items():
+                setattr(result.Properties, key, value)
 
-                enriched_model = await inspector.inspect(
-                    options.account_id, options.include
-                )
-
-                action_properties = enriched_model.Properties.dict(exclude_none=True)
-
-                if action_properties:
-                    properties_data.append(action_properties)
-
-        builder.with_properties(properties_data)
-        account_model = builder.build()
-
-        return account_model.dict(exclude_none=True)
+            return result.dict(exclude_none=True)
 
     async def get_paginated_resources(
         self, options: PaginatedAccountRequest
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Accounts don't support pagination - use get_resource instead."""
         raise NotImplementedError(
-            "Account resources don't support pagination. Use get_resource() instead."
+            "Account discovery is performed by the authentication strategy."
         )
         yield
