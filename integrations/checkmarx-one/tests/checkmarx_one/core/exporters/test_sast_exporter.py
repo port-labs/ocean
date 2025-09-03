@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Any, AsyncIterator, List
 
 from checkmarx_one.core.options import SingleSastOptions, ListSastOptions
-from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 
 
 # Mock port_ocean imports before importing the module under test
@@ -52,9 +51,9 @@ class TestCheckmarxSastExporter:
     def test_build_params_minimal(self, exporter: CheckmarxSastExporter) -> None:
         """Test building params with minimal options."""
         options: ListSastOptions = {"scan_id": "scan-123"}
-        
+
         params = exporter._build_params(options)
-        
+
         assert params == {
             "scan-id": "scan-123",
             "visible-columns": [
@@ -76,7 +75,7 @@ class TestCheckmarxSastExporter:
                 "status",
                 "state",
                 "nodes",
-            ]
+            ],
         }
 
     @pytest.mark.asyncio
@@ -119,7 +118,7 @@ class TestCheckmarxSastExporter:
         scan_id = "scan-123"
         result_id = "result-456"
         options: SingleSastOptions = {"scan_id": scan_id, "result_id": result_id}
-        expected_response = {"results": []}
+        expected_response: dict[str, Any] = {"results": []}
 
         mock_client.send_api_request = AsyncMock(return_value=expected_response)
 
@@ -270,7 +269,7 @@ class TestCheckmarxSastExporter:
                 "status",
                 "state",
                 "nodes",
-            ]
+            ],
         }
 
     @pytest.mark.asyncio
@@ -324,19 +323,21 @@ class TestCheckmarxSastExporter:
     ) -> None:
         """Test building params with different scan ID."""
         options: ListSastOptions = {"scan_id": "different-scan-456"}
-        
+
         params = exporter._build_params(options)
-        
+
         assert params["scan-id"] == "different-scan-456"
         assert "visible-columns" in params
         assert len(params["visible-columns"]) == 18  # All expected columns (18, not 19)
 
-    def test_visible_columns_includes_scan_id(self, exporter: CheckmarxSastExporter) -> None:
+    def test_visible_columns_includes_scan_id(
+        self, exporter: CheckmarxSastExporter
+    ) -> None:
         """Test that visible columns always includes scan-id."""
         options: ListSastOptions = {"scan_id": "scan-123"}
-        
+
         params = exporter._build_params(options)
-        
+
         assert "scan-id" in params["visible-columns"]
         assert params["visible-columns"][0] == "scan-id"
 
@@ -345,10 +346,10 @@ class TestCheckmarxSastExporter:
     ) -> None:
         """Test that visible columns contains all expected SAST result fields."""
         options: ListSastOptions = {"scan_id": "scan-123"}
-        
+
         params = exporter._build_params(options)
         visible_columns = params["visible-columns"]
-        
+
         expected_fields = [
             "scan-id",
             "result-hash",
@@ -369,8 +370,10 @@ class TestCheckmarxSastExporter:
             "state",
             "nodes",
         ]
-        
+
         for field in expected_fields:
-            assert field in visible_columns, f"Field {field} not found in visible columns"
-        
-        assert len(visible_columns) == len(expected_fields) 
+            assert (
+                field in visible_columns
+            ), f"Field {field} not found in visible columns"
+
+        assert len(visible_columns) == len(expected_fields)
