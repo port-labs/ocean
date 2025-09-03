@@ -3,6 +3,7 @@ import pytest
 
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.client.paginator import AsyncPaginator
+from aws.core.helpers.types import SupportedServices
 
 
 class TestAioBaseClientProxy:
@@ -194,7 +195,7 @@ class TestAioBaseClientProxy:
         self, isolated_mock_session: AsyncMock
     ) -> None:
         """Test that proxy works with different supported services."""
-        services = ["s3", "ecs"]
+        services: list[SupportedServices] = ["s3", "ecs"]
 
         for service in services:
             mock_client = AsyncMock()
