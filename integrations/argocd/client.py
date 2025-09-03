@@ -91,12 +91,12 @@ class ArgocdClient:
                 return {}
             raise e
         except httpx.HTTPError as e:
-            if self._is_cluster_unreachable_exception(e, kind):
-                return {}
             logger.error(
                 f"Encountered an HTTP error {e} while sending a request to {method} {url} with query_params: {query_params}"
             )
             if self.ignore_server_error:
+                return {}
+            if self._is_cluster_unreachable_exception(e, kind):
                 return {}
             raise e
 
