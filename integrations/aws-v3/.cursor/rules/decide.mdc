@@ -1,0 +1,52 @@
+---
+description: Quick decision trees for AWS exporters
+globs: ["aws/core/exporters/**/*"]
+alwaysApply: true
+---
+
+# Quick Decisions
+
+## Pattern Selection (30 seconds)
+```
+Batch API? (describe_clusters) → Regional Batch → _handle_regional_resource_resync
+Global? (Organizations) → Global → direct get_resource calls
+Otherwise → Regional Individual → _handle_global_resource_resync
+```
+
+## API Method Research (when building)
+For each AWS service, find these methods in the API docs:
+- **List method**: `list_{resources}` (e.g., `list_queues`, `list_buckets`)
+- **Details method**: `describe_{resource}` or `get_{resource}_*` 
+- **Response structure**: What field contains the resource list/details?
+- **Identifier field**: What field uniquely identifies each resource?
+- **Additional methods**: Any `get_{resource}_{feature}` methods for enrichment
+
+## Critical Constructor
+```python
+inspector = ResourceInspector(
+    proxy.client, self._actions_map(), lambda: self._model_cls(),
+    self.account_id, options.region  # Both required str
+)
+```
+
+## Field Mapping Rule
+```python
+# Action returns: {"BucketArn": "..."}
+# Model must have: BucketArn: Optional[str] = None
+# ALL action return fields must exist in Properties model
+```
+
+## Complete Integration Checklist
+- [ ] **Exporter files**: models.py, actions.py, exporter.py, __init__.py
+- [ ] **Integration**: main.py handler, types.py updates  
+- [ ] **Port config**: Entity mapping with proper field references
+- [ ] **Blueprint**: Schema definition with properties and relations
+- [ ] **Tests**: Comprehensive test coverage with proper mocking
+- [ ] **Example**: Sample resource JSON for documentation
+
+## Top 5 Mistakes
+1. ❌ Making account_id/region Optional in ResourceInspector
+2. ❌ Using snake_case for field names (use exact AWS API names)
+3. ❌ Forgetting to add action return fields to Properties model
+4. ❌ Creating custom metadata classes (use inherited ResourceMetadata)
+5. ❌ Using wrong integration handler for pattern type
