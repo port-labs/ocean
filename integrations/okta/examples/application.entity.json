@@ -1,0 +1,132 @@
+{
+  "id": "0oa1234567890abcdef",
+  "name": "example_saml_app",
+  "label": "Example SAML Application",
+  "status": "ACTIVE",
+  "lastUpdated": "2024-01-10T15:30:00.000Z",
+  "created": "2023-06-15T10:00:00.000Z",
+  "accessibility": {
+    "selfService": false,
+    "errorRedirectUrl": null,
+    "loginRedirectUrl": null
+  },
+  "licensing": {
+    "seatCount": 100
+  },
+  "visibility": {
+    "autoSubmitToolbar": false,
+    "hide": {
+      "iOS": false,
+      "web": false
+    },
+    "appLinks": {
+      "example_saml_app_link": true
+    }
+  },
+  "features": [
+    "IMPORT_NEW_USERS",
+    "IMPORT_PROFILE_UPDATES",
+    "IMPORT_USER_SCHEMA",
+    "PROFILE_MASTERING",
+    "PROVISIONING",
+    "PUSH_NEW_USERS",
+    "PUSH_PROFILE_UPDATES",
+    "PUSH_USER_DEACTIVATION"
+  ],
+  "signOnMode": "SAML_2_0",
+  "credentials": {
+    "userNameTemplate": {
+      "template": "${source.login}",
+      "type": "BUILT_IN"
+    },
+    "signing": {}
+  },
+  "settings": {
+    "app": {},
+    "notifications": {
+      "vpn": {
+        "network": {
+          "connection": "DISABLED"
+        },
+        "message": null,
+        "helpUrl": null
+      }
+    },
+    "signOn": {
+      "defaultRelayState": "",
+      "ssoAcsUrl": "https://example.com/sso/saml",
+      "idpIssuer": "http://www.okta.com/${org.externalKey}",
+      "audience": "https://example.com/sso/saml/metadata",
+      "recipient": "https://example.com/sso/saml",
+      "destination": "https://example.com/sso/saml",
+      "subjectNameIdTemplate": "${user.userName}",
+      "subjectNameIdFormat": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified",
+      "responseSigned": true,
+      "assertionSigned": true,
+      "signatureAlgorithm": "RSA_SHA256",
+      "digestAlgorithm": "SHA256",
+      "honorForceAuthn": true,
+      "authnContextClassRef": "urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport",
+      "spIssuer": null,
+      "requestCompressed": false,
+      "attributeStatements": []
+    }
+  },
+  "users": [
+    {
+      "id": "00u1234567890abcdef",
+      "externalId": "john.doe@example.com",
+      "created": "2023-06-16T09:00:00.000Z",
+      "lastUpdated": "2024-01-05T14:30:00.000Z",
+      "scope": "USER",
+      "status": "ACTIVE",
+      "statusChanged": "2023-06-16T09:05:00.000Z",
+      "profile": {
+        "userName": "john.doe@example.com",
+        "email": "john.doe@example.com",
+        "displayName": "John Doe"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": "00g1234567890abcdef",
+      "lastUpdated": "2023-06-16T10:00:00.000Z",
+      "priority": 0,
+      "profile": {
+        "name": "Engineering",
+        "description": "Engineering team members"
+      }
+    }
+  ],
+  "_links": {
+    "logo": [
+      {
+        "name": "medium",
+        "href": "https://dev-123456.okta.com/img/logos/saml_logos/example_saml_app_medium.png",
+        "type": "image/png"
+      }
+    ],
+    "appLinks": [
+      {
+        "name": "example_saml_app_link",
+        "href": "https://dev-123456.okta.com/home/example_saml_app/0oa1234567890abcdef/1234",
+        "type": "text/html"
+      }
+    ],
+    "help": {
+      "href": "https://dev-123456.okta.com/app/example_saml_app/0oa1234567890abcdef/setup/help/SAML_2_0/instructions",
+      "type": "text/html"
+    },
+    "metadata": {
+      "href": "https://dev-123456.okta.com/app/example_saml_app_12345/sso/saml/metadata",
+      "type": "application/xml"
+    },
+    "users": {
+      "href": "https://dev-123456.okta.com/api/v1/apps/0oa1234567890abcdef/users"
+    },
+    "groups": {
+      "href": "https://dev-123456.okta.com/api/v1/apps/0oa1234567890abcdef/groups"
+    }
+  }
+}

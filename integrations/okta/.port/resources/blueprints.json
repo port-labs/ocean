@@ -1,0 +1,356 @@
+[
+  {
+    "identifier": "oktaUser",
+    "title": "Okta User",
+    "icon": "User",
+    "description": "An Okta user account",
+    "schema": {
+      "properties": {
+        "id": {
+          "title": "User ID",
+          "type": "string",
+          "description": "Unique identifier for the user"
+        },
+        "email": {
+          "title": "Email",
+          "type": "string",
+          "format": "email",
+          "description": "User's email address"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "description": "Current status of the user account",
+          "enum": ["ACTIVE", "DEPROVISIONED", "LOCKED_OUT", "PASSWORD_EXPIRED", "PROVISIONED", "RECOVERY", "STAGED", "SUSPENDED"]
+        },
+        "created": {
+          "title": "Created Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date when the user was created"
+        },
+        "activated": {
+          "title": "Activated Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date when the user was activated"
+        },
+        "displayName": {
+          "title": "Display Name",
+          "type": "string",
+          "description": "Full display name of the user"
+        },
+        "login": {
+          "title": "Login",
+          "type": "string",
+          "description": "User's login identifier"
+        },
+        "type": {
+          "title": "User Type",
+          "type": "string",
+          "description": "Type of user account"
+        },
+        "locale": {
+          "title": "Locale",
+          "type": "string",
+          "description": "User's locale setting"
+        },
+        "department": {
+          "title": "Department",
+          "type": "string",
+          "description": "User's department"
+        }
+      },
+      "required": ["id", "email", "status"]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "groups": {
+        "target": "oktaGroup",
+        "title": "Groups",
+        "description": "Groups the user belongs to",
+        "required": false,
+        "many": true
+      },
+      "manager": {
+        "target": "oktaUser",
+        "title": "Manager",
+        "description": "User's manager",
+        "required": false,
+        "many": false
+      },
+      "roles": {
+        "target": "oktaRole",
+        "title": "Roles",
+        "description": "Roles assigned to the user",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "oktaGroup",
+    "title": "Okta Group",
+    "icon": "Users",
+    "description": "An Okta group",
+    "schema": {
+      "properties": {
+        "id": {
+          "title": "Group ID",
+          "type": "string",
+          "description": "Unique identifier for the group"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "description": "Name of the group"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "Description of the group"
+        },
+        "type": {
+          "title": "Group Type",
+          "type": "string",
+          "description": "Type of group",
+          "enum": ["OKTA_GROUP", "APP_GROUP", "BUILT_IN"]
+        },
+        "created": {
+          "title": "Created Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date when the group was created"
+        },
+        "lastUpdated": {
+          "title": "Last Updated",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date when the group was last updated"
+        },
+        "lastMembershipUpdated": {
+          "title": "Last Membership Updated",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date when group membership was last updated"
+        }
+      },
+      "required": ["id", "name"]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "members": {
+        "target": "oktaUser",
+        "title": "Members",
+        "description": "Users who are members of this group",
+        "required": false,
+        "many": true
+      },
+      "team": {
+        "target": "oktaGroup",
+        "title": "Parent Team",
+        "description": "Parent team or group",
+        "required": false,
+        "many": false
+      },
+      "roles": {
+        "target": "oktaRole",
+        "title": "Roles",
+        "description": "Roles assigned to this group",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "oktaRole",
+    "title": "Okta Role",
+    "icon": "Lock",
+    "description": "An Okta role definition",
+    "schema": {
+      "properties": {
+        "id": {
+          "title": "Role ID",
+          "type": "string",
+          "description": "Unique identifier for the role"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string",
+          "description": "Human-readable label for the role"
+        },
+        "type": {
+          "title": "Role Type",
+          "type": "string",
+          "description": "Type of role",
+          "enum": ["STANDARD", "CUSTOM"]
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "description": "Status of the role",
+          "enum": ["ACTIVE", "INACTIVE"]
+        },
+        "created": {
+          "title": "Created Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date when the role was created"
+        },
+        "lastUpdated": {
+          "title": "Last Updated",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date when the role was last updated"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "Description of the role"
+        }
+      },
+      "required": ["id", "label"]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "permissions": {
+        "target": "oktaPermission",
+        "title": "Permissions",
+        "description": "Permissions granted by this role",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "oktaPermission",
+    "title": "Okta Permission",
+    "icon": "Key",
+    "description": "An Okta permission or role assignment",
+    "schema": {
+      "properties": {
+        "id": {
+          "title": "Permission ID",
+          "type": "string",
+          "description": "Unique identifier for the permission assignment"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "description": "Type of permission",
+          "enum": ["USER_ADMIN", "GROUP_ADMIN", "HELP_DESK_ADMIN", "READ_ONLY_ADMIN", "ORG_ADMIN", "API_ACCESS_MANAGEMENT_ADMIN", "APP_ADMIN", "MOBILE_ADMIN", "REPORT_ADMIN", "SUPER_ADMIN"]
+        },
+        "status": {
+          "title": "Status", 
+          "type": "string",
+          "description": "Status of the permission assignment",
+          "enum": ["ACTIVE", "INACTIVE"]
+        },
+        "created": {
+          "title": "Created Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date when the permission was assigned"
+        },
+        "lastUpdated": {
+          "title": "Last Updated",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date when the permission was last updated"
+        },
+        "resource": {
+          "title": "Resource",
+          "type": "string",
+          "description": "Resource the permission applies to"
+        }
+      },
+      "required": ["id", "type"]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "oktaApplication",
+    "title": "Okta Application",
+    "icon": "Apps",
+    "description": "An Okta application",
+    "schema": {
+      "properties": {
+        "id": {
+          "title": "Application ID",
+          "type": "string",
+          "description": "Unique identifier for the application"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "description": "Name of the application"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string",
+          "description": "Human-readable label for the application"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "description": "Status of the application",
+          "enum": ["ACTIVE", "INACTIVE"]
+        },
+        "created": {
+          "title": "Created Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date when the application was created"
+        },
+        "lastUpdated": {
+          "title": "Last Updated",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date when the application was last updated"
+        },
+        "features": {
+          "title": "Features",
+          "type": "array",
+          "description": "Features enabled for the application",
+          "items": {
+            "type": "string"
+          }
+        },
+        "signOnMode": {
+          "title": "Sign-On Mode",
+          "type": "string",
+          "description": "Sign-on mode for the application"
+        }
+      },
+      "required": ["id", "name", "label"]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "assignedUsers": {
+        "target": "oktaUser",
+        "title": "Assigned Users",
+        "description": "Users assigned to this application",
+        "required": false,
+        "many": true
+      },
+      "assignedGroups": {
+        "target": "oktaGroup",
+        "title": "Assigned Groups", 
+        "description": "Groups assigned to this application",
+        "required": false,
+        "many": true
+      }
+    }
+  }
+]

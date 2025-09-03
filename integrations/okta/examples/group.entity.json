@@ -1,0 +1,73 @@
+{
+  "id": "00g1234567890abcdef",
+  "created": "2023-01-10T08:00:00.000Z",
+  "lastUpdated": "2024-01-05T12:30:00.000Z",
+  "lastMembershipUpdated": "2024-01-15T14:45:00.000Z",
+  "objectClass": [
+    "okta:user_group"
+  ],
+  "type": "OKTA_GROUP",
+  "profile": {
+    "name": "Engineering",
+    "description": "Engineering team members - responsible for product development and technical architecture",
+    "samAccountName": null,
+    "dn": null,
+    "windowsDomainQualifiedName": null,
+    "externalId": null,
+    "parentGroup": {
+      "id": "00g0987654321fedcba",
+      "name": "Product Development"
+    }
+  },
+  "members": [
+    {
+      "id": "00u1234567890abcdef",
+      "status": "ACTIVE",
+      "created": "2023-01-15T09:00:00.000Z",
+      "activated": "2023-01-15T09:05:00.000Z",
+      "profile": {
+        "login": "john.doe@example.com",
+        "email": "john.doe@example.com",
+        "displayName": "John Doe"
+      }
+    },
+    {
+      "id": "00u2468135792468ace",
+      "status": "ACTIVE", 
+      "created": "2023-02-01T10:00:00.000Z",
+      "activated": "2023-02-01T10:05:00.000Z",
+      "profile": {
+        "login": "jane.engineer@example.com",
+        "email": "jane.engineer@example.com", 
+        "displayName": "Jane Engineer"
+      }
+    }
+  ],
+  "roles": [
+    {
+      "id": "ra1234567890abcdef",
+      "type": "GROUP_ADMIN",
+      "label": "Group Administrator"
+    }
+  ],
+  "_links": {
+    "logo": [
+      {
+        "name": "medium",
+        "href": "https://dev-123456.okta.com/img/logos/groups/okta-medium.png",
+        "type": "image/png"
+      },
+      {
+        "name": "large",
+        "href": "https://dev-123456.okta.com/img/logos/groups/okta-large.png",
+        "type": "image/png"
+      }
+    ],
+    "users": {
+      "href": "https://dev-123456.okta.com/api/v1/groups/00g1234567890abcdef/users"
+    },
+    "apps": {
+      "href": "https://dev-123456.okta.com/api/v1/groups/00g1234567890abcdef/apps"
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "id": "ira1234567890abcdef",
+  "type": "USER_ADMIN",
+  "status": "ACTIVE",
+  "created": "2023-01-15T09:30:00.000Z",
+  "lastUpdated": "2023-01-15T09:30:00.000Z",
+  "assignmentType": "USER",
+  "assignee": {
+    "id": "00u1234567890abcdef",
+    "displayName": "John Doe",
+    "type": "USER"
+  },
+  "resource": {
+    "id": "ire106sQKoHoAAXBNX0g3",
+    "displayName": "Okta Admin Console",
+    "description": "Administrative access to Okta console",
+    "resourceType": "APP"
+  },
+  "role": {
+    "id": "ra1234567890abcdef",
+    "label": "User Administrator",
+    "type": "STANDARD"
+  },
+  "conditions": {
+    "scopes": [
+      "okta.users.manage",
+      "okta.groups.manage",
+      "okta.users.read", 
+      "okta.groups.read"
+    ],
+    "constraints": [
+      {
+        "property": "division",
+        "operation": "EQUALS",
+        "value": "Product Development"
+      }
+    ]
+  },
+  "_links": {
+    "assignee": {
+      "href": "https://dev-123456.okta.com/api/v1/users/00u1234567890abcdef"
+    },
+    "role": {
+      "href": "https://dev-123456.okta.com/api/v1/iam/roles/ra1234567890abcdef"
+    },
+    "resource": {
+      "href": "https://dev-123456.okta.com/api/v1/iam/resources/ire106sQKoHoAAXBNX0g3"
+    }
+  }
+}
