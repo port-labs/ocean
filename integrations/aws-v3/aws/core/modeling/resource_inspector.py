@@ -1,33 +1,39 @@
 from typing import List, Dict, Any, Callable, Union
 from loguru import logger
 import asyncio
-from aws.core.interfaces.action import Action, ActionMap
+from aws.core.interfaces.action import Action, ActionMap, BatchAction
 from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.modeling.resource_models import ResourceModel
-
-TIdentifier = Union[str, int, Dict[str, Any] | List[Dict[str, Any]]]
 
 
 class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
     """
-    Inspects AWS resources by executing a set of actions and aggregating their results
-    into a strongly-typed resource model.
+    Inspects AWS resources by executing actions and building resource models.
 
-    This class orchestrates the execution of multiple `IAction` implementations (as defined
-    in the provided `IActionMap`) for a given resource identifier or list of identifiers.
-    The results of these actions are merged into a resource model using a builder pattern.
+    This class orchestrates the execution of multiple `Action` and `BatchAction` implementations
+    (as defined in the provided `ActionMap`) for given resource identifiers. It supports both
+    single resource inspection and batch processing of multiple resources concurrently.
+
+    The class uses a builder pattern to construct strongly-typed resource models from action
+    results, automatically handling metadata like account ID and region.
 
     Type Parameters:
-        ResourceModelT: A subclass of `BaseResponseModel` representing the resource type.
+        ResourceModelT: A subclass of `ResourceModel` representing the resource type.
 
     Args:
         client: The AWS client instance used by actions to interact with AWS services.
-        actions_map: An `IActionMap` that provides the set of actions to execute.
+        actions_map: An `ActionMap` that provides the set of actions to execute.
         model_factory: A callable that returns a new instance of the resource model.
+        account_id: The AWS account ID for this resource (required).
+        region: The AWS region for this resource (required).
 
     Example:
-        inspector = ResourceInspector(client, actions_map, MyResourceModel)
-        resource = await inspector.inspect("resource-arn", include=["Describe", "Tags"])
+        # Single resource inspection
+        inspector = ResourceInspector(client, actions_map, MyResourceModel, "123456789", "us-east-1")
+        resource = await inspector.inspect("resource-name", include=["GetBucketTaggingAction"])
+        
+        # Batch resource inspection
+        resources = await inspector.inspect_batch(["bucket1", "bucket2"], include=["GetBucketTaggingAction"])
     """
 
     def __init__(
@@ -35,6 +41,8 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         client: Any,
         actions_map: ActionMap,
         model_factory: Callable[[], ResourceModelT],
+        account_id: str,
+        region: str,
     ) -> None:
         """
         Initialize the ResourceInspector.
@@ -43,62 +51,106 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             client: The AWS client instance to be used by actions.
             actions_map: The map of available actions for the resource.
             model_factory: A callable that returns a new instance of the resource model.
+            account_id: The AWS account ID for this resource (required).
+            region: The AWS region for this resource (required).
         """
         self.client = client
-        self.builder_cls: ResourceBuilder[ResourceModelT, Any] = ResourceBuilder(
-            model_factory()
-        )
         self.actions_map = actions_map
         self.model_factory = model_factory
+        self.region = region
+        self.account_id = account_id
 
-    async def inspect(
-        self, identifiers: Any, include: List[str]
-    ) -> List[Dict[str, Any]]:
-        """
-        Execute the specified actions for the given resource identifiers and
-        aggregate their results into a resource model.
+    async def inspect(self, identifier: str, include: List[str]) -> ResourceModelT:
+        """Inspect a single resource using single actions only."""
+        if not identifier:
+            return self.model_factory()
 
-        Args:
-            identifiers: A single resource identifier or a list of identifiers (e.g., ARNs, names).
-            include: A list of action names to include in the inspection.
-
-        Returns:
-            ResourceModelT: The constructed resource model with aggregated data.
-        """
+        # Execute actions directly for single resource
         action_classes = self.actions_map.merge(include)
         actions = [cls(self.client) for cls in action_classes]
 
-        action_results = await asyncio.gather(
+        # Filter to only Action types that support single execution
+        single_actions = [action for action in actions if isinstance(action, Action)]
+
+        if not single_actions:
+            return self.model_factory()
+
+        results = await asyncio.gather(
+            *(action.execute(identifier) for action in single_actions)
+        )
+
+        return self._build_model(results)
+
+    async def inspect_batch(
+        self, identifiers: List[str], include: List[str]
+    ) -> List[ResourceModelT]:
+        """Inspect multiple resources using both Action and BatchAction types."""
+        if not identifiers:
+            return []
+
+        # Execute actions and build models
+        action_classes = self.actions_map.merge(include)
+        actions = [cls(self.client) for cls in action_classes]
+
+        results = await asyncio.gather(
             *(self._run_action(action, identifiers) for action in actions)
         )
 
-        resources: List[Dict[str, Any]] = []
-        for action_result in action_results:
-            # Clone the builder before applying building
-            builder = type(self.builder_cls)(self.model_factory())
-            for action_result_item in action_result:
-                if not action_result_item:
-                    continue
-                builder.with_properties(action_result_item)
-            built_resource = builder.build()
-            resources.append(built_resource)
-        return resources
+        return self._build_models(results)
 
     async def _run_action(
-        self, action: "Action", identifiers: Any
+        self, action: Union[Action, BatchAction], identifiers: List[str]
     ) -> List[Dict[str, Any]]:
         """
-        Execute a single action for the given identifiers, handling exceptions gracefully.
+        Execute a single action for the given identifiers using pure polymorphism.
 
         Args:
-            action: The action instance to execute.
+            action: The action instance to execute (either Action or BatchAction).
             identifiers: The resource identifier(s) to pass to the action.
 
         Returns:
-            Dict[str, Any]: The result of the action, or an empty dict if the action fails.
+            List of results from the action execution.
         """
         try:
-            return await action.execute(identifiers)
+            logger.info(
+                f"Running action {action.__class__.__name__} for {len(identifiers)} identifiers"
+            )
+
+            return await action.execute_for_identifiers(identifiers)
+
         except Exception as e:
-            logger.warning(f"{action.__class__.__name__} failed: {e}, skipping ...")
+            logger.warning(f"Action {action.__class__.__name__} failed: {e}")
             return []
+
+    def _build_models(
+        self, action_results: List[List[Dict[str, Any]]]
+    ) -> List[ResourceModelT]:
+        """
+        Build resource models from action results.
+
+        Args:
+            action_results: List of result lists, one per action.
+
+        Returns:
+            List of built resource models.
+        """
+        valid_results = [result for result in action_results if result]
+        if not valid_results:
+            return []
+
+        return [
+            self._build_model(identifier_results)
+            for identifier_results in zip(*valid_results)
+        ]
+
+    def _build_model(self, identifier_results: List[Dict[str, Any]]) -> ResourceModelT:
+        """Build a resource model from identifier results using ResourceBuilder."""
+        builder: ResourceBuilder[ResourceModelT, Any] = ResourceBuilder(
+            self.model_factory(), self.region, self.account_id
+        )
+
+        builder.with_properties(identifier_results)
+
+        model = builder.build()
+
+        return model

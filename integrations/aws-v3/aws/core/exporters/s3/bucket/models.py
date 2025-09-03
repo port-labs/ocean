@@ -1,12 +1,15 @@
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from pydantic import BaseModel, Field
-from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from aws.core.modeling.resource_models import (
+    ResourceModel,
+    ResourceRequestModel,
+)
 
 
 class BucketProperties(BaseModel):
 
-    BucketName: str = Field(default_factory=str)
+    Name: str = Field(default_factory=str)
     BucketArn: Optional[str] = None
     BucketRegion: Optional[str] = None
     CreationDate: Optional[datetime] = None
@@ -27,12 +30,12 @@ class BucketProperties(BaseModel):
 
     class Config:
         extra = "forbid"
-        populate_by_name = True
 
 
 class Bucket(ResourceModel[BucketProperties]):
     Type: str = "AWS::S3::Bucket"
     Properties: BucketProperties = Field(default_factory=BucketProperties)
+    # Metadata is inherited from ResourceModel base class
 
 
 class SingleBucketRequest(ResourceRequestModel):

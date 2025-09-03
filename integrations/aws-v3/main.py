@@ -43,7 +43,7 @@ async def resync_s3_bucket(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(
             f"Found {len(regions)} allowed regions: {regions} for account {account['Id']}"
         )
-        exporter = S3BucketExporter(session)
+        exporter = S3BucketExporter(session, account["Id"])
 
         async for batch in _handle_global_resource_resync(
             regions, options_factory, exporter
