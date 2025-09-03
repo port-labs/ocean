@@ -4,7 +4,6 @@ from typing import Any, AsyncIterator, List
 import types
 
 from checkmarx_one.core.options import SingleApiSecOptions, ListApiSecOptions
-from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 
 # Mock port_ocean imports before importing the module under test
 # Provide a no-op decorator for cache_iterator_result so decorated methods keep behavior/docstrings

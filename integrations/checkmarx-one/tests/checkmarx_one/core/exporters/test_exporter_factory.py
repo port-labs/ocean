@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import patch, MagicMock
 
 # Mock port_ocean imports before importing the module under test
