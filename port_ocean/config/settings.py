@@ -120,6 +120,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     lakehouse_enabled: bool = False
     yield_items_to_parse: bool = False
     yield_items_to_parse_batch_size: int = 10
+    # Default to True for backward compatibility; users can set to False per-kind to prevent OOM
+    embed_original_data_in_items_to_parse: bool = True
 
     streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
 

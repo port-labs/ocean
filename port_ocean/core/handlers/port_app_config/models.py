@@ -40,6 +40,7 @@ class PortResourceConfig(BaseModel):
     entity: MappingsConfig
     items_to_parse: str | None = Field(alias="itemsToParse")
     items_to_parse_name: str | None = Field(alias="itemsToParseName", default="item")
+    embed_original_data: bool | None = Field(alias="embedOriginalData", default=None)
 
 
 class Selector(BaseModel):
