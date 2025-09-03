@@ -82,7 +82,6 @@ resources:
             status: .status
             state: .state
             severity: (.severity // empty)
-            confidenceLevel: .confidenceLevel # Not in the API response
             created: .firstFoundAt
             description: .description
             fileName: (.fileName // empty)

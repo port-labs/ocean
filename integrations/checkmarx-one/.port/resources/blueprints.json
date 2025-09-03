@@ -292,14 +292,7 @@
             "INFO": "lightGray"
           }
         },
-        "confidenceLevel": {
-          "type": "number",
-          "title": "Confidence Level",
-          "description": "A percentage representing the confidence in the accuracy of the detected issue",
-          "minimum": 0,
-          "maximum": 100
-        },
-        "created_at": {
+        "created": {
           "type": "string",
           "title": "Created At",
           "description": "The date and time when the KICS issue was first identified",
@@ -316,9 +309,9 @@
           "title": "File Name",
           "description": "The name of the file where the KICS issue was found."
         },
-        "lineNumber": {
+        "line": {
           "type": "string",
-          "title": "Line",
+          "title": "Line Number",
           "description": "The line number in the file where the KICS issue occurs"
         },
         "platform": {

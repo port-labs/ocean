@@ -91,6 +91,7 @@ class CheckmarxOnePortAppConfig(PortAppConfig):
         | CheckmarxOneScanResourcesConfig
         | CheckmarxOneApiSecResourcesConfig
         | CheckmarxOneKicsResourcesConfig
+        | ResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore
