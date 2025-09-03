@@ -308,6 +308,11 @@
           },
           "type": "array",
           "title": "Package Data"
+        },
+        "confidenceLevel": {
+          "type": "string",
+          "title": "Confidence Level",
+          "description": "The confidence level of the SCA finding."
         }
       },
       "required": []
@@ -397,16 +402,18 @@
           "description": "The Common Weakness Enumeration (CWE) identifier related to the vulnerability."
         }
       },
-      "required": ["id", "name"]
+      "required": []
     },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {
       "scan": {
         "title": "Scan",
         "target": "checkmarxScan",
-        "many": false,
-        "required": false
+        "required": false,
+        "many": false
       }
-    },
-    "calculationProperties": {}
+    }
   }
 ]

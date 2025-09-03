@@ -39,7 +39,7 @@ class CheckmarxOneResultSelector(Selector):
         description="Filter scan results by status",
     )
     exclude_result_types: Optional[Literal["DEV_AND_TEST", "NONE"]] = Field(
-        default="DEV_AND_TEST",
+        default="NONE",
         description="Filter scan results by exclude result types",
     )
 
