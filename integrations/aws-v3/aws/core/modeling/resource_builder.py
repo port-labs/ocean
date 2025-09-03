@@ -89,8 +89,7 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
                 "No data has been set for the resource model, use `with_properties` to set data."
             )
 
-        self._model = self.with_metadata(
-            {"__Region": self._region, "__AccountId": self._account_id}
-        )._model
+        self._model.account_id = self._account_id
+        self._model.region = self._region
 
         return self._model

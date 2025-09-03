@@ -1,3 +1,5 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
 resources:
   - kind: AWS::S3::Bucket
     selector:
@@ -19,3 +21,7 @@ resources:
             encryption: .Properties.BucketEncryption
             publicAccessBlockConfiguration: .Properties.PublicAccessBlockConfiguration
             tags: .Properties.Tags
+
+
+
+
