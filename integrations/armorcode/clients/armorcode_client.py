@@ -67,104 +67,121 @@ class ArmorcodeClient:
             logger.error(f"Unexpected error during API request to {url}: {e}")
             raise
 
+    async def _get_paginated_resource(
+        self,
+        endpoint: str,
+        method: str = "GET",
+        content_key: str = "content",
+        is_last_key: Optional[str] = "last",
+        json_data: Optional[Dict[str, Any]] = None,
+        use_offset_pagination: bool = True,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """
+        Centralized pagination method for all endpoints.
+
+        Args:
+            endpoint: API endpoint to paginate
+            method: HTTP method (GET/POST)
+            content_key: Key in response containing the data array
+            is_last_key: Key indicating if it's the last page
+            json_data: JSON payload for POST requests
+            use_offset_pagination: True for pageNumber-based pagination, False for afterKey-based
+        """
+        page_number = 0
+        after_key = None
+
+        while True:
+            try:
+                params = {**self.DEFAULT_PARAMS}
+
+                if use_offset_pagination:
+                    params["pageNumber"] = page_number
+                elif after_key is not None:
+                    params["afterKey"] = after_key
+                    # For afterKey pagination, we typically don't use pageNumber
+                    if "pageNumber" in params:
+                        del params["pageNumber"]
+
+                response = await self._send_api_request(
+                    endpoint, method=method, params=params, json_data=json_data
+                )
+                # Some endpoints (e.g., findings) return the payload nested under a "data" key
+                container: Dict[str, Any] = (
+                    response.get("data", {})
+                    if isinstance(response.get("data"), dict)
+                    else response
+                )
+                items = container.get(content_key, [])
+
+                if not isinstance(items, list):
+                    break
+
+                if not items:
+                    logger.info(
+                        f"No items returned for {endpoint} on page {page_number}"
+                    )
+                    break
+
+                logger.info(f"Fetched {len(items)} items from {endpoint}")
+                yield items
+
+                # Determine if we should continue paginating
+                if use_offset_pagination:
+                    # When using offset pagination, rely on the provided last-page indicator key if present.
+                    last_page = (
+                        True
+                        if is_last_key is None
+                        else bool(container.get(is_last_key, True))
+                    )
+                    if last_page:
+                        break
+                    page_number += 1
+                else:
+                    after_key = container.get("afterKey")
+                    if not after_key:
+                        break
+
+            except Exception as e:
+                logger.error(f"Error paginating {endpoint}: {e}")
+                break
+
     async def get_products(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """
         Fetch products from the Armorcode API.
         Yields batches of products as lists of dicts.
         """
-        endpoint = PRODUCTS_ENDPOINT
-        params = {**self.DEFAULT_PARAMS, "pageNumber": 0}
-
-        while True:
-            try:
-                response = await self._send_api_request(endpoint, params=params)
-                products = response.get("content", [])
-
-                if not isinstance(products, list):
-                    break
-
-                if not products:
-                    logger.info(f"No products returned for page {params['pageNumber']}")
-                    break
-
-                logger.info(f"Fetched {len(products)} products from Armorcode API")
-                yield products
-
-                if response.get("last", True):
-                    break
-
-                params["pageNumber"] += 1
-            except Exception as e:
-                logger.error(f"Error fetching products: {e}")
-                break
+        async for products in self._get_paginated_resource(
+            endpoint=PRODUCTS_ENDPOINT,
+            method="GET",
+            content_key="content",
+            is_last_key="last",
+        ):
+            yield products
 
     async def get_all_subproducts(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """
         Fetch all subproducts from the Armorcode API.
         Yields batches of subproducts as lists of dicts.
         """
-        endpoint = f"{SUB_PRODUCTS_ENDPOINT}"
-        params = {**self.DEFAULT_PARAMS, "pageNumber": 0}
-
-        while True:
-            try:
-                response = await self._send_api_request(endpoint, params=params)
-                subproducts = response.get("content", [])
-                if not isinstance(subproducts, list):
-                    break
-
-                if not subproducts:
-                    logger.info(
-                        f"No subproducts returned for page {params['pageNumber']}"
-                    )
-                    break
-
-                logger.info(
-                    f"Fetched {len(subproducts)} subproducts from Armorcode API"
-                )
-                yield subproducts
-
-                if len(subproducts) < PAGE_SIZE:
-                    break
-                params["pageNumber"] += 1
-            except Exception as e:
-                logger.error(f"Error fetching subproducts: {e}")
-                break
+        async for subproducts in self._get_paginated_resource(
+            endpoint=SUB_PRODUCTS_ENDPOINT,
+            method="GET",
+            content_key="content",
+            is_last_key="last",
+        ):
+            yield subproducts
 
     async def get_all_findings(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """
         Fetch all findings from the Armorcode API using POST request.
         Yields batches of findings as lists of dicts.
         """
-        endpoint = FINDINGS_ENDPOINT
-        after_key = None
-        payload: dict[str, Any] = {}
-
-        while True:
-            try:
-                params = {"size": PAGE_SIZE}
-                if after_key is not None:
-                    params["afterKey"] = after_key
-
-                response = await self._send_api_request(
-                    endpoint, method="POST", json_data=payload, params=params
-                )
-                findings = response["data"].get("findings", [])
-
-                if not isinstance(findings, list):
-                    break
-
-                if not findings:
-                    logger.info("No findings returned")
-                    break
-
-                logger.info(f"Fetched {len(findings)} findings from Armorcode API")
-                yield findings
-
-                after_key = response["data"].get("afterKey")
-                if not after_key:
-                    break
-
-            except Exception as e:
-                logger.error(f"Error fetching findings: {e}")
-                break
+        async for findings in self._get_paginated_resource(
+            endpoint=FINDINGS_ENDPOINT,
+            method="POST",
+            content_key="findings",
+            is_last_key=None,  # Not used for afterKey pagination
+            json_data={},  # Empty payload as in original
+            use_offset_pagination=False,  # Use afterKey-based pagination
+        ):
+            yield findings
