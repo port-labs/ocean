@@ -4,6 +4,8 @@ import asyncio
 from aws.core.interfaces.action import Action, ActionMap
 from aws.core.modeling.resource_builder import ResourceBuilder
 from aws.core.modeling.resource_models import ResourceModel
+from collections import defaultdict
+
 
 TIdentifier = Union[str, int, Dict[str, Any] | List[Dict[str, Any]]]
 
@@ -63,7 +65,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             include: A list of action names to include in the inspection.
 
         Returns:
-            ResourceModelT: The constructed resource model with aggregated data.
+            List[Dict[str, Any]]: List of constructed resource models with aggregated data.
         """
         action_classes = self.actions_map.merge(include)
         actions = [cls(self.client) for cls in action_classes]
@@ -72,16 +74,25 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             *(self._run_action(action, identifiers) for action in actions)
         )
 
-        resources: List[Dict[str, Any]] = []
+        if not action_results or not any(action_results):
+            return []
+
+        resource_data: dict[int, dict[str, Any]] = defaultdict(dict)
         for action_result in action_results:
-            # Clone the builder before applying building
-            builder = type(self.builder_cls)(self.model_factory())
-            for action_result_item in action_result:
-                if not action_result_item:
-                    continue
-                builder.with_properties(action_result_item)
-            built_resource = builder.build()
-            resources.append(built_resource)
+            for idx, item in enumerate(action_result):
+                if item:
+                    resource_data[idx] |= item
+
+        resources = []
+        for resource_props in resource_data.values():
+            builder = ResourceBuilder[ResourceModelT, Any](self.model_factory())
+            builder.with_properties(resource_props)
+            resources.append(builder.build())
+
+        logger.debug(
+            f"Built {len(resources)} resources from {len(action_results)} actions"
+        )
+        logger.warning(f"Debugging Resources: {resources[:3]}")
         return resources
 
     async def _run_action(

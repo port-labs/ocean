@@ -4,7 +4,6 @@ from datetime import datetime
 from aws.core.interfaces.action import Action, ActionMap
 from loguru import logger
 
-
 import asyncio
 
 
@@ -118,12 +117,12 @@ class S3BucketActionsMap(ActionMap):
     defaults: List[Type[Action]] = [
         GetBucketTaggingAction,
         GetBucketLocationAction,
+        ListBucketsAction,
     ]
     options: List[Type[Action]] = [
         GetBucketPublicAccessBlockAction,
         GetBucketOwnershipControlsAction,
         GetBucketEncryptionAction,
-        ListBucketsAction,
     ]
 
     def merge(self, include: List[str]) -> List[Type[Action]]:

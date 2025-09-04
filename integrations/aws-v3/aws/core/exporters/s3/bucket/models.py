@@ -9,7 +9,7 @@ class BucketProperties(BaseModel):
     BucketName: str = Field(default_factory=str)
     BucketArn: Optional[str] = None
     BucketRegion: Optional[str] = None
-    CreationDate: Optional[datetime] = None
+    CreationDate: Optional[str] = None
     AccessControl: Optional[str] = None
     VersioningConfiguration: Optional[Dict[str, Any]] = None
     Tags: Optional[List[Dict[str, Any]]] = None

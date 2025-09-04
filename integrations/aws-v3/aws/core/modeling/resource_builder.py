@@ -40,7 +40,6 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         Returns:
             Self: The builder instance for method chaining.
         """
-
         self._model.Properties = self._model.Properties.copy(update=data)
         self._props_set = True
         return self
