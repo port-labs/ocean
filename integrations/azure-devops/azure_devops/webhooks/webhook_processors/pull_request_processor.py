@@ -20,7 +20,8 @@ class PullRequestWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
             event_type = event.payload["eventType"]
-            return bool(PullRequestEvents(event_type))
+            pr_id = event.payload["resource"].get("pullRequestId")
+            return pr_id and bool(PullRequestEvents(event_type))
         except ValueError:
             return False
 

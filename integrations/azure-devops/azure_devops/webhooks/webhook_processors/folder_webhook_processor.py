@@ -26,8 +26,9 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
             event_type = event.payload["eventType"]
-            is_push_event = bool(PushEvents(event_type))
-            return is_push_event
+            repository = event.payload["resource"].get("repository")
+            ref_updates = event.payload["resource"].get("refUpdates")
+            return repository and ref_updates and bool(PushEvents(event_type))
         except ValueError:
             return False
 

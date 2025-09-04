@@ -28,7 +28,10 @@ async def test_push_should_process_event(
         payload={
             "eventType": "git.repo.created",
             "publisherId": "tfs",
-            "resource": {"url": "http://example.com"},
+            "resource": {
+                "url": "http://example.com",
+                "repository": {"id": "1234567890"},
+            },
         },
         headers={},
     )

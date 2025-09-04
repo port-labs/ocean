@@ -37,6 +37,7 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
             event_type = event.payload["eventType"]
+            ref_updates = event.payload["resource"].get("refUpdates")
             config = cast(GitPortAppConfig, port_ocean_event.port_app_config)
             is_push_event = bool(PushEvents(event_type))
             has_spec_path = (
@@ -46,7 +47,7 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 config.spec_path, str
             ) and config.spec_path.endswith("port.yml")
 
-            if is_push_event and has_spec_path and is_port_yaml:
+            if is_push_event and has_spec_path and is_port_yaml and ref_updates:
                 logger.warning(
                     (
                         "The GitOps feature using the spec_path selector and 'port.yaml' template is deprecated and will be removed in future versions. "

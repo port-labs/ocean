@@ -61,7 +61,16 @@ async def test_folder_should_process_event(
         payload={
             "eventType": "git.push",
             "publisherId": "tfs",
-            "resource": {"url": "http://example.com"},
+            "resource": {
+                "url": "http://example.com",
+                "repository": {"id": "1234567890"},
+                "refUpdates": [
+                    {
+                        "name": "refs/heads/main",
+                        "newObjectId": "new-commit",
+                    }
+                ],
+            },
         },
         headers={},
     )
