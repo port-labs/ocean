@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.5.0-beta (2025-09-04)
+
+
+### Features
+
+- Added support for Secret Scanning Alerts with new kind `secret-scanning-alerts`
+- New Secret Scanning Alert exporter and webhook processor for real-time alert monitoring
+- Support for filtering Secret Scanning Alerts by state (open, resolved, all)
+- Added `hide_secret` selector option to control whether sensitive secret content is exposed in alert data
+- Comprehensive webhook event mapping for Secret Scanning Alerts: created, publicly_leaked, reopened, resolved, validated
+
+
+## 1.4.2-beta (2025-08-28)
+
+
+### Features
+
+- Enhanced branch exporter functionality with improved branch data processing and export capabilities
+- Improved branch webhook processor to handle branch-related events more efficiently
+
+
+## 1.4.1-beta (2025-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.2
+
+
 ## 1.4.0-beta (2025-08-27)
 
 

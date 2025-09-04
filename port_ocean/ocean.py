@@ -97,6 +97,22 @@ class Ocean:
         )
         self.app_initialized = False
 
+        signal_handler.register(self._report_resync_aborted)
+
+    async def _report_resync_aborted(self) -> None:
+        """
+        Report resync status as aborted when the app receives a kill signal.
+        This ensures Port is notified that the integration was interrupted.
+        """
+        try:
+            if self.metrics.event_id != "":
+                await self.resync_state_updater.update_after_resync(
+                    IntegrationStateStatus.Aborted
+                )
+                logger.info("Resync status reported as aborted due to app shutdown")
+        except Exception as e:
+            logger.warning(f"Failed to report resync status on shutdown: {e}")
+
     def _get_process_execution_mode(self) -> ProcessExecutionMode:
         if self.config.process_execution_mode:
             return self.config.process_execution_mode
