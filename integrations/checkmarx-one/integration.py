@@ -118,7 +118,7 @@ class CheckmarxOneKicsResourcesConfig(ResourceConfig):
     kind: Literal["kics"]
     selector: CheckmarxOneKicsSelector
 
-    
+
 class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
     kind: Literal["sca", "containers"]
     selector: CheckmarxOneResultSelector

@@ -16,12 +16,11 @@ from checkmarx_one.core.options import (
     ListScanOptions,
     ListApiSecOptions,
     ListKicsOptions,
+    ListScanResultOptions,
 )
 from integration import (
     CheckmarxOneScanResourcesConfig,
     CheckmarxOneKicsResourcesConfig,
-    ListScanResultOptions,
-    CheckmarxOneScanResourcesConfig,
     CheckmarxOneScanResultResourcesConfig,
 )
 from checkmarx_one.utils import ObjectKind, ScanResultObjectKind

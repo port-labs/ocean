@@ -22,7 +22,10 @@ class CheckmarxKicsExporter(AbstractCheckmarxExporter):
 
         return params
 
-        raise NotImplementedError("Single KICS result fetch is not supported by the API.")
+    def get_resource(self, options: Any) -> Any:
+        raise NotImplementedError(
+            "Single KICS result fetch is not supported by the API."
+        )
 
     def _enrich_kics_result_with_scan_id(
         self, result: Dict[str, Any], scan_id: str
