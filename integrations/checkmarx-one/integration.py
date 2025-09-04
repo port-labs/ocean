@@ -40,6 +40,10 @@ class CheckmarxOneResultSelector(Selector):
         default=["DEV_AND_TEST"],
         description="Filter scan results by exclude result types",
     )
+    scanner_types: Optional[List[Literal["sast", "sca", "kics", "container-security", "api-security", "dast"]]] = Field(
+        default=None,
+        description="Filter results by scanner types (SAST, SCA, KICS, Container Security, API Security, DAST)",
+    )
 
 
 class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
@@ -53,6 +57,14 @@ class CheckmarxOneScanSelector(Selector):
         alias="projectIds",
         description="Limit search to specific project IDs",
     )
+    scanner_types: Optional[List[Literal["sast", "sca", "kics", "container-security", "api-security", "dast"]]] = Field(
+        default=None,
+        description="Filter scans by scanner types (SAST, SCA, KICS, Container Security, API Security, DAST)",
+    )
+    scan_status: Optional[List[Literal["Queued", "Running", "Completed", "Failed", "Canceled", "Partial"]]] = Field(
+        default=None,
+        description="Filter scans by status",
+    )
 
 
 class CheckmarxOneScanResourcesConfig(ResourceConfig):
@@ -60,10 +72,41 @@ class CheckmarxOneScanResourcesConfig(ResourceConfig):
     selector: CheckmarxOneScanSelector
 
 
+class CheckmarxOneApplicationSelector(Selector):
+    criticality: Optional[List[Literal[1, 2, 3]]] = Field(
+        default=None,
+        description="Filter applications by criticality level (1=Low, 2=Medium, 3=High)",
+    )
+
+
+class CheckmarxOneApplicationResourcesConfig(ResourceConfig):
+    kind: Literal["application"]
+    selector: CheckmarxOneApplicationSelector
+
+
+class CheckmarxOneProjectSelector(Selector):
+    application_ids: List[str] = Field(
+        default_factory=list,
+        alias="applicationIds", 
+        description="Limit search to specific application IDs",
+    )
+    groups: Optional[List[str]] = Field(
+        default=None,
+        description="Filter projects by groups",
+    )
+
+
+class CheckmarxOneProjectResourcesConfig(ResourceConfig):
+    kind: Literal["project"]
+    selector: CheckmarxOneProjectSelector
+
+
 class CheckmarxOnePortAppConfig(PortAppConfig):
     resources: List[
         CheckmarxOneScanResultResourcesConfig
         | CheckmarxOneScanResourcesConfig
+        | CheckmarxOneApplicationResourcesConfig
+        | CheckmarxOneProjectResourcesConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
