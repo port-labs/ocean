@@ -187,6 +187,22 @@ class GithubFileResourceConfig(ResourceConfig):
     selector: GithubFileSelector
 
 
+class GithubBranchSelector(Selector):
+    detailed: bool = Field(
+        default=False, description="Include extra details about the branch"
+    )
+    protection_rules: bool = Field(
+        default=False,
+        alias="protectionRules",
+        description="Include protection rules for the branch",
+    )
+
+
+class GithubBranchConfig(ResourceConfig):
+    kind: Literal["branch"]
+    selector: GithubBranchSelector
+
+
 class GithubPortAppConfig(PortAppConfig):
     repository_type: str = Field(alias="repositoryType", default="all")
     resources: list[
@@ -198,6 +214,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig
+        | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | ResourceConfig
     ]

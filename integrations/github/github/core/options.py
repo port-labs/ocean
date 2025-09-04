@@ -105,10 +105,14 @@ class SingleBranchOptions(RepositoryIdentifier):
     """Options for fetching a single branch."""
 
     branch_name: Required[str]
+    protection_rules: Optional[bool]
 
 
 class ListBranchOptions(RepositoryIdentifier):
     """Options for listing branches."""
+
+    protection_rules: Required[bool]
+    detailed: Required[bool]
 
 
 class SingleEnvironmentOptions(RepositoryIdentifier):
