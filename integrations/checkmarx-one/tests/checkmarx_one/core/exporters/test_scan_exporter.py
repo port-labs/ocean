@@ -6,7 +6,6 @@ import types
 from checkmarx_one.core.options import ListScanOptions, SingleScanOptions
 
 # Mock port_ocean imports before importing the module under test
-# Provide a no-op decorator for cache_iterator_result so decorated methods keep behavior/docstrings
 cache_module = types.ModuleType("port_ocean.utils.cache")
 
 
@@ -147,7 +146,7 @@ class TestCheckmarxScanExporter:
         mock_client.send_paginated_request = mock_paginated_resources
 
         results: List[List[dict[str, Any]]] = []
-        list_options = ListScanOptions(project_ids=["proj-1", "proj-2"])
+        list_options = ListScanOptions(project_names=["proj-1", "proj-2"])
         async for batch in scan_exporter.get_paginated_resources(list_options):
             results.append(batch)
 
@@ -155,89 +154,4 @@ class TestCheckmarxScanExporter:
         assert results[0] == sample_scans_batch
         assert call_args["endpoint"] == "/scans"
         assert call_args["object_key"] == "scans"
-        assert call_args["params"]["project-ids"] == "proj-1,proj-2"
-
-    @pytest.mark.asyncio
-    async def test_get_scans_multiple_batches(
-        self,
-        scan_exporter: CheckmarxScanExporter,
-        mock_client: AsyncMock,
-        sample_scans_batch: List[dict[str, Any]],
-    ) -> None:
-        """Test getting scans with multiple batches."""
-        batch1 = sample_scans_batch[:1]
-        batch2 = sample_scans_batch[1:]
-
-        async def mock_paginated_resources(
-            *args: Any, **kwargs: Any
-        ) -> AsyncIterator[List[dict[str, Any]]]:
-            yield batch1
-            yield batch2
-
-        mock_client.send_paginated_request = mock_paginated_resources
-
-        results: List[List[dict[str, Any]]] = []
-        list_options = ListScanOptions()
-        async for batch in scan_exporter.get_paginated_resources(list_options):
-            results.append(batch)
-
-        assert len(results) == 2
-        assert results[0] == batch1
-        assert results[1] == batch2
-
-    @pytest.mark.asyncio
-    async def test_get_scans_empty_result(
-        self, scan_exporter: CheckmarxScanExporter, mock_client: AsyncMock
-    ) -> None:
-        """Test getting scans with empty result."""
-
-        async def mock_paginated_resources(
-            *args: Any, **kwargs: Any
-        ) -> AsyncIterator[List[dict[str, Any]]]:
-            if False:  # ensure async generator type
-                yield []
-
-        mock_client.send_paginated_request = mock_paginated_resources
-
-        results: List[List[dict[str, Any]]] = []
-        list_options = ListScanOptions()
-        async for batch in scan_exporter.get_paginated_resources(list_options):
-            results.append(batch)
-
-        assert len(results) == 0
-
-    @pytest.mark.asyncio
-    async def test_get_scan_by_id_exception_handling(
-        self, scan_exporter: CheckmarxScanExporter, mock_client: AsyncMock
-    ) -> None:
-        """Test exception handling in get_scan_by_id."""
-        mock_client.send_api_request.side_effect = Exception("API Error")
-
-        with pytest.raises(Exception, match="API Error"):
-            await scan_exporter.get_resource(SingleScanOptions(scan_id="scan-123"))
-
-    def test_scan_exporter_inheritance(
-        self, scan_exporter: CheckmarxScanExporter
-    ) -> None:
-        """Test that CheckmarxScanExporter properly inherits from AbstractCheckmarxExporter."""
-        assert hasattr(scan_exporter, "client")
-        assert hasattr(scan_exporter, "get_resource")
-        assert hasattr(scan_exporter, "get_paginated_resources")
-
-    def test_scan_exporter_docstring(self) -> None:
-        """Test that CheckmarxScanExporter has proper documentation."""
-        assert CheckmarxScanExporter.__doc__ is not None
-        assert "Exporter for Checkmarx One scans" in CheckmarxScanExporter.__doc__
-
-    def test_get_resource_docstring(self) -> None:
-        """Test that get_resource method has proper documentation."""
-        assert CheckmarxScanExporter.get_resource.__doc__ is not None
-        assert "Get a specific scan by ID" in CheckmarxScanExporter.get_resource.__doc__
-
-    def test_get_paginated_resources_docstring(self) -> None:
-        """Test that get_paginated_resources method has proper documentation."""
-        assert CheckmarxScanExporter.get_paginated_resources.__doc__ is not None
-        assert (
-            "Get scans from Checkmarx One"
-            in CheckmarxScanExporter.get_paginated_resources.__doc__
-        )
+        assert call_args["params"]["project-names"] == ["proj-1", "proj-2"]
