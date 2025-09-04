@@ -10,6 +10,8 @@ features:
       - kind: scan
       - kind: api-security
       - kind: kics
+      - kind: sca
+      - kind: containers
 configurations:
   - name: checkmarxBaseUrl
     required: false

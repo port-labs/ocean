@@ -11,6 +11,13 @@ class ObjectKind(StrEnum):
     KICS = "kics"
 
 
+class ScanResultObjectKind(StrEnum):
+    """Enum for Checkmarx One scan result resource kinds."""
+
+    SCA = "sca"
+    CONTAINERS = "containers"
+
+
 class IgnoredError(NamedTuple):
     status: int | str
     message: Optional[str] = None

@@ -67,7 +67,55 @@ resources:
             state: .state
           relations:
             scan: .scan_id
+  - kind: sca
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .data.packageIdentifier
+          blueprint: '"checkmarxSCA"'
+          properties:
+            firstScanId: .firstScanId
+            status: .status
+            state: .state
+            severity: .severity
+            created: .created
+            description: .description
+            packageIdentifier: .data.packageIdentifier
+            recommendations: .data.recommendations
+            recommendedVersion: .data.recommendedVersion
+            packageData: .data.packageData
+            cweId: .vulnerabilityDetails.cweId
+          relations:
+            scan: .__scan_id
 
+  - kind: containers
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"checkmarxContainerSecurity"'
+          properties:
+            firstScanId: .firstScanId
+            status: .status
+            state: .state
+            severity: .severity
+            confidenceLevel: .confidenceLevel
+            created: .created
+            description: .description
+            packageName: .data.packageName
+            packageVersion: .data.packageVersion
+            imageName: .data.imageName
+            imageTag: .data.imageTag
+            imageFilePath: .data.imageFilePath
+            cweId: .vulnerabilityDetails.cweId
+          relations:
+            scan: .__scan_id
   - kind: kics
     selector:
       query: 'true'
