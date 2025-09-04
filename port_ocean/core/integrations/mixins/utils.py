@@ -51,7 +51,7 @@ async def resync_function_wrapper(
 
 
 async def resync_generator_wrapper(
-    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse: str | None = None
+    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse: str | None = None, items_to_parse_name: str | None = None
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     generator = fn(kind)
     errors = []
@@ -73,7 +73,7 @@ async def resync_generator_wrapper(
                                         f" Skipping..."
                                     )
                                     yield []
-                                raw_data = [{"item": item, **data} for item in items]
+                                    raw_data = [{items_to_parse_name: item, **data} for item in items]
                                 while True:
                                     raw_data_batch = raw_data[:batch_size]
                                     yield raw_data_batch
