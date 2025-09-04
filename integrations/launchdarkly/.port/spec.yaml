@@ -11,6 +11,7 @@ features:
       - kind: auditlog
       - kind: environment
       - kind: flag-status
+      - kind: segment
 configurations:
   - name: launchdarklyToken
     required: true
