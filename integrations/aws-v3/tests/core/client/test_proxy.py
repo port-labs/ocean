@@ -3,6 +3,7 @@ import pytest
 
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.client.paginator import AsyncPaginator
+from aws.core.helpers.types import SupportedServices
 
 
 class TestAioBaseClientProxy:
@@ -53,7 +54,7 @@ class TestAioBaseClientProxy:
         isolated_mock_session.create_client.return_value = mock_client_cm
 
         proxy = AioBaseClientProxy(
-            session=isolated_mock_session, region="us-east-1", service_name="ec2"
+            session=isolated_mock_session, region="us-east-1", service_name="s3"
         )
 
         # Test entering the context
@@ -64,7 +65,7 @@ class TestAioBaseClientProxy:
 
             # Verify create_client was called with correct parameters
             isolated_mock_session.create_client.assert_called_once_with(
-                service_name="ec2", region_name="us-east-1"
+                service_name="s3", region_name="us-east-1"
             )
             mock_client_cm.__aenter__.assert_called_once()
 
@@ -194,7 +195,7 @@ class TestAioBaseClientProxy:
         self, isolated_mock_session: AsyncMock
     ) -> None:
         """Test that proxy works with different supported services."""
-        services = ["sqs", "resource-groups", "s3", "ec2"]
+        services: list[SupportedServices] = ["s3", "ecs"]
 
         for service in services:
             mock_client = AsyncMock()
@@ -207,7 +208,7 @@ class TestAioBaseClientProxy:
             proxy = AioBaseClientProxy(
                 session=isolated_mock_session,
                 region="us-east-1",
-                service_name=service,  # type: ignore
+                service_name=service,
             )
 
             async with proxy:
@@ -235,7 +236,7 @@ class TestAioBaseClientProxy:
         isolated_mock_session.create_client.return_value = mock_client_cm
 
         proxy = AioBaseClientProxy(
-            session=isolated_mock_session, region="eu-west-1", service_name="sqs"
+            session=isolated_mock_session, region="eu-west-1", service_name="ecs"
         )
 
         async with proxy:
