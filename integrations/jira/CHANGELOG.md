@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.3 (2025-09-01)
+
+
+### Bug Fix
+
+- Fix bug Jira cannot ingest issues when the jql selector is empty
+
+
 ## 0.5.2 (2025-08-28)
 
 
