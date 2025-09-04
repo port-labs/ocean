@@ -2,6 +2,16 @@ from gitlab.webhook.events import GroupEvents
 from gitlab.webhook.webhook_factory._base_webhook_factory import BaseWebhookFactory
 from loguru import logger
 
+"""
+GitLab access levels:
+- 10: Guest
+- 20: Reporter  
+- 30: Developer
+- 40: Maintainer
+- 50: Owner
+"""
+OWNER_ACCESS_LEVEL = 50
+
 
 class GroupWebHook(BaseWebhookFactory[GroupEvents]):
     """Creates and manages GitLab group webhooks.
@@ -60,7 +70,9 @@ class GroupWebHook(BaseWebhookFactory[GroupEvents]):
         """
         logger.info("Initiating webhooks creation for owned groups.")
 
-        async for top_level_groups in self._client.get_parent_groups(owned=True):
+        async for top_level_groups in self._client.get_parent_groups(
+            params={"min_access_level": OWNER_ACCESS_LEVEL}
+        ):
             for group in top_level_groups:
                 await self.create_group_webhook(group["id"])
 

@@ -101,7 +101,7 @@ class TestGroupWebHook:
         monkeypatch.setattr(
             group_webhook._client,
             "get_parent_groups",
-            lambda owned: AsyncIterator([mock_groups]),
+            lambda params: AsyncIterator([mock_groups]),
         )
 
         await group_webhook.create_webhooks_for_all_groups()
