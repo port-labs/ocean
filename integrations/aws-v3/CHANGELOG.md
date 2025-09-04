@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 1.0.3-beta (2025-09-04)
+
+
+### Features
+
+- Added Support ECS Clusters Exporter
+
+
 ## 1.0.2-beta (2025-09-03)
 
 
@@ -69,14 +77,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Add use_organizations flag to the integration
-
-
-## 0.3.4-dev (2025-08-27)
-
-
-### Features
-
-- Added Support S3 Exporter
 
 
 ## 0.3.3-dev (2025-08-25)
