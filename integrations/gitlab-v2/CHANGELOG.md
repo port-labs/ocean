@@ -7,12 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.25 (2025-09-01)
+## 0.2.26 (2025-09-05)
 
 
 ### Improvements
 
 - Enrich pipelines with project data when resyncing pipelines.
+
+
+## 0.2.25 (2025-08-31)
+
+
+### Features
+
+- Added configurable access control with `GitlabVisibilityConfig` allowing configuration of GitLab access levels
+- Replaced hardcoded `owned` parameter with flexible `params` system
+- Removed hardcoded `DEFAULT_MIN_ACCESS_LEVEL = 30`
 
 
 ## 0.2.24 (2025-08-28)
