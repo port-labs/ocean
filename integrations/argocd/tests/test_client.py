@@ -2,7 +2,8 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from client import ArgocdClient, ObjectKind
+import httpx
+from client import ArgocdClient, ObjectKind, ResourceKindsWithSpecialHandling
 
 
 @pytest.fixture
@@ -17,21 +18,14 @@ def mock_argocd_client() -> ArgocdClient:
 
 @pytest.mark.asyncio
 async def test_get_resources(mock_argocd_client: ArgocdClient) -> None:
-    kinds = [ObjectKind.CLUSTER, ObjectKind.PROJECT, ObjectKind.APPLICATION]
+    kinds = [
+        ObjectKind.PROJECT,
+        ObjectKind.APPLICATION,
+    ]
 
     for kind in kinds:
         response_data = {}
-        if kind == ObjectKind.CLUSTER:
-            response_data = {
-                "items": [
-                    {
-                        "server": "test-server",
-                        "name": "test-cluster",
-                        "connectionState": {"status": "Successful"},
-                    }
-                ]
-            }
-        elif kind == ObjectKind.PROJECT:
+        if kind == ObjectKind.PROJECT:
             response_data = {
                 "items": [
                     {
@@ -63,7 +57,46 @@ async def test_get_resources(mock_argocd_client: ArgocdClient) -> None:
             mock_request.return_value = response_data
             resources = await mock_argocd_client.get_resources(resource_kind=kind)
             assert resources == response_data["items"]
-            mock_request.assert_called_with(url=f"{mock_argocd_client.api_url}/{kind}s")
+            mock_request.assert_called_with(
+                url=f"{mock_argocd_client.api_url}/{kind}s", kind=kind
+            )
+
+
+@pytest.mark.asyncio
+async def test_get_clusters(mock_argocd_client: ArgocdClient) -> None:
+    response_data = {
+        "items": [
+            {
+                "server": "test-server",
+                "name": "test-cluster",
+                "connectionState": {"status": "Successful"},
+            }
+        ]
+    }
+    with patch.object(
+        mock_argocd_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = response_data
+        resources = await mock_argocd_client.get_clusters()
+        assert resources == response_data["items"]
+        mock_request.assert_called_with(
+            url=f"{mock_argocd_client.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s",
+            kind=ResourceKindsWithSpecialHandling.CLUSTER,
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_unreachable_clusters(mock_argocd_client: ArgocdClient) -> None:
+    with patch.object(
+        mock_argocd_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = httpx.HTTPError("Connection attempts failed")
+        resources = await mock_argocd_client.get_clusters()
+        assert resources == []
+        mock_request.assert_called_with(
+            url=f"{mock_argocd_client.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s",
+            kind=ResourceKindsWithSpecialHandling.CLUSTER,
+        )
 
 
 @pytest.mark.asyncio
@@ -267,5 +300,6 @@ async def test_get_managed_resources(
                 assert len(resources) == len(response_data["items"])
                 application_name = application["metadata"]["name"]
                 mock_request.assert_called_with(
-                    url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
+                    url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources",
+                    kind=ObjectKind.APPLICATION,
                 )
