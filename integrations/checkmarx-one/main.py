@@ -27,6 +27,12 @@ from checkmarx_one.webhook.webhook_processors.scan_webhook_processor import (
 from checkmarx_one.webhook.webhook_processors.api_security_webhook_processor import (
     ApiSecurityWebhookProcessor,
 )
+from checkmarx_one.webhook.webhook_processors.sca_scan_result_webhook_processor import (
+    ScaScanResultWebhookProcessor,
+)
+from checkmarx_one.webhook.webhook_processors.containers_scan_result_webhook_processor import (
+    ContainersScanResultWebhookProcessor,
+)
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -131,3 +137,5 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 # Register webhook processors for Checkmarx One events
 ocean.add_webhook_processor("/webhook", ScanWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ApiSecurityWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ScaScanResultWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ContainersScanResultWebhookProcessor)
