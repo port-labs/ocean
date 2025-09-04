@@ -1,0 +1,403 @@
+---
+description: Complete file templates for AWS exporters
+globs: ["aws/core/exporters/**/*"]
+alwaysApply: true
+---
+
+# Complete Templates
+ss
+
+
+## models.py
+
+
+
+
+nvernvoes
+```python
+from typing import Optional, Dict, Any, List
+from pydantic import BaseModel, Field
+from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+
+class {Resource}Properties(BaseModel):
+    {primaryField}: str = Field(default_factory=str)
+    # Add ALL action return fields as Optional:
+    {actionField}: Optional[str] = None
+    
+    class Config:
+        extra = "forbid"
+
+class {Resource}(ResourceModel[{Resource}Properties]):
+    Type: str = "AWS::{Service}::{Resource}"
+    Properties: {Resource}Properties = Field(default_factory={Resource}Properties)
+
+class Single{Resource}Request(ResourceRequestModel):
+    {resource_id}: str = Field(..., description="Resource identifier")
+
+class Paginated{Resource}Request(ResourceRequestModel):
+    pass
+```
+
+## actions.py
+```python
+from typing import Dict, Any, List, Type, Union
+from aws.core.interfaces.action import Action, BatchAction, ActionMap
+from loguru import logger
+
+class {Resource}DetailsAction(BatchAction):  # Use BatchAction if batch API exists
+    async def _execute_batch(self, identifiers: List[str]) -> List[Dict[str, Any]]:
+        response = await self.client.{batch_method}({param}=identifiers)
+        return response["{response_key}"]
+
+class {Resource}DetailsAction(Action):  # Use Action if no batch API
+    async def _execute(self, identifier: str) -> Dict[str, Any]:
+        response = await self.client.{method}({param}=identifier)
+        return response["{response_key}"]
+        # Example SQS: response = await self.client.get_queue_attributes(QueueUrl=identifier, AttributeNames=["All"])
+        # return response["Attributes"]
+
+class Get{Resource}{Feature}Action(Action):
+    async def _execute(self, identifier: str) -> Dict[str, Any]:
+        response = await self.client.{feature_method}({param}=identifier)
+        return {"{FieldName}": response["{ResponseField}"]}
+        # Example: response = await self.client.get_queue_tags(QueueUrl=identifier)
+        # return {"Tags": response.get("Tags", {})}
+
+class {Service}{Resource}ActionsMap(ActionMap):
+    defaults: List[Type[Union[Action, BatchAction]]] = [{Resource}DetailsAction]
+    options: List[Type[Union[Action, BatchAction]]] = [Get{Resource}{Feature}Action]
+    
+    def merge(self, include: List[str]) -> List[Type[Union[Action, BatchAction]]]:
+        return self.defaults + [a for a in self.options if a.__name__ in include]
+```
+
+## exporter.py - Regional Batch
+```python
+from typing import Any, AsyncGenerator, Type
+from aws.core.client.proxy import AioBaseClientProxy
+from aws.core.exporters.{service}.{resource}.actions import {Service}{Resource}ActionsMap
+from aws.core.exporters.{service}.{resource}.models import {Resource}, Single{Resource}Request, Paginated{Resource}Request
+from aws.core.helpers.types import SupportedServices
+from aws.core.interfaces.exporter import IResourceExporter
+from aws.core.modeling.resource_inspector import ResourceInspector
+
+class {Service}{Resource}Exporter(IResourceExporter):
+    _service_name: SupportedServices = "{service_name}"
+    _model_cls: Type[{Resource}] = {Resource}
+    _actions_map: Type[{Service}{Resource}ActionsMap] = {Service}{Resource}ActionsMap
+
+    async def get_resource(self, options: Single{Resource}Request) -> dict[str, Any]:
+        async with AioBaseClientProxy(self.session, options.region, self._service_name) as proxy:
+            inspector = ResourceInspector(
+                proxy.client, self._actions_map(), lambda: self._model_cls(),
+                self.account_id, options.region
+            )
+            response = await inspector.inspect(options.{resource_id}, options.include)
+            return response.dict(exclude_none=True)
+
+    async def get_paginated_resources(self, options: Paginated{Resource}Request) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async with AioBaseClientProxy(self.session, options.region, self._service_name) as proxy:
+            inspector = ResourceInspector(
+                proxy.client, self._actions_map(), lambda: self._model_cls(),
+                self.account_id, options.region
+            )
+            paginator = proxy.get_paginator("{list_method}", "{response_key}")
+            
+            async for {resource}_ids in paginator.paginate():
+                if not {resource}_ids:
+                    continue
+                {resources} = await inspector.inspect_batch({resource}_ids, options.include)
+                yield [{r}.dict(exclude_none=True) for {r} in {resources}]
+```
+
+## exporter.py - Regional Individual
+```python
+import asyncio
+# ... same imports as above ...
+
+class {Service}{Resource}Exporter(IResourceExporter):
+    # ... same class attributes ...
+
+    async def get_paginated_resources(self, options: Paginated{Resource}Request) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async with AioBaseClientProxy(self.session, options.region, self._service_name) as proxy:
+            inspector = ResourceInspector(
+                proxy.client, self._actions_map(), lambda: self._model_cls(),
+                self.account_id, options.region
+            )
+            paginator = proxy.get_paginator("{list_method}", "{response_key}")
+            # Example SQS: proxy.get_paginator("list_queues", "QueueUrls")
+            
+            async for {resources} in paginator.paginate():
+                tasks = [self._process_{resource}({r}, inspector, options.include) for {r} in {resources}]
+                results = await asyncio.gather(*tasks)
+                yield results
+
+    async def _process_{resource}(self, {resource}: dict, inspector: ResourceInspector, include: list[str]) -> dict:
+        result = await inspector.inspect({resource}["{id_field}"], include)
+        # Example SQS: result = await inspector.inspect(queue, include) # queue is already the QueueUrl string
+        return result.dict(exclude_none=True)
+```
+
+## main.py - Regional Batch/Individual
+```python
+@ocean.on_resync(ObjectKind.{SERVICE}_{RESOURCE})
+async def resync_{service}_{resource}(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    aws_resource_config = cast(AWSResourceConfig, event.resource_config)
+    
+    def options_factory(region: str) -> Paginated{Resource}Request:
+        return Paginated{Resource}Request(region=region, include=aws_resource_config.selector.include_actions)
+    
+    async for account, session in get_all_account_sessions():
+        regions = await get_allowed_regions(session, aws_resource_config.selector)
+        exporter = {Service}{Resource}Exporter(session, account["Id"])
+
+        # Regional Batch:
+        async for batch in _handle_regional_resource_resync(kind, regions, options_factory, exporter, account["Id"]):
+            yield batch
+            
+        # Regional Individual:
+        async for batch in _handle_global_resource_resync(kind, regions, options_factory, exporter, account["Id"]):
+            yield batch
+```
+
+## main.py - Global
+```python
+@ocean.on_resync(ObjectKind.{SERVICE}_{RESOURCE})
+async def resync_{service}_{resource}(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    aws_resource_config = cast(AWSResourceConfig, event.resource_config)
+    
+    def options_factory(account_data: AccountInfo) -> Single{Resource}Request:
+        return Single{Resource}Request(
+            account_id=account_data["Id"],
+            include=aws_resource_config.selector.include_actions,
+            {resource}_data=account_data
+        )
+
+    async for account, session in get_all_account_sessions():
+        exporter = {Service}{Resource}Exporter(session, account["Id"])
+        options = options_factory(account)
+        data = await exporter.get_resource(options)
+        yield [data]
+```
+
+## types.py updates
+```python
+# Add to ObjectKind enum:
+{SERVICE}_{RESOURCE} = "AWS::{Service}::{Resource}"
+
+# Add to SupportedServices:
+SupportedServices = Literal["{service_name}", "existing..."]
+```
+
+## __init__.py
+```python
+from aws.core.exporters.{service}.{resource}.exporter import {Service}{Resource}Exporter
+from aws.core.exporters.{service}.{resource}.models import {Resource}, {Resource}Properties, Single{Resource}Request, Paginated{Resource}Request
+
+__all__ = ["{Service}{Resource}Exporter", "{Resource}", "{Resource}Properties", "Single{Resource}Request", "Paginated{Resource}Request"]
+```
+
+## port-app-config.yml
+```yaml
+- kind: AWS::{Service}::{Resource}
+  selector:
+    query: 'true'
+    includeActions:
+      - Get{Resource}{Feature}Action
+  port:
+    entity:
+      mappings:
+        identifier: .Properties.{primaryField}
+        title: .Properties.{displayField}
+        blueprint: '"{resourceBlueprint}"'
+        properties:
+          region: .Metadata.__Region
+          accountId: .Metadata.__AccountId
+          {propertyName}: .Properties.{PropertyField}
+        relations:
+          account: .Metadata.__AccountId
+```
+
+## Blueprint (port-app-config.yml)
+```yaml
+- identifier: {resourceBlueprint}
+  title: {Resource}
+  icon: {icon}
+  schema:
+    properties:
+      region:
+        type: string
+        title: Region
+      accountId:
+        type: string
+        title: Account ID
+      {propertyName}:
+        type: string
+        title: {Property Display Name}
+    required:
+      - region
+      - accountId
+  relations:
+    account:
+      title: Account
+      target: awsAccount
+      required: true
+      many: false
+```
+
+## Example Resource
+```json
+{
+  "identifier": "{example-identifier}",
+  "title": "{Example Resource Name}",
+  "blueprint": "{resourceBlueprint}",
+  "properties": {
+    "region": "us-east-1",
+    "accountId": "123456789012",
+    "{propertyName}": "{example-value}"
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}
+```
+
+## Test Template
+```python
+from unittest.mock import AsyncMock, MagicMock, patch, call
+import pytest
+from aws.core.modeling.resource_models import ResourceMetadata
+from aws.core.exporters.{service}.{resource}.exporter import {Service}{Resource}Exporter
+from aws.core.exporters.{service}.{resource}.models import {Resource}, {Resource}Properties, Single{Resource}Request, Paginated{Resource}Request
+
+class Test{Service}{Resource}Exporter:
+    @pytest.fixture
+    def mock_session(self) -> AsyncMock:
+        return AsyncMock()
+
+    @pytest.fixture
+    def exporter(self, mock_session: AsyncMock) -> {Service}{Resource}Exporter:
+        return {Service}{Resource}Exporter(mock_session, "test-account-id")
+
+    def test_service_name(self, exporter):
+        assert exporter._service_name == "{service_name}"
+
+    def test_model_cls(self, exporter):
+        assert exporter._model_cls == {Resource}
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.{service}.{resource}.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.{service}.{resource}.exporter.ResourceInspector")
+    async def test_get_resource_success(
+        self, mock_inspector_class, mock_proxy_class, exporter
+    ):
+        # Setup mocks
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
+        mock_inspector = AsyncMock()
+        mock_inspector_class.return_value = mock_inspector
+
+        # Create expected response
+        expected_resource = {Resource}(
+            Properties={Resource}Properties({primaryField}="{example-identifier}"),
+            Metadata=ResourceMetadata(__Region="us-east-1", __AccountId="test-account-id")
+        )
+        mock_inspector.inspect.return_value = expected_resource
+
+        # Execute
+        options = Single{Resource}Request({resource_id}="{example-identifier}", region="us-east-1", include=[])
+        result = await exporter.get_resource(options)
+        
+        # Verify ResourceInspector constructor
+        mock_inspector_class.assert_called_once_with(
+            mock_client,
+            exporter._actions_map(),
+            mock.ANY,  # lambda function
+            exporter.account_id,  # Required
+            options.region        # Required
+        )
+        
+        # Verify inspect call
+        mock_inspector.inspect.assert_called_once_with("{example-identifier}", [])
+        
+        # Verify result
+        assert result == expected_resource.dict(exclude_none=True)
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.{service}.{resource}.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.{service}.{resource}.exporter.ResourceInspector")
+    async def test_get_paginated_resources_success(
+        self, mock_inspector_class, mock_proxy_class, exporter
+    ):
+        # Setup mocks
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
+        # Mock paginator
+        async def mock_paginate():
+            yield ["{example-identifier-1}", "{example-identifier-2}"]
+
+        class MockPaginator:
+            def paginate(self):
+                return mock_paginate()
+
+        mock_proxy.get_paginator.return_value = MockPaginator()
+
+        mock_inspector = AsyncMock()
+        mock_inspector_class.return_value = mock_inspector
+
+        # Create expected resources
+        resource1 = {Resource}(
+            Properties={Resource}Properties({primaryField}="{example-identifier-1}"),
+            Metadata=ResourceMetadata(__Region="us-east-1", __AccountId="test-account-id")
+        )
+        resource2 = {Resource}(
+            Properties={Resource}Properties({primaryField}="{example-identifier-2}"),
+            Metadata=ResourceMetadata(__Region="us-east-1", __AccountId="test-account-id")
+        )
+
+        # For Regional Individual pattern - mock inspect calls
+        mock_inspector.inspect.side_effect = [resource1, resource2]
+
+        # Execute
+        options = Paginated{Resource}Request(region="us-east-1", include=[])
+        results = []
+        async for batch in exporter.get_paginated_resources(options):
+            results.extend(batch)
+
+        # Verify calls
+        mock_proxy.get_paginator.assert_called_once_with("{list_method}", "{response_key}")
+        assert mock_inspector.inspect.call_count == 2
+        
+        # Verify results
+        assert len(results) == 2
+        assert results[0] == resource1.dict(exclude_none=True)
+        assert results[1] == resource2.dict(exclude_none=True)
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.{service}.{resource}.exporter.AioBaseClientProxy")
+    @patch("aws.core.exporters.{service}.{resource}.exporter.ResourceInspector")
+    async def test_get_resource_inspector_exception(
+        self, mock_inspector_class, mock_proxy_class, exporter
+    ):
+        # Setup mocks
+        mock_proxy = AsyncMock()
+        mock_client = AsyncMock()
+        mock_proxy.client = mock_client
+        mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
+
+        mock_inspector = AsyncMock()
+        mock_inspector_class.return_value = mock_inspector
+        mock_inspector.inspect.side_effect = Exception("Resource not found")
+
+        # Execute and verify exception
+        options = Single{Resource}Request({resource_id}="{example-identifier}", region="us-east-1", include=[])
+        
+        with pytest.raises(Exception, match="Resource not found"):
+            await exporter.get_resource(options)
+```
