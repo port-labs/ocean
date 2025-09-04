@@ -85,71 +85,71 @@ class LaunchDarklyIntegration(BaseIntegration):
     def __init__(self, context: PortOceanContext):
         super().__init__(context)
     
-    # async def _filter_segments(
-    #     self,
-    #     segments: List[dict[str, Any]],
-    #     selector: SegmentSelector
-    # ) -> List[dict[str, Any]]:
-    #     """Filter segments based on the selector criteria."""
-    #     filtered_segments = []
-    #
-    #     for segment in segments:
-    #         if selector.tags is not None:
-    #             segment_tags = segment.get("tags", [])
-    #             if not any(tag in segment_tags for tag in selector.tags):
-    #                 continue
-    #
-    #         if selector.archived is not None:
-    #             segment_archived = segment.get("archived", False)
-    #             if segment_archived != selector.archived:
-    #                 continue
-    #
-    #         if selector.name_pattern is not None:
-    #             segment_name = segment.get("name", "").lower()
-    #             if selector.name_pattern.lower() not in segment_name:
-    #                 continue
-    #
-    #         if selector.description_pattern is not None:
-    #             segment_description = segment.get("description", "").lower()
-    #             if selector.description_pattern.lower() not in segment_description:
-    #                 continue
-    #
-    #         if selector.has_rules is not None:
-    #             segment_rules = segment.get("rules", [])
-    #             has_rules = len(segment_rules) > 0
-    #             if has_rules != selector.has_rules:
-    #                 continue
-    #
-    #         if selector.has_included_users is not None:
-    #             segment_included = segment.get("included", [])
-    #             has_included = len(segment_included) > 0
-    #             if has_included != selector.has_included_users:
-    #                 continue
-    #
-    #         if selector.has_excluded_users is not None:
-    #             segment_excluded = segment.get("excluded", [])
-    #             has_excluded = len(segment_excluded) > 0
-    #             if has_excluded != selector.has_excluded_users:
-    #                 continue
-    #
-    #         if selector.project_key is not None:
-    #             segment_project = segment.get("__projectKey")
-    #             if segment_project != selector.project_key:
-    #                 continue
-    #
-    #         if selector.environment_key is not None:
-    #             segment_environment = segment.get("__environmentKey")
-    #             if segment_environment != selector.environment_key:
-    #                 continue
-    #
-    #         if not selector.include_inactive:
-    #             segment_rules = segment.get("rules", [])
-    #             segment_included = segment.get("included", [])
-    #             segment_excluded = segment.get("excluded", [])
-    #
-    #             if len(segment_rules) == 0 and len(segment_included) == 0 and len(segment_excluded) == 0:
-    #                 continue
-    #
-    #         filtered_segments.append(segment)
-    #
-    #     return filtered_segments
+    async def _filter_segments(
+        self,
+        segments: List[dict[str, Any]],
+        selector: SegmentSelector
+    ) -> List[dict[str, Any]]:
+        """Filter segments based on the selector criteria."""
+        filtered_segments = []
+
+        for segment in segments:
+            if selector.tags is not None:
+                segment_tags = segment.get("tags", [])
+                if not any(tag in segment_tags for tag in selector.tags):
+                    continue
+
+            if selector.archived is not None:
+                segment_archived = segment.get("archived", False)
+                if segment_archived != selector.archived:
+                    continue
+
+            if selector.name_pattern is not None:
+                segment_name = segment.get("name", "").lower()
+                if selector.name_pattern.lower() not in segment_name:
+                    continue
+
+            if selector.description_pattern is not None:
+                segment_description = segment.get("description", "").lower()
+                if selector.description_pattern.lower() not in segment_description:
+                    continue
+
+            if selector.has_rules is not None:
+                segment_rules = segment.get("rules", [])
+                has_rules = len(segment_rules) > 0
+                if has_rules != selector.has_rules:
+                    continue
+
+            if selector.has_included_users is not None:
+                segment_included = segment.get("included", [])
+                has_included = len(segment_included) > 0
+                if has_included != selector.has_included_users:
+                    continue
+
+            if selector.has_excluded_users is not None:
+                segment_excluded = segment.get("excluded", [])
+                has_excluded = len(segment_excluded) > 0
+                if has_excluded != selector.has_excluded_users:
+                    continue
+
+            if selector.project_key is not None:
+                segment_project = segment.get("__projectKey")
+                if segment_project != selector.project_key:
+                    continue
+
+            if selector.environment_key is not None:
+                segment_environment = segment.get("__environmentKey")
+                if segment_environment != selector.environment_key:
+                    continue
+
+            if not selector.include_inactive:
+                segment_rules = segment.get("rules", [])
+                segment_included = segment.get("included", [])
+                segment_excluded = segment.get("excluded", [])
+
+                if len(segment_rules) == 0 and len(segment_included) == 0 and len(segment_excluded) == 0:
+                    continue
+
+            filtered_segments.append(segment)
+
+        return filtered_segments
