@@ -60,7 +60,9 @@ class ResyncStateUpdater:
     async def update_after_resync(
         self,
         status: Literal[
-            IntegrationStateStatus.Completed, IntegrationStateStatus.Failed
+            IntegrationStateStatus.Completed,
+            IntegrationStateStatus.Failed,
+            IntegrationStateStatus.Aborted,
         ] = IntegrationStateStatus.Completed,
         interval: int | None = None,
         custom_start_time: datetime.datetime | None = None,
