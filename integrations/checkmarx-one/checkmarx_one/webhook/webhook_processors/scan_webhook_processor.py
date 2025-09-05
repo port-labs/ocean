@@ -45,6 +45,8 @@ class ScanWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
             SingleScanOptions(scan_id=scan_id)
         )
 
+        logger.info(f"Processed scan data for scan: {scan_id} in project: {project_id}")
+
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert],
             deleted_raw_results=[],
