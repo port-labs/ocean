@@ -37,9 +37,7 @@ class CheckmarxOneScanModel(BaseModel):
 
     @property
     def from_date(self) -> Optional[str]:
-        if self.since:
-            return self._days_ago_to_rfc3339(self.since)
-        return None
+        return self._days_ago_to_rfc3339(self.since) if self.since else None
 
     def _days_ago_to_rfc3339(self, days: int) -> str:
         dt = datetime.now(timezone.utc) - timedelta(days=days)
@@ -113,6 +111,28 @@ class CheckmarxOneScanResourcesConfig(ResourceConfig):
     selector: CheckmarxOneScanSelector
 
 
+class CheckmarxOneKicsSelector(Selector):
+    scan_filter: CheckmarxOneScanModel = Field(
+        default=CheckmarxOneScanModel(),
+        description="Filter scan results by scan",
+    )
+    severity: Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]] = (
+        Field(
+            default=None,
+            description="Filter KICS results by severity levels",
+        )
+    )
+    status: Optional[List[Literal["NEW", "RECURRENT", "FIXED"]]] = Field(
+        default=None,
+        description="Filter KICS results by status",
+    )
+
+
+class CheckmarxOneKicsResourcesConfig(ResourceConfig):
+    kind: Literal["kics"]
+    selector: CheckmarxOneKicsSelector
+
+
 class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
     kind: Literal["sca", "containers"]
     selector: CheckmarxOneResultSelector
@@ -123,6 +143,7 @@ class CheckmarxOnePortAppConfig(PortAppConfig):
         CheckmarxOneProjectResourcesConfig
         | CheckmarxOneScanResourcesConfig
         | CheckmarxOneApiSecResourcesConfig
+        | CheckmarxOneKicsResourcesConfig
         | CheckmarxOneScanResultResourcesConfig
     ] = Field(
         default_factory=list

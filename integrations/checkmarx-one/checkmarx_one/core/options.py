@@ -80,3 +80,13 @@ class SingleScanResultOptions(TypedDict):
     type: Literal["sca", "containers"]
     scan_id: Required[str]
     result_id: Required[str]
+
+
+class ListKicsOptions(TypedDict):
+    """Options for listing KICS scan results (IaC Security)."""
+
+    scan_id: Required[str]
+    severity: NotRequired[
+        Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
+    ]
+    status: NotRequired[Optional[List[Literal["NEW", "RECURRENT", "FIXED"]]]]

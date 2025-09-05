@@ -79,7 +79,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         """
         params: dict[str, Any] = self._get_params(options)
         async for results in self._get_paginated_scan_results(params):
-            batch = [
+            yield [
                 self._enrich_scan_result_with_scan_id(
                     result,
                     options["scan_id"],
@@ -87,7 +87,6 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
                 for result in results
                 if result["type"] == options["type"]
             ]
-            yield batch
 
     def _get_params(self, options: ListScanResultOptions) -> dict[str, Any]:
         params: dict[str, Any] = {
