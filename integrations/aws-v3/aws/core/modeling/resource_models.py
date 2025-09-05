@@ -13,9 +13,10 @@ class ResourceModel[PropertiesT: BaseModel](BaseModel):
 
     Type: str
     Properties: PropertiesT
+    ExtraContext: BaseModel = Field(default_factory=BaseModel, alias="__ExtraContext")
 
     class Config:
-        extra = "ignore"
+        extra = "forbid"
         """Extra fields not defined in the model will be ignored."""
 
 
@@ -29,6 +30,9 @@ class ResourceRequestModel(BaseModel):
     """
 
     region: str = Field(..., description="The AWS region to export resources from")
+    account_id: str = Field(
+        ..., description="The AWS account ID to export resources from"
+    )
     include: List[str] = Field(
         default_factory=list, description="The resources to include in the export"
     )

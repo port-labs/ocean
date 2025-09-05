@@ -1,32 +1,34 @@
 from typing import Optional, Dict, Any, List
-from datetime import datetime
 from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
 
 class BucketProperties(BaseModel):
+    """
+    Property names align with AWS S3 API names, aliases align with CloudFormation template property names.
+    Aliases are used to ensure compatibility with CloudFormation template property names.
+    Best Effort: Try to keep alias compliant with CloudFormation template property names and serialize by alias.
 
-    BucketName: str = Field(default_factory=str)
-    BucketArn: Optional[str] = None
-    BucketRegion: Optional[str] = None
-    CreationDate: Optional[str] = None
-    AccessControl: Optional[str] = None
-    VersioningConfiguration: Optional[Dict[str, Any]] = None
-    Tags: Optional[List[Dict[str, Any]]] = None
-    BucketEncryption: Optional[Dict[str, Any]] = None
-    ReplicationConfiguration: Optional[Dict[str, Any]] = None
-    Location: Optional[Dict[str, Any]] = None
-    Policy: Optional[Dict[str, Any]] = None
-    RegionalDomainName: Optional[str] = None
-    DomainName: Optional[str] = None
-    DualStackDomainName: Optional[str] = None
-    WebsiteURL: Optional[str] = None
-    PublicAccessBlockConfiguration: Optional[Dict[str, Any]] = None
-    OwnershipControls: Optional[Dict[str, Any]] = None
-    CorsConfiguration: Optional[Dict[str, Any]] = None
+    AWS::S3::Bucket: https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-s3-bucket.html
+    """
+
+    Name: Optional[str] = Field(default=None, alias="BucketName")
+    Arn: Optional[str] = Field(default=None, alias="Arn")
+    CreationDate: Optional[str] = Field(default=None, alias="CreationDate")
+    TagSet: Optional[List[Dict[str, Any]]] = Field(default=None, alias="Tags")
+    ServerSideEncryptionConfiguration: Optional[Dict[str, Any]] = Field(
+        default=None, alias="BucketEncryption"
+    )
+    LocationConstraint: Optional[str] = Field(default=None, alias="LocationConstraint")
+    PublicAccessBlockConfiguration: Optional[Dict[str, Any]] = Field(
+        default=None, alias="PublicAccessBlockConfiguration"
+    )
+    OwnershipControls: Optional[Dict[str, Any]] = Field(
+        default=None, alias="OwnershipControls"
+    )
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         populate_by_name = True
 
 

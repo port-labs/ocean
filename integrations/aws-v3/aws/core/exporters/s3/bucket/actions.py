@@ -22,9 +22,7 @@ class GetBucketPublicAccessBlockAction(Action):
         logger.info(
             f"Successfully fetched bucket public access block for bucket {bucket['Name']}"
         )
-        return {
-            "PublicAccessBlockConfiguration": response["PublicAccessBlockConfiguration"]
-        }
+        return response
 
 
 class GetBucketOwnershipControlsAction(Action):
@@ -40,7 +38,7 @@ class GetBucketOwnershipControlsAction(Action):
         logger.info(
             f"Successfully fetched bucket ownership controls for bucket {bucket['Name']}"
         )
-        return {"OwnershipControls": response.get("OwnershipControls", {})}
+        return response
 
 
 class GetBucketEncryptionAction(Action):
@@ -55,7 +53,7 @@ class GetBucketEncryptionAction(Action):
         logger.info(
             f"Successfully fetched bucket encryption for bucket {bucket['Name']}"
         )
-        return {"BucketEncryption": response["ServerSideEncryptionConfiguration"]}
+        return response
 
 
 class GetBucketLocationAction(Action):
@@ -68,7 +66,7 @@ class GetBucketLocationAction(Action):
     async def _fetch_location(self, bucket: Dict[str, Any]) -> Dict[str, Any]:
         response = await self.client.get_bucket_location(Bucket=bucket["Name"])  # type: ignore
         logger.info(f"Successfully fetched bucket location for bucket {bucket['Name']}")
-        return {"BucketRegion": response["LocationConstraint"]}
+        return response
 
 
 class ListBucketsAction(Action):
@@ -79,8 +77,8 @@ class ListBucketsAction(Action):
             results.append(
                 {
                     "CreationDate": creation_date.isoformat(),
-                    "BucketName": bucket["Name"],
-                    "BucketArn": f"arn:aws:s3:::{bucket['Name']}",
+                    "Arn": f"arn:aws:s3:::{bucket['Name']}",
+                    "Name": bucket["Name"],
                 }
             )
         return results
@@ -104,11 +102,11 @@ class GetBucketTaggingAction(Action):
             logger.info(
                 f"Successfully fetched bucket tagging for bucket {bucket['Name']}"
             )
-            return {"Tags": response.get("TagSet", [])}
+            return response
         except self.client.exceptions.ClientError as e:
             if e.response.get("Error", {}).get("Code") == "NoSuchTagSet":
                 logger.info(f"No tag set found for bucket {bucket['Name']}")
-                return {"Tags": []}
+                return {"TagSet": []}
             else:
                 raise
 

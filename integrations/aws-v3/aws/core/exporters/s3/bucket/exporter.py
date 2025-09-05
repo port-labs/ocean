@@ -49,5 +49,11 @@ class S3BucketExporter(IResourceExporter):
             paginator = proxy.get_paginator("list_buckets", "Buckets")
 
             async for buckets in paginator.paginate():
-                action_result = await inspector.inspect(buckets, options.include)
+                action_result = await inspector.inspect(
+                    buckets,
+                    options.include,
+                    extra_context={
+                        "AccountId": options.account_id,
+                    },
+                )
                 yield action_result

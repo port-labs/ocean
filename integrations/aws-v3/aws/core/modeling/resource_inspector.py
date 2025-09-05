@@ -51,7 +51,10 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         self.model_factory = model_factory
 
     async def inspect(
-        self, identifiers: Any, include: List[str]
+        self,
+        identifiers: Any,
+        include: List[str],
+        extra_context: Dict[str, Any] | None = None,
     ) -> List[Dict[str, Any]]:
         """
         Execute the specified actions for the given resource identifiers and
@@ -71,7 +74,7 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             *(self._run_action(action, identifiers) for action in actions)
         )
 
-        if not action_results or not any(action_results):
+        if not any(action_results):
             return []
 
         resource_data: dict[int, dict[str, Any]] = defaultdict(dict)
@@ -84,11 +87,14 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         for resource_props in resource_data.values():
             builder = ResourceBuilder[ResourceModelT, Any](self.model_factory())
             builder.with_properties(resource_props)
+            if extra_context:
+                builder.with_extra_context(extra_context)
             resources.append(builder.build())
 
         logger.debug(
             f"Built {len(resources)} resources from {len(action_results)} actions"
         )
+        logger.error(f"Resources: {resources}")
         return resources
 
     async def _run_action(

@@ -3,6 +3,13 @@ from abc import ABC, abstractmethod
 from aiobotocore.client import AioBaseClient
 from typing import Type, Protocol
 from loguru import logger
+from pydantic import BaseModel
+
+
+class ActionContext(BaseModel):
+    Region: str
+    AccountId: str
+    Identities: List[Any]
 
 
 class Action(ABC):
