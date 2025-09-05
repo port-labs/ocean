@@ -23,13 +23,21 @@ class TestObjectKind:
 
     def test_enum_members(self) -> None:
         """Test that enum has expected members."""
-        expected_members = {"PROJECT", "SCAN_RESULT", "SCAN"}
+        expected_members = {
+            "PROJECT",
+            "SCAN",
+            "API_SEC",
+        }
         actual_members = set(ObjectKind.__members__.keys())
         assert actual_members == expected_members
 
     def test_enum_values(self) -> None:
         """Test that enum has expected values."""
-        expected_values = {"project", "scan_result", "scan"}
+        expected_values = {
+            "project",
+            "scan",
+            "api-security",
+        }
         actual_values = set(member.value for member in ObjectKind)
         assert actual_values == expected_values
 
@@ -46,11 +54,13 @@ class TestObjectKind:
         assert len(members) == 3
         assert ObjectKind.PROJECT in members
         assert ObjectKind.SCAN in members
+        assert ObjectKind.API_SEC in members
 
     def test_enum_membership(self) -> None:
         """Test checking membership in enum."""
         assert "project" in ObjectKind._value2member_map_
         assert "scan" in ObjectKind._value2member_map_
+        assert "api-security" in ObjectKind._value2member_map_
         assert "invalid" not in ObjectKind._value2member_map_
 
     def test_enum_from_value(self) -> None:
