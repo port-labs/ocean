@@ -48,6 +48,14 @@ class TestCheckmarxKicsExporter:
         assert batches[1][0]["ID"] == "b"
         assert batches[1][0]["__scan_id"] == "scan-1"
 
+    def test_get_resource(self, exporter: CheckmarxKicsExporter) -> None:
+        """Test that get_resource raises NotImplementedError."""
+        with pytest.raises(
+            NotImplementedError,
+            match="Single KICS result fetch is not supported by the API.",
+        ):
+            exporter.get_resource({})
+
     @pytest.mark.asyncio
     async def test_build_params(self, exporter: CheckmarxKicsExporter) -> None:
         # Test basic scan-id only
