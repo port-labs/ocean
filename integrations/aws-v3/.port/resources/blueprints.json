@@ -10,9 +10,9 @@
           "title": "ARN",
           "description": "The Amazon Resource Name (ARN) of the bucket"
         },
-        "region": {
+        "locationConstraint": {
           "type": "string",
-          "title": "Region",
+          "title": "Location Constraint",
           "description": "The AWS region where the bucket is located"
         },
         "creationDate": {
