@@ -19,6 +19,7 @@ from checkmarx_one.core.options import (
 from integration import (
     CheckmarxOneScanResourcesConfig,
     CheckmarxOneScanResultResourcesConfig,
+    CheckmarxOneApiSecResourcesConfig,
 )
 from checkmarx_one.utils import ObjectKind, ScanResultObjectKind
 from checkmarx_one.webhook.webhook_processors.scan_webhook_processor import (
@@ -58,7 +59,6 @@ async def on_scan_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(CheckmarxOneScanResourcesConfig, event.resource_config)
     selector = config.selector
 
-    logger.info(selector)
     options = ListScanOptions(
         project_names=selector.project_names,
         branches=selector.branches,
@@ -79,7 +79,15 @@ async def on_api_sec_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     scan_exporter = create_scan_exporter()
     api_sec_exporter = create_api_sec_exporter()
 
-    scan_options = ListScanOptions()
+    config = cast(CheckmarxOneApiSecResourcesConfig, event.resource_config)
+    selector = config.selector
+
+    scan_options = ListScanOptions(
+        project_names=selector.scan_filter.project_names,
+        branches=selector.scan_filter.branches,
+        statuses=selector.scan_filter.statuses,
+        from_date=selector.scan_filter.from_date,
+    )
 
     async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
         for scan_data in scan_data_list:
@@ -113,7 +121,12 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         CheckmarxOneScanResultResourcesConfig, event.resource_config
     ).selector
 
-    scan_options = ListScanOptions()
+    scan_options = ListScanOptions(
+        project_names=selector.scan_filter.project_names,
+        branches=selector.scan_filter.branches,
+        statuses=selector.scan_filter.statuses,
+        from_date=selector.scan_filter.from_date,
+    )
 
     async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
         for scan_data in scan_data_list:
