@@ -87,30 +87,6 @@ class CheckmarxOneApiSecSelector(Selector):
         default=CheckmarxOneScanModel(),
         description="Filter scan results by scan",
     )
-    branches: Optional[List[str]] = Field(
-        default=None,
-        description="Filter results by the name of the Git branch that was scanned.",
-    )
-    statuses: Optional[
-        List[Literal["Queued", "Running", "Completed", "Failed", "Partial", "Canceled"]]
-    ] = Field(
-        default=None,
-        description="Filter results by the execution status of the scans. (Case insensitive, OR operator for multiple statuses.)",
-    )
-    since: Optional[int] = Field(
-        default=90,
-        description="Filter results by the date and time when the scan was created. (UNIX timestamp in seconds)",
-    )
-
-    @property
-    def from_date(self) -> Optional[str]:
-        return self._days_ago_to_rfc3339(self.since) if self.since else None
-
-    def _days_ago_to_rfc3339(self, days: int) -> str:
-        dt = datetime.now(timezone.utc) - timedelta(days=days)
-        # Format to RFC3339 with microseconds and Zulu time
-        # RFC3339 Date (Extend) format (e.g. 2021-06-02T12:14:18.028555Z)
-        return dt.isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
 class CheckmarxOneProjectSelector(Selector):
@@ -136,6 +112,10 @@ class CheckmarxOneScanResourcesConfig(ResourceConfig):
 
 
 class CheckmarxOneKicsSelector(Selector):
+    scan_filter: CheckmarxOneScanModel = Field(
+        default=CheckmarxOneScanModel(),
+        description="Filter scan results by scan",
+    )
     severity: Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]] = (
         Field(
             default=None,

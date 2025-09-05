@@ -102,11 +102,18 @@ async def on_kics_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     scan_exporter = create_scan_exporter()
     kics_exporter = create_kics_exporter()
 
-    scan_options = ListScanOptions()
-
     # Get selector options from config
     config = cast(CheckmarxOneKicsResourcesConfig, event.resource_config)
     selector = config.selector
+
+    scan_options = ListScanOptions(
+        project_names=selector.scan_filter.project_names,
+        branches=selector.scan_filter.branches,
+        statuses=selector.scan_filter.statuses,
+        from_date=selector.scan_filter.from_date,
+    )
+    logger.warning(f"Scan options: {scan_options}")
+
 
     async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
         for scan_data in scan_data_list:
