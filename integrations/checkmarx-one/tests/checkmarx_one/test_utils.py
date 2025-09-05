@@ -28,6 +28,7 @@ class TestObjectKind:
             "PROJECT",
             "SCAN",
             "API_SEC",
+            "KICS",
         }
         actual_members = set(ObjectKind.__members__.keys())
         assert actual_members == expected_members
