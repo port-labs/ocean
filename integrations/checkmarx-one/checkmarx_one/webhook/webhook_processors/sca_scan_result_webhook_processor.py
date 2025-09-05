@@ -14,8 +14,10 @@ from checkmarx_one.exporter_factory import (
     create_scan_result_exporter,
 )
 from checkmarx_one.utils import ScanResultObjectKind
-from .scan_webhook_processor import ScanWebhookProcessor
 from integration import CheckmarxOneScanResultResourcesConfig
+from checkmarx_one.webhook.webhook_processors.scan_webhook_processor import (
+    ScanWebhookProcessor,
+)
 
 
 class ScaScanResultWebhookProcessor(ScanWebhookProcessor):
