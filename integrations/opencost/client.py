@@ -58,6 +58,8 @@ class OpenCostClient:
         ignored_errors: Optional[list[IgnoredError]] = None,
     ) -> dict[str, Any]:
         """Send API request with error handling and optional ignored errors."""
+
+        logger.info(f"Sending {method} request to {url} with params: {params}")
         try:
             response = await self.http_client.request(
                 method=method,
@@ -65,7 +67,11 @@ class OpenCostClient:
                 params=params,
             )
             response.raise_for_status()
+
+            logger.debug(f"Successfully received response from {url}")
+
             return response.json()
+
         except httpx.HTTPStatusError as e:
             if self._should_ignore_error(e, url, ignored_errors):
                 return {}
