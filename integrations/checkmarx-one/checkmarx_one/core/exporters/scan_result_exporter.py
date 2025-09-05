@@ -20,29 +20,11 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         return scan_result
 
     async def get_resource(self, options: SingleScanResultOptions) -> RAW_ITEM:
-        """
-        Get a specific scan result by ID.
 
-        Args:
-            scan_id: The scan ID
-            result_id: The specific result ID
-
-        Returns:
-            The scan result details
-        """
-        # Note: The API documentation doesn't show a direct endpoint for getting a single result
-        # This method assumes there might be a way to get individual results
-        # For now, we'll use the general results endpoint with filtering
-        params = {
-            "scan-id": options["scan_id"],
-            "limit": 1,
-        }
-
-        response = await self.client.send_api_request("/results", params=params)
-        logger.info(
-            f"Fetched scan result {options['result_id']} for scan {options['scan_id']}"
+        # No direct events for scan result types, so we rely on scan events and get back scan result types under the scan result with the get_paginated_resources method
+        raise NotImplementedError(
+            "get_resource method is not implemented for scan result exporter"
         )
-        return self._enrich_scan_result_with_scan_id(response, options["scan_id"])
 
     async def _get_paginated_scan_results(
         self,
