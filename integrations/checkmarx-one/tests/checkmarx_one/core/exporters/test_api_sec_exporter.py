@@ -80,23 +80,15 @@ class TestCheckmarxApiSecExporter:
     async def test_get_resource_success(
         self, exporter: CheckmarxApiSecExporter, mock_client: MagicMock
     ) -> None:
-        """Test getting a single API security risk by ID."""
+        """Test that get_resource raises NotImplementedError."""
         risk_id = "risk-123"
         options: SingleApiSecOptions = {"risk_id": risk_id}
-        expected_response = {
-            "risk_id": risk_id,
-            "name": "Test Risk",
-            "severity": "high",
-        }
 
-        mock_client.send_api_request = AsyncMock(return_value=expected_response)
-
-        result = await exporter.get_resource(options)
-
-        assert result == expected_response
-        mock_client.send_api_request.assert_called_once_with(
-            f"/apisec/static/api/risks/risk/{risk_id}"
-        )
+        with pytest.raises(
+            NotImplementedError,
+            match="get_resource method is not implemented for API security exporter",
+        ):
+            await exporter.get_resource(options)
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_single_batch(
