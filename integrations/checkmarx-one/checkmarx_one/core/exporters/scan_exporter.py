@@ -35,13 +35,21 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
         Yields:
             Batches of scans
         """
-        params: dict[str, Any] = {}
-        project_ids = options.get("project_ids", [])
-        if project_ids:
-            params["project-ids"] = ",".join(project_ids)
-
+        params: dict[str, Any] = self._get_params(options)
         async for scans in self.client.send_paginated_request(
             "/scans", "scans", params
         ):
             logger.info(f"Fetched batch of {len(scans)} scans")
             yield scans
+
+    def _get_params(self, options: ListScanOptions) -> dict[str, Any]:
+        params: dict[str, Any] = {}
+        if project_names := options.get("project_names"):
+            params["project-names"] = project_names
+        if branches := options.get("branches"):
+            params["branches"] = branches
+        if statuses := options.get("statuses"):
+            params["statuses"] = statuses
+        if from_date := options.get("from_date"):
+            params["from-date"] = from_date
+        return params
