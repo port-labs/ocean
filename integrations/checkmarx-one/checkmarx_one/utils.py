@@ -9,6 +9,14 @@ class ObjectKind(StrEnum):
     SCAN = "scan"
     API_SEC = "api-security"
     SAST = "sast"
+    KICS = "kics"
+
+
+class ScanResultObjectKind(StrEnum):
+    """Enum for Checkmarx One scan result resource kinds."""
+
+    SCA = "sca"
+    CONTAINERS = "containers"
 
 
 class IgnoredError(NamedTuple):

@@ -9,17 +9,25 @@ from checkmarx_one.exporter_factory import (
     create_sast_exporter,
     create_scan_exporter,
     create_api_sec_exporter,
+    create_kics_exporter,
+    create_scan_result_exporter,
 )
 from checkmarx_one.core.options import (
     ListProjectOptions,
     ListSastOptions,
     ListScanOptions,
     ListApiSecOptions,
+    ListKicsOptions,
+    ListScanResultOptions,
 )
 from integration import (
+    CheckmarxOneSastResourcesConfig,
     CheckmarxOneScanResourcesConfig,
+    CheckmarxOneKicsResourcesConfig,
+    CheckmarxOneScanResultResourcesConfig,
+    CheckmarxOneApiSecResourcesConfig,
 )
-from checkmarx_one.utils import ObjectKind
+from checkmarx_one.utils import ObjectKind, ScanResultObjectKind, sast_visible_columns
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -45,7 +53,6 @@ async def on_scan_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(CheckmarxOneScanResourcesConfig, event.resource_config)
     selector = config.selector
 
-    logger.info(selector)
     options = ListScanOptions(
         project_names=selector.project_names,
         branches=selector.branches,
@@ -66,7 +73,15 @@ async def on_api_sec_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     scan_exporter = create_scan_exporter()
     api_sec_exporter = create_api_sec_exporter()
 
-    scan_options = ListScanOptions()
+    config = cast(CheckmarxOneApiSecResourcesConfig, event.resource_config)
+    selector = config.selector
+
+    scan_options = ListScanOptions(
+        project_names=selector.scan_filter.project_names,
+        branches=selector.scan_filter.branches,
+        statuses=selector.scan_filter.statuses,
+        from_date=selector.scan_filter.from_date,
+    )
 
     async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
         for scan_data in scan_data_list:
@@ -90,14 +105,110 @@ async def on_sast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sast_exporter = create_sast_exporter()
     scan_exporter = create_scan_exporter()
 
-    scan_options = ListScanOptions()
+    config = cast(CheckmarxOneSastResourcesConfig, event.resource_config)
+    selector = config.selector
+
+    scan_options = ListScanOptions(
+        project_names=selector.scan_filter.project_names,
+        branches=selector.scan_filter.branches,
+        statuses=selector.scan_filter.statuses,
+        from_date=selector.scan_filter.from_date,
+    )
     async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
         for scan_data in scan_data_list:
             options = ListSastOptions(
                 scan_id=scan_data["id"],
+                severity=selector.severity,
+                status=selector.status,
+                state=selector.state,
+                category=selector.category,
+                language=selector.language,
+                group=selector.group,
+                include_nodes=selector.include_nodes,
+                result_id=selector.result_id,
+                compliance=selector.compliance,
+                visible_columns=sast_visible_columns(),
             )
             async for results_batch in sast_exporter.get_paginated_resources(options):
                 logger.info(
                     f"Received batch with {len(results_batch)} SAST for scan {scan_data['id']}"
+                )
+                yield results_batch
+
+
+@ocean.on_resync(ObjectKind.KICS)
+async def on_kics_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync KICS (IaC Security) results from Checkmarx One."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    scan_exporter = create_scan_exporter()
+    kics_exporter = create_kics_exporter()
+
+    # Get selector options from config
+    config = cast(CheckmarxOneKicsResourcesConfig, event.resource_config)
+    selector = config.selector
+
+    scan_options = ListScanOptions(
+        project_names=selector.scan_filter.project_names,
+        branches=selector.scan_filter.branches,
+        statuses=selector.scan_filter.statuses,
+        from_date=selector.scan_filter.from_date,
+    )
+    logger.warning(f"Scan options: {scan_options}")
+
+    async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
+        for scan_data in scan_data_list:
+            options = ListKicsOptions(
+                scan_id=scan_data["id"],
+                severity=selector.severity,
+                status=selector.status,
+            )
+            async for results_batch in kics_exporter.get_paginated_resources(options):
+                logger.info(
+                    f"Received batch with {len(results_batch)} KICS results for scan {scan_data['id']}"
+                )
+                yield results_batch
+
+
+@ocean.on_resync()
+async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync scan results from Checkmarx One."""
+    if kind not in ScanResultObjectKind:
+        if kind in ObjectKind:
+            logger.debug(f"Kind {kind} has a special handling. Skipping...")
+        else:
+            logger.info(f"Kind {kind} not supported. Skipping...")
+        return
+
+    logger.info(f"Starting resync for kind: {kind}")
+
+    scan_exporter = create_scan_exporter()
+    scan_result_exporter = create_scan_result_exporter()
+    selector = cast(
+        CheckmarxOneScanResultResourcesConfig, event.resource_config
+    ).selector
+
+    scan_options = ListScanOptions(
+        project_names=selector.scan_filter.project_names,
+        branches=selector.scan_filter.branches,
+        statuses=selector.scan_filter.statuses,
+        from_date=selector.scan_filter.from_date,
+    )
+
+    async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
+        for scan_data in scan_data_list:
+            options = ListScanResultOptions(
+                scan_id=scan_data["id"],
+                type=kind,
+                severity=selector.severity,
+                state=selector.state,
+                status=selector.status,
+                exclude_result_types=selector.exclude_result_types,
+            )
+            async for results_batch in scan_result_exporter.get_paginated_resources(
+                options
+            ):
+                logger.info(
+                    f"Fetched {len(results_batch)} scan results {kind} for scan {scan_data['id']}"
                 )
                 yield results_batch

@@ -10,8 +10,12 @@ class TestObjectKind:
         assert issubclass(ObjectKind, StrEnum)
         assert isinstance(ObjectKind.PROJECT, str)
         assert isinstance(ObjectKind.SCAN, str)
+<<<<<<< HEAD
         assert isinstance(ObjectKind.API_SEC, str)
         assert isinstance(ObjectKind.SAST, str)
+=======
+        assert isinstance(ObjectKind.KICS, str)
+>>>>>>> origin/added-kics-scan-result-kind
 
     def test_project_kind_value(self) -> None:
         """Test PROJECT enum value."""
@@ -30,6 +34,7 @@ class TestObjectKind:
             "SCAN",
             "API_SEC",
             "SAST",
+            "KICS",
         }
         actual_members = set(ObjectKind.__members__.keys())
         assert actual_members == expected_members
@@ -41,8 +46,9 @@ class TestObjectKind:
             "scan",
             "api-security",
             "sast",
+            "kics",
         }
-        actual_values = set(member.value for member in ObjectKind)
+        actual_values = {member.value for member in ObjectKind}
         assert actual_values == expected_values
 
     def test_string_comparison(self) -> None:
@@ -59,7 +65,11 @@ class TestObjectKind:
         assert ObjectKind.PROJECT in members
         assert ObjectKind.SCAN in members
         assert ObjectKind.API_SEC in members
+<<<<<<< HEAD
         assert ObjectKind.SAST in members
+=======
+        assert ObjectKind.KICS in members
+>>>>>>> origin/added-kics-scan-result-kind
 
     def test_enum_membership(self) -> None:
         """Test checking membership in enum."""

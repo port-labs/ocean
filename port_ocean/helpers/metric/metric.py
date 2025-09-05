@@ -131,7 +131,7 @@ class Metrics:
         self.load_metrics()
         self._integration_version: Optional[str] = None
         self._ocean_version: Optional[str] = None
-        self.event_id = ""
+        self._event_id = ""
         self.sync_state = SyncState.PENDING
 
     @property

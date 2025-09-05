@@ -15,6 +15,8 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
         params = {
             "scan-id": options["scan_id"],
             "result-id": options["result_id"],
+            "include-nodes": options["include_nodes"],
+            "visible-columns": options["visible_columns"],
             "limit": 1,
         }
         response = await self.client.send_api_request(

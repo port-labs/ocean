@@ -7,20 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.9-dev (2025-09-03)
-
+## 0.1.10-dev (2025-09-03)
 
 ### Improvements
 
 - Added support for SAST results
 
 
-## 0.1.8-dev (2025-08-29)
+## 0.1.9-dev (2025-08-29)
 
 
 ### Improvements
 
-- Added API sec exporter and separated scan results kinds
+- Added support for KICS results
+
+
+## 0.1.8-dev (2025-09-04)
+
+
+### Improvements
+
+- Refactor Integration To Encourage Explicit Blueprint Configuration Over Dynamic Blueprints
 
 
 ## 0.1.7-dev (2025-08-28)

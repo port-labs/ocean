@@ -19,7 +19,6 @@ resources:
             mainBranch: .mainBranch
             origin: .origin
             criticality: .criticality
-
   - kind: scan
     selector:
       query: 'true'
@@ -39,7 +38,6 @@ resources:
             statusDetails: (.statusDetails // [])
           relations:
             project: .projectId
-
   - kind: api-security
     selector:
       query: 'true'
@@ -67,7 +65,78 @@ resources:
             state: .state
           relations:
             scan: .scan_id
-
+  - kind: sca
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .data.packageIdentifier
+          blueprint: '"checkmarxSCA"'
+          properties:
+            firstScanId: .firstScanId
+            status: .status
+            state: .state
+            severity: .severity
+            created: .created
+            description: .description
+            packageIdentifier: .data.packageIdentifier
+            recommendations: .data.recommendations
+            recommendedVersion: .data.recommendedVersion
+            packageData: .data.packageData
+            cweId: .vulnerabilityDetails.cweId
+          relations:
+            scan: .__scan_id
+  - kind: containers
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"checkmarxContainerSecurity"'
+          properties:
+            firstScanId: .firstScanId
+            status: .status
+            state: .state
+            severity: .severity
+            confidenceLevel: .confidenceLevel
+            created: .created
+            description: .description
+            packageName: .data.packageName
+            packageVersion: .data.packageVersion
+            imageName: .data.imageName
+            imageTag: .data.imageTag
+            imageFilePath: .data.imageFilePath
+            cweId: .vulnerabilityDetails.cweId
+          relations:
+            scan: .__scan_id
+  - kind: kics
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .ID
+          title: .description
+          blueprint: '"checkmarxKics"'
+          properties:
+            firstScanId: .firstScanID
+            status: .status
+            state: .state
+            severity: (.severity // empty)
+            created: .firstFoundAt
+            description: .description
+            fileName: (.fileName // empty)
+            line: (.line // empty)
+            platform: (.platform // empty)
+            issueType: (.issueType // empty)
+            expectedValue: (.expectedValue // empty)
+            value: (.value // empty)
+          relations:
+            scan: .__scan_id
   - kind: sast
     selector:
       query: 'true'
