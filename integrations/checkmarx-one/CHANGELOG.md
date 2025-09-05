@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Added API sec exporter and separated scan results kinds
+- Refactor Integration To Encourage Explicit Blueprint Configuration Over Dynamic Blueprints
 
 
 ## 0.1.7-dev (2025-08-28)

@@ -139,6 +139,23 @@ class GithubCodeScanningAlertConfig(ResourceConfig):
     kind: Literal["code-scanning-alerts"]
 
 
+class GithubSecretScanningAlertSelector(Selector):
+    state: Literal["open", "resolved", "all"] = Field(
+        default="open",
+        description="Filter alerts by state (open, resolved, all)",
+    )
+    hide_secret: bool = Field(
+        alias="hideSecret",
+        default=True,
+        description="Whether to hide the actual secret content in the alert data for security purposes",
+    )
+
+
+class GithubSecretScanningAlertConfig(ResourceConfig):
+    selector: GithubSecretScanningAlertSelector
+    kind: Literal["secret-scanning-alerts"]
+
+
 class GithubFilePattern(BaseModel):
     path: str = Field(
         alias="path",
@@ -170,6 +187,22 @@ class GithubFileResourceConfig(ResourceConfig):
     selector: GithubFileSelector
 
 
+class GithubBranchSelector(Selector):
+    detailed: bool = Field(
+        default=False, description="Include extra details about the branch"
+    )
+    protection_rules: bool = Field(
+        default=False,
+        alias="protectionRules",
+        description="Include protection rules for the branch",
+    )
+
+
+class GithubBranchConfig(ResourceConfig):
+    kind: Literal["branch"]
+    selector: GithubBranchSelector
+
+
 class GithubPortAppConfig(PortAppConfig):
     repository_type: str = Field(alias="repositoryType", default="all")
     resources: list[
@@ -181,6 +214,8 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig
+        | GithubBranchConfig
+        | GithubSecretScanningAlertConfig
         | ResourceConfig
     ]
 

@@ -3,7 +3,6 @@ from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-from port_ocean.utils.cache import cache_iterator_result
 from checkmarx_one.core.options import SingleApiSecOptions, ListApiSecOptions
 
 
@@ -34,7 +33,6 @@ class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
         logger.info(f"Fetched API sec risk {options['risk_id']}")
         return response
 
-    @cache_iterator_result()
     async def get_paginated_resources(
         self,
         options: ListApiSecOptions,
@@ -59,11 +57,10 @@ class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
             logger.info(
                 f"Fetched batch of {len(results)} API sec risks for scan {options['scan_id']}"
             )
-            batch = [
+            yield [
                 self._enrich_scan_result_with_scan_id(
                     result,
                     options["scan_id"],
                 )
                 for result in results
             ]
-            yield batch

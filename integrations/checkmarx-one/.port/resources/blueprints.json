@@ -371,17 +371,17 @@
           "title": "Description",
           "description": "A description of the container security finding."
         },
-        "packageName": {
+        "issueType": {
           "type": "string",
           "title": "Package Name",
           "description": "The name of the affected package in the container."
         },
-        "packageVersion": {
+        "expected_value": {
           "type": "string",
           "title": "Package Version",
           "description": "The version of the affected package in the container."
         },
-        "imageName": {
+        "value": {
           "type": "string",
           "title": "Image Name",
           "description": "The name of the container image."

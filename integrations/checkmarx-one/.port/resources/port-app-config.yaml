@@ -19,7 +19,6 @@ resources:
             mainBranch: .mainBranch
             origin: .origin
             criticality: .criticality
-
   - kind: scan
     selector:
       query: 'true'
@@ -39,7 +38,6 @@ resources:
             statusDetails: (.statusDetails // [])
           relations:
             project: .projectId
-
   - kind: api-security
     selector:
       query: 'true'
@@ -90,7 +88,6 @@ resources:
             cweId: .vulnerabilityDetails.cweId
           relations:
             scan: .__scan_id
-
   - kind: containers
     selector:
       query: 'true'

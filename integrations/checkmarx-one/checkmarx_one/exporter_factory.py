@@ -2,7 +2,10 @@ from checkmarx_one.clients.initialize_client import get_checkmarx_client
 from checkmarx_one.core.exporters.project_exporter import CheckmarxProjectExporter
 from checkmarx_one.core.exporters.scan_exporter import CheckmarxScanExporter
 from checkmarx_one.core.exporters.api_sec_exporter import CheckmarxApiSecExporter
+<<<<<<< HEAD
 from checkmarx_one.core.exporters.kics_exporter import CheckmarxKicsExporter
+=======
+>>>>>>> origin/main
 from checkmarx_one.core.exporters.scan_result_exporter import (
     CheckmarxScanResultExporter,
 )

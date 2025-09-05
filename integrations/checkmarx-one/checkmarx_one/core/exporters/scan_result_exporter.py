@@ -46,7 +46,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
 
     async def _get_paginated_scan_results(
         self,
-        options: ListScanResultOptions,
+        params: Dict[str, Any],
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """
         Get scan results from Checkmarx One.
@@ -63,13 +63,11 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
             Batches of scan results
         """
 
-        params: dict[str, Any] = self._get_params(options)
-
         async for results in self.client.send_paginated_request(
             "/results", "results", params
         ):
             logger.info(
-                f"Fetched batch of {len(results)} scan results for scan {options['scan_id']}"
+                f"Fetched batch of {len(results)} scan results for scan {params['scan-id']}"
             )
             yield results
 
@@ -79,8 +77,9 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         """
         Get paginated scan results from Checkmarx One.
         """
-        async for results in self._get_paginated_scan_results(options):
-            batch = [
+        params: dict[str, Any] = self._get_params(options)
+        async for results in self._get_paginated_scan_results(params):
+            yield [
                 self._enrich_scan_result_with_scan_id(
                     result,
                     options["scan_id"],
@@ -88,7 +87,6 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
                 for result in results
                 if result["type"] == options["type"]
             ]
-            yield batch
 
     def _get_params(self, options: ListScanResultOptions) -> dict[str, Any]:
         params: dict[str, Any] = {

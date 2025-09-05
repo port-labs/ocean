@@ -67,9 +67,9 @@ async def test__get_paginated_scan_results(
         [[{"id": "1"}], [{"id": "2"}]]
     )
 
-    options: ListScanResultOptions = {"scan_id": "scan-123", "type": "sast"}
+    params: Dict[str, Any] = {"scan-id": "scan-123"}
     results: List[Dict[str, Any]] = []
-    async for batch in exporter._get_paginated_scan_results(options):
+    async for batch in exporter._get_paginated_scan_results(params):
         results.extend(batch)
 
     assert results == [{"id": "1"}, {"id": "2"}]

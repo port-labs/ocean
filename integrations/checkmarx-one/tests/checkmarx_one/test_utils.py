@@ -28,7 +28,6 @@ class TestObjectKind:
             "PROJECT",
             "SCAN",
             "API_SEC",
-            "KICS",
         }
         actual_members = set(ObjectKind.__members__.keys())
         assert actual_members == expected_members
@@ -41,7 +40,7 @@ class TestObjectKind:
             "api-security",
             "kics",
         }
-        actual_values = set(member.value for member in ObjectKind)
+        actual_values = {member.value for member in ObjectKind}
         assert actual_values == expected_values
 
     def test_string_comparison(self) -> None:
