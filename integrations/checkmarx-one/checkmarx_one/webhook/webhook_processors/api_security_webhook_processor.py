@@ -9,7 +9,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from checkmarx_one.core.options import ListApiSecOptions
 from checkmarx_one.exporter_factory import create_api_sec_exporter
 from checkmarx_one.utils import ObjectKind
-from .scan_webhook_processor import ScanWebhookProcessor
+from checkmarx_one.webhook.webhook_processors.scan_webhook_processor import (
+    ScanWebhookProcessor,
+)
 
 
 class ApiSecurityWebhookProcessor(ScanWebhookProcessor):
@@ -37,6 +39,10 @@ class ApiSecurityWebhookProcessor(ScanWebhookProcessor):
             ListApiSecOptions(scan_id=scan_id)
         ):
             data_to_upsert.extend(batch)
+
+        logger.info(
+            f"Processed {len(data_to_upsert)} API security results for scan: {scan_id}"
+        )
 
         return WebhookEventRawResults(
             updated_raw_results=data_to_upsert,
