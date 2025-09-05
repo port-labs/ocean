@@ -3,7 +3,6 @@ from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-from port_ocean.utils.cache import cache_iterator_result
 from checkmarx_one.core.options import SingleApiSecOptions, ListApiSecOptions
 
 
@@ -18,12 +17,12 @@ class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
         return scan_result
 
     async def get_resource(self, options: SingleApiSecOptions) -> RAW_ITEM:
+        
         # No direct events for API security, so we rely on scan events and get back all api secs under the scan result
         raise NotImplementedError(
             "get_resource method is not implemented for API security exporter"
         )
 
-    @cache_iterator_result()
     async def get_paginated_resources(
         self,
         options: ListApiSecOptions,
