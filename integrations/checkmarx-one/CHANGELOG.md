@@ -15,12 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for KICS results
 
 
-## 0.1.8-dev (2025-08-29)
+## 0.1.8-dev (2025-09-04)
 
 
 ### Improvements
 
-- Added API sec exporter and separated scan results kinds
 - Refactor Integration To Encourage Explicit Blueprint Configuration Over Dynamic Blueprints
 
 
