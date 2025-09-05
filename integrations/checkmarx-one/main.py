@@ -114,7 +114,6 @@ async def on_kics_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     logger.warning(f"Scan options: {scan_options}")
 
-
     async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
         for scan_data in scan_data_list:
             options = ListKicsOptions(
