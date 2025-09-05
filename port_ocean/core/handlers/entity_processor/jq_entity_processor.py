@@ -245,7 +245,15 @@ class JQEntityProcessor(BaseEntityProcessor):
         items_to_parse_name: str,
         selector_query: str,
         parse_all: bool = False,
+        embed_original_data: bool | None = None,
     ) -> tuple[list[MappedEntity], list[Exception]]:
+        # Determine whether to embed original data
+        should_embed = (
+            embed_original_data 
+            if embed_original_data is not None 
+            else ocean.config.embed_original_data_in_items_to_parse
+        )
+        
         raw_data = [data.copy()]
         if not ocean.config.yield_items_to_parse:
             if items_to_parse:
@@ -256,7 +264,13 @@ class JQEntityProcessor(BaseEntityProcessor):
                         f" Skipping..."
                     )
                     return [], []
-                raw_data = [{items_to_parse_name: item, **data} for item in items]
+                
+                if should_embed:
+                    # Original behavior: embed full payload (memory intensive)
+                    raw_data = [{items_to_parse_name: item, **data} for item in items]
+                else:
+                    # Memory-optimized behavior: only include the parsed item
+                    raw_data = [{items_to_parse_name: item} for item in items]
 
         entities, errors = await gather_and_split_errors_from_results(
             [
@@ -308,6 +322,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                 mapping.port.items_to_parse_name,
                 mapping.selector.query,
                 parse_all,
+                mapping.port.embed_original_data,
             )
         )
         logger.debug(

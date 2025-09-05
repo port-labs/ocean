@@ -51,7 +51,10 @@ async def resync_function_wrapper(
 
 
 async def resync_generator_wrapper(
-    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse: str | None = None
+    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], 
+    kind: str, 
+    items_to_parse: str | None = None,
+    embed_original_data: bool | None = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     generator = fn(kind)
     errors = []
@@ -65,6 +68,13 @@ async def resync_generator_wrapper(
                     else:
                         batch_size = ocean.config.yield_items_to_parse_batch_size
                         if items_to_parse:
+                            # Determine whether to embed original data
+                            should_embed = (
+                                embed_original_data 
+                                if embed_original_data is not None 
+                                else ocean.config.embed_original_data_in_items_to_parse
+                            )
+                            
                             for data in result:
                                 items = await cast(JQEntityProcessor, ocean.app.integration.entity_processor)._search(data, items_to_parse)
                                 if not isinstance(items, list):
@@ -73,7 +83,14 @@ async def resync_generator_wrapper(
                                         f" Skipping..."
                                     )
                                     yield []
-                                raw_data = [{"item": item, **data} for item in items]
+                                
+                                if should_embed:
+                                    # Original behavior: embed full payload (memory intensive)
+                                    raw_data = [{"item": item, **data} for item in items]
+                                else:
+                                    # Memory-optimized behavior: only include the parsed item
+                                    raw_data = [{"item": item} for item in items]
+                                
                                 while True:
                                     raw_data_batch = raw_data[:batch_size]
                                     yield raw_data_batch

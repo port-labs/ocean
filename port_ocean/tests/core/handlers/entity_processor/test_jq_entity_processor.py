@@ -357,3 +357,69 @@ class TestJQEntityProcessor:
             "{'blueprint': '.bar', 'identifier': '.foo'} (null, missing, or misconfigured)"
             in logs_captured
         )
+
+    async def test_calculate_entity_with_items_to_parse_embed_enabled(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test that items_to_parse with embed_original_data=True includes original data"""
+        data = {"metadata": {"name": "test"}, "items": [{"id": 1}, {"id": 2}]}
+        raw_entity_mappings = {"identifier": ".item.id", "title": ".metadata.name"}
+        selector_query = "true"
+        
+        result, errors = await mocked_processor._calculate_entity(
+            data, raw_entity_mappings, ".items", "item", selector_query, 
+            embed_original_data=True
+        )
+        
+        assert len(result) == 2
+        assert not errors
+        
+        # Check that original data is embedded
+        assert result[0].raw_data["item"]["id"] == 1
+        assert result[0].raw_data["metadata"]["name"] == "test"
+        assert result[1].raw_data["item"]["id"] == 2
+        assert result[1].raw_data["metadata"]["name"] == "test"
+
+    async def test_calculate_entity_with_items_to_parse_embed_disabled(
+        self, mocked_processor: JQEntityProcessor  
+    ) -> None:
+        """Test that items_to_parse with embed_original_data=False excludes original data"""
+        data = {"metadata": {"name": "test"}, "items": [{"id": 1}, {"id": 2}]}
+        raw_entity_mappings = {"identifier": ".item.id"}
+        selector_query = "true"
+        
+        result, errors = await mocked_processor._calculate_entity(
+            data, raw_entity_mappings, ".items", "item", selector_query,
+            embed_original_data=False
+        )
+        
+        assert len(result) == 2
+        assert not errors
+        
+        # Check that only the item data is present, no original metadata
+        assert result[0].raw_data["item"]["id"] == 1
+        assert "metadata" not in result[0].raw_data
+        assert result[1].raw_data["item"]["id"] == 2
+        assert "metadata" not in result[1].raw_data
+
+    async def test_calculate_entity_with_items_to_parse_embed_default(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """Test that items_to_parse with embed_original_data=None uses global config"""
+        data = {"metadata": {"name": "test"}, "items": [{"id": 1}]}
+        raw_entity_mappings = {"identifier": ".item.id"}
+        selector_query = "true"
+        
+        # Mock the global config to return True (default behavior)
+        with patch("port_ocean.context.ocean.ocean.config") as mock_config:
+            mock_config.embed_original_data_in_items_to_parse = True
+            
+            result, errors = await mocked_processor._calculate_entity(
+                data, raw_entity_mappings, ".items", "item", selector_query,
+                embed_original_data=None
+            )
+            
+            assert len(result) == 1
+            assert not errors
+            assert result[0].raw_data["item"]["id"] == 1 
+            assert result[0].raw_data["metadata"]["name"] == "test"
