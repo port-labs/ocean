@@ -46,8 +46,11 @@ async def test_get_resource(
         "result_id": "result-1",
         "type": "sca",
     }
-    
-    with pytest.raises(NotImplementedError, match="get_resource method is not implemented for scan result exporter"):
+
+    with pytest.raises(
+        NotImplementedError,
+        match="get_resource method is not implemented for scan result exporter",
+    ):
         await exporter.get_resource(options)
 
 
