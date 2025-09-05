@@ -107,9 +107,11 @@ class CheckmarxOneSastSelector(Selector):
         default=None,
         description="Filter by unique result hash.",
     )
-    severity: Optional[List[Literal["critical", "high", "medium", "low", "info"]]] = Field(
-        default=None,
-        description="Filter by severity.",
+    severity: Optional[List[Literal["critical", "high", "medium", "low", "info"]]] = (
+        Field(
+            default=None,
+            description="Filter by severity.",
+        )
     )
     status: Optional[List[Literal["new", "recurrent", "fixed"]]] = Field(
         default=None,
@@ -119,7 +121,17 @@ class CheckmarxOneSastSelector(Selector):
         default=None,
         description="Filter by comma separated list of categories.",
     )
-    state: Optional[List[Literal["to_verify", "not_exploitable", "proposed_not_exploitable", "confirmed", "urgent"]]] = Field(
+    state: Optional[
+        List[
+            Literal[
+                "to_verify",
+                "not_exploitable",
+                "proposed_not_exploitable",
+                "confirmed",
+                "urgent",
+            ]
+        ]
+    ] = Field(
         default=None,
         description="Filter by state.",
     )

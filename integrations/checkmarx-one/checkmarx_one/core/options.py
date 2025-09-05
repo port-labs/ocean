@@ -101,10 +101,24 @@ class ListSastOptions(TypedDict, total=False):
     include_nodes: NotRequired[bool]
     language: NotRequired[Optional[List[str]]]
     result_id: NotRequired[Optional[str]]
-    severity: NotRequired[Optional[List[Literal["critical", "high", "medium", "low", "info"]]]]
+    severity: NotRequired[
+        Optional[List[Literal["critical", "high", "medium", "low", "info"]]]
+    ]
     status: NotRequired[Optional[List[Literal["new", "recurrent", "fixed"]]]]
     category: NotRequired[Optional[str]]
-    state: NotRequired[Optional[List[Literal["to_verify", "not_exploitable", "proposed_not_exploitable", "confirmed", "urgent"]]]]
+    state: NotRequired[
+        Optional[
+            List[
+                Literal[
+                    "to_verify",
+                    "not_exploitable",
+                    "proposed_not_exploitable",
+                    "confirmed",
+                    "urgent",
+                ]
+            ]
+        ]
+    ]
     visible_columns: NotRequired[Optional[List[str]]]
 
 

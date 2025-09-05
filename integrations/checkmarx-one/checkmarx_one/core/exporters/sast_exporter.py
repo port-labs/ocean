@@ -15,10 +15,14 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
         params = {
             "scan-id": options["scan_id"],
             "result-id": options["result_id"],
-            "include-nodes": options["include_nodes"],
-            "visible-columns": options["visible_columns"],
             "limit": 1,
         }
+        
+        # Add optional parameters if provided
+        if "include_nodes" in options and options["include_nodes"] is not None:
+            params["include-nodes"] = options["include_nodes"]
+        if "visible_columns" in options and options["visible_columns"] is not None:
+            params["visible-columns"] = options["visible_columns"]
         response = await self.client.send_api_request(
             "/sast-results/",
             params=params,
