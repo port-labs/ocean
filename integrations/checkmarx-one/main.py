@@ -22,7 +22,6 @@ from integration import (
     CheckmarxOneApiSecResourcesConfig,
 )
 from checkmarx_one.utils import ObjectKind, ScanResultObjectKind
-from checkmarx_one.utils import ObjectKind, ScanResultObjectKind
 from checkmarx_one.webhook.webhook_processors.scan_webhook_processor import (
     ScanWebhookProcessor,
 )
