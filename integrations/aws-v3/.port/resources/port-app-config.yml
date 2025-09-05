@@ -16,6 +16,5 @@ resources:
             arn: .Properties.Arn
             region: .Properties.LocationConstraint
             creationDate: .Properties.CreationDate
-            encryption: .Properties.BucketEncryption
             publicAccessBlockConfiguration: .Properties.PublicAccessBlockConfiguration
             tags: .Properties.Tags

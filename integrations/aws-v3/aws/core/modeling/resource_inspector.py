@@ -83,6 +83,8 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
                 if item:
                     resource_data[idx] |= item
 
+        logger.error(f"Resource data: {resource_data}")
+
         resources = []
         for resource_props in resource_data.values():
             builder = ResourceBuilder[ResourceModelT, Any](self.model_factory())

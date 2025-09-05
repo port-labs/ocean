@@ -41,9 +41,12 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
             Self: The builder instance for method chaining.
         """
 
-        current_data = self._model.Properties.dict(by_alias=True)
-        current_data.update(data)
-        self._model.Properties = type(self._model.Properties)(**current_data)
+        # current_data = self._model.Properties.dict()
+        # current_data.update(data)
+        # self._model.Properties = type(self._model.Properties)(**current_data)
+        # self._props_set = True
+        # return self
+        self._model.Properties = self._model.Properties.copy(update=data)
         self._props_set = True
         return self
 
