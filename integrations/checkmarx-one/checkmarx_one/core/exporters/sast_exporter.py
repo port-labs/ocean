@@ -4,6 +4,7 @@ from loguru import logger
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from checkmarx_one.core.options import SingleSastOptions, ListSastOptions
+from checkmarx_one.utils import sast_visible_columns
 
 
 class CheckmarxSastExporter(AbstractCheckmarxExporter):
@@ -52,10 +53,34 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
         self, options: ListSastOptions
     ) -> dict[str, Any]:
         """Build query params for SAST listing, including desired visible columns."""
-        return {
+        params = {
             "scan-id": options["scan_id"],
-            **options,
+            "visible-columns": sast_visible_columns(),
         }
+        
+        # Add optional parameters if provided
+        if "compliance" in options and options["compliance"] is not None:
+            params["compliance"] = options["compliance"]
+        if "group" in options and options["group"] is not None:
+            params["group"] = options["group"]
+        if "include_nodes" in options and options["include_nodes"] is not None:
+            params["include-nodes"] = options["include_nodes"]
+        if "language" in options and options["language"] is not None:
+            params["language"] = options["language"]
+        if "result_id" in options and options["result_id"] is not None:
+            params["result-id"] = options["result_id"]
+        if "severity" in options and options["severity"] is not None:
+            params["severity"] = options["severity"]
+        if "status" in options and options["status"] is not None:
+            params["status"] = options["status"]
+        if "category" in options and options["category"] is not None:
+            params["category"] = options["category"]
+        if "state" in options and options["state"] is not None:
+            params["state"] = options["state"]
+        if "visible_columns" in options and options["visible_columns"] is not None:
+            params["visible-columns"] = options["visible_columns"]
+            
+        return params
 
     def _build_single_resource_params(
         self, options: SingleSastOptions
@@ -63,6 +88,14 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
         """Build query params for SAST single resource."""
         params: dict[str, Any] = {
             "scan-id": options["scan_id"],
-            **options,
+            "result-id": options["result_id"],
+            "limit": 1,
         }
+        
+        # Add optional parameters if provided
+        if "include_nodes" in options and options["include_nodes"] is not None:
+            params["include-nodes"] = options["include_nodes"]
+        if "visible_columns" in options and options["visible_columns"] is not None:
+            params["visible-columns"] = options["visible_columns"]
+            
         return params
