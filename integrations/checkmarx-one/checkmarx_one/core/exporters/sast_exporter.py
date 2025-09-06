@@ -4,7 +4,6 @@ from loguru import logger
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from checkmarx_one.core.options import SingleSastOptions, ListSastOptions
-from checkmarx_one.utils import sast_visible_columns
 
 
 class CheckmarxSastExporter(AbstractCheckmarxExporter):
@@ -12,17 +11,7 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
 
     async def get_resource(self, options: SingleSastOptions) -> RAW_ITEM:
         """Get a specific SAST result by result hash within a scan."""
-        params = {
-            "scan-id": options["scan_id"],
-            "result-id": options["result_id"],
-            "limit": 1,
-        }
-        
-        # Add optional parameters if provided
-        if "include_nodes" in options and options["include_nodes"] is not None:
-            params["include-nodes"] = options["include_nodes"]
-        if "visible_columns" in options and options["visible_columns"] is not None:
-            params["visible-columns"] = options["visible_columns"]
+        params = self._build_single_resource_params(options)
         response = await self.client.send_api_request(
             "/sast-results/",
             params=params,
@@ -48,8 +37,7 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
             Batches of SAST results
         """
 
-        params: dict[str, Any] = self._build_params(options)
-        logger.warning(f"SAST params: {params}")
+        params: dict[str, Any] = self._build_paginated_resource_params(options)
         async for results in self.client.send_paginated_request(
             "/sast-results/",
             "results",
@@ -60,9 +48,21 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
             )
             yield results
 
-    def _build_params(self, options: ListSastOptions) -> dict[str, Any]:
+    def _build_paginated_resource_params(
+        self, options: ListSastOptions
+    ) -> dict[str, Any]:
         """Build query params for SAST listing, including desired visible columns."""
         return {
             "scan-id": options["scan_id"],
-            "visible-columns": sast_visible_columns(),
+            **options,
         }
+
+    def _build_single_resource_params(
+        self, options: SingleSastOptions
+    ) -> dict[str, Any]:
+        """Build query params for SAST single resource."""
+        params: dict[str, Any] = {
+            "scan-id": options["scan_id"],
+            **options,
+        }
+        return params

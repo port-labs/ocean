@@ -144,7 +144,7 @@ resources:
       entity:
         mappings:
           identifier: .resultHash
-          title: .queryName # This is the closest property to the name
+          title: .queryName
           blueprint: '"checkmarxSast"'
           properties:
             firstScanId: .firstScanID
@@ -153,7 +153,6 @@ resources:
             severity: (.severity // empty)
             confidenceLevel: .confidenceLevel
             created: .firstFoundAt
-            description: .description # Not available in the API response
             nodes: (.nodes // empty)
             cweId: (.cweID // empty)
           relations:

@@ -52,7 +52,7 @@ class TestCheckmarxSastExporter:
         """Test building params with minimal options."""
         options: ListSastOptions = {"scan_id": "scan-123"}
 
-        params = exporter._build_params(options)
+        params = exporter._build_paginated_resource_params(options)
 
         assert params == {
             "scan-id": "scan-123",
@@ -324,7 +324,7 @@ class TestCheckmarxSastExporter:
         """Test building params with different scan ID."""
         options: ListSastOptions = {"scan_id": "different-scan-456"}
 
-        params = exporter._build_params(options)
+        params = exporter._build_paginated_resource_params(options)
 
         assert params["scan-id"] == "different-scan-456"
         assert "visible-columns" in params
@@ -336,7 +336,7 @@ class TestCheckmarxSastExporter:
         """Test that visible columns always includes scan-id."""
         options: ListSastOptions = {"scan_id": "scan-123"}
 
-        params = exporter._build_params(options)
+        params = exporter._build_paginated_resource_params(options)
 
         assert "scan-id" in params["visible-columns"]
         assert params["visible-columns"][0] == "scan-id"
@@ -347,7 +347,7 @@ class TestCheckmarxSastExporter:
         """Test that visible columns contains all expected SAST result fields."""
         options: ListSastOptions = {"scan_id": "scan-123"}
 
-        params = exporter._build_params(options)
+        params = exporter._build_paginated_resource_params(options)
         visible_columns = params["visible-columns"]
 
         expected_fields = [
