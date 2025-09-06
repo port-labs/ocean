@@ -27,7 +27,7 @@ from integration import (
     CheckmarxOneScanResultResourcesConfig,
     CheckmarxOneApiSecResourcesConfig,
 )
-from checkmarx_one.utils import ObjectKind, ScanResultObjectKind, sast_visible_columns
+from checkmarx_one.utils import ObjectKind, ScanResultObjectKind
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -127,7 +127,6 @@ async def on_sast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 include_nodes=selector.include_nodes,
                 result_id=selector.result_id,
                 compliance=selector.compliance,
-                visible_columns=sast_visible_columns(),
             )
             async for results_batch in sast_exporter.get_paginated_resources(options):
                 logger.info(

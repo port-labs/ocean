@@ -57,14 +57,14 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
             "scan-id": options["scan_id"],
             "visible-columns": sast_visible_columns(),
         }
-        
+
         # Add optional parameters if provided
         if "compliance" in options and options["compliance"] is not None:
             params["compliance"] = options["compliance"]
         if "group" in options and options["group"] is not None:
             params["group"] = options["group"]
-        if "include_nodes" in options and options["include_nodes"] is not None:
-            params["include-nodes"] = options["include_nodes"]
+        if "include_nodes" in options:
+            params["include-nodes"] = str(options["include_nodes"]).lower()
         if "language" in options and options["language"] is not None:
             params["language"] = options["language"]
         if "result_id" in options and options["result_id"] is not None:
@@ -77,9 +77,7 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
             params["category"] = options["category"]
         if "state" in options and options["state"] is not None:
             params["state"] = options["state"]
-        if "visible_columns" in options and options["visible_columns"] is not None:
-            params["visible-columns"] = options["visible_columns"]
-            
+
         return params
 
     def _build_single_resource_params(
@@ -89,13 +87,12 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
         params: dict[str, Any] = {
             "scan-id": options["scan_id"],
             "result-id": options["result_id"],
+            "visible-columns": sast_visible_columns(),
             "limit": 1,
         }
-        
+
         # Add optional parameters if provided
         if "include_nodes" in options and options["include_nodes"] is not None:
-            params["include-nodes"] = options["include_nodes"]
-        if "visible_columns" in options and options["visible_columns"] is not None:
-            params["visible-columns"] = options["visible_columns"]
-            
+            params["include-nodes"] = str(options["include_nodes"]).lower()
+
         return params
