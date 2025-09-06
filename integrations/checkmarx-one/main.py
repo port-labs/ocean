@@ -6,6 +6,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from checkmarx_one.exporter_factory import (
     create_project_exporter,
+    create_sast_exporter,
     create_scan_exporter,
     create_api_sec_exporter,
     create_kics_exporter,
@@ -13,12 +14,14 @@ from checkmarx_one.exporter_factory import (
 )
 from checkmarx_one.core.options import (
     ListProjectOptions,
+    ListSastOptions,
     ListScanOptions,
     ListApiSecOptions,
     ListKicsOptions,
     ListScanResultOptions,
 )
 from integration import (
+    CheckmarxOneSastResourcesConfig,
     CheckmarxOneScanResourcesConfig,
     CheckmarxOneKicsResourcesConfig,
     CheckmarxOneScanResultResourcesConfig,
@@ -90,6 +93,44 @@ async def on_api_sec_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 logger.info(
                     f"Received batch with {len(results_batch)} API security risks for scan {scan_data['id']}"
+                )
+                yield results_batch
+
+
+@ocean.on_resync(ObjectKind.SAST)
+async def on_sast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync SAST from Checkmarx One."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    sast_exporter = create_sast_exporter()
+    scan_exporter = create_scan_exporter()
+
+    config = cast(CheckmarxOneSastResourcesConfig, event.resource_config)
+    selector = config.selector
+
+    scan_options = ListScanOptions(
+        project_names=selector.scan_filter.project_names,
+        branches=selector.scan_filter.branches,
+        statuses=selector.scan_filter.statuses,
+        from_date=selector.scan_filter.from_date,
+    )
+    async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
+        for scan_data in scan_data_list:
+            options = ListSastOptions(
+                scan_id=scan_data["id"],
+                severity=selector.severity,
+                status=selector.status,
+                state=selector.state,
+                category=selector.category,
+                language=selector.language,
+                group=selector.group,
+                include_nodes=selector.include_nodes,
+                result_id=selector.result_id,
+                compliance=selector.compliance,
+            )
+            async for results_batch in sast_exporter.get_paginated_resources(options):
+                logger.info(
+                    f"Received batch with {len(results_batch)} SAST for scan {scan_data['id']}"
                 )
                 yield results_batch
 

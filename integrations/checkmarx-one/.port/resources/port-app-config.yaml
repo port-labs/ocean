@@ -137,3 +137,23 @@ resources:
             value: (.value // empty)
           relations:
             scan: .__scan_id
+  - kind: sast
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .resultHash
+          title: .queryName
+          blueprint: '"checkmarxSast"'
+          properties:
+            firstScanId: .firstScanID
+            status: .status
+            state: .state
+            severity: (.severity // empty)
+            confidenceLevel: .confidenceLevel
+            created: .firstFoundAt
+            nodes: (.nodes // empty)
+            cweId: (.cweID // empty)
+          relations:
+            scan: .scanID

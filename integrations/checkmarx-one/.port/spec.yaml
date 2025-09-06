@@ -12,6 +12,7 @@ features:
       - kind: kics
       - kind: sca
       - kind: containers
+      - kind: sast
 configurations:
   - name: checkmarxBaseUrl
     required: false
