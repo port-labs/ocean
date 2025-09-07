@@ -1,0 +1,95 @@
+[
+  {
+    "identifier": "githubRepository",
+    "title": "Repository",
+    "icon": "Microservice",
+    "schema": {
+      "properties": {
+        "readme": { "title": "README", "type": "string", "format": "markdown" },
+        "url": { "title": "Repository URL", "type": "string", "format": "url" },
+        "defaultBranch": { "title": "Default branch", "type": "string" }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "githubPullRequest",
+    "title": "Pull Request",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "creator": {"title":"Creator","type":"string"},
+        "assignees": {"title":"Assignees","type":"array"},
+        "reviewers": {"title":"Reviewers","type":"array"},
+        "status": {"title":"Status","type":"string","enum":["merged","open","closed"],"enumColors":{"merged":"purple","open":"green","closed":"red"}},
+        "closedAt": {"title":"Closed At","type":"string","format":"date-time"},
+        "updatedAt": {"title":"Updated At","type":"string","format":"date-time"},
+        "mergedAt": {"title":"Merged At","type":"string","format":"date-time"},
+        "createdAt": {"title":"Created At","type":"string","format":"date-time"},
+        "link": {"format":"url","type":"string"},
+        "leadTimeHours": {"title":"Lead Time in hours","type":"number"}
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "days_old": {
+        "title":"Days Old",
+        "icon":"DefaultProperty",
+        "calculation":"(now / 86400) - (.properties.createdAt | capture(\"(?<date>\\\\d{4}-\\\\d{2}-\\\\d{2})\") | .date | strptime(\"%Y-%m-%d\") | mktime / 86400) | floor",
+        "type":"number"
+      }
+    },
+    "relations": {
+      "repository": {"title":"Repository","target":"githubRepository","required":false,"many":false}
+    }
+  },
+  {
+    "identifier": "githubIssue",
+    "title": "Issue",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "creator": {"title":"Creator","type":"string"},
+        "assignees": {"title":"Assignees","type":"array"},
+        "labels": {"title":"Labels","type":"array"},
+        "status": {"title":"Status","type":"string","enum":["open","closed"],"enumColors":{"open":"green","closed":"purple"}},
+        "createdAt": {"title":"Created At","type":"string","format":"date-time"},
+        "closedAt": {"title":"Closed At","type":"string","format":"date-time"},
+        "updatedAt": {"title":"Updated At","type":"string","format":"date-time"},
+        "description": {"title":"Description","type":"string","format":"markdown"},
+        "issueNumber": {"title":"Issue Number","type":"number"},
+        "link": {"title":"Link","type":"string","format":"url"}
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "repository": {"target":"githubRepository","required":false,"many":false}
+    }
+  },
+  {
+    "identifier": "file",
+    "title": "File",
+    "icon": "Bitbucket",
+    "schema": {
+      "properties": {
+        "path": {"title":"Path","type":"string","icon":"DefaultProperty","description":"The path of the file in the repository"},
+        "content": {"title":"Content","type":"string","icon":"DefaultProperty","description":"The content of the file"},
+        "parsedContent": {"title":"Parsed Content","type":"object","description":"The parsed content of the file"},
+        "link": {"title":"Link","type":"string","format":"url","icon":"Link","description":"Link to the file in Github"}
+      },
+      "required": ["path"]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "repository": {"title":"Repository","target":"githubRepository","required":false,"many":false}
+    }
+  }
+]

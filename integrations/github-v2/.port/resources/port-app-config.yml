@@ -1,0 +1,87 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: repository
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"githubRepository"'
+          properties:
+            defaultBranch: .default_branch
+            readme: file://README.md
+            url: .html_url
+
+  - kind: pull-request
+    selector:
+      query: 'true'
+      state: "open"
+    port:
+      entity:
+        mappings:
+          identifier: '.__repository + ":" + (.number|tostring)'
+          title: ".title"
+          blueprint: '"githubPullRequest"'
+          properties:
+            creator: ".user.login"
+            assignees: "[.assignees[].login]"
+            reviewers: "[.requested_reviewers[].login]"
+            status: ".state"
+            closedAt: ".closed_at"
+            updatedAt: ".updated_at"
+            mergedAt: ".merged_at"
+            createdAt: ".created_at"
+            link: ".html_url"
+            leadTimeHours: >-
+                (.created_at as $createdAt | .merged_at as $mergedAt |
+                ($createdAt | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $createdTimestamp |
+                ($mergedAt | if . == null then null else sub("\\..*Z$"; "Z") |
+                strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end) as $mergedTimestamp |
+                if $mergedTimestamp == null then null else
+                (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
+        relations:
+          repository: .__repository
+
+  - kind: issue
+    selector:
+      query: 'true'
+      state: "open"
+    port:
+      entity:
+        mappings:
+          identifier: '.__repository + ":" + (.number|tostring)'
+          title: ".title"
+          blueprint: '"githubIssue"'
+          properties:
+            creator: ".user.login"
+            assignees: "[.assignees[].login]"
+            labels: "[.labels[].name]"
+            status: ".state"
+            createdAt: ".created_at"
+            closedAt: ".closed_at"
+            updatedAt: ".updated_at"
+            description: ".body"
+            issueNumber: ".number"
+            link: ".html_url"
+        relations:
+          repository: .__repository
+
+  - kind: file
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '.repository.name + ":" + .path'
+          title: ".name"
+          blueprint: '"file"'
+          properties:
+            path: .path
+            content: "if (.content|type)==\"string\" then .content else \"\" end"
+            parsedContent: "if (.content|type)!=\"string\" then .content else {} end"
+            link: ".metadata.url // .metadata.html_url // .metadata.download_url"
+        relations:
+          repository: .repository.name

@@ -1,0 +1,40 @@
+type: Guthub v2
+description: GitHub integration for Port Ocean
+icon: github 
+features:
+  - type: exporter
+    section: Git
+    resources:
+      - kind: repository
+      - kind: pull-request
+      - kind: issue
+      - kind: file
+  
+configurations:
+  - name: githubHost
+    required: false
+    default: "https://api.github.com"
+    type: url
+    description: For Github Enterprise users, if Github url is not passed, the default Github API "api.github.com" will be used.
+  - name: githubToken
+    required: true
+    type: string
+    sensitive: true
+    description: GitHub personal access token with necessary permissions. This is only necessary if the integration is not functioning as an app.
+  - name: githubOrganization
+    required: true
+    type: string
+    description: GitHub organization name
+  - name: githubUser
+    required: false
+    type: string
+    description: GitHub username (used when syncing user-owned repositories)
+  - name: webhookSecret
+    type: string
+    description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from GitHub are accepted.
+    sensitive: true
+    required: false
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
