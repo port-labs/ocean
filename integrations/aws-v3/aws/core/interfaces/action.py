@@ -8,7 +8,12 @@ from loguru import logger
 class Action(ABC):
 
     def __init__(self, client: AioBaseClient) -> None:
-        self.client: AioBaseClient = client
+        """aiobotocore's concrete clients provide methods like `get_bucket_tagging`
+        at runtime, but these are not declared on `AioBaseClient`'s static types.
+        Using `Any` here avoids per-call type ignores while keeping runtime behavior
+        unchanged.
+        """
+        self.client: Any = client
 
     async def execute(self, identifiers: List[Any]) -> List[Dict[str, Any]]:
         logger.info(

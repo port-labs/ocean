@@ -18,7 +18,7 @@ class GetBucketPublicAccessBlockAction(Action):
     async def _fetch_public_access_block(
         self, bucket: Dict[str, Any]
     ) -> Dict[str, Any]:
-        response = await self.client.get_public_access_block(Bucket=bucket["Name"])  # type: ignore
+        response = await self.client.get_public_access_block(Bucket=bucket["Name"])
         logger.info(
             f"Successfully fetched bucket public access block for bucket {bucket['Name']}"
         )
@@ -36,7 +36,9 @@ class GetBucketOwnershipControlsAction(Action):
         return results
 
     async def _fetch_ownership_controls(self, bucket: Dict[str, Any]) -> Dict[str, Any]:
-        response = await self.client.get_bucket_ownership_controls(Bucket=bucket["Name"])  # type: ignore[attr-defined]
+        response = await self.client.get_bucket_ownership_controls(
+            Bucket=bucket["Name"]
+        )
         logger.info(
             f"Successfully fetched bucket ownership controls for bucket {bucket['Name']}"
         )
@@ -51,7 +53,7 @@ class GetBucketEncryptionAction(Action):
         return results
 
     async def _fetch_encryption(self, bucket: Dict[str, Any]) -> Dict[str, Any]:
-        response = await self.client.get_bucket_encryption(Bucket=bucket["Name"])  # type: ignore
+        response = await self.client.get_bucket_encryption(Bucket=bucket["Name"])
         logger.info(
             f"Successfully fetched bucket encryption for bucket {bucket['Name']}"
         )
@@ -66,7 +68,7 @@ class GetBucketLocationAction(Action):
         return results
 
     async def _fetch_location(self, bucket: Dict[str, Any]) -> Dict[str, Any]:
-        response = await self.client.get_bucket_location(Bucket=bucket["Name"])  # type: ignore
+        response = await self.client.get_bucket_location(Bucket=bucket["Name"])
         logger.info(f"Successfully fetched bucket location for bucket {bucket['Name']}")
         return {"LocationConstraint": response["LocationConstraint"]}
 
@@ -100,7 +102,7 @@ class GetBucketTaggingAction(Action):
 
     async def _fetch_tagging(self, bucket: Dict[str, Any]) -> Dict[str, Any]:
         try:
-            response = await self.client.get_bucket_tagging(Bucket=bucket["Name"])  # type: ignore
+            response = await self.client.get_bucket_tagging(Bucket=bucket["Name"])
             logger.info(
                 f"Successfully fetched bucket tagging for bucket {bucket['Name']}"
             )

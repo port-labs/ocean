@@ -51,9 +51,7 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         """
         Set enrichments for the resource model.
         """
-        self._model.ExtraContext = self._model.ExtraContext.copy(
-            update=data, include=data.keys()
-        )
+        self._model.ExtraContext = self._model.ExtraContext.copy(update=data)
         return self
 
     def with_type(self, type: str) -> Self:
