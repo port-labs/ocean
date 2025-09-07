@@ -7,6 +7,7 @@ from aws.core.exporters.s3.bucket.models import (
     SingleBucketRequest,
     PaginatedBucketRequest,
 )
+from datetime import datetime
 
 
 class TestExporterOptions:
@@ -191,7 +192,7 @@ class TestS3BucketProperties:
         # Core fields have defaults
         assert properties.BucketName == ""
         assert properties.Arn == ""
-        assert properties.CreationDate == ""
+        assert properties.CreationDate is None
         # Optional fields
         assert properties.LocationConstraint is None
         assert properties.Tags == []
@@ -234,7 +235,7 @@ class TestS3BucketProperties:
         properties = BucketProperties(
             BucketName="test-bucket",
             Arn="arn:aws:s3:::test-bucket",
-            CreationDate="2025-01-01T00:00:00Z",
+            CreationDate=datetime(2025, 1, 1, 0, 0, 0),
             LocationConstraint="us-west-2",
             Tags=[{"Key": "Owner", "Value": "team"}],
             BucketEncryption={"Rules": []},
@@ -245,7 +246,7 @@ class TestS3BucketProperties:
         # Verify key properties are set
         assert properties.BucketName == "test-bucket"
         assert properties.Arn == "arn:aws:s3:::test-bucket"
-        assert properties.CreationDate == "2025-01-01T00:00:00Z"
+        assert properties.CreationDate == datetime(2025, 1, 1, 0, 0, 0)
         assert properties.LocationConstraint == "us-west-2"
         assert properties.Tags == [{"Key": "Owner", "Value": "team"}]
         assert properties.BucketEncryption == {"Rules": []}
