@@ -1,9 +1,5 @@
 from aws.auth.strategies.base import AWSSessionStrategy, HealthCheckMixin
-from aws.auth.utils import (
-    AWSOrganizationsNotInUseError,
-    AWSSessionError,
-    extract_account_from_arn,
-)
+from aws.auth.utils import AWSSessionError, extract_account_from_arn
 from aws.auth.providers.base import CredentialProvider
 from aiobotocore.session import AioSession
 from loguru import logger
@@ -19,7 +15,7 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
         self.provider = provider
         self.config = config
 
-        self._organization_role_details: dict[str, str] | None = None
+        self._organization_role_name: str | None = None
         self._valid_arns: list[str] = []
         self._valid_sessions: dict[str, AioSession] = {}
         self._organization_session: AioSession | None = None
@@ -37,19 +33,22 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
 
     def _get_organization_account_role_arn(self) -> str:
         """Get the organization account role ARN from the configuration."""
-        account_role_arn = self.config.get("account_role_arn")
-
-        if not account_role_arn:
+        account_role_arn: list[str] | None = self.config.get("account_role_arn")
+        if (
+            not account_role_arn
+            or not isinstance(account_role_arn, list)
+            or len(account_role_arn) == 0
+        ):
             raise AWSSessionError(
-                "account_role_arn is required and must be a non-empty string"
+                "account_role_arn is required and must be a non-empty list"
             )
 
-        return account_role_arn
+        return account_role_arn[0]
 
-    def _get_organization_account_role_details(self) -> dict[str, str]:
+    def _get_organization_account_role_name(self) -> str:
         """Get the account role ARN from the configuration."""
-        if self._organization_role_details:
-            return self._organization_role_details
+        if self._organization_role_name:
+            return self._organization_role_name
 
         organization_role_arn = self._get_organization_account_role_arn()
 
@@ -58,22 +57,24 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
             raise AWSSessionError("account_role_arn must be a valid ARN")
 
         arn_data = ArnParser().parse_arn(arn=organization_role_arn)
+        if not isinstance(arn_data["resource"], str):
+            raise AWSSessionError("account_role_arn must be a valid ARN")
 
-        self._organization_role_details = arn_data
-        return self._organization_role_details
+        self._organization_role_name = arn_data["resource"]
+        return self._organization_role_name
 
     def _build_role_arn(self, account_id: str) -> str:
         """Build the role ARN for the organization account."""
-        details = self._get_organization_account_role_details()
-        return f"arn:aws:iam::{account_id}:{details['resource']}"
+        role_name = self._get_organization_account_role_name()
+        return f"arn:aws:iam::{account_id}:{role_name}"
 
     async def _get_organization_session(self) -> AioSession:
         """Get or create the organization session for the management account."""
         if self._organization_session:
             return self._organization_session
 
-        details = self._get_organization_account_role_details()
-        logger.info(f"Assuming organization role: {details['resource']}")
+        organization_role_name = self._get_organization_account_role_name()
+        logger.info(f"Assuming organization role: {organization_role_name}")
 
         organization_role_arn = self._get_organization_account_role_arn()
         try:
@@ -129,12 +130,12 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
         except Exception as e:
             if "AccessDenied" in str(e):
                 logger.warning("Access denied to AWS Organizations API")
-                raise AWSOrganizationsNotInUseError(
+                raise AWSSessionError(
                     "Cannot access AWS Organizations API - check permissions"
                 )
             elif "AWSOrganizationsNotInUse" in str(e):
                 logger.warning("AWS Organizations is not enabled in this account")
-                raise AWSOrganizationsNotInUseError(
+                raise AWSSessionError(
                     "AWS Organizations is not enabled in this account"
                 )
             else:
@@ -148,36 +149,6 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
         role_arn = self._build_role_arn(account_id)
         self._valid_arns.append(role_arn)
         self._valid_sessions[role_arn] = session
-
-    async def _fallback_to_single_account(self) -> bool:
-        """Fall back to single account mode when organizations is not available."""
-        try:
-            logger.info("Attempting single account mode")
-            organization_session = await self._get_organization_session()
-            details = self._get_organization_account_role_details()
-            arn = self._get_organization_account_role_arn()
-            account_id = details["account"]
-
-            # Add this account to valid accounts
-            self._add_account_to_valid_accounts(account_id, organization_session)
-
-            # Set discovered accounts to just this one
-            self._discovered_accounts = [
-                {
-                    "Id": account_id,
-                    "Name": f"Account {account_id}",
-                    "Email": "",
-                    "Arn": arn,
-                }
-            ]
-
-            return True
-
-        except Exception as e:
-            logger.error(f"Fallback to single account mode failed: {e}")
-            raise AWSSessionError(
-                f"Both organizations and single account modes failed: {e}"
-            )
 
 
 class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin):
@@ -276,12 +247,8 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin
             return True
 
         except Exception as e:
-            if isinstance(e, AWSOrganizationsNotInUseError):
-                logger.info("Falling in to single account mode")
-                return await self._fallback_to_single_account()
-            else:
-                logger.error(f"Health check failed: {e}")
-                raise AWSSessionError(f"Organizations health check failed: {e}")
+            logger.error(f"Health check failed: {e}")
+            raise AWSSessionError(f"Organizations health check failed: {e}")
 
 
 class OrganizationsStrategy(OrganizationsHealthCheckMixin):

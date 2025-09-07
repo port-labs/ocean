@@ -28,15 +28,11 @@ class AssumeRoleWithWebIdentityProvider(CredentialProvider):
         super().__init__(config)
         # This is required for the STS client to work
         # Since the STS client checks for the AWS_ROLE_ARN environment variable and if it's not set, it will fail
-        account_role = config.get("account_role_arn")
-        account_roles = config.get("account_role_arns", [])
-
-        role_arn_input = account_role or (account_roles[0] if account_roles else None)
-
-        if not role_arn_input:
+        role_arn_list = config.get("account_role_arn", [])
+        if not role_arn_list:
             raise CredentialsProviderError("No account role ARN found in config")
 
-        os.environ["AWS_ROLE_ARN"] = role_arn_input
+        os.environ["AWS_ROLE_ARN"] = role_arn_list[0]
 
     @property
     def is_refreshable(self) -> bool:

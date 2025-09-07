@@ -466,7 +466,7 @@ class TestAssumeRoleWithWebIdentityProvider:
 
     def test_is_refreshable_property(self) -> None:
         """Test is_refreshable property returns True."""
-        config = {"account_role_arn": "arn:aws:iam::123456789012:role/test-role"}
+        config = {"account_role_arn": ["arn:aws:iam::123456789012:role/test-role"]}
         provider = AssumeRoleWithWebIdentityProvider(config=config)
         assert provider.is_refreshable is True
 
@@ -477,7 +477,7 @@ class TestAssumeRoleWithWebIdentityProvider:
         self, mock_aiofiles_open: MagicMock
     ) -> None:
         """Test successful reading of web identity token."""
-        config = {"account_role_arn": "arn:aws:iam::123456789012:role/test-role"}
+        config = {"account_role_arn": ["arn:aws:iam::123456789012:role/test-role"]}
         provider = AssumeRoleWithWebIdentityProvider(config=config)
         mock_file = AsyncMock()
         mock_file.read.return_value = "test-token-content\n"
@@ -490,7 +490,7 @@ class TestAssumeRoleWithWebIdentityProvider:
     @pytest.mark.asyncio
     async def test_read_web_identity_token_missing_env_var(self) -> None:
         """Test error when AWS_WEB_IDENTITY_TOKEN_FILE is not set."""
-        config = {"account_role_arn": "arn:aws:iam::123456789012:role/test-role"}
+        config = {"account_role_arn": ["arn:aws:iam::123456789012:role/test-role"]}
         provider = AssumeRoleWithWebIdentityProvider(config=config)
         with patch.dict("os.environ", {}, clear=True):
             with pytest.raises(CredentialsProviderError) as exc_info:
@@ -507,7 +507,7 @@ class TestAssumeRoleWithWebIdentityProvider:
         self, mock_aiofiles_open: MagicMock
     ) -> None:
         """Test error when token file doesn't exist."""
-        config = {"account_role_arn": "arn:aws:iam::123456789012:role/test-role"}
+        config = {"account_role_arn": ["arn:aws:iam::123456789012:role/test-role"]}
         provider = AssumeRoleWithWebIdentityProvider(config=config)
         with pytest.raises(CredentialsProviderError) as exc_info:
             await provider._read_web_identity_token()
@@ -522,7 +522,7 @@ class TestAssumeRoleWithWebIdentityProvider:
         self, mock_aiofiles_open: MagicMock
     ) -> None:
         """Test error when token file is empty."""
-        config = {"account_role_arn": "arn:aws:iam::123456789012:role/test-role"}
+        config = {"account_role_arn": ["arn:aws:iam::123456789012:role/test-role"]}
         provider = AssumeRoleWithWebIdentityProvider(config=config)
         mock_file = AsyncMock()
         mock_file.read.return_value = ""
@@ -538,7 +538,7 @@ class TestAssumeRoleWithWebIdentityProvider:
     @patch.dict("os.environ", {"AWS_WEB_IDENTITY_TOKEN_FILE": "/tmp/test-token"})
     async def test_get_credentials_success(self) -> None:
         """Test successful get_credentials with web identity."""
-        config = {"account_role_arn": "arn:aws:iam::123456789012:role/test-role"}
+        config = {"account_role_arn": ["arn:aws:iam::123456789012:role/test-role"]}
         provider = AssumeRoleWithWebIdentityProvider(config=config)
         mock_session = MagicMock()
         mock_sts_client = AsyncMock()
@@ -594,7 +594,7 @@ class TestAssumeRoleWithWebIdentityProvider:
     @pytest.mark.asyncio
     async def test_get_credentials_missing_role_arn(self) -> None:
         """Test error when role_arn is not provided."""
-        config = {"account_role_arn": "arn:aws:iam::123456789012:role/test-role"}
+        config = {"account_role_arn": ["arn:aws:iam::123456789012:role/test-role"]}
         provider = AssumeRoleWithWebIdentityProvider(config=config)
         with pytest.raises(CredentialsProviderError) as exc_info:
             await provider.get_credentials()
@@ -604,7 +604,7 @@ class TestAssumeRoleWithWebIdentityProvider:
     @patch.dict("os.environ", {"AWS_WEB_IDENTITY_TOKEN_FILE": "/tmp/test-token"})
     async def test_get_credentials_with_optional_parameters(self) -> None:
         """Test get_credentials with optional parameters."""
-        config = {"account_role_arn": "arn:aws:iam::123456789012:role/test-role"}
+        config = {"account_role_arn": ["arn:aws:iam::123456789012:role/test-role"]}
         provider = AssumeRoleWithWebIdentityProvider(config=config)
         mock_session = MagicMock()
         mock_sts_client = AsyncMock()
@@ -659,7 +659,7 @@ class TestAssumeRoleWithWebIdentityProvider:
     @patch.dict("os.environ", {"AWS_WEB_IDENTITY_TOKEN_FILE": "/tmp/test-token"})
     async def test_get_session_success(self) -> None:
         """Test successful get_session with web identity."""
-        config = {"account_role_arn": "arn:aws:iam::123456789012:role/test-role"}
+        config = {"account_role_arn": ["arn:aws:iam::123456789012:role/test-role"]}
         provider = AssumeRoleWithWebIdentityProvider(config=config)
         mock_session = MagicMock()
         mock_sts_client = AsyncMock()
@@ -705,7 +705,7 @@ class TestAssumeRoleWithWebIdentityProvider:
     @pytest.mark.asyncio
     async def test_get_session_missing_role_arn(self) -> None:
         """Test error when role_arn is not provided for get_session."""
-        config = {"account_role_arns": ["arn:aws:iam::123456789012:role/test-role"]}
+        config = {"account_role_arn": ["arn:aws:iam::123456789012:role/test-role"]}
         provider = AssumeRoleWithWebIdentityProvider(config=config)
         with pytest.raises(CredentialsProviderError) as exc_info:
             await provider.get_session()
