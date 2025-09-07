@@ -2,6 +2,7 @@ from typing import Any, Self
 from aws.core.modeling.resource_models import ResourceModel
 from pydantic import BaseModel
 from typing import Dict
+import json
 
 
 class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: BaseModel]:
@@ -72,5 +73,6 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
             raise ValueError(
                 "No data has been set for the resource model, use `with_data` to set data."
             )
-        resource = self._model.dict(exclude_unset=True, by_alias=True)
-        return resource
+
+        resource_json = self._model.json(exclude_unset=True, by_alias=True)
+        return json.loads(resource_json)

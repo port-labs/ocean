@@ -44,9 +44,6 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
             model_factory: A callable that returns a new instance of the resource model.
         """
         self.client = client
-        self.builder_cls: ResourceBuilder[ResourceModelT, Any] = ResourceBuilder(
-            model_factory()
-        )
         self.actions_map = actions_map
         self.model_factory = model_factory
 

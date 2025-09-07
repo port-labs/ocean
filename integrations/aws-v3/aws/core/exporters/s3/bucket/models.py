@@ -1,12 +1,13 @@
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
+from datetime import datetime
 
 
 class BucketProperties(BaseModel):
     BucketName: str = Field(default_factory=str)
     Arn: str = Field(default_factory=str)
-    CreationDate: str = Field(default_factory=str)
+    CreationDate: Optional[datetime] = None
     LocationConstraint: Optional[str] = None
     Tags: List[Dict[str, Any]] = Field(default_factory=list)
 

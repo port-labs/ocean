@@ -77,14 +77,14 @@ class ListBucketsAction(Action):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
         for bucket in buckets:
-            creation_date: datetime = bucket["CreationDate"]
-            results.append(
-                {
-                    "CreationDate": creation_date.isoformat(),
-                    "BucketName": bucket["Name"],
-                    "Arn": f"arn:aws:s3:::{bucket['Name']}",
-                }
-            )
+            data = {
+                "CreationDate": bucket[
+                    "CreationDate"
+                ],  # ensure that every detail of the datetime string is preserved no rounding up or down
+                "BucketName": bucket["Name"],
+                "Arn": f"arn:aws:s3:::{bucket['Name']}",
+            }
+            results.append(data)
         return results
 
 
