@@ -34,7 +34,9 @@ async def resync_s3_bucket(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     def options_factory(region: str) -> PaginatedBucketRequest:
         return PaginatedBucketRequest(
-            region=region, include=aws_resource_config.selector.include_actions
+            region=region,
+            include=aws_resource_config.selector.include_actions,
+            account_id=account["Id"],
         )
 
     async for account, session in get_all_account_sessions():

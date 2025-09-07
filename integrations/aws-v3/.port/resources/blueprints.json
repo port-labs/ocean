@@ -13,23 +13,13 @@
         "region": {
           "type": "string",
           "title": "Region",
-          "description": "The AWS region where the bucket is located"
+          "description": "Geographic AWS Region where a bucket is created and stored"
         },
         "creationDate": {
           "type": "string",
           "title": "Creation Date",
           "description": "The date when the bucket was created",
           "format": "date-time"
-        },
-        "encryption": {
-          "type": "object",
-          "title": "Encryption",
-          "description": "The encryption configuration for the bucket"
-        },
-        "publicAccessBlockConfiguration": {
-          "type": "object",
-          "title": "Public Access Block Configuration",
-          "description": "The public access block configuration for the bucket"
         },
         "tags": {
           "type": "array",
@@ -42,7 +32,9 @@
       },
       "required": []
     },
+    "mirrorProperties": {},
     "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {}
   }
 ]

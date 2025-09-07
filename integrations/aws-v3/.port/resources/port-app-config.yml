@@ -1,21 +1,18 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+enableMergeEntity: true
 resources:
   - kind: AWS::S3::Bucket
     selector:
       query: 'true'
-      includeActions:
-        - GetBucketEncryptionAction
-        - GetBucketPublicAccessBlockAction
-        - GetBucketTaggingAction
     port:
       entity:
         mappings:
-          identifier: .Properties.Name
-          title: .Properties.Name
+          identifier: .Properties.Arn
+          title: .Properties.BucketName
           blueprint: '"s3Bucket"'
           properties:
-            arn: .Properties.BucketArn
-            region: .Properties.BucketRegion
+            arn: .Properties.Arn
+            region: .Properties.LocationConstraint | if . == null then . else . end
             creationDate: .Properties.CreationDate
-            encryption: .Properties.BucketEncryption
-            publicAccessBlockConfiguration: .Properties.PublicAccessBlockConfiguration
             tags: .Properties.Tags

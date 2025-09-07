@@ -68,7 +68,7 @@ class GetBucketLocationAction(Action):
     async def _fetch_location(self, bucket: Dict[str, Any]) -> Dict[str, Any]:
         response = await self.client.get_bucket_location(Bucket=bucket["Name"])  # type: ignore
         logger.info(f"Successfully fetched bucket location for bucket {bucket['Name']}")
-        return {"BucketRegion": response["LocationConstraint"]}
+        return {"LocationConstraint": response["LocationConstraint"]}
 
 
 class ListBucketsAction(Action):
@@ -80,7 +80,7 @@ class ListBucketsAction(Action):
                 {
                     "CreationDate": creation_date.isoformat(),
                     "BucketName": bucket["Name"],
-                    "BucketArn": f"arn:aws:s3:::{bucket['Name']}",
+                    "Arn": f"arn:aws:s3:::{bucket['Name']}",
                 }
             )
         return results

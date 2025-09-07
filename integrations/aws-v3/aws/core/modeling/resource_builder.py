@@ -40,8 +40,27 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
         Returns:
             Self: The builder instance for method chaining.
         """
-        self._model.Properties = self._model.Properties.copy(update=data)
+
+        current_data = self._model.Properties.dict(exclude_unset=True)
+        current_data.update(data)
+        self._model.Properties = type(self._model.Properties)(**current_data)
         self._props_set = True
+        return self
+
+    def with_extra_context(self, data: dict[str, Any]) -> Self:
+        """
+        Set enrichments for the resource model.
+        """
+        self._model.ExtraContext = self._model.ExtraContext.copy(
+            update=data, include=data.keys()
+        )
+        return self
+
+    def with_type(self, type: str) -> Self:
+        """
+        Set the type of the resource model.
+        """
+        self._model.Type = type
         return self
 
     def build(self) -> Dict[str, Any]:
@@ -55,5 +74,5 @@ class ResourceBuilder[ResourceModelT: ResourceModel[BaseModel], TProperties: Bas
             raise ValueError(
                 "No data has been set for the resource model, use `with_data` to set data."
             )
-        resource = self._model.dict(exclude_none=True)
+        resource = self._model.dict(exclude_unset=True, by_alias=True)
         return resource

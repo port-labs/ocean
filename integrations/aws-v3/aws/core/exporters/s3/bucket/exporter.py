@@ -1,6 +1,4 @@
-import asyncio
-import json
-from typing import Any, AsyncGenerator, Type, List
+from typing import Any, AsyncGenerator, Type
 
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.s3.bucket.actions import S3BucketActionsMap
@@ -49,5 +47,11 @@ class S3BucketExporter(IResourceExporter):
             paginator = proxy.get_paginator("list_buckets", "Buckets")
 
             async for buckets in paginator.paginate():
-                action_result = await inspector.inspect(buckets, options.include)
+                action_result = await inspector.inspect(
+                    buckets,
+                    options.include,
+                    extra_context={
+                        "AccountId": options.account_id,
+                    },
+                )
                 yield action_result
