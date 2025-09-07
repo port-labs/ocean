@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 1.0.2-beta (2025-09-07)
+
+
+### Bug Fixes
+
+- Removed unused and unimplemented properties from the S3 Bucket Default models.
+
+### Improvements
+
+- Refactored the architecture to natively support actions that operate on multiple identifiers.
+- Introduced the ExtraContext property to store enrichment data separately, ensuring that models remain compliant with CloudFormation template requirements.
+- Restricted S3 blueprints and mapping to include only the default action properties, ensuring consistency and removing any extraneous or unused fields.
+
+
 ## 1.0.2-beta (2025-09-03)
 
 
