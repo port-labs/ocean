@@ -5,17 +5,31 @@ import httpx
 from loguru import logger
 from github.settings import SETTINGS
 from port_ocean.utils import http_async_client
+from port_ocean.exceptions.context import PortOceanContextNotFoundError
 
 
 
 
 class RestClient:
-    def __init__(self, base_url: Optional[str] = None, timeout: float = 30.0):
+    def __init__(self, base_url: Optional[str] = None, timeout: float = 30.0, client: Optional[httpx.AsyncClient] = None):
         host =  SETTINGS.base_url or "https://api.github.com"
         self.base_url = host.rstrip("/")
         self.token = SETTINGS.token or ""
-        self.client = http_async_client
-        self.client.timeout = httpx.Timeout(timeout)
+        self.client = self._init_client(timeout=timeout, client_override=client)
+
+    def _init_client(self, timeout: float, client_override: Optional[httpx.AsyncClient] = None) -> httpx.AsyncClient:
+        if client_override is not None:
+            return client_override
+        # Try to use Ocean's shared async client; fall back to a standalone client for tests
+        try:
+            client_from_ocean = http_async_client
+            try:
+                client_from_ocean.timeout = httpx.Timeout(timeout)
+            except Exception:
+                pass
+            return client_from_ocean
+        except PortOceanContextNotFoundError:
+            return httpx.AsyncClient(timeout=httpx.Timeout(timeout))
 
     def _build_headers(self, token: str) -> Dict[str, str]:
         return {
