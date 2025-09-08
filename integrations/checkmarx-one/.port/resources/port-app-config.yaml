@@ -19,7 +19,6 @@ resources:
             mainBranch: .mainBranch
             origin: .origin
             criticality: .criticality
-
   - kind: scan
     selector:
       query: 'true'
@@ -39,7 +38,6 @@ resources:
             statusDetails: (.statusDetails // [])
           relations:
             project: .projectId
-
   - kind: api-security
     selector:
       query: 'true'
@@ -65,8 +63,8 @@ resources:
             sastRiskId: (.sast_risk_id // empty)
             projectId: .project_id
             state: .state
-        relations:
-          scan: .scan_id
+          relations:
+            scan: .scan_id
   - kind: sca
     selector:
       query: 'true'
@@ -90,7 +88,6 @@ resources:
             cweId: .vulnerabilityDetails.cweId
           relations:
             scan: .__scan_id
-
   - kind: containers
     selector:
       query: 'true'
@@ -116,3 +113,47 @@ resources:
             cweId: .vulnerabilityDetails.cweId
           relations:
             scan: .__scan_id
+  - kind: kics
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .ID
+          title: .description
+          blueprint: '"checkmarxKics"'
+          properties:
+            firstScanId: .firstScanID
+            status: .status
+            state: .state
+            severity: (.severity // empty)
+            created: .firstFoundAt
+            description: .description
+            fileName: (.fileName // empty)
+            line: (.line // empty)
+            platform: (.platform // empty)
+            issueType: (.issueType // empty)
+            expectedValue: (.expectedValue // empty)
+            value: (.value // empty)
+          relations:
+            scan: .__scan_id
+  - kind: sast
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .resultHash
+          title: .queryName
+          blueprint: '"checkmarxSast"'
+          properties:
+            firstScanId: .firstScanID
+            status: .status
+            state: .state
+            severity: (.severity // empty)
+            confidenceLevel: .confidenceLevel
+            created: .firstFoundAt
+            nodes: (.nodes // empty)
+            cweId: (.cweID // empty)
+          relations:
+            scan: .scanID

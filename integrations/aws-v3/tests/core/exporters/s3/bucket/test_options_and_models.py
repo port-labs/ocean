@@ -7,6 +7,7 @@ from aws.core.exporters.s3.bucket.models import (
     SingleBucketRequest,
     PaginatedBucketRequest,
 )
+from datetime import datetime
 
 
 class TestExporterOptions:
@@ -14,32 +15,44 @@ class TestExporterOptions:
 
     def test_initialization_with_required_fields(self) -> None:
         """Test initialization with only required fields."""
-        options = SingleBucketRequest(region="us-west-2", bucket_name="test-bucket")
+        options = SingleBucketRequest(
+            region="us-west-2", account_id="123456789012", bucket_name="test-bucket"
+        )
 
         assert options.region == "us-west-2"
+        assert options.account_id == "123456789012"
         assert options.include == []  # Default empty list
 
     def test_initialization_with_all_fields(self) -> None:
         """Test initialization with all fields."""
         include_list = ["GetBucketTaggingAction", "GetBucketEncryptionAction"]
         options = SingleBucketRequest(
-            region="eu-central-1", bucket_name="test-bucket", include=include_list
+            region="eu-central-1",
+            account_id="123456789012",
+            bucket_name="test-bucket",
+            include=include_list,
         )
 
         assert options.region == "eu-central-1"
+        assert options.account_id == "123456789012"
         assert options.include == include_list
 
     def test_missing_required_region(self) -> None:
         """Test that missing region raises ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
-            SingleBucketRequest(bucket_name="test-bucket")  # type: ignore
+            SingleBucketRequest(
+                bucket_name="test-bucket", account_id="123456789012"  # type: ignore
+            )
 
         assert "region" in str(exc_info.value)
 
     def test_empty_include_list(self) -> None:
         """Test with explicitly empty include list."""
         options = SingleBucketRequest(
-            region="us-east-1", bucket_name="test-bucket", include=[]
+            region="us-east-1",
+            account_id="123456789012",
+            bucket_name="test-bucket",
+            include=[],
         )
 
         assert options.region == "us-east-1"
@@ -49,6 +62,7 @@ class TestExporterOptions:
         """Test include list with various values."""
         options = SingleBucketRequest(
             region="ap-southeast-1",
+            account_id="123456789012",
             bucket_name="test-bucket",
             include=["Action1", "Action2", "Action3"],
         )
@@ -64,13 +78,19 @@ class TestSingleS3BucketExporterOptions:
 
     def test_inheritance(self) -> None:
         """Test that SingleS3BucketExporterOptions inherits from ExporterOptions."""
-        options = SingleBucketRequest(region="us-west-2", bucket_name="test-bucket")
+        options = SingleBucketRequest(
+            region="us-west-2", account_id="123456789012", bucket_name="test-bucket"
+        )
 
         assert isinstance(options, SingleBucketRequest)
 
     def test_initialization_with_required_fields(self) -> None:
         """Test initialization with required fields."""
-        options = SingleBucketRequest(region="us-west-2", bucket_name="my-test-bucket")
+        options = SingleBucketRequest(
+            region="us-west-2",
+            account_id="123456789012",
+            bucket_name="my-test-bucket",
+        )
 
         assert options.region == "us-west-2"
         assert options.bucket_name == "my-test-bucket"
@@ -80,7 +100,10 @@ class TestSingleS3BucketExporterOptions:
         """Test initialization with all fields."""
         include_list = ["GetBucketTaggingAction", "GetBucketEncryptionAction"]
         options = SingleBucketRequest(
-            region="eu-west-1", bucket_name="production-bucket", include=include_list
+            region="eu-west-1",
+            account_id="123456789012",
+            bucket_name="production-bucket",
+            include=include_list,
         )
 
         assert options.region == "eu-west-1"
@@ -90,14 +113,16 @@ class TestSingleS3BucketExporterOptions:
     def test_missing_bucket_name(self) -> None:
         """Test that missing bucket_name raises ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
-            SingleBucketRequest(region="us-west-2")  # type: ignore
+            SingleBucketRequest(region="us-west-2", account_id="123456789012")  # type: ignore
 
         assert "bucket_name" in str(exc_info.value)
 
     def test_missing_region(self) -> None:
         """Test that missing region raises ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
-            SingleBucketRequest(bucket_name="test-bucket")  # type: ignore
+            SingleBucketRequest(
+                bucket_name="test-bucket", account_id="123456789012"
+            )  # type: ignore
 
         assert "region" in str(exc_info.value)
 
@@ -112,7 +137,11 @@ class TestSingleS3BucketExporterOptions:
         ]
 
         for bucket_name in valid_bucket_names:
-            options = SingleBucketRequest(region="us-west-2", bucket_name=bucket_name)
+            options = SingleBucketRequest(
+                region="us-west-2",
+                account_id="123456789012",
+                bucket_name=bucket_name,
+            )
             assert options.bucket_name == bucket_name
 
 
@@ -121,13 +150,13 @@ class TestPaginatedS3BucketExporterOptions:
 
     def test_inheritance(self) -> None:
         """Test that PaginatedS3BucketExporterOptions inherits from ExporterOptions."""
-        options = PaginatedBucketRequest(region="us-west-2")
+        options = PaginatedBucketRequest(region="us-west-2", account_id="123456789012")
 
         assert isinstance(options, PaginatedBucketRequest)
 
     def test_initialization_with_required_fields(self) -> None:
         """Test initialization with only required fields."""
-        options = PaginatedBucketRequest(region="us-east-1")
+        options = PaginatedBucketRequest(region="us-east-1", account_id="123456789012")
 
         assert options.region == "us-east-1"
         assert options.include == []
@@ -135,18 +164,21 @@ class TestPaginatedS3BucketExporterOptions:
     def test_initialization_with_include(self) -> None:
         """Test initialization with include list."""
         include_list = ["GetBucketPublicAccessBlockAction", "GetBucketTaggingAction"]
-        options = PaginatedBucketRequest(region="ap-southeast-2", include=include_list)
+        options = PaginatedBucketRequest(
+            region="ap-southeast-2", account_id="123456789012", include=include_list
+        )
 
         assert options.region == "ap-southeast-2"
         assert options.include == include_list
 
     def test_no_additional_fields(self) -> None:
         """Test that PaginatedS3BucketExporterOptions doesn't add additional fields."""
-        options = PaginatedBucketRequest(region="eu-north-1")
+        options = PaginatedBucketRequest(region="eu-north-1", account_id="123456789012")
 
         # Should only have the fields from ExporterOptions
         assert hasattr(options, "region")
         assert hasattr(options, "include")
+        assert hasattr(options, "account_id")
         assert not hasattr(options, "bucket_name")
 
 
@@ -157,80 +189,69 @@ class TestS3BucketProperties:
         """Test initialization with no properties."""
         properties = BucketProperties()
 
-        # All fields should be None initially
-        assert properties.AccessControl is None
-        assert properties.VersioningConfiguration is None
-        assert properties.Tags is None
+        # Core fields have defaults
+        assert properties.BucketName == ""
+        assert properties.Arn == ""
+        assert properties.CreationDate is None
+        # Optional fields
+        assert properties.LocationConstraint is None
+        assert properties.Tags == []
         assert properties.BucketEncryption is None
-        assert properties.Name == ""  # Default empty string
         assert properties.PublicAccessBlockConfiguration is None
+        assert properties.OwnershipControls is None
 
     def test_initialization_with_properties(self) -> None:
         """Test initialization with some properties."""
         properties = BucketProperties(
-            Name="test-bucket",
+            BucketName="test-bucket",
             Tags=[{"Key": "Environment", "Value": "test"}],
             PublicAccessBlockConfiguration={"BlockPublicAcls": True},
         )
 
-        assert properties.Name == "test-bucket"
+        assert properties.BucketName == "test-bucket"
         assert properties.Tags == [{"Key": "Environment", "Value": "test"}]
         assert properties.PublicAccessBlockConfiguration == {"BlockPublicAcls": True}
-
-        # Non-specified fields should be None
-        assert properties.AccessControl is None
-        assert properties.VersioningConfiguration is None
 
     def test_dict_exclude_none(self) -> None:
         """Test dict() with exclude_none=True."""
         properties = BucketProperties(
-            Name="test-bucket", Tags=[{"Key": "Project", "Value": "demo"}]
+            BucketName="test-bucket", Tags=[{"Key": "Project", "Value": "demo"}]
         )
 
         result = properties.dict(exclude_none=True)
 
         # Should only include non-None fields
-        assert "Name" in result
+        assert "BucketName" in result
         assert "Tags" in result
-        assert result["Name"] == "test-bucket"
+        assert result["BucketName"] == "test-bucket"
         assert result["Tags"] == [{"Key": "Project", "Value": "demo"}]
 
-        # None fields should be excluded
-        assert "AccessControl" not in result
-        assert "VersioningConfiguration" not in result
+        # None optional fields should be excluded
         assert "BucketEncryption" not in result
+        assert "OwnershipControls" not in result
 
     def test_all_properties_assignment(self) -> None:
         """Test assignment of all available properties."""
         properties = BucketProperties(
-            AccessControl="Private",
-            VersioningConfiguration={"Status": "Enabled"},
+            BucketName="test-bucket",
+            Arn="arn:aws:s3:::test-bucket",
+            CreationDate=datetime(2025, 1, 1, 0, 0, 0),
+            LocationConstraint="us-west-2",
             Tags=[{"Key": "Owner", "Value": "team"}],
             BucketEncryption={"Rules": []},
-            ReplicationConfiguration={
-                "Role": "arn:aws:iam::123456789012:role/replication-role"
-            },
-            Location={"LocationConstraint": "us-west-2"},
-            Policy={"Version": "2012-10-17"},
-            BucketArn="arn:aws:s3:::test-bucket",
-            RegionalDomainName="test-bucket.s3.us-west-2.amazonaws.com",
-            DomainName="test-bucket.s3.amazonaws.com",
-            DualStackDomainName="test-bucket.s3.dualstack.us-west-2.amazonaws.com",
-            WebsiteURL="http://test-bucket.s3-website-us-west-2.amazonaws.com",
-            Name="test-bucket",
             PublicAccessBlockConfiguration={"BlockPublicAcls": True},
             OwnershipControls={"Rules": []},
-            CorsConfiguration={"CORSRules": []},
         )
 
-        # Verify all properties are set
-        assert properties.AccessControl == "Private"
-        assert properties.VersioningConfiguration == {"Status": "Enabled"}
+        # Verify key properties are set
+        assert properties.BucketName == "test-bucket"
+        assert properties.Arn == "arn:aws:s3:::test-bucket"
+        assert properties.CreationDate == datetime(2025, 1, 1, 0, 0, 0)
+        assert properties.LocationConstraint == "us-west-2"
         assert properties.Tags == [{"Key": "Owner", "Value": "team"}]
         assert properties.BucketEncryption == {"Rules": []}
-        assert properties.Name == "test-bucket"
-        assert properties.BucketArn == "arn:aws:s3:::test-bucket"
         assert properties.PublicAccessBlockConfiguration == {"BlockPublicAcls": True}
+        assert properties.OwnershipControls == {"Rules": []}
 
 
 class TestS3Bucket:
@@ -238,34 +259,35 @@ class TestS3Bucket:
 
     def test_initialization_with_identifier(self) -> None:
         """Test initialization with required identifier."""
-        bucket = Bucket(Properties=BucketProperties(Name="test-bucket"))
+        bucket = Bucket(Properties=BucketProperties(BucketName="test-bucket"))
 
         assert bucket.Type == "AWS::S3::Bucket"
-        assert bucket.Properties.Name == "test-bucket"
+        assert bucket.Properties.BucketName == "test-bucket"
         assert isinstance(bucket.Properties, BucketProperties)
 
     def test_initialization_with_properties(self) -> None:
         """Test initialization with custom properties."""
         properties = BucketProperties(
-            Name="custom-bucket", Tags=[{"Key": "Team", "Value": "engineering"}]
+            BucketName="custom-bucket",
+            Tags=[{"Key": "Team", "Value": "engineering"}],
         )
         bucket = Bucket(Properties=properties)
 
         assert bucket.Properties == properties
-        assert bucket.Properties.Name == "custom-bucket"
+        assert bucket.Properties.BucketName == "custom-bucket"
         assert bucket.Properties.Tags == [{"Key": "Team", "Value": "engineering"}]
 
     def test_type_is_fixed(self) -> None:
         """Test that Type is always AWS::S3::Bucket."""
-        bucket1 = Bucket(Properties=BucketProperties(Name="bucket1"))
-        bucket2 = Bucket(Properties=BucketProperties(Name="bucket2"))
+        bucket1 = Bucket(Properties=BucketProperties(BucketName="bucket1"))
+        bucket2 = Bucket(Properties=BucketProperties(BucketName="bucket2"))
 
         assert bucket1.Type == "AWS::S3::Bucket"
         assert bucket2.Type == "AWS::S3::Bucket"
 
     def test_dict_exclude_none(self) -> None:
         """Test dict() with exclude_none=True."""
-        properties = BucketProperties(Name="test-bucket")
+        properties = BucketProperties(BucketName="test-bucket")
         bucket = Bucket(Properties=properties)
 
         result = bucket.dict(exclude_none=True)
@@ -274,12 +296,12 @@ class TestS3Bucket:
         assert "Properties" in result
 
         assert result["Type"] == "AWS::S3::Bucket"
-        assert result["Properties"]["Name"] == "test-bucket"
+        assert result["Properties"]["BucketName"] == "test-bucket"
 
     def test_properties_default_factory(self) -> None:
         """Test that Properties uses default factory."""
-        bucket1 = Bucket(Properties=BucketProperties(Name="bucket1"))
-        bucket2 = Bucket(Properties=BucketProperties(Name="bucket2"))
+        bucket1 = Bucket(Properties=BucketProperties(BucketName="bucket1"))
+        bucket2 = Bucket(Properties=BucketProperties(BucketName="bucket2"))
 
         # Should be different instances
         assert bucket1.Properties is not bucket2.Properties
@@ -292,7 +314,7 @@ class TestS3Bucket:
         """Test that bucket can be serialized and deserialized."""
         original_bucket = Bucket(
             Properties=BucketProperties(
-                Name="roundtrip-bucket",
+                BucketName="roundtrip-bucket",
                 Tags=[{"Key": "Test", "Value": "roundtrip"}],
                 BucketEncryption={
                     "Rules": [
@@ -314,7 +336,10 @@ class TestS3Bucket:
 
         # Verify they're equivalent
         assert recreated_bucket.Type == original_bucket.Type
-        assert recreated_bucket.Properties.Name == original_bucket.Properties.Name
+        assert (
+            recreated_bucket.Properties.BucketName
+            == original_bucket.Properties.BucketName
+        )
         assert recreated_bucket.Properties.Tags == original_bucket.Properties.Tags
         assert (
             recreated_bucket.Properties.BucketEncryption
