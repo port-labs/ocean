@@ -33,19 +33,43 @@ class TestGetInstanceStatusAction:
             {"InstanceId": "i-1"},
             {"InstanceId": "i-2"},
         ]
-        expected_response: Dict[str, List[Dict[str, Any]]] = {
-            "InstanceStatuses": [
-                {"InstanceId": "i-1", "InstanceState": {"Name": "running"}},
-                {"InstanceId": "i-2", "InstanceState": {"Name": "stopped"}},
-            ]
-        }
-        action.client.describe_instance_status.return_value = expected_response
+
+        # Mock should return different responses for each individual call
+        def mock_describe_instance_status(InstanceIds: List[str]) -> Dict[str, Any]:
+            if InstanceIds == ["i-1"]:
+                return {
+                    "InstanceStatuses": [
+                        {"InstanceId": "i-1", "InstanceState": {"Name": "running"}}
+                    ]
+                }
+            elif InstanceIds == ["i-2"]:
+                return {
+                    "InstanceStatuses": [
+                        {"InstanceId": "i-2", "InstanceState": {"Name": "stopped"}}
+                    ]
+                }
+            else:
+                return {"InstanceStatuses": []}
+
+        action.client.describe_instance_status.side_effect = (
+            mock_describe_instance_status
+        )
 
         result = await action.execute(identifiers)
 
-        assert result == expected_response["InstanceStatuses"]
-        action.client.describe_instance_status.assert_called_once_with(
-            InstanceIds=["i-1", "i-2"], IncludeAllInstances=True
+        expected_result = [
+            {"InstanceId": "i-1", "InstanceState": {"Name": "running"}},
+            {"InstanceId": "i-2", "InstanceState": {"Name": "stopped"}},
+        ]
+        assert result == expected_result
+
+        # Verify that describe_instance_status was called twice (once for each instance)
+        assert action.client.describe_instance_status.call_count == 2
+        action.client.describe_instance_status.assert_any_call(
+            InstanceIds=["i-1"], IncludeAllInstances=True
+        )
+        action.client.describe_instance_status.assert_any_call(
+            InstanceIds=["i-2"], IncludeAllInstances=True
         )
 
 

@@ -64,4 +64,5 @@ class EC2InstanceExporter(IResourceExporter):
                             **reservation,
                         },
                     )
+                    logger.error(f"Action result: {action_result}")
                     yield action_result
