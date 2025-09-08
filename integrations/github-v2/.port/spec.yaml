@@ -22,7 +22,7 @@ configurations:
     sensitive: true
     description: GitHub personal access token with necessary permissions. This is only necessary if the integration is not functioning as an app.
   - name: githubOrganization
-    required: true
+    required: false
     type: string
     description: GitHub organization name
   - name: githubUser
