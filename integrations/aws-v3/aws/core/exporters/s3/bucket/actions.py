@@ -17,7 +17,7 @@ class GetBucketPublicAccessBlockAction(Action):
         for idx, pab_result in enumerate(public_access_blocks):
             if isinstance(pab_result, Exception):
                 bucket_name = buckets[idx].get("Name", "unknown")
-                logger.warning(
+                logger.error(
                     f"Error fetching bucket public access block for bucket '{bucket_name}': {pab_result}"
                 )
                 continue
@@ -48,7 +48,7 @@ class GetBucketOwnershipControlsAction(Action):
         for idx, ownership_result in enumerate(ownership_controls):
             if isinstance(ownership_result, Exception):
                 bucket_name = buckets[idx].get("Name", "unknown")
-                logger.warning(
+                logger.error(
                     f"Error fetching bucket ownership controls for bucket '{bucket_name}': {ownership_result}"
                 )
                 continue
@@ -76,7 +76,7 @@ class GetBucketEncryptionAction(Action):
         for idx, encryption_result in enumerate(encryptions):
             if isinstance(encryption_result, Exception):
                 bucket_name = buckets[idx].get("Name", "unknown")
-                logger.warning(
+                logger.error(
                     f"Error fetching bucket encryption for bucket '{bucket_name}': {encryption_result}"
                 )
                 continue
@@ -103,7 +103,7 @@ class GetBucketLocationAction(Action):
         for idx, location_result in enumerate(locations):
             if isinstance(location_result, Exception):
                 bucket_name = buckets[idx].get("Name", "unknown")
-                logger.warning(
+                logger.error(
                     f"Error fetching bucket location for bucket '{bucket_name}': {location_result}"
                 )
                 continue
@@ -140,7 +140,7 @@ class GetBucketTaggingAction(Action):
         for idx, tagging_result in enumerate(tagging_results):
             if isinstance(tagging_result, Exception):
                 bucket_name = buckets[idx].get("Name", "unknown")
-                logger.warning(
+                logger.error(
                     f"Error fetching bucket tagging for bucket '{bucket_name}': {tagging_result}"
                 )
                 results.append({"Tags": []})
