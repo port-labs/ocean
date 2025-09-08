@@ -1,6 +1,3 @@
-deleteDependentEntities: true
-createMissingRelatedEntities: true
-enableMergeEntity: true
 resources:
   - kind: AWS::S3::Bucket
     selector:
