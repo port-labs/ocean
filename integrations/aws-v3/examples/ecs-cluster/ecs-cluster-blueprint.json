@@ -1,43 +1,5 @@
 [
   {
-    "identifier": "s3Bucket",
-    "title": "S3 Bucket",
-    "icon": "AWS",
-    "schema": {
-      "properties": {
-        "arn": {
-          "type": "string",
-          "title": "ARN",
-          "description": "The Amazon Resource Name (ARN) of the bucket"
-        },
-        "region": {
-          "type": "string",
-          "title": "Region",
-          "description": "Geographic AWS Region where a bucket is created and stored"
-        },
-        "creationDate": {
-          "type": "string",
-          "title": "Creation Date",
-          "description": "The date when the bucket was created",
-          "format": "date-time"
-        },
-        "tags": {
-          "type": "array",
-          "title": "Tags",
-          "description": "Tags associated with the bucket",
-          "items": {
-            "type": "object"
-          }
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {}
-  },
-  {
     "identifier": "ecsCluster",
     "title": "ECS Cluster",
     "icon": "AWS",
@@ -97,9 +59,7 @@
       },
       "required": []
     },
-    "mirrorProperties": {},
     "calculationProperties": {},
-    "aggregationProperties": {},
     "relations": {}
   }
 ]

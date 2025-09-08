@@ -1,0 +1,34 @@
+{
+  "Type": "AWS::ECS::Cluster",
+  "Properties": {
+    "ClusterName": "my-production-cluster",
+    "CapacityProviders": [
+      "FARGATE",
+      "FARGATE_SPOT"
+    ],
+    "ClusterSettings": [],
+    "Configuration": null,
+    "DefaultCapacityProviderStrategy": [],
+    "ServiceConnectDefaults": null,
+    "Tags": [
+      {
+        "key": "Environment",
+        "value": "production"
+      },
+      {
+        "key": "Team",
+        "value": "platform"
+      },
+      {
+        "key": "CostCenter",
+        "value": "engineering"
+      }
+    ],
+    "Status": "ACTIVE",
+    "RunningTasksCount": 12,
+    "ActiveServicesCount": 5,
+    "PendingTasksCount": 2,
+    "RegisteredContainerInstancesCount": 8,
+    "Arn": "arn:aws:ecs:us-west-2:123456789012:cluster/my-production-cluster"
+  }
+}

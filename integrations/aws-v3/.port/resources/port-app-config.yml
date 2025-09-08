@@ -13,3 +13,22 @@ resources:
             region: .Properties.LocationConstraint | if . == null then . else . end
             creationDate: .Properties.CreationDate
             tags: .Properties.Tags
+  - kind: AWS::ECS::Cluster
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Arn
+          title: .Properties.ClusterName
+          blueprint: '"ecsCluster"'
+          properties:
+            title: .Properties.ClusterName
+            status: .Properties.Status
+            runningTasksCount: .Properties.RunningTasksCount
+            activeServicesCount: .Properties.ActiveServicesCount
+            pendingTasksCount: .Properties.PendingTasksCount
+            registeredContainerInstancesCount: .Properties.RegisteredContainerInstancesCount
+            capacityProviders: .Properties.CapacityProviders
+            arn: .Properties.Arn
+            tags: .Properties.Tags
