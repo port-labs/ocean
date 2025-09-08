@@ -29,6 +29,14 @@ configurations:
     required: false
     type: string
     description: GitHub username (used when syncing user-owned repositories)
+  - name: pullRequestState
+    required: false
+    type: string
+    description: Filter PRs by state (open, closed, all)
+  - name: pullRequestUpdatedSinceDays
+    required: false
+    type: string
+    description: Only PRs updated in the last N days
   - name: webhookSecret
     type: string
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from GitHub are accepted.

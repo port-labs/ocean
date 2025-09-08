@@ -75,7 +75,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '.repository.name + ":" + .path'
+          identifier: '(.repository.name + ":" + .path) | gsub("[^A-Za-z0-9@_.+:\\/=-]"; "_")'
           title: ".name"
           blueprint: '"file"'
           properties:
