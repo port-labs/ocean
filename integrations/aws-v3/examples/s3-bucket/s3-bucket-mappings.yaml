@@ -1,0 +1,21 @@
+resources:
+  - kind: AWS::S3::Bucket
+    selector:
+      query: 'true'
+      includeActions:
+        - GetBucketEncryptionAction
+        - GetBucketPublicAccessBlockAction
+        - GetBucketTaggingAction
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Name
+          title: .Properties.Name
+          blueprint: '"s3Bucket"'
+          properties:
+            arn: .Properties.BucketArn
+            region: .Properties.BucketRegion
+            creationDate: .Properties.CreationDate
+            encryption: .Properties.BucketEncryption
+            publicAccessBlockConfiguration: .Properties.PublicAccessBlockConfiguration
+            tags: .Properties.Tags
