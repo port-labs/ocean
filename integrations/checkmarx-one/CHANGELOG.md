@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.2-dev (2025-09-08)
 
 
-### Features
+### Improvements
 
 - Added webhook support for the SCA and Containers
 
@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.1-dev (2025-09-08)
 
 
-### Features
+### Improvements
 
 - Added webhook support for the Scan and API-Security kinds
 
