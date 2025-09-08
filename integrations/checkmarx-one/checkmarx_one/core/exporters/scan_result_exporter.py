@@ -3,7 +3,7 @@ from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-from checkmarx_one.core.options import SingleScanResultOptions, ListScanResultOptions
+from checkmarx_one.core.options import ListScanResultOptions
 
 
 class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
@@ -19,7 +19,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         scan_result["__scan_id"] = scan_id
         return scan_result
 
-    async def get_resource(self, options: SingleScanResultOptions) -> RAW_ITEM:
+    async def get_resource(self, options: Any) -> RAW_ITEM:
 
         # No direct events for scan result types, so we rely on scan events and get back scan result types under the scan result with the get_paginated_resources method
         raise NotImplementedError(

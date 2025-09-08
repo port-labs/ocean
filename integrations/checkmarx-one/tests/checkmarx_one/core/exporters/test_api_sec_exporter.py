@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Any, AsyncIterator, List
 import types
 
-from checkmarx_one.core.options import SingleApiSecOptions, ListApiSecOptions
+from checkmarx_one.core.options import ListApiSecOptions
 
 # Mock port_ocean imports before importing the module under test
 # Provide a no-op decorator for cache_iterator_result so decorated methods keep behavior/docstrings
@@ -75,19 +75,6 @@ class TestCheckmarxApiSecExporter:
         assert enriched_result["__scan_id"] == scan_id
         assert enriched_result["risk_id"] == "123"
         assert enriched_result["name"] == "Test Risk"
-
-    @pytest.mark.asyncio
-    async def test_get_resource_success(
-        self, exporter: CheckmarxApiSecExporter, mock_client: MagicMock
-    ) -> None:
-        """Test that get_resource raises NotImplementedError."""
-        risk_id = "risk-123"
-        options: SingleApiSecOptions = {"risk_id": risk_id}
-
-        with pytest.raises(
-            NotImplementedError,
-        ):
-            await exporter.get_resource(options)
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_single_batch(
