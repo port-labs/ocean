@@ -10,6 +10,8 @@ class TestObjectKind:
         assert issubclass(ObjectKind, StrEnum)
         assert isinstance(ObjectKind.PROJECT, str)
         assert isinstance(ObjectKind.SCAN, str)
+        assert isinstance(ObjectKind.API_SEC, str)
+        assert isinstance(ObjectKind.SAST, str)
         assert isinstance(ObjectKind.KICS, str)
 
     def test_project_kind_value(self) -> None:
@@ -28,6 +30,7 @@ class TestObjectKind:
             "PROJECT",
             "SCAN",
             "API_SEC",
+            "SAST",
             "KICS",
         }
         actual_members = set(ObjectKind.__members__.keys())
@@ -39,6 +42,7 @@ class TestObjectKind:
             "project",
             "scan",
             "api-security",
+            "sast",
             "kics",
         }
         actual_values = {member.value for member in ObjectKind}
@@ -54,10 +58,11 @@ class TestObjectKind:
     def test_enum_iteration(self) -> None:
         """Test iterating over enum members."""
         members = list(ObjectKind)
-        assert len(members) == 4
+        assert len(members) == 5
         assert ObjectKind.PROJECT in members
         assert ObjectKind.SCAN in members
         assert ObjectKind.API_SEC in members
+        assert ObjectKind.SAST in members
         assert ObjectKind.KICS in members
 
     def test_enum_membership(self) -> None:
