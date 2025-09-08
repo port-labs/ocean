@@ -50,21 +50,28 @@ class _CheckmarxOneAbstractWebhookProcessor(AbstractWebhookProcessor):
         expected_signature_hex = hash_object.hexdigest()
         expected_signature_b64 = base64.b64encode(hash_object.digest()).decode("utf-8")
 
-        # Try both hex and base64 comparison (Checkmarx might use either format)
-        signature_valid = hmac.compare_digest(
-            parsed_signature, expected_signature_hex
-        ) or hmac.compare_digest(parsed_signature, expected_signature_b64)
-
-        logger.debug(
-            "Validating webhook signature...",
-            extra={
-                "received_signature": parsed_signature,
-                "expected_signature_hex": expected_signature_hex,
-                "expected_signature_b64": expected_signature_b64,
-            },
+        signature_valid = self._validate_signature_format(
+            parsed_signature, expected_signature_hex, expected_signature_b64
         )
 
+        logger.debug(
+            "Validating webhook signature... signature present: %s, signature valid: %s",
+            bool(signature),
+            signature_valid,
+        )
+        
         return signature_valid
+
+    def _validate_signature_format(
+        self, parsed_signature: str, expected_signature_hex: str, expected_signature_b64: str
+    ) -> bool:
+        """
+        Validate signature by trying both hex and base64 comparison formats.
+        Checkmarx might use either format for webhook signatures.
+        """
+        return hmac.compare_digest(
+            parsed_signature, expected_signature_hex
+        ) or hmac.compare_digest(parsed_signature, expected_signature_b64)
 
     @abstractmethod
     async def _should_process_event(self, event: WebhookEvent) -> bool: ...
