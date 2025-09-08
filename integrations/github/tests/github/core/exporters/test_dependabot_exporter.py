@@ -1,7 +1,6 @@
-from typing import Any, AsyncGenerator, Generator
-from port_ocean.helpers.retry import RetryConfig
+from typing import Any, AsyncGenerator
 import pytest
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 from github.core.exporters.dependabot_exporter import (
     RestDependabotAlertExporter,
@@ -98,25 +97,6 @@ TEST_DEPENDABOT_ALERTS = [
         "fixed_at": None,
     },
 ]
-
-
-@pytest.fixture
-def disable_retries_in_tests() -> Generator[None, None, None]:
-    """Disable retries in tests to make them fast."""
-    no_retry_config = RetryConfig(
-        max_attempts=1,
-        retry_status_codes=[],
-    )
-
-    with patch("port_ocean.helpers.retry.RetryConfig", return_value=no_retry_config):
-        yield
-
-
-@pytest.fixture(autouse=True)
-def mock_sleep() -> Generator[Mock, None, None]:
-    """Mock asyncio.sleep to speed up tests."""
-    with patch("asyncio.sleep") as mock_sleep:
-        yield mock_sleep
 
 
 @pytest.mark.asyncio

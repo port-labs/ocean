@@ -252,7 +252,6 @@ class TestRestCodeScanningAlertExporter:
                 SingleCodeScanningAlertOptions(repo_name="test-repo", alert_number="43")
             )
             assert result == {"__repository": "test-repo"}
-            # assert False
 
     async def test_handle_request_paginated_with_advanced_security_disabled_error(
         self, rest_client: GithubRestClient
