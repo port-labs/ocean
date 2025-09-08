@@ -4,6 +4,7 @@ from typing import Literal
 
 class ObjectKind(StrEnum):
     S3_BUCKET = "AWS::S3::Bucket"
+    ORGANIZATIONS_ACCOUNT = "AWS::Organizations::Account"
 
 
-SupportedServices = Literal["s3", "ecs", "ec2", "sqs"]
+SupportedServices = Literal["s3", "ecs", "ec2", "sqs", "organizations"]

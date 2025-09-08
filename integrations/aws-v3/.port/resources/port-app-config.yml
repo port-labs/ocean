@@ -16,3 +16,20 @@ resources:
             region: .Properties.LocationConstraint | if . == null then . else . end
             creationDate: .Properties.CreationDate
             tags: .Properties.Tags
+  - kind: AWS::Organizations::Account
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Id
+          title: .Properties.AccountName
+          blueprint: '"awsAccount"'
+          properties:
+            arn: .Properties.Arn
+            accountId: .Properties.Id
+            email: .Properties.Email
+            status: .Properties.Status
+            joinedTimestamp: .Properties.JoinedTimestamp
+            parentIds: .Properties.ParentIds
+            tags: .Properties.Tags

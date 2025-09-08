@@ -36,5 +36,66 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "awsAccount",
+    "title": "AWS Account",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the account"
+        },
+        "accountId": {
+          "type": "string",
+          "title": "Account ID",
+          "description": "The AWS Account ID"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "description": "The email address associated with the account"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the AWS account (e.g., ACTIVE)"
+        },
+        "joinedTimestamp": {
+          "type": "string",
+          "title": "Joined Timestamp",
+          "description": "When the account joined the organization",
+          "format": "date-time"
+        },
+        "parentIds": {
+          "type": "array",
+          "title": "Parent IDs",
+          "description": "List of parent Root or OU IDs",
+          "items": {
+            "type": "string"
+          }
+        },
+        "roleName": {
+          "type": "string",
+          "title": "Role Name",
+          "description": "Role name used for cross-account access (if any)"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the account",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
   }
 ]
