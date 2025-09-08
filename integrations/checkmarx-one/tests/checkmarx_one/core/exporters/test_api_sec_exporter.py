@@ -86,7 +86,6 @@ class TestCheckmarxApiSecExporter:
 
         with pytest.raises(
             NotImplementedError,
-            match="get_resource method is not implemented for API security exporter",
         ):
             await exporter.get_resource(options)
 

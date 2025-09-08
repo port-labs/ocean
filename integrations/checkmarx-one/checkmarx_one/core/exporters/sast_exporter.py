@@ -1,29 +1,20 @@
-from typing import Any, List
+from typing import Any
 from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-from checkmarx_one.core.options import SingleSastOptions, ListSastOptions
+from checkmarx_one.core.options import ListSastOptions
 from checkmarx_one.utils import sast_visible_columns
 
 
 class CheckmarxSastExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One SAST results."""
 
-    async def get_resource(self, options: SingleSastOptions) -> RAW_ITEM:
-        """Get a specific SAST result by result hash within a scan."""
-        params = self._build_single_resource_params(options)
-        response = await self.client.send_api_request(
-            "/sast-results/",
-            params=params,
+    async def get_resource(self, options: Any) -> RAW_ITEM:
+
+        raise NotImplementedError(
+            "Single SAST result fetch is not implemented for the SAST exporter."
         )
-        if isinstance(response, dict) and "results" in response:
-            results: List[dict[str, Any]] = response.get("results", [])
-            item = results[0] if results else {}
-        else:
-            item = response
-        logger.info(f"Fetched SAST result by result-id for scan {options['scan_id']}")
-        return item
 
     async def get_paginated_resources(
         self,
@@ -80,19 +71,3 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
 
         return params
 
-    def _build_single_resource_params(
-        self, options: SingleSastOptions
-    ) -> dict[str, Any]:
-        """Build query params for SAST single resource."""
-        params: dict[str, Any] = {
-            "scan-id": options["scan_id"],
-            "result-id": options["result_id"],
-            "visible-columns": sast_visible_columns(),
-            "limit": 1,
-        }
-
-        # Add optional parameters if provided
-        if "include_nodes" in options and options["include_nodes"] is not None:
-            params["include-nodes"] = str(options["include_nodes"]).lower()
-
-        return params
