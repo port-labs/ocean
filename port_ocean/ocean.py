@@ -105,7 +105,7 @@ class Ocean:
         This ensures Port is notified that the integration was interrupted.
         """
         try:
-            if self.metrics.event_id != "":
+            if self.metrics.event_id.find("-done") == -1:
                 await self.resync_state_updater.update_after_resync(
                     IntegrationStateStatus.Aborted
                 )

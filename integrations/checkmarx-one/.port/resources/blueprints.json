@@ -7,37 +7,45 @@
       "properties": {
         "name": {
           "type": "string",
-          "title": "Project Name"
+          "title": "Project Name",
+          "description": "The name of the Checkmarx project."
         },
         "createdAt": {
           "type": "string",
           "format": "date-time",
-          "title": "Created At"
+          "title": "Created At",
+          "description": "The date and time when the project was created."
         },
         "updatedAt": {
           "type": "string",
           "format": "date-time",
-          "title": "Updated At"
+          "title": "Updated At",
+          "description": "The date and time when the project was last updated."
         },
         "tags": {
           "type": "object",
-          "title": "Tags"
+          "title": "Tags",
+          "description": "A set of tags associated with the project."
         },
         "repoUrl": {
           "type": "string",
-          "title": "Repository URL"
+          "title": "Repository URL",
+          "description": "The URL of the repository associated with the project."
         },
         "mainBranch": {
           "type": "string",
-          "title": "Main Branch"
+          "title": "Main Branch",
+          "description": "The main branch of the project's repository."
         },
         "origin": {
           "type": "string",
-          "title": "Origin"
+          "title": "Origin",
+          "description": "The origin or source of the project."
         },
         "criticality": {
           "type": "string",
-          "title": "Criticality"
+          "title": "Criticality",
+          "description": "The criticality level of the project."
         }
       },
       "required": ["name"]
@@ -53,40 +61,55 @@
         "status": {
           "type": "string",
           "title": "Status",
-          "enum": ["Running", "Completed", "Failed", "Canceled", "Queued"]
+          "enum": [
+            "Queued",
+            "Running",
+            "Completed",
+            "Failed",
+            "Partial",
+            "Canceled"
+          ],
+          "description": "The status of the scan. Possible values: Queued, Running, Completed, Failed, Partial, Canceled."
         },
         "branch": {
           "type": "string",
-          "title": "Branch"
+          "title": "Branch",
+          "description": "The branch of the repository that was scanned."
         },
         "createdAt": {
           "type": "string",
           "format": "date-time",
-          "title": "Created At"
+          "title": "Created At",
+          "description": "The date and time when the scan was created."
         },
         "updatedAt": {
           "type": "string",
           "format": "date-time",
-          "title": "Updated At"
+          "title": "Updated At",
+          "description": "The date and time when the scan was last updated."
         },
         "projectId": {
           "type": "string",
-          "title": "Project ID"
+          "title": "Project ID",
+          "description": "The identifier of the project to which this scan belongs."
         },
         "userAgent": {
           "type": "string",
-          "title": "User Agent"
+          "title": "User Agent",
+          "description": "The user agent used to initiate the scan."
         },
         "configs": {
           "type": "object",
-          "title": "Configurations"
+          "title": "Configurations",
+          "description": "Configuration details for the scan."
         },
         "statusDetails": {
           "type": "array",
           "items": {
             "type": "object"
           },
-          "title": "Status Details"
+          "title": "Status Details",
+          "description": "Detailed status information for the scan."
         }
       },
       "required": ["status", "projectId"]
@@ -101,144 +124,113 @@
     }
   },
   {
-    "calculationProperties": {},
-    "identifier": "checkmarxSscs-secret-detection",
-    "title": "Checkmarx Scan Result for SSCS",
+    "identifier": "checkmarxApiSec",
+    "title": "Checkmarx API Security",
     "icon": "Checkmarx",
     "schema": {
       "properties": {
-        "type": {
+        "riskId": {
           "type": "string",
-          "title": "Type",
-          "enum": [
-            "sast",
-            "sca",
-            "kics",
-            "containers",
-            "sscs-secret-detection",
-            "sscs-scorecard"
-          ]
+          "title": "Risk ID",
+          "description": "The unique identifier for the API security risk."
+        },
+        "apiId": {
+          "type": "string",
+          "title": "API ID",
+          "description": "The identifier of the API associated with the risk."
         },
         "severity": {
           "type": "string",
           "title": "Severity",
           "enum": [
-            "LOW",
-            "MEDIUM",
-            "HIGH",
-            "CRITICAL",
-            "INFO"
-          ]
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "description": "The severity level of the API security risk."
         },
-        "state": {
+        "name": {
           "type": "string",
-          "title": "State",
-          "enum": [
-            "TO_VERIFY",
-            "CONFIRMED",
-            "URGENT",
-            "NOT_EXPLOITABLE",
-            "PROPOSED_NOT_EXPLOITABLE",
-            "FALSE_POSITIVE"
-          ]
-        },
-        "confidenceLevel": {
-          "type": "number",
-          "title": "Confidence Level",
-          "minimum": 0,
-          "maximum": 100
-        },
-        "description": {
-          "type": "string",
-          "title": "Description"
-        },
-        "cweId": {
-          "type": "string",
-          "title": "CWE ID"
-        },
-        "fileName": {
-          "type": "string",
-          "title": "File Name"
-        },
-        "line": {
-          "type": "number",
-          "title": "Line Number"
+          "title": "Name",
+          "description": "The name of the API security risk."
         },
         "status": {
           "type": "string",
           "title": "Status",
           "enum": [
-            "NEW",
-            "RECURRENT",
-            "FIXED"
-          ]
+            "new",
+            "recurrent",
+            "fixed"
+          ],
+          "description": "The status of the API security risk."
         },
-        "created": {
+        "httpMethod": {
+          "type": "string",
+          "title": "HTTP Method",
+          "description": "The HTTP method associated with the API risk (e.g., GET, POST)."
+        },
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "description": "The URL endpoint associated with the API risk."
+        },
+        "origin": {
+          "type": "string",
+          "title": "Origin",
+          "description": "The origin or source of the API risk."
+        },
+        "documented": {
+          "type": "boolean",
+          "title": "Documented",
+          "description": "Indicates whether the API is documented."
+        },
+        "authenticated": {
+          "type": "boolean",
+          "title": "Authenticated",
+          "description": "Indicates whether the API requires authentication."
+        },
+        "discoveryDate": {
           "type": "string",
           "format": "date-time",
-          "title": "Created At"
+          "title": "Discovery Date",
+          "description": "The date and time when the API risk was discovered."
         },
-        "firstFoundAt": {
+        "scanId": {
           "type": "string",
-          "format": "date-time",
-          "title": "First Found At"
+          "title": "Scan ID",
+          "description": "The identifier of the scan in which the risk was found."
         },
-        "foundAt": {
+        "sastRiskId": {
           "type": "string",
-          "format": "date-time",
-          "title": "Found At"
+          "title": "SAST Risk ID",
+          "description": "The identifier of the related SAST risk, if available."
         },
-        "similarityId": {
+        "projectId": {
           "type": "string",
-          "title": "Similarity ID"
+          "title": "Project ID",
+          "description": "The identifier of the project associated with the API risk."
         },
-        "cvssScore": {
-          "type": "number",
-          "title": "CVSS Score"
-        },
-        "cveName": {
+        "state": {
           "type": "string",
-          "title": "CVE Name"
-        },
-        "packageName": {
-          "type": "string",
-          "title": "Package Name"
-        },
-        "packageVersion": {
-          "type": "string",
-          "title": "Package Version"
-        },
-        "imageName": {
-          "type": "string",
-          "title": "Image Name"
-        },
-        "imageTag": {
-          "type": "string",
-          "title": "Image Tag"
-        },
-        "ruleId": {
-          "type": "string",
-          "title": "Rule ID"
-        },
-        "ruleName": {
-          "type": "string",
-          "title": "Rule Name"
-        },
-        "remediation": {
-          "type": "string",
-          "title": "Remediation"
-        },
-        "remediationLink": {
-          "type": "string",
-          "format": "url",
-          "title": "Remediation Link"
+          "title": "State",
+          "enum": [
+            "to_verify",
+            "confirmed",
+            "urgent",
+            "not_exploitable",
+            "proposed_not_exploitable",
+            "false_positive"
+          ],
+          "description": "The state of the API security risk."
         }
       },
       "required": [
-        "type",
-        "severity",
-        "state",
-        "description"
+        "riskId",
+        "apiId",
+        "name",
+        "status",
+        "state"
       ]
     },
     "relations": {
@@ -251,722 +243,176 @@
     }
   },
   {
-    "calculationProperties": {},
-    "identifier": "checkmarxSscs-scorecard",
-    "title": "Checkmarx Scan Result for SSCS",
+    "identifier": "checkmarxSCA",
+    "title": "Checkmarx SCA",
     "icon": "Checkmarx",
     "schema": {
       "properties": {
-        "type": {
-          "type": "string",
-          "title": "Type",
-          "enum": ["sast", "sca", "kics", "containers", "sscs-secret-detection", "sscs-scorecard"]
-        },
         "severity": {
           "type": "string",
           "title": "Severity",
-          "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL", "INFO"]
+          "description": "The severity level of the SCA finding."
         },
         "state": {
           "type": "string",
           "title": "State",
-          "enum": ["TO_VERIFY", "CONFIRMED", "URGENT", "NOT_EXPLOITABLE", "PROPOSED_NOT_EXPLOITABLE", "FALSE_POSITIVE"]
-        },
-        "confidenceLevel": {
-          "type": "number",
-          "title": "Confidence Level",
-          "minimum": 0,
-          "maximum": 100
+          "description": "The state of the SCA finding."
         },
         "description": {
           "type": "string",
-          "title": "Description"
+          "title": "Description",
+          "description": "A description of the SCA finding."
         },
         "cweId": {
           "type": "string",
-          "title": "CWE ID"
-        },
-        "fileName": {
-          "type": "string",
-          "title": "File Name"
-        },
-        "line": {
-          "type": "number",
-          "title": "Line Number"
+          "title": "CWE ID",
+          "description": "The Common Weakness Enumeration (CWE) identifier related to the vulnerability."
         },
         "status": {
           "type": "string",
           "title": "Status",
-          "enum": ["NEW", "RECURRENT", "FIXED"]
+          "description": "The current status of the SCA finding."
         },
         "created": {
           "type": "string",
           "format": "date-time",
-          "title": "Created At"
+          "title": "Created",
+          "description": "The date and time when the SCA finding was created."
         },
-        "firstFoundAt": {
+        "firstScanId": {
           "type": "string",
-          "format": "date-time",
-          "title": "First Found At"
+          "title": "First Scan ID",
+          "description": "The identifier of the first scan in which this SCA issue was detected."
         },
-        "foundAt": {
+        "packageIdentifier": {
           "type": "string",
-          "format": "date-time",
-          "title": "Found At"
+          "title": "Package Identifier",
+          "description": "The identifier of the affected package."
         },
-        "similarityId": {
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Recommendations",
+          "description": "Recommended actions to remediate the SCA finding."
+        },
+        "recommendedVersion": {
           "type": "string",
-          "title": "Similarity ID"
+          "title": "Recommended Version",
+          "description": "The recommended version of the package to resolve the vulnerability."
         },
-        "cvssScore": {
-          "type": "number",
-          "title": "CVSS Score"
+        "packageData": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array",
+          "title": "Package Data"
         },
-        "cveName": {
+        "confidenceLevel": {
           "type": "string",
-          "title": "CVE Name"
-        },
-        "packageName": {
-          "type": "string",
-          "title": "Package Name"
-        },
-        "packageVersion": {
-          "type": "string",
-          "title": "Package Version"
-        },
-        "imageName": {
-          "type": "string",
-          "title": "Image Name"
-        },
-        "imageTag": {
-          "type": "string",
-          "title": "Image Tag"
-        },
-        "ruleId": {
-          "type": "string",
-          "title": "Rule ID"
-        },
-        "ruleName": {
-          "type": "string",
-          "title": "Rule Name"
-        },
-        "remediation": {
-          "type": "string",
-          "title": "Remediation"
-        },
-        "remediationLink": {
-          "type": "string",
-          "format": "url",
-          "title": "Remediation Link"
+          "title": "Confidence Level",
+          "description": "The confidence level of the SCA finding."
         }
       },
-      "required": ["type", "severity", "state", "description"]
+      "required": []
     },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {
       "scan": {
         "title": "Scan",
         "target": "checkmarxScan",
-        "many": false,
-        "required": false
+        "required": false,
+        "many": false
       }
     }
   },
   {
-    "calculationProperties": {},
-    "identifier": "checkmarxSast",
-    "title": "Checkmarx Scan Result for SAST",
+    "identifier": "checkmarxContainerSecurity",
+    "title": "Checkmarx Container Security",
     "icon": "Checkmarx",
     "schema": {
       "properties": {
-        "type": {
+        "firstScanId": {
           "type": "string",
-          "title": "Type",
-          "enum": [
-            "sast",
-            "sca",
-            "kics",
-            "containers",
-            "sscs-secret-detection",
-            "sscs-scorecard"
-          ]
-        },
-        "severity": {
-          "type": "string",
-          "title": "Severity",
-          "enum": [
-            "LOW",
-            "MEDIUM",
-            "HIGH",
-            "CRITICAL"
-          ]
-        },
-        "state": {
-          "type": "string",
-          "title": "State",
-          "enum": [
-            "TO_VERIFY",
-            "CONFIRMED",
-            "URGENT",
-            "NOT_EXPLOITABLE",
-            "PROPOSED_NOT_EXPLOITABLE",
-            "FALSE_POSITIVE"
-          ]
-        },
-        "confidenceLevel": {
-          "type": "number",
-          "title": "Confidence Level",
-          "minimum": 0,
-          "maximum": 100
-        },
-        "description": {
-          "type": "string",
-          "title": "Description"
-        },
-        "cweId": {
-          "type": "string",
-          "title": "CWE ID"
-        },
-        "fileName": {
-          "type": "string",
-          "title": "File Name"
-        },
-        "line": {
-          "type": "number",
-          "title": "Line Number"
+          "title": "First Scan ID",
+          "description": "The identifier of the first scan in which this container security issue was detected."
         },
         "status": {
           "type": "string",
           "title": "Status",
-          "enum": [
-            "NEW",
-            "RECURRENT",
-            "FIXED"
-          ]
-        },
-        "created": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Created At"
-        },
-        "firstFoundAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "First Found At"
-        },
-        "foundAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Found At"
-        },
-        "similarityId": {
-          "type": "string",
-          "title": "Similarity ID"
-        },
-        "cvssScore": {
-          "type": "number",
-          "title": "CVSS Score"
-        },
-        "cveName": {
-          "type": "string",
-          "title": "CVE Name"
-        },
-        "packageName": {
-          "type": "string",
-          "title": "Package Name"
-        },
-        "packageVersion": {
-          "type": "string",
-          "title": "Package Version"
-        },
-        "imageName": {
-          "type": "string",
-          "title": "Image Name"
-        },
-        "imageTag": {
-          "type": "string",
-          "title": "Image Tag"
-        },
-        "ruleId": {
-          "type": "string",
-          "title": "Rule ID"
-        },
-        "ruleName": {
-          "type": "string",
-          "title": "Rule Name"
-        },
-        "remediation": {
-          "type": "string",
-          "title": "Remediation"
-        },
-        "remediationLink": {
-          "type": "string",
-          "format": "url",
-          "title": "Remediation Link"
-        }
-      },
-      "required": [
-        "type",
-        "severity",
-        "state",
-        "description"
-      ]
-    },
-    "relations": {
-      "scan": {
-        "title": "Scan",
-        "target": "checkmarxScan",
-        "many": false,
-        "required": false
-      }
-    }
-  },
-  {
-    "calculationProperties": {},
-    "identifier": "checkmarxSca",
-    "title": "Checkmarx Scan Result for SCA",
-    "icon": "Checkmarx",
-    "schema": {
-      "properties": {
-        "type": {
-          "type": "string",
-          "title": "Type",
-          "enum": [
-            "sast",
-            "sca",
-            "kics",
-            "containers",
-            "sscs-secret-detection",
-            "sscs-scorecard"
-          ]
-        },
-        "severity": {
-          "type": "string",
-          "title": "Severity",
-          "enum": [
-            "LOW",
-            "MEDIUM",
-            "HIGH",
-            "CRITICAL",
-            "INFO"
-          ]
+          "description": "The current status of the container security finding."
         },
         "state": {
           "type": "string",
           "title": "State",
-          "enum": [
-            "TO_VERIFY",
-            "CONFIRMED",
-            "URGENT",
-            "NOT_EXPLOITABLE",
-            "PROPOSED_NOT_EXPLOITABLE",
-            "FALSE_POSITIVE"
-          ]
-        },
-        "confidenceLevel": {
-          "type": "number",
-          "title": "Confidence Level",
-          "minimum": 0,
-          "maximum": 100
-        },
-        "description": {
-          "type": "string",
-          "title": "Description"
-        },
-        "cweId": {
-          "type": "string",
-          "title": "CWE ID"
-        },
-        "fileName": {
-          "type": "string",
-          "title": "File Name"
-        },
-        "line": {
-          "type": "number",
-          "title": "Line Number"
-        },
-        "status": {
-          "type": "string",
-          "title": "Status",
-          "enum": [
-            "NEW",
-            "RECURRENT",
-            "FIXED"
-          ]
-        },
-        "created": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Created At"
-        },
-        "firstFoundAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "First Found At"
-        },
-        "foundAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Found At"
-        },
-        "similarityId": {
-          "type": "string",
-          "title": "Similarity ID"
-        },
-        "cvssScore": {
-          "type": "number",
-          "title": "CVSS Score"
-        },
-        "cveName": {
-          "type": "string",
-          "title": "CVE Name"
-        },
-        "packageName": {
-          "type": "string",
-          "title": "Package Name"
-        },
-        "packageVersion": {
-          "type": "string",
-          "title": "Package Version"
-        },
-        "imageName": {
-          "type": "string",
-          "title": "Image Name"
-        },
-        "imageTag": {
-          "type": "string",
-          "title": "Image Tag"
-        },
-        "ruleId": {
-          "type": "string",
-          "title": "Rule ID"
-        },
-        "ruleName": {
-          "type": "string",
-          "title": "Rule Name"
-        },
-        "remediation": {
-          "type": "string",
-          "title": "Remediation"
-        },
-        "remediationLink": {
-          "type": "string",
-          "format": "url",
-          "title": "Remediation Link"
-        }
-      },
-      "required": [
-        "type",
-        "severity",
-        "state",
-        "description"
-      ]
-    },
-    "relations": {
-      "scan": {
-        "title": "Scan",
-        "target": "checkmarxScan",
-        "many": false,
-        "required": false
-      }
-    }
-  },
-  {
-    "calculationProperties": {},
-    "identifier": "checkmarxKics",
-    "title": "Checkmarx Scan Result for KICS",
-    "icon": "Checkmarx",
-    "schema": {
-      "properties": {
-        "type": {
-          "type": "string",
-          "title": "Type",
-          "enum": [
-            "sast",
-            "sca",
-            "kics",
-            "containers",
-            "sscs-secret-detection",
-            "sscs-scorecard"
-          ]
+          "description": "The state of the container security finding."
         },
         "severity": {
           "type": "string",
           "title": "Severity",
-          "enum": [
-            "LOW",
-            "MEDIUM",
-            "HIGH",
-            "CRITICAL",
-            "INFO"
-          ]
-        },
-        "state": {
-          "type": "string",
-          "title": "State",
-          "enum": [
-            "TO_VERIFY",
-            "CONFIRMED",
-            "URGENT",
-            "NOT_EXPLOITABLE",
-            "PROPOSED_NOT_EXPLOITABLE",
-            "FALSE_POSITIVE"
-          ]
+          "description": "The severity level of the container security finding."
         },
         "confidenceLevel": {
-          "type": "number",
+          "type": "string",
           "title": "Confidence Level",
-          "minimum": 0,
-          "maximum": 100
-        },
-        "description": {
-          "type": "string",
-          "title": "Description"
-        },
-        "cweId": {
-          "type": "string",
-          "title": "CWE ID"
-        },
-        "fileName": {
-          "type": "string",
-          "title": "File Name"
-        },
-        "line": {
-          "type": "number",
-          "title": "Line Number"
-        },
-        "status": {
-          "type": "string",
-          "title": "Status",
-          "enum": [
-            "NEW",
-            "RECURRENT",
-            "FIXED"
-          ]
+          "description": "The confidence level of the container security finding."
         },
         "created": {
           "type": "string",
           "format": "date-time",
-          "title": "Created At"
+          "title": "Created",
+          "description": "The date and time when the container security finding was created."
         },
-        "firstFoundAt": {
+        "description": {
           "type": "string",
-          "format": "date-time",
-          "title": "First Found At"
-        },
-        "foundAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Found At"
-        },
-        "similarityId": {
-          "type": "string",
-          "title": "Similarity ID"
-        },
-        "cvssScore": {
-          "type": "number",
-          "title": "CVSS Score"
-        },
-        "cveName": {
-          "type": "string",
-          "title": "CVE Name"
+          "title": "Description",
+          "description": "A description of the container security finding."
         },
         "packageName": {
           "type": "string",
-          "title": "Package Name"
+          "title": "Package Name",
+          "description": "The name of the affected package in the container."
         },
         "packageVersion": {
           "type": "string",
-          "title": "Package Version"
+          "title": "Package Version",
+          "description": "The version of the affected package in the container."
         },
         "imageName": {
           "type": "string",
-          "title": "Image Name"
+          "title": "Image Name",
+          "description": "The name of the container image."
         },
         "imageTag": {
           "type": "string",
-          "title": "Image Tag"
+          "title": "Image Tag",
+          "description": "The tag of the container image."
         },
-        "ruleId": {
+        "imageFilePath": {
           "type": "string",
-          "title": "Rule ID"
+          "title": "Image File Path",
+          "description": "The file path within the container image where the issue was found."
         },
-        "ruleName": {
+        "cweId": {
           "type": "string",
-          "title": "Rule Name"
-        },
-        "remediation": {
-          "type": "string",
-          "title": "Remediation"
-        },
-        "remediationLink": {
-          "type": "string",
-          "format": "url",
-          "title": "Remediation Link"
+          "title": "CWE ID",
+          "description": "The Common Weakness Enumeration (CWE) identifier related to the vulnerability."
         }
       },
-      "required": [
-        "type",
-        "severity",
-        "state",
-        "description"
-      ]
+      "required": []
     },
-    "relations": {
-      "scan": {
-        "title": "Scan",
-        "target": "checkmarxScan",
-        "many": false,
-        "required": false
-      }
-    }
-  },
-  {
+    "mirrorProperties": {},
     "calculationProperties": {},
-    "identifier": "checkmarxContainers",
-    "title": "Checkmarx Scan Result",
-    "icon": "Checkmarx",
-    "schema": {
-      "properties": {
-        "type": {
-          "type": "string",
-          "title": "Type",
-          "enum": [
-            "sast",
-            "sca",
-            "kics",
-            "containers",
-            "sscs-secret-detection",
-            "sscs-scorecard"
-          ]
-        },
-        "severity": {
-          "type": "string",
-          "title": "Severity",
-          "enum": [
-            "LOW",
-            "MEDIUM",
-            "HIGH",
-            "CRITICAL",
-            "INFO"
-          ]
-        },
-        "state": {
-          "type": "string",
-          "title": "State",
-          "enum": [
-            "TO_VERIFY",
-            "CONFIRMED",
-            "URGENT",
-            "NOT_EXPLOITABLE",
-            "PROPOSED_NOT_EXPLOITABLE",
-            "FALSE_POSITIVE"
-          ]
-        },
-        "confidenceLevel": {
-          "type": "number",
-          "title": "Confidence Level",
-          "minimum": 0,
-          "maximum": 100
-        },
-        "description": {
-          "type": "string",
-          "title": "Description"
-        },
-        "cweId": {
-          "type": "string",
-          "title": "CWE ID"
-        },
-        "fileName": {
-          "type": "string",
-          "title": "File Name"
-        },
-        "line": {
-          "type": "number",
-          "title": "Line Number"
-        },
-        "status": {
-          "type": "string",
-          "title": "Status",
-          "enum": [
-            "NEW",
-            "RECURRENT",
-            "FIXED"
-          ]
-        },
-        "created": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Created At"
-        },
-        "firstFoundAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "First Found At"
-        },
-        "foundAt": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Found At"
-        },
-        "similarityId": {
-          "type": "string",
-          "title": "Similarity ID"
-        },
-        "cvssScore": {
-          "type": "number",
-          "title": "CVSS Score"
-        },
-        "cveName": {
-          "type": "string",
-          "title": "CVE Name"
-        },
-        "packageName": {
-          "type": "string",
-          "title": "Package Name"
-        },
-        "packageVersion": {
-          "type": "string",
-          "title": "Package Version"
-        },
-        "imageName": {
-          "type": "string",
-          "title": "Image Name"
-        },
-        "imageTag": {
-          "type": "string",
-          "title": "Image Tag"
-        },
-        "ruleId": {
-          "type": "string",
-          "title": "Rule ID"
-        },
-        "ruleName": {
-          "type": "string",
-          "title": "Rule Name"
-        },
-        "remediation": {
-          "type": "string",
-          "title": "Remediation"
-        },
-        "remediationLink": {
-          "type": "string",
-          "format": "url",
-          "title": "Remediation Link"
-        }
-      },
-      "required": [
-        "type",
-        "severity",
-        "state",
-        "description"
-      ]
-    },
+    "aggregationProperties": {},
     "relations": {
       "scan": {
         "title": "Scan",
         "target": "checkmarxScan",
-        "many": false,
-        "required": false
+        "required": false,
+        "many": false
       }
     }
   }
