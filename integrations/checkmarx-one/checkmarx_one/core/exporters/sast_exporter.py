@@ -70,4 +70,3 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
             params["state"] = options["state"]
 
         return params
-
