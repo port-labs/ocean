@@ -10,7 +10,7 @@ resources:
           blueprint: '"s3Bucket"'
           properties:
             arn: .Properties.Arn
-            region: .Properties.LocationConstraint | if . == null then . else . end
+            region: .Properties.LocationConstraint
             creationDate: .Properties.CreationDate
             tags: .Properties.Tags
   - kind: AWS::ECS::Cluster
