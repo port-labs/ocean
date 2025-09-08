@@ -11,7 +11,7 @@ class ClusterProperties(BaseModel):
     DefaultCapacityProviderStrategy: List[Dict[str, Any]] = Field(default_factory=list)
     ServiceConnectDefaults: Optional[Dict[str, Any]] = None
     Tags: List[Dict[str, Any]] = Field(default_factory=list)
-    
+
     # Additional runtime properties (not in CloudFormation but useful for Port)
     Status: Optional[str] = None
     RunningTasksCount: Optional[int] = None
@@ -38,4 +38,5 @@ class SingleClusterRequest(ResourceRequestModel):
 
 class PaginatedClusterRequest(ResourceRequestModel):
     """Options for exporting all ECS clusters in a region."""
+
     pass

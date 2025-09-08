@@ -1,4 +1,4 @@
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
@@ -157,7 +157,10 @@ class TestEcsClusterExporter:
 
         # Mock paginator - return the async generator directly
         async def mock_paginate() -> AsyncGenerator[list[str], None]:
-            yield ["arn:aws:ecs:us-west-2:123456789012:cluster/cluster1", "arn:aws:ecs:us-west-2:123456789012:cluster/cluster2"]
+            yield [
+                "arn:aws:ecs:us-west-2:123456789012:cluster/cluster1",
+                "arn:aws:ecs:us-west-2:123456789012:cluster/cluster2",
+            ]
             yield ["arn:aws:ecs:us-west-2:123456789012:cluster/cluster3"]
 
         # Create an object that has a paginate method returning the async generator
@@ -170,7 +173,9 @@ class TestEcsClusterExporter:
         mock_proxy.get_paginator = MagicMock(return_value=paginator_instance)
 
         # Mock describe_clusters response for each page
-        def mock_describe_clusters(clusters, include=None):
+        def mock_describe_clusters(
+            clusters: list[str], include: list[str] | None = None
+        ) -> dict[str, Any]:
             if "cluster1" in clusters[0] and "cluster2" in clusters[1]:
                 # First page - clusters 1 and 2
                 return {
@@ -248,12 +253,15 @@ class TestEcsClusterExporter:
         # Verify describe_clusters was called for each page
         assert mock_client.describe_clusters.call_count == 2
         mock_client.describe_clusters.assert_any_call(
-            clusters=["arn:aws:ecs:us-west-2:123456789012:cluster/cluster1", "arn:aws:ecs:us-west-2:123456789012:cluster/cluster2"],
-            include=["TAGS"]
+            clusters=[
+                "arn:aws:ecs:us-west-2:123456789012:cluster/cluster1",
+                "arn:aws:ecs:us-west-2:123456789012:cluster/cluster2",
+            ],
+            include=["TAGS"],
         )
         mock_client.describe_clusters.assert_any_call(
             clusters=["arn:aws:ecs:us-west-2:123456789012:cluster/cluster3"],
-            include=["TAGS"]
+            include=["TAGS"],
         )
 
     @pytest.mark.asyncio
@@ -358,7 +366,10 @@ class TestEcsClusterExporter:
         # Setup inspector to return a normal result
         mock_inspector = AsyncMock()
         mock_cluster = Cluster(
-            Properties=ClusterProperties(ClusterName="test-cluster", Arn="arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster"),
+            Properties=ClusterProperties(
+                ClusterName="test-cluster",
+                Arn="arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster",
+            ),
         )
         mock_inspector.inspect.return_value = [mock_cluster.dict(exclude_none=True)]
         mock_inspector_class.return_value = mock_inspector
@@ -376,10 +387,15 @@ class TestEcsClusterExporter:
         # Verify the result is a dictionary with the correct structure
         assert result["Properties"]["ClusterName"] == "test-cluster"
         assert result["Type"] == "AWS::ECS::Cluster"
-        assert result["Properties"]["Arn"] == "arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster"
+        assert (
+            result["Properties"]["Arn"]
+            == "arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster"
+        )
 
         # Verify the inspector was called correctly
-        mock_inspector.inspect.assert_called_once_with([{"clusterName": "test-cluster"}], [])
+        mock_inspector.inspect.assert_called_once_with(
+            [{"clusterName": "test-cluster"}], []
+        )
 
         # Verify the context manager was used correctly (__aenter__ and __aexit__ were called)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "ecs")

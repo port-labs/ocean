@@ -109,7 +109,9 @@ class TestDescribeClustersAction:
         )
 
     @pytest.mark.asyncio
-    async def test_execute_with_missing_fields(self, action: DescribeClustersAction) -> None:
+    async def test_execute_with_missing_fields(
+        self, action: DescribeClustersAction
+    ) -> None:
         """Test execution with clusters that have missing optional fields."""
         cluster_arns = ["arn:aws:ecs:us-west-2:123456789012:cluster/minimal-cluster"]
 
@@ -126,7 +128,7 @@ class TestDescribeClustersAction:
 
         result = await action.execute(cluster_arns)
 
-        expected_result = [
+        expected_result: list[dict[str, Any]] = [
             {
                 "ClusterName": "minimal-cluster",
                 "CapacityProviders": [],
@@ -265,7 +267,10 @@ class TestGetClusterTagsAction:
         from botocore.exceptions import ClientError
 
         error_response = {
-            "Error": {"Code": "ResourceNotFoundException", "Message": "The cluster does not exist"}
+            "Error": {
+                "Code": "ResourceNotFoundException",
+                "Message": "The cluster does not exist",
+            }
         }
         client_error = ClientError(error_response, "ListTagsForResource")  # type: ignore
         action.client.list_tags_for_resource.side_effect = client_error
@@ -311,9 +316,7 @@ class TestGetClusterTagsAction:
         )
 
     @pytest.mark.asyncio
-    async def test_execute_non_client_error(
-        self, action: GetClusterTagsAction
-    ) -> None:
+    async def test_execute_non_client_error(self, action: GetClusterTagsAction) -> None:
         """Test execution when a non-ClientError exception occurs."""
         action.client.list_tags_for_resource.side_effect = Exception("Network error")
 
@@ -419,10 +422,10 @@ class TestAllActionsIntegration:
         for action in actions:
             if isinstance(action, DescribeClustersAction):
                 # Mock describe_clusters response
-                mock_client.describe_clusters.return_value = {
-                    "clusters": clusters
-                }
-                cluster_arns = ["arn:aws:ecs:us-west-2:123456789012:cluster/integration-cluster"]
+                mock_client.describe_clusters.return_value = {"clusters": clusters}
+                cluster_arns = [
+                    "arn:aws:ecs:us-west-2:123456789012:cluster/integration-cluster"
+                ]
                 result = await action.execute(cluster_arns)
             else:  # GetClusterTagsAction
                 # Convert to the format expected by GetClusterTagsAction

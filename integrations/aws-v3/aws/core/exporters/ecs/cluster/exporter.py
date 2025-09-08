@@ -1,5 +1,4 @@
 from typing import Any, AsyncGenerator, Type
-from loguru import logger
 
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.ecs.cluster.actions import EcsClusterActionsMap

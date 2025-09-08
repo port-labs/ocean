@@ -9,12 +9,12 @@ class DescribeClustersAction(Action):
     async def _execute(self, cluster_arns: List[str]) -> List[Dict[str, Any]]:
         if not cluster_arns:
             return []
-        
+
         # Get detailed cluster information
         response = await self.client.describe_clusters(
             clusters=cluster_arns, include=["TAGS"]
         )
-        
+
         clusters = response["clusters"]
         results: List[Dict[str, Any]] = []
         for cluster in clusters:
@@ -23,19 +23,22 @@ class DescribeClustersAction(Action):
                 "CapacityProviders": cluster.get("capacityProviders", []),
                 "ClusterSettings": cluster.get("settings", []),
                 "Configuration": cluster.get("configuration"),
-                "DefaultCapacityProviderStrategy": cluster.get("defaultCapacityProviderStrategy", []),
+                "DefaultCapacityProviderStrategy": cluster.get(
+                    "defaultCapacityProviderStrategy", []
+                ),
                 "ServiceConnectDefaults": cluster.get("serviceConnectDefaults"),
                 "Tags": cluster.get("tags", []),
-                
                 "Status": cluster.get("status"),
                 "RunningTasksCount": cluster.get("runningTasksCount", 0),
                 "ActiveServicesCount": cluster.get("activeServicesCount", 0),
                 "PendingTasksCount": cluster.get("pendingTasksCount", 0),
-                "RegisteredContainerInstancesCount": cluster.get("registeredContainerInstancesCount", 0),
+                "RegisteredContainerInstancesCount": cluster.get(
+                    "registeredContainerInstancesCount", 0
+                ),
                 "Arn": cluster["clusterArn"],
             }
             results.append(data)
-        
+
         return results
 
 
@@ -43,7 +46,8 @@ class GetClusterTagsAction(Action):
     async def _execute(self, clusters: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
         tagging_results = await asyncio.gather(
-            *(self._fetch_tagging(cluster) for cluster in clusters), return_exceptions=True
+            *(self._fetch_tagging(cluster) for cluster in clusters),
+            return_exceptions=True,
         )
         for idx, tagging_result in enumerate(tagging_results):
             if isinstance(tagging_result, Exception):
@@ -67,7 +71,9 @@ class GetClusterTagsAction(Action):
             return {"Tags": response.get("tags", [])}
         except self.client.exceptions.ClientError as e:
             if e.response.get("Error", {}).get("Code") == "ResourceNotFoundException":
-                logger.info(f"No tags found for cluster {cluster.get('ClusterName', 'unknown')}")
+                logger.info(
+                    f"No tags found for cluster {cluster.get('ClusterName', 'unknown')}"
+                )
                 return {"Tags": []}
             else:
                 raise
