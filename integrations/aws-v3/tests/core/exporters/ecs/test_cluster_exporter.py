@@ -73,7 +73,7 @@ class TestEcsClusterExporter:
             region="us-west-2",
             account_id="123456789012",
             cluster_name="test-cluster",
-            include=["GetClusterTagsAction"],
+            include=[],
         )
 
         # Execute
@@ -85,7 +85,7 @@ class TestEcsClusterExporter:
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
-            [{"clusterName": "test-cluster"}], ["GetClusterTagsAction"]
+            [{"clusterName": "test-cluster"}], []
         )
 
     @pytest.mark.asyncio
@@ -224,14 +224,13 @@ class TestEcsClusterExporter:
 
         mock_client.describe_clusters.side_effect = mock_describe_clusters
 
-        # Mock list_tags_for_resource for GetClusterTagsAction
-        mock_client.list_tags_for_resource.return_value = {"tags": []}
+        # Tags are now included automatically with describe_clusters
 
         # Create options
         options = PaginatedClusterRequest(
             region="us-east-1",
             account_id="123456789012",
-            include=["GetClusterTagsAction"],
+            include=[],
         )
 
         # Execute and collect results
@@ -341,7 +340,7 @@ class TestEcsClusterExporter:
             region="us-west-2",
             account_id="123456789012",
             cluster_name="nonexistent-cluster",
-            include=["GetClusterTagsAction"],
+            include=[],
         )
 
         # Execute and verify exception
