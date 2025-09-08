@@ -52,16 +52,15 @@ class TestGetBucketPublicAccessBlockAction:
         action.client.get_public_access_block.return_value = expected_response
 
         # Execute
-        result = await action.execute("test-bucket")
+        result = await action.execute([{"Name": "test-bucket"}])
 
         # Verify
         expected_result = {
-            "Name": "test-bucket",
             "PublicAccessBlockConfiguration": expected_response[
                 "PublicAccessBlockConfiguration"
-            ],
+            ]
         }
-        assert result == expected_result
+        assert result == [expected_result]
 
         # Verify client was called correctly
         action.client.get_public_access_block.assert_called_once_with(
@@ -88,14 +87,15 @@ class TestGetBucketPublicAccessBlockAction:
         }
         action.client.get_public_access_block.return_value = expected_response
 
-        result = await action.execute("prod-bucket")
+        result = await action.execute([{"Name": "prod-bucket"}])
 
-        assert result == {
-            "Name": "prod-bucket",
-            "PublicAccessBlockConfiguration": expected_response[
-                "PublicAccessBlockConfiguration"
-            ],
-        }
+        assert result == [
+            {
+                "PublicAccessBlockConfiguration": expected_response[
+                    "PublicAccessBlockConfiguration"
+                ]
+            }
+        ]
         action.client.get_public_access_block.assert_called_once_with(
             Bucket="prod-bucket"
         )
@@ -132,12 +132,9 @@ class TestGetBucketOwnershipControlsAction:
         }
         action.client.get_bucket_ownership_controls.return_value = expected_response
 
-        result = await action.execute("test-bucket")
+        result = await action.execute([{"Name": "test-bucket"}])
 
-        assert result == {
-            "Name": "test-bucket",
-            "OwnershipControls": expected_response["OwnershipControls"],
-        }
+        assert result == [{"OwnershipControls": expected_response["OwnershipControls"]}]
         action.client.get_bucket_ownership_controls.assert_called_once_with(
             Bucket="test-bucket"
         )
@@ -186,12 +183,11 @@ class TestGetBucketEncryptionAction:
         }
         action.client.get_bucket_encryption.return_value = expected_response
 
-        result = await action.execute("encrypted-bucket")
+        result = await action.execute([{"Name": "encrypted-bucket"}])
 
-        assert result == {
-            "Name": "encrypted-bucket",
-            "BucketEncryption": expected_response["ServerSideEncryptionConfiguration"],
-        }
+        assert result == [
+            {"BucketEncryption": expected_response["ServerSideEncryptionConfiguration"]}
+        ]
         action.client.get_bucket_encryption.assert_called_once_with(
             Bucket="encrypted-bucket"
         )
@@ -210,12 +206,9 @@ class TestGetBucketEncryptionAction:
         }
         action.client.get_bucket_encryption.return_value = expected_response
 
-        result = await action.execute("unencrypted-bucket")
+        result = await action.execute([{"Name": "unencrypted-bucket"}])
 
-        assert result == {
-            "Name": "unencrypted-bucket",
-            "BucketEncryption": {"Rules": []},
-        }
+        assert result == [{"BucketEncryption": {"Rules": []}}]
         action.client.get_bucket_encryption.assert_called_once_with(
             Bucket="unencrypted-bucket"
         )
@@ -257,9 +250,9 @@ class TestGetBucketTaggingAction:
         }
         action.client.get_bucket_tagging.return_value = expected_response
 
-        result = await action.execute("tagged-bucket")
+        result = await action.execute([{"Name": "tagged-bucket"}])
 
-        assert result == {"Name": "tagged-bucket", "Tags": expected_response["TagSet"]}
+        assert result == [{"Tags": expected_response["TagSet"]}]
         action.client.get_bucket_tagging.assert_called_once_with(Bucket="tagged-bucket")
 
         mock_logger.info.assert_called_once_with(
@@ -275,9 +268,9 @@ class TestGetBucketTaggingAction:
         expected_response: dict[str, Any] = {"TagSet": []}
         action.client.get_bucket_tagging.return_value = expected_response
 
-        result = await action.execute("no-tags-bucket")
+        result = await action.execute([{"Name": "no-tags-bucket"}])
 
-        assert result == {"Name": "no-tags-bucket", "Tags": []}
+        assert result == [{"Tags": []}]
         action.client.get_bucket_tagging.assert_called_once_with(
             Bucket="no-tags-bucket"
         )
@@ -295,9 +288,9 @@ class TestGetBucketTaggingAction:
         expected_response: dict[str, Any] = {}  # No TagSet key
         action.client.get_bucket_tagging.return_value = expected_response
 
-        result = await action.execute("missing-tagset-bucket")
+        result = await action.execute([{"Name": "missing-tagset-bucket"}])
 
-        assert result == {"Name": "missing-tagset-bucket", "Tags": []}
+        assert result == [{"Tags": []}]
         action.client.get_bucket_tagging.assert_called_once_with(
             Bucket="missing-tagset-bucket"
         )
@@ -316,9 +309,9 @@ class TestGetBucketTaggingAction:
         client_error = ClientError(error_response, "GetBucketTagging")  # type: ignore
         action.client.get_bucket_tagging.side_effect = client_error
 
-        result = await action.execute("no-tagset-bucket")
+        result = await action.execute([{"Name": "no-tagset-bucket"}])
 
-        assert result == {"Name": "no-tagset-bucket", "Tags": []}
+        assert result == [{"Tags": []}]
         action.client.get_bucket_tagging.assert_called_once_with(
             Bucket="no-tagset-bucket"
         )
@@ -335,11 +328,9 @@ class TestGetBucketTaggingAction:
         client_error = ClientError(error_response, "GetBucketTagging")  # type: ignore
         action.client.get_bucket_tagging.side_effect = client_error
 
-        # Should re-raise the error for non-NoSuchTagSet errors
-        with pytest.raises(ClientError) as exc_info:
-            await action.execute("access-denied-bucket")
-
-        assert exc_info.value.response["Error"]["Code"] == "AccessDenied"
+        # Should not raise; returns empty result list when error captured by gather
+        result = await action.execute([{"Name": "access-denied-bucket"}])
+        assert result == []
         action.client.get_bucket_tagging.assert_called_once_with(
             Bucket="access-denied-bucket"
         )
@@ -351,10 +342,9 @@ class TestGetBucketTaggingAction:
         """Test execution when a non-ClientError exception occurs."""
         action.client.get_bucket_tagging.side_effect = Exception("Network error")
 
-        # Should re-raise non-ClientError exceptions
-        with pytest.raises(Exception, match="Network error"):
-            await action.execute("network-error-bucket")
-
+        # Should not raise; returns empty result list when error captured by gather
+        result = await action.execute([{"Name": "network-error-bucket"}])
+        assert result == []
         action.client.get_bucket_tagging.assert_called_once_with(
             Bucket="network-error-bucket"
         )
@@ -406,15 +396,15 @@ class TestAllActionsIntegration:
         # Execute all actions
         results = []
         for action in actions:
-            result = await action.execute("integration-bucket")
+            result = await action.execute([{"Name": "integration-bucket"}])
             results.append(result)
 
         # Verify all results
         assert len(results) == 4
-        assert "Name" in results[0] and "PublicAccessBlockConfiguration" in results[0]
-        assert "Name" in results[1] and "OwnershipControls" in results[1]
-        assert "Name" in results[2] and "BucketEncryption" in results[2]
-        assert "Name" in results[3] and "Tags" in results[3]
+        assert "PublicAccessBlockConfiguration" in results[0][0]
+        assert "OwnershipControls" in results[1][0]
+        assert "BucketEncryption" in results[2][0]
+        assert "Tags" in results[3][0]
 
         # Verify all client methods were called
         mock_client.get_public_access_block.assert_called_once_with(
@@ -460,22 +450,19 @@ class TestAllActionsIntegration:
         tagging_action = GetBucketTaggingAction(mock_client)
 
         # Execute actions and handle exceptions
-        public_access_result = await public_access_action.execute("mixed-bucket")
+        public_access_result = await public_access_action.execute(
+            [{"Name": "mixed-bucket"}]
+        )
 
-        with pytest.raises(Exception, match="Access denied"):
-            await ownership_action.execute("mixed-bucket")
+        ownership_result = await ownership_action.execute([{"Name": "mixed-bucket"}])
 
-        encryption_result = await encryption_action.execute("mixed-bucket")
+        encryption_result = await encryption_action.execute([{"Name": "mixed-bucket"}])
         tagging_result = await tagging_action.execute(
-            "mixed-bucket"
+            [{"Name": "mixed-bucket"}]
         )  # Should handle NoSuchTagSet gracefully
 
         # Verify results
-        assert "PublicAccessBlockConfiguration" in public_access_result
-        assert "Name" in public_access_result
-        assert "BucketEncryption" in encryption_result
-        assert "Name" in encryption_result
-        assert tagging_result == {
-            "Name": "mixed-bucket",
-            "Tags": [],
-        }  # NoSuchTagSet handled gracefully
+        assert "PublicAccessBlockConfiguration" in public_access_result[0]
+        assert ownership_result == []
+        assert "BucketEncryption" in encryption_result[0]
+        assert tagging_result == [{"Tags": []}]  # NoSuchTagSet handled gracefully
