@@ -9,8 +9,8 @@ from aws.core.exporters.s3 import S3BucketExporter
 from aws.core.helpers.utils import get_allowed_regions
 from aws.core.helpers.types import ObjectKind
 from aws.core.exporters.s3.bucket.models import PaginatedBucketRequest
-from aws.core.exporters.ec2.instance.models import PaginatedEC2InstanceRequest
-from aws.core.exporters.ec2.instance.exporter import EC2InstanceExporter
+from aws.core.exporters.ec2.instance import PaginatedEC2InstanceRequest
+from aws.core.exporters.ec2.instance import EC2InstanceExporter
 from loguru import logger
 import asyncio
 from functools import partial
