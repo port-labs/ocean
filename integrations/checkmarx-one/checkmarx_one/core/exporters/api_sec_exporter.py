@@ -3,7 +3,7 @@ from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-from checkmarx_one.core.options import SingleApiSecOptions, ListApiSecOptions
+from checkmarx_one.core.options import ListApiSecOptions
 
 
 class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
@@ -16,7 +16,7 @@ class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
         scan_result["__scan_id"] = scan_id
         return scan_result
 
-    async def get_resource(self, options: SingleApiSecOptions) -> RAW_ITEM:
+    async def get_resource(self, options: Any) -> RAW_ITEM:
 
         # No direct events for API security, so we rely on scan events and get back all api secs under the scan result
         raise NotImplementedError(
