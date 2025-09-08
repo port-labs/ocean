@@ -1,0 +1,30 @@
+type: github
+owner: port-labs
+repo: ocean-integration-github
+description: "GitHub integration for Port Ocean"
+icon: Github
+configurations:
+  - name: githubToken
+    required: true
+    type: string
+    sensitive: true
+    secret: true
+    title: "GitHub Personal Access Token"
+    description: "Personal access token with scopes: repo, read:org (for org repos), admin:repo_hook (for webhooks). See https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens for creation."
+  - name: githubBaseUrl
+    required: false
+    type: string
+    default: "https://api.github.com"
+    title: "GitHub API Base URL"
+    description: "Base URL for GitHub API (use for GitHub Enterprise)"
+  - name: githubOrgName
+    required: false
+    type: string
+    title: "Organization Name"
+    description: "GitHub organization name to sync (if not provided, syncs user repositories). Requires read:org scope."
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    title: "Webhook Secret"
+    description: "Secret for verifying webhook signatures (optional but recommended for security)."
