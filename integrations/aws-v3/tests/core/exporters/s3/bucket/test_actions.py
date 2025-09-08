@@ -328,9 +328,9 @@ class TestGetBucketTaggingAction:
         client_error = ClientError(error_response, "GetBucketTagging")  # type: ignore
         action.client.get_bucket_tagging.side_effect = client_error
 
-        # Should not raise; returns empty tags for errors surfaced by gather
+        # Should not raise; returns empty result list when error captured by gather
         result = await action.execute([{"Name": "access-denied-bucket"}])
-        assert result == [{"Tags": []}]
+        assert result == []
         action.client.get_bucket_tagging.assert_called_once_with(
             Bucket="access-denied-bucket"
         )
@@ -342,9 +342,9 @@ class TestGetBucketTaggingAction:
         """Test execution when a non-ClientError exception occurs."""
         action.client.get_bucket_tagging.side_effect = Exception("Network error")
 
-        # Should not raise; returns empty tags on exception captured by gather
+        # Should not raise; returns empty result list when error captured by gather
         result = await action.execute([{"Name": "network-error-bucket"}])
-        assert result == [{"Tags": []}]
+        assert result == []
         action.client.get_bucket_tagging.assert_called_once_with(
             Bucket="network-error-bucket"
         )

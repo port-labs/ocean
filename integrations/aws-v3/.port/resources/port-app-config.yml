@@ -12,7 +12,6 @@ resources:
             arn: .Properties.Arn
             region: .Properties.LocationConstraint
             creationDate: .Properties.CreationDate
-            tags: .Properties.Tags
   - kind: AWS::ECS::Cluster
     selector:
       query: 'true'
