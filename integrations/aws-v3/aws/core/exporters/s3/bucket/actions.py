@@ -143,7 +143,7 @@ class GetBucketTaggingAction(Action):
                 logger.error(
                     f"Error fetching bucket tagging for bucket '{bucket_name}': {tagging_result}"
                 )
-                results.append({"Tags": []})
+                continue
             else:
                 results.append(cast(Dict[str, Any], tagging_result))
         return results
