@@ -328,11 +328,9 @@ class TestGetBucketTaggingAction:
         client_error = ClientError(error_response, "GetBucketTagging")  # type: ignore
         action.client.get_bucket_tagging.side_effect = client_error
 
-        # Should re-raise the error for non-NoSuchTagSet errors
-        with pytest.raises(ClientError) as exc_info:
-            await action.execute([{"Name": "access-denied-bucket"}])
-
-        assert exc_info.value.response["Error"]["Code"] == "AccessDenied"
+        # Should not raise; returns empty result list when error captured by gather
+        result = await action.execute([{"Name": "access-denied-bucket"}])
+        assert result == []
         action.client.get_bucket_tagging.assert_called_once_with(
             Bucket="access-denied-bucket"
         )
@@ -344,10 +342,9 @@ class TestGetBucketTaggingAction:
         """Test execution when a non-ClientError exception occurs."""
         action.client.get_bucket_tagging.side_effect = Exception("Network error")
 
-        # Should re-raise non-ClientError exceptions
-        with pytest.raises(Exception, match="Network error"):
-            await action.execute([{"Name": "network-error-bucket"}])
-
+        # Should not raise; returns empty result list when error captured by gather
+        result = await action.execute([{"Name": "network-error-bucket"}])
+        assert result == []
         action.client.get_bucket_tagging.assert_called_once_with(
             Bucket="network-error-bucket"
         )
@@ -457,8 +454,7 @@ class TestAllActionsIntegration:
             [{"Name": "mixed-bucket"}]
         )
 
-        with pytest.raises(Exception, match="Access denied"):
-            await ownership_action.execute([{"Name": "mixed-bucket"}])
+        ownership_result = await ownership_action.execute([{"Name": "mixed-bucket"}])
 
         encryption_result = await encryption_action.execute([{"Name": "mixed-bucket"}])
         tagging_result = await tagging_action.execute(
@@ -467,5 +463,6 @@ class TestAllActionsIntegration:
 
         # Verify results
         assert "PublicAccessBlockConfiguration" in public_access_result[0]
+        assert ownership_result == []
         assert "BucketEncryption" in encryption_result[0]
         assert tagging_result == [{"Tags": []}]  # NoSuchTagSet handled gracefully
