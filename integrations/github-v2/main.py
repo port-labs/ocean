@@ -9,6 +9,7 @@ from github.exporters.issue import IssueExporter
 from github.exporters.file import FileExporter
 from github.exporters.pull_request import PullRequestExporter
 from github.webhooks_processors.registry import register_webhook_processors
+from port_ocean.exceptions.context import PortOceanContextNotFoundError
 
 
 REPOSITORIES: list[str] = []
@@ -29,9 +30,9 @@ async def _load_repo_names() -> list[str]:
 
 @ocean.on_start()
 async def on_start() -> None:
-    register_webhook_processors(path="/webhook")
+    register_webhook_processors(path="/webhook") 
     await _load_repo_names()
-    # Register webhook routes after app is initialized to avoid 404
+
     
 
 @ocean.on_resync(ObjectKind.REPOSITORY.value)
@@ -70,4 +71,10 @@ async def on_resync_pull_request(kind: str) -> list[dict[str, Any]]:
     return items
 
 
-register_webhook_processors(path="/webhook") 
+
+try:
+    register_webhook_processors(path="/webhook") 
+except PortOceanContextNotFoundError:
+    logger.info("[main] Ocean context not initialized yet; deferring webhook registration to on_start")
+except Exception as e:
+    logger.warning(f"[main] Failed to register webhooks at import time, will retry on_start | error={e}")
