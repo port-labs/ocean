@@ -15,8 +15,6 @@ def register_webhook_processors(path: str = "/webhook") -> None:
     """
     logger.info(f"Registering webhook processors")
 
-    print(f"#################################################register_webhook_processors path = {path}")
-
     ocean.add_webhook_processor(path, GithubIssueWebhookProcessor)
     ocean.add_webhook_processor(path, GithubPullRequestWebhookProcessor)
     ocean.add_webhook_processor(path, GithubRepositoryWebhookProcessor)
