@@ -54,6 +54,4 @@ class S3BucketExporter(IResourceExporter):
                         "AccountId": options.account_id,
                     },
                 )
-                from loguru import logger
-                logger.error(f"Action result: {action_result}")
                 yield action_result
