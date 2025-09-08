@@ -37,6 +37,9 @@ from checkmarx_one.webhook.webhook_processors.sca_scan_result_webhook_processor 
 from checkmarx_one.webhook.webhook_processors.containers_scan_result_webhook_processor import (
     ContainersScanResultWebhookProcessor,
 )
+from checkmarx_one.webhook.webhook_processors.kics_scan_result_webhook_processor import (
+    KicsScanResultWebhookProcessor,
+)
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -189,3 +192,4 @@ ocean.add_webhook_processor("/webhook", ScanWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ApiSecurityWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ScaScanResultWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ContainersScanResultWebhookProcessor)
+ocean.add_webhook_processor("/webhook", KicsScanResultWebhookProcessor)
