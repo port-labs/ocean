@@ -35,7 +35,9 @@ class TestGetInstanceStatusAction:
         ]
 
         # Mock should return different responses for each individual call
-        def mock_describe_instance_status(InstanceIds: List[str]) -> Dict[str, Any]:
+        def mock_describe_instance_status(
+            InstanceIds: List[str], **kwargs
+        ) -> Dict[str, Any]:
             if InstanceIds == ["i-1"]:
                 return {
                     "InstanceStatuses": [
