@@ -19,28 +19,19 @@ class TestS3BucketExporter:
         return AsyncMock()
 
     @pytest.fixture
-    def mock_account_id(self) -> str:
-        """Create a mock account ID for testing."""
-        return "123456789012"
-
-    @pytest.fixture
-    def exporter(
-        self, mock_session: AsyncMock, mock_account_id: str
-    ) -> S3BucketExporter:
+    def exporter(self, mock_session: AsyncMock) -> S3BucketExporter:
         """Create an S3BucketExporter instance for testing."""
-        return S3BucketExporter(mock_session, mock_account_id)
+        return S3BucketExporter(mock_session)
 
     def test_service_name(self, exporter: S3BucketExporter) -> None:
         """Test that the service name is correctly set."""
         assert exporter._service_name == "s3"
 
-    def test_initialization(
-        self, mock_session: AsyncMock, mock_account_id: str
-    ) -> None:
+    def test_initialization(self, mock_session: AsyncMock) -> None:
         """Test that the exporter initializes correctly."""
-        exporter = S3BucketExporter(mock_session, mock_account_id)
+        exporter = S3BucketExporter(mock_session)
         assert exporter.session == mock_session
-        assert exporter.account_id == mock_account_id
+        assert exporter._client is None
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
@@ -64,14 +55,16 @@ class TestS3BucketExporter:
         # Create expected Bucket response
         expected_bucket = Bucket(
             Properties=BucketProperties(
-                Name="test-bucket", Tags=[{"Key": "Environment", "Value": "test"}]
+                BucketName="test-bucket",
+                Tags=[{"Key": "Environment", "Value": "test"}],
             ),
         )
-        mock_inspector.inspect.return_value = expected_bucket
+        mock_inspector.inspect.return_value = [expected_bucket.dict(exclude_none=True)]
 
         # Create options
         options = SingleBucketRequest(
             region="us-west-2",
+            account_id="123456789012",
             bucket_name="test-bucket",
             include=["GetBucketTaggingAction"],
         )
@@ -85,7 +78,7 @@ class TestS3BucketExporter:
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
-            "test-bucket", ["GetBucketTaggingAction"]
+            [{"Name": "test-bucket"}], ["GetBucketTaggingAction"]
         )
 
     @pytest.mark.asyncio
@@ -109,16 +102,17 @@ class TestS3BucketExporter:
 
         expected_bucket = Bucket(
             Properties=BucketProperties(
-                Name="prod-bucket",
+                BucketName="prod-bucket",
                 BucketEncryption={"Rules": []},
                 PublicAccessBlockConfiguration={"BlockPublicAcls": True},
             ),
         )
-        mock_inspector.inspect.return_value = expected_bucket
+        mock_inspector.inspect.return_value = [expected_bucket.dict(exclude_none=True)]
 
         # Create options with multiple includes
         options = SingleBucketRequest(
             region="eu-west-1",
+            account_id="123456789012",
             bucket_name="prod-bucket",
             include=["GetBucketEncryptionAction", "GetBucketPublicAccessBlockAction"],
         )
@@ -132,7 +126,7 @@ class TestS3BucketExporter:
         # ResourceInspector was called correctly
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once_with(
-            "prod-bucket",
+            [{"Name": "prod-bucket"}],
             ["GetBucketEncryptionAction", "GetBucketPublicAccessBlockAction"],
         )
 
@@ -170,21 +164,22 @@ class TestS3BucketExporter:
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
 
-        # Mock inspector.inspect_batch to return bucket data for each page
-        bucket1 = Bucket(Properties=BucketProperties(Name="bucket1"))
-        bucket2 = Bucket(Properties=BucketProperties(Name="bucket2"))
-        bucket3 = Bucket(Properties=BucketProperties(Name="bucket3"))
+        # Mock inspector.inspect to return bucket data
+        bucket1 = Bucket(Properties=BucketProperties(BucketName="bucket1"))
+        bucket2 = Bucket(Properties=BucketProperties(BucketName="bucket2"))
+        bucket3 = Bucket(Properties=BucketProperties(BucketName="bucket3"))
 
-        # Set up side effects for inspector.inspect_batch calls
-        # First call returns 2 buckets, second call returns 1 bucket
-        mock_inspector.inspect_batch.side_effect = [
-            [bucket1, bucket2],  # First page
-            [bucket3],  # Second page
+        # Set up side effects for inspector.inspect calls per page
+        mock_inspector.inspect.side_effect = [
+            [bucket1.dict(exclude_none=True), bucket2.dict(exclude_none=True)],
+            [bucket3.dict(exclude_none=True)],
         ]
 
         # Create options
         options = PaginatedBucketRequest(
-            region="us-east-1", include=["GetBucketTaggingAction"]
+            region="us-east-1",
+            account_id="123456789012",
+            include=["GetBucketTaggingAction"],
         )
 
         # Execute and collect results
@@ -201,20 +196,20 @@ class TestS3BucketExporter:
         # Verify mock calls
         mock_proxy_class.assert_called_once_with(exporter.session, "us-east-1", "s3")
         mock_proxy.get_paginator.assert_called_once_with("list_buckets", "Buckets")
-        # ResourceInspector was called correctly
+        # ResourceInspector was called
         mock_inspector_class.assert_called_once()
 
-        # Verify inspector.inspect_batch was called twice (once for each page)
-        assert mock_inspector.inspect_batch.call_count == 2
-
-        # First call with first page bucket names
-        mock_inspector.inspect_batch.assert_any_call(
-            ["bucket1", "bucket2"], ["GetBucketTaggingAction"]
+        # Verify inspector.inspect was called for each page with list of buckets
+        assert mock_inspector.inspect.call_count == 2
+        mock_inspector.inspect.assert_any_call(
+            [{"Name": "bucket1"}, {"Name": "bucket2"}],
+            ["GetBucketTaggingAction"],
+            extra_context={"AccountId": "123456789012"},
         )
-
-        # Second call with second page bucket names
-        mock_inspector.inspect_batch.assert_any_call(
-            ["bucket3"], ["GetBucketTaggingAction"]
+        mock_inspector.inspect.assert_any_call(
+            [{"Name": "bucket3"}],
+            ["GetBucketTaggingAction"],
+            extra_context={"AccountId": "123456789012"},
         )
 
     @pytest.mark.asyncio
@@ -251,7 +246,12 @@ class TestS3BucketExporter:
         mock_inspector_class.return_value = mock_inspector
 
         # Create options
-        options = PaginatedBucketRequest(region="us-west-2", include=[])
+        options = PaginatedBucketRequest(
+            region="us-west-2", account_id="123456789012", include=[]
+        )
+
+        # Inspector returns an empty list when given empty buckets
+        mock_inspector.inspect.return_value = []
 
         # Execute and collect results
         results = []
@@ -261,8 +261,10 @@ class TestS3BucketExporter:
         # Verify
         assert len(results) == 0
         mock_proxy.get_paginator.assert_called_once_with("list_buckets", "Buckets")
-        # Inspector should not be called for inspection since no buckets
-        assert mock_inspector.inspect.call_count == 0
+        # Inspector should be called once with empty list
+        mock_inspector.inspect.assert_called_once_with(
+            [], [], extra_context={"AccountId": "123456789012"}
+        )
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.exporter.AioBaseClientProxy")
@@ -287,6 +289,7 @@ class TestS3BucketExporter:
         # Create options
         options = SingleBucketRequest(
             region="us-west-2",
+            account_id="123456789012",
             bucket_name="nonexistent-bucket",
             include=["GetBucketTaggingAction"],
         )
@@ -313,25 +316,28 @@ class TestS3BucketExporter:
         # Setup inspector to return a normal result
         mock_inspector = AsyncMock()
         mock_bucket = Bucket(
-            Properties=BucketProperties(Name="test-bucket"),
+            Properties=BucketProperties(BucketName="test-bucket"),
         )
-        mock_inspector.inspect.return_value = mock_bucket
+        mock_inspector.inspect.return_value = [mock_bucket.dict(exclude_none=True)]
         mock_inspector_class.return_value = mock_inspector
 
         options = SingleBucketRequest(
-            region="us-west-2", bucket_name="test-bucket", include=[]
+            region="us-west-2",
+            account_id="123456789012",
+            bucket_name="test-bucket",
+            include=[],
         )
 
         # Execute the method
         result = await exporter.get_resource(options)
 
         # Verify the result is a dictionary with the correct structure
-        assert result["Properties"]["Name"] == "test-bucket"
+        assert result["Properties"]["BucketName"] == "test-bucket"
         assert result["Type"] == "AWS::S3::Bucket"
-        assert result["Properties"]["Name"] == "test-bucket"
+        assert result["Properties"]["BucketName"] == "test-bucket"
 
         # Verify the inspector was called correctly
-        mock_inspector.inspect.assert_called_once_with("test-bucket", [])
+        mock_inspector.inspect.assert_called_once_with([{"Name": "test-bucket"}], [])
 
         # Verify the context manager was used correctly (__aenter__ and __aexit__ were called)
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "s3")

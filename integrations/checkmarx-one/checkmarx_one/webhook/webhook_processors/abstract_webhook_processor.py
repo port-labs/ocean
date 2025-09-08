@@ -59,11 +59,14 @@ class _CheckmarxOneAbstractWebhookProcessor(AbstractWebhookProcessor):
             bool(signature),
             signature_valid,
         )
-        
+
         return signature_valid
 
     def _validate_signature_format(
-        self, parsed_signature: str, expected_signature_hex: str, expected_signature_b64: str
+        self,
+        parsed_signature: str,
+        expected_signature_hex: str,
+        expected_signature_b64: str,
     ) -> bool:
         """
         Validate signature by trying both hex and base64 comparison formats.

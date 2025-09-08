@@ -90,3 +90,42 @@ class ListKicsOptions(TypedDict):
         Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
     ]
     status: NotRequired[Optional[List[Literal["NEW", "RECURRENT", "FIXED"]]]]
+
+
+class ListSastOptions(TypedDict, total=False):
+    """Options for listing SAST scan results."""
+
+    scan_id: Required[str]
+    compliance: NotRequired[Optional[str]]
+    group: NotRequired[Optional[str]]
+    include_nodes: NotRequired[bool]
+    language: NotRequired[Optional[List[str]]]
+    result_id: NotRequired[Optional[str]]
+    severity: NotRequired[
+        Optional[List[Literal["critical", "high", "medium", "low", "info"]]]
+    ]
+    status: NotRequired[Optional[List[Literal["new", "recurrent", "fixed"]]]]
+    category: NotRequired[Optional[str]]
+    state: NotRequired[
+        Optional[
+            List[
+                Literal[
+                    "to_verify",
+                    "not_exploitable",
+                    "proposed_not_exploitable",
+                    "confirmed",
+                    "urgent",
+                ]
+            ]
+        ]
+    ]
+    visible_columns: NotRequired[Optional[List[str]]]
+
+
+class SingleSastOptions(TypedDict):
+    """Options for fetching a single SAST scan result via filters."""
+
+    scan_id: Required[str]
+    result_id: Required[str]
+    include_nodes: NotRequired[Optional[bool]]
+    visible_columns: NotRequired[Optional[List[str]]]

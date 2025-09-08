@@ -82,6 +82,61 @@ class CheckmarxOneResultSelector(Selector):
     )
 
 
+class CheckmarxOneSastSelector(Selector):
+    scan_filter: CheckmarxOneScanModel = Field(
+        default=CheckmarxOneScanModel(),
+        description="Filter scan results by scan",
+    )
+    compliance: Optional[str] = Field(
+        default=None,
+        description="Filter by compliance standard (exact match, case insensitive).",
+    )
+    group: Optional[str] = Field(
+        default=None,
+        description="Filter by vulnerability group (substring match).",
+    )
+    include_nodes: bool = Field(
+        default=True,
+        description="If true, include nodes data; if false, omit node data.",
+    )
+    language: Optional[List[str]] = Field(
+        default=None,
+        description="Filter by language (exact match, case insensitive).",
+    )
+    result_id: Optional[str] = Field(
+        default=None,
+        description="Filter by unique result hash.",
+    )
+    severity: Optional[List[Literal["critical", "high", "medium", "low", "info"]]] = (
+        Field(
+            default=None,
+            description="Filter by severity.",
+        )
+    )
+    status: Optional[List[Literal["new", "recurrent", "fixed"]]] = Field(
+        default=None,
+        description="Filter by status.",
+    )
+    category: Optional[str] = Field(
+        default=None,
+        description="Filter by comma separated list of categories.",
+    )
+    state: Optional[
+        List[
+            Literal[
+                "to_verify",
+                "not_exploitable",
+                "proposed_not_exploitable",
+                "confirmed",
+                "urgent",
+            ]
+        ]
+    ] = Field(
+        default=None,
+        description="Filter by state.",
+    )
+
+
 class CheckmarxOneApiSecSelector(Selector):
     scan_filter: CheckmarxOneScanModel = Field(
         default=CheckmarxOneScanModel(),
@@ -109,6 +164,11 @@ class CheckmarxOneScanSelector(Selector, CheckmarxOneScanModel): ...
 class CheckmarxOneScanResourcesConfig(ResourceConfig):
     kind: Literal["scan"]
     selector: CheckmarxOneScanSelector
+
+
+class CheckmarxOneSastResourcesConfig(ResourceConfig):
+    kind: Literal["sast"]
+    selector: CheckmarxOneSastSelector
 
 
 class CheckmarxOneKicsSelector(Selector):
@@ -143,6 +203,7 @@ class CheckmarxOnePortAppConfig(PortAppConfig):
         CheckmarxOneProjectResourcesConfig
         | CheckmarxOneScanResourcesConfig
         | CheckmarxOneApiSecResourcesConfig
+        | CheckmarxOneSastResourcesConfig
         | CheckmarxOneKicsResourcesConfig
         | CheckmarxOneScanResultResourcesConfig
     ] = Field(
