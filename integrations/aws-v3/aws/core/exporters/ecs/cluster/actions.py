@@ -47,7 +47,7 @@ class GetClusterTagsAction(Action):
         )
         for idx, tagging_result in enumerate(tagging_results):
             if isinstance(tagging_result, Exception):
-                cluster_name = clusters[idx].get("clusterName", "unknown")
+                cluster_name = clusters[idx].get("ClusterName", "unknown")
                 logger.warning(
                     f"Error fetching cluster tagging for cluster '{cluster_name}': {tagging_result}"
                 )
@@ -62,12 +62,12 @@ class GetClusterTagsAction(Action):
                 resourceArn=cluster["Arn"]
             )
             logger.info(
-                f"Successfully fetched cluster tagging for cluster {cluster['Title']}"
+                f"Successfully fetched cluster tagging for cluster {cluster.get('ClusterName', 'unknown')}"
             )
             return {"Tags": response.get("tags", [])}
         except self.client.exceptions.ClientError as e:
             if e.response.get("Error", {}).get("Code") == "ResourceNotFoundException":
-                logger.info(f"No tags found for cluster {cluster['Title']}")
+                logger.info(f"No tags found for cluster {cluster.get('ClusterName', 'unknown')}")
                 return {"Tags": []}
             else:
                 raise
