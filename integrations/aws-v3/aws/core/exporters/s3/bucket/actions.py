@@ -174,9 +174,3 @@ class S3BucketActionsMap(ActionMap):
         GetBucketOwnershipControlsAction,
         GetBucketEncryptionAction,
     ]
-
-    def merge(self, include: List[str]) -> List[Type[Action]]:
-        # Always include all defaults, and any options whose class name is in include
-        return self.defaults + [
-            action for action in self.options if action.__name__ in include
-        ]
