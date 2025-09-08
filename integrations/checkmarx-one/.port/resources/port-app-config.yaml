@@ -34,35 +34,85 @@ resources:
             branch: .branch
             createdAt: .createdAt
             updatedAt: .updatedAt
-            projectId: .projectId
             userAgent: .userAgent
             configs: (.configs // {})
             statusDetails: (.statusDetails // [])
           relations:
             project: .projectId
 
-
-  - kind: scan_result
+  - kind: api-security
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .risk_id
+          title: .name
+          blueprint: '"checkmarxApiSec"'
+          properties:
+            riskId: .risk_id
+            apiId: .api_id
+            severity: (.severity // empty)
+            name: .name
+            status: .status
+            httpMethod: .http_method
+            url: .url
+            origin: .origin
+            documented: .documented
+            authenticated: .authenticated
+            discoveryDate: .discovery_date
+            scanId: .scan_id
+            sastRiskId: (.sast_risk_id // empty)
+            projectId: .project_id
+            state: .state
+        relations:
+          scan: .scan_id
+  - kind: sca
     selector:
       query: 'true'
     port:
       entity:
         mappings:
           identifier: .id
-          title: .description
-          # Blueprint name → checkmarx + Type (with leading char upper‑cased)
-          blueprint: >
-            "checkmarx" +
-            (.type        | .[0:1] | ascii_upcase) +
-            (.type        | .[1:])
+          title: .data.packageIdentifier
+          blueprint: '"checkmarxSCA"'
           properties:
-            type: .type
-            severity: .severity
+            firstScanId: .firstScanId
+            status: .status
             state: .state
-            confidenceLevel: .confidenceLevel
+            severity: .severity
+            created: .created
             description: .description
-            cweId: (.vulnerabilityDetails.cweId // empty)
-            fileName: (.data.nodes[0].fileName // empty)
-            line: (.data.nodes[0].line // empty)
-        relations:
-          scan: .__scan_id
+            packageIdentifier: .data.packageIdentifier
+            recommendations: .data.recommendations
+            recommendedVersion: .data.recommendedVersion
+            packageData: .data.packageData
+            cweId: .vulnerabilityDetails.cweId
+          relations:
+            scan: .__scan_id
+
+  - kind: containers
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"checkmarxContainerSecurity"'
+          properties:
+            firstScanId: .firstScanId
+            status: .status
+            state: .state
+            severity: .severity
+            confidenceLevel: .confidenceLevel
+            created: .created
+            description: .description
+            packageName: .data.packageName
+            packageVersion: .data.packageVersion
+            imageName: .data.imageName
+            imageTag: .data.imageTag
+            imageFilePath: .data.imageFilePath
+            cweId: .vulnerabilityDetails.cweId
+          relations:
+            scan: .__scan_id
