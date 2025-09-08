@@ -1,0 +1,50 @@
+image:
+  repository: your-registry/github-ocean
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+env:
+  OCEAN__INTEGRATION__ID: "github_v2_b"
+  OCEAN__INTEGRATION__KIND: "polling"
+  OCEAN__POLLING__INTERVAL: "60"
+  OCEAN__LOG_LEVEL: "INFO"
+
+  OCEAN__INTEGRATION__CONFIG__BASE_URL: "https://api.github.com"
+  OCEAN__INTEGRATION__CONFIG__MAX_CONCURRENCY: "8"
+  OCEAN__INTEGRATION__CONFIG__EXCLUDE_ORGS: '["BuildForSDGCohort2"]'
+
+  OCEAN__INTEGRATION__CONFIG__PR_STATE: "all"
+  OCEAN__INTEGRATION__CONFIG__PR_UPDATED_SINCE_DAYS: ""
+  OCEAN__INTEGRATION__CONFIG__ISSUE_STATE: "all"
+  OCEAN__INTEGRATION__CONFIG__ISSUE_UPDATED_SINCE_DAYS: ""
+
+  OCEAN__INTEGRATION__CONFIG__FILE_GLOBS: '["**/*.yaml","**/*.yml","**/*.json","**/*.md","**/*.py"]'
+  OCEAN__INTEGRATION__CONFIG__FILE_BRANCH: ""
+  OCEAN__INTEGRATION__CONFIG__FILE_MAX_PER_REPO: "1000"
+  OCEAN__INTEGRATION__CONFIG__FILE_MAX_TOTAL: "8000"
+  OCEAN__INTEGRATION__CONFIG__FILE_SKIP_IF_SIZE_OVER_BYTES: "262144"
+  OCEAN__INTEGRATION__CONFIG__FILE_TRUNCATE_IF_OVER_BYTES: "64000"
+  OCEAN__INTEGRATION__CONFIG__FILE_MAX_CONTENT_CHARS: "16000"
+  OCEAN__INTEGRATION__CONFIG__FILE_LOG_EVERY_N: "300"
+
+envFrom:
+  - secretRef:
+      name: github-ocean-secrets
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: false
+
+resources:
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+  requests:
+    cpu: "100m"
+    memory: "256Mi"

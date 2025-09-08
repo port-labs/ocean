@@ -1,0 +1,20 @@
+{
+  "config": {
+    "pr_state": "all",
+    "pr_updated_since_days": 30,
+    "issue_state": "all",
+    "issue_updated_since_days": 30,
+
+    "max_concurrency": 4,
+
+    "file_globs": ["**/*.md", "**/*.yml", "**/*.yaml", "**/*.json", "**/*.py"],
+    "file_max_per_repo": 800,
+    "file_max_total": 6000,
+    "file_skip_if_size_over_bytes": 262144,
+    "file_truncate_if_over_bytes": 64000,
+    "file_max_content_chars": 16000,
+    "file_log_every_n": 300,
+
+    "exclude_orgs": ["BuildForSDGCohort2"]
+  }
+}

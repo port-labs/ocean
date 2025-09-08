@@ -1,0 +1,157 @@
+[
+  {
+    "identifier": "stale_open_prs_14d",
+    "title": "Stale Open PRs (>14 days)",
+    "blueprint": "githubPullRequest",
+    "query": {
+      "combinator": "and",
+      "rules": [
+        { "property": "$blueprint", "operator": "=", "value": "githubPullRequest" },
+        { "property": "status", "operator": "=", "value": "open" },
+        { "property": "updatedAt", "operator": "<", "value": "{{now-14d}}" }
+      ]
+    },
+    "defaultColumns": ["$identifier", "$title", "repository", "creator", "updatedAt"],
+    "sort": [{ "property": "updatedAt", "direction": "asc" }]
+  },
+
+  {
+    "identifier": "all_repositories",
+    "title": "All GitHub Repositories",
+    "blueprint": "githubRepository",
+    "query": {
+      "combinator": "and",
+      "rules": [
+        { "property": "$blueprint", "operator": "=", "value": "githubRepository" }
+      ]
+    },
+    "defaultColumns": ["$identifier", "$title", "url", "defaultBranch", "language", "last_push"],
+    "sort": [{ "property": "$title", "direction": "asc" }]
+  },
+
+  {
+    "identifier": "active_repositories_30d",
+    "title": "Active Repositories (pushed in last 30d)",
+    "blueprint": "githubRepository",
+    "query": {
+      "combinator": "and",
+      "rules": [
+        { "property": "$blueprint", "operator": "=", "value": "githubRepository" },
+        { "property": "last_push", "operator": ">=", "value": "{{now-30d}}" }
+      ]
+    },
+    "defaultColumns": ["$identifier", "$title", "last_push", "last_contributor", "defaultBranch"],
+    "sort": [{ "property": "last_push", "direction": "desc" }]
+  },
+
+  {
+    "identifier": "repos_missing_code_owner_review",
+    "title": "Repos without Code Owner Review",
+    "blueprint": "githubRepository",
+    "query": {
+      "combinator": "and",
+      "rules": [
+        { "property": "$blueprint", "operator": "=", "value": "githubRepository" },
+        { "property": "require_code_owner_review", "operator": "notExists", "value": null },
+        { "property": "require_code_owner_review", "operator": "=", "value": false }
+      ],
+      "combinatorBetweenRules": "or"
+    },
+    "defaultColumns": ["$identifier", "$title", "require_code_owner_review", "require_approval_count", "url"],
+    "sort": [{ "property": "$title", "direction": "asc" }]
+  },
+
+  {
+    "identifier": "repos_minimum_approvals_ge_2",
+    "title": "Repos requiring ≥2 Approvals",
+    "blueprint": "githubRepository",
+    "query": {
+      "combinator": "and",
+      "rules": [
+        { "property": "$blueprint", "operator": "=", "value": "githubRepository" },
+        { "property": "require_approval_count", "operator": ">=", "value": 2 }
+      ]
+    },
+    "defaultColumns": ["$identifier", "$title", "require_approval_count", "require_code_owner_review", "url"],
+    "sort": [{ "property": "require_approval_count", "direction": "desc" }]
+  },
+
+  {
+    "identifier": "open_issues_unlabeled",
+    "title": "Open Issues without Labels",
+    "blueprint": "githubIssue",
+    "query": {
+      "combinator": "and",
+      "rules": [
+        { "property": "$blueprint", "operator": "=", "value": "githubIssue" },
+        { "property": "state", "operator": "=", "value": "open" },
+        { "property": "labels", "operator": "notExists", "value": null }
+      ]
+    },
+    "defaultColumns": ["$identifier", "$title", "repository", "creator", "state"],
+    "sort": [{ "property": "$title", "direction": "asc" }]
+  },
+
+  {
+    "identifier": "open_prs_recent_24h",
+    "title": "Open PRs (updated in last 24h)",
+    "blueprint": "githubPullRequest",
+    "query": {
+      "combinator": "and",
+      "rules": [
+        { "property": "$blueprint", "operator": "=", "value": "githubPullRequest" },
+        { "property": "status", "operator": "=", "value": "open" },
+        { "property": "updatedAt", "operator": ">=", "value": "{{now-1d}}" }
+      ]
+    },
+    "defaultColumns": ["$identifier", "$title", "repository", "creator", "updatedAt"],
+    "sort": [{ "property": "updatedAt", "direction": "desc" }]
+  },
+
+  {
+    "identifier": "large_files_over_64kb",
+    "title": "Repository Files > 64KB",
+    "blueprint": "githubFile",
+    "query": {
+      "combinator": "and",
+      "rules": [
+        { "property": "$blueprint", "operator": "=", "value": "githubFile" },
+        { "property": "size", "operator": ">", "value": 65536 }
+      ]
+    },
+    "defaultColumns": ["$identifier", "$title", "repository", "path", "size", "encoding"],
+    "sort": [{ "property": "size", "direction": "desc" }]
+  },
+
+  {
+    "identifier": "config_like_files",
+    "title": "Config-like Files (yml/yaml/json)",
+    "blueprint": "githubFile",
+    "query": {
+      "combinator": "or",
+      "rules": [
+        { "property": "$blueprint", "operator": "=", "value": "githubFile" },
+        { "property": "path", "operator": "contains", "value": ".yml" },
+        { "property": "path", "operator": "contains", "value": ".yaml" },
+        { "property": "path", "operator": "contains", "value": ".json" }
+      ]
+    },
+    "defaultColumns": ["$identifier", "$title", "repository", "path", "size"],
+    "sort": [{ "property": "path", "direction": "asc" }]
+  },
+
+  {
+    "identifier": "repos_without_readme",
+    "title": "Repos without README",
+    "blueprint": "githubRepository",
+    "query": {
+      "combinator": "and",
+      "rules": [
+        { "property": "$blueprint", "operator": "=", "value": "githubRepository" },
+        { "property": "readme", "operator": "notExists", "value": null }
+      ]
+    },
+    "defaultColumns": ["$identifier", "$title", "url", "defaultBranch", "language"],
+    "sort": [{ "property": "$title", "direction": "asc" }]
+  }
+]

@@ -1,0 +1,113 @@
+identifier: github_v2
+name: GitHub (Ocean)
+description: Ocean-powered GitHub integration (repos, PRs, issues, files) with webhook support.
+
+secrets:
+  - identifier: github_token
+    name: GitHub token
+    title: GitHub token (fine-grained PAT or App installation token)
+    required: true
+  - identifier: webhook_secret
+    name: Webhook secret
+    title: GitHub webhook secret (for signature validation)
+    required: false
+
+configurations:
+  - identifier: base_url
+    name: API base URL
+    title: API base URL
+    type: string
+    required: false
+    default: https://api.github.com
+
+  - identifier: organizations
+    name: Organizations
+    title: Organizations to ingest
+    type: array
+    items:
+      type: string
+    required: false
+    description: GitHub orgs to scan. If empty, falls back to authenticated user repos.
+
+  - identifier: include_repos
+    name: Include repos
+    title: Explicit repo allowlist
+    type: array
+    items:
+      type: string
+    required: false
+
+  - identifier: exclude_repos
+    name: Exclude repos
+    title: Explicit repo denylist
+    type: array
+    items:
+      type: string
+    required: false
+
+  - identifier: max_concurrency
+    name: Max concurrency
+    title: Max concurrent API calls
+    type: integer
+    required: false
+    default: 8
+
+  - identifier: pr_state
+    name: PR state
+    title: Pull request state filter
+    type: string
+    enum: [open, closed, all, merged]
+    required: false
+    default: open
+
+  - identifier: pr_updated_since_days
+    name: PR updated since (days)
+    title: Pull requests updated in the last N days
+    type: integer
+    required: false
+    default: 30
+
+  - identifier: issue_state
+    name: Issue state
+    title: Issue state filter
+    type: string
+    enum: [open, closed, all]
+    required: false
+    default: open
+
+  - identifier: issue_updated_since_days
+    name: Issue updated since (days)
+    title: Issues updated in the last N days
+    type: integer
+    required: false
+    default: 30
+
+  - identifier: file_globs
+    name: File globs
+    title: File globs to ingest (monorepo-friendly)
+    type: array
+    items:
+      type: string
+    required: false
+    default: ["README.md", "**/*.yml", "**/*.yaml", "**/*.json", "**/*.md", "**/*.py"]
+
+  - identifier: file_branch
+    name: File branch
+    title: Branch to fetch files from
+    type: string
+    required: false
+    default: default
+
+  - identifier: app_host
+    name: App host
+    title: Public base URL of this integration (for webhooks)
+    type: string
+    required: false
+
+provision:
+  blueprints: ./.port/resources/blueprints.json
+  integration: ./.port/resources/port-app-config.yaml
+
+install:
+  eventListener: polling
+  pollingInterval: 300

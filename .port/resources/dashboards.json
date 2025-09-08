@@ -1,0 +1,133 @@
+[
+  {
+    "identifier": "github_overview",
+    "title": "GitHub Overview",
+    "widgets": [
+      {
+        "type": "kpi",
+        "title": "Repositories",
+        "blueprint": "githubRepository",
+        "entityQuery": {
+          "combinator": "and",
+          "rules": [
+            { "property": "$blueprint", "operator": "=", "value": "githubRepository" }
+          ]
+        },
+        "aggregation": { "func": "sum", "property": "weight" }
+      },
+      {
+        "type": "kpi",
+        "title": "Open PRs",
+        "blueprint": "githubPullRequest",
+        "entityQuery": {
+          "combinator": "and",
+          "rules": [
+            { "property": "$blueprint", "operator": "=", "value": "githubPullRequest" },
+            { "property": "status", "operator": "=", "value": "open" }
+          ]
+        },
+        "aggregation": { "func": "sum", "property": "weight" }
+      },
+      {
+        "type": "kpi",
+        "title": "Open Issues",
+        "blueprint": "githubIssue",
+        "entityQuery": {
+          "combinator": "and",
+          "rules": [
+            { "property": "$blueprint", "operator": "=", "value": "githubIssue" },
+            { "property": "state", "operator": "=", "value": "open" }
+          ]
+        },
+        "aggregation": { "func": "sum", "property": "weight" }
+      },
+      {
+        "type": "kpi",
+        "title": "Stale PRs (>14d)",
+        "blueprint": "githubPullRequest",
+        "entityQuery": {
+          "combinator": "and",
+          "rules": [
+            { "property": "$blueprint", "operator": "=", "value": "githubPullRequest" },
+            { "property": "status", "operator": "=", "value": "open" },
+            { "property": "updatedAt", "operator": "<", "value": "{{now-14d}}" }
+          ]
+        },
+        "aggregation": { "func": "sum", "property": "weight" }
+      },
+      {
+        "type": "kpi",
+        "title": "Large Files (>64KB)",
+        "blueprint": "githubFile",
+        "entityQuery": {
+          "combinator": "and",
+          "rules": [
+            { "property": "$blueprint", "operator": "=", "value": "githubFile" },
+            { "property": "size", "operator": ">", "value": 65536 }
+          ]
+        },
+        "aggregation": { "func": "sum", "property": "weight" }
+      },
+
+      {
+        "type": "table",
+        "title": "Open Pull Requests",
+        "blueprint": "githubPullRequest",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            { "property": "$blueprint", "operator": "=", "value": "githubPullRequest" },
+            { "property": "status", "operator": "=", "value": "open" }
+          ]
+        },
+        "columns": ["$identifier", "$title", "repository", "creator", "updatedAt"],
+        "sort": [{ "property": "updatedAt", "direction": "desc" }],
+        "pageSize": 25
+      },
+      {
+        "type": "table",
+        "title": "Repositories",
+        "blueprint": "githubRepository",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            { "property": "$blueprint", "operator": "=", "value": "githubRepository" }
+          ]
+        },
+        "columns": ["$identifier", "url", "defaultBranch", "language"],
+        "sort": [{ "property": "$identifier", "direction": "asc" }],
+        "pageSize": 25
+      },
+      {
+        "type": "table",
+        "title": "Open Issues",
+        "blueprint": "githubIssue",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            { "property": "$blueprint", "operator": "=", "value": "githubIssue" },
+            { "property": "state", "operator": "=", "value": "open" }
+          ]
+        },
+        "columns": ["$identifier", "$title", "repository", "creator", "state"],
+        "sort": [{ "property": "$identifier", "direction": "asc" }],
+        "pageSize": 25
+      },
+      {
+        "type": "table",
+        "title": "Large Files (>64KB)",
+        "blueprint": "githubFile",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            { "property": "$blueprint", "operator": "=", "value": "githubFile" },
+            { "property": "size", "operator": ">", "value": 65536 }
+          ]
+        },
+        "columns": ["$identifier", "repository", "path", "size", "encoding"],
+        "sort": [{ "property": "size", "direction": "desc" }],
+        "pageSize": 25
+      }
+    ]
+  }
+]

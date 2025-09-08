@@ -1,0 +1,47 @@
+[
+  {
+    "blueprint": "githubRepository",
+    "data": [
+      {
+        "identifier": "repo_basics_scorecard",
+        "title": "Repository Basics",
+        "description": "Basic hygiene checks for repositories.",
+        "rules": [
+          {
+            "identifier": "has_default_branch",
+            "title": "Has default branch",
+            "description": "Repository has a defaultBranch value.",
+            "operator": "exists",
+            "property": "defaultBranch",
+            "weight": 1
+          },
+          {
+            "identifier": "has_url",
+            "title": "Has repository URL",
+            "description": "Repository has a URL property.",
+            "operator": "exists",
+            "property": "url",
+            "weight": 1
+          },
+          {
+            "identifier": "has_readme",
+            "title": "Has README",
+            "description": "Repository has README content.",
+            "operator": "exists",
+            "property": "readme",
+            "weight": 1
+          },
+          {
+            "identifier": "has_language",
+            "title": "Has language",
+            "description": "Repository main language is set.",
+            "operator": "exists",
+            "property": "language",
+            "weight": 1
+          }
+        ],
+        "passingThreshold": 3
+      }
+    ]
+  }
+]
