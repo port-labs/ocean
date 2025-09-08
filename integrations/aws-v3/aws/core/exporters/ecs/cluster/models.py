@@ -4,29 +4,43 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 
 class ClusterProperties(BaseModel):
-    ClusterName: str = Field(default_factory=str)
-    CapacityProviders: List[str] = Field(default_factory=list)
-    ClusterSettings: List[Dict[str, Any]] = Field(default_factory=list)
-    Configuration: Optional[Dict[str, Any]] = None
-    DefaultCapacityProviderStrategy: List[Dict[str, Any]] = Field(default_factory=list)
-    ServiceConnectDefaults: Optional[Dict[str, Any]] = None
-    Tags: List[Dict[str, Any]] = Field(default_factory=list)
+    clusterName: str = Field(default="", alias="ClusterName")
+    capacityProviders: List[str] = Field(
+        default_factory=list, alias="CapacityProviders"
+    )
+    clusterSettings: List[Dict[str, Any]] = Field(
+        default_factory=list, alias="ClusterSettings"
+    )
+    configuration: Optional[Dict[str, Any]] = Field(None, alias="Configuration")
+    defaultCapacityProviderStrategy: List[Dict[str, Any]] = Field(
+        default_factory=list, alias="DefaultCapacityProviderStrategy"
+    )
+    serviceConnectDefaults: Optional[Dict[str, Any]] = Field(
+        None, alias="ServiceConnectDefaults"
+    )
+    tags: List[Dict[str, Any]] = Field(default_factory=list, alias="Tags")
 
-    Status: Optional[str] = None
-    RunningTasksCount: Optional[int] = None
-    ActiveServicesCount: Optional[int] = None
-    PendingTasksCount: Optional[int] = None
-    RegisteredContainerInstancesCount: Optional[int] = None
-    Arn: str = Field(default_factory=str)
+    attachments: List[Dict[str, Any]] = Field(default_factory=list, alias="Attachments")
+    attachmentsStatus: Optional[str] = Field(None, alias="AttachmentsStatus")
+    statistics: List[Dict[str, Any]] = Field(default_factory=list, alias="Statistics")
+    status: Optional[str] = Field(None, alias="Status")
+    runningTasksCount: Optional[int] = Field(None, alias="RunningTasksCount")
+    activeServicesCount: Optional[int] = Field(None, alias="ActiveServicesCount")
+    pendingTasksCount: Optional[int] = Field(None, alias="PendingTasksCount")
+    registeredContainerInstancesCount: Optional[int] = Field(
+        None, alias="RegisteredContainerInstancesCount"
+    )
+    clusterArn: str = Field(default="", alias="ClusterArn")
+    settings: List[Dict[str, Any]] = Field(default_factory=list, alias="Settings")
 
     class Config:
+        allow_population_by_field_name = True
         extra = "forbid"
-        populate_by_name = True
 
 
 class Cluster(ResourceModel[ClusterProperties]):
     Type: str = "AWS::ECS::Cluster"
-    Properties: ClusterProperties = Field(default_factory=ClusterProperties)
+    Properties: ClusterProperties = Field(default_factory=lambda: ClusterProperties())
 
 
 class SingleClusterRequest(ResourceRequestModel):

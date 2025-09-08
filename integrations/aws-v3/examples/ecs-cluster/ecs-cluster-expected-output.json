@@ -13,7 +13,6 @@
       "FARGATE",
       "FARGATE_SPOT"
     ],
-    "arn": "arn:aws:ecs:us-west-2:123456789012:cluster/my-production-cluster",
     "tags": [
       {
         "key": "Environment",

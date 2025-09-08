@@ -43,11 +43,6 @@
             "type": "string"
           }
         },
-        "arn": {
-          "type": "string",
-          "title": "ARN",
-          "description": "The Amazon Resource Name (ARN) of the cluster"
-        },
         "tags": {
           "type": "array",
           "title": "Tags",

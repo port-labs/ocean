@@ -28,7 +28,6 @@
     "RunningTasksCount": 12,
     "ActiveServicesCount": 5,
     "PendingTasksCount": 2,
-    "RegisteredContainerInstancesCount": 8,
-    "Arn": "arn:aws:ecs:us-west-2:123456789012:cluster/my-production-cluster"
+    "RegisteredContainerInstancesCount": 8
   }
 }

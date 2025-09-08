@@ -19,7 +19,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .Properties.Arn
+          identifier: .Properties.ClusterArn
           title: .Properties.ClusterName
           blueprint: '"ecsCluster"'
           properties:
@@ -30,5 +30,4 @@ resources:
             pendingTasksCount: .Properties.PendingTasksCount
             registeredContainerInstancesCount: .Properties.RegisteredContainerInstancesCount
             capacityProviders: .Properties.CapacityProviders
-            arn: .Properties.Arn
             tags: .Properties.Tags

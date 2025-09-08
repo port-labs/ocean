@@ -73,39 +73,32 @@ class TestDescribeClustersAction:
         # Verify
         expected_result = [
             {
-                "ClusterName": "test-cluster",
-                "CapacityProviders": ["FARGATE"],
-                "ClusterSettings": [],
-                "Configuration": None,
-                "DefaultCapacityProviderStrategy": [],
-                "ServiceConnectDefaults": None,
-                "Tags": [],
-                "Status": "ACTIVE",
-                "RunningTasksCount": 5,
-                "ActiveServicesCount": 2,
-                "PendingTasksCount": 1,
-                "RegisteredContainerInstancesCount": 3,
-                "Arn": "arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster",
+                "clusterName": "test-cluster",
+                "clusterArn": "arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster",
+                "status": "ACTIVE",
+                "runningTasksCount": 5,
+                "activeServicesCount": 2,
+                "pendingTasksCount": 1,
+                "registeredContainerInstancesCount": 3,
+                "capacityProviders": ["FARGATE"],
+                "tags": [],
             },
             {
-                "ClusterName": "prod-cluster",
-                "CapacityProviders": ["FARGATE", "FARGATE_SPOT"],
-                "ClusterSettings": [],
-                "Configuration": None,
-                "DefaultCapacityProviderStrategy": [],
-                "ServiceConnectDefaults": None,
-                "Tags": [],
-                "Status": "ACTIVE",
-                "RunningTasksCount": 10,
-                "ActiveServicesCount": 5,
-                "PendingTasksCount": 0,
-                "RegisteredContainerInstancesCount": 8,
-                "Arn": "arn:aws:ecs:us-west-2:123456789012:cluster/prod-cluster",
+                "clusterName": "prod-cluster",
+                "clusterArn": "arn:aws:ecs:us-west-2:123456789012:cluster/prod-cluster",
+                "status": "ACTIVE",
+                "runningTasksCount": 10,
+                "activeServicesCount": 5,
+                "pendingTasksCount": 0,
+                "registeredContainerInstancesCount": 8,
+                "capacityProviders": ["FARGATE", "FARGATE_SPOT"],
+                "tags": [],
             },
         ]
         assert result == expected_result
         action.client.describe_clusters.assert_called_once_with(
-            clusters=cluster_arns, include=["TAGS"]
+            clusters=cluster_arns,
+            include=["TAGS", "ATTACHMENTS", "SETTINGS", "CONFIGURATIONS", "STATISTICS"],
         )
 
     @pytest.mark.asyncio
@@ -130,19 +123,8 @@ class TestDescribeClustersAction:
 
         expected_result: list[dict[str, Any]] = [
             {
-                "ClusterName": "minimal-cluster",
-                "CapacityProviders": [],
-                "ClusterSettings": [],
-                "Configuration": None,
-                "DefaultCapacityProviderStrategy": [],
-                "ServiceConnectDefaults": None,
-                "Tags": [],
-                "Status": None,
-                "RunningTasksCount": 0,
-                "ActiveServicesCount": 0,
-                "PendingTasksCount": 0,
-                "RegisteredContainerInstancesCount": 0,
-                "Arn": "arn:aws:ecs:us-west-2:123456789012:cluster/minimal-cluster",
+                "clusterName": "minimal-cluster",
+                "clusterArn": "arn:aws:ecs:us-west-2:123456789012:cluster/minimal-cluster",
             }
         ]
         assert result == expected_result
@@ -424,13 +406,13 @@ class TestAllActionsIntegration:
 
         # Verify all results
         assert len(results) == 2
-        assert "ClusterName" in results[0][0]
+        assert "clusterName" in results[0][0]
         assert "PendingTasks" in results[1][0]
 
         # Verify client methods were called
         mock_client.describe_clusters.assert_called_once_with(
             clusters=["arn:aws:ecs:us-west-2:123456789012:cluster/integration-cluster"],
-            include=["TAGS"],
+            include=["TAGS", "ATTACHMENTS", "SETTINGS", "CONFIGURATIONS", "STATISTICS"],
         )
         mock_client.list_tasks.assert_called_once_with(
             cluster="integration-cluster", desiredStatus="PENDING"
@@ -473,7 +455,7 @@ class TestAllActionsIntegration:
         )
 
         # Verify results
-        assert "ClusterName" in describe_result[0]
+        assert "clusterName" in describe_result[0]
         assert pending_tasks_result == [
             {"PendingTasks": []}
         ]  # Exception handled gracefully

@@ -55,15 +55,14 @@ class TestEcsClusterExporter:
         # Create expected Cluster response
         expected_cluster = Cluster(
             Properties=ClusterProperties(
-                ClusterName="test-cluster",
-                Status="ACTIVE",
-                RunningTasksCount=5,
-                ActiveServicesCount=2,
-                PendingTasksCount=1,
-                RegisteredContainerInstancesCount=3,
-                CapacityProviders=["FARGATE"],
-                Arn="arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster",
-                Tags=[{"key": "Environment", "value": "test"}],
+                clusterName="test-cluster",
+                status="ACTIVE",
+                runningTasksCount=5,
+                activeServicesCount=2,
+                pendingTasksCount=1,
+                registeredContainerInstancesCount=3,
+                capacityProviders=["FARGATE"],
+                tags=[{"key": "Environment", "value": "test"}],
             ),
         )
         mock_inspector.inspect.return_value = [expected_cluster.dict(exclude_none=True)]
@@ -109,14 +108,13 @@ class TestEcsClusterExporter:
 
         expected_cluster = Cluster(
             Properties=ClusterProperties(
-                ClusterName="prod-cluster",
-                Status="ACTIVE",
-                RunningTasksCount=10,
-                ActiveServicesCount=5,
-                PendingTasksCount=0,
-                RegisteredContainerInstancesCount=8,
-                CapacityProviders=["FARGATE", "FARGATE_SPOT"],
-                Arn="arn:aws:ecs:us-west-2:123456789012:cluster/prod-cluster",
+                clusterName="prod-cluster",
+                status="ACTIVE",
+                runningTasksCount=10,
+                activeServicesCount=5,
+                pendingTasksCount=0,
+                registeredContainerInstancesCount=8,
+                capacityProviders=["FARGATE", "FARGATE_SPOT"],
             ),
         )
         mock_inspector.inspect.return_value = [expected_cluster.dict(exclude_none=True)]
@@ -256,11 +254,11 @@ class TestEcsClusterExporter:
                 "arn:aws:ecs:us-west-2:123456789012:cluster/cluster1",
                 "arn:aws:ecs:us-west-2:123456789012:cluster/cluster2",
             ],
-            include=["TAGS"],
+            include=["TAGS", "ATTACHMENTS", "SETTINGS", "CONFIGURATIONS", "STATISTICS"],
         )
         mock_client.describe_clusters.assert_any_call(
             clusters=["arn:aws:ecs:us-west-2:123456789012:cluster/cluster3"],
-            include=["TAGS"],
+            include=["TAGS", "ATTACHMENTS", "SETTINGS", "CONFIGURATIONS", "STATISTICS"],
         )
 
     @pytest.mark.asyncio
@@ -366,8 +364,7 @@ class TestEcsClusterExporter:
         mock_inspector = AsyncMock()
         mock_cluster = Cluster(
             Properties=ClusterProperties(
-                ClusterName="test-cluster",
-                Arn="arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster",
+                clusterName="test-cluster",
             ),
         )
         mock_inspector.inspect.return_value = [mock_cluster.dict(exclude_none=True)]
@@ -384,12 +381,8 @@ class TestEcsClusterExporter:
         result = await exporter.get_resource(options)
 
         # Verify the result is a dictionary with the correct structure
-        assert result["Properties"]["ClusterName"] == "test-cluster"
+        assert result["Properties"]["clusterName"] == "test-cluster"
         assert result["Type"] == "AWS::ECS::Cluster"
-        assert (
-            result["Properties"]["Arn"]
-            == "arn:aws:ecs:us-west-2:123456789012:cluster/test-cluster"
-        )
 
         # Verify the inspector was called correctly
         mock_inspector.inspect.assert_called_once_with(

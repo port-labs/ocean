@@ -11,32 +11,14 @@ class DescribeClustersAction(Action):
             return []
 
         response = await self.client.describe_clusters(
-            clusters=cluster_arns, include=["TAGS"]
+            clusters=cluster_arns,
+            include=["TAGS", "ATTACHMENTS", "SETTINGS", "CONFIGURATIONS", "STATISTICS"],
         )
 
         clusters = response["clusters"]
         results: List[Dict[str, Any]] = []
         for cluster in clusters:
-            data = {
-                "ClusterName": cluster["clusterName"],
-                "CapacityProviders": cluster.get("capacityProviders", []),
-                "ClusterSettings": cluster.get("settings", []),
-                "Configuration": cluster.get("configuration"),
-                "DefaultCapacityProviderStrategy": cluster.get(
-                    "defaultCapacityProviderStrategy", []
-                ),
-                "ServiceConnectDefaults": cluster.get("serviceConnectDefaults"),
-                "Tags": cluster.get("tags", []),
-                "Status": cluster.get("status"),
-                "RunningTasksCount": cluster.get("runningTasksCount", 0),
-                "ActiveServicesCount": cluster.get("activeServicesCount", 0),
-                "PendingTasksCount": cluster.get("pendingTasksCount", 0),
-                "RegisteredContainerInstancesCount": cluster.get(
-                    "registeredContainerInstancesCount", 0
-                ),
-                "Arn": cluster["clusterArn"],
-            }
-            results.append(data)
+            results.append(cluster)
 
         return results
 
