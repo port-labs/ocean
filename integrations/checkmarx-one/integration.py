@@ -37,9 +37,7 @@ class CheckmarxOneScanModel(BaseModel):
 
     @property
     def from_date(self) -> Optional[str]:
-        if self.since:
-            return self._days_ago_to_rfc3339(self.since)
-        return None
+        return self._days_ago_to_rfc3339(self.since) if self.since else None
 
     def _days_ago_to_rfc3339(self, days: int) -> str:
         dt = datetime.now(timezone.utc) - timedelta(days=days)
@@ -84,6 +82,61 @@ class CheckmarxOneResultSelector(Selector):
     )
 
 
+class CheckmarxOneSastSelector(Selector):
+    scan_filter: CheckmarxOneScanModel = Field(
+        default=CheckmarxOneScanModel(),
+        description="Filter scan results by scan",
+    )
+    compliance: Optional[str] = Field(
+        default=None,
+        description="Filter by compliance standard (exact match, case insensitive).",
+    )
+    group: Optional[str] = Field(
+        default=None,
+        description="Filter by vulnerability group (substring match).",
+    )
+    include_nodes: bool = Field(
+        default=True,
+        description="If true, include nodes data; if false, omit node data.",
+    )
+    language: Optional[List[str]] = Field(
+        default=None,
+        description="Filter by language (exact match, case insensitive).",
+    )
+    result_id: Optional[str] = Field(
+        default=None,
+        description="Filter by unique result hash.",
+    )
+    severity: Optional[List[Literal["critical", "high", "medium", "low", "info"]]] = (
+        Field(
+            default=None,
+            description="Filter by severity.",
+        )
+    )
+    status: Optional[List[Literal["new", "recurrent", "fixed"]]] = Field(
+        default=None,
+        description="Filter by status.",
+    )
+    category: Optional[str] = Field(
+        default=None,
+        description="Filter by comma separated list of categories.",
+    )
+    state: Optional[
+        List[
+            Literal[
+                "to_verify",
+                "not_exploitable",
+                "proposed_not_exploitable",
+                "confirmed",
+                "urgent",
+            ]
+        ]
+    ] = Field(
+        default=None,
+        description="Filter by state.",
+    )
+
+
 class CheckmarxOneApiSecSelector(Selector):
     scan_filter: CheckmarxOneScanModel = Field(
         default=CheckmarxOneScanModel(),
@@ -113,6 +166,33 @@ class CheckmarxOneScanResourcesConfig(ResourceConfig):
     selector: CheckmarxOneScanSelector
 
 
+class CheckmarxOneSastResourcesConfig(ResourceConfig):
+    kind: Literal["sast"]
+    selector: CheckmarxOneSastSelector
+
+
+class CheckmarxOneKicsSelector(Selector):
+    scan_filter: CheckmarxOneScanModel = Field(
+        default=CheckmarxOneScanModel(),
+        description="Filter scan results by scan",
+    )
+    severity: Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]] = (
+        Field(
+            default=None,
+            description="Filter KICS results by severity levels",
+        )
+    )
+    status: Optional[List[Literal["NEW", "RECURRENT", "FIXED"]]] = Field(
+        default=None,
+        description="Filter KICS results by status",
+    )
+
+
+class CheckmarxOneKicsResourcesConfig(ResourceConfig):
+    kind: Literal["kics"]
+    selector: CheckmarxOneKicsSelector
+
+
 class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
     kind: Literal["sca", "containers"]
     selector: CheckmarxOneResultSelector
@@ -123,6 +203,8 @@ class CheckmarxOnePortAppConfig(PortAppConfig):
         CheckmarxOneProjectResourcesConfig
         | CheckmarxOneScanResourcesConfig
         | CheckmarxOneApiSecResourcesConfig
+        | CheckmarxOneSastResourcesConfig
+        | CheckmarxOneKicsResourcesConfig
         | CheckmarxOneScanResultResourcesConfig
     ] = Field(
         default_factory=list
