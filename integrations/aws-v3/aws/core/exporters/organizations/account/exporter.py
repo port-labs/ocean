@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Type, cast
+from typing import Any, AsyncGenerator, Type
 
 from aws.core.client.proxy import AioBaseClientProxy
 from aws.core.exporters.organizations.account.actions import (
@@ -15,7 +15,7 @@ from aws.core.modeling.resource_inspector import ResourceInspector
 
 
 class OrganizationsAccountExporter(IResourceExporter):
-    _service_name: SupportedServices = cast(SupportedServices, "organizations")
+    _service_name: SupportedServices = "organizations"
     _model_cls: Type[Account] = Account
     _actions_map: Type[OrganizationsAccountActionsMap] = OrganizationsAccountActionsMap
 
