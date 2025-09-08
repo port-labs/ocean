@@ -34,6 +34,7 @@ configurations:
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from GitHub are accepted.
     sensitive: true
     required: false
+
 saas:
   enabled: true
   liveEvents:

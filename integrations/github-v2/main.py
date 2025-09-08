@@ -8,6 +8,7 @@ from github.exporters.respository import RepositoryExporter
 from github.exporters.issue import IssueExporter
 from github.exporters.file import FileExporter
 from github.exporters.pull_request import PullRequestExporter
+from github.webhooks_processors.registry import register_webhook_processors
 
 
 REPOSITORIES: list[str] = []
@@ -28,7 +29,10 @@ async def _load_repo_names() -> list[str]:
 
 @ocean.on_start()
 async def on_start() -> None:
+    register_webhook_processors(path="/webhook")
     await _load_repo_names()
+    # Register webhook routes after app is initialized to avoid 404
+    
 
 @ocean.on_resync(ObjectKind.REPOSITORY.value)
 async def on_resync_repository(kind: str) -> list[dict[str, Any]]:
@@ -64,3 +68,6 @@ async def on_resync_pull_request(kind: str) -> list[dict[str, Any]]:
     items = await PullRequestExporter(repos=repo_names).export()
     logger.info(f"[main] Resync for kind={kind} returned {len(items)} items.")
     return items
+
+
+register_webhook_processors(path="/webhook") 
