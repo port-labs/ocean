@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor Integration To Encourage Explicit Kind and Blueprint Configuration For KICS Kind Over Dynamic Configuration
 
 
+## 0.1.9-dev (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
 ## 0.1.8-dev (2025-09-04)
 
 
