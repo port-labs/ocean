@@ -67,8 +67,7 @@ async def on_dast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         "url",
                     )
                     if getattr(selector, key, None) is not None
-                }
-                or None,
+                },
             )
             async for results_batch in dast_exporter.get_paginated_resources(options):
                 logger.info(
