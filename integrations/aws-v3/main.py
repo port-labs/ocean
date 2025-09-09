@@ -11,6 +11,8 @@ from aws.core.helpers.types import ObjectKind
 from aws.core.exporters.s3.bucket.models import PaginatedBucketRequest
 from aws.core.exporters.ec2.instance import PaginatedEC2InstanceRequest
 from aws.core.exporters.ec2.instance import EC2InstanceExporter
+from aws.core.exporters.ecs.cluster.exporter import EcsClusterExporter
+from aws.core.exporters.ecs.cluster.models import PaginatedClusterRequest
 from loguru import logger
 import asyncio
 from functools import partial
