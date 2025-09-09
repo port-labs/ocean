@@ -47,27 +47,16 @@ class ArgocdClient:
         self.http_client.headers.update(self.api_auth_header)
 
     @staticmethod
-    def _is_cluster_unreachable_exception(
-        exception: Exception, kind: ObjectKind | ResourceKindsWithSpecialHandling
-    ) -> bool:
-        if isinstance(exception, (httpx.ConnectError, httpx.TimeoutException)):
-            logger.warning(
-                f"Connection to cluster timed out. Skipping ingestion for kind {kind}: {exception}"
-            )
-            return True
-
+    def _is_cluster_unreachable_exception(exception: Exception) -> bool:
         if isinstance(exception, httpx.HTTPError):
-            logger.warning(
-                f"Cluster is unreachable. Skipping ingestion for kind {kind}: {exception}"
-            )
             return "connection attempts failed" in str(exception).lower()
 
         return False
 
+
     async def _send_api_request(
         self,
         url: str,
-        kind: ObjectKind | ResourceKindsWithSpecialHandling,
         method: str = "GET",
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
@@ -96,36 +85,23 @@ class ArgocdClient:
             )
             if self.ignore_server_error:
                 return {}
-            if self._is_cluster_unreachable_exception(e, kind):
+            if self._is_cluster_unreachable_exception(e):
                 return {}
             raise e
 
     async def get_resources(self, resource_kind: ObjectKind) -> list[dict[str, Any]]:
         url = f"{self.api_url}/{resource_kind}s"
-        try:
-            response_data = await self._send_api_request(url=url, kind=resource_kind)
-            return response_data.get("items", [])
-        except Exception as e:
-            if self.ignore_server_error:
-                return []
-            logger.error(f"Failed to fetch resources of kind {resource_kind}: {e}")
-            raise e
+        response_data = await self._send_api_request(url=url)
+        return response_data.get("items", [])
 
     async def get_clusters(self) -> list[dict[str, Any]]:
         url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s"
-        try:
-            response_data = await self._send_api_request(
-                url=url, kind=ResourceKindsWithSpecialHandling.CLUSTER
-            )
-            return response_data.get("items", [])
-        except Exception as e:
-            if self.ignore_server_error:
-                return []
-            raise e
+        response_data = await self._send_api_request(url)
+        return response_data.get("items", [])
 
     async def get_application_by_name(self, name: str) -> dict[str, Any]:
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{name}"
-        application = await self._send_api_request(url=url, kind=ObjectKind.APPLICATION)
+        application = await self._send_api_request(url)
         return application
 
     async def get_deployment_history(
@@ -205,9 +181,7 @@ class ArgocdClient:
             )
             kind = ObjectKind.APPLICATION
             url = f"{self.api_url}/{kind}s/{application_name}/managed-resources"
-            managed_resources = (await self._send_api_request(url=url, kind=kind)).get(
-                "items", []
-            )
+            managed_resources = (await self._send_api_request(url=url)).get("items", [])
 
             batch: list[dict[str, Any]] = []
             for managed_resource in managed_resources:
