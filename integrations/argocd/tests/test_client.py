@@ -85,13 +85,16 @@ async def test_get_clusters(mock_argocd_client: ArgocdClient) -> None:
 @pytest.mark.asyncio
 async def test_get_unreachable_clusters(mock_argocd_client: ArgocdClient) -> None:
     with patch.object(
-        mock_argocd_client, "_send_api_request", new_callable=AsyncMock
+        mock_argocd_client.http_client, "request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = httpx.HTTPError("Connection attempts failed")
         resources = await mock_argocd_client.get_clusters()
         assert resources == []
         mock_request.assert_called_with(
-            f"{mock_argocd_client.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s"
+            method="GET",
+            url=f"{mock_argocd_client.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s",
+            params=None,
+            json=None,
         )
 
 
