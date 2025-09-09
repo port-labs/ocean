@@ -60,7 +60,9 @@ class ResyncStateUpdater:
     async def update_after_resync(
         self,
         status: Literal[
-            IntegrationStateStatus.Completed, IntegrationStateStatus.Failed
+            IntegrationStateStatus.Completed,
+            IntegrationStateStatus.Failed,
+            IntegrationStateStatus.Aborted,
         ] = IntegrationStateStatus.Completed,
         interval: int | None = None,
         custom_start_time: datetime.datetime | None = None,
@@ -100,4 +102,4 @@ class ResyncStateUpdater:
         await ocean.metrics.report_sync_metrics(
             kinds=[ocean.metrics.current_resource_kind()]
         )
-        ocean.metrics.event_id = ""
+        ocean.metrics.event_id = f"{ocean.metrics.event_id}-done"
