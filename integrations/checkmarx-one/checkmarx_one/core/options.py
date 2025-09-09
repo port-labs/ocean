@@ -92,6 +92,20 @@ class ListKicsOptions(TypedDict):
     status: NotRequired[Optional[List[Literal["NEW", "RECURRENT", "FIXED"]]]]
 
 
+class ListDastOptions(TypedDict):
+    """Options for listing DAST scan results."""
+
+    scan_id: Required[str]
+    filter: NotRequired[Optional[dict[str, str]]]
+
+
+class SingleDastOptions(TypedDict):
+    """Options for fetching a single DAST scan result."""
+
+    scan_id: Required[str]
+    result_id: Required[str]
+
+
 class ListSastOptions(TypedDict, total=False):
     """Options for listing SAST scan results."""
 

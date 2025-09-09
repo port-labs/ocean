@@ -350,6 +350,76 @@ class TestCheckmarxOneClient:
         assert PAGE_SIZE == 100
 
     @pytest.mark.asyncio
+    async def test_send_paginated_request_dast_single_page(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test DAST pagination with a single page response."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "results": [{"id": "1"}, {"id": "2"}],
+            "total": 2,
+            "pages_number": 1,
+        }
+        mock_response.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results: list[list[dict[str, Any]]] = []  # type: ignore[name-defined]
+            async for batch in client.send_paginated_request_dast(
+                "/test", "results"
+            ):
+                results.append(batch)
+
+            assert len(results) == 1
+            assert results[0] == [{"id": "1"}, {"id": "2"}]
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_dast_multiple_pages(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test DAST pagination across multiple pages using total and pages_number as current page."""
+        # First page
+        mock_response1 = MagicMock()
+        mock_response1.json.return_value = {
+            "results": [{"id": str(i)} for i in range(100)],
+            "total": 250,
+            "pages_number": 1,
+        }
+        mock_response1.raise_for_status.return_value = None
+
+        # Second page
+        mock_response2 = MagicMock()
+        mock_response2.json.return_value = {
+            "results": [{"id": str(i)} for i in range(100, 200)],
+            "total": 250,
+            "pages_number": 2,
+        }
+        mock_response2.raise_for_status.return_value = None
+
+        # Third (final) page
+        mock_response3 = MagicMock()
+        mock_response3.json.return_value = {
+            "results": [{"id": str(i)} for i in range(200, 250)],
+            "total": 250,
+            "pages_number": 3,
+        }
+        mock_response3.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(
+                side_effect=[mock_response1, mock_response2, mock_response3]
+            )
+            results: list[list[dict[str, Any]]] = []  # type: ignore[name-defined]
+            async for batch in client.send_paginated_request_dast(
+                "/test", "results"
+            ):
+                results.append(batch)
+
+            assert len(results) == 3
+            assert len(results[0]) == 100
+            assert len(results[1]) == 100
+            assert len(results[2]) == 50
+
     async def test_send_paginated_request_api_sec_single_page(
         self, client: CheckmarxOneClient
     ) -> None:

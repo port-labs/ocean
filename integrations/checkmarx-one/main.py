@@ -9,6 +9,7 @@ from checkmarx_one.exporter_factory import (
     create_sast_exporter,
     create_scan_exporter,
     create_api_sec_exporter,
+    create_dast_exporter,
     create_kics_exporter,
     create_scan_result_exporter,
 )
@@ -17,6 +18,7 @@ from checkmarx_one.core.options import (
     ListSastOptions,
     ListScanOptions,
     ListApiSecOptions,
+    ListDastOptions,
     ListKicsOptions,
     ListScanResultOptions,
 )
@@ -165,6 +167,46 @@ async def on_kics_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for results_batch in kics_exporter.get_paginated_resources(options):
                 logger.info(
                     f"Received batch with {len(results_batch)} KICS results for scan {scan_data['id']}"
+                )
+                yield results_batch
+
+
+@ocean.on_resync(ObjectKind.DAST)
+async def on_dast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync DAST results from Checkmarx One."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    scan_exporter = create_scan_exporter()
+    dast_exporter = create_dast_exporter()
+
+    # Best-effort: use scan_filter if exists on selector (aligned with API Sec/KICS)
+    selector = cast(CheckmarxOneDastResourcesConfig, event.resource_config).selector
+    scan_filter = selector.scan_filter
+
+    if scan_filter is not None:
+        scan_options = ListScanOptions(
+            project_names=scan_filter.project_names,
+            branches=scan_filter.branches,
+            statuses=scan_filter.statuses,
+            from_date=scan_filter.from_date,
+        )
+    else:
+        scan_options = ListScanOptions()
+
+    async for scan_data_list in scan_exporter.get_paginated_resources(scan_options):
+        for scan_data in scan_data_list:
+            # Build options with inline filter dict (omit empty)
+            options = ListDastOptions(
+                scan_id=scan_data["id"],
+                filter={
+                    key: getattr(selector, key)
+                    for key in ("severity", "name", "method", "scan_type", "status", "state", "url")
+                    if getattr(selector, key, None) is not None
+                } or None,
+            )
+            async for results_batch in dast_exporter.get_paginated_resources(options):
+                logger.info(
+                    f"Received batch with {len(results_batch)} DAST results for scan {scan_data['id']}"
                 )
                 yield results_batch
 

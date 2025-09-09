@@ -231,3 +231,44 @@ class CheckmarxOneClient:
             except Exception as e:
                 logger.error(f"Error in paginated request to {endpoint}: {str(e)}")
                 raise
+
+    async def send_paginated_request_dast(
+        self,
+        endpoint: str,
+        object_key: str,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[List[dict[str, Any]], None]:
+        """
+        Paginate DAST responses shaped as { results: [...], total, pages_number }.
+        Uses page/per_page (1-based)
+        """
+
+        params = params or {}
+        next_page_number: int = 1
+
+        while True:
+            page_params = {**params, "page": next_page_number, "per_page": PAGE_SIZE}
+
+            try:
+                response = await self.send_api_request(endpoint, params=page_params)
+                items: List[dict[str, Any]] = response.get(object_key, [])
+                if not items:
+                    break
+
+                yield items
+
+                # DAST semantics: pages_number is the current page number, not total pages
+                # Use total results and per_page to decide next page
+                current_page = int(response.get("pages_number", page_params["page"]))
+                total_results = int(response.get("total", 0))
+                per_page = int(page_params["per_page"])
+
+                shown_so_far = current_page * per_page
+                if shown_so_far >= total_results:
+                    break
+
+                next_page_number = current_page + 1
+
+            except Exception as e:
+                logger.error(f"Error in paginated request to {endpoint}: {str(e)}")
+                raise
