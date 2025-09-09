@@ -31,7 +31,7 @@ class EcsClusterExporter(IResourceExporter):
                 [{"clusterName": options.cluster_name}], options.include
             )
 
-            return response[0]
+            return response[0] if response else {}
 
     async def get_paginated_resources(
         self, options: PaginatedClusterRequest
