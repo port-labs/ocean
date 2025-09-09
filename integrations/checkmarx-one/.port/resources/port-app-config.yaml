@@ -171,7 +171,7 @@ resources:
             name: .name
             url: (.url // empty)
             path: (.path // empty)
-            method: (.method // empty)                                                       
+            method: (.method // empty)
             scanType: (.scan_type // empty)
             severity: (.severity // empty)
           relations:
