@@ -1,89 +1,91 @@
 [
   {
-    "identifier": "awsAccount",
-    "title": "AWS account",
+    "identifier": "s3Bucket",
+    "title": "S3 Bucket",
     "icon": "AWS",
     "schema": {
       "properties": {
         "arn": {
           "type": "string",
-          "title": "Arn"
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the bucket"
         },
-        "email": {
+        "region": {
           "type": "string",
-          "title": "Email"
+          "title": "Region",
+          "description": "Geographic AWS Region where a bucket is created and stored"
         },
-        "status": {
-          "type": "array",
-          "title": "Status",
-          "default": ["ACTIVE"],
-          "items": {
-            "enum": ["ACTIVE", "SUSPENDED", "PENDING_CLOSURE"],
-            "enumColors": {
-              "ACTIVE": "green",
-              "SUSPENDED": "red",
-              "PENDING_CLOSURE": "yellow"
-            },
-            "type": "string"
-          }
-        },
-        "joined_method": {
+        "creationDate": {
           "type": "string",
-          "title": "Joined Method",
-          "enum": ["INVITED", "CREATED"],
-          "enumColors": {
-            "INVITED": "lightGray",
-            "CREATED": "lightGray"
-          }
-        },
-        "joined_timestamp": {
-          "type": "string",
-          "title": "Joined Timestamp",
+          "title": "Creation Date",
+          "description": "The date when the bucket was created",
           "format": "date-time"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the bucket",
+          "items": {
+            "type": "object"
+          }
         }
       },
       "required": []
     },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {}
   },
   {
-    "identifier": "cloudResource",
-    "title": "AWS Cloud Resource",
+    "identifier": "ec2Instance",
+    "title": "EC2 Instance",
     "icon": "AWS",
     "schema": {
       "properties": {
-        "kind": {
-          "title": "Kind",
-          "type": "string"
+        "instanceType": {
+          "type": "string",
+          "title": "Instance Type",
+          "description": "The type of the EC2 instance (e.g., t2.micro, m5.large)"
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "description": "The current state of the instance",
+          "enum": ["pending", "running", "shutting-down", "terminated", "stopping", "stopped"]
+        },
+        "publicIpAddress": {
+          "type": "string",
+          "title": "Public IP Address",
+          "description": "The public IP address of the EC2 instance"
+        },
+        "privateIpAddress": {
+          "type": "string",
+          "title": "Private IP Address",
+          "description": "The private IP address of the EC2 instance"
         },
         "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the EC2 instance",
           "items": {
             "type": "object"
-          },
-          "type": "array",
-          "title": "Tags"
+          }
         },
         "arn": {
           "type": "string",
-          "title": "ARN"
-        },
-        "link": {
-          "type": "string",
-          "title": "Link",
-          "icon": "AWS",
-          "format": "url"
-        },
-        "region": {
-          "type": "string",
-          "title": "Region"
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the EC2 instance"
         }
-      }
+      },
+      "required": []
     },
+    "calculationProperties": {},
     "relations": {
       "account": {
         "title": "Account",
         "target": "awsAccount",
-        "required": true,
+        "required": false,
         "many": false
       }
     }

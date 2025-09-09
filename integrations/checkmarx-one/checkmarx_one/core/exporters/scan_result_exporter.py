@@ -3,12 +3,14 @@ from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-from port_ocean.utils.cache import cache_iterator_result
 from checkmarx_one.core.options import SingleScanResultOptions, ListScanResultOptions
 
 
 class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
-    """Exporter for Checkmarx One scan results."""
+    """Exporter for Checkmarx One scan results.
+    Results from this exporter is not meant to be sent in full, only the __scan_id key is meant to be sent.
+    This class is not meant to be used directly, it is used as a base class for exporters that have similar functionality.
+    """
 
     def _enrich_scan_result_with_scan_id(
         self, scan_result: Dict[str, Any], scan_id: str
@@ -42,10 +44,9 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         )
         return self._enrich_scan_result_with_scan_id(response, options["scan_id"])
 
-    @cache_iterator_result()
-    async def get_paginated_resources(
+    async def _get_paginated_scan_results(
         self,
-        options: ListScanResultOptions,
+        params: Dict[str, Any],
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """
         Get scan results from Checkmarx One.
@@ -53,34 +54,39 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         Args:
             options: Options dictionary containing:
                 - scan_id: Required scan ID to get results for
-                - limit: Maximum number of results per page (1-10000, default: 20)
-                - offset: Starting offset for pagination (default: 0)
                 - severity: Filter by severity (CRITICAL, HIGH, MEDIUM, LOW, INFO)
                 - state: Filter by state (TO_VERIFY, NOT_EXPLOITABLE, PROPOSED_NOT_EXPLOITABLE, CONFIRMED, URGENT)
                 - status: Filter by status (NEW, RECURRENT, FIXED)
-                - sort: Sort results by specified parameters (e.g., ["+severity", "-status"])
                 - exclude_result_types: Filter to exclude dev and test dependencies (DEV_AND_TEST, NONE)
 
         Yields:
             Batches of scan results
         """
 
-        params: dict[str, Any] = self._get_params(options)
-
         async for results in self.client.send_paginated_request(
             "/results", "results", params
         ):
             logger.info(
-                f"Fetched batch of {len(results)} scan results for scan {options['scan_id']}"
+                f"Fetched batch of {len(results)} scan results for scan {params['scan-id']}"
             )
-            batch = [
+            yield results
+
+    async def get_paginated_resources(
+        self, options: ListScanResultOptions
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """
+        Get paginated scan results from Checkmarx One.
+        """
+        params: dict[str, Any] = self._get_params(options)
+        async for results in self._get_paginated_scan_results(params):
+            yield [
                 self._enrich_scan_result_with_scan_id(
                     result,
                     options["scan_id"],
                 )
                 for result in results
+                if result["type"] == options["type"]
             ]
-            yield batch
 
     def _get_params(self, options: ListScanResultOptions) -> dict[str, Any]:
         params: dict[str, Any] = {
@@ -88,11 +94,26 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
         }
 
         if options.get("severity"):
-            params["severity"] = options.get("severity")
+            severity = options.get("severity")
+            if isinstance(severity, list) and len(severity) == 1:
+                params["severity"] = severity[0]
+            else:
+                params["severity"] = severity
+
         if options.get("state"):
-            params["state"] = options.get("state")
+            state = options.get("state")
+            if isinstance(state, list) and len(state) == 1:
+                params["state"] = state[0]
+            else:
+                params["state"] = state
+
         if options.get("status"):
-            params["status"] = options.get("status")
+            status = options.get("status")
+            if isinstance(status, list) and len(status) == 1:
+                params["status"] = status[0]
+            else:
+                params["status"] = status
+
         if options.get("exclude_result_types"):
             params["exclude-result-types"] = options.get("exclude_result_types")
 

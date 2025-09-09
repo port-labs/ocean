@@ -6,6 +6,7 @@ from loguru import logger
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.utils import IgnoredError
+from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 
 PAGE_SIZE = 25
 
@@ -16,6 +17,13 @@ class GithubGraphQLClient(AbstractGithubClient):
     @property
     def base_url(self) -> str:
         return urljoin(self.github_host, "/graphql")
+
+    @property
+    def rate_limiter_config(self) -> GitHubRateLimiterConfig:
+        return GitHubRateLimiterConfig(
+            api_type="graphql",
+            max_concurrent=5,
+        )
 
     def _handle_graphql_errors(
         self,

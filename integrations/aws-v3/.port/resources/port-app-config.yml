@@ -2,55 +2,30 @@ resources:
   - kind: AWS::S3::Bucket
     selector:
       query: 'true'
-      useGetResourceAPI: 'true'
     port:
       entity:
         mappings:
-          identifier: .Identifier
-          title: .Identifier
-          blueprint: '"cloudResource"'
+          identifier: .Properties.Arn
+          title: .Properties.BucketName
+          blueprint: '"s3Bucket"'
           properties:
-            kind: .__Kind
-            region: >-
-              .Properties.RegionalDomainName |
-              capture(".*\\.(?<region>[^\\.]+)\\.amazonaws\\.com") | .region
-            tags: .Properties.Tags
             arn: .Properties.Arn
-            link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
-          relations:
-            account: .__AccountId
+            region: .Properties.LocationConstraint
+            creationDate: .Properties.CreationDate
+            tags: .Properties.Tags
   - kind: AWS::EC2::Instance
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: .Identifier
-          title: .Identifier
-          blueprint: '"cloudResource"'
+          identifier: .Properties.InstanceId
+          title: .Properties.InstanceId
+          blueprint: '"ec2Instance"'
           properties:
-            kind: .__Kind
-            region: .__Region
+            instanceType: .Properties.InstanceType
+            state: .Properties.State.Name
+            publicIpAddress: .Properties.PublicIpAddress
+            privateIpAddress: .Properties.PrivateIpAddress
             tags: .Properties.Tags
-            arn: .Properties.Arn
-            link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
-          relations:
-            account: .__AccountId
-  - kind: AWS::ECS::Cluster
-    selector:
-      query: 'true'
-      useGetResourceAPI: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .Properties.Arn
-          title: .Identifier
-          blueprint: '"cloudResource"'
-          properties:
-            kind: .__Kind
-            region: .__Region
-            tags: .Properties.Tags
-            arn: .Properties.Arn
-            link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
-          relations:
-            account: .__AccountId
+            arn: '"arn:aws:ec2:" + .__Region + ":" + .__AccountId + ":instance/" + .Properties.InstanceId'

@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced cluster unreachability handling in get_clusters() method to gracefully handle connection failures and return empty list instead of raising exceptions
 
 
+## 0.1.216 (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
 ## 0.1.215 (2025-08-28)
 
 
