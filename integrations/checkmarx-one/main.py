@@ -31,6 +31,8 @@ from integration import (
     CheckmarxOneDastResourcesConfig,
 )
 from checkmarx_one.utils import ObjectKind, ScanResultObjectKind
+
+
 @ocean.on_resync(ObjectKind.DAST)
 async def on_dast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync DAST results from Checkmarx One."""
@@ -55,16 +57,24 @@ async def on_dast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 scan_id=scan_data["id"],
                 filter={
                     key: getattr(selector, key)
-                    for key in ("severity", "name", "method", "scan_type", "status", "state", "url")
+                    for key in (
+                        "severity",
+                        "name",
+                        "method",
+                        "scan_type",
+                        "status",
+                        "state",
+                        "url",
+                    )
                     if getattr(selector, key, None) is not None
-                } or None,
+                }
+                or None,
             )
             async for results_batch in dast_exporter.get_paginated_resources(options):
                 logger.info(
                     f"Received batch with {len(results_batch)} DAST results for scan {scan_data['id']}"
                 )
                 yield results_batch
-
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
