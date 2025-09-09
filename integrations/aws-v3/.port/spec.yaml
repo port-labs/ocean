@@ -6,6 +6,7 @@ features:
     section: Cloud Providers
     resources:
       - kind: AWS::S3::Bucket
+      - kind: AWS::ECS::Cluster
 configurations:
   - name: accountRoleArn
     required: false
