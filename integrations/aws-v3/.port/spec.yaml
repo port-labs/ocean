@@ -5,7 +5,9 @@ features:
   - type: exporter
     section: Cloud Providers
     resources:
-      - kind: AWS::SQS::Queue
+      - kind: AWS::S3::Bucket
+      - kind: AWS::EC2::Instance
+      - kind: AWS::Account::Info
 configurations:
   - name: accountRoleArn
     required: false
