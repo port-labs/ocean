@@ -1,8 +1,6 @@
-from typing import Dict, Any, List, Type, cast
-import asyncio
+from typing import Dict, Any, List, Type
 
 from aws.core.interfaces.action import Action, ActionMap
-from loguru import logger
 
 
 class DescribeClustersAction(Action):
