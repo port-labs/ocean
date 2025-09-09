@@ -111,8 +111,8 @@ async def resync_ec2_instance(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             exporter, options_factory, kind, regions, account["Id"]
         ):
             yield batch
-            
-            
+
+
 @ocean.on_resync(ObjectKind.ECS_CLUSTER)
 async def resync_ecs_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
