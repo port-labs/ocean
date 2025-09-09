@@ -8,10 +8,14 @@ features:
     resources:
       - kind: project
       - kind: scan
-      - kind: scan_result
+      - kind: api-security
+      - kind: kics
+      - kind: sca
+      - kind: containers
+      - kind: sast
 configurations:
   - name: checkmarxBaseUrl
-    required: true
+    required: false
     type: url
     description: |
       Checkmarx One server URL for your region:
@@ -27,7 +31,7 @@ configurations:
     default: "https://ast.checkmarx.net/api"
 
   - name: checkmarxIamUrl
-    required: true
+    required: false
     type: url
     description: |
       Checkmarx One IAM URL for your region (for authentication):
@@ -40,7 +44,7 @@ configurations:
       IND: https://ind.iam.checkmarx.net
       SNG: https://sng.iam.checkmarx.net
       UAE: https://mea.iam.checkmarx.net
-    default: "https://deu.iam.checkmarx.net"
+    default: "https://iam.checkmarx.net"
 
   - name: checkmarxTenant
     required: true
