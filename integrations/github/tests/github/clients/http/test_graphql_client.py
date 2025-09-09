@@ -20,6 +20,7 @@ class TestGithubGraphQLClient:
         # Mock response with GraphQL errors
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
+        mock_response.headers = {}  # Add headers attribute
         mock_response.json.return_value = {
             "errors": [
                 {"message": "Error 1", "path": ["field1"], "type": "CUSTOM_ERROR_1"},
@@ -31,9 +32,8 @@ class TestGithubGraphQLClient:
         mock_config = MagicMock()
         mock_config.client_timeout = 30.0  # Set a proper float value for timeout
 
-        with patch.object(
-            client.authenticator.client,
-            "request",
+        with patch(
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
             with pytest.raises(GraphQLErrorGroup) as exc_info:
