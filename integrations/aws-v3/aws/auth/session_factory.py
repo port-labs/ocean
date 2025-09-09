@@ -51,9 +51,6 @@ class ResyncStrategyFactory:
         """
 
         if config["account_role_arn"]:
-            logger.error(
-                "account_role_arn is deprecated. Use account_role_arns instead."
-            )
             return OrganizationsStrategy
 
         account_role_arns = config["account_role_arns"]
