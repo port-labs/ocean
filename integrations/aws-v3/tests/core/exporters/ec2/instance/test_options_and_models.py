@@ -128,7 +128,6 @@ class TestEC2InstanceProperties:
             Events=[{"Code": "pending-reboot"}],
             HibernationOptions={"Configured": False},
             Hypervisor="xen",
-            IamInstanceProfile={"Arn": "arn:aws:iam::123:instance-profile/x"},
             ImageId="ami-123",
             InstanceArn="arn:aws:ec2:...:instance/i-123",
             InstanceId="i-123",
