@@ -70,14 +70,10 @@ async def on_dast_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 },
             )
             async for results_batch in dast_exporter.get_paginated_resources(options):
-                # Add scan_id to each result for relation mapping
-                enriched_batch = [
-                    {**result, "__scan_id": scan_data["id"]} for result in results_batch
-                ]
                 logger.info(
-                    f"Received batch with {len(enriched_batch)} DAST results for scan {scan_data['id']}"
+                    f"Received batch with {len(results_batch)} DAST results for scan {scan_data['id']}"
                 )
-                yield enriched_batch
+                yield results_batch
 
 
 @ocean.on_resync(ObjectKind.PROJECT)

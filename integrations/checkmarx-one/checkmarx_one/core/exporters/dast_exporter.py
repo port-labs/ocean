@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict
 import json
 from loguru import logger
 
@@ -10,13 +10,20 @@ from checkmarx_one.core.options import SingleDastOptions, ListDastOptions
 class CheckmarxDastExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One DAST results."""
 
+    def _enrich_dast_result_with_scan_id(
+        self, result: Dict[str, Any], scan_id: str
+    ) -> dict[str, Any]:
+        """Enrich DAST result with scan ID."""
+        result["__scan_id"] = scan_id
+        return result
+
     async def get_resource(self, options: SingleDastOptions) -> RAW_ITEM:
         scan_id = options["scan_id"]
         result_id = options["result_id"]
         endpoint = f"/dast/mfe-results/results/info/{result_id}/{scan_id}"
         response = await self.client.send_api_request(endpoint)
         logger.info(f"Fetched DAST result {result_id} for scan {scan_id}")
-        return response
+        return self._enrich_dast_result_with_scan_id(response, scan_id)
 
     async def get_paginated_resources(
         self,
@@ -37,4 +44,7 @@ class CheckmarxDastExporter(AbstractCheckmarxExporter):
             logger.info(
                 f"Fetched batch of {len(results)} DAST results for scan {scan_id}"
             )
-            yield results
+            yield [
+                self._enrich_dast_result_with_scan_id(result, scan_id)
+                for result in results
+            ]
