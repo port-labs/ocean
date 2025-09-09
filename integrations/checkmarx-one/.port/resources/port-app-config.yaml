@@ -167,17 +167,13 @@ resources:
           title: .name
           blueprint: '"checkmarxDast"'
           properties:
-            resultId: .id
-            scanId: .scan_id
-            severity: (.severity // empty)
-            name: .name
+            id: .id
             status: (.status // empty)
-            state: (.state // empty)
-            method: (.method // empty)
+            name: .name
             url: (.url // empty)
+            path: (.path // empty)
+            method: (.method // empty)
             scanType: (.scan_type // empty)
-            description: (.description // empty)
-            created: (.created // empty)
-            projectId: (.project_id // empty)
+            severity: (.severity // empty)
           relations:
-            scan: .scan_id
+            scan: .__scan_id

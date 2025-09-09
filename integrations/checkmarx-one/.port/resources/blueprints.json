@@ -626,15 +626,40 @@
     "icon": "Checkmarx",
     "schema": {
       "properties": {
-        "resultId": {
+        "id": {
           "type": "string",
           "title": "Result ID",
           "description": "The unique identifier for the DAST finding"
         },
-        "scanId": {
+        "status": {
           "type": "string",
-          "title": "Scan ID",
-          "description": "The identifier of the scan in which the DAST finding was detected"
+          "title": "Status",
+          "description": "The current status of the DAST finding (e.g., New, Recurrent, Fixed)"
+        },
+        "name": {
+          "type": "string",
+          "title": "Finding Name",
+          "description": "The name or title of the DAST finding"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "description": "The full URL endpoint where the DAST finding was detected"
+        },
+        "path": {
+          "type": "string",
+          "title": "Path",
+          "description": "The path component of the URL where the finding was detected"
+        },
+        "method": {
+          "type": "string",
+          "title": "HTTP Method",
+          "description": "The HTTP method associated with the finding (e.g., GET, POST, PUT)"
+        },
+        "scanType": {
+          "type": "string",
+          "title": "Scan Type",
+          "description": "The type of scan that detected this finding (e.g., DAST)"
         },
         "severity": {
           "type": "string",
@@ -654,55 +679,9 @@
             "INFO": "lightGray"
           },
           "description": "The severity level of the DAST finding"
-        },
-        "name": {
-          "type": "string",
-          "title": "Finding Name",
-          "description": "The name or title of the DAST finding"
-        },
-        "status": {
-          "type": "string",
-          "title": "Status",
-          "description": "The current status of the DAST finding"
-        },
-        "state": {
-          "type": "string",
-          "title": "State",
-          "description": "The state of the DAST finding (e.g., to_verify, confirmed, false_positive)"
-        },
-        "method": {
-          "type": "string",
-          "title": "HTTP Method",
-          "description": "The HTTP method associated with the finding (e.g., GET, POST, PUT)"
-        },
-        "url": {
-          "type": "string",
-          "title": "URL",
-          "description": "The URL endpoint where the DAST finding was detected"
-        },
-        "scanType": {
-          "type": "string",
-          "title": "Scan Type",
-          "description": "The type of DAST scan that detected this finding"
-        },
-        "description": {
-          "type": "string",
-          "title": "Description",
-          "description": "A detailed description of the DAST finding"
-        },
-        "created": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Created At",
-          "description": "The date and time when the DAST finding was first detected"
-        },
-        "projectId": {
-          "type": "string",
-          "title": "Project ID",
-          "description": "The identifier of the project associated with the DAST finding"
         }
       },
-      "required": ["resultId", "scanId", "name"]
+      "required": ["id", "name"]
     },
     "mirrorProperties": {},
     "calculationProperties": {},
