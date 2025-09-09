@@ -8,10 +8,20 @@ import asyncio
 
 class GetBucketPublicAccessBlockAction(Action):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-
-        results = await asyncio.gather(
-            *(self._fetch_public_access_block(bucket) for bucket in buckets)
+        public_access_blocks = await asyncio.gather(
+            *(self._fetch_public_access_block(bucket) for bucket in buckets),
+            return_exceptions=True,
         )
+
+        results: List[Dict[str, Any]] = []
+        for idx, pab_result in enumerate(public_access_blocks):
+            if isinstance(pab_result, Exception):
+                bucket_name = buckets[idx].get("Name", "unknown")
+                logger.error(
+                    f"Error fetching bucket public access block for bucket '{bucket_name}': {pab_result}"
+                )
+                continue
+            results.append(cast(Dict[str, Any], pab_result))
         return results
 
     async def _fetch_public_access_block(
@@ -29,9 +39,20 @@ class GetBucketPublicAccessBlockAction(Action):
 class GetBucketOwnershipControlsAction(Action):
 
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        results = await asyncio.gather(
-            *(self._fetch_ownership_controls(bucket) for bucket in buckets)
+        ownership_controls = await asyncio.gather(
+            *(self._fetch_ownership_controls(bucket) for bucket in buckets),
+            return_exceptions=True,
         )
+
+        results: List[Dict[str, Any]] = []
+        for idx, ownership_result in enumerate(ownership_controls):
+            if isinstance(ownership_result, Exception):
+                bucket_name = buckets[idx].get("Name", "unknown")
+                logger.error(
+                    f"Error fetching bucket ownership controls for bucket '{bucket_name}': {ownership_result}"
+                )
+                continue
+            results.append(cast(Dict[str, Any], ownership_result))
         return results
 
     async def _fetch_ownership_controls(self, bucket: Dict[str, Any]) -> Dict[str, Any]:
@@ -41,14 +62,25 @@ class GetBucketOwnershipControlsAction(Action):
         logger.info(
             f"Successfully fetched bucket ownership controls for bucket {bucket['Name']}"
         )
-        return {"OwnershipControls": response.get("OwnershipControls", {})}
+        return {"OwnershipControls": response["OwnershipControls"]}
 
 
 class GetBucketEncryptionAction(Action):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        results = await asyncio.gather(
-            *(self._fetch_encryption(bucket) for bucket in buckets)
+        encryptions = await asyncio.gather(
+            *(self._fetch_encryption(bucket) for bucket in buckets),
+            return_exceptions=True,
         )
+
+        results: List[Dict[str, Any]] = []
+        for idx, encryption_result in enumerate(encryptions):
+            if isinstance(encryption_result, Exception):
+                bucket_name = buckets[idx].get("Name", "unknown")
+                logger.error(
+                    f"Error fetching bucket encryption for bucket '{bucket_name}': {encryption_result}"
+                )
+                continue
+            results.append(cast(Dict[str, Any], encryption_result))
         return results
 
     async def _fetch_encryption(self, bucket: Dict[str, Any]) -> Dict[str, Any]:
@@ -61,9 +93,21 @@ class GetBucketEncryptionAction(Action):
 
 class GetBucketLocationAction(Action):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        results = await asyncio.gather(
-            *(self._fetch_location(bucket) for bucket in buckets)
+
+        locations = await asyncio.gather(
+            *(self._fetch_location(bucket) for bucket in buckets),
+            return_exceptions=True,
         )
+
+        results: List[Dict[str, Any]] = []
+        for idx, location_result in enumerate(locations):
+            if isinstance(location_result, Exception):
+                bucket_name = buckets[idx].get("Name", "unknown")
+                logger.error(
+                    f"Error fetching bucket location for bucket '{bucket_name}': {location_result}"
+                )
+                continue
+            results.append(cast(Dict[str, Any], location_result))
         return results
 
     async def _fetch_location(self, bucket: Dict[str, Any]) -> Dict[str, Any]:
@@ -90,13 +134,18 @@ class ListBucketsAction(Action):
 class GetBucketTaggingAction(Action):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
-        tagging = await asyncio.gather(
+        tagging_results = await asyncio.gather(
             *(self._fetch_tagging(bucket) for bucket in buckets), return_exceptions=True
         )
-        for tagging_result in tagging:
+        for idx, tagging_result in enumerate(tagging_results):
             if isinstance(tagging_result, Exception):
-                raise tagging_result
-            results.append(cast(Dict[str, Any], tagging_result))
+                bucket_name = buckets[idx].get("Name", "unknown")
+                logger.error(
+                    f"Error fetching bucket tagging for bucket '{bucket_name}': {tagging_result}"
+                )
+                continue
+            else:
+                results.append(cast(Dict[str, Any], tagging_result))
         return results
 
     async def _fetch_tagging(self, bucket: Dict[str, Any]) -> Dict[str, Any]:
@@ -125,9 +174,3 @@ class S3BucketActionsMap(ActionMap):
         GetBucketOwnershipControlsAction,
         GetBucketEncryptionAction,
     ]
-
-    def merge(self, include: List[str]) -> List[Type[Action]]:
-        # Always include all defaults, and any options whose class name is in include
-        return self.defaults + [
-            action for action in self.options if action.__name__ in include
-        ]

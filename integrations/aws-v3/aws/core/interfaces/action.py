@@ -30,4 +30,15 @@ class ActionMap(Protocol):
     defaults: List[Type[Action]]
     options: List[Type[Action]]
 
-    def merge(self, include: List[str]) -> List[Type[Action]]: ...
+    def merge(self, include: List[str]) -> List[Type[Action]]:
+        # Always include all defaults, and any options whose class name is in include
+        logger.debug(
+            f"Merging actions. Defaults: {[action.__name__ for action in self.defaults]}, Options: {[action.__name__ for action in self.options]}, Include: {include}"
+        )
+        merged = self.defaults + [
+            action for action in self.options if action.__name__ in include
+        ]
+        logger.info(
+            f"Effective actions selected for {type(self).__name__}: {', '.join(action.__name__ for action in merged)}"
+        )
+        return merged

@@ -57,11 +57,10 @@ class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
             logger.info(
                 f"Fetched batch of {len(results)} API sec risks for scan {options['scan_id']}"
             )
-            batch = [
+            yield [
                 self._enrich_scan_result_with_scan_id(
                     result,
                     options["scan_id"],
                 )
                 for result in results
             ]
-            yield batch
