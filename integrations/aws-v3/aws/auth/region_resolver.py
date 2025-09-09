@@ -1,7 +1,7 @@
 from aiobotocore.session import AioSession
 from typing import List, Set, Optional
 from loguru import logger
-from integration import AWSDescribeResourcesSelector
+from integration import AWSResourceSelector
 
 
 class RegionResolver:
@@ -10,7 +10,7 @@ class RegionResolver:
     def __init__(
         self,
         session: AioSession,
-        selector: AWSDescribeResourcesSelector,
+        selector: AWSResourceSelector,
         account_id: Optional[str] = None,
     ):
         self.session = session

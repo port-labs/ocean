@@ -105,10 +105,14 @@ class SingleBranchOptions(RepositoryIdentifier):
     """Options for fetching a single branch."""
 
     branch_name: Required[str]
+    protection_rules: Optional[bool]
 
 
 class ListBranchOptions(RepositoryIdentifier):
     """Options for listing branches."""
+
+    protection_rules: Required[bool]
+    detailed: Required[bool]
 
 
 class SingleEnvironmentOptions(RepositoryIdentifier):
@@ -186,3 +190,21 @@ class SingleCollaboratorOptions(RepositoryIdentifier):
 
 class ListCollaboratorOptions(RepositoryIdentifier):
     """Options for listing collaborators."""
+
+
+class BaseSecretScanningAlertOptions(RepositoryIdentifier):
+    """Base options for secret scanning alerts."""
+
+    hide_secret: Required[bool]
+
+
+class SingleSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
+    """Options for fetching a single secret scanning alert."""
+
+    alert_number: Required[str]
+
+
+class ListSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
+    """Options for listing secret scanning alerts."""
+
+    state: Required[str]
