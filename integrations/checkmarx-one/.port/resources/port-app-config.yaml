@@ -167,7 +167,6 @@ resources:
           title: .name
           blueprint: '"checkmarxDast"'
           properties:
-            id: .id
             status: (.status // empty)
             name: .name
             url: (.url // empty)

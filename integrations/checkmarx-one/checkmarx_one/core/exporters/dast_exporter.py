@@ -36,15 +36,25 @@ class CheckmarxDastExporter(AbstractCheckmarxExporter):
         if filters := options.get("filter"):
             params["filter"] = json.dumps(filters)
 
-        async for results in self.client.send_paginated_request_dast(
-            f"/dast/mfe-results/results/{scan_id}",
-            "results",
-            params,
-        ):
-            logger.info(
-                f"Fetched batch of {len(results)} DAST results for scan {scan_id}"
-            )
-            yield [
-                self._enrich_dast_result_with_scan_id(result, scan_id)
-                for result in results
-            ]
+        try:
+            async for results in self.client.send_paginated_request_dast(
+                f"/dast/mfe-results/results/{scan_id}",
+                "results",
+                params,
+            ):
+                logger.info(
+                    f"Fetched batch of {len(results)} DAST results for scan {scan_id}"
+                )
+                yield [
+                    self._enrich_dast_result_with_scan_id(result, scan_id)
+                    for result in results
+                ]
+        except Exception as e:
+            # Handle cases where scan doesn't have DAST results (404 errors)
+            if "404" in str(e) or "failed to find scanID" in str(e):
+                logger.debug(f"No DAST results found for scan {scan_id}: {str(e)}")
+                return
+            else:
+                # Re-raise other errors
+                logger.error(f"Error fetching DAST results for scan {scan_id}: {str(e)}")
+                raise

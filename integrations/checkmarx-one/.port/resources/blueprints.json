@@ -626,11 +626,6 @@
     "icon": "Checkmarx",
     "schema": {
       "properties": {
-        "id": {
-          "type": "string",
-          "title": "Result ID",
-          "description": "The unique identifier for the DAST finding"
-        },
         "status": {
           "type": "string",
           "title": "Status",
@@ -681,7 +676,7 @@
           "description": "The severity level of the DAST finding"
         }
       },
-      "required": ["id", "name"]
+      "required": []
     },
     "mirrorProperties": {},
     "calculationProperties": {},
