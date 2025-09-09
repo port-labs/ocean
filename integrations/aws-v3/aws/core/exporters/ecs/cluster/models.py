@@ -8,7 +8,7 @@ class ClusterProperties(BaseModel):
     capacityProviders: List[str] = Field(
         default_factory=list, alias="CapacityProviders"
     )
-    clusterSettings: List[Dict[str, Any]] = Field(
+    settings: List[Dict[str, Any]] = Field(
         default_factory=list, alias="ClusterSettings"
     )
     configuration: Optional[Dict[str, Any]] = Field(default=None, alias="Configuration")
@@ -33,7 +33,6 @@ class ClusterProperties(BaseModel):
         default=None, alias="RegisteredContainerInstancesCount"
     )
     clusterArn: str = Field(default_factory=str, alias="ClusterArn")
-    settings: List[Dict[str, Any]] = Field(default_factory=list, alias="Settings")
 
     class Config:
         allow_population_by_field_name = True
