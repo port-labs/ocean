@@ -26,7 +26,7 @@ class CheckmarxDastExporter(AbstractCheckmarxExporter):
 
         scan_id = options["scan_id"]
         params: dict[str, Any] = {}
-        if (filters := options.get("filter")):
+        if filters := options.get("filter"):
             params["filter"] = json.dumps(filters)
 
         async for results in self.client.send_paginated_request_dast(
