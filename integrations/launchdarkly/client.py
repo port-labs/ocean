@@ -72,7 +72,7 @@ class LaunchDarklyClient:
                     endpoint=url, query_params=params
                 )
                 if not response:
-                    continue
+                    break
                 items = response.get("items", [])
                 logger.info(f"Received batch with {len(items)} items")
                 yield items
