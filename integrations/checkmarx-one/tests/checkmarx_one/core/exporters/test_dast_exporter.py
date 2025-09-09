@@ -36,7 +36,9 @@ class TestCheckmarxDastExporter:
     def exporter(self, mock_client: MagicMock) -> CheckmarxDastExporter:
         return CheckmarxDastExporter(mock_client)
 
-    def test_init(self, exporter: CheckmarxDastExporter, mock_client: MagicMock) -> None:
+    def test_init(
+        self, exporter: CheckmarxDastExporter, mock_client: MagicMock
+    ) -> None:
         assert exporter.client == mock_client
 
     @pytest.mark.asyncio
