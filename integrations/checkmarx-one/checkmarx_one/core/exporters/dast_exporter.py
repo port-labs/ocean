@@ -56,5 +56,7 @@ class CheckmarxDastExporter(AbstractCheckmarxExporter):
                 return
             else:
                 # Re-raise other errors
-                logger.error(f"Error fetching DAST results for scan {scan_id}: {str(e)}")
+                logger.error(
+                    f"Error fetching DAST results for scan {scan_id}: {str(e)}"
+                )
                 raise
