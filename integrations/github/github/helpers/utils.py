@@ -43,6 +43,7 @@ class ObjectKind(StrEnum):
     DEPLOYMENT = "deployment"
     DEPENDABOT_ALERT = "dependabot-alert"
     CODE_SCANNING_ALERT = "code-scanning-alerts"
+    SECRET_SCANNING_ALERT = "secret-scanning-alerts"
     FILE = "file"
     COLLABORATOR = "collaborator"
 
