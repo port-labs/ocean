@@ -14,11 +14,7 @@ class DescribeClustersAction(Action):
         )
 
         clusters = response["clusters"]
-        results: List[Dict[str, Any]] = []
-        for cluster in clusters:
-            results.append(cluster)
-
-        return results
+        return clusters
 
 
 class EcsClusterActionsMap(ActionMap):
