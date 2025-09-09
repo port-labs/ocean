@@ -34,7 +34,7 @@ class EC2InstanceExporter(IResourceExporter):
             )
             response = await inspector.inspect([options.instance_id], options.include)
 
-            return response[0]
+            return response[0] if response else {}
 
     async def get_paginated_resources(
         self, options: PaginatedEC2InstanceRequest
@@ -64,5 +64,4 @@ class EC2InstanceExporter(IResourceExporter):
                             **reservation,
                         },
                     )
-                    logger.error(f"Action result: {action_result}")
                     yield action_result

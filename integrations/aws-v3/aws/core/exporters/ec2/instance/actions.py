@@ -47,5 +47,5 @@ class DescribeInstancesAction(Action):
 
 
 class EC2InstanceActionsMap(ActionMap):
-    defaults: List[Type[Action]] = [DescribeInstancesAction, GetInstanceStatusAction]
-    options: List[Type[Action]] = []
+    defaults: List[Type[Action]] = [DescribeInstancesAction]
+    options: List[Type[Action]] = [GetInstanceStatusAction]

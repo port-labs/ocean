@@ -36,7 +36,7 @@ class TestGetInstanceStatusAction:
 
         # Mock should return different responses for each individual call
         def mock_describe_instance_status(
-            InstanceIds: List[str], **kwargs
+            InstanceIds: List[str], **kwargs: Any
         ) -> Dict[str, Any]:
             if InstanceIds == ["i-1"]:
                 return {
@@ -100,7 +100,6 @@ class TestEC2InstanceActionsMap:
         # Defaults are DescribeInstancesAction and GetInstanceStatusAction
         names = [cls.__name__ for cls in merged]
         assert "DescribeInstancesAction" in names
-        assert "GetInstanceStatusAction" in names
 
     @pytest.mark.asyncio
     async def test_merge_with_options(self, mock_logger: MagicMock) -> None:
@@ -108,10 +107,12 @@ class TestEC2InstanceActionsMap:
             async def _execute(self, identifiers: List[Any]) -> List[Dict[str, Any]]:
                 return [{"dummy": True}]
 
-        EC2InstanceActionsMap.options = [DummyAction]
+        EC2InstanceActionsMap.options.append(DummyAction)
         try:
             action_map = EC2InstanceActionsMap()
-            merged = action_map.merge(["DummyAction"])  # Include our dummy
+            merged = action_map.merge(
+                ["GetInstanceStatusAction", "DummyAction"]
+            )  # Include our dummy
 
             names = [cls.__name__ for cls in merged]
             assert "DescribeInstancesAction" in names

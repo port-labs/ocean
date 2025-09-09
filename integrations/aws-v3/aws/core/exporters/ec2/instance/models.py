@@ -22,7 +22,6 @@ class EC2InstanceProperties(BaseModel):
     Events: Optional[List[Dict[str, Any]]] = None
     HibernationOptions: Optional[Dict[str, Any]] = None
     Hypervisor: Optional[str] = None
-    IamInstanceProfile: Optional[Dict[str, Any]] = None
     ImageId: Optional[str] = None
     InstanceArn: Optional[str] = None
     InstanceId: str = Field(default_factory=str)
@@ -64,6 +63,7 @@ class EC2InstanceProperties(BaseModel):
 
     class Config:
         extra = "allow"
+        allow_population_by_name = True
 
 
 class EC2Instance(ResourceModel[EC2InstanceProperties]):
