@@ -50,10 +50,14 @@ class ResyncStrategyFactory:
         Detect the appropriate strategy type based on the global configuration.
         """
 
-        if config.get("account_role_arn", None):
+        if config["account_role_arn"]:
+            logger.error(
+                "account_role_arn is deprecated. Use account_role_arns instead."
+            )
             return OrganizationsStrategy
 
-        if len(config.get("account_role_arns", [])) > 0:
+        account_role_arns = config["account_role_arns"]
+        if account_role_arns and len(account_role_arns) > 0:
             return MultiAccountStrategy
 
         return SingleAccountStrategy
@@ -62,7 +66,7 @@ class ResyncStrategyFactory:
     async def create(cls) -> StrategyType:
         if cls._cached_strategy is not None:
             return cls._cached_strategy
-        config = ocean.integration_config or {}
+        config = ocean.integration_config
 
         provider: CredentialProvider
         strategy_cls: type[StrategyType]

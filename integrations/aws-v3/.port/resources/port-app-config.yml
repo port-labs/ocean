@@ -1,3 +1,5 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
 resources:
   - kind: AWS::S3::Bucket
     selector:
@@ -29,20 +31,12 @@ resources:
             privateIpAddress: .Properties.PrivateIpAddress
             tags: .Properties.Tags
             arn: '"arn:aws:ec2:" + .__Region + ":" + .__AccountId + ":instance/" + .Properties.InstanceId'
-  - kind: AWS::Organizations::Account
+  - kind: AWS::Account::Info
     selector:
-        query: 'true'
+      query: 'true'
     port:
       entity:
         mappings:
           identifier: .Properties.Id
-          title: .Properties.AccountName
-          blueprint: '"awsAccount"'
-          properties:
-            arn: .Properties.Arn
-            accountId: .Properties.Id
-            email: .Properties.Email
-            status: .Properties.Status
-            joinedTimestamp: .Properties.JoinedTimestamp
-            parentIds: .Properties.ParentIds
-            tags: .Properties.Tags
+          title: .Properties.Name
+          blueprint: '"AccountInfo"'
