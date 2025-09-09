@@ -24,12 +24,17 @@ class SentryRateLimiter:
     For more information, see: https://docs.sentry.io/api/ratelimits/
     and https://develop.sentry.dev/sdk/expected-features/rate-limiting/
 
-    Usage:
-        limiter = SentryRateLimiter()
-        client = httpx.AsyncClient()
-        async with limiter:
-            response = await client.get("https://sentry.io/api/...")
-        finally:
+Usage:
+    limiter = SentryRateLimiter(max_concurrent=5, minimum_limit_remaining=1)
+    
+    async with limiter:
+        response = await client.request(method, url, **kwargs)
+        await limiter.update_from_headers(response.headers)
+
+Parameters:
+    max_concurrent: Maximum number of concurrent requests (default: 5)
+    minimum_limit_remaining: Proactively sleep if remaining requests fall
+        below this number (default: 1)
 
     """
 
