@@ -53,7 +53,6 @@ class ArgocdClient:
 
         return False
 
-
     async def _send_api_request(
         self,
         url: str,
@@ -90,9 +89,13 @@ class ArgocdClient:
             raise e
 
     async def get_resources(self, resource_kind: ObjectKind) -> list[dict[str, Any]]:
-        url = f"{self.api_url}/{resource_kind}s"
-        response_data = await self._send_api_request(url=url)
-        return response_data.get("items", [])
+        try:
+            url = f"{self.api_url}/{resource_kind}s"
+            response_data = await self._send_api_request(url=url)
+            return response_data.get("items", [])
+        except Exception as e:
+            logger.error(f"Failed to fetch resources of kind {resource_kind}: {e}")
+            return []
 
     async def get_clusters(self) -> list[dict[str, Any]]:
         url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s"
