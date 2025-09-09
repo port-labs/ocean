@@ -116,6 +116,7 @@ async def resync_ec2_instance(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.AccountInfo)
 async def resync_single_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     batch = []
+    BATCH_SIZE = 100
 
     async for account, _ in get_all_account_sessions():
         logger.info(f"Received single account for account {account['Id']}")
@@ -124,5 +125,8 @@ async def resync_single_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             "Properties": dict(account),
         }
         batch.append(account_model)
+        if len(batch) >= BATCH_SIZE:
+            yield batch
+            batch = []
     if batch:
         yield batch
