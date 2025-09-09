@@ -53,6 +53,7 @@ class EcsClusterExporter(IResourceExporter):
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,
+                            "Region": options.region,
                         },
                     )
                     yield action_result
