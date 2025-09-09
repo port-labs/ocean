@@ -10,7 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.0 (2025-08-25)
 
 
-- Added rate limiter with using `RetryConfig`
+### Bug Fixes
+
+- **Fixed critical rate limit loop issue** that was causing Sentry integration failures
+- **Replaced legacy rate limiting** with robust `SentryRateLimiter` using context manager pattern
+
+### Improvements
+
+- **Enhanced rate limiting** with proactive monitoring of `X-Sentry-Rate-Limit-Remaining` headers
+- **Better error handling** with proper exception hierarchy and HTTP status code management
+- **Centralized API requests** through new `send_api_request()` method
+- **Comprehensive test coverage** with 123 lines of tests for rate limiter scenarios
+- **Integration with Ocean's retry mechanism** using `RetryConfig` for 429 response handling```
 
 
 ## 0.1.198 (2025-08-28)
