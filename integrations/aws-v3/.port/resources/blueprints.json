@@ -54,23 +54,23 @@
           "description": "The status of the ECS cluster"
         },
         "runningTasksCount": {
-          "type": "integer",
+          "type": "number",
           "title": "Running Tasks Count",
           "description": "The number of running tasks in the cluster"
         },
         "activeServicesCount": {
-          "type": "integer",
+          "type": "number",
           "title": "Active Services Count",
           "description": "The number of active services in the cluster"
         },
         "pendingTasksCount": {
-          "type": "integer",
+          "type": "number",
           "title": "Pending Tasks Count",
           "description": "The number of pending tasks in the cluster"
         },
         "registeredContainerInstancesCount": {
-          "type": "integer",
-          "title": "Registered Container Instances Count",
+          "type": "number",
+          "title": "Reg Container Instances Count",
           "description": "The number of registered container instances in the cluster"
         },
         "capacityProviders": {
