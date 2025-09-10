@@ -8,7 +8,7 @@ import aiofiles
 import base64
 import uuid
 from port_ocean.core.integrations.mixins.utils import _AiterReader
-
+import os
 
 from gitlab.clients.auth_client import AuthClient
 
