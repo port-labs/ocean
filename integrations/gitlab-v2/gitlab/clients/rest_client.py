@@ -1,8 +1,7 @@
 import base64
 from typing import Any, AsyncIterator, Optional
 from urllib.parse import quote
-import codecs
-import io
+
 from loguru import logger
 
 from gitlab.clients.base_client import HTTPBaseClient
@@ -66,12 +65,9 @@ class RestClient(HTTPBaseClient):
         path = f"projects/{encoded_project_id}/repository/files/{encoded_file_path}"
         params = {"ref": ref}
 
-        response_path = await self.download_decoded_content(path, params=params)
-        if isinstance(response_path, str):
-            with open(response_path, "r") as f:
-                response = {"content": f.read()}
-        else:
-            response = response_path
+        response = await self.send_api_request("GET", path, params=params)
+        if response:
+            response["content"] = base64.b64decode(response["content"]).decode("utf-8")
         return response
 
     async def get_file_content(
@@ -86,18 +82,7 @@ class RestClient(HTTPBaseClient):
         if not response:
             return None
 
-        content_b64 = response.pop("content", None)
-        if content_b64 is not None:
-            raw = base64.b64decode(content_b64, validate=True)  # one large bytes object
-            dec = codecs.getincrementaldecoder("utf-8")()
-            buf = io.StringIO()
-            # chunk to reduce peak spikes during decoding
-            mv = memoryview(raw)
-            for i in range(0, len(mv), 1<<20):  # 1MB chunks
-                buf.write(dec.decode(mv[i:i+(1<<20)], final=False))
-            buf.write(dec.decode(b"", final=True))
-            response["content"] = buf.getvalue()
-        return response["content"]
+        return base64.b64decode(response["content"]).decode("utf-8")
 
     async def _make_paginated_request(
         self,
