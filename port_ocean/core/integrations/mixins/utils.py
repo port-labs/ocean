@@ -169,8 +169,13 @@ async def get_items_to_parse_bulks(raw_data: dict[Any, Any], data_path: str, ite
         logger.error(f"Failed to parse items for JQ expression {items_to_parse}, error: {e}")
         yield []
     finally:
-        os.remove(output_path)
-        os.remove(data_path)
+        try:
+            if os.path.exists(output_path):
+                os.remove(output_path)
+            if os.path.exists(data_path):
+                os.remove(data_path)
+        except OSError as e:
+            logger.warning(f"Failed to cleanup temporary files: {e}")
 
 def unsupported_kind_response(
     kind: str, available_resync_kinds: list[str]
