@@ -1,0 +1,76 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+
+resources:
+  - kind: repository
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"githubRepository"'
+          properties:
+            url: .html_url
+            defaultBranch: .default_branch
+            language: .language
+            readme: file://README.md
+
+  - kind: pull_request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.repo.name + "-pr-" + (.number|tostring))
+          title: .title
+          blueprint: '"githubPullRequest"'
+          properties:
+            number: .number
+            status: .state
+            creator: .user.login
+            assignees: '[.assignees[].login]'
+            reviewers: '[.requested_reviewers[].login]'
+            updatedAt: .updated_at
+            weight: "1"
+          relations:
+            repository: .repo.name
+
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.repo.name + "-issue-" + (.number|tostring))
+          title: .title
+          blueprint: '"githubIssue"'
+          properties:
+            number: .number
+            state: .state
+            creator: .user.login
+            labels: '[.labels[].name]'
+            weight: "1"
+          relations:
+            repository: .repo.name
+
+  - kind: file
+    selector:
+      query: 'true'
+      globs: ['**/*.yaml', '**/*.yml', '**/*.json', '**/*.md', '**/*.py']
+    port:
+      entity:
+        mappings:
+          identifier: (.repo.name + ":" + .path)
+          title: .path
+          blueprint: '"githubFile"'
+          properties:
+            path: .path
+            size: .size
+            encoding: .encoding
+            downloadUrl: '.download_url'
+            contentPreview: .content
+            weight: "1"
+          relations:
+            repository: .repo.name

@@ -1,0 +1,104 @@
+[
+  {
+    "identifier": "githubRepository",
+    "title": "GitHub Repository",
+    "icon": "Microservice",
+    "schema": {
+      "properties": {
+        "url": { "type": "string", "format": "url" },
+        "defaultBranch": { "type": "string" },
+        "language": { "type": "string" },
+        "readme": { "type": "string", "format": "markdown" }
+      },
+      "required": []
+    },
+    "relations": {},
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {
+      "pullRequestsCount": {
+        "title": "Pull Requests",
+        "icon": "GitPullRequest",
+        "type": "number",
+        "target": "githubPullRequest",
+        "func": "sum",
+        "property": "weight"
+      },
+      "issuesCount": {
+        "title": "Issues",
+        "icon": "GitIssue",
+        "type": "number",
+        "target": "githubIssue",
+        "func": "sum",
+        "property": "weight"
+      },
+      "filesCount": {
+        "title": "Files",
+        "icon": "File",
+        "type": "number",
+        "target": "githubFile",
+        "func": "sum",
+        "property": "weight"
+      }
+    }
+  },
+  {
+    "identifier": "githubPullRequest",
+    "title": "Pull Request",
+    "icon": "Github",
+    "schema": {
+      "properties": {
+        "number": { "type": "number" },
+        "status": { "type": "string" },
+        "creator": { "type": "string" },
+        "assignees": { "type": "array" },
+        "reviewers": { "type": "array" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "weight": { "type": "number" }
+      },
+      "required": []
+    },
+    "relations": { "repository": { "target": "githubRepository" } },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {}
+  },
+  {
+    "identifier": "githubIssue",
+    "title": "Issue",
+    "icon": "Issue",
+    "schema": {
+      "properties": {
+        "number": { "type": "number" },
+        "state": { "type": "string" },
+        "creator": { "type": "string" },
+        "labels": { "type": "array" },
+        "weight": { "type": "number" }
+      },
+      "required": []
+    },
+    "relations": { "repository": { "target": "githubRepository" } },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {}
+  },
+  {
+    "identifier": "githubFile",
+    "title": "Repository File",
+    "icon": "File",
+    "schema": {
+      "properties": {
+        "path": { "type": "string" },
+        "size": { "type": "number" },
+        "encoding": { "type": "string" },
+        "contentPreview": { "type": "string" },
+        "weight": { "type": "number" }
+      },
+      "required": []
+    },
+    "relations": { "repository": { "target": "githubRepository" } },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {}
+  }
+]
