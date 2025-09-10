@@ -13,6 +13,7 @@ from yaml.events import (
     ScalarEvent, AliasEvent
 )
 import uuid
+import os
 class ObjectKind(StrEnum):
     PROJECT = "project"
     GROUP = "group"
