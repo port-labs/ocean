@@ -25,7 +25,7 @@ resources:
             creationDate: .Properties.CreationDate
             tags: .Properties.Tags
           relations:
-            account: .__AccountId
+            account: .__ExtraContext.AccountId
   - kind: AWS::EC2::Instance
     selector:
       query: 'true'
@@ -43,7 +43,7 @@ resources:
             tags: .Properties.Tags
             arn: '"arn:aws:ec2:" + .__Region + ":" + .__AccountId + ":instance/" + .Properties.InstanceId'
           relations:
-            account: .__AccountId
+            account: .__ExtraContext.AccountId
   - kind: AWS::ECS::Cluster
     selector:
       query: 'true'
@@ -63,4 +63,4 @@ resources:
             capacityProviders: .Properties.CapacityProviders
             tags: .Properties.Tags
           relations:
-            account: .__AccountId
+            account: .__ExtraContext.AccountId

@@ -1,7 +1,7 @@
 [
   {
     "identifier": "awsAccount",
-    "title": "Account Info",
+    "title": "AWS Account",
     "icon": "AWS",
     "schema": {
       "properties": {},
