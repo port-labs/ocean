@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "checkmarx-one"
-version = "0.2.0-dev"
+version = "0.3.0-dev"
 description = "An integration for checkmarx project, scan and scan results types"
 authors = ["victor adebayo <victor.adebayo@port.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.28.3", extras = ["cli"]}
+port_ocean = {version = "^0.28.4", extras = ["cli"]}
 aiolimiter = "^1.2.1"
 
 [tool.poetry.group.dev.dependencies]

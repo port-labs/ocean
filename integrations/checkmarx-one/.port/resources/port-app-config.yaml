@@ -95,7 +95,7 @@ resources:
       entity:
         mappings:
           identifier: .id
-          title: .name
+          title: .id
           blueprint: '"checkmarxContainerSecurity"'
           properties:
             firstScanId: .firstScanId
