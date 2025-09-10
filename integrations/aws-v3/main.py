@@ -141,6 +141,7 @@ async def resync_ecs_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.info(f"Found {len(batch)} ECS clusters for account {account['Id']}")
             yield batch
 
+
 @ocean.on_resync(ObjectKind.AccountInfo)
 async def resync_single_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     batch = []

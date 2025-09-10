@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "AccountInfo",
+    "identifier": "awsAccount",
     "title": "Account Info",
     "icon": "AWS",
     "schema": {
@@ -47,7 +47,14 @@
     },
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   },
   {
     "identifier": "ec2Instance",
@@ -165,6 +172,13 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
