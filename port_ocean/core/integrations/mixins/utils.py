@@ -141,13 +141,13 @@ def is_resource_supported(
     return bool(resync_event_mapping[kind] or resync_event_mapping[None])
 
 async def get_items_to_parse_bulks(raw_data: dict[Any, Any], data_path: str, items_to_parse: str, items_to_parse_name: str, base_jq: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+    items_to_parse = items_to_parse.replace(base_jq, ".") if data_path else items_to_parse
     if not data_path:
         raw_data_serialized = json.dumps(raw_data)
         data_path = f"/tmp/ocean/input_{uuid.uuid4()}.json"
         with open(data_path, "w") as f:
             f.write(raw_data_serialized)
     output_path = f"/tmp/ocean/parsed_{uuid.uuid4()}.json"
-    items_to_parse = items_to_parse.replace(base_jq, ".") if data_path else items_to_parse
     delete_target = items_to_parse.split('|', 1)[0].strip() if not items_to_parse.startswith('map(') else '.'
     base_jq_object_string = await _build_base_jq_object_string(raw_data, base_jq, delete_target)
     jq_cmd = f"""/bin/jq '. as $all
