@@ -46,6 +46,7 @@ class FileObject(TypedDict):
     path: str
     name: str
     metadata: Dict[str, Any]
+    __base_jq: str
 
 
 def decode_content(content: str, encoding: str) -> str:
