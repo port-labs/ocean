@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import uuid
 from graphlib import CycleError
 import inspect
@@ -1002,7 +1003,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
-            multiprocessing.set_start_method("fork", True)
+            if sys.platform.startswith("win"):
+                # fork is not supported on windows
+                multiprocessing.set_start_method("spawn", True)
+            else:
+                multiprocessing.set_start_method("fork", True)
             try:
                 for index, resource in enumerate(app_config.resources):
                     logger.info(
