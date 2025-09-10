@@ -1,0 +1,159 @@
+resources:
+  - kind: team
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"cursorTeam"'
+          properties:
+            name: .name
+            id: .id
+            description: .description // ""
+            memberCount: .member_count // 0
+            planType: .plan_type // "free"
+            createdAt: .created_at
+            updatedAt: .updated_at
+
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .email
+          title: .name // .email
+          blueprint: '"cursorUser"'
+          properties:
+            email: .email
+            name: .name // ""
+            role: .role // "member"
+            status: .status // "active"
+            joinedAt: .joined_at
+            lastActiveAt: .last_active_at
+          relations:
+            team: .team_id
+
+  - kind: daily-usage
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .date + "-" + (.user_email // "team")
+          title: "Usage for " + .date + " (" + (.user_email // "Team") + ")"
+          blueprint: '"cursorDailyUsage"'
+          properties:
+            date: .date
+            totalActiveTime: .total_active_time_minutes // 0
+            aiInteractions: .ai_interactions // 0
+            linesOfCodeGenerated: .lines_generated // 0
+            suggestionsAccepted: .suggestions_accepted // 0
+            suggestionsRejected: .suggestions_rejected // 0
+            acceptanceRate: if .suggestions_accepted and (.suggestions_accepted + .suggestions_rejected) > 0 then (.suggestions_accepted / (.suggestions_accepted + .suggestions_rejected) * 100) else 0 end
+            filesModified: .files_modified // 0
+            userEmail: .user_email
+          relations:
+            team: .team_id
+            user: .user_email
+
+  - kind: ai-commit
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .commit_hash
+          title: .message // ("Commit " + .commit_hash)
+          blueprint: '"cursorAiCommit"'
+          properties:
+            commitHash: .commit_hash
+            repository: .repository
+            author: .author_name
+            authorEmail: .author_email
+            message: .message
+            timestamp: .timestamp
+            aiAssistanceLevel: .ai_assistance_level // "none"
+            aiGeneratedPercentage: .ai_generated_percentage // 0
+            linesAdded: .lines_added // 0
+            linesRemoved: .lines_removed // 0
+            filesChanged: .files_changed // 0
+            branch: .branch // "main"
+          relations:
+            team: .team_id
+            author: .author_email
+
+  - kind: ai-code-change
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .change_id // (.timestamp + "-" + .file_path)
+          title: .change_type + " in " + .file_name
+          blueprint: '"cursorAiCodeChange"'
+          properties:
+            changeId: .change_id // (.timestamp + "-" + .file_path)
+            timestamp: .timestamp
+            userEmail: .user_email
+            fileName: .file_name
+            filePath: .file_path
+            changeType: .change_type // "modification"
+            language: .language
+            linesAdded: .lines_added // 0
+            linesRemoved: .lines_removed // 0
+            aiGenerated: .ai_generated // false
+            aiAssisted: .ai_assisted // false
+            confidenceScore: .confidence_score // 0
+            promptUsed: .prompt_used
+          relations:
+            team: .team_id
+            user: .user_email
+
+  - kind: usage-event
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .event_id // (.timestamp + "-" + .user_email + "-" + .event_type)
+          title: .event_type + " by " + .user_email
+          blueprint: '"cursorUsageEvent"'
+          properties:
+            eventId: .event_id // (.timestamp + "-" + .user_email + "-" + .event_type)
+            timestamp: .timestamp
+            userEmail: .user_email
+            eventType: .event_type
+            duration: .duration_seconds // 0
+            metadata: .metadata // {}
+            sessionId: .session_id
+            fileName: .file_name
+            language: .language
+          relations:
+            team: .team_id
+            user: .user_email
+
+  - kind: user-daily-usage
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .__user_email + "-" + .date
+          title: "Usage for " + .date + " (" + .__user_email + ")"
+          blueprint: '"cursorDailyUsage"'
+          properties:
+            date: .date
+            totalActiveTime: .total_active_time_minutes // 0
+            aiInteractions: .ai_interactions // 0
+            linesOfCodeGenerated: .lines_generated // 0
+            suggestionsAccepted: .suggestions_accepted // 0
+            suggestionsRejected: .suggestions_rejected // 0
+            acceptanceRate: if .suggestions_accepted and (.suggestions_accepted + .suggestions_rejected) > 0 then (.suggestions_accepted / (.suggestions_accepted + .suggestions_rejected) * 100) else 0 end
+            filesModified: .files_modified // 0
+            userEmail: .__user_email
+          relations:
+            team: .team_id
+            user: .__user_email
