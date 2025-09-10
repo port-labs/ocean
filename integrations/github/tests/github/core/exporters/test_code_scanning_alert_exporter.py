@@ -243,9 +243,8 @@ class TestRestCodeScanningAlertExporter:
         )
 
         # Mock the underlying HTTP client to raise the error
-        with patch.object(
-            rest_client.authenticator.client,
-            "request",
+        with patch(
+            "github.clients.auth.abstract_authenticator.OceanAsyncClient.request",
             new_callable=AsyncMock,
             side_effect=mock_error,
         ):
@@ -271,9 +270,8 @@ class TestRestCodeScanningAlertExporter:
         )
 
         # Mock the underlying HTTP client to raise the error
-        with patch.object(
-            rest_client.authenticator.client,
-            "request",
+        with patch(
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
             new_callable=AsyncMock,
             side_effect=mock_error,
         ):

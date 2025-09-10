@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.1.2-beta (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
+## 1.1.1-beta (2025-09-09)
+
+### Features
+
+- Add support for AWS::ECS:Cluster Kind
+
+
+## 1.1.0-beta (2025-09-09)
+
+### Features
+
+- Add support for AWS::EC2:Instance Kind
+
 
 ## 1.0.4-beta (2025-09-07)
 
