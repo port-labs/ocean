@@ -48,6 +48,7 @@ def parse_file_content(
         )
         return {"content": content, "should_resolve_references": False}
     content_path = f"/tmp/ocean/temp_{uuid.uuid4()}.json"
+    os.makedirs("/tmp/ocean", exist_ok=True)
     should_resolve_references = False
     # 1) Try JSON
     if file_path.endswith(".json"):
