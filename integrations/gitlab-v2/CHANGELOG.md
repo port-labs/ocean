@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add memory optimizations for file kind
 
+## 0.2.28 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
 ## 0.2.27 (2025-09-08)
 
 
