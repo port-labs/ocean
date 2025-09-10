@@ -58,3 +58,15 @@ configurations:
     description: |
       Checkmarx One API Key.
       Generate in: Settings > Identity and Access Management > API Keys
+
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: |
+      Optional secret used to verify incoming webhook requests.
+      Ensures that only legitimate events from Checkmarx One are accepted.
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
