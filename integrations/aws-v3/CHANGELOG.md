@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Add support for AWS::Account:Info Kind
+- Relate Existing resources to Account
+
+
+## 1.1.1-beta (2025-09-09)
+
+
+### Features
+
+- Add support for AWS::ECS:Cluster Kind
 
 
 ## 1.1.0-beta (2025-09-09)

@@ -5,9 +5,10 @@ features:
   - type: exporter
     section: Cloud Providers
     resources:
+      - kind: AWS::Account::Info
       - kind: AWS::S3::Bucket
       - kind: AWS::EC2::Instance
-      - kind: AWS::Account::Info
+      - kind: AWS::ECS::Cluster
 configurations:
   - name: accountRoleArn
     required: false
