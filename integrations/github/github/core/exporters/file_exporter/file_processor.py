@@ -39,6 +39,7 @@ class FileProcessor:
             path=file_path,
             name=file_name,
             metadata=metadata or {},
+            __base_jq=".content",
         )
 
         if skip_parsing:
@@ -106,6 +107,7 @@ class FileProcessor:
                     path=file_path,
                     name=file_name,
                     metadata=file_metadata,
+                    __base_jq=".content",
                 )
 
         return result
@@ -136,6 +138,7 @@ class FileProcessor:
             path=file_path,
             name=file_name,
             metadata=file_info,
+            __base_jq=".content",
         )
 
     async def _process_list_content(
@@ -171,6 +174,7 @@ class FileProcessor:
             path=file_path,
             name=file_name,
             metadata=file_info,
+            __base_jq=".content",
         )
 
     async def _process_file_value(
