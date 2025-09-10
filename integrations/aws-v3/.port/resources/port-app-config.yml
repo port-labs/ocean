@@ -54,13 +54,13 @@ resources:
           title: .Properties.ClusterName
           blueprint: '"ecsCluster"'
           properties:
-            title: .Properties.ClusterName
             status: .Properties.Status
             runningTasksCount: .Properties.RunningTasksCount
             activeServicesCount: .Properties.ActiveServicesCount
             pendingTasksCount: .Properties.PendingTasksCount
             registeredContainerInstancesCount: .Properties.RegisteredContainerInstancesCount
             capacityProviders: .Properties.CapacityProviders
+            clusterArn: .Properties.ClusterArn
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId

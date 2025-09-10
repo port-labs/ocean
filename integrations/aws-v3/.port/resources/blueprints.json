@@ -115,11 +115,6 @@
     "icon": "AWS",
     "schema": {
       "properties": {
-        "title": {
-          "type": "string",
-          "title": "Cluster Name",
-          "description": "The name of the ECS cluster"
-        },
         "status": {
           "type": "string",
           "title": "Status",
@@ -153,7 +148,7 @@
             "type": "string"
           }
         },
-        "arn": {
+        "clusterArn": {
           "type": "string",
           "title": "ARN",
           "description": "The Amazon Resource Name (ARN) of the cluster"
