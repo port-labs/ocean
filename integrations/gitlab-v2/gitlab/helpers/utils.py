@@ -431,11 +431,11 @@ def iter_yaml_docs_as_single_json(yaml_text: str):
     buf = []
     def flush_doc():
         if buf:
-            s = "".join(buf); buf.clear()
+            s = "".join(buf)
+            buf.clear()
             return s
         return None
 
-    frame_stack = []
     doc_started = False
 
     def writer(s): buf.append(s)
@@ -454,7 +454,8 @@ def iter_yaml_docs_as_single_json(yaml_text: str):
         elif isinstance(ev, DocumentEndEvent):
             pending.append(ev)
             # feed the buffered doc events
-            local.feed(list(pending)); pending.clear()
+            local.feed(list(pending))
+            pending.clear()
             s = flush_doc()
             if s is not None:
                 yield s
