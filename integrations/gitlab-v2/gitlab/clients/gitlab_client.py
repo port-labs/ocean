@@ -319,7 +319,7 @@ class GitLabClient:
     ) -> dict[str, Any]:
 
         repo = await self.get_project(file["project_id"])
-        return {"file": file, "__type": "path" if file["content"].get("path") is not None else "content", "repo": repo}
+        return {"file": file, "__type": "path" if file["content"].get("path") is not None else "content", "repo": repo, "__base_jq": ".file.content"}
 
     async def _enrich_files_with_repos(
         self,
@@ -402,7 +402,6 @@ class GitLabClient:
                     parsed_content, project_id, ref
                 )
             file_data["content"] = parsed_content
-            file_data["__base_jq"] = ".file.content"
 
         if isinstance(file_data["content"], str):
             file_data["content"] = {"content": file_data["content"]}
