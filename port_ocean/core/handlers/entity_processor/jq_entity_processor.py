@@ -75,7 +75,7 @@ class MappedEntity:
 
     entity: dict[str, Any] = field(default_factory=dict)
     did_entity_pass_selector: bool = False
-    raw_data: Optional[dict[str, Any]] = None
+    raw_data: Optional[dict[str, Any] | tuple[dict[str, Any], str]] = None
     misconfigurations: dict[str, str] = field(default_factory=dict)
 
 
@@ -234,7 +234,7 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     async def _get_mapped_entity(
         self,
-        data: dict[str, Any] | tuple,
+        data: dict[str, Any] | tuple[dict[str, Any], str],
         raw_entity_mappings: dict[str, Any],
         items_to_parse_key: str | None,
         selector_query: str,
@@ -262,32 +262,36 @@ class JQEntityProcessor(BaseEntityProcessor):
         )
 
     async def _map_entity(
-        self, data, raw_entity_mappings, items_to_parse_key: str | None
-    ):
+        self,
+        data: dict[str, Any] | tuple[dict[str, Any], str],
+        raw_entity_mappings: dict[str, Any],
+        items_to_parse_key: str | None,
+    ) -> tuple[dict[str, str], dict[str, Any]]:
         if not items_to_parse_key:
             misconfigurations: dict[str, str] = {}
+            data_to_search = data if isinstance(data, dict) else data[0]
             mapped_entity = await self._search_as_object(
-                data, raw_entity_mappings, misconfigurations
+                data_to_search, raw_entity_mappings, misconfigurations
             )
             return misconfigurations, mapped_entity
 
-        modified_data = data
-        if not isinstance(data, tuple):
-            modified_data = tuple(
-                [
-                    {items_to_parse_key: data[items_to_parse_key]},
-                    data.pop(items_to_parse_key),
-                ]
+        modified_data: tuple[dict[str, Any], str | dict[str, Any]] = (
+            data
+            if isinstance(data, tuple)
+            else (
+                {items_to_parse_key: data[items_to_parse_key]},
+                data,
             )
+        )
 
-        misconfigurations_item = {}
-        misconfigurations_all = {}
+        misconfigurations_item: dict[str, str] = {}
+        misconfigurations_all: dict[str, str] = {}
         mapped_entity_item = await self._search_as_object(
             modified_data[0], raw_entity_mappings["item"], misconfigurations_item
         )
         if misconfigurations_item:
             filtered_item_mappings = self._filter_mappings_by_keys(
-                raw_entity_mappings["item"], misconfigurations_item.keys()
+                raw_entity_mappings["item"], list(misconfigurations_item.keys())
             )
             raw_entity_mappings["all"] = self._deep_merge(
                 raw_entity_mappings["all"], filtered_item_mappings
@@ -304,7 +308,7 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     async def _should_map_entity(
         self,
-        data: dict[str, Any] | tuple,
+        data: dict[str, Any] | tuple[dict[str, Any], str],
         selector_query: str,
         items_to_parse_key: str | None,
     ) -> bool:
@@ -331,7 +335,9 @@ class JQEntityProcessor(BaseEntityProcessor):
         selector_query: str,
         parse_all: bool = False,
     ) -> tuple[list[MappedEntity], list[Exception]]:
-        raw_data = [data.copy()]
+        raw_data: list[dict[str, Any]] | list[tuple[dict[str, Any], str]] = [
+            data.copy()
+        ]
         items_to_parse_key = None
         if items_to_parse:
             items_to_parse_key = items_to_parse_name
@@ -348,7 +354,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                     return [], []
                 raw_all_payload_stringified = json.dumps(data)
                 raw_data = [
-                    tuple([{items_to_parse_name: item}, raw_all_payload_stringified])
+                    ({items_to_parse_name: item}, raw_all_payload_stringified)
                     for item in items
                 ]
             single_item_mappings, all_items_mappings, empty_items_mappings = (
@@ -384,9 +390,9 @@ class JQEntityProcessor(BaseEntityProcessor):
         self, raw_entity_mappings: dict[str, Any], items_to_parse_name: str
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
         """Filter entity mappings to only include values that start with f'.{items_to_parse_name}'"""
-        single_item_mappings = {}
-        all_items_mappings = {}
-        empty_items_mappings = {}
+        single_item_mappings: dict[str, Any] = {}
+        all_items_mappings: dict[str, Any] = {}
+        empty_items_mappings: dict[str, Any] = {}
         pattern = f".{items_to_parse_name}"
         for key, value in raw_entity_mappings.items():
             if isinstance(value, str):
@@ -413,18 +419,18 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     def group_complex_mapping_value(
         self,
-        pattern,
-        single_item_mappings,
-        all_items_mappings,
-        empty_items_mappings,
-        key,
-        value,
-    ):
+        pattern: str,
+        single_item_mappings: dict[str, Any],
+        all_items_mappings: dict[str, Any],
+        empty_items_mappings: dict[str, Any],
+        key: str,
+        value: dict[str, Any],
+    ) -> None:
+        single_item_dict: dict[str, Any] = {}
+        all_item_dict: dict[str, Any] = {}
+        empty_item_dict: dict[str, Any] = {}
         if key in ["properties", "relations"]:
             # For properties and relations, filter the dictionary values
-            single_item_dict = {}
-            all_item_dict = {}
-            empty_item_dict = {}
             for dict_key, dict_value in value.items():
                 if isinstance(dict_value, str):
                     self.group_string_mapping_value(
@@ -449,12 +455,17 @@ class JQEntityProcessor(BaseEntityProcessor):
         else:
             # For identifier/team IngestSearchQuery objects
             self.group_search_query_mapping_value(
-                pattern, single_item_dict, all_item_dict, dict_key, dict_value
+                pattern, single_item_dict, all_item_dict, key, value
             )
 
     def group_search_query_mapping_value(
-        self, pattern, single_item_dict, all_item_dict, dict_key, dict_value
-    ):
+        self,
+        pattern: str,
+        single_item_dict: dict[str, Any],
+        all_item_dict: dict[str, Any],
+        dict_key: str,
+        dict_value: dict[str, Any],
+    ) -> None:
         if self._should_keep_ingest_search_query(dict_value, pattern):
             single_item_dict[dict_key] = dict_value
         else:
@@ -462,13 +473,13 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     def group_string_mapping_value(
         self,
-        pattern,
-        single_item_mappings,
-        all_items_mappings,
-        empty_items_mappings,
-        key,
-        value,
-    ):
+        pattern: str,
+        single_item_mappings: dict[str, Any],
+        all_items_mappings: dict[str, Any],
+        empty_items_mappings: dict[str, Any],
+        key: str,
+        value: str,
+    ) -> None:
         if pattern in value:
             single_item_mappings[key] = value
         elif "." not in key:
@@ -500,7 +511,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         return False
 
     def _filter_mappings_by_keys(
-        self, mappings: dict[str, Any], target_keys: set[str]
+        self, mappings: dict[str, Any], target_keys: list[str]
     ) -> dict[str, Any]:
         """
         Filter mappings to preserve structure with only the specified keys present.
@@ -509,7 +520,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         if not target_keys:
             return {}
 
-        filtered_mappings = {}
+        filtered_mappings: dict[str, Any] = {}
 
         for key, value in mappings.items():
             filtered_value = self._process_mapping_value(key, value, target_keys)
@@ -521,7 +532,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         return filtered_mappings
 
     def _process_mapping_value(
-        self, key: str, value: Any, target_keys: set[str]
+        self, key: str, value: Any, target_keys: list[str]
     ) -> Any:
         """Process a single mapping value, handling different types recursively."""
         if isinstance(value, dict):
@@ -616,7 +627,10 @@ class JQEntityProcessor(BaseEntityProcessor):
                 and result.raw_data is not None
             ):
                 examples_to_send.add_example(
-                    result.did_entity_pass_selector, result.raw_data
+                    result.did_entity_pass_selector,
+                    self._get_raw_data_for_example(
+                        result.raw_data, mapping.port.items_to_parse_name
+                    ),
                 )
 
             if result.entity.get("identifier") and result.entity.get("blueprint"):
@@ -642,3 +656,13 @@ class JQEntityProcessor(BaseEntityProcessor):
             errors,
             misconfigured_entity_keys=entity_misconfigurations,
         )
+
+    def _get_raw_data_for_example(
+        self,
+        data: dict[str, Any] | tuple[dict[str, Any], str],
+        items_to_parse_name: str,
+    ) -> dict[str, Any]:
+        if isinstance(data, tuple):
+            raw_data = json.loads(data[1])
+            return {items_to_parse_name: data[0], **raw_data}
+        return data

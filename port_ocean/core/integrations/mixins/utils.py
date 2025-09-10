@@ -114,7 +114,7 @@ async def resync_generator_wrapper(
                     else:
                         if items_to_parse:
                             for data in result:
-                                bulks = get_items_to_parse_bulks(data, data.get("file", {}).get("content", {}).get("path", None), items_to_parse, items_to_parse_name, data.get("file", {}).get("__base_jq", ".file.content"))
+                                bulks = get_items_to_parse_bulks(data, data.get("file", {}).get("content", {}).get("path", None), items_to_parse, items_to_parse_name, data.get("__base_jq", ".file.content"))
                                 async for bulk in bulks:
                                     yield bulk
                         else:
@@ -147,7 +147,7 @@ async def get_items_to_parse_bulks(raw_data: dict[Any, Any], data_path: str, ite
         with open(data_path, "w") as f:
             f.write(raw_data_serialized)
     output_path = f"/tmp/ocean/parsed_{uuid.uuid4()}.json"
-    items_to_parse = items_to_parse.replace(base_jq, ".")
+    items_to_parse = items_to_parse.replace(base_jq, ".") if data_path else items_to_parse
     delete_target = items_to_parse.split('|', 1)[0].strip() if not items_to_parse.startswith('map(') else '.'
     base_jq_object_string = await _build_base_jq_object_string(raw_data, base_jq, delete_target)
     jq_cmd = f"""/bin/jq '. as $all

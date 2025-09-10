@@ -2,7 +2,7 @@ import os
 from typing import Any, AsyncGenerator
 import uuid
 
-import aiofiles
+import aiofiles  # type: ignore[import-untyped]
 import httpx
 import ijson  # type: ignore[import-untyped]
 from cryptography.fernet import Fernet
