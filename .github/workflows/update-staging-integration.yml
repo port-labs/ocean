@@ -1,0 +1,127 @@
+name: Update staging integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to checkout (default: main)'
+        required: false
+        default: 'main'
+        type: string
+      integration_name:
+        description: 'Integration name to update in staging'
+        required: true
+        type: string
+
+jobs:
+  update-staging-integration:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+      contents: read
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.branch || 'main' }}
+
+      - name: Configure AWS Credentials 🔒
+        id: aws-credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update staging integration
+        run: |
+          # Input parameters
+          integration_name="${{ inputs.integration_name }}"
+          branch="${{ inputs.branch || 'main' }}"
+
+          # Temporary file
+          temp_file="temp.yaml"
+
+          # Output file name
+          index_file="index.json"
+
+          # AWS S3 bucket details - staging bucket
+          aws_s3_bucket="ocean-registry-dev-01"
+
+          echo "Updating integration '$integration_name' from branch '$branch' in staging bucket '$aws_s3_bucket'"
+
+          # Validate integration exists
+          integration_spec_path="integrations/$integration_name/.port/spec.yaml"
+          if [ ! -f "$integration_spec_path" ]; then
+            echo "Error: Integration spec file not found at $integration_spec_path"
+            exit 1
+          fi
+
+          # Extract the type and version from pyproject.toml
+          pyproject_path="integrations/$integration_name/pyproject.toml"
+          if [ ! -f "$pyproject_path" ]; then
+            echo "Error: pyproject.toml not found at $pyproject_path"
+            exit 1
+          fi
+
+          type=$(grep -E '^name = ".*"' "$pyproject_path" | cut -d'"' -f2)
+          version=$(grep -E '^version = ".*"' "$pyproject_path" | cut -d'"' -f2)
+
+          if [ -z "$type" ] || [ -z "$version" ]; then
+            echo "Error: Could not extract type or version from pyproject.toml"
+            exit 1
+          fi
+
+          echo "Integration details: type=$type, version=$version"
+
+          # Fetch existing index file or create empty one if not exists
+          if aws s3 ls "s3://$aws_s3_bucket/$index_file" >/dev/null 2>&1; then
+              aws s3 cp "s3://$aws_s3_bucket/$index_file" $index_file
+              echo "Successfully fetched existing index file from staging bucket."
+          else
+              echo "Index file does not exist in the staging bucket, creating new one..."
+              echo "[]" >"$index_file"
+          fi
+
+          # Prepare integration spec file
+          integration_spec="$integration_name-$version.json"
+          integration_dest="$integration_name/$integration_spec"
+          integration_legacy_dest="$integration_name.json"
+
+          # Convert YAML to JSON
+          yq -o json "$integration_spec_path" >"$temp_file"
+
+          # Add version and type attributes
+          jq --arg type "$type" --arg version "$version" '. + {type: $type, version: $version}' "$temp_file" >"$integration_spec"
+
+          # Upload integration's version manifest to staging s3
+          aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_dest"
+          aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_legacy_dest"
+          echo "Successfully uploaded $integration_spec to staging bucket."
+
+          # Update global index file
+          # Get the latest version of the current integration from index
+          latest_version=$(jq --arg type "$type" -r '.[] | select(.type == $type) | .version' "$index_file")
+
+          # Add or update integration's spec in global index file
+          if [[ -z "$latest_version" ]]; then
+              # Add new integration spec if it doesn't exist
+              echo "Adding new integration '$type' to index"
+              jq --argjson new_spec "[$(cat "$integration_spec")]" '. += $new_spec' "$index_file" >"$temp_file"
+              mv "$temp_file" "$index_file"
+          else
+              # Update existing integration spec
+              echo "Updating existing integration '$type' from version '$latest_version' to '$version'"
+              jq --argjson updated_spec "$(cat "$integration_spec")" --arg type "$type" \
+                  'map(if .type == $type then $updated_spec else . end)' "$index_file" >"$temp_file"
+              mv "$temp_file" "$index_file"
+          fi
+
+          # Upload updated global index file to staging s3
+          aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
+          echo "Successfully uploaded updated $index_file to staging bucket."
+
+          # Cleanup temporary files
+          rm -f "$temp_file" "$integration_spec" "$index_file"
+
+          echo "Staging update completed successfully for integration '$integration_name' (type: $type, version: $version)"
