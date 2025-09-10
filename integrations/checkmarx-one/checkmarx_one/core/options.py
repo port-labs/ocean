@@ -106,12 +106,3 @@ class ListSastOptions(TypedDict, total=False):
         ]
     ]
     visible_columns: NotRequired[Optional[List[str]]]
-
-
-class SingleSastOptions(TypedDict):
-    """Options for fetching a single SAST scan result via filters."""
-
-    scan_id: Required[str]
-    result_id: Required[str]
-    include_nodes: NotRequired[Optional[bool]]
-    visible_columns: NotRequired[Optional[List[str]]]

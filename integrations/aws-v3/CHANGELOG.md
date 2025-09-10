@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.2.0-beta (2025-09-09)
+
+
+### Features
+
+- Add support for AWS::Account:Info Kind
+
+### Improvements
+
+- Relate Existing resources to Account
+
+
 ## 1.1.2-beta (2025-09-10)
 
 
@@ -17,12 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 1.1.1-beta (2025-09-09)
 
+
 ### Features
 
 - Add support for AWS::ECS:Cluster Kind
 
 
 ## 1.1.0-beta (2025-09-09)
+
 
 ### Features
 
@@ -61,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 1.0.1-beta (2025-09-01)
 
+
 ### Improvements
 
 - Renamed integration to AWS Hosted by Port
@@ -68,6 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 1.0.0-beta (2025-08-31)
+
 
 ### Features
 
