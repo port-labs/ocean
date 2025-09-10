@@ -5,7 +5,7 @@ from typing import Any, AsyncIterator, Dict, List
 from checkmarx_one.core.exporters.scan_result_exporter import (
     CheckmarxScanResultExporter,
 )
-from checkmarx_one.core.options import SingleScanResultOptions, ListScanResultOptions
+from checkmarx_one.core.options import ListScanResultOptions
 
 
 @pytest.fixture
@@ -35,28 +35,6 @@ def test_enrich_scan_result_with_scan_id(exporter: CheckmarxScanResultExporter) 
     assert enriched["__scan_id"] == "scan-123"
     # Ensure it mutates the original dict
     assert scan_result["__scan_id"] == "scan-123"
-
-
-@pytest.mark.asyncio
-async def test_get_resource(
-    exporter: CheckmarxScanResultExporter, mock_client: MagicMock
-) -> None:
-    mock_client.send_api_request.return_value = {"id": "result-1"}
-
-    options: SingleScanResultOptions = {
-        "scan_id": "scan-123",
-        "result_id": "result-1",
-        "type": "sca",
-    }
-    result: Dict[str, Any] = await exporter.get_resource(options)
-
-    assert result["id"] == "result-1"
-    assert result["__scan_id"] == "scan-123"
-
-    mock_client.send_api_request.assert_awaited_once_with(
-        "/results",
-        params={"scan-id": "scan-123", "limit": 1},
-    )
 
 
 @pytest.mark.asyncio

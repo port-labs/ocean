@@ -7,12 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.0 (2025-09-09)
+
+## 0.2.0 (2025-09-10)
 
 
-### Fix
+### Bug Fix
 
 - Enhanced cluster unreachability handling in get_clusters() method to gracefully handle connection failures and return empty list instead of raising exceptions
+
+
+## 0.1.217 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
 
 
 ## 0.1.216 (2025-09-08)
