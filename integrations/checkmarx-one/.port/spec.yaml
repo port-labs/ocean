@@ -66,3 +66,7 @@ configurations:
     description: |
       Optional secret used to verify incoming webhook requests.
       Ensures that only legitimate events from Checkmarx One are accepted.
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
