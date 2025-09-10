@@ -72,6 +72,7 @@ class HTTPBaseClient:
                     reader = _AiterReader(r.iter_bytes())
                     # ijson can parse from an async byte iterator via ijson.asyncio
                     parser = ijson.items(reader, content_key)
+                    os.makedirs("/tmp/ocean", exist_ok=True)
                     out_path = f"/tmp/ocean/bulk_{uuid.uuid4()}.json"
                     async with aiofiles.open(out_path, "wb") as f:
                         for content_b64 in parser:
