@@ -8,33 +8,33 @@ from loguru import logger
 
 class SentryRateLimiter:
     """
-    Orchestrates Sentry API requests to handle rate limits gracefully.
+        Orchestrates Sentry API requests to handle rate limits gracefully.
 
-    This class provides a context manager to handle rate-limiting. It inspects
-    Sentry's rate-limiting headers on each response and introduces delays to
-    prevent hitting the rate limit. It handles both proactive (based on
-    X-Sentry-Rate-Limit-Remaining) and reactive (based on 429 Too Many Requests
-    with a Retry-After header) rate limiting.
+        This class provides a context manager to handle rate-limiting. It inspects
+        Sentry's rate-limiting headers on each response and introduces delays to
+        prevent hitting the rate limit. It handles both proactive (based on
+        X-Sentry-Rate-Limit-Remaining) and reactive (based on 429 Too Many Requests
+        with a Retry-After header) rate limiting.
 
-    Sentry Rate Limit Headers:
-    - X-Sentry-Rate-Limit-Limit: The total number of requests allowed in the window.
-    - X-Sentry-Rate-Limit-Remaining: The number of requests remaining in the window.
-    - X-Sentry-Rate-Limit-Reset: The UTC epoch timestamp when the window resets.
+        Sentry Rate Limit Headers:
+        - X-Sentry-Rate-Limit-Limit: The total number of requests allowed in the window.
+        - X-Sentry-Rate-Limit-Remaining: The number of requests remaining in the window.
+        - X-Sentry-Rate-Limit-Reset: The UTC epoch timestamp when the window resets.
 
-    For more information, see: https://docs.sentry.io/api/ratelimits/
-    and https://develop.sentry.dev/sdk/expected-features/rate-limiting/
+        For more information, see: https://docs.sentry.io/api/ratelimits/
+        and https://develop.sentry.dev/sdk/expected-features/rate-limiting/
 
-Usage:
-    limiter = SentryRateLimiter(max_concurrent=5, minimum_limit_remaining=1)
-    
-    async with limiter:
-        response = await client.request(method, url, **kwargs)
-        await limiter.update_from_headers(response.headers)
+    Usage:
+        limiter = SentryRateLimiter(max_concurrent=5, minimum_limit_remaining=1)
 
-Parameters:
-    max_concurrent: Maximum number of concurrent requests (default: 5)
-    minimum_limit_remaining: Proactively sleep if remaining requests fall
-        below this number (default: 1)
+        async with limiter:
+            response = await client.request(method, url, **kwargs)
+            await limiter.update_from_headers(response.headers)
+
+    Parameters:
+        max_concurrent: Maximum number of concurrent requests (default: 5)
+        minimum_limit_remaining: Proactively sleep if remaining requests fall
+            below this number (default: 1)
 
     """
 
