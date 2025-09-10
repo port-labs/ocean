@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.1-dev (2025-09-09)
+
+
+### Improvements
+
+- Refactor Integration To Encourage Explicit Kind and Blueprint Configuration For SAST Kind Over Dynamic Configuration
+
+
 ## 0.2.0-dev (2025-09-08)
 
 

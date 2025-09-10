@@ -618,5 +618,76 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "checkmarxDast",
+    "description": "Represents a Checkmarx One Dynamic Application Security Testing (DAST) finding",
+    "title": "Checkmarx DAST",
+    "icon": "Checkmarx",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the DAST finding (e.g., New, Recurrent, Fixed)"
+        },
+        "name": {
+          "type": "string",
+          "title": "Finding Name",
+          "description": "The name or title of the DAST finding"
+        },
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "description": "The full URL endpoint where the DAST finding was detected"
+        },
+        "path": {
+          "type": "string",
+          "title": "Path",
+          "description": "The path component of the URL where the finding was detected"
+        },
+        "method": {
+          "type": "string",
+          "title": "HTTP Method",
+          "description": "The HTTP method associated with the finding (e.g., GET, POST, PUT)"
+        },
+        "scanType": {
+          "type": "string",
+          "title": "Scan Type",
+          "description": "The type of scan that detected this finding (e.g., DAST)"
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL",
+            "INFO"
+          ],
+          "enumColors": {
+            "LOW": "lightGray",
+            "MEDIUM": "lightGray",
+            "HIGH": "lightGray",
+            "CRITICAL": "lightGray",
+            "INFO": "lightGray"
+          },
+          "description": "The severity level of the DAST finding"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "scan": {
+        "title": "Scan",
+        "target": "checkmarxScan",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

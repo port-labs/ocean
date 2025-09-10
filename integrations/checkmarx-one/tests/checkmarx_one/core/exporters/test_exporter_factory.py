@@ -13,11 +13,13 @@ with patch.dict(
         create_project_exporter,
         create_scan_exporter,
         create_api_sec_exporter,
+        create_dast_exporter,
     )
     from checkmarx_one.clients.client import CheckmarxOneClient
     from checkmarx_one.core.exporters.project_exporter import CheckmarxProjectExporter
     from checkmarx_one.core.exporters.scan_exporter import CheckmarxScanExporter
     from checkmarx_one.core.exporters.api_sec_exporter import CheckmarxApiSecExporter
+    from checkmarx_one.core.exporters.dast_exporter import CheckmarxDastExporter
 
 
 class TestExporterFactory:
@@ -56,5 +58,17 @@ class TestExporterFactory:
         result = create_api_sec_exporter()
 
         assert isinstance(result, CheckmarxApiSecExporter)
+        assert result.client == mock_client
+        mock_get_client.assert_called_once()
+
+    @patch("checkmarx_one.exporter_factory.get_checkmarx_client")
+    def test_create_dast_exporter(self, mock_get_client: MagicMock) -> None:
+        """Test creating a DAST exporter."""
+        mock_client = MagicMock(spec=CheckmarxOneClient)
+        mock_get_client.return_value = mock_client
+
+        result = create_dast_exporter()
+
+        assert isinstance(result, CheckmarxDastExporter)
         assert result.client == mock_client
         mock_get_client.assert_called_once()

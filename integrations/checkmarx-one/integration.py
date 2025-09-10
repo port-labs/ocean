@@ -198,6 +198,25 @@ class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
     selector: CheckmarxOneResultSelector
 
 
+class CheckmarxOneDastSelector(Selector):
+    scan_filter: CheckmarxOneScanModel = Field(
+        default=CheckmarxOneScanModel(),
+        description="Filter DAST results by scan",
+    )
+    severity: Optional[str] = Field(default=None, description="Filter by severity")
+    name: Optional[str] = Field(default=None, description="Filter by finding name")
+    method: Optional[str] = Field(default=None, description="Filter by HTTP method")
+    scan_type: Optional[str] = Field(default=None, description="Filter by scan type")
+    status: Optional[str] = Field(default=None, description="Filter by status")
+    state: Optional[str] = Field(default=None, description="Filter by state")
+    url: Optional[str] = Field(default=None, description="Filter by URL")
+
+
+class CheckmarxOneDastResourcesConfig(ResourceConfig):
+    kind: Literal["dast"]
+    selector: CheckmarxOneDastSelector
+
+
 class CheckmarxOnePortAppConfig(PortAppConfig):
     resources: List[
         CheckmarxOneProjectResourcesConfig
@@ -206,6 +225,7 @@ class CheckmarxOnePortAppConfig(PortAppConfig):
         | CheckmarxOneSastResourcesConfig
         | CheckmarxOneKicsResourcesConfig
         | CheckmarxOneScanResultResourcesConfig
+        | CheckmarxOneDastResourcesConfig
     ] = Field(
         default_factory=list
     )  # type: ignore

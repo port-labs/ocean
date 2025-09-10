@@ -10,6 +10,7 @@ class ObjectKind(StrEnum):
     API_SEC = "api-security"
     SAST = "sast"
     KICS = "kics"
+    DAST = "dast"
 
 
 class ScanResultObjectKind(StrEnum):

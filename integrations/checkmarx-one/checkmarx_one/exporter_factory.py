@@ -7,6 +7,7 @@ from checkmarx_one.core.exporters.kics_exporter import CheckmarxKicsExporter
 from checkmarx_one.core.exporters.scan_result_exporter import (
     CheckmarxScanResultExporter,
 )
+from checkmarx_one.core.exporters.dast_exporter import CheckmarxDastExporter
 
 
 def create_project_exporter() -> CheckmarxProjectExporter:
@@ -43,3 +44,9 @@ def create_scan_result_exporter() -> CheckmarxScanResultExporter:
     """Create a scan result exporter with initialized client."""
     client = get_checkmarx_client()
     return CheckmarxScanResultExporter(client)
+
+
+def create_dast_exporter() -> CheckmarxDastExporter:
+    """Create a DAST exporter with initialized client."""
+    client = get_checkmarx_client()
+    return CheckmarxDastExporter(client)

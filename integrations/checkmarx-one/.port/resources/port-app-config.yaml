@@ -157,3 +157,22 @@ resources:
             cweId: (.cweID // empty)
           relations:
             scan: .scanID
+  - kind: dast
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"checkmarxDast"'
+          properties:
+            status: (.status // empty)
+            name: .name
+            url: (.url // empty)
+            path: (.path // empty)
+            method: (.method // empty)
+            scanType: (.scan_type // empty)
+            severity: (.severity // empty)
+          relations:
+            scan: .__scan_id
