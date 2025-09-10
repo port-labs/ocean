@@ -139,6 +139,7 @@ class TestFileValidation:
             metadata={"name": "config.yaml", "path": "config.yaml"},
             branch="main",
             name="config.yaml",
+            __base_jq=".content",
         )
 
         with (
@@ -182,6 +183,7 @@ class TestFileValidation:
             metadata={"name": "config.yaml", "path": "config.yaml"},
             branch="main",
             name="config.yaml",
+            __base_jq=".content",
         )
 
         with (
@@ -225,6 +227,7 @@ class TestFileValidation:
             metadata={"name": "config.yaml", "path": "config.yaml"},
             branch="main",
             name="config.yaml",
+            __base_jq=".content",
         )
 
         with (
