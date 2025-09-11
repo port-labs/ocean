@@ -23,14 +23,20 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kind.FOLDER]
 
-    async def should_process_event(self, event: WebhookEvent) -> bool:
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        if not await super().validate_payload(payload):
+            return False
+
         try:
-            event_type = event.payload["eventType"]
-            repository = event.payload["resource"].get("repository")
-            ref_updates = event.payload["resource"].get("refUpdates")
-            return repository and ref_updates and bool(PushEvents(event_type))
+            repository = payload["resource"].get("repository", {})
+            ref_updates = payload["resource"].get("refUpdates")
+            return repository.get("id") and repository.get("name") and ref_updates
         except ValueError:
             return False
+
+    async def should_process_event(self, event: WebhookEvent) -> bool:
+        event_type = event.payload["eventType"]
+        return bool(PushEvents(event_type))
 
     def _matches_folder_pattern(
         self, folder_path: str, folder_patterns: List[str]

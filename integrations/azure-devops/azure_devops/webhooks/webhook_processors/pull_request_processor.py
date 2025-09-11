@@ -17,13 +17,15 @@ class PullRequestWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kind.PULL_REQUEST]
 
-    async def should_process_event(self, event: WebhookEvent) -> bool:
-        try:
-            event_type = event.payload["eventType"]
-            pr_id = event.payload["resource"].get("pullRequestId")
-            return pr_id and bool(PullRequestEvents(event_type))
-        except ValueError:
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        if not await super().validate_payload(payload):
             return False
+
+        return payload["resource"].get("pullRequestId") is not None
+
+    async def should_process_event(self, event: WebhookEvent) -> bool:
+        event_type = event.payload["eventType"]
+        return bool(PullRequestEvents(event_type))
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig

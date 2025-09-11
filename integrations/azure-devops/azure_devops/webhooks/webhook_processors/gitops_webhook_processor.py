@@ -34,6 +34,12 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         ).resources
         return resource_configs[0]
 
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        if not await super().validate_payload(payload):
+            return False
+
+        return payload["resource"].get("refUpdates") is not None
+
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
             event_type = event.payload["eventType"]

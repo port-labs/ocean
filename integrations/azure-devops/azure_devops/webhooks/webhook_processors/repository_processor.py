@@ -20,6 +20,12 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kind.REPOSITORY]
 
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        if not await super().validate_payload(payload):
+            return False
+
+        return payload["resource"].get("repository", {}).get("id") is not None
+
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
             repository = event.payload["resource"].get("repository", {})
