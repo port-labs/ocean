@@ -27,12 +27,9 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         if not await super().validate_payload(payload):
             return False
 
-        try:
-            repository = payload["resource"].get("repository", {})
-            ref_updates = payload["resource"].get("refUpdates")
-            return repository.get("id") and repository.get("name") and ref_updates
-        except ValueError:
-            return False
+        repository = payload["resource"].get("repository", {})
+        ref_updates = payload["resource"].get("refUpdates")
+        return repository.get("id") and repository.get("name") and ref_updates
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
