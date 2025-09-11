@@ -1,7 +1,7 @@
 import asyncio
 import functools
 import json
-from typing import Any, AsyncGenerator, Optional, Callable
+from typing import Any, AsyncGenerator, Optional, Callable, Sequence
 from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.context.event import event
@@ -262,6 +262,30 @@ class AzureDevopsClient(HTTPBaseClient):
                 ):
                     yield releases
 
+    def _enrich_builds_with_project_data(
+        self,
+        builds: Sequence[dict[str, Any]],
+        project: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        enriched: list[dict[str, Any]] = []
+        for build in builds:
+            b = dict(build)
+            b["__projectId"] = project["id"]
+            b["__project"] = project
+            enriched.append(b)
+        return enriched
+
+    async def _generate_builds_for_project(
+        self,
+        project: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield paginated builds for a single project, enriched with project data."""
+        builds_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds"
+        async for builds in self._get_paginated_by_top_and_continuation_token(
+            builds_url
+        ):
+            yield self._enrich_builds_with_project_data(builds, project)
+
     async def generate_builds(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generate builds across all projects in the organization.
 
@@ -270,14 +294,8 @@ class AzureDevopsClient(HTTPBaseClient):
         """
         async for projects in self.generate_projects():
             for project in projects:
-                builds_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds"
-                async for builds in self._get_paginated_by_top_and_continuation_token(
-                    builds_url
-                ):
-                    for build in builds:
-                        build["__projectId"] = project["id"]
-                        build["__project"] = project
-                    yield builds
+                async for batch in self._generate_builds_for_project(project):
+                    yield batch
 
     async def generate_repository_policies(
         self,
