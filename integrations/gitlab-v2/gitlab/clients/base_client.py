@@ -3,8 +3,8 @@ from typing import Any, Optional
 import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
-import ijson
-import aiofiles
+import ijson  # type: ignore[import-untyped]
+import aiofiles  # type: ignore[import-untyped]
 import base64
 import uuid
 from port_ocean.core.integrations.mixins.utils import _AiterReader
