@@ -107,7 +107,7 @@ jobs:
             INTEGRATION_VERSION=${{ steps.enrich-version.outputs.version }}
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.29.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: ${{ steps.enrich-version.outputs.image_tag }}
           ignore-unfixed: true
