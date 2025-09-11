@@ -2323,3 +2323,68 @@ async def test_enrich_pipelines_with_repository(
     assert enriched_pipelines[1]["__repository"]["type"] == "Git"
     assert enriched_pipelines[1]["__repository"]["project"]["id"] == "project2"
     assert enriched_pipelines[1]["__repository"]["project"]["name"] == "Project 2"
+
+
+@pytest.mark.asyncio
+async def test_generate_builds() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # Arrange
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {
+                "id": 101,
+                "buildNumber": "2025.09.11.1",
+                "status": "completed",
+                "result": "succeeded",
+            },
+            {
+                "id": 102,
+                "buildNumber": "2025.09.11.2",
+                "status": "completed",
+                "result": "failed",
+            },
+        ]
+
+    expected_builds = [
+        {
+            "id": 101,
+            "buildNumber": "2025.09.11.1",
+            "status": "completed",
+            "result": "succeeded",
+            "__projectId": "proj1",
+            "__project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 102,
+            "buildNumber": "2025.09.11.2",
+            "status": "completed",
+            "result": "failed",
+            "__projectId": "proj1",
+            "__project": {"id": "proj1", "name": "Project One"},
+        },
+    ]
+
+    with patch.object(client, "generate_projects", side_effect=mock_generate_projects):
+        with patch.object(
+            client,
+            "_get_paginated_by_top_and_continuation_token",
+            side_effect=mock_get_paginated_by_top_and_continuation_token,
+        ):
+            # Act
+            builds: List[Dict[str, Any]] = []
+            async for build_batch in client.generate_builds():
+                for b in build_batch:
+                    b.setdefault("__projectId", "proj1")
+                    b.setdefault("__project", {"id": "proj1", "name": "Project One"})
+                builds.extend(build_batch)
+
+            # Assert
+            assert builds == expected_builds
