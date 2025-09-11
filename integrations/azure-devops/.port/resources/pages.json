@@ -185,9 +185,7 @@
             "blueprintConfig": {
               "service": {
                 "groupSettings": {
-                  "groupBy": [
-                    "ProductionReadiness"
-                  ]
+                  "groupBy": ["ProductionReadiness"]
                 },
                 "propertiesSettings": {
                   "hidden": [
