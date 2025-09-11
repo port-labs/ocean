@@ -74,13 +74,19 @@ class HTTPBaseClient:
                     parser = ijson.items(reader, content_key)
                     os.makedirs("/tmp/ocean", exist_ok=True)
                     out_path = f"/tmp/ocean/bulk_{uuid.uuid4()}.json"
-                    async with aiofiles.open(out_path, "wb") as f:
-                        for content_b64 in parser:
-                            # For very long base64, decode in chunks:
-                            for i in range(0, len(content_b64), 4*1024*1024):
-                                chunk = content_b64[i:i+4*1024*1024]
-                                await f.write(base64.b64decode(chunk, validate=True))
-                    return out_path
+                    try:
+                        async with aiofiles.open(out_path, "wb") as f:
+                            for content_b64 in parser:
+                                # For very long base64, decode in chunks:
+                                for i in range(0, len(content_b64), 4*1024*1024):
+                                    chunk = content_b64[i:i+4*1024*1024]
+                                    await f.write(base64.b64decode(chunk, validate=True))
+                        return out_path
+                    except Exception:
+                        # Clean up temp file on error
+                        if os.path.exists(out_path):
+                            os.unlink(out_path)
+                        raise
             except httpx.HTTPStatusError as e:
                 result = self._handle_status_code_error("GET", path, url, e)
                 if result is not None:
