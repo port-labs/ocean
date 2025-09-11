@@ -127,11 +127,7 @@
           "type": "string",
           "icon": "AzureDevops",
           "description": "The type of work item (e.g., Bug, Task, User Story)",
-          "enum": [
-            "Issue",
-            "Epic",
-            "Task"
-          ],
+          "enum": ["Issue", "Epic", "Task"],
           "enumColors": {
             "Issue": "green",
             "Epic": "orange",
@@ -333,8 +329,7 @@
         "many": false
       }
     }
-  }
-  ,
+  },
   {
     "identifier": "build",
     "title": "Build",

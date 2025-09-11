@@ -270,9 +270,7 @@ class AzureDevopsClient(HTTPBaseClient):
         """
         async for projects in self.generate_projects():
             for project in projects:
-                builds_url = (
-                    f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds"
-                )
+                builds_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds"
                 async for builds in self._get_paginated_by_top_and_continuation_token(
                     builds_url
                 ):

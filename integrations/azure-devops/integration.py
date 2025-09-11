@@ -141,7 +141,7 @@ class AzureDevopsPipelineResourceConfig(ResourceConfig):
 
 class AzureDevopsBuildResourceConfig(ResourceConfig):
     kind: Literal["build"]
-    selector: Selector | None = None
+    selector: Selector
 
 
 class GitPortAppConfig(PortAppConfig):
