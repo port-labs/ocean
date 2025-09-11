@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Callable
+from typing import List, Dict, Any, Callable, cast
 from loguru import logger
 import asyncio
 from aws.core.interfaces.action import Action, ActionMap
@@ -68,7 +68,8 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
         actions = [cls(self.client) for cls in action_classes]
         type = self.model_factory().Type
         action_results = await asyncio.gather(
-            *(self._run_action(action, identifiers) for action in actions)
+            *(self._run_action(action, identifiers) for action in actions),
+            return_exceptions=True,
         )
 
         if not action_results or not any(action_results):
@@ -76,7 +77,12 @@ class ResourceInspector[ResourceModelT: ResourceModel[Any]]:
 
         resource_data: dict[int, dict[str, Any]] = defaultdict(dict)
         for action_result in action_results:
-            for idx, item in enumerate(action_result):
+            if isinstance(action_result, Exception):
+                logger.warning(
+                    f"{action_result.__class__.__name__} failed: {action_result}, skipping ..."
+                )
+                continue
+            for idx, item in enumerate(cast(List[Dict[str, Any]], action_result)):
                 if item:
                     resource_data[idx] |= item
 

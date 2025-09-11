@@ -1,5 +1,18 @@
 [
   {
+    "identifier": "awsAccount",
+    "title": "AWS Account",
+    "icon": "AWS",
+    "schema": {
+      "properties": {},
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
     "identifier": "s3Bucket",
     "title": "S3 Bucket",
     "icon": "AWS",
@@ -32,10 +45,16 @@
       },
       "required": []
     },
-    "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   },
   {
     "identifier": "ec2Instance",
@@ -96,11 +115,6 @@
     "icon": "AWS",
     "schema": {
       "properties": {
-        "title": {
-          "type": "string",
-          "title": "Cluster Name",
-          "description": "The name of the ECS cluster"
-        },
         "status": {
           "type": "string",
           "title": "Status",
@@ -134,7 +148,7 @@
             "type": "string"
           }
         },
-        "arn": {
+        "clusterArn": {
           "type": "string",
           "title": "ARN",
           "description": "The Amazon Resource Name (ARN) of the cluster"
@@ -153,6 +167,13 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
