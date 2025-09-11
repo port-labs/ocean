@@ -25,6 +25,8 @@ from port_ocean.clients.port.utils import _http_client as _port_http_client
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 from port_ocean.context.ocean import ocean
 import subprocess
+import tempfile
+import stat
 import ijson
 from typing import Any, AsyncGenerator
 
@@ -114,7 +116,11 @@ async def resync_generator_wrapper(
                     else:
                         if items_to_parse:
                             for data in result:
-                                bulks = get_items_to_parse_bulks(data, data.get("file", {}).get("content", {}).get("path", None), items_to_parse, items_to_parse_name, data.get("__base_jq", ".file.content"))
+                                data_path: str | None = None
+                                if isinstance(data, dict) and data.get("file") is not None:
+                                    content = data["file"].get("content") if isinstance(data["file"].get("content"), dict) else {}
+                                    data_path = content.get("path", None)
+                                bulks = get_items_to_parse_bulks(data, data_path, items_to_parse, items_to_parse_name, data.get("__base_jq", ".file.content"))
                                 async for bulk in bulks:
                                     yield bulk
                         else:
@@ -140,42 +146,96 @@ def is_resource_supported(
 ) -> bool:
     return bool(resync_event_mapping[kind] or resync_event_mapping[None])
 
+def _validate_jq_expression(expression: str) -> None:
+    """Validate jq expression to prevent command injection."""
+    try:
+        _ = cast(JQEntityProcessor, ocean.app.integration.entity_processor)._compile(expression)
+    except Exception as e:
+        raise ValueError(f"Invalid jq expression: {e}") from e
+    # Basic validation - reject expressions that could be dangerous
+    dangerous_patterns = ['include','import','module','env']
+    for pattern in dangerous_patterns:
+        if pattern in expression:
+            raise ValueError(f"Potentially dangerous pattern '{pattern}' found in jq expression")
+
+def _create_secure_temp_file(suffix: str = ".json") -> str:
+    """Create a secure temporary file with restricted permissions."""
+    # Create temp directory if it doesn't exist
+    temp_dir = "/tmp/ocean"
+    os.makedirs(temp_dir, exist_ok=True)
+
+    # Create temporary file with secure permissions
+    fd, temp_path = tempfile.mkstemp(suffix=suffix, dir=temp_dir)
+    try:
+        # Set restrictive permissions (owner read/write only)
+        os.chmod(temp_path, stat.S_IRUSR | stat.S_IWUSR)
+        return temp_path
+    finally:
+        os.close(fd)
+
 async def get_items_to_parse_bulks(raw_data: dict[Any, Any], data_path: str, items_to_parse: str, items_to_parse_name: str, base_jq: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+    # Validate inputs to prevent command injection
+    _validate_jq_expression(items_to_parse)
     items_to_parse = items_to_parse.replace(base_jq, ".") if data_path else items_to_parse
-    if not data_path:
-        raw_data_serialized = json.dumps(raw_data)
-        data_path = f"/tmp/ocean/input_{uuid.uuid4()}.json"
-        with open(data_path, "w") as f:
-            f.write(raw_data_serialized)
-    output_path = f"/tmp/ocean/parsed_{uuid.uuid4()}.json"
-    delete_target = items_to_parse.split('|', 1)[0].strip() if not items_to_parse.startswith('map(') else '.'
-    base_jq_object_string = await _build_base_jq_object_string(raw_data, base_jq, delete_target)
-    jq_cmd = f"""/bin/jq '. as $all
+
+    temp_data_path = None
+    temp_output_path = None
+
+    try:
+        # Create secure temporary files
+        if not data_path:
+            raw_data_serialized = json.dumps(raw_data)
+            temp_data_path = _create_secure_temp_file("_input.json")
+            with open(temp_data_path, "w") as f:
+                f.write(raw_data_serialized)
+            data_path = temp_data_path
+
+        temp_output_path = _create_secure_temp_file("_parsed.json")
+
+        delete_target = items_to_parse.split('|', 1)[0].strip() if not items_to_parse.startswith('map(') else '.'
+        base_jq_object_string = await _build_base_jq_object_string(raw_data, base_jq, delete_target)
+
+        # Build jq expression safely
+        jq_expression = f""". as $all
       | ($all | {items_to_parse}) as $items
       | $items
-      | map({{{items_to_parse_name}: ., {base_jq_object_string}}})
-    ' {data_path} > {output_path}"""
-    try:
-        result = subprocess.run(jq_cmd, capture_output=True, text=True, shell=True, check=True)
-        if result.stderr:
+      | map({{{items_to_parse_name}: ., {base_jq_object_string}}})"""
+
+        # Use subprocess with list arguments instead of shell=True
+        jq_args = ["/bin/jq", jq_expression, data_path]
+
+        with open(temp_output_path, "w") as output_file:
+            result = subprocess.run(
+                jq_args,
+                stdout=output_file,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False  # Don't raise exception, handle errors manually
+            )
+
+        if result.returncode != 0:
             logger.error(f"Failed to parse items for JQ expression {items_to_parse}, error: {result.stderr}")
             yield []
         else:
-            with open(output_path, "r") as f:
-                events_stream =get_events_as_a_stream(f, 'item', ocean.config.yield_items_to_parse_batch_size)
+            with open(temp_output_path, "r") as f:
+                events_stream = get_events_as_a_stream(f, 'item', ocean.config.yield_items_to_parse_batch_size)
                 for items_bulk in events_stream:
                     yield items_bulk
+
+    except ValueError as e:
+        logger.error(f"Invalid jq expression: {e}")
+        yield []
     except Exception as e:
         logger.error(f"Failed to parse items for JQ expression {items_to_parse}, error: {e}")
         yield []
     finally:
-        try:
-            if os.path.exists(output_path):
-                os.remove(output_path)
-            if os.path.exists(data_path):
-                os.remove(data_path)
-        except OSError as e:
-            logger.warning(f"Failed to cleanup temporary files: {e}")
+        # Cleanup temporary files
+        for temp_path in [temp_data_path, temp_output_path]:
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except OSError as e:
+                    logger.warning(f"Failed to cleanup temporary file {temp_path}: {e}")
 
 def unsupported_kind_response(
     kind: str, available_resync_kinds: list[str]
