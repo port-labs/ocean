@@ -1,4 +1,4 @@
-from typing import Any
+from typing import cast, Any
 from unittest.mock import AsyncMock, Mock
 from loguru import logger
 import pytest
@@ -10,6 +10,7 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
 )
 from port_ocean.core.ocean_types import CalculationResult
 from port_ocean.exceptions.core import EntityProcessorException
+from unittest.mock import patch
 
 
 @pytest.mark.asyncio
@@ -59,7 +60,7 @@ class TestJQEntityProcessor:
         raw_entity_mappings = {"foo": ".foo"}
         selector_query = '.foo == "bar"'
         result, errors = await mocked_processor._calculate_entity(
-            data, raw_entity_mappings, None, selector_query
+            data, raw_entity_mappings, None, "item", selector_query
         )
         assert len(result) == 1
         assert result[0].entity == {"foo": "bar"}
@@ -296,15 +297,23 @@ class TestJQEntityProcessor:
             },
             {"foo": "bar", "baz": "bazbar", "bar": {"foobar": "foobar"}},
         ]
-        result = await mocked_processor._parse_items(mapping, raw_results)
-        assert len(result.misonfigured_entity_keys) > 0
-        assert len(result.misonfigured_entity_keys) == 4
-        assert result.misonfigured_entity_keys == {
-            "identifier": ".ark",
-            "description": ".bazbar",
-            "url": ".foobar",
-            "defaultBranch": ".bar.baz",
-        }
+        with patch(
+            "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor._send_examples"
+        ) as mock_send_examples:
+            result = await mocked_processor._parse_items(
+                mapping, raw_results, send_raw_data_examples_amount=1
+            )
+            assert len(result.misconfigured_entity_keys) > 0
+            assert len(result.misconfigured_entity_keys) == 4
+            assert result.misconfigured_entity_keys == {
+                "identifier": ".ark",
+                "description": ".bazbar",
+                "url": ".foobar",
+                "defaultBranch": ".bar.baz",
+            }
+            assert mock_send_examples.await_args is not None, "mock was not awaited"
+            args, _ = mock_send_examples.await_args
+            assert len(cast(list[Any], args[0])) > 0
 
     async def test_parse_items_empty_required(
         self, mocked_processor: JQEntityProcessor
@@ -324,15 +333,15 @@ class TestJQEntityProcessor:
             {"foo": "identifierMapped", "bar": ""},
         ]
         result = await mocked_processor._parse_items(mapping, raw_results)
-        assert "identifier" not in result.misonfigured_entity_keys
-        assert "blueprint" not in result.misonfigured_entity_keys
+        assert "identifier" not in result.misconfigured_entity_keys
+        assert "blueprint" not in result.misconfigured_entity_keys
 
         raw_results = [
             {"foo": "identifierMapped", "bar": None},
             {"foo": None, "bar": ""},
         ]
         result = await mocked_processor._parse_items(mapping, raw_results)
-        assert result.misonfigured_entity_keys == {
+        assert result.misconfigured_entity_keys == {
             "identifier": ".foo",
             "blueprint": ".bar",
         }

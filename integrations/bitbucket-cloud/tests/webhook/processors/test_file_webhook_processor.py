@@ -132,3 +132,176 @@ class TestFileWebhookProcessor:
         """Test payload validation with various input scenarios."""
         result = await file_webhook_processor.validate_payload(payload)
         assert result == expected
+
+    @pytest.mark.asyncio
+    async def test_handle_event_with_deleted_files(self) -> None:
+        """Test the handle_event function with deleted files."""
+        mock_webhook_client = AsyncMock()
+
+        mock_updated_results: List[Dict[str, Any]] = []
+        mock_deleted_results: List[Dict[str, Any]] = [
+            {
+                "repo": {"uuid": "repo-123", "name": "test-repo"},
+                "branch": "main",
+                "metadata": {
+                    "path": "deleted-file.json",
+                    "commit": {"hash": "new-hash"},
+                    "status": "removed",
+                },
+            },
+            {
+                "repo": {"uuid": "repo-123", "name": "test-repo"},
+                "branch": "main",
+                "metadata": {
+                    "path": "another-deleted.yaml",
+                    "commit": {"hash": "new-hash"},
+                    "status": "removed",
+                },
+            },
+        ]
+
+        async def mock_process_file_changes(
+            *args: Any, **kwargs: Any
+        ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+            return mock_updated_results, mock_deleted_results
+
+        with patch(
+            "bitbucket_cloud.webhook_processors.processors.file_webhook_processor.process_file_changes",
+            side_effect=mock_process_file_changes,
+        ):
+            test_event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
+            processor = FileWebhookProcessor(event=test_event)
+            processor._webhook_client = mock_webhook_client
+
+            test_payload: Dict[str, Any] = {
+                "repository": {"uuid": "repo-123", "name": "test-repo"},
+                "push": {
+                    "changes": [
+                        {
+                            "new": {"hash": "new-hash"},
+                            "old": {"hash": "old-hash"},
+                        }
+                    ]
+                },
+            }
+
+            mock_resource_config = MagicMock()
+            mock_resource_config.selector.files.skip_parsing = False
+            mock_resource_config.selector.files.repos = ["test-repo"]
+
+            result = await processor.handle_event(test_payload, mock_resource_config)
+
+            assert result.updated_raw_results == mock_updated_results
+            assert result.deleted_raw_results == mock_deleted_results
+            assert len(result.deleted_raw_results) == 2
+            assert len(result.updated_raw_results) == 0
+
+            for deleted_file in result.deleted_raw_results:
+                assert "repo" in deleted_file
+                assert "branch" in deleted_file
+                assert "metadata" in deleted_file
+                assert deleted_file["metadata"]["status"] == "removed"
+
+    @pytest.mark.asyncio
+    async def test_handle_event_with_mixed_changes(self) -> None:
+        """Test the handle_event function with both updated and deleted files."""
+        mock_webhook_client = AsyncMock()
+
+        mock_updated_results: List[Dict[str, Any]] = [
+            {
+                "content": {"key": "value"},
+                "metadata": {"path": "updated-file.json"},
+                "repo": {"uuid": "repo-123", "name": "test-repo"},
+                "branch": "main",
+            }
+        ]
+        mock_deleted_results: List[Dict[str, Any]] = [
+            {
+                "repo": {"uuid": "repo-123", "name": "test-repo"},
+                "branch": "main",
+                "metadata": {
+                    "path": "deleted-file.json",
+                    "commit": {"hash": "new-hash"},
+                    "status": "removed",
+                },
+            }
+        ]
+
+        async def mock_process_file_changes(
+            *args: Any, **kwargs: Any
+        ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+            return mock_updated_results, mock_deleted_results
+
+        with patch(
+            "bitbucket_cloud.webhook_processors.processors.file_webhook_processor.process_file_changes",
+            side_effect=mock_process_file_changes,
+        ):
+            test_event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
+            processor = FileWebhookProcessor(event=test_event)
+            processor._webhook_client = mock_webhook_client
+
+            test_payload: Dict[str, Any] = {
+                "repository": {"uuid": "repo-123", "name": "test-repo"},
+                "push": {
+                    "changes": [
+                        {
+                            "new": {"hash": "new-hash"},
+                            "old": {"hash": "old-hash"},
+                        }
+                    ]
+                },
+            }
+
+            mock_resource_config = MagicMock()
+            mock_resource_config.selector.files.skip_parsing = False
+            mock_resource_config.selector.files.repos = ["test-repo"]
+
+            result = await processor.handle_event(test_payload, mock_resource_config)
+
+            assert result.updated_raw_results == mock_updated_results
+            assert result.deleted_raw_results == mock_deleted_results
+            assert len(result.deleted_raw_results) == 1
+            assert len(result.updated_raw_results) == 1
+
+    @pytest.mark.asyncio
+    async def test_handle_event_with_deleted_files_non_matching_repo(self) -> None:
+        """Test that deleted files are not processed when repo doesn't match."""
+        mock_webhook_client = AsyncMock()
+
+        mock_updated_results: List[Dict[str, Any]] = []
+        mock_deleted_results: List[Dict[str, Any]] = []
+
+        async def mock_process_file_changes(
+            *args: Any, **kwargs: Any
+        ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+            return mock_updated_results, mock_deleted_results
+
+        with patch(
+            "bitbucket_cloud.webhook_processors.processors.file_webhook_processor.process_file_changes",
+            side_effect=mock_process_file_changes,
+        ):
+            test_event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
+            processor = FileWebhookProcessor(event=test_event)
+            processor._webhook_client = mock_webhook_client
+
+            test_payload: Dict[str, Any] = {
+                "repository": {"uuid": "repo-123", "name": "non-matching-repo"},
+                "push": {
+                    "changes": [
+                        {
+                            "new": {"hash": "new-hash"},
+                            "old": {"hash": "old-hash"},
+                        }
+                    ]
+                },
+            }
+
+            mock_resource_config = MagicMock()
+            mock_resource_config.selector.files.skip_parsing = False
+            mock_resource_config.selector.files.repos = ["different-repo"]
+
+            result = await processor.handle_event(test_payload, mock_resource_config)
+            assert result.updated_raw_results == []
+            assert result.deleted_raw_results == []
+            assert len(result.deleted_raw_results) == 0
+            assert len(result.updated_raw_results) == 0

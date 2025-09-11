@@ -1,12 +1,14 @@
-from port_ocean.utils import http_async_client
 import httpx
 from typing import Any, AsyncGenerator, Optional, Union
 from loguru import logger
 from enum import StrEnum
 import asyncio
 from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.context.ocean import ocean
+from rate_limiter import LaunchDarklyRateLimiter
 
 
 PAGE_SIZE = 100
@@ -26,9 +28,13 @@ class LaunchDarklyClient:
     ):
         self.api_url = f"{launchdarkly_url}/api/v2"
         self.api_token = api_token
-        self.http_client = http_async_client
+        retry_config = RetryConfig(
+            retry_after_headers=["X-Ratelimit-Reset", "Retry-After"],
+        )
+        self.http_client = OceanAsyncClient(retry_config=retry_config)
         self.http_client.headers.update(self.api_auth_header)
         self.webhook_secret = webhook_secret
+        self._rate_limiter = LaunchDarklyRateLimiter()
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -49,27 +55,37 @@ class LaunchDarklyClient:
     async def get_paginated_resource(
         self, kind: str, resource_path: str | None = None, page_size: int = PAGE_SIZE
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-
-        kind = kind + "s" if not kind.endswith("s") else kind + "es"
+        """
+        Fetch and paginate through resources from a LaunchDarkly API endpoint.
+        Docs: https://launchdarkly.com/docs/guides/api/api-migration-guide#working-with-paginated-endpoints
+        """
+        kind = f"{kind}s" if not kind.endswith("s") else f"{kind}es"
 
         url = kind if not resource_path else f"{kind}/{resource_path}"
         url = url.replace("auditlogs", ObjectKind.AUDITLOG)
-        params = {"limit": page_size}
+        params: Optional[dict[str, Any]] = {"limit": page_size}
 
         while url:
             try:
+                logger.debug(f"Fetching {kind} from LaunchDarkly: {url}")
                 response = await self.send_api_request(
                     endpoint=url, query_params=params
                 )
+                if not response:
+                    break
                 items = response.get("items", [])
                 logger.info(f"Received batch with {len(items)} items")
                 yield items
 
-                if "_links" in response and "next" in response["_links"]:
-                    url = response["_links"]["next"]["href"]
+                if next_link := response.get("_links", {}).get("next"):
+                    url = next_link["href"]
+                    logger.debug(f"Fetching next page of {kind}: {url}")
+                    params = None
                 else:
-                    total_count = response.get("totalCount")
-                    logger.info(f"Fetched {total_count} {kind} from Launchdarkly")
+                    total_count = response.get("totalCount", len(items))
+                    logger.info(
+                        f"Successfully fetched all {total_count} {kind} from LaunchDarkly."
+                    )
                     break
 
             except httpx.HTTPStatusError as e:
@@ -91,22 +107,20 @@ class LaunchDarklyClient:
         json_data: Optional[Union[dict[str, Any], list[Any]]] = None,
     ) -> dict[str, Any]:
         try:
-            endpoint = endpoint.replace("/api/v2/", "")
-            url = f"{self.api_url}/{endpoint}"
-            logger.debug(
-                f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
-            )
-            response = await self.http_client.request(
-                method=method,
-                url=url,
-                params=query_params,
-                json=json_data,
-            )
-            response.raise_for_status()
-
-            logger.debug(f"Successfully retrieved data for endpoint: {endpoint}")
-
-            return response.json()
+            async with self._rate_limiter:
+                endpoint = endpoint.replace("/api/v2/", "")
+                url = f"{self.api_url}/{endpoint}"
+                logger.debug(
+                    f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
+                )
+                response = await self.http_client.request(
+                    method=method,
+                    url=url,
+                    params=query_params,
+                    json=json_data,
+                )
+                response.raise_for_status()
+                return response.json()
 
         except httpx.HTTPStatusError as e:
             logger.error(
@@ -116,6 +130,9 @@ class LaunchDarklyClient:
         except httpx.HTTPError as e:
             logger.error(f"HTTP error on {endpoint}: {str(e)}")
             raise
+        finally:
+            if "response" in locals() and response:
+                await self._rate_limiter.update_from_headers(response.headers)
 
     @cache_iterator_result()
     async def get_paginated_projects(

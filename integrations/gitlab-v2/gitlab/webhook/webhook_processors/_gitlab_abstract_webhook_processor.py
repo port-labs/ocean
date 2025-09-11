@@ -7,6 +7,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
 from gitlab.clients.client_factory import create_gitlab_client
+from loguru import logger
 
 
 class _GitlabAbstractWebhookProcessor(AbstractWebhookProcessor):
@@ -19,6 +20,7 @@ class _GitlabAbstractWebhookProcessor(AbstractWebhookProcessor):
         return True
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
+        logger.info(f"Processing event: {event.payload}")
         event_identifier = (
             event.payload.get("event_name")
             or event.payload.get("event_type")

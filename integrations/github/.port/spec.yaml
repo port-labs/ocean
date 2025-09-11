@@ -6,6 +6,22 @@ features:
     section: Git
     resources:
       - kind: repository
+      - kind: folder
+      - kind: user
+      - kind: team
+      - kind: workflow
+      - kind: workflow-run
+      - kind: pull-request
+      - kind: issue
+      - kind: release
+      - kind: tag
+      - kind: branch
+      - kind: environment
+      - kind: deployment
+      - kind: dependabot-alert
+      - kind: code-scanning-alerts
+      - kind: file
+      - kind: collaborator
 configurations:
   - name: githubHost
     required: false

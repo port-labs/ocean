@@ -78,7 +78,8 @@ class TestGitLabClient:
             mock_get_languages.assert_called_once_with("test/test-project")
 
     async def test_get_groups(self, client: GitLabClient) -> None:
-        """Test group fetching delegates to REST client"""
+        """Test group fetching with default config behavior (use_min_access_level=True, min_access_level=30)"""
+
         # Arrange
         mock_groups: list[dict[str, Any]] = [{"id": 1, "name": "Test Group"}]
 
@@ -88,9 +89,9 @@ class TestGitLabClient:
             "get_paginated_resource",
             return_value=async_mock_generator([mock_groups]),
         ) as mock_get_resource:
-            # Act
+            # Act - Test default config behavior (like main.py would call)
             results: list[dict[str, Any]] = []
-            async for batch in client.get_groups():
+            async for batch in client.get_groups(params={"min_access_level": 30}):
                 results.extend(batch)
 
             # Assert
@@ -101,15 +102,15 @@ class TestGitLabClient:
                 params={
                     "min_access_level": 30,
                     "all_available": True,
-                    "top_level_only": False,
                 },
             )
 
-    async def test_get_groups_top_level_only(self, client: GitLabClient) -> None:
-        """Test group fetching with top level only"""
+    async def test_get_groups_owned(self, client: GitLabClient) -> None:
+        """Test group fetching with specific access level (use_min_access_level=True, min_access_level=50)"""
+
         # Arrange
         mock_groups: list[dict[str, Any]] = [
-            {"id": 1, "name": "Test Group", "parent_id": None},
+            {"id": 1, "name": "Test Group"},
         ]
 
         # Use a context manager for patching
@@ -120,18 +121,44 @@ class TestGitLabClient:
         ) as mock_get_resource:
             # Act
             results: list[dict[str, Any]] = []
-            async for batch in client.get_groups(top_level_only=True):
+            async for batch in client.get_groups(params={"min_access_level": 50}):
                 results.extend(batch)
 
             # Assert
             assert len(results) == 1
             assert results[0]["name"] == "Test Group"
-            assert results[0]["parent_id"] is None
             mock_get_resource.assert_called_once_with(
                 "groups",
                 params={
-                    "min_access_level": 30,
-                    "top_level_only": True,
+                    "min_access_level": 50,
+                    "all_available": True,
+                },
+            )
+
+    async def test_get_groups_use_min_access_level(self, client: GitLabClient) -> None:
+        """Test group fetching with use_min_access_level=False (no min_access_level filtering)"""
+        # Arrange
+        mock_groups: list[dict[str, Any]] = [
+            {"id": 1, "name": "Test Group"},
+        ]
+
+        # Use a context manager for patching
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ) as mock_get_resource:
+            # Act
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_groups(params={}):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 1
+            assert results[0]["name"] == "Test Group"
+            mock_get_resource.assert_called_once_with(
+                "groups",
+                params={
                     "all_available": True,
                 },
             )
@@ -379,16 +406,17 @@ class TestGitLabClient:
                 )
 
     async def test_search_files_in_groups(self, client: GitLabClient) -> None:
-        """Test file search across all groups using scope and query"""
+        """Test file search across all groups using scope and query with config parameters"""
         mock_groups = [{"id": "1", "name": "Group1"}]
         processed_files = [
             {"path": "test.yaml", "project_id": "123", "content": {"key": "value"}}
         ]
         scope = "blobs"
         query = "test.yaml"
+
         with patch.object(
             client, "get_groups", return_value=async_mock_generator([mock_groups])
-        ):
+        ) as mock_get_groups:
             with patch.object(
                 client,
                 "_search_files_in_group",
@@ -398,13 +426,23 @@ class TestGitLabClient:
                     client, "get_file_content", return_value="key: value"
                 ):
                     results = []
+                    # Act - Test with config parameters (like main.py would call)
                     async for batch in client.search_files(
-                        scope, query, skip_parsing=False
+                        scope,
+                        query,
+                        skip_parsing=False,
+                        params={"min_access_level": 30},
                     ):
                         results.extend(batch)
+
                     assert len(results) == 1
                     assert results[0]["path"] == "test.yaml"
                     assert results[0]["content"] == {"key": "value"}
+
+                    # Assert - Should use config parameters, not internal fallback
+                    mock_get_groups.assert_called_once_with(
+                        params={"min_access_level": 30}
+                    )
                     mock_search_group.assert_called_once_with(
                         "1", "blobs", "path:test.yaml", False
                     )
@@ -597,26 +635,33 @@ class TestGitLabClient:
                 "123", "other_file.txt", "main"
             )
 
-    async def test_get_project_jobs(self, client: GitLabClient) -> None:
-        """Test fetching project jobs"""
+    async def test_get_pipeline_jobs(self, client: GitLabClient) -> None:
+        """Test fetching jobs through pipelines"""
         # Arrange
         mock_projects = [{"id": 1, "name": "Test Project"}]
+        mock_pipelines = [{"id": 1, "name": "Test Pipeline"}]
         mock_jobs = [{"id": 1, "name": "Test Job"}]
 
         with patch.object(
             client.rest,
             "get_paginated_project_resource",
-            return_value=async_mock_generator([mock_jobs]),
+            side_effect=[
+                async_mock_generator([mock_pipelines]),  # First call for pipelines
+                async_mock_generator([mock_jobs]),  # Second call for jobs
+            ],
         ) as mock_get_paginated:
             results = []
-            async for batch in client.get_project_jobs(mock_projects):
+            async for batch in client.get_pipeline_jobs(mock_projects):
                 results.extend(batch)
 
             assert len(results) == 1
             assert results[0]["id"] == 1
             assert results[0]["name"] == "Test Job"
-            mock_get_paginated.assert_called_once_with(
-                "1", "jobs", params={"per_page": 100}
+            # Verify both pipeline and job API calls
+            assert mock_get_paginated.call_count == 2
+            mock_get_paginated.assert_any_call("1", "pipelines")
+            mock_get_paginated.assert_any_call(
+                "1", "pipelines/1/jobs", params={"per_page": 100}
             )
 
     async def test_project_resource(self, client: GitLabClient) -> None:
@@ -640,3 +685,84 @@ class TestGitLabClient:
             assert results[0]["id"] == 1
             assert results[0]["name"] == "Test Pipeline"
             mock_get_project_resource.assert_called_once_with("1", "pipelines")
+
+    async def test_default_params_with_min_access_level(self) -> None:
+        """Test that default_params includes min_access_level when configured."""
+        # Arrange
+        client = GitLabClient("https://gitlab.example.com", "test-token")
+
+        # Act & Assert
+        assert client.DEFAULT_PARAMS["all_available"] is True
+
+    async def test_default_params_without_min_access_level(self) -> None:
+        """Test that default_params excludes min_access_level when disabled."""
+        # Arrange
+        client = GitLabClient("https://gitlab.example.com", "test-token")
+
+        # Act & Assert
+        assert "min_access_level" not in client.DEFAULT_PARAMS
+        assert client.DEFAULT_PARAMS["all_available"] is True
+
+    async def test_get_groups_with_min_access_level(self) -> None:
+        """Test that get_groups uses min_access_level when configured."""
+        # Arrange
+        client = GitLabClient("https://gitlab.example.com", "test-token")
+        mock_groups = [{"id": 1, "name": "Test Group"}]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ) as mock_get_resource:
+            # Act
+            results = []
+            async for batch in client.get_groups(params={"min_access_level": 40}):
+                results.extend(batch)
+
+            # Assert
+            assert results == mock_groups
+            mock_get_resource.assert_called_once_with(
+                "groups", params={"all_available": True, "min_access_level": 40}
+            )
+
+    async def test_get_groups_no_min_access_level(self, client: GitLabClient) -> None:
+        """Test group fetching without min_access_level filtering"""
+        # Arrange
+        mock_groups: list[dict[str, Any]] = [{"id": 1, "name": "Test Group"}]
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ) as mock_get_groups:
+            # Act
+            results = []
+            async for batch in client.get_groups(params={}):
+                results.extend(batch)
+
+            # Assert
+            assert results == mock_groups
+            mock_get_groups.assert_called_once_with(
+                "groups", params={"all_available": True}
+            )
+
+    async def test_get_projects_with_min_access_level(
+        self, client: GitLabClient
+    ) -> None:
+        """Test project fetching with min_access_level filtering"""
+        # Arrange
+        mock_projects: list[dict[str, Any]] = [{"id": 1, "name": "Test Project"}]
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_projects]),
+        ) as mock_get_projects:
+            # Act
+            results = []
+            async for batch in client.get_projects(params={"min_access_level": 50}):
+                results.extend(batch)
+
+            # Assert
+            assert results == mock_projects
+            mock_get_projects.assert_called_once_with(
+                "projects", params={"all_available": True, "min_access_level": 50}
+            )

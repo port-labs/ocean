@@ -1,0 +1,47 @@
+title: AWS Hosted by Port
+description: AWS integration for Port Ocean Hosted by Port
+icon: AWS
+features:
+  - type: exporter
+    section: Cloud Providers
+    resources:
+      - kind: AWS::Account::Info
+      - kind: AWS::S3::Bucket
+      - kind: AWS::EC2::Instance
+      - kind: AWS::ECS::Cluster
+configurations:
+  - name: accountRoleArn
+    required: false
+    type: string
+    sensitive: false
+    description: AWS Account Role ARN for organizations access. When provided, the integration will attempt to use AWS Organizations to discover accounts, falling back to single account mode if organizations is not available.
+  - name: accountRoleArns
+    required: false
+    type: array
+    sensitive: false
+    description: Array of AWS Account Role ARNs for direct multi-account access. Use this when you don't have AWS Organizations enabled or want to specify exact accounts to access.
+  - name: externalId
+    required: false
+    type: string
+    sensitive: false
+    description: The external ID used for the AWS Account Read Role used in assume role.
+  - name: aws_access_key_id
+    required: false
+    type: string
+    sensitive: true
+    description: AWS Access Key ID for static credential authentication (optional).
+  - name: aws_secret_access_key
+    required: false
+    type: string
+    sensitive: true
+    description: AWS Secret Access Key for static credential authentication (optional).
+  - name: aws_session_token
+    required: false
+    type: string
+    sensitive: true
+    description: AWS Session Token for temporary static credentials (optional).
+disableDefaultInstallationMethods: true
+saas:
+  enabled: true
+  liveEvents:
+    enabled: false

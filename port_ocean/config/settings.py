@@ -12,8 +12,8 @@ from port_ocean.core.event_listener import EventListenerSettingsType
 from port_ocean.core.models import (
     CachingStorageMode,
     CreatePortResourcesOrigin,
-    Runtime,
     ProcessExecutionMode,
+    Runtime,
 )
 from port_ocean.utils.misc import get_integration_name, get_spec_file
 
@@ -46,6 +46,7 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     client_secret: str = Field(..., sensitive=True)
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
     port_app_config_cache_ttl: int = 60
+    ingest_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://ingest.getport.io")
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
@@ -72,6 +73,13 @@ class MetricsSettings(BaseOceanModel, extra=Extra.allow):
     webhook_url: str | None = Field(default=None)
 
 
+class StreamingSettings(BaseOceanModel, extra=Extra.allow):
+    enabled: bool = Field(default=False)
+    max_buffer_size_mb: int = Field(default=1024 * 1024 * 20)  # 20 mb
+    chunk_size: int = Field(default=1024 * 64)  # 64 kb
+    location: str = Field(default="/tmp/ocean/streaming")
+
+
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     _integration_config_model: BaseModel | None = None
 
@@ -88,6 +96,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     event_listener: EventListenerSettingsType = Field(
         default=cast(EventListenerSettingsType, {"type": "POLLING"})
     )
+    event_workers_count: int = 1
     # If an identifier or type is not provided, it will be generated based on the integration name
     integration: IntegrationSettings = Field(
         default_factory=lambda: IntegrationSettings(type="", identifier="")
@@ -108,6 +117,11 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
 
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
+    lakehouse_enabled: bool = False
+    yield_items_to_parse: bool = False
+    yield_items_to_parse_batch_size: int = 10
+
+    streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
 
     @validator("process_execution_mode")
     def validate_process_execution_mode(

@@ -2,7 +2,7 @@
     {
         "identifier": "githubRepository",
         "title": "Repository",
-        "icon": "Microservice",
+        "icon": "Github",
         "schema": {
             "properties": {
                 "description": {
@@ -31,9 +31,91 @@
                 "language": {
                     "type": "string",
                     "title": "Primary Language"
+                },
+                "readme": {
+                    "type": "string",
+                    "format": "markdown",
+                    "title": "Readme"
                 }
             },
             "required": []
+        }
+    },
+    {
+        "identifier": "githubPullRequest",
+        "title": "Pull Request",
+        "icon": "Github",
+        "schema": {
+            "properties": {
+                "creator": {
+                    "title": "Creator",
+                    "type": "string"
+                },
+                "assignees": {
+                    "title": "Assignees",
+                    "type": "array"
+                },
+                "reviewers": {
+                    "title": "Reviewers",
+                    "type": "array"
+                },
+                "status": {
+                    "title": "Status",
+                    "type": "string",
+                    "enum": ["merged", "open", "closed"],
+                    "enumColors": {
+                        "merged": "purple",
+                        "open": "green",
+                        "closed": "red"
+                    }
+                },
+                "closedAt": {
+                    "title": "Closed At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "updatedAt": {
+                    "title": "Updated At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "mergedAt": {
+                    "title": "Merged At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "createdAt": {
+                    "title": "Created At",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "link": {
+                    "format": "url",
+                    "type": "string"
+                },
+                "leadTimeHours": {
+                    "title": "Lead Time in hours",
+                    "type": "number"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {
+            "days_old": {
+                "title": "Days Old",
+                "icon": "DefaultProperty",
+                "calculation": "(now / 86400) - (.properties.createdAt | capture(\"(?<date>\\\\d{4}-\\\\d{2}-\\\\d{2})\") | .date | strptime(\"%Y-%m-%d\") | mktime / 86400) | floor",
+                "type": "number"
+            }
+        },
+        "relations": {
+            "repository": {
+                "title": "Repository",
+                "target": "githubRepository",
+                "required": false,
+                "many": false
+            }
         }
     }
 ]

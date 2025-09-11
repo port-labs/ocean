@@ -118,7 +118,7 @@ const config = {
               },
               {
                 label: "Develop an Integration",
-                to: "/develop-an-integration/",
+                to: "/developing-an-integration/",
               },
               {
                 label: "Resource Mapping",

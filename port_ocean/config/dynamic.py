@@ -2,10 +2,35 @@ import json
 from typing import Type, Any, Optional
 
 from humps import decamelize
-from pydantic import BaseModel, AnyUrl, create_model, Extra, parse_obj_as, validator
+from pydantic import (
+    BaseConfig,
+    BaseModel,
+    AnyUrl,
+    create_model,
+    Extra,
+    parse_obj_as,
+    validator,
+)
 from pydantic.fields import ModelField, Field
 
 from port_ocean.config.base import BaseOceanModel
+
+
+class NoTrailingSlashUrl(AnyUrl):
+    @classmethod
+    def validate(cls, value: Any, field: ModelField, config: BaseConfig) -> "AnyUrl":
+        if value is not None:
+            if isinstance(value, (bytes, bytearray)):
+                try:
+                    value = value.decode()
+                except UnicodeDecodeError as exc:
+                    raise ValueError("URL bytes must be valid UTF-8") from exc
+            else:
+                value = str(value)
+
+            if value != "/":
+                value = value.rstrip("/")
+        return super().validate(value, field, config)
 
 
 class Configuration(BaseModel, extra=Extra.allow):
@@ -39,7 +64,7 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
             case "object":
                 field_type = dict
             case "url":
-                field_type = AnyUrl
+                field_type = NoTrailingSlashUrl
             case "string":
                 field_type = str
             case "integer":
