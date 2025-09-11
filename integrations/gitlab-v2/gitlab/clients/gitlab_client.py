@@ -398,9 +398,10 @@ class GitLabClient:
                 parse_file_content, file_data["content"], file_path, context
             )
             if parsed_content.get("should_resolve_references", False):
-                parsed_content = await self._resolve_file_references(
-                    parsed_content, project_id, ref
+                file_resolved_content = await self._resolve_file_references(
+                    parsed_content.get("content"), project_id, ref
                 )
+                parsed_content["content"] = file_resolved_content
             file_data["content"] = parsed_content
 
         if isinstance(file_data["content"], str):
