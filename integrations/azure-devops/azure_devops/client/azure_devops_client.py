@@ -262,6 +262,25 @@ class AzureDevopsClient(HTTPBaseClient):
                 ):
                     yield releases
 
+    async def generate_builds(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generate builds across all projects in the organization.
+
+        Uses continuation token pagination as per Azure DevOps Builds API.
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/build/builds/list?view=azure-devops-rest-7.1
+        """
+        async for projects in self.generate_projects():
+            for project in projects:
+                builds_url = (
+                    f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds"
+                )
+                async for builds in self._get_paginated_by_top_and_continuation_token(
+                    builds_url
+                ):
+                    for build in builds:
+                        build["__projectId"] = project["id"]
+                        build["__project"] = project
+                    yield builds
+
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:

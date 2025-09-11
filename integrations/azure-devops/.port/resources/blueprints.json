@@ -334,4 +334,64 @@
       }
     }
   }
+  ,
+  {
+    "identifier": "build",
+    "title": "Build",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "description": "The current status of the build"
+        },
+        "result": {
+          "title": "Result",
+          "type": "string",
+          "description": "The final result (e.g., succeeded, failed)"
+        },
+        "queueTime": {
+          "title": "Queue Time",
+          "type": "string",
+          "format": "date-time"
+        },
+        "startTime": {
+          "title": "Start Time",
+          "type": "string",
+          "format": "date-time"
+        },
+        "finishTime": {
+          "title": "Finish Time",
+          "type": "string",
+          "format": "date-time"
+        },
+        "definitionName": {
+          "title": "Definition Name",
+          "type": "string"
+        },
+        "requestedFor": {
+          "title": "Requested For",
+          "type": "string"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "Project",
+        "required": true,
+        "many": false
+      }
+    }
+  }
 ]
