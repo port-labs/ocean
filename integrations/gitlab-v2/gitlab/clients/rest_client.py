@@ -93,8 +93,8 @@ class RestClient(HTTPBaseClient):
             buf = io.StringIO()
             # chunk to reduce peak spikes during decoding
             mv = memoryview(raw)
-            for i in range(0, len(mv), 1<<20):  # 1MB chunks
-                buf.write(dec.decode(mv[i:i+(1<<20)], final=False))
+            for i in range(0, len(mv), 1 << 20):  # 1MB chunks
+                buf.write(dec.decode(mv[i : i + (1 << 20)], final=False))
             buf.write(dec.decode(b"", final=True))
             response["content"] = buf.getvalue()
         return response["content"]

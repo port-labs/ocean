@@ -1,19 +1,26 @@
 from enum import StrEnum
 from loguru import logger
-from typing import Any
+from typing import Any, Callable, Generator
 import json
 import yaml
 import io
 import re
 from yaml.events import (
-    StreamStartEvent, StreamEndEvent,
-    DocumentStartEvent, DocumentEndEvent,
-    SequenceStartEvent, SequenceEndEvent,
-    MappingStartEvent, MappingEndEvent,
-    ScalarEvent, AliasEvent
+    StreamStartEvent,
+    StreamEndEvent,
+    DocumentStartEvent,
+    DocumentEndEvent,
+    SequenceStartEvent,
+    SequenceEndEvent,
+    MappingStartEvent,
+    MappingEndEvent,
+    ScalarEvent,
+    AliasEvent,
 )
 import uuid
 import os
+
+
 class ObjectKind(StrEnum):
     PROJECT = "project"
     GROUP = "group"
@@ -59,7 +66,17 @@ def parse_file_content(
                 json.dump(json_content, f)
             if "file://" in content:
                 should_resolve_references = True
-            return {"path": content_path , "should_resolve_references": should_resolve_references} if not should_resolve_references else {"content": json_content,"should_resolve_references": should_resolve_references}
+            return (
+                {
+                    "path": content_path,
+                    "should_resolve_references": should_resolve_references,
+                }
+                if not should_resolve_references
+                else {
+                    "content": json_content,
+                    "should_resolve_references": should_resolve_references,
+                }
+            )
         except json.JSONDecodeError:
             pass  # Proceed to try YAML
 
@@ -71,17 +88,29 @@ def parse_file_content(
         if "file://" in content:
             should_resolve_references = True
         if not should_resolve_references:
-            return {"path": content_path, "should_resolve_references": should_resolve_references}
+            return {
+                "path": content_path,
+                "should_resolve_references": should_resolve_references,
+            }
         else:
             with open(content_path, "r", encoding="utf-8") as fr:
                 json_content = json.load(fr)
-                return {"content": json_content[0] if len(json_content) == 1 else json_content, "should_resolve_references": should_resolve_references}
+                return {
+                    "content": (
+                        json_content[0] if len(json_content) == 1 else json_content
+                    ),
+                    "should_resolve_references": should_resolve_references,
+                }
     except Exception as e:
         logger.debug(
             f"Failed to parse file '{file_path}' in '{context}' as JSON or YAML: {str(e)}. "
             "Returning raw content."
         )
-        return {"content": content, "should_resolve_references": should_resolve_references}
+        return {
+            "content": content,
+            "should_resolve_references": should_resolve_references,
+        }
+
 
 def enrich_resources_with_project(
     resources: list[dict[str, Any]], project_map: dict[str, Any]
@@ -104,27 +133,38 @@ def enrich_resources_with_project(
         enriched_resources.append(enriched_resource)
     return enriched_resources
 
+
 # -------- Scalar resolution (lightweight YAML 1.2-ish) --------
 
 _NULLS = {"null", "~", ""}
-_TRUE  = {"true"}
+_TRUE = {"true"}
 _FALSE = {"false"}
 
-_int_re = re.compile(r"""^[+-]?(
+_int_re = re.compile(
+    r"""^[+-]?(
     0
   | [1-9][0-9_]*
-)$""", re.X)
+)$""",
+    re.X,
+)
 
-_float_re = re.compile(r"""^[+-]?(
+_float_re = re.compile(
+    r"""^[+-]?(
     ([0-9][0-9_]*)?\.[0-9_]+([eE][+-]?[0-9_]+)?
   | [0-9][0-9_]*([eE][+-]?[0-9_]+)
-)$""", re.X)
+)$""",
+    re.X,
+)
+
 
 def _clean_underscores(s: str) -> str:
     # YAML allows numeric separators "_"; JSON doesn't.
     return s.replace("_", "")
 
-def scalar_to_json_text(val: str | None, tag: str | None, implicit: tuple[bool,bool] | None) -> str:
+
+def scalar_to_json_text(
+    val: str | None, tag: str | None, implicit: tuple[bool, bool] | None
+) -> str:
     """
     Convert a YAML scalar string to JSON text without building native containers.
     We ignore YAML 1.1 oddities and follow a YAML 1.2-ish core schema.
@@ -135,7 +175,9 @@ def scalar_to_json_text(val: str | None, tag: str | None, implicit: tuple[bool,b
     raw = val.strip()
 
     # If tag explicitly says string, skip heuristics
-    if tag and (tag.endswith(":str") or tag.endswith(":binary") or tag.endswith(":timestamp")):
+    if tag and (
+        tag.endswith(":str") or tag.endswith(":binary") or tag.endswith(":timestamp")
+    ):
         return json.dumps(val)
 
     # If the value was quoted in the original YAML (implicit[1] is True), treat as literal string
@@ -182,14 +224,18 @@ def scalar_to_json_text(val: str | None, tag: str | None, implicit: tuple[bool,b
     # Fallback: JSON string
     return json.dumps(val)
 
+
 # -------- Streaming JSON emitter from YAML events --------
+
 
 class _Frame:
     __slots__ = ("kind", "index", "expect")  # kind: 'seq'|'map'|'docarray'
+
     def __init__(self, kind: str, expect: str = "key"):
         self.kind = kind
         self.index = 0
         self.expect = expect  # only for maps: 'key' or 'value'
+
 
 class YamlToJsonStreamer:
     """
@@ -197,17 +243,18 @@ class YamlToJsonStreamer:
     - No compose/load (no big trees in memory)
     - Emits chunks via a writer callback
     """
-    def __init__(self, writer):
+
+    def __init__(self, writer: Callable[[str], None]) -> None:
         self.writer = writer
         self.stack: list[_Frame] = []
         self._doc_count = 0
         self._mode = "single"  # or 'array' or 'newline'
 
-    def set_multiple_mode(self, mode: str):
+    def set_multiple_mode(self, mode: str) -> None:
         self._mode = mode  # 'array' | 'newline' | 'single'
 
     # ---- helpers ----
-    def _comma_if_needed(self):
+    def _comma_if_needed(self) -> None:
         """Add comma before the next element if we're not at the first element"""
         if not self.stack:
             return
@@ -215,18 +262,27 @@ class YamlToJsonStreamer:
         if top.kind in ("seq", "map", "docarray") and top.index > 0:
             self.writer(",")
 
-    def _open_seq(self):
+    def _open_seq(self) -> None:
         # Only add comma if we're not inside a map expecting a value
         # and we're not at the start of a document in array mode
-        if not (self.stack and self.stack[-1].kind == "map" and self.stack[-1].expect == "value"):
+        if not (
+            self.stack
+            and self.stack[-1].kind == "map"
+            and self.stack[-1].expect == "value"
+        ):
             # Don't add comma if we're at the start of a document in array mode
             # (the document start event already handled the comma)
-            if not (self._mode == "array" and self.stack and self.stack[-1].kind == "docarray" and self._doc_count > 1):
+            if not (
+                self._mode == "array"
+                and self.stack
+                and self.stack[-1].kind == "docarray"
+                and self._doc_count > 1
+            ):
                 self._comma_if_needed()
         self.writer("[")
         self.stack.append(_Frame("seq"))
 
-    def _close_seq(self):
+    def _close_seq(self) -> _Frame:
         self.writer("]")
         frame = self.stack.pop()
         if self.stack:
@@ -238,18 +294,27 @@ class YamlToJsonStreamer:
             top.index += 1
         return frame
 
-    def _open_map(self):
+    def _open_map(self) -> None:
         # Only add comma if we're not inside a map expecting a value
         # and we're not at the start of a document in array mode
-        if not (self.stack and self.stack[-1].kind == "map" and self.stack[-1].expect == "value"):
+        if not (
+            self.stack
+            and self.stack[-1].kind == "map"
+            and self.stack[-1].expect == "value"
+        ):
             # Don't add comma if we're at the start of a document in array mode
             # (the document start event already handled the comma)
-            if not (self._mode == "array" and self.stack and self.stack[-1].kind == "docarray" and self._doc_count > 1):
+            if not (
+                self._mode == "array"
+                and self.stack
+                and self.stack[-1].kind == "docarray"
+                and self._doc_count > 1
+            ):
                 self._comma_if_needed()
         self.writer("{")
         self.stack.append(_Frame("map", expect="key"))
 
-    def _close_map(self):
+    def _close_map(self) -> _Frame:
         self.writer("}")
         frame = self.stack.pop()
         if self.stack:
@@ -261,9 +326,15 @@ class YamlToJsonStreamer:
             top.index += 1
         return frame
 
-    def _emit_scalar(self, val: str, tag: str | None, implicit):
+    def _emit_scalar(
+        self, val: str, tag: str | None, implicit: tuple[bool, bool] | None
+    ) -> None:
         # If inside a mapping and expecting a key, we must ensure JSON string key
-        if self.stack and self.stack[-1].kind == "map" and self.stack[-1].expect == "key":
+        if (
+            self.stack
+            and self.stack[-1].kind == "map"
+            and self.stack[-1].expect == "key"
+        ):
             self._comma_if_needed()
             # Convert to JSON text; must end up as a *string* key in JSON
             key_json = scalar_to_json_text(val, tag, implicit)
@@ -289,7 +360,7 @@ class YamlToJsonStreamer:
                 top.index += 1
 
     # ---- main driver ----
-    def feed(self, events):
+    def feed(self, events: list[yaml.events.Event]) -> None:
         # Handle multiple docs wrapper
         docarray_opened = False
         for ev in events:
@@ -328,7 +399,9 @@ class YamlToJsonStreamer:
             elif isinstance(ev, AliasEvent):
                 # YAML alias/anchor -> stringify the alias name (low-memory + JSON-safe)
                 # Alternative policies are possible (e.g., error out).
-                self._emit_scalar("*" + (ev.anchor or ""), "tag:yaml.org,2002:str", (True, True))
+                self._emit_scalar(
+                    "*" + (ev.anchor or ""), "tag:yaml.org,2002:str", (True, True)
+                )
 
             elif isinstance(ev, StreamStartEvent):
                 pass
@@ -343,7 +416,10 @@ class YamlToJsonStreamer:
             self.writer("]")
             self.stack.pop()  # docarray
 
-def yaml_to_json_chunks(yaml_text: str, multiple: str = "array", file_stream=None):
+
+def yaml_to_json_chunks(
+    yaml_text: str, multiple: str = "array", file_stream: io.TextIOBase | None = None
+) -> Generator[str, None, None] | None:
     """
     Convert YAML to JSON and write directly to a file stream if provided,
     otherwise yield JSON text chunks while parsing YAML incrementally.
@@ -357,16 +433,20 @@ def yaml_to_json_chunks(yaml_text: str, multiple: str = "array", file_stream=Non
     """
     if file_stream is not None:
         # Write directly to file stream - separate function to avoid generator issues
-        return _yaml_to_json_stream(yaml_text, multiple, file_stream)
-    else:
-        # Original behavior: yield chunks
-        return _yaml_to_json_generator(yaml_text, multiple)
+        _yaml_to_json_stream(yaml_text, multiple, file_stream)
+        return None
+    # Original behavior: yield chunks
+    return _yaml_to_json_generator(yaml_text, multiple)
 
-def _yaml_to_json_stream(yaml_text: str, multiple: str, file_stream):
+
+def _yaml_to_json_stream(
+    yaml_text: str, multiple: str, file_stream: io.TextIOBase
+) -> None:
     """Helper function to write YAML to JSON directly to a file stream."""
     bulk = []
+
     # Write directly to file stream
-    def _write_to_stream(chunk: str):
+    def _write_to_stream(chunk: str) -> None:
         bulk.append(chunk)
         if len(bulk) == 10000:
             file_stream.write("".join(bulk))
@@ -392,11 +472,15 @@ def _yaml_to_json_stream(yaml_text: str, multiple: str, file_stream):
                 file_stream.write("\n")
             file_stream.write(jtxt)
 
-def _yaml_to_json_generator(yaml_text: str, multiple: str):
+
+def _yaml_to_json_generator(
+    yaml_text: str, multiple: str
+) -> Generator[str, None, None]:
     """Helper function to generate YAML to JSON chunks."""
 
-    buf = []
-    def _push(chunk: str):
+    buf: list[str] = []
+
+    def _push(chunk: str) -> None:
         buf.append(chunk)
 
     parser = yaml.parse(io.StringIO(yaml_text))
@@ -423,15 +507,17 @@ def _yaml_to_json_generator(yaml_text: str, multiple: str):
     out = "".join(buf)
     yield out
 
+
 # Tiny helper to produce one-JSON-per-doc without storing all docs
-def iter_yaml_docs_as_single_json(yaml_text: str):
+def iter_yaml_docs_as_single_json(yaml_text: str) -> Generator[str, None, None]:
     """
     Iterate JSON strings for each YAML document with low memory.
     """
     # We’ll restart a small streamer at each document boundary.
     stream = yaml.parse(io.StringIO(yaml_text))
-    buf = []
-    def flush_doc():
+    buf: list[str] = []
+
+    def flush_doc() -> str | None:
         if buf:
             s = "".join(buf)
             buf.clear()
@@ -440,14 +526,16 @@ def iter_yaml_docs_as_single_json(yaml_text: str):
 
     doc_started = False
 
-    def writer(s): buf.append(s)
+    def writer(s: str) -> None:
+        buf.append(s)
 
     local = YamlToJsonStreamer(writer)
     local.set_multiple_mode("single")
 
     # We proxy events to the local streamer and detect doc boundaries
     from collections import deque
-    pending = deque()
+
+    pending: deque[yaml.events.Event] = deque()
 
     for ev in stream:
         if isinstance(ev, DocumentStartEvent):
