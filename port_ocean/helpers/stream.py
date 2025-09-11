@@ -4,7 +4,7 @@ import uuid
 
 import aiofiles  # type: ignore[import-untyped]
 import httpx
-import ijson
+import ijson  # type: ignore[import-untyped]
 from cryptography.fernet import Fernet
 
 import port_ocean.context.ocean as ocean_context
