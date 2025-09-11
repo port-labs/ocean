@@ -59,7 +59,16 @@ async def test_push_validate_payload(
     valid_payload = {
         "eventType": "git.push",
         "publisherId": "tfs",
-        "resource": {"url": "http://example.com"},
+        "resource": {
+            "url": "http://example.com",
+            "repository": {"id": "1234567890", "name": "test-repo"},
+            "refUpdates": [
+                {
+                    "name": "refs/heads/main",
+                    "newObjectId": "new-commit",
+                }
+            ],
+        },
     }
     assert await push_processor.validate_payload(valid_payload) is True
 

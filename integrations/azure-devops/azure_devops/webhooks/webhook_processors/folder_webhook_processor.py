@@ -35,8 +35,11 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             return False
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        event_type = event.payload["eventType"]
-        return bool(PushEvents(event_type))
+        try:
+            event_type = event.payload["eventType"]
+            return bool(PushEvents(event_type))
+        except ValueError:
+            return False
 
     def _matches_folder_pattern(
         self, folder_path: str, folder_patterns: List[str]

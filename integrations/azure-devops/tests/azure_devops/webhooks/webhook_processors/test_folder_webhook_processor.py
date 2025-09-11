@@ -63,7 +63,7 @@ async def test_folder_should_process_event(
             "publisherId": "tfs",
             "resource": {
                 "url": "http://example.com",
-                "repository": {"id": "1234567890"},
+                "repository": {"id": "1234567890", "name": "test-repo"},
                 "refUpdates": [
                     {
                         "name": "refs/heads/main",

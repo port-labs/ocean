@@ -33,8 +33,11 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             return False
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        event_type = event.payload["eventType"]
-        return bool(PushEvents(event_type))
+        try:
+            event_type = event.payload["eventType"]
+            return bool(PushEvents(event_type))
+        except ValueError:
+            return False
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig

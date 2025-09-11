@@ -24,8 +24,11 @@ class PullRequestWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         return payload["resource"].get("pullRequestId") is not None
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        event_type = event.payload["eventType"]
-        return bool(PullRequestEvents(event_type))
+        try:
+            event_type = event.payload["eventType"]
+            return bool(PullRequestEvents(event_type))
+        except ValueError:
+            return False
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
