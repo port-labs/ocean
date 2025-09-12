@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.2 (2025-09-12)
+
+
+### Features
+
+- Added support for envrionments kind in Azure DevOps integration
+- Added support for release_deployment kind in Azure DevOps integration
+- Added support for pipeline_deployment kind in Azure DevOps integration
+
+
 ## 0.3.11 (2025-09-10)
 
 
