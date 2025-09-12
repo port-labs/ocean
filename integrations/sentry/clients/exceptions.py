@@ -6,7 +6,6 @@ from loguru import logger
 class IgnoredError(NamedTuple):
     status: int | str
     message: Optional[str] = None
-    type: Optional[str] = None
 
 
 class ResourceNotFoundError(Exception):

@@ -25,12 +25,10 @@ class SentryClient:
         IgnoredError(
             status=401,
             message="Unauthorized access to endpoint — authentication required or token invalid",
-            type="UNAUTHORIZED",
         ),
         IgnoredError(
             status=403,
             message="Forbidden access to endpoint — insufficient permissions",
-            type="FORBIDDEN",
         ),
     ]
 
