@@ -23,11 +23,6 @@
           "title": "ARN",
           "description": "The Amazon Resource Name (ARN) of the account"
         },
-        "accountId": {
-          "type": "string",
-          "title": "Account ID",
-          "description": "The AWS Account ID"
-        },
         "email": {
           "type": "string",
           "title": "Email",
@@ -44,25 +39,14 @@
           "description": "When the account joined the organization",
           "format": "date-time"
         },
-        "parentIds": {
-          "type": "array",
-          "title": "Parent IDs",
-          "description": "List of parent Root or OU IDs",
-          "items": {
-            "type": "string"
-          }
-        },
-        "roleName": {
+        "joinedMethod": {
           "type": "string",
-          "title": "Role Name",
-          "description": "Role name used for cross-account access (if any)"
-        },
-        "tags": {
-          "type": "array",
-          "title": "Tags",
-          "description": "Tags associated with the account",
-          "items": {
-            "type": "object"
+          "title": "Joined Method",
+          "description": "Method used to join the account to the organization",
+          "enum": ["INVITED", "CREATED"],
+          "enumColors": {
+            "INVITED": "lightGray",
+            "CREATED": "lightGray"
           }
         }
       },

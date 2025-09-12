@@ -65,7 +65,7 @@ class TestListParentsAction:
         identifiers = [{"Id": "111111111111"}]
         result = await action.execute(identifiers)
 
-        assert result == [{"ParentIds": ["r-root", "ou-abcd-1234"]}]
+        assert result == [{"Parents": [{"Id": "r-root"}, {"Id": "ou-abcd-1234"}]}]
         action.client.get_paginator.assert_called_once_with("list_parents")
 
 
@@ -74,7 +74,15 @@ class TestListTagsForResourceAction:
     @pytest.fixture
     def mock_client(self) -> AsyncMock:
         mock_client = AsyncMock()
-        mock_client.list_tags_for_resource = AsyncMock()
+
+        class MockPaginator:
+            def paginate(self, **kwargs: Any) -> AsyncGenerator[Dict[str, Any], None]:
+                async def _gen() -> AsyncGenerator[Dict[str, Any], None]:
+                    yield {"Tags": [{"Key": "Env", "Value": "prod"}]}
+
+                return _gen()
+
+        mock_client.get_paginator = MagicMock(return_value=MockPaginator())
         return mock_client
 
     @pytest.fixture
@@ -89,28 +97,64 @@ class TestListTagsForResourceAction:
     async def test_execute_success(
         self, mock_logger: MagicMock, action: ListTagsForResourceAction
     ) -> None:
-        action.client.list_tags_for_resource.return_value = {
-            "Tags": [{"Key": "Env", "Value": "prod"}]
-        }
-
         result = await action.execute([{"Id": "111111111111"}])
 
         assert result == [{"Tags": [{"Key": "Env", "Value": "prod"}]}]
-        action.client.list_tags_for_resource.assert_called_once_with(
-            ResourceId="111111111111"
-        )
+        action.client.get_paginator.assert_called_once_with("list_tags_for_resource")
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.organizations.account.actions.logger")
     async def test_execute_handles_error(
         self, mock_logger: MagicMock, action: ListTagsForResourceAction
     ) -> None:
-        action.client.list_tags_for_resource.side_effect = Exception("throttle")
+        # Mock accounts to test with
+        accounts = [
+            {"Id": "111111111111"},  # Will raise access denied
+            {"Id": "222222222222"},  # Will raise resource not found
+            {"Id": "333333333333"},  # Will raise other exception
+            {"Id": "444444444444"},  # Will succeed
+        ]
 
-        result = await action.execute([{"Id": "111111111111"}])
+        # Mock paginator behavior for the successful case
+        class MockPaginator:
+            def paginate(self, **kwargs: Any) -> AsyncGenerator[Dict[str, Any], None]:
+                async def _gen() -> AsyncGenerator[Dict[str, Any], None]:
+                    if kwargs["ResourceId"] == "444444444444":
+                        yield {"Tags": [{"Key": "Env", "Value": "prod"}]}
+                    elif kwargs["ResourceId"] == "111111111111":
+                        raise Exception("AccessDeniedException")
+                    elif kwargs["ResourceId"] == "222222222222":
+                        raise Exception("ResourceNotFoundException")
+                    else:
+                        raise Exception("UnexpectedError")
 
-        assert result == [{"Tags": []}]
-        mock_logger.warning.assert_called()
+                return _gen()
+
+        action.client.get_paginator = MagicMock(return_value=MockPaginator())
+
+        # Mock error type checking functions
+        with (
+            patch(
+                "aws.core.exporters.organizations.account.actions.is_access_denied_exception",
+                side_effect=lambda e: "AccessDeniedException" in str(e),
+            ),
+            patch(
+                "aws.core.exporters.organizations.account.actions.is_resource_not_found_exception",
+                side_effect=lambda e: "ResourceNotFoundException" in str(e),
+            ),
+        ):
+            # Execute and verify results
+            with pytest.raises(Exception) as exc_info:
+                await action.execute(accounts)
+                assert str(exc_info.value) == "UnexpectedError"
+
+            # Verify warning logs for access denied and resource not found
+            mock_logger.warning.assert_any_call(
+                "Administrator or management account has been denied access to list tags for account 111111111111, AccessDeniedException, skipping ..."
+            )
+            mock_logger.warning.assert_any_call(
+                "Failed to list tags for account 222222222222: ResourceNotFoundException"
+            )
 
 
 class TestOrganizationsAccountActionsMap:

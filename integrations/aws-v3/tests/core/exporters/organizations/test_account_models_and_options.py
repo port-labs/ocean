@@ -32,23 +32,21 @@ class TestAccountOptions:
 class TestAccountProperties:
     def test_defaults(self) -> None:
         props = AccountProperties()
-        assert props.AccountName == ""
+        assert props.Name is None
         assert props.Email == ""
-        assert props.ParentIds == []
-        assert props.RoleName is None
         assert props.Tags == []
         assert props.Status == ""
         assert props.Id == ""
         assert props.Arn == ""
+        assert props.Parents == []
         assert props.JoinedTimestamp is None
 
     def test_with_values(self) -> None:
         ts = datetime(2024, 1, 1, 0, 0, 0)
         props = AccountProperties(
-            AccountName="prod",
+            Name="prod",
             Email="a@b.com",
-            ParentIds=["r-root"],
-            RoleName="OrganizationAccountAccessRole",
+            Parents=[{"Id": "r-root"}],
             Tags=[{"Key": "Env", "Value": "prod"}],
             Status="ACTIVE",
             Id="111111111111",
@@ -56,26 +54,28 @@ class TestAccountProperties:
             JoinedTimestamp=ts,
         )
 
-        assert props.AccountName == "prod"
+        assert props.Name == "prod"
         assert props.Email == "a@b.com"
-        assert props.ParentIds == ["r-root"]
-        assert props.RoleName == "OrganizationAccountAccessRole"
+        assert props.Parents == [{"Id": "r-root"}]
         assert props.Tags == [{"Key": "Env", "Value": "prod"}]
         assert props.Status == "ACTIVE"
         assert props.Id == "111111111111"
-        assert props.Arn.startswith("arn:aws:organizations::")
+        assert (
+            props.Arn
+            == "arn:aws:organizations::123456789012:account/o-root/111111111111"
+        )
         assert props.JoinedTimestamp == ts
 
 
 class TestAccountModel:
     def test_type_and_properties(self) -> None:
-        acc = Account(Properties=AccountProperties(AccountName="prod"))
+        acc = Account(Properties=AccountProperties(Name="prod"))
         assert acc.Type == "AWS::Organizations::Account"
-        assert acc.Properties.AccountName == "prod"
+        assert acc.Properties.Name == "prod"
 
     def test_dict_exclude_none(self) -> None:
-        props = AccountProperties(AccountName="prod")
+        props = AccountProperties(Name="prod")
         acc = Account(Properties=props)
         d = acc.dict(exclude_none=True)
         assert d["Type"] == "AWS::Organizations::Account"
-        assert d["Properties"]["AccountName"] == "prod"
+        assert d["Properties"]["Name"] == "prod"

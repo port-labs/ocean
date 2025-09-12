@@ -5,15 +5,15 @@ from datetime import datetime
 
 
 class AccountProperties(BaseModel):
-    AccountName: str = Field(default_factory=str)
-    Email: str = Field(default_factory=str)
-    ParentIds: List[str] = Field(default_factory=list)
-    RoleName: Optional[str] = None
-    Tags: List[Dict[str, Any]] = Field(default_factory=list)
-    Status: str = Field(default_factory=str)
     Id: str = Field(default_factory=str)
     Arn: str = Field(default_factory=str)
+    Name: Optional[str] = None
+    Email: str = Field(default_factory=str)
+    Parents: List[Dict[str, Any]] = Field(default_factory=list)
+    Tags: List[Dict[str, Any]] = Field(default_factory=list)
+    Status: str = Field(default_factory=str)
     JoinedTimestamp: Optional[datetime] = None
+    JoinedMethod: Optional[str] = None
 
     class Config:
         extra = "forbid"

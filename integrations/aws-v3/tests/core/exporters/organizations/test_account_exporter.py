@@ -51,7 +51,7 @@ class TestOrganizationsAccountExporter:
         expected = Account(
             Properties=AccountProperties(
                 Id="111111111111",
-                AccountName="prod",
+                Name="prod",
                 Email="a@b.com",
             )
         )

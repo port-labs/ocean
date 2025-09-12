@@ -21,12 +21,10 @@ resources:
           blueprint: '"awsOrganizationAccount"'
           properties:
             arn: .Properties.Arn
-            accountId: .Properties.Id
             email: .Properties.Email
             status: .Properties.Status
             joinedTimestamp: .Properties.JoinedTimestamp
-            parentIds: .Properties.ParentIds
-            tags: .Properties.Tags
+            joinedMethod: .Properties.JoinedMethod
   - kind: AWS::S3::Bucket
     selector:
       query: 'true'
