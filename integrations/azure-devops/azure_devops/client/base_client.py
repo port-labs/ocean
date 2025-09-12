@@ -18,8 +18,6 @@ class HTTPBaseClient:
             retry_config=RetryConfig(
                 retry_after_headers=[
                     "X-RateLimit-Reset",
-                    "X-RateLimit-Limit",
-                    "X-RateLimit-Remaining",
                     "Retry-After",
                 ],
             )
