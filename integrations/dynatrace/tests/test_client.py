@@ -71,9 +71,7 @@ async def test_enrich_slos_with_related_entities_exception(
 
     # Mock the internal method to raise an exception
     mock_get_related_entities = AsyncMock(side_effect=Exception("API Error"))
-    monkeypatch.setattr(
-        client, "_get_slo_related_entities", mock_get_related_entities
-    )
+    monkeypatch.setattr(client, "_get_slo_related_entities", mock_get_related_entities)
 
     enriched_slos = await client.enrich_slos_with_related_entities(slos_to_enrich)
 
