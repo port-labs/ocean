@@ -2,6 +2,14 @@ import pytest
 from unittest.mock import AsyncMock
 
 from client import DynatraceClient
+from port_ocean.context.ocean import ocean
+from port_ocean.ocean import Ocean
+
+
+@pytest.fixture(autouse=True)
+def setup_ocean():
+    app = Ocean()
+    ocean.set_app(app)
 
 
 @pytest.mark.asyncio
