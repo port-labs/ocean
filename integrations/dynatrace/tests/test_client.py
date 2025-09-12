@@ -25,8 +25,8 @@ async def test_enrich_slos_with_related_entities():
     client = DynatraceClient(host_url="http://test.com", api_key="test_key")
 
     slos_to_enrich = [
-        {"id": "slo-1"},
-        {"id": "slo-2"},
+        {"id": "slo-1", "filter": "filter-1"},
+        {"id": "slo-2", "filter": "filter-2"},
     ]
 
     related_entities_slo_1 = [{"entityId": "SERVICE-123"}]
@@ -40,8 +40,8 @@ async def test_enrich_slos_with_related_entities():
     enriched_slos = await client.enrich_slos_with_related_entities(slos_to_enrich)
 
     expected_slos = [
-        {"id": "slo-1", "__relatedEntities": related_entities_slo_1},
-        {"id": "slo-2", "__relatedEntities": related_entities_slo_2},
+        {"id": "slo-1", "filter": "filter-1", "__relatedEntities": related_entities_slo_1},
+        {"id": "slo-2", "filter": "filter-2", "__relatedEntities": related_entities_slo_2},
     ]
 
     assert enriched_slos == expected_slos
@@ -57,7 +57,7 @@ async def test_enrich_slos_with_related_entities_exception():
     client = DynatraceClient(host_url="http://test.com", api_key="test_key")
 
     slos_to_enrich = [
-        {"id": "slo-1"},
+        {"id": "slo-1", "filter": "filter-1"},
     ]
 
     # Mock the internal method to raise an exception
