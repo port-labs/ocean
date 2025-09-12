@@ -22,7 +22,6 @@ class HTTPBaseClient:
                     "X-RateLimit-Remaining",
                     "Retry-After",
                 ],
-                additional_retry_status_codes=[429],
             )
         )
         self._personal_access_token = personal_access_token
