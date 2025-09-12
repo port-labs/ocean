@@ -1,15 +1,18 @@
 import pytest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from client import DynatraceClient
-from port_ocean.context.ocean import ocean
-from port_ocean.ocean import Ocean
+from port_ocean.context.ocean import initialize_port_ocean_context
+from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 
 @pytest.fixture(autouse=True)
 def setup_ocean():
-    app = Ocean()
-    ocean.set_app(app)
+    try:
+        mock_ocean_app = MagicMock()
+        initialize_port_ocean_context(mock_ocean_app)
+    except PortOceanContextAlreadyInitializedError:
+        pass
 
 
 @pytest.mark.asyncio
