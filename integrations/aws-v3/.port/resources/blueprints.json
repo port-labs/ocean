@@ -1,5 +1,18 @@
 [
   {
+    "identifier": "awsAccount",
+    "title": "AWS Account",
+    "icon": "AWS",
+    "schema": {
+      "properties": {},
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
     "identifier": "s3Bucket",
     "title": "S3 Bucket",
     "icon": "AWS",
@@ -13,23 +26,13 @@
         "region": {
           "type": "string",
           "title": "Region",
-          "description": "The AWS region where the bucket is located"
+          "description": "Geographic AWS Region where a bucket is created and stored"
         },
         "creationDate": {
           "type": "string",
           "title": "Creation Date",
           "description": "The date when the bucket was created",
           "format": "date-time"
-        },
-        "encryption": {
-          "type": "object",
-          "title": "Encryption",
-          "description": "The encryption configuration for the bucket"
-        },
-        "publicAccessBlockConfiguration": {
-          "type": "object",
-          "title": "Public Access Block Configuration",
-          "description": "The public access block configuration for the bucket"
         },
         "tags": {
           "type": "array",
@@ -43,6 +46,134 @@
       "required": []
     },
     "calculationProperties": {},
-    "relations": {}
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "ec2Instance",
+    "title": "EC2 Instance",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "instanceType": {
+          "type": "string",
+          "title": "Instance Type",
+          "description": "The type of the EC2 instance (e.g., t2.micro, m5.large)"
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "description": "The current state of the instance",
+          "enum": ["pending", "running", "shutting-down", "terminated", "stopping", "stopped"]
+        },
+        "publicIpAddress": {
+          "type": "string",
+          "title": "Public IP Address",
+          "description": "The public IP address of the EC2 instance"
+        },
+        "privateIpAddress": {
+          "type": "string",
+          "title": "Private IP Address",
+          "description": "The private IP address of the EC2 instance"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the EC2 instance",
+          "items": {
+            "type": "object"
+          }
+        },
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the EC2 instance"
+        }
+      },
+      "required": []
+    },
+    "calculationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "ecsCluster",
+    "title": "ECS Cluster",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the ECS cluster"
+        },
+        "runningTasksCount": {
+          "type": "number",
+          "title": "Running Tasks Count",
+          "description": "The number of running tasks in the cluster"
+        },
+        "activeServicesCount": {
+          "type": "number",
+          "title": "Active Services Count",
+          "description": "The number of active services in the cluster"
+        },
+        "pendingTasksCount": {
+          "type": "number",
+          "title": "Pending Tasks Count",
+          "description": "The number of pending tasks in the cluster"
+        },
+        "registeredContainerInstancesCount": {
+          "type": "number",
+          "title": "Reg Container Instances Count",
+          "description": "The number of registered container instances in the cluster"
+        },
+        "capacityProviders": {
+          "type": "array",
+          "title": "Capacity Providers",
+          "description": "The capacity providers associated with the cluster",
+          "items": {
+            "type": "string"
+          }
+        },
+        "clusterArn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the cluster"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the cluster",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.182 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
+## 0.1.181 (2025-09-09)
+
+
+### Bug Fixes
+
+- Fix GCP multi-process resync hang by deferring gRPC quota initialization to child processes (avoid pre-fork gRPC).
+
+
+## 0.1.180 (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
 ## 0.1.179 (2025-08-28)
 
 
