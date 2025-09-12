@@ -43,7 +43,7 @@ class GitopsWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
             event_type = event.payload["eventType"]
-            ref_updates = event.payload["resource"].get("refUpdates")
+            ref_updates = event.payload["resource"]["refUpdates"]
             config = cast(GitPortAppConfig, port_ocean_event.port_app_config)
             is_push_event = bool(PushEvents(event_type))
             has_spec_path = (
