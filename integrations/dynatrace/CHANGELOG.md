@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+
+## 0.1.176 (2025-09-12)
+
+
+### Bugfix
+
+- Graceful handling of asynchronous errors during SLO enrichment
+
+
 ## 0.1.175 (2025-09-10)
 
 
