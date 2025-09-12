@@ -19,7 +19,7 @@ def setup_ocean():
 async def test_enrich_slos_with_related_entities():
     """
     Tests that enrich_slos_with_related_entities correctly adds the
-    __relatedEntities key to each SLO based on the entities returned
+    __entities key to each SLO based on the entities returned
     by _get_slo_related_entities.
     """
     client = DynatraceClient(host_url="http://test.com", api_key="test_key")
@@ -40,8 +40,8 @@ async def test_enrich_slos_with_related_entities():
     enriched_slos = await client.enrich_slos_with_related_entities(slos_to_enrich)
 
     expected_slos = [
-        {"id": "slo-1", "filter": "filter-1", "__relatedEntities": related_entities_slo_1},
-        {"id": "slo-2", "filter": "filter-2", "__relatedEntities": related_entities_slo_2},
+        {"id": "slo-1", "filter": "filter-1", "__entities": related_entities_slo_1},
+        {"id": "slo-2", "filter": "filter-2", "__entities": related_entities_slo_2},
     ]
 
     assert enriched_slos == expected_slos
