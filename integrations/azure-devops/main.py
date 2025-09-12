@@ -35,6 +35,7 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
 @ocean.on_resync(Kind.PROJECT)
@@ -159,6 +160,46 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for releases in azure_devops_client.generate_releases():
         logger.info(f"Resyncing {len(releases)} releases")
         yield releases
+
+
+@ocean.on_resync(Kind.ENVIRONMENT)
+async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    logger.info(f"Starting resync for kind: {kind}")
+
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for environments in azure_devops_client.generate_environments():
+        logger.info(f"Resyncing {len(environments)} environments")
+        yield environments
+
+
+@ocean.on_resync(Kind.RELEASE_DEPLOYMENT)
+async def resync_release_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    logger.info(f"Starting resync for kind: {kind}")
+
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+
+    async for deployments in azure_devops_client.generate_release_deployments():
+        logger.info(f"Resyncing {len(deployments)} release deployments")
+        yield deployments
+
+
+@ocean.on_resync(Kind.PIPELINE_DEPLOYMENT)
+async def resync_pipeline_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    logger.info(f"Starting resync for kind: {kind}")
+
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+
+    async for environments in azure_devops_client.generate_environments():
+        tasks = [
+            azure_devops_client.generate_pipeline_deployments(
+                project_id=environment["project"]["id"],
+                environment_id=environment["id"],
+            )
+            for environment in environments
+        ]
+        async for deployments in stream_async_iterators_tasks(*tasks):
+            logger.info(f"Resyncing {len(deployments)} pipeline deployments")
+            yield deployments
 
 
 @ocean.on_resync(Kind.FILE)
