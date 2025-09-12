@@ -28,9 +28,8 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
-            repository = event.payload["resource"].get("repository", {})
             event_type = event.payload["eventType"]
-            return repository.get("id") and bool(RepositoryEvents(event_type))
+            return bool(RepositoryEvents(event_type))
         except ValueError:
             return False
 
