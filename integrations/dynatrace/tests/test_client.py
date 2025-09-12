@@ -34,10 +34,13 @@ async def test_enrich_slos_with_related_entities(monkeypatch: MonkeyPatch) -> No
     related_entities_slo_2 = [{"entityId": "HOST-456"}]
 
     # Mock the internal method that fetches related entities
+    mock_get_related_entities = AsyncMock(
+        side_effect=[related_entities_slo_1, related_entities_slo_2]
+    )
     monkeypatch.setattr(
         client,
         "_get_slo_related_entities",
-        AsyncMock(side_effect=[related_entities_slo_1, related_entities_slo_2]),
+        mock_get_related_entities,
     )
 
     enriched_slos = await client.enrich_slos_with_related_entities(slos_to_enrich)
@@ -48,7 +51,7 @@ async def test_enrich_slos_with_related_entities(monkeypatch: MonkeyPatch) -> No
     ]
 
     assert enriched_slos == expected_slos
-    assert client._get_slo_related_entities.call_count == 2
+    assert mock_get_related_entities.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -67,11 +70,12 @@ async def test_enrich_slos_with_related_entities_exception(
     ]
 
     # Mock the internal method to raise an exception
+    mock_get_related_entities = AsyncMock(side_effect=Exception("API Error"))
     monkeypatch.setattr(
-        client, "_get_slo_related_entities", AsyncMock(side_effect=Exception("API Error"))
+        client, "_get_slo_related_entities", mock_get_related_entities
     )
 
     enriched_slos = await client.enrich_slos_with_related_entities(slos_to_enrich)
 
     assert enriched_slos == slos_to_enrich
-    assert client._get_slo_related_entities.call_count == 1
+    assert mock_get_related_entities.call_count == 1
