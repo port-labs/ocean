@@ -33,7 +33,7 @@ class OrganizationsAccountExporter(IResourceExporter):
 
     async def get_paginated_resources(
         self, options: PaginatedAccountRequest
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:  # TODO: handle permission errors
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async with AioBaseClientProxy(
             self.session, options.region, self._service_name
         ) as proxy:
