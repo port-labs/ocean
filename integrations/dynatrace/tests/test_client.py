@@ -51,8 +51,9 @@ async def test_enrich_slos_with_related_entities():
 @pytest.mark.asyncio
 async def test_enrich_slos_with_related_entities_exception():
     """
-    Tests that enrich_slos_with_related_entities correctly propagates an
-    exception if _get_slo_related_entities raises one.
+    Tests that enrich_slos_with_related_entities handles exceptions gracefully
+    and does not add the `__entities` key to an SLO if fetching its related
+    entities fails.
     """
     client = DynatraceClient(host_url="http://test.com", api_key="test_key")
 
@@ -63,7 +64,7 @@ async def test_enrich_slos_with_related_entities_exception():
     # Mock the internal method to raise an exception
     client._get_slo_related_entities = AsyncMock(side_effect=Exception("API Error"))
 
-    with pytest.raises(Exception, match="API Error"):
-        await client.enrich_slos_with_related_entities(slos_to_enrich)
+    enriched_slos = await client.enrich_slos_with_related_entities(slos_to_enrich)
 
+    assert enriched_slos == slos_to_enrich
     assert client._get_slo_related_entities.call_count == 1
