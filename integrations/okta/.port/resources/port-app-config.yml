@@ -1,0 +1,120 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: oktaUser
+    selector:
+      query: 'true'
+      filter: ""
+      limit: 200
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .profile.displayName // .profile.login
+          blueprint: oktaUser
+          properties:
+            id: .id
+            email: .profile.email
+            status: .status
+            created: .created
+            activated: .activated
+            displayName: .profile.displayName
+            login: .profile.login
+            type: .type.id
+            locale: .profile.locale
+            department: .profile.department
+          relations:
+            groups: '[.groups[].id] // []'
+            manager: .profile.manager.id
+            roles: '[.roles[].id] // []'
+
+  - kind: oktaGroup
+    selector:
+      query: 'true'
+      filter: ""
+      limit: 200
+      expand: ""
+      include_members: false
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .profile.name
+          blueprint: oktaGroup
+          properties:
+            id: .id
+            name: .profile.name
+            description: .profile.description
+            type: .type
+            created: .created
+            lastUpdated: .lastUpdated
+            lastMembershipUpdated: .lastMembershipUpdated
+          relations:
+            members: '[.members[].id] // []'
+            team: .profile.parentGroup.id
+            roles: '[.roles[].id] // []'
+
+  - kind: oktaRole
+    selector:
+      query: 'true'
+      filter: ""
+      limit: 200
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .label
+          blueprint: oktaRole
+          properties:
+            id: .id
+            label: .label
+            type: .type
+            status: .status
+            created: .created
+            lastUpdated: .lastUpdated
+            description: .description
+          relations:
+            permissions: '[.permissions[].id] // []'
+
+  - kind: oktaPermission
+    selector:
+      query: 'true'
+      filter: ""
+      limit: 200
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .type + " - " + .resource.displayName
+          blueprint: oktaPermission
+          properties:
+            id: .id
+            type: .type
+            status: .status
+            created: .created
+            lastUpdated: .lastUpdated
+            resource: .resource.displayName
+
+  - kind: oktaApplication
+    selector:
+      query: 'true'
+      filter: ""
+      limit: 200
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .label
+          blueprint: oktaApplication
+          properties:
+            id: .id
+            name: .name
+            label: .label
+            status: .status
+            created: .created
+            lastUpdated: .lastUpdated
+            features: .features
+            signOnMode: .signOnMode
+          relations:
+            assignedUsers: '[.users[].id] // []'
+            assignedGroups: '[.groups[].id] // []'
