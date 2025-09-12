@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented rate limiter to handle both `X-RateLimit-Reset` and `Retry-After` headers
 
 
+## 0.3.12 (2025-09-11)
+
+
+### Improvements
+
+- Enhanced payload validation for file, folder, and pull request event kinds.
+- Improved error handling and schema checks to ensure consistent processing and reduced failed syncs.
+
+
 ## 0.3.11 (2025-09-10)
 
 
