@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
+from pytest import MonkeyPatch
 
 from client import DynatraceClient
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -7,7 +8,7 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 
 
 @pytest.fixture(autouse=True)
-def setup_ocean():
+def setup_ocean() -> None:
     try:
         mock_ocean_app = MagicMock()
         initialize_port_ocean_context(mock_ocean_app)
@@ -16,7 +17,7 @@ def setup_ocean():
 
 
 @pytest.mark.asyncio
-async def test_enrich_slos_with_related_entities():
+async def test_enrich_slos_with_related_entities(monkeypatch: MonkeyPatch) -> None:
     """
     Tests that enrich_slos_with_related_entities correctly adds the
     __entities key to each SLO based on the entities returned
@@ -33,8 +34,10 @@ async def test_enrich_slos_with_related_entities():
     related_entities_slo_2 = [{"entityId": "HOST-456"}]
 
     # Mock the internal method that fetches related entities
-    client._get_slo_related_entities = AsyncMock(
-        side_effect=[related_entities_slo_1, related_entities_slo_2]
+    monkeypatch.setattr(
+        client,
+        "_get_slo_related_entities",
+        AsyncMock(side_effect=[related_entities_slo_1, related_entities_slo_2]),
     )
 
     enriched_slos = await client.enrich_slos_with_related_entities(slos_to_enrich)
@@ -49,7 +52,9 @@ async def test_enrich_slos_with_related_entities():
 
 
 @pytest.mark.asyncio
-async def test_enrich_slos_with_related_entities_exception():
+async def test_enrich_slos_with_related_entities_exception(
+    monkeypatch: MonkeyPatch,
+) -> None:
     """
     Tests that enrich_slos_with_related_entities handles exceptions gracefully
     and does not add the `__entities` key to an SLO if fetching its related
@@ -62,7 +67,9 @@ async def test_enrich_slos_with_related_entities_exception():
     ]
 
     # Mock the internal method to raise an exception
-    client._get_slo_related_entities = AsyncMock(side_effect=Exception("API Error"))
+    monkeypatch.setattr(
+        client, "_get_slo_related_entities", AsyncMock(side_effect=Exception("API Error"))
+    )
 
     enriched_slos = await client.enrich_slos_with_related_entities(slos_to_enrich)
 
