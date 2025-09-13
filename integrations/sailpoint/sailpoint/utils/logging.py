@@ -182,7 +182,7 @@ class Logger:
         return sanitized_data
 
     @staticmethod
-    def _exception_handler(exc: Exception):
+    def _exception_handler(exc: Exception, /, *args: Any, **kwargs: Any) -> None:
         pass
 
     @staticmethod
@@ -291,17 +291,18 @@ class Logger:
         *,
         message: str,
         error: Optional[Exception] = None,
-        context: Optional[str] = None,
+        _context: Optional[dict | str] = None,
     ):
         logger = cls._get_logger()
 
         log_data = {
             "error_type": type(error).__name__,
             "error_message": str(error),
+            "timestamp": datetime.timestamp(datetime.now()),
         }
 
-        if context:
-            log_data["context"] = context
+        if _context:
+            log_data["context"] = Logger._sanitize_data(_context)
 
         if error:
             logger.error(message, exc_info=True)
@@ -309,7 +310,7 @@ class Logger:
             logger.error(message, extra={"origin": "error_logger", "extra": log_data})
 
     @classmethod
-    def log_request_and_response(
+    async def log_request_and_response(
         cls,
         *,
         # method: str,
@@ -320,5 +321,47 @@ class Logger:
         # response_body: Optional[Any] = None,
         # error: Optional[str] = None,
         origin: str,
-    ):
-        pass
+    ) -> Callable:
+        @wraps
+        async def wrapper(func: Callable) -> Callable:
+            @wraps(func)
+            async def inner_wrapper(request: Request, *args: Any, **kwargs: Any) -> Any:
+                try:
+                    response: Response = await func(request, *args, **kwargs)
+                    await Logger._send_to_logger(origin, request, response)
+                    return response
+                except Exception as exc:
+                    Logger._exception_handler(exc, request=request, origin=origin)
+                    raise exc
+
+            return inner_wrapper
+
+        return wrapper
+
+    @staticmethod
+    async def _send_to_logger(
+        origin: str,
+        request: Request,
+        response_body: Optional[Any] = None,
+        status_code: Optional[int] = None,
+        latency: Optional[float] = None,
+    ) -> dict[str, Any]:
+        log_data: dict[str, Any] = {
+            "origin": origin,
+            "request_context": {
+                "method": request.method,
+                "url": str(request.url),
+                "body": Logger._sanitize_data((await request.body()).decode("utf-8")),
+                "path": request.url.path,
+                "headers": Logger._sanitize_data(dict(request.headers)),
+            },
+        }
+
+        if latency:
+            log_data["latency_ms"] = latency
+
+        if response_body:
+            log_data["response_context"] = Logger._sanitize_data(response_body)
+            log_data["response_context"]["status_code"] = status_code
+
+        return log_data
