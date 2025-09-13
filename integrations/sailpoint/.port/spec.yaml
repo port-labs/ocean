@@ -33,3 +33,16 @@ configurations:
     required: false
     type: url
     description: "Host of the Port Ocean App"
+  - name: authType
+    required: true
+    type: string
+    description: "Authentication type: 'pat' for Personal Access Token (userAuth) or 'oauth' for OAuth Client Credentials (appAuth)"
+    enum:
+      - pat
+      - oauth
+    default: pat
+  - name: scope
+    required: false
+    type: string
+    description: "OAuth scope for API access: 'sp:scopes:default' or 'sp:scopes:all'"
+    default: "sp:scopes:all"
