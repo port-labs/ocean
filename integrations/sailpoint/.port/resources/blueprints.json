@@ -64,5 +64,84 @@
         "title": "Manager"
       }
     }
+  },
+  {
+    "identifier": "sailpointEntitlement",
+    "title": "SailPoint Entitlement",
+    "icon": "Lock",
+    "schema": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "description": "The name of the entitlement"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "The description of the entitlement"
+        },
+        "privileged": {
+          "title": "Privileged",
+          "type": "boolean",
+          "description": "Indicates if the entitlement is privileged"
+        },
+        "cloudGoverned": {
+          "title": "Cloud Governed",
+          "type": "boolean",
+          "description": "Indicates if the entitlement is cloud governed"
+        },
+        "attribute": {
+          "title": "Attribute",
+          "type": "string",
+          "description": "The entitlement attribute name"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string",
+          "description": "The value of the entitlement"
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "object",
+          "description": "The identity that owns the entitlement",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "title": "The display name of the identity",
+              "type": "string"
+            },
+            "type": {
+              "title": "The type of the object",
+              "type": "string"
+            }
+          }
+        },
+        "created": {
+          "title": "Created",
+          "type": "string",
+          "format": "date-time"
+        },
+        "modified": {
+          "title": "Modified",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "relations": {
+      "source": {
+        "target": "sailpointSource",
+        "required": false,
+        "many": false
+      },
+      "accounts": {
+        "target": "sailpointAccount",
+        "required": false,
+        "many": true
+      }
+    }
   }
 ]
