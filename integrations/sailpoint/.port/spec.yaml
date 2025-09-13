@@ -2,7 +2,6 @@ title: ocean-sailpoint
 type: sailpoint
 description: SailPoint integration for Port Ocean
 icon: Cookiecutter # Should be one of the available icons in Port
-
 features:
   - type: exporter
     section: Identity Management # Should be one of the available sections in Port
@@ -13,19 +12,18 @@ features:
       - kind: accessProfile
       - kind: role
       - kind: source
-
 configurations:
   - name: sailpointTenant
-    required: false
+    required: true
     type: string
     description: "SailPoint tenant name"
   - name: clientId
-    required: false
+    required: true
     type: string
     description: "Personal Access Token Client ID or OAuth Client ID"
     sensitive: true
   - name: clientSecret
-    required: false
+    required: true
     type: string
     description: "Personal Access Token Client Secret or OAuth Client Secret"
     sensitive: true
@@ -46,3 +44,19 @@ configurations:
     type: string
     description: "OAuth scope for API access: 'sp:scopes:default' or 'sp:scopes:all'"
     default: "sp:scopes:all"
+saas:
+  enabled: true
+  oauthConfiguration:
+    requiredSecrets:
+      - name: clientId
+        value: ".oauthData.clientId"
+        description: '"OAuth Client ID for SailPoint integration"'
+      - name: clientSecret
+        value: ".oauthData.clientSecret"
+        description: '"OAuth Client Secret for SailPoint integration"'
+    valuesOverride:
+      integrationSpec:
+        authType: '"oauth"'
+        scope: '"sp:scopes:all"'
+      appSpec:
+        minimumScheduledResyncInterval: "2h"
