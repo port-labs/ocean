@@ -32,11 +32,10 @@ class LoggerProtocol(Protocol):
     def setup(cls, config: LoggerConfig, log_to_tty: bool = False) -> None: ...
 
     @classmethod
-    def log_webhook_event(
+    def log_webhook_receipt(
         cls,
         *,
         event_type: str,
-        data: Optional[Any] = None,
         source: str,
         is_verified: bool,
         message: str = "",
@@ -85,6 +84,9 @@ class StructuredLogFormatter(logging.Formatter):
             "message": record.getMessage(),
             "origin": getattr(record, "origin", "unknown"),
         }
+
+        if hasattr(record, "extra"):
+            log_record.update(record.extra)  # type: ignore
 
         if isinstance(record.args, dict):
             # additionally include any extra fields passed in the log call
@@ -237,6 +239,74 @@ class Logger:
                 raise api_error
 
         return inner_wrapper
+
+    @classmethod
+    def log_webhook_receipt(
+        cls,
+        *,
+        event_type: str,
+        source: str,
+        is_verified: bool,
+        message: str = "",
+    ):
+        logger = cls._get_logger()
+        logger.info(
+            "Webhook Received",
+            {
+                "event_type": event_type,
+                "source": source,
+                "is_verified": is_verified,
+                "message": message,
+            },
+            extra={"origin": "webhook_receipt"},
+        )
+
+    @classmethod
+    def log_retry_decision(
+        cls,
+        *,
+        attempt: int,
+        max_attempts: int,
+        backoff_ms: int,
+        reason: str,
+    ):
+        """
+        Logs a decision to retry an operation, including backoff details.
+        """
+        logger = cls._get_logger()
+        logger.info(
+            "Retry Decision",
+            {
+                "attempt": attempt,
+                "max_attempts": max_attempts,
+                "backoff_ms": backoff_ms,
+                "reason": reason,
+            },
+            extra={"origin": "retry_decision"},
+        )
+
+    @classmethod
+    def log_error(
+        cls,
+        *,
+        message: str,
+        error: Optional[Exception] = None,
+        context: Optional[str] = None,
+    ):
+        logger = cls._get_logger()
+
+        log_data = {
+            "error_type": type(error).__name__,
+            "error_message": str(error),
+        }
+
+        if context:
+            log_data["context"] = context
+
+        if error:
+            logger.error(message, exc_info=True)
+        else:
+            logger.error(message, extra={"origin": "error_logger", "extra": log_data})
 
     @classmethod
     def log_request_and_response(
