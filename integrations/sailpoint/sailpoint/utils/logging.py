@@ -1,10 +1,15 @@
 import logging
-from typing import Optional, Any, Protocol
+from typing import Callable, Optional, Any, Protocol
 from dataclasses import dataclass
 from fastapi.requests import Request
+from datetime import datetime
 import json
 import os
 from pathlib import Path
+from functools import wraps
+from fastapi.responses import Response
+
+from sailpoint.exceptions import ThirdPartyAPIError, is_success
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
@@ -99,6 +104,7 @@ class Logger:
     LOG_LEVEL_INFO = logging.INFO
     LOG_LEVEL_ERROR = logging.ERROR
     LOG_LEVEL_DEBUG = logging.DEBUG
+    LOG_LEVEL_WARNING = logging.WARNING
 
     SENSITIVE_DATA = (
         "password",
@@ -150,7 +156,7 @@ class Logger:
         return cls._logger
 
     @staticmethod
-    def _sanitize_data(data: dict[str, Any] | list) -> dict[str, Any]:
+    def _sanitize_data(data: Any) -> dict[str, Any]:
         # recursively sanitizes sensitive data from a dictionary or list
         sanitized_data = {}
 
@@ -169,8 +175,80 @@ class Logger:
         elif isinstance(data, list):
             # TODO: handle these later
             pass
+        else:
+            sanitized_data = data
         return sanitized_data
 
     @staticmethod
     def _exception_handler(exc: Exception):
+        pass
+
+    @staticmethod
+    def log_external_api_call(
+        func: Any,
+    ) -> Any:
+        """Log external api calls to third party."""
+
+        @wraps(func)
+        def inner_wrapper(*args: tuple[Any, ...], **kwargs: dict[str, Any]) -> Any:
+            logger = Logger._get_logger()
+
+            origin = f"ThirdPartyConnection::{args[0].third_party}"  # type: ignore
+
+            request_payload: dict[str, Any] = {
+                "method": kwargs.get("method"),
+                "url": kwargs.get("url"),
+            }
+            if "params" in kwargs:
+                request_payload["params"] = Logger._sanitize_data(kwargs.get("params"))
+            if "post_data" in kwargs:
+                request_payload["post_data"] = Logger._sanitize_data(
+                    kwargs.get("post_data")
+                )
+            data = {
+                "timestamp": datetime.timestamp(datetime.now()),
+                "origin": origin,
+                "request_context": request_payload,
+            }
+
+            try:
+                response = func(*args, **kwargs)
+
+                data["response_context"] = {
+                    "payload": Logger._sanitize_data(response.response_data),
+                    "status_code": response.status_code,
+                }
+
+                if is_success(response.status_code):
+                    data["log_level"] = Logger.LOG_LEVEL_INFO
+                    logger.info(origin, extra=data)
+                else:
+                    data["log_level"] = Logger.LOG_LEVEL_WARNING
+                    logger.warning(origin, extra=data)
+
+                return response
+            except ThirdPartyAPIError as api_error:
+                data["log_level"] = Logger.LOG_LEVEL_WARNING
+                data["response_context"] = {
+                    "payload": api_error.response_data,
+                    "status_code": api_error.response_code,
+                }
+                logger.warning(origin, extra=data)
+                raise api_error
+
+        return inner_wrapper
+
+    @classmethod
+    def log_request_and_response(
+        cls,
+        *,
+        # method: str,
+        # url: str,
+        # headers: dict,
+        # body: Optional[Any] = None,
+        # response_status: int,
+        # response_body: Optional[Any] = None,
+        # error: Optional[str] = None,
+        origin: str,
+    ):
         pass
