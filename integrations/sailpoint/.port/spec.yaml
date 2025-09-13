@@ -15,9 +15,21 @@ features:
       - kind: source
 
 configurations:
-  - name: mysailpointToken
-    required: true
+  - name: sailpointTenant
+    required: false
     type: string
+    description: "SailPoint tenant name"
+  - name: clientId
+    required: false
+    type: string
+    description: "Personal Access Token Client ID or OAuth Client ID"
     sensitive: true
-  - name: someApplicationUrl
+  - name: clientSecret
+    required: false
+    type: string
+    description: "Personal Access Token Client Secret or OAuth Client Secret"
+    sensitive: true
+  - name: appHost
+    required: false
     type: url
+    description: "Host of the Port Ocean App"
