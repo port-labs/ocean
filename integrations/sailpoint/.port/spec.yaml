@@ -1,14 +1,22 @@
-description: ocean-sailpoint integration for Port Ocean
-icon: Cookiecutter  # Should be one of the available icons in Port
+title: ocean-sailpoint
+type: sailpoint
+description: SailPoint integration for Port Ocean
+icon: Cookiecutter # Should be one of the available icons in Port
+
 features:
   - type: exporter
-    section: Under Development  # Should be one of the available sections in Port
+    section: Identity Management # Should be one of the available sections in Port
     resources:
-      - kind: sailpoint-example-kind
-      # - kind: <ResourceName2>
+      - kind: identity
+      - kind: account
+      - kind: entitlement
+      - kind: accessProfile
+      - kind: role
+      - kind: source
+
 configurations:
   - name: mysailpointToken
-    # required: true
+    required: true
     type: string
     sensitive: true
   - name: someApplicationUrl
