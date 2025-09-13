@@ -2,6 +2,12 @@ import logging
 from typing import Optional, Any, Protocol
 from dataclasses import dataclass
 import json
+import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
+LOG_FILE_PATH = os.path.join(BASE_DIR, "logs", "sailpoint_integration.log")
 
 
 @dataclass
