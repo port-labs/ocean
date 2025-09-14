@@ -456,5 +456,120 @@
       }
     }
   },
-  {}
+  {
+    "identifier": "sailpointSource",
+    "title": "SailPoint Source",
+    "icon": "Server",
+    "schema": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "description": "Source name"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "Source description"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "description": "Source type"
+        },
+        "connector": {
+          "title": "Connector",
+          "type": "string",
+          "description": "Connector identifier"
+        },
+        "connectorClass": {
+          "title": "Connector Class",
+          "type": "string",
+          "description": "Java class name of the connector"
+        },
+        "connectorName": {
+          "title": "Connector Name",
+          "type": "string",
+          "description": "Display name of the connector"
+        },
+        "connectionType": {
+          "title": "Connection Type",
+          "type": "string",
+          "description": "Type of connection (file, direct, etc.)"
+        },
+        "authoritative": {
+          "title": "Authoritative",
+          "type": "boolean",
+          "description": "Whether this is an authoritative source"
+        },
+        "healthy": {
+          "title": "Healthy",
+          "type": "boolean",
+          "description": "Whether the source is healthy"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "description": "Current status of the source"
+        },
+        "since": {
+          "title": "Since",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date since current status"
+        },
+        "created": {
+          "title": "Created",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date the source was created"
+        },
+        "modified": {
+          "title": "Modified",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date the source was last modified"
+        },
+        "deleteThreshold": {
+          "title": "Delete Threshold",
+          "type": "number",
+          "description": "Delete threshold percentage"
+        },
+        "features": {
+          "title": "Features",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of source features"
+        },
+        "credentialProviderEnabled": {
+          "title": "Credential Provider Enabled",
+          "type": "boolean",
+          "description": "Whether credential provider is enabled"
+        },
+        "category": {
+          "title": "Category",
+          "type": "string",
+          "description": "Source category"
+        }
+      }
+    },
+    "relations": {
+      "owner": {
+        "target": "sailpointIdentity",
+        "title": "Owner",
+        "description": "The identity that owns this source",
+        "required": false,
+        "many": false
+      },
+      "managementWorkgroup": {
+        "target": "sailpointIdentity",
+        "title": "Management Workgroup",
+        "description": "The governance group that manages this source",
+        "required": false,
+        "many": false
+      }
+    }
+  }
 ]
