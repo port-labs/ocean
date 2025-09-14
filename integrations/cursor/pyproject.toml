@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cursor"
-version = "0.1.0"
+version = "0.2.0"
 description = "Cursor AI IDE utilization integration for Port Ocean"
 authors = ["Port Team <support@getport.io>"]
 

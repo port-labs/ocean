@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2025-01-27
+
+### Features
+
+- Added support for blocklisted repositories synchronization
+- Added spending data tracking and analytics
+- Added AI commit metrics with detailed line-by-line analysis
+- Added AI code change metrics for granular change tracking
+- Enhanced integration with Cursor's Admin API and AI Code Tracking API
+- Added comprehensive pagination support for large datasets
+- Added user filtering capabilities for all metrics endpoints
+- Added configurable lookback periods for different data types
+
 ## [0.1.0] - 2024-12-19
 
 ### Features
@@ -13,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for syncing team information and member details
 - Daily usage metrics tracking across teams
 - AI commit metrics and tracking
-- AI code changes monitoring  
+- AI code changes monitoring
 - Usage events detailed logging
 - User-specific usage patterns and statistics
 - Configurable date ranges for historical data sync

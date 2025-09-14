@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, AsyncGenerator
 from urllib.parse import urljoin
@@ -6,227 +5,202 @@ from urllib.parse import urljoin
 import httpx
 from loguru import logger
 
-from port_ocean.utils.async_http import AsyncHTTPClient
+from port_ocean.helpers.async_client import OceanAsyncClient
 
 
 class CursorClient:
     """Cursor API client for fetching utilization data."""
-    
+
     BASE_URL = "https://api.cursor.com"
-    
-    def __init__(self, api_key: str, team_id: str):
-        """Initialize Cursor client with API key and team ID."""
+
+    def __init__(self, api_key: str):
+        """Initialize Cursor client with API key."""
         self.api_key = api_key
-        self.team_id = team_id
         self.auth = httpx.BasicAuth(api_key, "")
-        
+
         # Initialize async HTTP client with retry configuration
-        self.client = AsyncHTTPClient(
-            timeout=30,
-            max_retries=5,
-            retry_delay=1.0,
-        )
-    
-    async def _make_request(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        self.client = OceanAsyncClient()
+
+    async def _make_request(
+        self, endpoint: str, method: str = "GET", data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """Make authenticated request to Cursor API."""
         url = urljoin(self.BASE_URL, endpoint)
-        
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        
+
+        headers = {"Content-Type": "application/json"}
+
         try:
-            response = await self.client.get(url, headers=headers, params=params or {})
+            if method.upper() == "GET":
+                response = await self.client.get(url, headers=headers, auth=self.auth)
+            elif method.upper() == "POST":
+                response = await self.client.post(
+                    url, headers=headers, auth=self.auth, json=data or {}
+                )
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
+
             response.raise_for_status()
             return response.json()
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error {e.response.status_code} fetching {url}: {e.response.text}")
-            raise
         except Exception as e:
             logger.error(f"Error fetching {url}: {e}")
             raise
-    
+
     async def get_team_members(self) -> List[Dict[str, Any]]:
         """Get list of team members."""
-        endpoint = f"/api/v1/teams/{self.team_id}/members"
-        return await self._make_request(endpoint)
-    
+        endpoint = "/teams/members"
+        response = await self._make_request(endpoint)
+        return response.get("teamMembers", [])
+
     async def get_daily_usage_data(
-        self, 
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+        self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Get daily usage metrics."""
         if not start_date:
             start_date = datetime.now() - timedelta(days=30)
         if not end_date:
             end_date = datetime.now()
-        
-        endpoint = f"/api/v1/teams/{self.team_id}/usage/daily"
-        params = {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
+
+        endpoint = "/teams/daily-usage-data"
+        data = {
+            "startDate": int(
+                start_date.timestamp() * 1000
+            ),  # Convert to epoch milliseconds
+            "endDate": int(end_date.timestamp() * 1000),
         }
-        
-        data = await self._make_request(endpoint, params)
-        
-        # Handle pagination if present
-        if isinstance(data, list):
-            yield data
-        elif isinstance(data, dict) and "data" in data:
-            yield data["data"]
-            
-            # Handle pagination
-            while data.get("next_page_token"):
-                params["page_token"] = data["next_page_token"]
-                data = await self._make_request(endpoint, params)
-                if "data" in data:
-                    yield data["data"]
-                else:
-                    break
-    
+
+        response = await self._make_request(endpoint, method="POST", data=data)
+        yield response.get("data", [])
+
     async def get_filtered_usage_events(
         self,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        user_email: Optional[str] = None
+        start_date: datetime,
+        end_date: datetime,
+        page: int = 1,
+        page_size: int = 100,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Get filtered usage events."""
-        if not start_date:
-            start_date = datetime.now() - timedelta(days=7)
-        if not end_date:
-            end_date = datetime.now()
-        
-        endpoint = f"/api/v1/teams/{self.team_id}/events"
-        params = {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
+        endpoint = "/teams/filtered-usage-events"
+        data: Dict[str, Any] = {
+            "startDate": int(start_date.timestamp() * 1000),
+            "endDate": int(end_date.timestamp() * 1000),
+            "page": page,
+            "pageSize": page_size,
         }
-        
-        if user_email:
-            params["user"] = user_email
-        
-        data = await self._make_request(endpoint, params)
-        
-        # Handle pagination
-        if isinstance(data, list):
-            yield data
-        elif isinstance(data, dict) and "events" in data:
-            yield data["events"]
-            
-            while data.get("next_page_token"):
-                params["page_token"] = data["next_page_token"]
-                data = await self._make_request(endpoint, params)
-                if "events" in data:
-                    yield data["events"]
-                else:
-                    break
-    
+        response = await self._make_request(endpoint, method="POST", data=data)
+
+        events = response.get("usageEvents", [])
+        yield events
+
+        pagination = response.get("pagination", {})
+        if pagination.get("hasNextPage", False):
+            current_page = pagination.get("currentPage", 1)
+            next_page = current_page + 1
+            async for more_events in self.get_filtered_usage_events(
+                start_date, end_date, next_page, page_size
+            ):
+                yield more_events
+
+    async def get_filtered_user_usage(
+        self, start_date: datetime, end_date: datetime
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        async for events_batch in self.get_filtered_usage_events(
+            start_date,
+            end_date,
+        ):
+            yield events_batch
+
+    async def get_blocklisted_repos(self) -> List[Dict[str, Any]]:
+        endpoint = "/teams/repo-blocklists"
+        response = await self._make_request(endpoint)
+        return response.get("repositories", [])
+
+    async def get_spending_data(
+        self, start_date: datetime, end_date: datetime
+    ) -> List[Dict[str, Any]]:
+        """Get spending data for the team."""
+        endpoint = "/teams/spending"
+        params = {"startDate": start_date.isoformat(), "endDate": end_date.isoformat()}
+
+        from urllib.parse import urlencode
+
+        url = f"{self.BASE_URL}{endpoint}?{urlencode(params)}"
+
+        response = await self.client.get(url, auth=self.auth)
+        response.raise_for_status()
+        return response.json()
+
     async def get_ai_commit_metrics(
         self,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        format_type: str = "json"
+        start_date: datetime,
+        end_date: datetime,
+        page: int = 1,
+        page_size: int = 100,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Get AI commit metrics."""
-        if not start_date:
-            start_date = datetime.now() - timedelta(days=30)
-        if not end_date:
-            end_date = datetime.now()
-        
-        endpoint = f"/api/v1/teams/{self.team_id}/ai/commits"
+        """Get AI commit metrics with pagination."""
+        endpoint = "/analytics/ai-code/commits"
         params = {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat(),
-            "format": format_type
+            "startDate": start_date.isoformat(),
+            "endDate": end_date.isoformat(),
+            "page": page,
+            "pageSize": page_size,
         }
-        
-        data = await self._make_request(endpoint, params)
-        
-        if isinstance(data, list):
-            yield data
-        elif isinstance(data, dict) and "commits" in data:
-            yield data["commits"]
-            
-            while data.get("next_page_token"):
-                params["page_token"] = data["next_page_token"]
-                data = await self._make_request(endpoint, params)
-                if "commits" in data:
-                    yield data["commits"]
-                else:
-                    break
-    
-    async def get_ai_code_changes(
+
+        from urllib.parse import urlencode
+
+        url = f"{self.BASE_URL}{endpoint}?{urlencode(params)}"
+
+        response = await self.client.get(url, auth=self.auth)
+        response.raise_for_status()
+        data = response.json()
+
+        yield data.get("items", [])
+
+        total_count = data.get("totalCount", 0)
+        current_page = data.get("page", 1)
+        page_size = data.get("pageSize", 100)
+
+        if current_page * page_size < total_count:
+            async for more_items in self.get_ai_commit_metrics(
+                start_date,
+                end_date,
+                current_page + 1,
+                page_size,
+            ):
+                yield more_items
+
+    async def get_ai_code_change_metrics(
         self,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+        start_date: datetime,
+        end_date: datetime,
+        page: int = 1,
+        page_size: int = 100,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Get AI code change metrics."""
-        if not start_date:
-            start_date = datetime.now() - timedelta(days=30)
-        if not end_date:
-            end_date = datetime.now()
-        
-        endpoint = f"/api/v1/teams/{self.team_id}/ai/code-changes"
+        """Get AI code change metrics with pagination."""
+        endpoint = "/analytics/ai-code/changes"
         params = {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
+            "startDate": start_date.isoformat(),
+            "endDate": end_date.isoformat(),
+            "page": page,
+            "pageSize": page_size,
         }
-        
-        data = await self._make_request(endpoint, params)
-        
-        if isinstance(data, list):
-            yield data
-        elif isinstance(data, dict) and "changes" in data:
-            yield data["changes"]
-            
-            while data.get("next_page_token"):
-                params["page_token"] = data["next_page_token"]
-                data = await self._make_request(endpoint, params)
-                if "changes" in data:
-                    yield data["changes"]
-                else:
-                    break
-    
-    async def get_team_info(self) -> Dict[str, Any]:
-        """Get team information."""
-        endpoint = f"/api/v1/teams/{self.team_id}"
-        return await self._make_request(endpoint)
-    
-    async def get_user_daily_usage(
-        self,
-        user_email: str,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Get daily usage for a specific user."""
-        if not start_date:
-            start_date = datetime.now() - timedelta(days=30)
-        if not end_date:
-            end_date = datetime.now()
-        
-        endpoint = f"/api/v1/teams/{self.team_id}/users/{user_email}/usage"
-        params = {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        }
-        
-        data = await self._make_request(endpoint, params)
-        
-        if isinstance(data, list):
-            yield data
-        elif isinstance(data, dict) and "usage" in data:
-            yield data["usage"]
-            
-            while data.get("next_page_token"):
-                params["page_token"] = data["next_page_token"]
-                data = await self._make_request(endpoint, params)
-                if "usage" in data:
-                    yield data["usage"]
-                else:
-                    break
-    
-    async def close(self):
-        """Close the HTTP client."""
-        await self.client.close()
+
+        # Add query parameters to URL"
+        from urllib.parse import urlencode
+
+        url = f"{self.BASE_URL}{endpoint}?{urlencode(params)}"
+
+        response = await self.client.get(url, auth=self.auth)
+        response.raise_for_status()
+        data = response.json()
+
+        yield data.get("items", [])
+
+        # Handle pagination if there are more pages
+        total_count = data.get("totalCount", 0)
+        current_page = data.get("page", 1)
+        page_size = data.get("pageSize", 100)
+
+        if current_page * page_size < total_count:
+            async for more_items in self.get_ai_code_change_metrics(
+                start_date, end_date, current_page + 1, page_size
+            ):
+                yield more_items

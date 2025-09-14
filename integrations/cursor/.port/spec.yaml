@@ -1,0 +1,37 @@
+title: Cursor
+description: Cursor AI-powered code editor integration for Port Ocean
+icon: Cursor
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/development-tools/cursor
+features:
+  - type: exporter
+    section: Development Tools
+    resources:
+      - kind: team
+      - kind: user
+      - kind: daily-usage
+      - kind: usage-event
+configurations:
+  - name: api_key
+    required: true
+    type: string
+    sensitive: true
+    description: |
+      Cursor API key for authentication.
+      Generate in: Cursor Dashboard → Integrations → API Keys
+
+
+  - name: usage_lookback_days
+    required: false
+    type: number
+    default: 30
+    description: |
+      Number of days to look back when syncing daily usage data.
+      Defaults to 30 days if not specified.
+
+  - name: events_lookback_days
+    required: false
+    type: number
+    default: 7
+    description: |
+      Number of days to look back when syncing usage events data.
+      Defaults to 7 days if not specified.
