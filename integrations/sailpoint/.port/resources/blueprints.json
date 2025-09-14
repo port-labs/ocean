@@ -258,17 +258,20 @@
         "target": "sailpointIdentity",
         "title": "Identity",
         "required": false,
-        "many": false
+        "many": false,
+        "description": "The identity this account is correlated to"
       },
       "source": {
         "target": "sailpointSource",
         "title": "Source",
         "required": false,
-        "many": false
+        "many": false,
+        "description": "The source system this account belongs to"
       },
       "entitlements": {
         "target": "sailpointEntitlement",
         "title": "Entitlements",
+        "description": "The entitlements assigned to this account",
         "required": false,
         "many": true
       }
@@ -279,8 +282,86 @@
     "title": "SailPoint Access Profile",
     "icon": "Package",
     "schema": {
-      "properties": {}
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "description": "Access profile name"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "Access profile description"
+        },
+        "created": {
+          "title": "Created",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date and time when the access profile was created"
+        },
+        "modified": {
+          "title": "Modified",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date and time when the access profile was last modified"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean",
+          "description": "Indicates whether the access profile is enabled"
+        },
+        "requestable": {
+          "title": "Requestable",
+          "type": "boolean",
+          "description": "Indicates whether the access profile is requestable by access request"
+        },
+        "accessRequestConfig": {
+          "title": "Access Request Config",
+          "type": "object",
+          "description": "Access request configuration settings"
+        },
+        "revocationRequestConfig": {
+          "title": "Revocation Request Config",
+          "type": "object",
+          "description": "Revocation request configuration settings"
+        },
+        "segments": {
+          "title": "Segments",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of segment IDs that the access profile is assigned to"
+        },
+        "provisioningCriteria": {
+          "title": "Provisioning Criteria",
+          "type": "object",
+          "description": "Provisioning criteria configuration"
+        }
+      }
     },
-    "relations": {}
+    "relations": {
+      "owner": {
+        "target": "sailpointIdentity",
+        "title": "Owner",
+        "description": "The identity that owns this access profile",
+        "required": false,
+        "many": false
+      },
+      "source": {
+        "target": "sailpointSource",
+        "title": "Source",
+        "description": "The source system this access profile belongs to",
+        "required": false,
+        "many": false
+      },
+      "entitlements": {
+        "target": "sailpointEntitlement",
+        "title": "Entitlements",
+        "description": "The entitlements grouped by this access profile",
+        "required": false,
+        "many": true
+      }
+    }
   }
 ]
