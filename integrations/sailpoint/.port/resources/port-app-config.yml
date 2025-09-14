@@ -1,16 +1,172 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
 resources:
-  - kind: sailpoint-example-kind
+  # IDENTITIES
+  - kind: identity
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
-          identifier: .my_custom_id
-          title: '(.my_component + " @ " + .my_service)'
-          blueprint: '"sailpointExampleBlueprint"'
+          identifier: .id
+          title: .name
+          blueprint: '"sailpointIdentity"'
           properties:
-            status: .my_enum
-            text: .my_custom_text
-            component: .my_component
-            service: .my_service
-            score: .my_special_score
+            alias: .alias
+            name: .name
+            emailAddress: .emailAddress
+            isManager: .isManager
+            lastRefresh: .lastRefresh
+            lifecycleState: .lifecycleState
+            identityStatus: .identityStatus
+            created: .created
+            modified: .modified
+            firstName: .firstName
+            lastName: .lastName
+          relations:
+            manager: .manager.id
+
+  # ENTITLEMENTS
+  - kind: entitlement
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"sailpointEntitlement"'
+          properties:
+            name: .name
+            description: .description
+            privileged: .privileged
+            cloudGoverned: .cloudGoverned
+            attribute: .attribute
+            value: .value
+            owner: .owner
+            created: .created
+            modified: .modified
+          relations:
+            source: .source.id
+            accounts: .accounts[].id
+
+  # ACCOUNTS
+  - kind: account
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"sailpointAccount"'
+          properties:
+            name: .name
+            created: .created
+            modified: .modified
+            sourceName: .sourceName
+            cloudLifecycleState: .cloudLifecycleState
+            identityState: .identityState
+            connectionType: .connectionType
+            isMachine: .isMachine
+            authoritative: .authoritative
+            description: .description
+            disabled: .disabled
+            locked: .locked
+            nativeIdentity: .nativeIdentity
+            systemAccount: .systemAccount
+            uncorrelated: .uncorrelated
+            uuid: .uuid
+            manuallyCorrelated: .manuallyCorrelated
+            hasEntitlements: .hasEntitlements
+            features: .features
+            origin: .origin
+          relations:
+            identity: .identity.id
+            source: .source.id
+            entitlements: .entitlements[].id
+
+  # ACCESS PROFILES
+  - kind: accessProfile
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"sailpointAccessProfile"'
+          properties:
+            name: .name
+            description: .description
+            created: .created
+            modified: .modified
+            enabled: .enabled
+            requestable: .requestable
+            accessRequestConfig: .accessRequestConfig
+            revocationRequestConfig: .revocationRequestConfig
+            segments: .segments
+            provisioningCriteria: .provisioningCriteria
+          relations:
+            owner: .owner.id
+            source: .source.id
+            entitlements: .entitlements[].id
+
+  # ROLES
+  - kind: role
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"sailpointRole"'
+          properties:
+            name: .name
+            description: .description
+            created: .created
+            modified: .modified
+            enabled: .enabled
+            requestable: .requestable
+            dimensional: .dimensional
+            segments: .segments
+            membership: .membership
+            accessRequestConfig: .accessRequestConfig
+            revocationRequestConfig: .revocationRequestConfig
+          relations:
+            owner: .owner.id
+            accessProfiles: .accessProfiles[].id
+            entitlements: .entitlements[].id
+
+  # SOURCES
+  - kind: source
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"sailpointSource"'
+          properties:
+            name: .name
+            description: .description
+            type: .type
+            connector: .connector
+            connectorClass: .connectorClass
+            connectorName: .connectorName
+            connectionType: .connectionType
+            authoritative: .authoritative
+            healthy: .healthy
+            status: .status
+            since: .since
+            created: .created
+            modified: .modified
+            deleteThreshold: .deleteThreshold
+            features: .features
+            credentialProviderEnabled: .credentialProviderEnabled
+            category: .category
+          relations:
+            owner: .owner.id
+            managementWorkgroup: .managementWorkgroup.id
