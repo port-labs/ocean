@@ -60,10 +60,25 @@ class LoggerProtocol(Protocol):
     ) -> None: ...
 
     @classmethod
-    def log_error(cls, *, error: Exception, context: Optional[str] = None) -> None: ...
+    def log_error(cls, *, message: str,  error: Exception, context: Optional[str] = None) -> None: ...
 
     @staticmethod
     def _send_to_logger(origin: str, request: Request, response: Any) -> None: ...
+
+    @staticmethod
+    def log_external_api_call(
+        func: Any,
+    ) -> Any: ...
+
+    @classmethod
+    def log_retry_decision(
+        cls,
+        *,
+        attempt: int,
+        max_attempts: int,
+        backoff_ms: int,
+        reason: str,
+    ) -> None: ...
 
 
 class StructuredLogFormatter(logging.Formatter):
