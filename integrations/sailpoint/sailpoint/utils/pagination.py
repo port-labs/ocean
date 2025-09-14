@@ -28,6 +28,19 @@ class PaginatorProtocol(Protocol):
 
 
 class LimitOffsetPagination:
+    SAILPOINT_MAX_LIMIT = 250
+    SAILPOINT_DEFAULT_LIMIT = 100
+    SAILPOINT_OFFSET_COUNT = 0
+
+    def __init__(
+        self,
+        limit: int = SAILPOINT_DEFAULT_LIMIT,
+        max_limit: int = SAILPOINT_MAX_LIMIT,
+        offset: int = SAILPOINT_OFFSET_COUNT,
+    ):
+        self.limit = min(limit, max_limit)
+        self.offset = offset
+
     def get_paginated_response(self, data: list[dict]) -> PaginatedResponse:
         return {}
 
