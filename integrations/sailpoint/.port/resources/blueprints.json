@@ -363,5 +363,98 @@
         "many": true
       }
     }
-  }
+  },
+  {
+    "identifier": "sailpointRole",
+    "title": "SailPoint Role",
+    "icon": "Team",
+    "schema": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "description": "The display name of the Role"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "A description of the Role"
+        },
+        "created": {
+          "title": "Created",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date the Role was created"
+        },
+        "modified": {
+          "title": "Modified",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date the Role was last modified"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean",
+          "description": "Whether the Role is enabled or not"
+        },
+        "requestable": {
+          "title": "Requestable",
+          "type": "boolean",
+          "description": "Whether the Role can be the target of access requests"
+        },
+        "dimensional": {
+          "title": "Dimensional",
+          "type": "boolean",
+          "description": "Whether the Role is dimensional"
+        },
+        "segments": {
+          "title": "Segments",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of IDs of segments to which this Role is assigned"
+        },
+        "membership": {
+          "title": "Membership",
+          "type": "object",
+          "description": "Role membership configuration and criteria"
+        },
+        "accessRequestConfig": {
+          "title": "Access Request Config",
+          "type": "object",
+          "description": "Access request configuration settings"
+        },
+        "revocationRequestConfig": {
+          "title": "Revocation Request Config",
+          "type": "object",
+          "description": "Revocation request configuration settings"
+        }
+      }
+    },
+    "relations": {
+      "owner": {
+        "target": "sailpointIdentity",
+        "title": "Owner",
+        "description": "The identity that owns this role",
+        "required": false,
+        "many": false
+      },
+      "accessProfiles": {
+        "target": "sailpointAccessProfile",
+        "title": "Access Profiles",
+        "description": "The access profiles grouped by this role",
+        "required": false,
+        "many": true
+      },
+      "entitlements": {
+        "target": "sailpointEntitlement",
+        "title": "Entitlements",
+        "description": "The entitlements associated with this role",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {}
 ]
