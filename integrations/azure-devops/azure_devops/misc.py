@@ -19,6 +19,7 @@ class Kind(StrEnum):
     BOARD = "board"
     COLUMN = "column"
     RELEASE = "release"
+    TEST_RUN = "test-run"
     FILE = "file"
     USER = "user"
     FOLDER = "folder"
