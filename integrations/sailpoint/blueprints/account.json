@@ -1,0 +1,35 @@
+{
+  "identifier": "sailpoint_account",
+  "title": "SailPoint Account",
+  "icon": "UserSquare2",
+  "schema": {
+    "properties": {
+      "name": { "type": "string", "description": "Display name of the account" },
+      "nativeIdentity": { "type": "string", "description": "Username on the target system" },
+      "status": { "type": "string", "enum": ["ENABLED", "DISABLED", "LOCKED", "UNKNOWN"] },
+      "identityId": { "type": "string", "description": "Owning identity ID (foreign key)" },
+      "sourceId": { "type": "string", "description": "Source ID (foreign key)" },
+      "lastSyncedAt": { "type": "string", "format": "date-time" },
+      "createdAt": { "type": "string", "format": "date-time" },
+      "updatedAt": { "type": "string", "format": "date-time" }
+    },
+    "required": ["nativeIdentity", "sourceId"]
+  },
+  "relations": {
+    "identity": {
+      "title": "Owning Identity",
+      "target": "sailpoint_identity",
+      "many": false
+    },
+    "source": {
+      "title": "Source",
+      "target": "sailpoint_source",
+      "many": false
+    },
+    "entitlements": {
+      "title": "Entitlements",
+      "target": "sailpoint_entitlement",
+      "many": true
+    }
+  }
+}
