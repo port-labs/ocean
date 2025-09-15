@@ -50,7 +50,3 @@ class SailPointAuthManager:
     @Logger.log_external_api_call
     async def _request_token(self) -> dict[str, Any]:
         raise NotImplementedError
-
-
-class SailpointClient:
-    pass

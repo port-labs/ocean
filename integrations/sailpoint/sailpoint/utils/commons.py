@@ -1,8 +1,22 @@
 from sailpoint.utils.logging import Logger
 from sailpoint.utils.pagination import PaginatedResponse, PaginatorProtocol
 from functools import wraps
+from dataclasses import dataclass
 import time
 from typing import Any
+
+
+@dataclass
+class BaseConfig:
+    # help you configure anything configurable;
+    pass
+
+
+@dataclass
+class Config:
+    # application-wide configuration settings
+    log_path: str
+
 
 
 def paginate_response(
