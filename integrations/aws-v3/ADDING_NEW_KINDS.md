@@ -378,25 +378,6 @@ Test with real AWS resources in a development environment:
 python main.py
 ```
 
-### 3. Debug Mode
-Use the debug functionality to test specific resources:
-
-```python
-# In debug.py or similar
-from aws.core.exporters.your_service import YourResourceExporter
-from aws.core.exporters.your_service.your_resource.models import SingleYourResourceRequest
-
-async def debug_single_resource():
-    exporter = YourResourceExporter(session)
-    result = await exporter.get_resource(
-        SingleYourResourceRequest(
-            region="us-east-1",
-            resource_id="your-resource-id"
-        )
-    )
-    print(result)
-```
-
 ## Common Patterns and Best Practices
 
 ### 1. Error Handling
@@ -414,19 +395,7 @@ except self.client.exceptions.ClientError as e:
         raise
 ```
 
-### 2. Data Transformation
-```python
-def _transform_aws_response(self, aws_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Transform AWS API response to our model format."""
-    return {
-        "Name": aws_data.get("ResourceName", ""),
-        "Arn": aws_data.get("ResourceArn", ""),
-        "CreatedTime": aws_data.get("CreationTime"),
-        # Map all fields consistently
-    }
-```
-
-### 3. Pagination Handling
+### 2. Pagination Handling
 ```python
 # For services that support pagination
 paginator = proxy.get_paginator("list_resources", "ResourceIds")
@@ -436,42 +405,10 @@ async for page in paginator.paginate():
         yield processed_data
 ```
 
-### 4. Memory Optimization
+### 3. Memory Optimization
 ```python
 # Use generators for large datasets
 async def get_paginated_resources(self, options) -> AsyncGenerator[list[dict], None]:
     async for batch in self._fetch_resources_in_batches(options):
         yield batch  # Don't accumulate all data in memory
 ```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Import Errors**: Make sure all imports are correct and files are in the right location
-2. **Type Errors**: Ensure your Pydantic models match the data structure
-3. **AWS API Errors**: Check permissions and API limits
-4. **Memory Issues**: Use generators and pagination for large datasets
-
-### Debugging Tips
-
-1. **Enable Debug Logging**: Set log level to DEBUG to see detailed execution
-2. **Test Single Resources**: Use debug mode to test individual resources
-3. **Check AWS Permissions**: Ensure your AWS credentials have the necessary permissions
-4. **Validate Data**: Use Pydantic validation to catch data structure issues
-
-## Example: Complete SQS Queue Implementation
-
-See the SQS queue implementation in this codebase for a complete working example that follows all these patterns.
-
-## Next Steps
-
-After implementing your new resource kind:
-
-1. **Write Tests**: Create comprehensive unit and integration tests
-2. **Update Documentation**: Document any new configuration options
-3. **Performance Testing**: Test with large datasets to ensure good performance
-4. **Code Review**: Have the implementation reviewed by other developers
-5. **Deploy**: Deploy to a test environment and validate functionality
-
-This guide provides a solid foundation for adding new AWS resource kinds while maintaining consistency with the existing codebase architecture.
