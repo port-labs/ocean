@@ -74,8 +74,8 @@ class AzureDevOpsRateLimiter:
                 await asyncio.sleep(retry_wait)
                 self._reset_rate_limit_state()
 
-            # Proactively wait if remaining requests are low
-            elif (
+            # Proactively wait if remaining requests are low (separate check)
+            if (
                 self._remaining is not None
                 and self._remaining <= self._minimum_limit_remaining
             ):
