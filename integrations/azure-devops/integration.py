@@ -139,11 +139,6 @@ class AzureDevopsPipelineResourceConfig(ResourceConfig):
     selector: AzureDevopsPipelineSelector
 
 
-class AzureDevopsBuildResourceConfig(ResourceConfig):
-    kind: Literal["build"]
-    selector: Selector
-
-
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -164,7 +159,6 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsTeamResourceConfig
         | AzureDevopsFileResourceConfig
         | AzureDevopsPipelineResourceConfig
-        | AzureDevopsBuildResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

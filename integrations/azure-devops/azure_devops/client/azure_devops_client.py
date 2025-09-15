@@ -1,7 +1,7 @@
 import asyncio
 import functools
 import json
-from typing import Any, AsyncGenerator, Optional, Callable, Sequence
+from typing import Any, AsyncGenerator, Optional, Callable
 from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.context.event import event
@@ -264,7 +264,7 @@ class AzureDevopsClient(HTTPBaseClient):
 
     def _enrich_builds_with_project_data(
         self,
-        builds: Sequence[dict[str, Any]],
+        builds: list[dict[str, Any]],
         project: dict[str, Any],
     ) -> list[dict[str, Any]]:
         enriched: list[dict[str, Any]] = []
@@ -936,7 +936,6 @@ class AzureDevopsClient(HTTPBaseClient):
         repository_id: str,
         pattern: str,
     ) -> Callable[[], AsyncGenerator[list[dict[str, Any]], None]]:
-
         # Get the base path (everything before the first wildcard)
         parts = pattern.split("/")
         base_parts = []
