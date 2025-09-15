@@ -10,7 +10,7 @@ from checkmarx_one.core.options import SingleProjectOptions
 from checkmarx_one.exporter_factory import create_project_exporter
 from checkmarx_one.utils import ObjectKind
 from checkmarx_one.webhook.events import CheckmarxEventType
-from .abstract_webhook_processor import _CheckmarxOneAbstractWebhookProcessor
+from checkmarx_one.webhook.webhook_processors.abstract_webhook_processor import _CheckmarxOneAbstractWebhookProcessor
 
 
 class ProjectWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):

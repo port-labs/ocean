@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.1-dev (2025-09-12)
+## 0.3.1-dev (2025-09-15)
 
 
 ### Features
 
 - Added webhook processor for project creation events
+
+
+## 0.3.0-dev (2025-09-10)
+
+
+### Features
+
+- Added webhook support for the KICS and SAST Scan Result
 
 
 ### Improvements
