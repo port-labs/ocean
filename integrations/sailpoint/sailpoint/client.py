@@ -2,6 +2,8 @@ from typing import Any, Dict, Optional
 from sailpoint.utils.logging import Logger
 from sailpoint.connector import SailPointAuthManager
 from sailpoint.utils.pagination import PaginatorProtocol, LimitOffsetPagination
+from port_ocean.utils.async_http import http_async_client
+from port_ocean.log.sensetive import sensitive_log_filter
 
 
 class SailpointClient:
@@ -46,6 +48,7 @@ class SailpointClient:
         self._base_url = auth_client._base_url
         self._api_headers = api_headers or {}
         self._api_version = auth_client.SAILPOINT_DEFAULT_API_VERSION
+        self._http_client = http_async_client
         self.logger = Logger
         self.paginator = paginator
 
