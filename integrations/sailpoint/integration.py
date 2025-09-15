@@ -69,13 +69,13 @@ def ping() -> Dict[str, bool]:
 
 @ocean.router.post("/integration/sailpoint/resync")
 @ocean.router.post("/sailpoint/resync")
-def manual_resync() -> Dict[str, bool]:
+async def manual_resync() -> Dict[str, bool]:
     """
     Trigger a full raw sync (calls all @ocean.on_resync handlers).
     Synchronous per Ocean docs: https://ocean.getport.io/framework/features/sync/  (ocean.sync_raw_all)
     """
     logger.info("[sailpoint] Manual resync requested via HTTP")
-    ocean.sync_raw_all()
+    await ocean.sync_raw_all()
     return {"ok": True}
 
 
@@ -92,15 +92,13 @@ def manual_resync() -> Dict[str, bool]:
 
 
 @ocean.on_resync()  # generic handler: Ocean will invoke this for each mapped "kind"
-async def on_resync(kind: str) -> AsyncGenerator[Dict[str, Any], None]:
+async def on_resync(kind: str) -> List[Dict[str, Any]]:
     """
-    Generic resync: when Ocean asks for <kind>, stream raw dicts from the matching exporter.
+    Generic resync: when Ocean asks for <kind>, return a list of raw dicts from the matching exporter.
     This avoids blocking and plays nicely with large catalogs.
     """
     logger.info("[sailpoint] on_resync(kind=%s) started", kind)
 
-    # Map your Port "kind" names to exporters.
-    # Make sure these KIND keys match the 'resources[].kind' values in your integration mapping.
     kind_to_exporter_name = {
         "sailpoint-identities": IdentitiesExporter,
         "sailpoint-accounts": AccountsExporter,
@@ -112,24 +110,21 @@ async def on_resync(kind: str) -> AsyncGenerator[Dict[str, Any], None]:
 
     ExporterCls = kind_to_exporter_name.get(kind)
     if ExporterCls is None:
-        # If you want one-shot "global" syncs, you can also iterate all exporters here
-        # and yield across them. For clarity, we no-op on unknown kinds.
         logger.debug(
             "[sailpoint] on_resync(kind=%s) no matching exporter, skipping", kind
         )
-        if False:  # generator form needs at least one yield path
-            yield {}
-        return
+        return []
 
-    # Instantiate the single exporter for this kind
     client = _ensure_client()
     exporter = ExporterCls(client, mapping=mapping, cfg=_cfg)
 
-    # Exporters should implement an async generator or async function returning an iterable
+    # Collect all items into a list and return
+    items = []
     async for item in _aiter(exporter.ingest(ocean)):
-        yield item
+        items.append(item)
 
     logger.info("[sailpoint] on_resync(kind=%s) finished", kind)
+    return items
 
 
 # --------------------------------------------------------------------------------------
