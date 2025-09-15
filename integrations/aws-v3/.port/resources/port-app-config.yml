@@ -12,7 +12,7 @@ resources:
           blueprint: '"awsAccount"'
   - kind: AWS::Organizations::Account
     selector:
-        query: 'true'
+      query: 'true'
     port:
       entity:
         mappings:
