@@ -4,6 +4,8 @@ from sailpoint.connector import SailPointAuthManager
 from sailpoint.utils.pagination import PaginatorProtocol, LimitOffsetPagination
 from port_ocean.utils.async_http import http_async_client
 from port_ocean.log.sensetive import sensitive_log_filter
+from sailpoint.exceptions import ThirdPartyAPIError, SailPointAuthError
+from sailpoint.utils.async_iterators import stream_async_iterators_tasks
 
 
 class SailpointClient:
