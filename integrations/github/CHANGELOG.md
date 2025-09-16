@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.5.4-beta (2025-09-17)
+
+
+### Improvements
+
+- Fix token decoder from oauth-flow
+
+
 ## 1.5.4-beta (2025-09-16)
 
 
