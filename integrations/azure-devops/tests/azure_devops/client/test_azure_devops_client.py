@@ -181,6 +181,24 @@ EXPECTED_RELEASES = [
     }
 ]
 
+EXPECTED_PIPELINE_STAGES = [
+    {
+        "id": "stage1",
+        "name": "Build Stage",
+        "type": "Stage",
+        "state": "completed",
+        "result": "succeeded",
+        "startTime": "2023-01-01T10:00:00Z",
+        "finishTime": "2023-01-01T10:05:00Z",
+        "duration": "00:05:00",
+        "_links": {
+            "web": {
+                "href": "https://dev.azure.com/org/proj/_build/results?buildId=123&view=logs"
+            }
+        },
+    }
+]
+
 MOCK_FILE_CONTENT = b"file content"
 MOCK_FILE_PATH = "/path/to/file.txt"
 MOCK_REPOSITORY_ID = "repo123"
@@ -1028,6 +1046,78 @@ async def test_generate_releases(mock_event_context: MagicMock) -> None:
 
                 # ASSERT
                 assert releases == EXPECTED_RELEASES
+
+
+@pytest.mark.asyncio
+async def test_generate_pipeline_stages(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_generate_builds_for_project(
+        project: Dict[str, Any]
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "build123", "name": "Build 123"}]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "timeline" in url:
+            timeline_data = {
+                "records": [
+                    {
+                        "id": "stage1",
+                        "name": "Build Stage",
+                        "type": "Stage",
+                        "state": "completed",
+                        "result": "succeeded",
+                        "startTime": "2023-01-01T10:00:00Z",
+                        "finishTime": "2023-01-01T10:05:00Z",
+                        "duration": "00:05:00",
+                        "_links": {
+                            "web": {
+                                "href": "https://dev.azure.com/org/proj/_build/results?buildId=123&view=logs"
+                            }
+                        },
+                    }
+                ]
+            }
+            return Response(status_code=200, json=timeline_data)
+        return None
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "_generate_builds_for_project",
+                side_effect=mock_generate_builds_for_project,
+            ):
+                with patch.object(
+                    client,
+                    "send_request",
+                    side_effect=mock_send_request,
+                ):
+                    # ACT
+                    stages: List[Dict[str, Any]] = []
+                    async for stage_batch in client.generate_pipeline_stages():
+                        stages.extend(stage_batch)
+
+                    # ASSERT
+                    assert len(stages) == 1
+                    stage = stages[0]
+                    assert stage["id"] == "stage1"
+                    assert stage["name"] == "Build Stage"
+                    assert stage["type"] == "Stage"
+                    assert stage["__projectId"] == "proj1"
+                    assert stage["__buildId"] == "build123"
+                    assert stage["__project"]["name"] == "Project One"
+                    assert stage["__build"]["name"] == "Build 123"
 
 
 @pytest.mark.asyncio
