@@ -8,7 +8,6 @@ features:
     resources:
       - kind: okta-user
       - kind: okta-group
-      - kind: okta-application
 configurations:
   - name: okta_domain
     required: true

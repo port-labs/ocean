@@ -39,4 +39,3 @@ resources:
           relations:
             groups: .groups[].id
             manager: .profile.managerId
-            applications: .applications[].id
