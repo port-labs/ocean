@@ -1,0 +1,42 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: okta-group
+    selector:
+      query: 'true'
+      include_members: true
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .profile.name
+          blueprint: '"oktaGroup"'
+          properties:
+            name: .profile.name
+            description: .profile.description
+  - kind: okta-user
+    selector:
+      query: 'true'
+      include_groups: true
+      include_applications: true
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .profile.displayName // .profile.firstName + " " + .profile.lastName // .profile.login
+          blueprint: '"oktaUser"'
+          properties:
+            email: .profile.email
+            status: .status
+            created: .created
+            department: .profile.department
+            displayName: .profile.displayName
+            login: .profile.login
+            type: .type.id
+            activated: .activated
+            firstName: .profile.firstName
+            lastName: .profile.lastName
+          relations:
+            groups: .groups[].id
+            manager: .profile.managerId
+            applications: .applications[].id

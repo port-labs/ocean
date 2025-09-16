@@ -1,0 +1,66 @@
+"""Okta client factory for creating authenticated clients."""
+
+import logging
+from typing import Optional
+
+from port_ocean.context.ocean import ocean
+from .http.client import OktaClient
+
+logger = logging.getLogger(__name__)
+
+
+class OktaClientFactory:
+    """Factory for creating Okta API clients."""
+
+    _instance: Optional[OktaClient] = None
+
+    @classmethod
+    def get_client(cls) -> OktaClient:
+        """Get or create a singleton Okta client instance.
+
+        Returns:
+            OktaClient instance
+        """
+        if cls._instance is None:
+            cls._instance = cls.create_client()
+        return cls._instance
+
+    @classmethod
+    def create_client(cls) -> OktaClient:
+        """Create a new Okta client instance.
+
+        Returns:
+            New OktaClient instance
+        """
+        config = ocean.integration_config
+        
+        okta_domain = config.get("okta_domain")
+        api_token = config.get("okta_api_token")
+        
+        if not okta_domain:
+            raise ValueError("okta_domain is required in integration configuration")
+        if not api_token:
+            raise ValueError("okta_api_token is required in integration configuration")
+        
+        logger.info(f"Creating Okta client for domain: {okta_domain}")
+        
+        return OktaClient(
+            okta_domain=okta_domain,
+            api_token=api_token,
+        )
+
+    @classmethod
+    def reset_client(cls) -> None:
+        """Reset the singleton client instance."""
+        if cls._instance:
+            # Note: In a real implementation, you might want to close the client
+            cls._instance = None
+
+
+def create_okta_client() -> OktaClient:
+    """Create an Okta client instance.
+
+    Returns:
+        OktaClient instance
+    """
+    return OktaClientFactory.create_client()
