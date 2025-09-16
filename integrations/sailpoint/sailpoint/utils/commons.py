@@ -78,9 +78,18 @@ def benchmark_latency(
         finally:
             end_time = time.perf_counter()
             latency_ms = round((end_time - start_time) * 1000, 2)
+
+            method = kwargs.get("method")
+            endpoint = kwargs.get("endpoint")
+
             Logger._get_logger().info(
                 f"[Latency] {func.__name__} took {latency_ms} ms",
-                extra={"origin": "latency_benchmark", "latency_ms": latency_ms},
+                extra={
+                    "origin": "latency_benchmark",
+                    "latency_ms": latency_ms,
+                    'method': method,
+                    'endpoint': endpoint
+                },
             )
 
     return wrapper
