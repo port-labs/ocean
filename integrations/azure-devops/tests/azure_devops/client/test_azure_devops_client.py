@@ -206,6 +206,89 @@ EXPECTED_TREE_ITEMS = [
     },
 ]
 
+EXPECTED_ENVIRONMENTS = [
+    {
+        "id": 1,
+        "name": "Production",
+        "description": "Production environment",
+        "createdOn": "2023-01-01T00:00:00Z",
+        "lastModifiedOn": "2023-01-02T00:00:00Z",
+        "project": {"id": "proj1", "name": "Project One"},
+    },
+    {
+        "id": 2,
+        "name": "Staging",
+        "description": "Staging environment",
+        "createdOn": "2023-01-01T00:00:00Z",
+        "lastModifiedOn": "2023-01-02T00:00:00Z",
+        "project": {"id": "proj1", "name": "Project One"},
+    },
+]
+
+EXPECTED_RELEASE_DEPLOYMENTS = [
+    {
+        "id": 1,
+        "name": "Deployment to Production",
+        "deploymentStatus": "Succeeded",
+        "reason": "Manual",
+        "startedOn": "2023-01-01T10:00:00Z",
+        "completedOn": "2023-01-01T10:05:00Z",
+        "requestedBy": {"displayName": "John Doe"},
+        "approvedBy": {"displayName": "Jane Smith"},
+        "environment": {"name": "Production"},
+        "release": {"id": 18, "name": "Release-18"},
+        "operationStatus": "Succeeded",
+        "_links": {
+            "web": {
+                "href": "https://dev.azure.com/org/project/_release?releaseId=18&_a=release-summary"
+            }
+        },
+    },
+    {
+        "id": 2,
+        "name": "Deployment to Staging",
+        "deploymentStatus": "InProgress",
+        "reason": "Automated",
+        "startedOn": "2023-01-01T11:00:00Z",
+        "completedOn": None,
+        "requestedBy": {"displayName": "System"},
+        "approvedBy": None,
+        "environment": {"name": "Staging"},
+        "release": {"id": 19, "name": "Release-19"},
+        "operationStatus": "InProgress",
+        "_links": {
+            "web": {
+                "href": "https://dev.azure.com/org/project/_release?releaseId=19&_a=release-summary"
+            }
+        },
+    },
+]
+
+EXPECTED_PIPELINE_DEPLOYMENTS = [
+    {
+        "id": 1,
+        "requestIdentifier": "Pipeline Deployment 1",
+        "planType": "Build",
+        "stageName": "Deploy",
+        "jobName": "DeployJob",
+        "result": "Succeeded",
+        "startTime": "2023-01-01T10:00:00Z",
+        "finishTime": "2023-01-01T10:05:00Z",
+        "environment": {"id": 1, "name": "Production"},
+    },
+    {
+        "id": 2,
+        "requestIdentifier": "Pipeline Deployment 2",
+        "planType": "Build",
+        "stageName": "Deploy",
+        "jobName": "DeployJob",
+        "result": "Failed",
+        "startTime": "2023-01-01T11:00:00Z",
+        "finishTime": "2023-01-01T11:02:00Z",
+        "environment": {"id": 2, "name": "Staging"},
+    },
+]
+
 
 async def async_generator(items: List[Any]) -> AsyncGenerator[Any, None]:
     for item in items:
@@ -2323,3 +2406,223 @@ async def test_enrich_pipelines_with_repository(
     assert enriched_pipelines[1]["__repository"]["type"] == "Git"
     assert enriched_pipelines[1]["__repository"]["project"]["id"] == "project2"
     assert enriched_pipelines[1]["__repository"]["project"]["name"] == "Project 2"
+
+
+@pytest.mark.asyncio
+async def test_generate_environments(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "environments" in url:
+            yield EXPECTED_ENVIRONMENTS
+        else:
+            yield []
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated_by_top_and_continuation_token,
+            ):
+                # ACT
+                environments: List[Dict[str, Any]] = []
+                async for environment_batch in client.generate_environments():
+                    environments.extend(environment_batch)
+
+                # ASSERT
+                assert environments == EXPECTED_ENVIRONMENTS
+
+
+@pytest.mark.asyncio
+async def test_generate_environments_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client._client, "request", side_effect=mock_make_request),
+        ):
+            environments: List[Dict[str, Any]] = []
+            async for environment_batch in client.generate_environments():
+                environments.extend(environment_batch)
+
+            assert not environments
+
+
+@pytest.mark.asyncio
+async def test_generate_release_deployments(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "deployments" in url:
+            yield EXPECTED_RELEASE_DEPLOYMENTS
+        else:
+            yield []
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated_by_top_and_continuation_token,
+            ):
+                # ACT
+                deployments: List[Dict[str, Any]] = []
+                async for deployment_batch in client.generate_release_deployments():
+                    deployments.extend(deployment_batch)
+
+                # ASSERT
+                assert deployments == EXPECTED_RELEASE_DEPLOYMENTS
+
+
+@pytest.mark.asyncio
+async def test_generate_release_deployments_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client._client, "request", side_effect=mock_make_request),
+        ):
+            deployments: List[Dict[str, Any]] = []
+            async for deployment_batch in client.generate_release_deployments():
+                deployments.extend(deployment_batch)
+
+            assert not deployments
+
+
+@pytest.mark.asyncio
+async def test_generate_pipeline_deployments() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "environmentdeploymentrecords" in url:
+            yield EXPECTED_PIPELINE_DEPLOYMENTS
+        else:
+            yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        # ACT
+        deployments: List[Dict[str, Any]] = []
+        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+            deployments.extend(deployment_batch)
+
+        # ASSERT
+        assert deployments == EXPECTED_PIPELINE_DEPLOYMENTS
+
+
+@pytest.mark.asyncio
+async def test_generate_pipeline_deployments_will_skip_404() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    with patch.object(client._client, "request", side_effect=mock_make_request):
+        deployments: List[Dict[str, Any]] = []
+        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+            deployments.extend(deployment_batch)
+
+        assert not deployments
+
+
+@pytest.mark.asyncio
+async def test_generate_pipeline_deployments_with_multiple_environments() -> None:
+    """Test that pipeline deployments work correctly for different environment IDs."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "environmentdeploymentrecords" in url:
+            if "environments/1" in url:
+                yield [EXPECTED_PIPELINE_DEPLOYMENTS[0]]
+            elif "environments/2" in url:
+                yield [EXPECTED_PIPELINE_DEPLOYMENTS[1]]
+            else:
+                yield []
+        else:
+            yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        # Test environment 1
+        deployments_env1: List[Dict[str, Any]] = []
+        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+            deployments_env1.extend(deployment_batch)
+
+        # Test environment 2
+        deployments_env2: List[Dict[str, Any]] = []
+        async for deployment_batch in client.generate_pipeline_deployments("proj1", 2):
+            deployments_env2.extend(deployment_batch)
+
+        # ASSERT
+        assert len(deployments_env1) == 1
+        assert deployments_env1[0]["id"] == 1
+        assert deployments_env1[0]["environment"]["id"] == 1
+
+        assert len(deployments_env2) == 1
+        assert deployments_env2[0]["id"] == 2
+        assert deployments_env2[0]["environment"]["id"] == 2
