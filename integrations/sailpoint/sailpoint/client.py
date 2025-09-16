@@ -18,12 +18,14 @@ from port_ocean.utils.async_iterators import semaphore_async_iterator
 
 
 class ObjectKind(StrEnum):
+    # Resource kinds in SailPoint IdentityNow
     IDENTITY = "identity"
     ACCOUNT = "account"
     ENTITLEMENT = "entitlement"
     ACCESS_PROFILE = "accessProfile"
     ROLE = "role"
     SOURCE = "source"
+
 
 class SailpointClient:
     """
