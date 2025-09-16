@@ -46,6 +46,12 @@ from checkmarx_one.webhook.webhook_processors.kics_scan_result_webhook_processor
 from checkmarx_one.webhook.webhook_processors.sast_scan_result_webhook_processor import (
     SastScanResultWebhookProcessor,
 )
+from checkmarx_one.webhook.webhook_processors.project_webhook_processor import (
+    ProjectWebhookProcessor,
+)
+
+# Webhook endpoint constant
+WEBHOOK_ENDPOINT = "/webhook"
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -232,9 +238,10 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 # Register webhook processors for Checkmarx One events
-ocean.add_webhook_processor("/webhook", ScanWebhookProcessor)
-ocean.add_webhook_processor("/webhook", ApiSecurityWebhookProcessor)
-ocean.add_webhook_processor("/webhook", ScaScanResultWebhookProcessor)
-ocean.add_webhook_processor("/webhook", ContainersScanResultWebhookProcessor)
-ocean.add_webhook_processor("/webhook", KicsScanResultWebhookProcessor)
-ocean.add_webhook_processor("/webhook", SastScanResultWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_ENDPOINT, ScanWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_ENDPOINT, ApiSecurityWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_ENDPOINT, ScaScanResultWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_ENDPOINT, ContainersScanResultWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_ENDPOINT, KicsScanResultWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_ENDPOINT, SastScanResultWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_ENDPOINT, ProjectWebhookProcessor)
