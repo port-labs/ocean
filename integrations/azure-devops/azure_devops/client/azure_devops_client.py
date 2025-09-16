@@ -327,9 +327,7 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> None:
         """Mutate each run to include project/pipeline metadata."""
         for run in runs:
-            run["__projectId"] = project["id"]
             run["__project"] = project
-            run["__pipelineId"] = pipeline["id"]
             run["__pipeline"] = pipeline
 
     def _enrich_builds_with_project_data(
