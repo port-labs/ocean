@@ -6,7 +6,7 @@ from .logging import Logger, LoggerProtocol
 
 
 class RateLimitError(Exception):
-    def __init__(self, retry_after: Optional[float] = None):
+    def __init__(self, retry_after: Optional[float] = None, message: Optional[str] = None):
         super().__init__("Rate limit retries exhausted")
         self.retry_after = retry_after
 

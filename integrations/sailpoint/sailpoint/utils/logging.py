@@ -62,7 +62,7 @@ class LoggerProtocol(Protocol):
 
     @classmethod
     def log_error(
-        cls, *, message: str, error: Exception, context: Optional[str] = None
+        cls, *, message: str, error: Exception, context: Optional[dict | str] = None
     ) -> None: ...
 
     @staticmethod
@@ -318,7 +318,7 @@ class Logger:
         *,
         message: str,
         error: Optional[Exception] = None,
-        _context: Optional[dict | str] = None,
+        context: Optional[dict | str] = None,
     ):
         logger = cls._get_logger()
 
@@ -328,8 +328,8 @@ class Logger:
             "timestamp": datetime.timestamp(datetime.now()),
         }
 
-        if _context:
-            log_data["context"] = Logger._sanitize_data(_context)
+        if context:
+            log_data["context"] = Logger._sanitize_data(context)
 
         if error:
             logger.error(message, exc_info=True)
