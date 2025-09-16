@@ -288,7 +288,6 @@ class AzureDevopsClient(HTTPBaseClient):
                                 run["__project"] = project
                                 run["__pipelineId"] = pipeline["id"]
                                 run["__pipeline"] = pipeline
-                                logger.warning(f"Yielding {len(runs)} runs {run}")
                             if runs:
                                 yield runs
 
