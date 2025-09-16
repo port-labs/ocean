@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import cast
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -22,13 +22,23 @@ from integration import (
 async def on_start() -> None:
     """Initialize the Okta integration."""
     logger.info("Starting Port Ocean Okta integration")
-    
+
     # Create event hooks in Okta if they don't exist
     try:
-        webhook_client = OktaWebhookClient()
-        app_host = ocean.integration_config.get("app_host", "http://localhost:8000")
-        await webhook_client.create_webhook_if_not_exists(app_host)
-        logger.info("Okta event hooks setup completed")
+        okta_domain = ocean.integration_config.get("okta_domain")
+        api_token = ocean.integration_config.get("api_token")
+        if not okta_domain or not api_token:
+            logger.warning(
+                "Missing okta_domain or api_token in integration config; skipping event hook setup"
+            )
+        else:
+            webhook_client = OktaWebhookClient(
+                okta_domain=okta_domain,
+                api_token=api_token,
+            )
+            app_host = ocean.integration_config.get("app_host", "http://localhost:8000")
+            await webhook_client.create_webhook_if_not_exists(app_host)
+            logger.info("Okta event hooks setup completed")
     except Exception as e:
         logger.error(f"Failed to setup Okta event hooks: {e}")
 
@@ -68,11 +78,6 @@ async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield groups
 
 
-
-
 # Register webhook processors for live events
 ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
 ocean.add_webhook_processor("/webhook", GroupWebhookProcessor)
-
-
-

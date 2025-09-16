@@ -3,8 +3,8 @@
 import asyncio
 import logging
 import re
-from typing import Any, AsyncGenerator, Dict, List, Optional
-from urllib.parse import urljoin
+from types import TracebackType
+from typing import Any, AsyncGenerator, Dict, List, Optional, Type
 
 import httpx
 from httpx import Response
@@ -38,7 +38,7 @@ class OktaClient:
         self.api_token = api_token
         self.timeout = timeout
         self.max_retries = max_retries
-        
+
         self._client = httpx.AsyncClient(
             timeout=timeout,
             headers={
@@ -81,15 +81,18 @@ class OktaClient:
         normalized_endpoint = endpoint.lstrip("/")
         base = self.base_url.rstrip("/")
         url = f"{base}/{normalized_endpoint}"
-        
+
         request_headers = self._client.headers.copy()
         if headers:
             request_headers.update(headers)
 
+        last_exception: Optional[Exception] = None
         for attempt in range(self.max_retries + 1):
             try:
-                logger.debug(f"Making {method} request to {url} (attempt {attempt + 1})")
-                
+                logger.debug(
+                    f"Making {method} request to {url} (attempt {attempt + 1})"
+                )
+
                 response = await self._client.request(
                     method=method,
                     url=url,
@@ -97,38 +100,54 @@ class OktaClient:
                     json=json_data,
                     headers=request_headers,
                 )
-                
+
                 response.raise_for_status()
                 return response
-                
+
             except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429 and attempt < self.max_retries:  # Rate limited
+                last_exception = e
+                if (
+                    e.response.status_code == 429 and attempt < self.max_retries
+                ):  # Rate limited
                     retry_after = int(e.response.headers.get("Retry-After", 1))
-                    logger.warning(f"Rate limited, retrying after {retry_after} seconds")
+                    logger.warning(
+                        f"Rate limited, retrying after {retry_after} seconds"
+                    )
                     await asyncio.sleep(retry_after)
                     continue
-                
+
                 logger.error(f"HTTP error {e.response.status_code}: {e.response.text}")
-                raise
-                
+                break
+
             except httpx.RequestError as e:
+                last_exception = e
                 if attempt < self.max_retries:
                     logger.warning(f"Request failed, retrying: {e}")
-                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                    await asyncio.sleep(2**attempt)  # Exponential backoff
                     continue
-                
-                logger.error(f"Request failed after {self.max_retries + 1} attempts: {e}")
-                raise
+
+                logger.error(
+                    f"Request failed after {self.max_retries + 1} attempts: {e}"
+                )
+                break
+
+        assert last_exception is not None
+        raise last_exception
 
     async def close(self) -> None:
         """Close the HTTP client."""
         await self._client.aclose()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "OktaClient":
         """Async context manager entry."""
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         """Async context manager exit."""
         await self.close()
 
@@ -199,7 +218,7 @@ class OktaClient:
         Yields:
             List of users from each page
         """
-        params = {}
+        params: Dict[str, Any] = {}
         if search:
             params["search"] = search
         if filter_query:
@@ -226,7 +245,7 @@ class OktaClient:
         Yields:
             List of groups from each page
         """
-        params = {}
+        params: Dict[str, Any] = {}
         if search:
             params["search"] = search
         if filter_query:
@@ -253,7 +272,7 @@ class OktaClient:
         Yields:
             List of applications from each page
         """
-        params = {}
+        params: Dict[str, Any] = {}
         if search:
             params["q"] = search
         if filter_query:
@@ -297,7 +316,7 @@ class OktaClient:
         Returns:
             List of group members
         """
-        response = await self.make_request(f"/groups/{group_id}/users")
+        response = await self.make_request(f"groups/{group_id}/users")
         return response.json() if response else []
 
     async def get_user(self, user_id: str) -> Dict[str, Any]:
@@ -349,8 +368,7 @@ class OktaClient:
             List of application users
         """
         endpoint = f"apps/{app_id}/users"
-        users = []
+        users: List[Dict[str, Any]] = []
         async for user_batch in self.send_paginated_request(endpoint):
             users.extend(user_batch)
         return users
-

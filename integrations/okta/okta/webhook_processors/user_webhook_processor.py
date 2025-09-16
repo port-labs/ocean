@@ -7,8 +7,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
-from .okta_base_webhook_processor import OktaBaseWebhookProcessor
-from okta.core.options import GetUserOptions
+from okta.webhook_processors.okta_base_webhook_processor import OktaBaseWebhookProcessor
+import inspect
 
 
 class UserWebhookProcessor(OktaBaseWebhookProcessor):
@@ -43,10 +43,10 @@ class UserWebhookProcessor(OktaBaseWebhookProcessor):
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Check if this is a user-related event.
-        
+
         Args:
             event: The webhook event
-            
+
         Returns:
             True if this is a user event, False otherwise
         """
@@ -55,10 +55,10 @@ class UserWebhookProcessor(OktaBaseWebhookProcessor):
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         """Get the resource kinds that this event affects.
-        
+
         Args:
             event: The webhook event
-            
+
         Returns:
             List of resource kinds
         """
@@ -68,18 +68,18 @@ class UserWebhookProcessor(OktaBaseWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         """Handle the user webhook event.
-        
+
         Args:
             payload: The webhook payload
             resource_config: The resource configuration
-            
+
         Returns:
             Webhook event results
         """
-        from okta.core.exporters.user_exporter import OktaUserExporter
-        
-        exporter = OktaUserExporter(self.client)
-        
+
+        async def _maybe_await(value):  # type: ignore[no-untyped-def]
+            return await value if inspect.isawaitable(value) else value
+
         # Extract user ID from the event
         user_id = self._extract_user_id(payload)
         if not user_id:
@@ -87,31 +87,30 @@ class UserWebhookProcessor(OktaBaseWebhookProcessor):
                 updated_raw_results=[],
                 deleted_raw_results=[],
             )
-        
+
         event_type = payload.get("eventType", "")
-        
+
         # Handle deletion events
         if "delete" in event_type:
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[{"id": user_id}],
             )
-        
+
         # For create/update events, fetch the current user data
         try:
-            options = GetUserOptions(
-                user_id=user_id,
-                include_groups=True,
-                include_applications=True,
-            )
-            
-            user_data = await exporter.get_resource(options)
-            
+            user_data = await _maybe_await(self.client.get_user(user_id))
+            groups = await _maybe_await(self.client.get_user_groups(user_id))
+            apps = await _maybe_await(self.client.get_user_apps(user_id))
+            if isinstance(user_data, dict):
+                user_data["groups"] = groups
+                user_data["applications"] = apps
+
             return WebhookEventRawResults(
                 updated_raw_results=[user_data],
                 deleted_raw_results=[],
             )
-        except Exception as e:
+        except Exception:
             # If we can't fetch the user, it might have been deleted
             # Return it as a deletion
             return WebhookEventRawResults(
@@ -121,10 +120,10 @@ class UserWebhookProcessor(OktaBaseWebhookProcessor):
 
     def _extract_user_id(self, payload: EventPayload) -> str | None:
         """Extract user ID from the event payload.
-        
+
         Args:
             payload: The webhook payload
-            
+
         Returns:
             User ID if found, None otherwise
         """
@@ -133,7 +132,13 @@ class UserWebhookProcessor(OktaBaseWebhookProcessor):
         for target in targets:
             if target.get("type") == "User":
                 return target.get("id")
-        
+        # Fallback: if targets exist, return first id
+        if targets and isinstance(targets, list) and isinstance(targets[0], dict):
+            if "id" in targets[0]:
+                return targets[0]["id"]
+
         # Try to extract from debug context
         debug_context = payload.get("debugContext", {})
-        return debug_context.get("user", {}).get("id") if "user" in debug_context else None
+        return (
+            debug_context.get("user", {}).get("id") if "user" in debug_context else None
+        )

@@ -1,9 +1,7 @@
 """Live events processing for Okta integration."""
 
 import logging
-from typing import Any, Dict, List, Optional
-
-from port_ocean.core.ocean_types import RAW_ITEM
+from typing import Any, Dict, Optional, List
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +10,7 @@ class OktaLiveEventProcessor:
     """Processor for Okta live events."""
 
     # Event types that we care about for our resources
-    USER_EVENTS = [
+    USER_EVENTS: List[str] = [
         "user.lifecycle.create",
         "user.lifecycle.activate",
         "user.lifecycle.deactivate",
@@ -38,7 +36,7 @@ class OktaLiveEventProcessor:
         "user.lifecycle.changeRecoveryQuestion.end",
     ]
 
-    GROUP_EVENTS = [
+    GROUP_EVENTS: List[str] = [
         "group.lifecycle.create",
         "group.lifecycle.update",
         "group.lifecycle.delete",
@@ -48,7 +46,7 @@ class OktaLiveEventProcessor:
         "group.user_membership.remove.end",
     ]
 
-    APPLICATION_EVENTS = [
+    APPLICATION_EVENTS: List[str] = [
         "app.lifecycle.create",
         "app.lifecycle.update",
         "app.lifecycle.delete",
@@ -58,7 +56,7 @@ class OktaLiveEventProcessor:
         "app.user_membership.remove.end",
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the live event processor."""
         self.all_events = self.USER_EVENTS + self.GROUP_EVENTS + self.APPLICATION_EVENTS
 
@@ -96,11 +94,15 @@ class OktaLiveEventProcessor:
             processed_event["resource_data"] = self._extract_group_data(event_data)
         elif event_type.startswith("app."):
             processed_event["resource_type"] = "application"
-            processed_event["resource_data"] = self._extract_application_data(event_data)
+            processed_event["resource_data"] = self._extract_application_data(
+                event_data
+            )
 
         return processed_event
 
-    def _extract_target_data(self, event_data: Dict[str, Any], target_type: str) -> Dict[str, Any]:
+    def _extract_target_data(
+        self, event_data: Dict[str, Any], target_type: str
+    ) -> Dict[str, Any]:
         """Extract data from target array for a specific type.
 
         Args:
@@ -121,7 +123,9 @@ class OktaLiveEventProcessor:
             }
         return {}
 
-    def _extract_resource_data(self, event_data: Dict[str, Any], target_type: str, context_key: str) -> Dict[str, Any]:
+    def _extract_resource_data(
+        self, event_data: Dict[str, Any], target_type: str, context_key: str
+    ) -> Dict[str, Any]:
         """Extract resource-specific data from event.
 
         Args:
@@ -190,7 +194,7 @@ class OktaLiveEventProcessor:
         Returns:
             Event hook configuration
         """
-        config = {
+        config: Dict[str, Any] = {
             "name": "Port Ocean Okta Integration",
             "events": {
                 "type": "EVENT_TYPE",
@@ -216,7 +220,9 @@ class OktaLiveEventProcessor:
 
         # Add custom headers if provided
         if custom_headers:
-            headers = [{"key": key, "value": value} for key, value in custom_headers.items()]
+            headers: List[Dict[str, str]] = [
+                {"key": key, "value": value} for key, value in custom_headers.items()
+            ]
             config["channel"]["config"]["headers"] = headers
 
         return config

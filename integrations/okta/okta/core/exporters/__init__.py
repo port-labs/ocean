@@ -1,2 +1,1 @@
 """Okta exporters package."""
-

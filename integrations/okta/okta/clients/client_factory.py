@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 
 from port_ocean.context.ocean import ocean
-from .http.client import OktaClient
+from okta.clients.http.client import OktaClient
 
 logger = logging.getLogger(__name__)
 
@@ -33,17 +33,17 @@ class OktaClientFactory:
             New OktaClient instance
         """
         config = ocean.integration_config
-        
+
         okta_domain = config.get("okta_domain")
         api_token = config.get("okta_api_token")
-        
+
         if not okta_domain:
             raise ValueError("okta_domain is required in integration configuration")
         if not api_token:
             raise ValueError("okta_api_token is required in integration configuration")
-        
+
         logger.info(f"Creating Okta client for domain: {okta_domain}")
-        
+
         return OktaClient(
             okta_domain=okta_domain,
             api_token=api_token,

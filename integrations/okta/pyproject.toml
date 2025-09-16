@@ -21,6 +21,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
+yamllint = "^1.35.1"
 
 [tool.towncrier]
 directory = "changelog"

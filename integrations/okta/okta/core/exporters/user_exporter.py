@@ -1,7 +1,6 @@
 """User exporter for Okta integration."""
 
 import logging
-from typing import Any, Dict, List
 
 from okta.clients.http.client import OktaClient
 from okta.core.exporters.abstract_exporter import AbstractOktaExporter
@@ -24,17 +23,19 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
             User data
         """
         user = await self.client.get_user(options.user_id)
-        
+
         if options.include_groups:
             user["groups"] = await self.client.get_user_groups(options.user_id)
-        
+
         # Enrich applications only if requested or if not already present
         if options.include_applications or "applications" not in user:
             user["applications"] = await self.client.get_user_apps(options.user_id)
-        
+
         return user
 
-    def get_paginated_resources(self, options: ListUserOptions) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    def get_paginated_resources(
+        self, options: ListUserOptions
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get users with pagination support.
 
         Args:
@@ -45,7 +46,9 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
         """
         return self._get_users_with_relations(options)
 
-    async def _get_users_with_relations(self, options: ListUserOptions) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def _get_users_with_relations(
+        self, options: ListUserOptions
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get users with their related data (groups and applications).
 
         Args:
@@ -66,17 +69,19 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
                     if options.include_groups:
                         user_groups = await self.client.get_user_groups(user["id"])
                         user["groups"] = user_groups
-                    
+
                     # Enrich applications if requested or missing
                     if options.include_applications or "applications" not in user:
                         user_apps = await self.client.get_user_apps(user["id"])
                         user["applications"] = user_apps
-                    
+
                     enriched_users.append(user)
-                    
+
                 except Exception as e:
-                    logger.warning(f"Failed to enrich user {user.get('id', 'unknown')}: {e}")
+                    logger.warning(
+                        f"Failed to enrich user {user.get('id', 'unknown')}: {e}"
+                    )
                     # Still include the user without relations
                     enriched_users.append(user)
-            
+
             yield enriched_users

@@ -27,7 +27,6 @@ class ListGroupOptions:
     selector: Optional[Dict[str, Any]] = None
 
 
-
 @dataclass
 class GetUserOptions:
     """Options for getting a single user."""
@@ -43,6 +42,3 @@ class GetGroupOptions:
 
     group_id: str
     include_members: bool = False
-
-
- 

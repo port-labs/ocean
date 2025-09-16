@@ -1,8 +1,6 @@
-"""Okta integration configuration and handlers."""
+from typing import Literal
 
-from typing import Any, Dict, List, Literal, Optional
-
-from pydantic import BaseModel, Field
+from pydantic import Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -48,17 +46,11 @@ class OktaGroupConfig(ResourceConfig):
     kind: Literal["okta-group"]
 
 
- 
-
-
 class OktaPortAppConfig(PortAppConfig):
     """Port app configuration for Okta integration."""
 
-    resources: list[
-        OktaUserConfig
-        | OktaGroupConfig
-        | ResourceConfig
-    ]
+    resources: list[OktaUserConfig | OktaGroupConfig | ResourceConfig]
+
 
 class OktaIntegration(BaseIntegration):
     """Okta integration class."""

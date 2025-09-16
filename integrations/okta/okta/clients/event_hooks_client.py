@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from .http.client import OktaClient
+from okta.clients.http.client import OktaClient
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class OktaEventHooksClient(OktaClient):
         Returns:
             List of event hooks
         """
-        endpoint = "/api/v1/eventHooks"
+        endpoint = "eventHooks"
         response = await self.make_request(endpoint)
         return response.json() if response else []
 
@@ -43,9 +43,9 @@ class OktaEventHooksClient(OktaClient):
         Returns:
             Created event hook data
         """
-        endpoint = "/api/v1/eventHooks"
-        
-        payload = {
+        endpoint = "eventHooks"
+
+        payload: Dict[str, Any] = {
             "name": name,
             "events": {
                 "type": "EVENT_TYPE",
@@ -59,17 +59,17 @@ class OktaEventHooksClient(OktaClient):
                 },
             },
         }
-        
+
         if auth_scheme:
             payload["channel"]["config"]["authScheme"] = auth_scheme
-        
+
         if headers:
             payload["channel"]["config"]["headers"] = headers
-        
+
         if description:
             payload["description"] = description
 
-        response = await self.make_request(endpoint, method="POST", json=payload)
+        response = await self.make_request(endpoint, method="POST", json_data=payload)
         return response.json()
 
     async def get_event_hook(self, hook_id: str) -> Dict[str, Any]:
@@ -81,7 +81,7 @@ class OktaEventHooksClient(OktaClient):
         Returns:
             Event hook data
         """
-        endpoint = f"/api/v1/eventHooks/{hook_id}"
+        endpoint = f"eventHooks/{hook_id}"
         response = await self.make_request(endpoint)
         return response.json()
 
@@ -111,42 +111,42 @@ class OktaEventHooksClient(OktaClient):
         Returns:
             Updated event hook data
         """
-        endpoint = f"/api/v1/eventHooks/{hook_id}"
-        
-        payload = {}
-        
+        endpoint = f"eventHooks/{hook_id}"
+
+        payload: Dict[str, Any] = {}
+
         if name is not None:
             payload["name"] = name
-        
+
         if events is not None:
             payload["events"] = {
                 "type": "EVENT_TYPE",
                 "items": events,
             }
-        
+
         if any([uri is not None, auth_scheme is not None, headers is not None]):
             payload["channel"] = {
                 "type": "HTTP",
                 "version": "1.0.0",
                 "config": {},
             }
-            
+
             if uri is not None:
                 payload["channel"]["config"]["uri"] = uri
-            
+
             if auth_scheme is not None:
                 payload["channel"]["config"]["authScheme"] = auth_scheme
-            
+
             if headers is not None:
                 payload["channel"]["config"]["headers"] = headers
-        
+
         if description is not None:
             payload["description"] = description
-        
+
         if status is not None:
             payload["status"] = status
 
-        response = await self.make_request(endpoint, method="PUT", json=payload)
+        response = await self.make_request(endpoint, method="PUT", json_data=payload)
         return response.json()
 
     async def delete_event_hook(self, hook_id: str) -> None:
@@ -155,7 +155,7 @@ class OktaEventHooksClient(OktaClient):
         Args:
             hook_id: The event hook ID
         """
-        endpoint = f"/api/v1/eventHooks/{hook_id}"
+        endpoint = f"eventHooks/{hook_id}"
         await self.make_request(endpoint, method="DELETE")
 
     async def verify_event_hook(self, hook_id: str) -> Dict[str, Any]:
@@ -167,7 +167,7 @@ class OktaEventHooksClient(OktaClient):
         Returns:
             Verification result
         """
-        endpoint = f"/api/v1/eventHooks/{hook_id}/verify"
+        endpoint = f"eventHooks/{hook_id}/verify"
         response = await self.make_request(endpoint, method="POST")
         return response.json()
 
@@ -180,7 +180,7 @@ class OktaEventHooksClient(OktaClient):
         Returns:
             Deactivated event hook data
         """
-        endpoint = f"/api/v1/eventHooks/{hook_id}/lifecycle/deactivate"
+        endpoint = f"eventHooks/{hook_id}/lifecycle/deactivate"
         response = await self.make_request(endpoint, method="POST")
         return response.json()
 
@@ -193,6 +193,6 @@ class OktaEventHooksClient(OktaClient):
         Returns:
             Activated event hook data
         """
-        endpoint = f"/api/v1/eventHooks/{hook_id}/lifecycle/activate"
+        endpoint = f"eventHooks/{hook_id}/lifecycle/activate"
         response = await self.make_request(endpoint, method="POST")
         return response.json()

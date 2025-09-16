@@ -1,7 +1,6 @@
 """Group exporter for Okta integration."""
 
 import logging
-from typing import Any, Dict, List
 
 from okta.clients.http.client import OktaClient
 from okta.core.exporters.abstract_exporter import AbstractOktaExporter
@@ -24,13 +23,15 @@ class OktaGroupExporter(AbstractOktaExporter[OktaClient]):
             Group data
         """
         group = await self.client.get_group(options.group_id)
-        
+
         if options.include_members:
             group["members"] = await self.client.get_group_members(options.group_id)
-        
+
         return group
 
-    def get_paginated_resources(self, options: ListGroupOptions) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    def get_paginated_resources(
+        self, options: ListGroupOptions
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get groups with pagination support.
 
         Args:
@@ -41,7 +42,9 @@ class OktaGroupExporter(AbstractOktaExporter[OktaClient]):
         """
         return self._get_groups_with_relations(options)
 
-    async def _get_groups_with_relations(self, options: ListGroupOptions) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def _get_groups_with_relations(
+        self, options: ListGroupOptions
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get groups with their related data (members).
 
         Args:
@@ -62,12 +65,14 @@ class OktaGroupExporter(AbstractOktaExporter[OktaClient]):
                     if options.include_members:
                         group_members = await self.client.get_group_members(group["id"])
                         group["members"] = group_members
-                    
+
                     enriched_groups.append(group)
-                    
+
                 except Exception as e:
-                    logger.warning(f"Failed to enrich group {group.get('id', 'unknown')}: {e}")
+                    logger.warning(
+                        f"Failed to enrich group {group.get('id', 'unknown')}: {e}"
+                    )
                     # Still include the group without relations
                     enriched_groups.append(group)
-            
+
             yield enriched_groups
