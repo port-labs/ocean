@@ -4,7 +4,7 @@ from typing import Awaitable, Generator, Callable, cast
 from loguru import logger
 import asyncio
 import multiprocessing
-import uuid
+import re
 import json
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import JQEntityProcessor
 from port_ocean.core.ocean_types import (
@@ -153,10 +153,18 @@ def _validate_jq_expression(expression: str) -> None:
     except Exception as e:
         raise ValueError(f"Invalid jq expression: {e}") from e
     # Basic validation - reject expressions that could be dangerous
-    dangerous_patterns = ['include','import','module','env']
+    # Check for dangerous patterns (include, import, module)
+    dangerous_patterns = ['include', 'import', 'module', 'env']
     for pattern in dangerous_patterns:
-        if pattern in expression:
+        # Use word boundary regex to match only complete words, not substrings
+        if re.search(rf'\b{re.escape(pattern)}\b', expression):
             raise ValueError(f"Potentially dangerous pattern '{pattern}' found in jq expression")
+
+    # Special handling for 'env' - block environment variable access
+    if re.search(r'(?<!\w)\$ENV(?:\.)?', expression):
+        raise ValueError("Environment variable access '$ENV.' found in jq expression")
+    if re.search(r'\benv\.', expression):
+        raise ValueError("Environment variable access 'env.' found in jq expression")
 
 def _create_secure_temp_file(suffix: str = ".json") -> str:
     """Create a secure temporary file with restricted permissions."""

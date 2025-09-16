@@ -21,6 +21,11 @@ from port_ocean.core.utils.utils import (
 )
 from port_ocean.exceptions.core import EntityProcessorException
 from port_ocean.utils.queue_utils import process_in_queue
+from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
+    InputEvaluationResult,
+    evaluate_input,
+    should_shortcut_no_input,
+)
 
 
 class ExampleStates:
@@ -312,7 +317,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         selector_query: str,
         items_to_parse_key: str | None,
     ) -> bool:
-        if "." not in selector_query:
+        if should_shortcut_no_input(selector_query):
             return await self._search_as_bool({}, selector_query)
         if isinstance(data, tuple):
             return await self._search_as_bool(
@@ -321,9 +326,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         if items_to_parse_key:
             return await self._search_as_bool(
                 data[items_to_parse_key], selector_query
-            ) or await self._search_as_bool(
-                data.pop(items_to_parse_key), selector_query
-            )
+            ) or await self._search_as_bool(data, selector_query)
         return await self._search_as_bool(data, selector_query)
 
     async def _calculate_entity(
@@ -390,18 +393,18 @@ class JQEntityProcessor(BaseEntityProcessor):
         self, raw_entity_mappings: dict[str, Any], items_to_parse_name: str
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
         """Filter entity mappings to only include values that start with f'.{items_to_parse_name}'"""
-        single_item_mappings: dict[str, Any] = {}
-        all_items_mappings: dict[str, Any] = {}
-        empty_items_mappings: dict[str, Any] = {}
+        mappings = {
+            InputEvaluationResult.NONE: {},
+            InputEvaluationResult.SINGLE: {},
+            InputEvaluationResult.ALL: {},
+        }
         pattern = f".{items_to_parse_name}"
         for key, value in raw_entity_mappings.items():
             if isinstance(value, str):
                 # Direct string values (identifier, title, icon, blueprint, team)
                 self.group_string_mapping_value(
                     pattern,
-                    single_item_mappings,
-                    all_items_mappings,
-                    empty_items_mappings,
+                    mappings,
                     key,
                     value,
                 )
@@ -409,54 +412,68 @@ class JQEntityProcessor(BaseEntityProcessor):
                 # Complex objects (IngestSearchQuery for identifier/team, properties, relations)
                 self.group_complex_mapping_value(
                     pattern,
-                    single_item_mappings,
-                    all_items_mappings,
-                    empty_items_mappings,
+                    mappings,
                     key,
                     value,
                 )
-        return single_item_mappings, all_items_mappings, empty_items_mappings
+        return (
+            mappings[InputEvaluationResult.SINGLE],
+            mappings[InputEvaluationResult.ALL],
+            mappings[InputEvaluationResult.NONE],
+        )
 
     def group_complex_mapping_value(
         self,
         pattern: str,
-        single_item_mappings: dict[str, Any],
-        all_items_mappings: dict[str, Any],
-        empty_items_mappings: dict[str, Any],
+        mappings: dict[InputEvaluationResult, dict[str, Any]],
         key: str,
         value: dict[str, Any],
     ) -> None:
-        single_item_dict: dict[str, Any] = {}
-        all_item_dict: dict[str, Any] = {}
-        empty_item_dict: dict[str, Any] = {}
+        mapping_dicts: dict[InputEvaluationResult, dict[str, Any]] = {
+            InputEvaluationResult.SINGLE: {},
+            InputEvaluationResult.ALL: {},
+            InputEvaluationResult.NONE: {},
+        }
         if key in ["properties", "relations"]:
             # For properties and relations, filter the dictionary values
             for dict_key, dict_value in value.items():
                 if isinstance(dict_value, str):
                     self.group_string_mapping_value(
                         pattern,
-                        single_item_dict,
-                        all_item_dict,
-                        empty_item_dict,
+                        mapping_dicts,
                         dict_key,
                         dict_value,
                     )
                 elif isinstance(dict_value, dict):
                     # Handle IngestSearchQuery objects
                     self.group_search_query_mapping_value(
-                        pattern, single_item_dict, all_item_dict, dict_key, dict_value
+                        pattern,
+                        mapping_dicts[InputEvaluationResult.SINGLE],
+                        mapping_dicts[InputEvaluationResult.ALL],
+                        dict_key,
+                        dict_value,
                     )
-            if single_item_dict:
-                single_item_mappings[key] = single_item_dict
-            if all_item_dict:
-                all_items_mappings[key] = all_item_dict
-            if empty_item_dict:
-                empty_items_mappings[key] = empty_item_dict
         else:
             # For identifier/team IngestSearchQuery objects
             self.group_search_query_mapping_value(
-                pattern, single_item_dict, all_item_dict, key, value
+                pattern,
+                mapping_dicts[InputEvaluationResult.SINGLE],
+                mapping_dicts[InputEvaluationResult.ALL],
+                key,
+                value,
             )
+        if mapping_dicts[InputEvaluationResult.SINGLE]:
+            mappings[InputEvaluationResult.SINGLE][key] = mapping_dicts[
+                InputEvaluationResult.SINGLE
+            ][key]
+        if mapping_dicts[InputEvaluationResult.ALL]:
+            mappings[InputEvaluationResult.ALL][key] = mapping_dicts[
+                InputEvaluationResult.ALL
+            ][key]
+        if mapping_dicts[InputEvaluationResult.NONE]:
+            mappings[InputEvaluationResult.NONE][key] = mapping_dicts[
+                InputEvaluationResult.NONE
+            ][key]
 
     def group_search_query_mapping_value(
         self,
@@ -474,18 +491,12 @@ class JQEntityProcessor(BaseEntityProcessor):
     def group_string_mapping_value(
         self,
         pattern: str,
-        single_item_mappings: dict[str, Any],
-        all_items_mappings: dict[str, Any],
-        empty_items_mappings: dict[str, Any],
+        mappings: dict[InputEvaluationResult, dict[str, Any]],
         key: str,
         value: str,
     ) -> None:
-        if pattern in value:
-            single_item_mappings[key] = value
-        elif "." not in key:
-            empty_items_mappings[key] = value
-        else:
-            all_items_mappings[key] = value
+        input_evaluation_result = evaluate_input(value, pattern)
+        mappings[input_evaluation_result][key] = value
 
     def _should_keep_ingest_search_query(
         self, query_dict: dict[str, Any], pattern: str
