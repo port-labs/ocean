@@ -215,7 +215,7 @@ class SailpointClient:
         self,
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+    ) -> AsyncGenerator[list[Dict[str, Any]], None]:
         """
         Fetch and yield all items across paginated responses
         for a given SailPoint API endpoint using the configured paginator
@@ -227,9 +227,7 @@ class SailpointClient:
 
             page = await paginated_response(paginator=self.paginator, response=response)
 
-            # yield items from this page
-            for item in page["results"]:  # type: ignore[no-any-return]
-                yield item
+            yield page["results"]  # type: ignore[index]
 
             # if there are more pages, if we should continue other wise, break
             if not self.paginator.has_more(len(page["results"])):  # type: ignore[arg-type]
@@ -244,7 +242,7 @@ class SailpointClient:
         resource: ResourceKey,
         params: Optional[Dict[str, Any]] = None,
         max_concurrency: int = 5,
-    ) -> AsyncGenerator[Any, None]:
+    ) -> AsyncGenerator[list[Dict[str, Any]], None]:
         """
         Fetches all resources of a given type, handling pagination and concurrency.
 
@@ -300,8 +298,8 @@ class SailpointClient:
 
         fetch_func = lambda: self._fetch_paginated_resources(endpoint, params=params)
 
-        async for item in semaphore_async_iterator(
+        async for paginated_result in semaphore_async_iterator(
             asyncio.BoundedSemaphore(max_concurrency),
             fetch_func,
         ):
-            yield item
+            yield paginated_result
