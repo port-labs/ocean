@@ -13,6 +13,7 @@ class Kind(StrEnum):
     PULL_REQUEST = "pull-request"
     PIPELINE = "pipeline"
     BUILD = "build"
+    PIPELINE_STAGE = "pipeline-stage"
     MEMBER = "member"
     TEAM = "team"
     PROJECT = "project"

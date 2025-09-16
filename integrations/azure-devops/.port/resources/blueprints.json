@@ -388,5 +388,59 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "pipeline-stage",
+    "title": "Pipeline Stage",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "state": {
+          "title": "State",
+          "type": "string",
+          "description": "The current state of the pipeline stage"
+        },
+        "result": {
+          "title": "Result",
+          "type": "string",
+          "description": "The final result of the pipeline stage"
+        },
+        "startTime": {
+          "title": "Start Time",
+          "type": "string",
+          "format": "date-time",
+          "description": "When the stage started"
+        },
+        "finishTime": {
+          "title": "Finish Time",
+          "type": "string",
+          "format": "date-time",
+          "description": "When the stage finished"
+        },
+        "stageType": {
+          "title": "Stage Type",
+          "type": "string",
+          "description": "The type of stage (e.g., Stage, Job, Task)"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "azureDevopsProject",
+        "required": true,
+        "many": false
+      },
+      "build": {
+        "title": "Build",
+        "target": "build",
+        "required": true,
+        "many": false
+      }
+    }
   }
 ]

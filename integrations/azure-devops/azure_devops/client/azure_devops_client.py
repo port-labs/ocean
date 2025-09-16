@@ -297,6 +297,46 @@ class AzureDevopsClient(HTTPBaseClient):
                 async for batch in self._generate_builds_for_project(project):
                     yield batch
 
+    async def generate_pipeline_stages(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generate pipeline stages across all builds in the organization.
+
+        Uses the Build Timeline API to fetch stage information for each build.
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/build/timeline/get?view=azure-devops-rest-7.1
+        """
+        async for projects in self.generate_projects():
+            for project in projects:
+                async for builds_batch in self._generate_builds_for_project(project):
+                    stages = []
+                    for build in builds_batch:
+                        # Get timeline for each build to extract stages
+                        timeline_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds/{build['id']}/timeline"
+                        try:
+                            response = await self.send_request("GET", timeline_url)
+                            if response:
+                                timeline_data = response.json()
+                                # Extract stage records from timeline
+                                stage_records = [
+                                    record
+                                    for record in timeline_data.get("records", [])
+                                    if record.get("type") == "Stage"
+                                ]
+                                for stage in stage_records:
+                                    stage["__projectId"] = project["id"]
+                                    stage["__project"] = project
+                                    stage["__buildId"] = build["id"]
+                                    stage["__build"] = build
+                                stages.extend(stage_records)
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to fetch timeline for build {build['id']}: {str(e)}"
+                            )
+                            continue
+
+                    if stages:
+                        yield stages
+
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:

@@ -169,6 +169,14 @@ async def resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield builds
 
 
+@ocean.on_resync(Kind.PIPELINE_STAGE)
+async def resync_pipeline_stages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for stages in azure_devops_client.generate_pipeline_stages():
+        logger.info(f"Resyncing {len(stages)} pipeline stages")
+        yield stages
+
+
 @ocean.on_resync(Kind.FILE)
 async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
