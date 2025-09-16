@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from functools import wraps
 from fastapi.responses import Response
+import httpx
 
 from sailpoint.exceptions import ThirdPartyAPIError, is_success
 
@@ -200,7 +201,16 @@ class Logger:
 
     @staticmethod
     def _exception_handler(exc: Exception, /, *args: Any, **kwargs: Any) -> None:
-        pass
+        logger = Logger._get_logger()
+        log_data = {
+            "error_type": type(exc).__name__,
+            "error_message": str(exc),
+            "args": args,
+            "kwargs": Logger._sanitize_data(kwargs),
+        }
+        logger.error(
+            "Exception caught", extra={"origin": "exception_handler", "extra": log_data}
+        )
 
     @staticmethod
     def log_external_api_call(
@@ -330,25 +340,26 @@ class Logger:
     async def log_request_and_response(
         cls,
         *,
-        # method: str,
-        # url: str,
-        # headers: dict,
-        # body: Optional[Any] = None,
-        # response_status: int,
-        # response_body: Optional[Any] = None,
-        # error: Optional[str] = None,
         origin: str,
     ) -> Callable:
         @wraps
         async def wrapper(func: Callable) -> Callable:
             @wraps(func)
-            async def inner_wrapper(request: Request, *args: Any, **kwargs: Any) -> Any:
+            async def inner_wrapper(self, *args: Any, **kwargs: Any) -> Any:
                 try:
-                    response: Response = await func(request, *args, **kwargs)
-                    await Logger._send_to_logger(origin, request, response)
+                    response = await func(self, *args, **kwargs)
+                    await Logger._send_to_logger(
+                        origin=origin,
+                        method=kwargs.get("method", "UNKNOWN"),
+                        url=kwargs.get("url", ""),
+                        headers=kwargs.get("headers", {}),
+                        request_body=kwargs.get("data") or kwargs.get("json"),
+                        response=response if hasattr(response, "status_code") else None,
+                        latency=getattr(response, "latency", None),
+                    )
                     return response
                 except Exception as exc:
-                    Logger._exception_handler(exc, request=request, origin=origin)
+                    Logger._exception_handler(exc, origin=origin, **kwargs)
                     raise exc
 
             return inner_wrapper
@@ -358,27 +369,31 @@ class Logger:
     @staticmethod
     async def _send_to_logger(
         origin: str,
-        request: Request,
-        response_body: Optional[Any] = None,
-        status_code: Optional[int] = None,
+        method: str,
+        url: str,
+        headers: dict[str, Any],
+        request_body: Any,
+        response: Optional["httpx.Response"] = None,
         latency: Optional[float] = None,
-    ) -> dict[str, Any]:
+    ) -> None:
+        logger = Logger._get_logger()
         log_data: dict[str, Any] = {
             "origin": origin,
             "request_context": {
-                "method": request.method,
-                "url": str(request.url),
-                "body": Logger._sanitize_data((await request.body()).decode("utf-8")),
-                "path": request.url.path,
-                "headers": Logger._sanitize_data(dict(request.headers)),
+                "method": method,
+                "url": url,
+                "headers": Logger._sanitize_data(headers),
+                "body": Logger._sanitize_data(request_body),
             },
         }
 
         if latency:
             log_data["latency_ms"] = latency
 
-        if response_body:
-            log_data["response_context"] = Logger._sanitize_data(response_body)
-            log_data["response_context"]["status_code"] = status_code
+        if response is not None:
+            log_data["response_context"] = {
+                "status_code": response.status_code,
+                "payload": Logger._sanitize_data(await response.aread()),
+            }
 
-        return log_data
+        logger.info("External API call", extra={"extra": log_data})
