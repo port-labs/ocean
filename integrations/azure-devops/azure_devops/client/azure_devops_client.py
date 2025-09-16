@@ -1,7 +1,7 @@
 import asyncio
 import functools
 import json
-from typing import Any, AsyncGenerator, Optional, Callable
+from typing import Any, AsyncGenerator, Optional, Callable, Iterable
 from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.context.event import event
@@ -265,31 +265,72 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_pipeline_runs(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Generate pipeline runs for all pipelines in all projects.
+        """
+        Generate pipeline runs for all pipelines in all projects.
 
         API: GET {org}/{project}/_apis/pipelines/{pipelineId}/runs
         https://learn.microsoft.com/en-us/rest/api/azure/devops/pipelines/runs/list
         """
         async for projects in self.generate_projects():
             for project in projects:
-                pipelines_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/pipelines"
-                async for (
-                    pipelines
-                ) in self._get_paginated_by_top_and_continuation_token(pipelines_url):
-                    for pipeline in pipelines:
-                        runs_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/pipelines/{pipeline['id']}/runs"
-                        async for (
-                            runs
-                        ) in self._get_paginated_by_top_and_continuation_token(
-                            runs_url, data_key="value"
-                        ):
-                            for run in runs:
-                                run["__projectId"] = project["id"]
-                                run["__project"] = project
-                                run["__pipelineId"] = pipeline["id"]
-                                run["__pipeline"] = pipeline
-                            if runs:
-                                yield runs
+                async for runs_batch in self._runs_for_project(project):
+                    if runs_batch:
+                        yield runs_batch
+
+    async def _runs_for_project(
+        self, project: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield runs (in batches) for every pipeline in a given project."""
+        async for pipelines in self._paginate_pipelines(project_id=project["id"]):
+            for pipeline in pipelines:
+                async for runs_batch in self._paginate_pipeline_runs(
+                    project=project, pipeline=pipeline
+                ):
+                    yield runs_batch
+
+    async def _paginate_pipelines(
+        self, project_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Paginate pipelines for a project, yielding pipeline batches."""
+        pipelines_url = (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/pipelines"
+        )
+        async for pipelines in self._get_paginated_by_top_and_continuation_token(
+            pipelines_url
+        ):
+            yield pipelines
+
+    async def _paginate_pipeline_runs(
+        self, project: dict[str, Any], pipeline: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Paginate runs for a specific pipeline, annotate each run
+        with project/pipeline context, and yield batches.
+        """
+        runs_url = (
+            f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}"
+            f"/pipelines/{pipeline['id']}/runs"
+        )
+        async for runs in self._get_paginated_by_top_and_continuation_token(
+            runs_url, data_key="value"
+        ):
+            if not runs:
+                continue
+            self._annotate_runs(runs, project=project, pipeline=pipeline)
+            yield runs
+
+    @staticmethod
+    def _annotate_runs(
+        runs: Iterable[dict[str, Any]],
+        project: dict[str, Any],
+        pipeline: dict[str, Any],
+    ) -> None:
+        """Mutate each run to include project/pipeline metadata."""
+        for run in runs:
+            run["__projectId"] = project["id"]
+            run["__project"] = project
+            run["__pipelineId"] = pipeline["id"]
+            run["__pipeline"] = pipeline
 
     def _enrich_builds_with_project_data(
         self,
