@@ -50,7 +50,7 @@ async def paginated_response(
 
 def benchmark_latency(
     func: Callable[..., Coroutine[Any, Any, Any]], *args, **kwargs
-) -> Any:
+) -> Callable[..., Coroutine[Any, Any, Any]]:
     """
     Benchmarks the latency of an async function
     """
@@ -87,9 +87,8 @@ def benchmark_latency(
                 extra={
                     "origin": "latency_benchmark",
                     "latency_ms": latency_ms,
-                    'method': method,
-                    'endpoint': endpoint
+                    "method": method,
+                    "endpoint": endpoint,
                 },
             )
-
     return wrapper
