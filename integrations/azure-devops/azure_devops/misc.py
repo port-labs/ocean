@@ -22,6 +22,7 @@ class Kind(StrEnum):
     ENVIRONMENT = "environment"
     RELEASE_DEPLOYMENT = "release-deployment"
     PIPELINE_DEPLOYMENT = "pipeline-deployment"
+    TEST_RUN = "test-run"
     FILE = "file"
     USER = "user"
     FOLDER = "folder"

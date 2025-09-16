@@ -12,6 +12,7 @@ from integration import (
     AzureDevopsFileResourceConfig,
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
+    AzureDevopsTestRunResourceConfig,
 )
 
 from azure_devops.webhooks.webhook_processors.pull_request_processor import (
@@ -247,6 +248,17 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         selector.folders, selector.project_name
     ):
         yield matching_folders
+
+
+@ocean.on_resync(Kind.TEST_RUN)
+async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    config = cast(AzureDevopsTestRunResourceConfig, event.resource_config)
+    include_results = config.selector.include_results
+
+    async for test_runs in azure_devops_client.fetch_test_runs(include_results):
+        logger.info(f"Fetched {len(test_runs)} test runs")
+        yield test_runs
 
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
