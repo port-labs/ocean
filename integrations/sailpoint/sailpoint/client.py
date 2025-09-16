@@ -1,4 +1,5 @@
-from typing import Any, Callable, Dict, Optional
+from enum import StrEnum
+from typing import Any, Callable, Dict, Optional, AsyncGenerator
 from sailpoint.utils.logging import Logger, LoggerProtocol
 from sailpoint.connector import SailPointAuthManager
 from sailpoint.utils.pagination import PaginatorProtocol, LimitOffsetPagination
@@ -8,11 +9,21 @@ from sailpoint.utils.rules import (
     exponential_backoff_retry,
     SAILPOINT_LIMITER as SAILPOINT_RATE_LIMITER,
 )
+
+from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from port_ocean.utils.async_http import http_async_client
 from port_ocean.log.sensetive import sensitive_log_filter
 from sailpoint.exceptions import ThirdPartyAPIError, SailPointAuthError
 from port_ocean.utils.async_iterators import semaphore_async_iterator
 
+
+class ObjectKind(StrEnum):
+    IDENTITY = "identity"
+    ACCOUNT = "account"
+    ENTITLEMENT = "entitlement"
+    ACCESS_PROFILE = "accessProfile"
+    ROLE = "role"
+    SOURCE = "source"
 
 class SailpointClient:
     """
