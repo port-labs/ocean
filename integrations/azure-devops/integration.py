@@ -141,9 +141,9 @@ class AzureDevopsPipelineResourceConfig(ResourceConfig):
 
 class AzureDevopsTestRunSelector(Selector):
     include_results: bool = Field(
-        default=False,
+        default=True,
         alias="includeResults",
-        description="Whether to include test results for each test run, defaults to false",
+        description="Whether to include test results for each test run, defaults to true",
     )
 
 
