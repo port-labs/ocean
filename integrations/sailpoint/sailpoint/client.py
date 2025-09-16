@@ -293,7 +293,10 @@ class SailpointClient:
         Yields:
             AsyncGenerator[Dict[str, Any], None]: An async generator yielding resource items.
         """
-        endpoint = f"{resource.value}s"
+        endpoint = f"{resource.value}"
+
+        if resource.value == ResourceKey.ACCESS_PROFILE:
+            endpoint = "access-profile"
         fetch_func = lambda: self._fetch_paginated_resources(endpoint, params=params)
 
         async for item in semaphore_async_iterator(
