@@ -125,22 +125,3 @@ resources:
             link: ._links.web.href | gsub("_release?releaseId="; "")
           relations:
             project: .projectReference.id | gsub(" "; "")
-
-  - kind: pipeline-stage
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .__project.id + "-" + .__buildId + "-" + (.id | tostring) | gsub(" "; "")
-          title: .name
-          blueprint: '"pipeline-stage"'
-          properties:
-            state: .state
-            result: .result
-            startTime: .startTime
-            finishTime: .finishTime
-            stageType: .type
-          relations:
-            project: .__project.id | gsub(" "; "")
-            build: .__project.id + "-" + .__buildId | gsub(" "; "")
