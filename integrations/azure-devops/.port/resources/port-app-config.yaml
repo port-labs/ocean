@@ -4,8 +4,8 @@ useDefaultBranch: true
 resources:
   - kind: project
     selector:
-      query: "true"
-      defaultTeam: "true"
+      query: 'true'
+      defaultTeam: 'true'
     port:
       entity:
         mappings:
@@ -20,7 +20,7 @@ resources:
             link: .url | gsub("_apis/projects/"; "")
   - kind: repository
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -57,7 +57,7 @@ resources:
             workItemLinking: .isEnabled and .isBlocking
   - kind: board
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -70,8 +70,8 @@ resources:
             project: .__project.id | gsub(" "; "")
   - kind: work-item
     selector:
-      query: "true"
-      expand: "All"
+      query: 'true'
+      expand: 'All'
     port:
       entity:
         mappings:
@@ -96,7 +96,7 @@ resources:
               | gsub(" "; "")
   - kind: column
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -107,7 +107,7 @@ resources:
             board: .__board.id | gsub(" "; "")
   - kind: release
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
