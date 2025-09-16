@@ -3,7 +3,7 @@ from sailpoint.utils.pagination import PaginatedResponse, PaginatorProtocol
 from functools import wraps
 from dataclasses import dataclass
 import time
-from typing import Any
+from typing import Any, Callable, Coroutine
 
 
 @dataclass
@@ -16,7 +16,6 @@ class BaseConfig:
 class Config:
     # application-wide configuration settings
     log_path: str
-
 
 
 def paginate_response(
@@ -49,38 +48,39 @@ async def paginated_response(
     return paginator.get_paginated_response(data=items, total=total)
 
 
-async def benchmark_latency(func, *args, **kwargs):
+def benchmark_latency(
+    func: Callable[..., Coroutine[Any, Any, Any]], *args, **kwargs
+) -> Any:
     """
     Benchmarks the latency of an async function
     """
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
-        @wraps(func)
-        async def inner_wrapper(*args, **kwargs):
-            start_time = time.perf_counter()
-            response = None
+        start_time = time.perf_counter()
+        try:
+            response = await func(*args, **kwargs)
 
-            try:
-                response = await func(*args, **kwargs)
-
-                if response.status_code not in (200, 201):
-                    # don't benchmark failed requests
-                    pass
-
-            except Exception as e:
-                response_status_code = getattr(response, "status_code", None)
-                Logger.log_error(
-                    message=f"Request failed with status code {response_status_code}",
-                    error=e,
-                    _context={"response": response},
-                )
-                raise e
-
+            if hasattr(response, "status_code") and response.status_code not in (
+                200,
+                201,
+            ):
+                # don't benchmark failed requests
+                pass
+            return response
+        except Exception as e:
+            Logger.log_error(
+                message="Request failed during benchmarked call",
+                error=e,
+                context={"func": func.__name__},
+            )
+            raise
+        finally:
             end_time = time.perf_counter()
             latency_ms = round((end_time - start_time) * 1000, 2)
-            return {"latency_ms": latency_ms, "response": response}
+            Logger._get_logger().info(
+                f"[Latency] {func.__name__} took {latency_ms} ms",
+                extra={"origin": "latency_benchmark", "latency_ms": latency_ms},
+            )
 
-        return await inner_wrapper(*args, **kwargs)
-
-    return await wrapper(*args, **kwargs)
+    return wrapper
