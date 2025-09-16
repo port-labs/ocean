@@ -272,7 +272,6 @@ class AzureDevopsClient(HTTPBaseClient):
         """
         async for projects in self.generate_projects():
             for project in projects:
-                # Reuse pipelines listing to iterate pipeline ids per project
                 pipelines_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/pipelines"
                 async for (
                     pipelines
