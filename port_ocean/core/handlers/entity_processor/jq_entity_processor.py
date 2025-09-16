@@ -393,7 +393,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         self, raw_entity_mappings: dict[str, Any], items_to_parse_name: str
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
         """Filter entity mappings to only include values that start with f'.{items_to_parse_name}'"""
-        mappings = {
+        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
             InputEvaluationResult.NONE: {},
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
