@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sentry"
-version = "0.1.201"
+version = "0.1.202"
 description = "Sentry Integration"
 authors = ["Dvir Segev <dvir@getport.io>","Matan Geva <matang@getport.io>"]
 
