@@ -48,5 +48,5 @@ class SailPointAuthManager:
         self._base_url = base_url.rstrip("/")
 
     @Logger.log_external_api_call
-    async def _request_token(self) -> dict[str, Any]:
+    async def get_valid_token(self) -> dict[str, Any]:
         raise NotImplementedError
