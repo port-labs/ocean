@@ -1121,6 +1121,66 @@ async def test_generate_pipeline_stages(mock_event_context: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_pipeline_runs(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_get_paginated(
+        url: str, *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "/_apis/pipelines" in url and "/runs" not in url:
+            # pipelines list
+            yield [{"id": 7, "name": "Pipeline One"}]
+        elif "/_apis/pipelines/7/runs" in url:
+            # runs list
+            yield [
+                {
+                    "id": 101,
+                    "name": "Run 101",
+                    "state": "completed",
+                    "result": "succeeded",
+                    "createdDate": "2023-01-01T10:00:00Z",
+                    "finishedDate": "2023-01-01T10:10:00Z",
+                    "_links": {
+                        "web": {
+                            "href": "https://dev.azure.com/org/proj/_build/results?buildId=101"
+                        }
+                    },
+                    "pipeline": {"name": "Pipeline One"},
+                }
+            ]
+        else:
+            yield []
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated,
+            ):
+                # ACT
+                runs: List[Dict[str, Any]] = []
+                async for run_batch in client.generate_pipeline_runs():
+                    runs.extend(run_batch)
+
+                # ASSERT
+                assert len(runs) == 1
+                run = runs[0]
+                assert run["id"] == 101
+                assert run["__projectId"] == "proj1"
+                assert run["__pipelineId"] == 7
+                assert run["__pipeline"]["name"] == "Pipeline One"
+
+
+@pytest.mark.asyncio
 async def test_get_pull_request() -> None:
     client = AzureDevopsClient(
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
