@@ -239,7 +239,7 @@ EXPECTED_TEST_RESULTS = [
         "project": {
             "id": "77549492-6984-4389-a205-de4d794142ae",
             "name": "first-test",
-            "url": "https://dev.azure.com/nwaomac/_apis/projects/first-test"
+            "url": "https://dev.azure.com/nwaomac/_apis/projects/first-test",
         },
         "startedDate": "2025-09-15T19:50:26.887Z",
         "completedDate": "2025-09-15T19:50:26.89Z",
@@ -247,13 +247,11 @@ EXPECTED_TEST_RESULTS = [
         "outcome": "Passed",
         "revision": 1,
         "state": "Completed",
-        "testCase": {
-            "name": "tests/test_dummy.py::test_always_passes"
-        },
+        "testCase": {"name": "tests/test_dummy.py::test_always_passes"},
         "testRun": {
             "id": "2",
             "name": "'Pytest results'",
-            "url": "https://dev.azure.com/nwaomac/first-test/_apis/test/Runs/2"
+            "url": "https://dev.azure.com/nwaomac/first-test/_apis/test/Runs/2",
         },
         "lastUpdatedDate": "2025-09-15T19:50:40.51Z",
         "priority": 0,
@@ -261,7 +259,7 @@ EXPECTED_TEST_RESULTS = [
         "build": {
             "id": "17",
             "name": "20250915.2",
-            "url": "https://dev.azure.com/nwaomac/_apis/build/Builds/17"
+            "url": "https://dev.azure.com/nwaomac/_apis/build/Builds/17",
         },
         "createdDate": "2025-09-15T19:50:40.51Z",
         "url": "https://dev.azure.com/nwaomac/first-test/_apis/test/Runs/2/Results/100000",
@@ -283,7 +281,7 @@ EXPECTED_TEST_RESULTS = [
             "id": "b24d803e-3c3e-65ff-a785-af5d5604a524",
             "uniqueName": "nwaomac@gmail.com",
             "imageUrl": "https://dev.azure.com/nwaomac/_apis/GraphProfile/MemberAvatars/msa.YjI0ZDgwM2UtM2MzZS03NWZmLWE3ODUtYWY1ZDU2MDRhNTI0",
-            "descriptor": "msa.YjI0ZDgwM2UtM2MzZS03NWZmLWE3ODUtYWY1ZDU2MDRhNTI0"
+            "descriptor": "msa.YjI0ZDgwM2UtM2MzZS03NWZmLWE3ODUtYWY1ZDU2MDRhNTI0",
         },
         "lastUpdatedBy": {
             "displayName": "first-test Build Service (nwaomac)",
@@ -296,16 +294,16 @@ EXPECTED_TEST_RESULTS = [
             "id": "3d34aa15-8d79-4c88-ba26-786e3f554a17",
             "uniqueName": "Build\\77549492-6984-4389-a205-de4d794142ae",
             "imageUrl": "https://dev.azure.com/nwaomac/_apis/GraphProfile/MemberAvatars/svc.NDJmMDBlNDAtNTA0Yy00MGYyLWIwZTctYjY3MjY2ODEyOWYxOkJ1aWxkOjc3NTQ5NDkyLTY5ODQtNDM4OS1hMjA1LWRlNGQ3OTQxNDJhZQ",
-            "descriptor": "svc.NDJmMDBlNDAtNTA0Yy00MGYyLWIwZTctYjY3MjY2ODEyOWYxOkJ1aWxkOjc3NTQ5NDkyLTY5ODQtNDM4OS1hMjA1LWRlNGQ3OTQxNDJhZQ"
+            "descriptor": "svc.NDJmMDBlNDAtNTA0Yy00MGYyLWIwZTctYjY3MjY2ODEyOWYxOkJ1aWxkOjc3NTQ5NDkyLTY5ODQtNDM4OS1hMjA1LWRlNGQ3OTQxNDJhZQ",
         },
-        "automatedTestName": "tests/test_dummy.py::test_always_passes"
+        "automatedTestName": "tests/test_dummy.py::test_always_passes",
     },
     {
         "id": 100001,
         "project": {
             "id": "77549492-6984-4389-a205-de4d794142ae",
             "name": "first-test",
-            "url": "https://dev.azure.com/nwaomac/_apis/projects/first-test"
+            "url": "https://dev.azure.com/nwaomac/_apis/projects/first-test",
         },
         "startedDate": "2025-09-15T19:50:26.89Z",
         "completedDate": "2025-09-15T19:50:26.903Z",
@@ -313,13 +311,11 @@ EXPECTED_TEST_RESULTS = [
         "outcome": "Failed",
         "revision": 1,
         "state": "Completed",
-        "testCase": {
-            "name": "tests/test_dummy.py::test_always_fails"
-        },
+        "testCase": {"name": "tests/test_dummy.py::test_always_fails"},
         "testRun": {
             "id": "2",
             "name": "'Pytest results'",
-            "url": "https://dev.azure.com/nwaomac/first-test/_apis/test/Runs/2"
+            "url": "https://dev.azure.com/nwaomac/first-test/_apis/test/Runs/2",
         },
         "lastUpdatedDate": "2025-09-15T19:50:40.51Z",
         "priority": 0,
@@ -327,7 +323,7 @@ EXPECTED_TEST_RESULTS = [
         "build": {
             "id": "17",
             "name": "20250915.2",
-            "url": "https://dev.azure.com/nwaomac/_apis/build/Builds/17"
+            "url": "https://dev.azure.com/nwaomac/_apis/build/Builds/17",
         },
         "errorMessage": "def test_always_fails():\n&gt;       assert 1 == 2\nE       assert 1 == 2\n\ntests/test_dummy.py:5: AssertionError",
         "createdDate": "2025-09-15T19:50:40.51Z",
@@ -344,8 +340,8 @@ EXPECTED_TEST_RESULTS = [
                 "id": 17,
                 "definitionId": 0,
                 "number": "20250915.2",
-                "buildSystem": "Azure DevOps Services"
-            }
+                "buildSystem": "Azure DevOps Services",
+            },
         },
         "testCaseReferenceId": 1,
         "runBy": {
@@ -359,7 +355,7 @@ EXPECTED_TEST_RESULTS = [
             "id": "b24d803e-3c3e-65ff-a785-af5d5604a524",
             "uniqueName": "nwaomac@gmail.com",
             "imageUrl": "https://dev.azure.com/nwaomac/_apis/GraphProfile/MemberAvatars/msa.YjI0ZDgwM2UtM2MzZS03NWZmLWE3ODUtYWY1ZDU2MDRhNTI0",
-            "descriptor": "msa.YjI0ZDgwM2UtM2MzZS03NWZmLWE3ODUtYWY1ZDU2MDRhNTI0"
+            "descriptor": "msa.YjI0ZDgwM2UtM2MzZS03NWZmLWE3ODUtYWY1ZDU2MDRhNTI0",
         },
         "lastUpdatedBy": {
             "displayName": "first-test Build Service (nwaomac)",
@@ -372,9 +368,9 @@ EXPECTED_TEST_RESULTS = [
             "id": "3d34aa15-8d79-4c88-ba26-786e3f554a17",
             "uniqueName": "Build\\77549492-6984-4389-a205-de4d794142ae",
             "imageUrl": "https://dev.azure.com/nwaomac/_apis/GraphProfile/MemberAvatars/svc.NDJmMDBlNDAtNTA0Yy00MGYyLWIwZTctYjY3MjY2ODEyOWYxOkJ1aWxkOjc3NTQ5NDkyLTY5ODQtNDM4OS1hMjA1LWRlNGQ3OTQxNDJhZQ",
-            "descriptor": "svc.NDJmMDBlNDAtNTA0Yy00MGYyLWIwZTctYjY3MjY2ODEyOWYxOkJ1aWxkOjc3NTQ5NDkyLTY5ODQtNDM4OS1hMjA1LWRlNGQ3OTQxNDJhZQ"
+            "descriptor": "svc.NDJmMDBlNDAtNTA0Yy00MGYyLWIwZTctYjY3MjY2ODEyOWYxOkJ1aWxkOjc3NTQ5NDkyLTY5ODQtNDM4OS1hMjA1LWRlNGQ3OTQxNDJhZQ",
         },
-        "automatedTestName": "tests/test_dummy.py::test_always_fails"
+        "automatedTestName": "tests/test_dummy.py::test_always_fails",
     },
 ]
 
@@ -2526,7 +2522,9 @@ async def test_fetch_test_runs(mock_event_context: MagicMock) -> None:
             ):
                 # ACT
                 test_runs: List[Dict[str, Any]] = []
-                async for test_run_batch in client.fetch_test_runs(include_results=False):
+                async for test_run_batch in client.fetch_test_runs(
+                    include_results=False
+                ):
                     test_runs.extend(test_run_batch)
 
                 # ASSERT
@@ -2572,7 +2570,9 @@ async def test_fetch_test_runs_with_results(mock_event_context: MagicMock) -> No
             ):
                 # ACT
                 test_runs: List[Dict[str, Any]] = []
-                async for test_run_batch in client.fetch_test_runs(include_results=True):
+                async for test_run_batch in client.fetch_test_runs(
+                    include_results=True
+                ):
                     test_runs.extend(test_run_batch)
 
                 # ASSERT
@@ -2583,7 +2583,7 @@ async def test_fetch_test_runs_with_results(mock_event_context: MagicMock) -> No
                 assert "__testResults" in test_runs[0]
                 assert len(test_runs[0]["__testResults"]) == 1
                 assert test_runs[0]["__testResults"][0]["id"] == 100000
-                
+
                 assert test_runs[1]["id"] == 2
                 assert test_runs[1]["name"] == "Test Run 2"
                 assert test_runs[1]["__projectId"] == "proj1"
@@ -2647,7 +2647,9 @@ async def test_enrich_test_runs() -> None:
         side_effect=mock_get_paginated_by_top_and_continuation_token,
     ):
         # ACT
-        enriched_test_runs = await client._enrich_test_runs(test_runs, "proj1", include_results=True)
+        enriched_test_runs = await client._enrich_test_runs(
+            test_runs, "proj1", include_results=True
+        )
 
         # ASSERT
         assert len(enriched_test_runs) == 2
@@ -2655,7 +2657,7 @@ async def test_enrich_test_runs() -> None:
         assert "__testResults" in enriched_test_runs[0]
         assert len(enriched_test_runs[0]["__testResults"]) == 1
         assert enriched_test_runs[0]["__testResults"][0]["id"] == 100000
-        
+
         assert enriched_test_runs[1]["__projectId"] == "proj1"
         assert "__testResults" in enriched_test_runs[1]
         assert len(enriched_test_runs[1]["__testResults"]) == 1
@@ -2674,12 +2676,14 @@ async def test_enrich_test_runs_without_results() -> None:
     ]
 
     # ACT
-    enriched_test_runs = await client._enrich_test_runs(test_runs, "proj1", include_results=False)
+    enriched_test_runs = await client._enrich_test_runs(
+        test_runs, "proj1", include_results=False
+    )
 
     # ASSERT
     assert len(enriched_test_runs) == 2
     assert enriched_test_runs[0]["__projectId"] == "proj1"
     assert "__testResults" not in enriched_test_runs[0]
-    
+
     assert enriched_test_runs[1]["__projectId"] == "proj1"
     assert "__testResults" not in enriched_test_runs[1]

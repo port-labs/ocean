@@ -151,6 +151,7 @@ class AzureDevopsTestRunResourceConfig(ResourceConfig):
     kind: Literal["test-run"]
     selector: AzureDevopsTestRunSelector
 
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
