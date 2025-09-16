@@ -1219,13 +1219,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.28.5"
+version = "0.28.7"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.28.5-py3-none-any.whl", hash = "sha256:5cea1e2437e1540f0822acae272157f750c91623dc37477e58294e9bc59e1a40"},
-    {file = "port_ocean-0.28.5.tar.gz", hash = "sha256:6c4469c81a7bf80b5c360736ba35342045152c9e18598f5a0d01872ee4dd994d"},
+    {file = "port_ocean-0.28.7-py3-none-any.whl", hash = "sha256:b3c57aaaa09c27dd406015bb71c15a0a26b3bab1d9e252cfc6af2465047bf043"},
+    {file = "port_ocean-0.28.7.tar.gz", hash = "sha256:e0544443716345e89c7f69f16fcb5160d5853273c24cd15d28094d45b082af98"},
 ]
 
 [package.dependencies]
