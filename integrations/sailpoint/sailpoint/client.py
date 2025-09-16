@@ -109,7 +109,7 @@ class SailpointClient:
                 func, method=method, endpoint=endpoint, *args, logger=logger, **kwargs
             )
         except Exception as e:
-            await self._exception_handler(
+            raise await self._exception_handler(
                 e, logger, context={"endpoint": endpoint, "method": method}
             )
 
@@ -130,7 +130,7 @@ class SailpointClient:
         else:
             logger.log_error(message="Unexpected error", error=error, context=context)
 
-        raise error
+        return error
 
     async def _send_request(
         self,
@@ -297,6 +297,7 @@ class SailpointClient:
 
         if resource.value == ResourceKey.ACCESS_PROFILE:
             endpoint = "access-profile"
+
         fetch_func = lambda: self._fetch_paginated_resources(endpoint, params=params)
 
         async for item in semaphore_async_iterator(
