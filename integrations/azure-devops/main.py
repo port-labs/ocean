@@ -164,29 +164,23 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(Kind.ENVIRONMENT)
 async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Starting resync for kind: {kind}")
-
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for environments in azure_devops_client.generate_environments():
-        logger.info(f"Resyncing {len(environments)} environments")
+        logger.info(f"Fetched {len(environments)} environments")
         yield environments
 
 
 @ocean.on_resync(Kind.RELEASE_DEPLOYMENT)
 async def resync_release_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Starting resync for kind: {kind}")
-
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
 
     async for deployments in azure_devops_client.generate_release_deployments():
-        logger.info(f"Resyncing {len(deployments)} release deployments")
+        logger.info(f"Fetched {len(deployments)} release deployments")
         yield deployments
 
 
 @ocean.on_resync(Kind.PIPELINE_DEPLOYMENT)
 async def resync_pipeline_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Starting resync for kind: {kind}")
-
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
 
     async for environments in azure_devops_client.generate_environments():
@@ -198,7 +192,7 @@ async def resync_pipeline_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             for environment in environments
         ]
         async for deployments in stream_async_iterators_tasks(*tasks):
-            logger.info(f"Resyncing {len(deployments)} pipeline deployments")
+            logger.info(f"Fetched {len(deployments)} pipeline deployments")
             yield deployments
 
 
