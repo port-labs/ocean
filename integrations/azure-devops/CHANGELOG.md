@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.4.1 (2025-09-16)
+## 0.4.2 (2025-09-16)
 
 
 ### Features
@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for build kind
 - Added support for pipeline stage kind
 - Added support for pipeline runs kind
+
+
+## 0.4.1 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
 
 
 ## 0.4.0 (2025-09-11)
