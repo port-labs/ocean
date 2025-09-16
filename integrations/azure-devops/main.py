@@ -193,6 +193,14 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield files_batch
 
 
+@ocean.on_resync(Kind.PIPELINE_RUN)
+async def resync_pipeline_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for runs in azure_devops_client.generate_pipeline_runs():
+        logger.info(f"Resyncing {len(runs)} pipeline runs")
+        yield runs
+
+
 @ocean.on_start()
 async def setup_webhooks() -> None:
     base_url = ocean.app.base_url

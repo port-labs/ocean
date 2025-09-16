@@ -14,6 +14,7 @@ class Kind(StrEnum):
     PIPELINE = "pipeline"
     BUILD = "build"
     PIPELINE_STAGE = "pipeline-stage"
+    PIPELINE_RUN = "pipeline-run"
     MEMBER = "member"
     TEAM = "team"
     PROJECT = "project"

@@ -442,5 +442,48 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "pipeline-run",
+    "title": "Pipeline Run",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
+        "result": {
+          "title": "Result",
+          "type": "string"
+        },
+        "createdDate": {
+          "title": "Created Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "finishedDate": {
+          "title": "Finished Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "pipelineName": {
+          "title": "Pipeline Name",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "project",
+        "required": true,
+        "many": false
+      }
+    }
   }
 ]

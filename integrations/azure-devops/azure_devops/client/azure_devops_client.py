@@ -262,6 +262,37 @@ class AzureDevopsClient(HTTPBaseClient):
                 ):
                     yield releases
 
+    async def generate_pipeline_runs(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generate pipeline runs for all pipelines in all projects.
+
+        API: GET {org}/{project}/_apis/pipelines/{pipelineId}/runs
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/pipelines/runs/list
+        """
+        async for projects in self.generate_projects():
+            for project in projects:
+                # Reuse pipelines listing to iterate pipeline ids per project
+                pipelines_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/pipelines"
+                async for (
+                    pipelines
+                ) in self._get_paginated_by_top_and_continuation_token(pipelines_url):
+                    for pipeline in pipelines:
+                        runs_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/pipelines/{pipeline['id']}/runs"
+                        async for (
+                            runs
+                        ) in self._get_paginated_by_top_and_continuation_token(
+                            runs_url, data_key="value"
+                        ):
+                            for run in runs:
+                                run["__projectId"] = project["id"]
+                                run["__project"] = project
+                                run["__pipelineId"] = pipeline["id"]
+                                run["__pipeline"] = pipeline
+                                logger.warning(f"Yielding {len(runs)} runs {run}")
+                            if runs:
+                                yield runs
+
     def _enrich_builds_with_project_data(
         self,
         builds: list[dict[str, Any]],
