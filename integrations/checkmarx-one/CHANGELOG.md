@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.2-dev (2025-09-16)
+
+
+### Features
+
+- Added webhook processor for project creation events
+
+
 ## 0.3.1-dev (2025-09-16)
 
 
