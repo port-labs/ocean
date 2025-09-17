@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "pagerduty"
-version = "0.3.74"
+version = "0.3.75"
 description = "PagerDuty Integration"
 authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.28.4", extras = ["cli"]}
+port_ocean = {version = "^0.28.5", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration
