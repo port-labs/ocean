@@ -46,8 +46,18 @@ async def test_enrich_slos_with_related_entities(monkeypatch: MonkeyPatch) -> No
     enriched_slos = await client.enrich_slos_with_related_entities(slos_to_enrich)
 
     expected_slos = [
-        {"id": "slo-1", "name": "slo-1-name", "filter": "filter-1", "__entities": related_entities_slo_1},
-        {"id": "slo-2", "name": "slo-2-name", "filter": "filter-2", "__entities": related_entities_slo_2},
+        {
+            "id": "slo-1",
+            "name": "slo-1-name",
+            "filter": "filter-1",
+            "__entities": related_entities_slo_1,
+        },
+        {
+            "id": "slo-2",
+            "name": "slo-2-name",
+            "filter": "filter-2",
+            "__entities": related_entities_slo_2,
+        },
     ]
 
     assert enriched_slos == expected_slos
@@ -109,7 +119,12 @@ async def test_enrich_slos_with_empty_or_missing_filter(
     enriched_slos = await client.enrich_slos_with_related_entities(slos_to_enrich)
 
     expected_slos = [
-        {"id": "slo-1", "name": "slo-1-name", "filter": "filter-1", "__entities": related_entities_slo_1},
+        {
+            "id": "slo-1",
+            "name": "slo-1-name",
+            "filter": "filter-1",
+            "__entities": related_entities_slo_1,
+        },
         {"id": "slo-2", "name": "slo-2-name", "filter": ""},
         {"id": "slo-3", "name": "slo-3-name"},
     ]
