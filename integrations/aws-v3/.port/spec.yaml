@@ -41,6 +41,10 @@ configurations:
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
 disableDefaultInstallationMethods: true
+visibility:
+  type: non-public
+  featureFlag: AWS_V3_INTEGRATION
+  plan: ["FREEMIUM"]
 saas:
   enabled: true
   liveEvents:
