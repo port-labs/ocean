@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.27.0"
+version = "0.28.7"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -44,7 +44,7 @@ pydantic = { version = "^1.10.8", extras = ["dotenv"] }
 loguru = "^0.7.0"
 pyyaml = "^6.0"
 werkzeug = ">=2.3.4,<4.0.0"
-fastapi = "^0.115.3"
+fastapi = "^0.116.0"
 uvicorn = "^0.34.3"
 confluent-kafka = "^2.10.1"
 httpx = "^0.28.1"
@@ -65,6 +65,9 @@ cookiecutter = { version = "^2.1.1", optional = true }
 jinja2-time = { version = "^0.2.0", optional = true }
 prometheus-client = "^0.21.1"
 pytest-cov = "^6.0.0"
+ijson = "^3.4.0"
+aiofiles = "^24.1.0"
+cryptography = "^44.0.1"
 
 [tool.poetry.extras]
 cli = ["click", "rich", "cookiecutter", "jinja2-time"]
@@ -90,6 +93,7 @@ cryptography = ">=43.0.1,<45.0.0"
 psutil = "^7.0.0"
 memray = "^1.17.2"
 faker = "^37.3.0"
+types-aiofiles = "^24.1.0.20250809"
 
 [tool.towncrier]
 directory = "changelog"

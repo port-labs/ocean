@@ -1,4 +1,3 @@
-import fnmatch
 from typing import Any, Dict, List, Optional, cast
 import asyncio
 from loguru import logger
@@ -14,13 +13,21 @@ from azure_devops.misc import Kind, extract_branch_name_from_ref
 from azure_devops.webhooks.webhook_processors.base_processor import (
     AzureDevOpsBaseWebhookProcessor,
 )
-from azure_devops.client.file_processing import parse_file_content
+from azure_devops.client.file_processing import matches_glob_pattern, parse_file_content
 from azure_devops.webhooks.events import PushEvents
 
 
 class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kind.FILE]
+
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        if not await super().validate_payload(payload):
+            return False
+
+        repository = payload["resource"].get("repository", {})
+        ref_updates = payload["resource"].get("refUpdates")
+        return repository.get("id") and repository.get("name") and ref_updates
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
@@ -132,6 +139,8 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             else:
                 path_to_track = config.selector.files.path
 
+            path_to_track = [p.strip("/") for p in path_to_track]
+
             response = await client.get_commit_changes(project_id, repo_id, commit_id)
             if not response:
                 logger.warning(
@@ -144,13 +153,14 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             for changed_file in changed_files:
                 file_path = changed_file["item"]["path"]
                 if not any(
-                    fnmatch.fnmatch(file_path.strip("/"), pattern.strip("/"))
+                    matches_glob_pattern(file_path, pattern)
                     for pattern in path_to_track
                 ):
                     logger.info(
-                        f"Skipping file {file_path} as it doesn't match any patterns in {path_to_track}"
+                        f"Skipping file {file_path} as it doesn't match glob patterns {path_to_track}"
                     )
                     continue
+
                 change_type = changed_file.get("changeType", "")
                 logger.info(f"Change type: {change_type}")
                 match change_type:
@@ -194,6 +204,7 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
             file_metadata = {
                 **changed_file.get("item", {}),
+                "path": changed_file["item"]["path"].lstrip("/"),
                 "size": len(file_content),
             }
             logger.debug(f"File metadata: {file_metadata}")
@@ -226,6 +237,9 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             )
         return {
             "kind": Kind.FILE,
-            "file": changed_file.get("item"),
+            "file": {
+                **changed_file.get("item", {}),
+                "path": changed_file["item"]["path"].lstrip("/"),
+            },
             "repo": repo_info,
         }

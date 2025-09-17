@@ -2,6 +2,7 @@ import pytest
 from typing import Any, Dict
 
 from github.helpers.utils import (
+    create_search_params,
     enrich_with_repository,
     extract_repo_params,
 )
@@ -139,3 +140,48 @@ class TestExtractRepoParams:
 
         assert repo_name is None
         assert remaining_params == {"other_param": "value"}
+
+
+class TestCreateSearchParams:
+    def test_create_search_params(self) -> None:
+        # Test case 1: Empty list of repos
+        assert list(create_search_params([])) == []
+
+        # Test case 2: List with less than max_operators repos
+        repos = ["repo1", "repo2", "repo3"]
+        expected = ["repo1 in:name OR repo2 in:name OR repo3 in:name"]
+        assert list(create_search_params(repos)) == expected
+
+        # Test case 3: List with exactly max_operators + 1 repos (default is 5+1=6).
+        # All repo names are short, so they should fit in one query.
+        repos = ["r1", "r2", "r3", "r4", "r5", "r6"]
+        expected = [
+            "r1 in:name OR r2 in:name OR r3 in:name OR r4 in:name OR r5 in:name OR r6 in:name"
+        ]
+        assert list(create_search_params(repos)) == expected
+
+        # Test case 4: List with more than max_operators + 1 repos.
+        repos = ["r1", "r2", "r3", "r4", "r5", "r6", "r7"]
+        expected = [
+            "r1 in:name OR r2 in:name OR r3 in:name OR r4 in:name OR r5 in:name OR r6 in:name",
+            "r7 in:name",
+        ]
+        assert list(create_search_params(repos)) == expected
+
+        # Test case 5: List of repos where the total length exceeds the character limit.
+        # A repo name of length 42, becomes 50 characters with "+in+name".
+        # 5 such repos with 4 "OR"s is 5 * 50 + 4 * 2 = 258 characters, which is > 256.
+        # So the query should be split into a chunk of 4 and a chunk of 3.
+        repo_base = "a" * 40
+        repos = [f"{repo_base}-{i}" for i in range(7)]
+        expected = [
+            " OR ".join([f"{r} in:name" for r in repos[:4]]),
+            " OR ".join([f"{r} in:name" for r in repos[4:]]),
+        ]
+        assert list(create_search_params(repos)) == expected
+
+        # Test case 6: A single repo name that is too long to fit in a query.
+        long_repo_name = "a" * 250
+        repos = [long_repo_name]
+        # The function logs a warning and does not add long repo to search string
+        assert list(create_search_params(repos)) == []

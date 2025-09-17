@@ -7,6 +7,243 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.3.0-beta (2025-09-17)
+
+
+### Features
+
+- Add support for AWS::Organizations::Account Kind
+
+
+## 1.2.2-beta (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 1.2.1-beta (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 1.2.0-beta (2025-09-09)
+
+
+### Features
+
+- Add support for AWS::Account:Info Kind
+
+### Improvements
+
+- Relate Existing resources to Account
+
+
+## 1.1.2-beta (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
+## 1.1.1-beta (2025-09-09)
+
+
+### Features
+
+- Add support for AWS::ECS:Cluster Kind
+
+
+## 1.1.0-beta (2025-09-09)
+
+
+### Features
+
+- Add support for AWS::EC2:Instance Kind
+
+
+## 1.0.4-beta (2025-09-07)
+
+
+### Bug Fixes
+
+- Removed unused and unimplemented properties from the S3 Bucket Default models.
+
+### Improvements
+
+- Refactored the architecture to natively support actions that operate on multiple identifiers.
+- Introduced the ExtraContext property to store enrichment data separately, ensuring that models remain compliant with CloudFormation template requirements.
+- Restricted S3 blueprints and mapping to include only the default action properties, ensuring consistency and removing any extraneous or unused fields.
+
+
+## 1.0.3-beta (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
+## 1.0.2-beta (2025-09-03)
+
+
+### Features
+
+- Added Support S3 Exporter
+
+
+## 1.0.1-beta (2025-09-01)
+
+
+### Improvements
+
+- Renamed integration to AWS Hosted by Port
+- Add disableDefaultInstallationMethods to the integration
+
+
+## 1.0.0-beta (2025-08-31)
+
+
+### Features
+
+- Breaking changes: accountRoleArn -> accountRoleArns
+- accountRoleArn is now used for both multi-account (using organizations) and single-account modes
+- accountRoleArns is now used for multi-account mode for direct arn access
+
+
+## 0.3.7-beta (2025-08-28)
+
+
+### Improvements
+
+- Add saas enabled to the integration
+
+
+## 0.3.6-beta (2025-08-28)
+
+
+### Improvements
+
+- Publish aws-v3 initial version for closed beta
+
+
+## 0.3.6-dev (2025-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.2
+
+
+## 0.3.5-dev (2025-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.1
+
+
+## 0.3.4-dev (2025-08-26)
+
+
+### Improvements
+
+- Add use_organizations flag to the integration
+
+
+## 0.3.3-dev (2025-08-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.0
+
+
+## 0.3.2-dev (2025-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.10
+
+
+## 0.3.1-dev (2025-08-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.9
+
+
+## 0.3.0-dev (2025-08-19)
+
+
+### Features
+
+- Add support for AWS Organizations
+
+
+## 0.2.10-dev (2025-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.8
+
+
+## 0.2.9-dev (2025-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.7
+
+
+## 0.2.8-dev (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 0.2.7-dev (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 0.2.6-dev (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+## 0.2.5-dev (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
+
+
+## 0.2.4-dev (2025-08-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.1
+
+
 ## 0.2.3-dev (2025-08-05)
 
 

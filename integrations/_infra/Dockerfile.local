@@ -26,6 +26,7 @@ RUN apt-get update \
         python3-pip \
         python3-poetry \
         build-essential\
+        jq \
         git \
         python3-venv \
         acl \
@@ -33,13 +34,15 @@ RUN apt-get update \
 
 ARG BUILD_CONTEXT
 ARG PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
+ARG STREAMING_LOCATION=/tmp/ocean/streaming
 
 ENV PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR}
-
+ENV STREAMING_LOCATION=${STREAMING_LOCATION}
 # Create /tmp/ocean directory and set permissions
 
 
 RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
+RUN mkdir -p ${STREAMING_LOCATION}
 
 WORKDIR /app
 

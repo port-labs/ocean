@@ -1,0 +1,159 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"checkmarxProject"'
+          identifier: .id
+          title: .name
+          properties:
+            name: .name
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+            tags: (.tags // {})
+            repoUrl: .repoUrl
+            mainBranch: .mainBranch
+            origin: .origin
+            criticality: .criticality
+  - kind: scan
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"checkmarxScan"'
+          identifier: .id
+          title: '(.projectId + "-" + .id)'
+          properties:
+            status: .status
+            branch: .branch
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+            userAgent: .userAgent
+            configs: (.configs // {})
+            statusDetails: (.statusDetails // [])
+          relations:
+            project: .projectId
+  - kind: api-security
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .risk_id
+          title: .name
+          blueprint: '"checkmarxApiSec"'
+          properties:
+            riskId: .risk_id
+            apiId: .api_id
+            severity: (.severity // empty)
+            name: .name
+            status: .status
+            httpMethod: .http_method
+            url: .url
+            origin: .origin
+            documented: .documented
+            authenticated: .authenticated
+            discoveryDate: .discovery_date
+            scanId: .scan_id
+            sastRiskId: (.sast_risk_id // empty)
+            projectId: .project_id
+            state: .state
+          relations:
+            scan: .scan_id
+  - kind: sca
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .data.packageIdentifier
+          blueprint: '"checkmarxSCA"'
+          properties:
+            firstScanId: .firstScanId
+            status: .status
+            state: .state
+            severity: .severity
+            created: .created
+            description: .description
+            packageIdentifier: .data.packageIdentifier
+            recommendations: .data.recommendations
+            recommendedVersion: .data.recommendedVersion
+            packageData: .data.packageData
+            cweId: .vulnerabilityDetails.cweId
+          relations:
+            scan: .__scan_id
+  - kind: containers
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .id
+          blueprint: '"checkmarxContainerSecurity"'
+          properties:
+            firstScanId: .firstScanId
+            status: .status
+            state: .state
+            severity: .severity
+            confidenceLevel: .confidenceLevel
+            created: .created
+            description: .description
+            packageName: .data.packageName
+            packageVersion: .data.packageVersion
+            imageName: .data.imageName
+            imageTag: .data.imageTag
+            imageFilePath: .data.imageFilePath
+            cweId: .vulnerabilityDetails.cweId
+          relations:
+            scan: .__scan_id
+  - kind: kics
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .ID
+          title: .description
+          blueprint: '"checkmarxKics"'
+          properties:
+            firstScanId: .firstScanID
+            status: .status
+            state: .state
+            severity: (.severity // empty)
+            created: .firstFoundAt
+            description: .description
+            fileName: (.fileName // empty)
+            line: (.line // empty)
+            platform: (.platform // empty)
+            issueType: (.issueType // empty)
+            expectedValue: (.expectedValue // empty)
+            value: (.value // empty)
+          relations:
+            scan: .__scan_id
+  - kind: sast
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .resultHash
+          title: .queryName
+          blueprint: '"checkmarxSast"'
+          properties:
+            firstScanId: .firstScanID
+            status: .status
+            state: .state
+            severity: (.severity // empty)
+            confidenceLevel: .confidenceLevel
+            created: .firstFoundAt
+            nodes: (.nodes // empty)
+            cweId: (.cweID // empty)
+          relations:
+            scan: .scanID
