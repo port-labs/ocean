@@ -206,6 +206,257 @@ EXPECTED_TREE_ITEMS = [
     },
 ]
 
+EXPECTED_ENVIRONMENTS = [
+    {
+        "id": 1,
+        "name": "Production",
+        "description": "Production environment",
+        "createdOn": "2023-01-01T00:00:00Z",
+        "lastModifiedOn": "2023-01-02T00:00:00Z",
+        "project": {"id": "proj1", "name": "Project One"},
+    },
+    {
+        "id": 2,
+        "name": "Staging",
+        "description": "Staging environment",
+        "createdOn": "2023-01-01T00:00:00Z",
+        "lastModifiedOn": "2023-01-02T00:00:00Z",
+        "project": {"id": "proj1", "name": "Project One"},
+    },
+]
+
+EXPECTED_RELEASE_DEPLOYMENTS = [
+    {
+        "id": 1,
+        "name": "Deployment to Production",
+        "deploymentStatus": "Succeeded",
+        "reason": "Manual",
+        "startedOn": "2023-01-01T10:00:00Z",
+        "completedOn": "2023-01-01T10:05:00Z",
+        "requestedBy": {"displayName": "John Doe"},
+        "approvedBy": {"displayName": "Jane Smith"},
+        "environment": {"name": "Production"},
+        "release": {"id": 18, "name": "Release-18"},
+        "operationStatus": "Succeeded",
+        "_links": {
+            "web": {
+                "href": "https://dev.azure.com/org/project/_release?releaseId=18&_a=release-summary"
+            }
+        },
+    },
+    {
+        "id": 2,
+        "name": "Deployment to Staging",
+        "deploymentStatus": "InProgress",
+        "reason": "Automated",
+        "startedOn": "2023-01-01T11:00:00Z",
+        "completedOn": None,
+        "requestedBy": {"displayName": "System"},
+        "approvedBy": None,
+        "environment": {"name": "Staging"},
+        "release": {"id": 19, "name": "Release-19"},
+        "operationStatus": "InProgress",
+        "_links": {
+            "web": {
+                "href": "https://dev.azure.com/org/project/_release?releaseId=19&_a=release-summary"
+            }
+        },
+    },
+]
+
+EXPECTED_PIPELINE_DEPLOYMENTS = [
+    {
+        "id": 1,
+        "requestIdentifier": "Pipeline Deployment 1",
+        "planType": "Build",
+        "stageName": "Deploy",
+        "jobName": "DeployJob",
+        "result": "Succeeded",
+        "startTime": "2023-01-01T10:00:00Z",
+        "finishTime": "2023-01-01T10:05:00Z",
+        "environment": {"id": 1, "name": "Production"},
+    },
+    {
+        "id": 2,
+        "requestIdentifier": "Pipeline Deployment 2",
+        "planType": "Build",
+        "stageName": "Deploy",
+        "jobName": "DeployJob",
+        "result": "Failed",
+        "startTime": "2023-01-01T11:00:00Z",
+        "finishTime": "2023-01-01T11:02:00Z",
+        "environment": {"id": 2, "name": "Staging"},
+    },
+]
+
+EXPECTED_TEST_RUNS = [
+    {
+        "id": 1,
+        "name": "Test Run 1",
+        "state": "Completed",
+        "result": "Passed",
+        "createdDate": "2023-01-01T10:00:00Z",
+        "completedDate": "2023-01-01T10:05:00Z",
+        "createdBy": {"displayName": "John Doe"},
+        "build": {"id": 123, "name": "Build 123"},
+        "release": {"id": 456, "name": "Release 456"},
+        "__projectId": "proj1",
+    },
+    {
+        "id": 2,
+        "name": "Test Run 2",
+        "state": "InProgress",
+        "result": None,
+        "createdDate": "2023-01-01T11:00:00Z",
+        "completedDate": None,
+        "createdBy": {"displayName": "Jane Smith"},
+        "build": {"id": 124, "name": "Build 124"},
+        "release": None,
+        "__projectId": "proj1",
+    },
+]
+
+EXPECTED_TEST_RESULTS = [
+    {
+        "id": 100000,
+        "project": {
+            "id": "77549492-6984-4389-a205-de4d794142ae",
+            "name": "first-test",
+            "url": "https://dev.azure.com/testuser/_apis/projects/first-test",
+        },
+        "startedDate": "2025-09-15T19:50:26.887Z",
+        "completedDate": "2025-09-15T19:50:26.89Z",
+        "durationInMs": 3.0,
+        "outcome": "Passed",
+        "revision": 1,
+        "state": "Completed",
+        "testCase": {"name": "tests/test_dummy.py::test_always_passes"},
+        "testRun": {
+            "id": "2",
+            "name": "'Pytest results'",
+            "url": "https://dev.azure.com/testuser/first-test/_apis/test/Runs/2",
+        },
+        "lastUpdatedDate": "2025-09-15T19:50:40.51Z",
+        "priority": 0,
+        "computerName": "arm64",
+        "build": {
+            "id": "17",
+            "name": "20250915.2",
+            "url": "https://dev.azure.com/testuser/_apis/build/Builds/17",
+        },
+        "createdDate": "2025-09-15T19:50:40.51Z",
+        "url": "https://dev.azure.com/testuser/first-test/_apis/test/Runs/2/Results/100000",
+        "failureType": "None",
+        "automatedTestStorage": "tests/test_dummy.py",
+        "automatedTestType": "NUnit",
+        "testCaseTitle": "tests/test_dummy.py::test_always_passes",
+        "stackTrace": "None",
+        "customFields": [],
+        "testCaseReferenceId": 2,
+        "runBy": {
+            "displayName": "Emeka Nwaoma",
+            "url": "https://spsprodneu1.vssps.visualstudio.com/A42f00e40-504c-40f2-b0e7-b672668129f1/_apis/Identities/b24d803e-3c3e-65ff-a785-af5d5604a524",
+            "_links": {
+                "avatar": {
+                    "href": "https://dev.azure.com/testuser/_apis/GraphProfile/MemberAvatars/msa.YjI0ZDgwM2UtM2MzZS03NWZmLWE3ODUtYWY1ZDU2MDRhNTI0"
+                }
+            },
+            "id": "b24d803e-3c3e-65ff-a785-af5d5604a524",
+            "uniqueName": "testuser@example.com",
+            "imageUrl": "https://dev.azure.com/testuser/_apis/GraphProfile/MemberAvatars/msa.YjI0ZDgwM2UtM2MzZS03NWZmLWE3ODUtYWY1ZDU2MDRhNTI0",
+            "descriptor": "msa.YjI0ZDgwM2UtM2MzZS03NWZmLWE3ODUtYWY1ZDU2MDRhNTI0",
+        },
+        "lastUpdatedBy": {
+            "displayName": "first-test Build Service (testuser)",
+            "url": "https://spsprodneu1.vssps.visualstudio.com/A42f00e40-504c-40f2-b0e7-b672668129f1/_apis/Identities/3d34aa15-8d79-4c88-ba26-786e3f554a17",
+            "_links": {
+                "avatar": {
+                    "href": "https://dev.azure.com/testuser/_apis/GraphProfile/MemberAvatars/svc.NDJmMDBlNDAtNTA0Yy00MGYyLWIwZTctYjY3MjY2ODEyOWYxOkJ1aWxkOjc3NTQ5NDkyLTY5ODQtNDM4OS1hMjA1LWRlNGQ3OTQxNDJhZQ"
+                }
+            },
+            "id": "3d34aa15-8d79-4c88-ba26-786e3f554a17",
+            "uniqueName": "Build\\77549492-6984-4389-a205-de4d794142ae",
+            "imageUrl": "https://dev.azure.com/testuser/_apis/GraphProfile/MemberAvatars/svc.NDJmMDBlNDAtNTA0Yy00MGYyLWIwZTctYjY3MjY2ODEyOWYxOkJ1aWxkOjc3NTQ5NDkyLTY5ODQtNDM4OS1hMjA1LWRlNGQ3OTQxNDJhZQ",
+            "descriptor": "svc.NDJmMDBlNDAtNTA0Yy00MGYyLWIwZTctYjY3MjY2ODEyOWYxOkJ1aWxkOjc3NTQ5NDkyLTY5ODQtNDM4OS1hMjA1LWRlNGQ3OTQxNDJhZQ",
+        },
+        "automatedTestName": "tests/test_dummy.py::test_always_passes",
+    },
+    {
+        "id": 100001,
+        "project": {
+            "id": "77549492-6984-4389-a205-de4d794142ae",
+            "name": "first-test",
+            "url": "https://dev.azure.com/testuser/_apis/projects/first-test",
+        },
+        "startedDate": "2025-09-15T19:50:26.89Z",
+        "completedDate": "2025-09-15T19:50:26.903Z",
+        "durationInMs": 13.0,
+        "outcome": "Failed",
+        "revision": 1,
+        "state": "Completed",
+        "testCase": {"name": "tests/test_dummy.py::test_always_fails"},
+        "testRun": {
+            "id": "2",
+            "name": "'Pytest results'",
+            "url": "https://dev.azure.com/testuser/first-test/_apis/test/Runs/2",
+        },
+        "lastUpdatedDate": "2025-09-15T19:50:40.51Z",
+        "priority": 0,
+        "computerName": "arm64",
+        "build": {
+            "id": "17",
+            "name": "20250915.2",
+            "url": "https://dev.azure.com/testuser/_apis/build/Builds/17",
+        },
+        "errorMessage": "def test_always_fails():\n&gt;       assert 1 == 2\nE       assert 1 == 2\n\ntests/test_dummy.py:5: AssertionError",
+        "createdDate": "2025-09-15T19:50:40.51Z",
+        "url": "https://dev.azure.com/testuser/first-test/_apis/test/Runs/2/Results/100001",
+        "failureType": "None",
+        "automatedTestStorage": "tests/test_dummy.py",
+        "automatedTestType": "NUnit",
+        "testCaseTitle": "tests/test_dummy.py::test_always_fails",
+        "stackTrace": "/Users/emeka/myagent/_work/1/s/tests/test_dummy.py:5: assert 1 == 2",
+        "customFields": [],
+        "failingSince": {
+            "date": "2025-09-15T19:50:26.903Z",
+            "build": {
+                "id": 17,
+                "definitionId": 0,
+                "number": "20250915.2",
+                "buildSystem": "Azure DevOps Services",
+            },
+        },
+        "testCaseReferenceId": 1,
+        "runBy": {
+            "displayName": "Emeka Nwaoma",
+            "url": "https://spsprodneu1.vssps.visualstudio.com/A42f00e40-504c-40f2-b0e7-b672668129f1/_apis/Identities/b24d803e-3c3e-65ff-a785-af5d5604a524",
+            "_links": {
+                "avatar": {
+                    "href": "https://dev.azure.com/testuser/_apis/GraphProfile/MemberAvatars/msa.YjI0ZDgwM2UtM2MzZS03NWZmLWE3ODUtYWY1ZDU2MDRhNTI0"
+                }
+            },
+            "id": "b24d803e-3c3e-65ff-a785-af5d5604a524",
+            "uniqueName": "testuser@example.com",
+            "imageUrl": "https://dev.azure.com/testuser/_apis/GraphProfile/MemberAvatars/msa.YjI0ZDgwM2UtM2MzZS03NWZmLWE3ODUtYWY1ZDU2MDRhNTI0",
+            "descriptor": "msa.YjI0ZDgwM2UtM2MzZS03NWZmLWE3ODUtYWY1ZDU2MDRhNTI0",
+        },
+        "lastUpdatedBy": {
+            "displayName": "first-test Build Service (testuser)",
+            "url": "https://spsprodneu1.vssps.visualstudio.com/A42f00e40-504c-40f2-b0e7-b672668129f1/_apis/Identities/3d34aa15-8d79-4c88-ba26-786e3f554a17",
+            "_links": {
+                "avatar": {
+                    "href": "https://dev.azure.com/testuser/_apis/GraphProfile/MemberAvatars/svc.NDJmMDBlNDAtNTA0Yy00MGYyLWIwZTctYjY3MjY2ODEyOWYxOkJ1aWxkOjc3NTQ5NDkyLTY5ODQtNDM4OS1hMjA1LWRlNGQ3OTQxNDJhZQ"
+                }
+            },
+            "id": "3d34aa15-8d79-4c88-ba26-786e3f554a17",
+            "uniqueName": "Build\\77549492-6984-4389-a205-de4d794142ae",
+            "imageUrl": "https://dev.azure.com/testuser/_apis/GraphProfile/MemberAvatars/svc.NDJmMDBlNDAtNTA0Yy00MGYyLWIwZTctYjY3MjY2ODEyOWYxOkJ1aWxkOjc3NTQ5NDkyLTY5ODQtNDM4OS1hMjA1LWRlNGQ3OTQxNDJhZQ",
+            "descriptor": "svc.NDJmMDBlNDAtNTA0Yy00MGYyLWIwZTctYjY3MjY2ODEyOWYxOkJ1aWxkOjc3NTQ5NDkyLTY5ODQtNDM4OS1hMjA1LWRlNGQ3OTQxNDJhZQ",
+        },
+        "automatedTestName": "tests/test_dummy.py::test_always_fails",
+    },
+]
+
 
 async def async_generator(items: List[Any]) -> AsyncGenerator[Any, None]:
     for item in items:
@@ -2323,3 +2574,419 @@ async def test_enrich_pipelines_with_repository(
     assert enriched_pipelines[1]["__repository"]["type"] == "Git"
     assert enriched_pipelines[1]["__repository"]["project"]["id"] == "project2"
     assert enriched_pipelines[1]["__repository"]["project"]["name"] == "Project 2"
+
+
+@pytest.mark.asyncio
+async def test_generate_environments(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "environments" in url:
+            yield EXPECTED_ENVIRONMENTS
+        else:
+            yield []
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated_by_top_and_continuation_token,
+            ):
+                # ACT
+                environments: List[Dict[str, Any]] = []
+                async for environment_batch in client.generate_environments():
+                    environments.extend(environment_batch)
+
+                # ASSERT
+                assert environments == EXPECTED_ENVIRONMENTS
+
+
+@pytest.mark.asyncio
+async def test_generate_environments_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client._client, "request", side_effect=mock_make_request),
+        ):
+            environments: List[Dict[str, Any]] = []
+            async for environment_batch in client.generate_environments():
+                environments.extend(environment_batch)
+
+            assert not environments
+
+
+@pytest.mark.asyncio
+async def test_generate_release_deployments(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "deployments" in url:
+            yield EXPECTED_RELEASE_DEPLOYMENTS
+        else:
+            yield []
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated_by_top_and_continuation_token,
+            ):
+                # ACT
+                deployments: List[Dict[str, Any]] = []
+                async for deployment_batch in client.generate_release_deployments():
+                    deployments.extend(deployment_batch)
+
+                # ASSERT
+                assert deployments == EXPECTED_RELEASE_DEPLOYMENTS
+
+
+@pytest.mark.asyncio
+async def test_generate_release_deployments_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client._client, "request", side_effect=mock_make_request),
+        ):
+            deployments: List[Dict[str, Any]] = []
+            async for deployment_batch in client.generate_release_deployments():
+                deployments.extend(deployment_batch)
+
+            assert not deployments
+
+
+@pytest.mark.asyncio
+async def test_generate_pipeline_deployments() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "environmentdeploymentrecords" in url:
+            yield EXPECTED_PIPELINE_DEPLOYMENTS
+        else:
+            yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        # ACT
+        deployments: List[Dict[str, Any]] = []
+        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+            deployments.extend(deployment_batch)
+
+        # ASSERT
+        assert deployments == EXPECTED_PIPELINE_DEPLOYMENTS
+
+
+@pytest.mark.asyncio
+async def test_generate_pipeline_deployments_will_skip_404() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    with patch.object(client._client, "request", side_effect=mock_make_request):
+        deployments: List[Dict[str, Any]] = []
+        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+            deployments.extend(deployment_batch)
+
+        assert not deployments
+
+
+@pytest.mark.asyncio
+async def test_generate_pipeline_deployments_with_multiple_environments() -> None:
+    """Test that pipeline deployments work correctly for different environment IDs."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "environmentdeploymentrecords" in url:
+            if "environments/1" in url:
+                yield [EXPECTED_PIPELINE_DEPLOYMENTS[0]]
+            elif "environments/2" in url:
+                yield [EXPECTED_PIPELINE_DEPLOYMENTS[1]]
+            else:
+                yield []
+        else:
+            yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        # Test environment 1
+        deployments_env1: List[Dict[str, Any]] = []
+        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+            deployments_env1.extend(deployment_batch)
+
+        # Test environment 2
+        deployments_env2: List[Dict[str, Any]] = []
+        async for deployment_batch in client.generate_pipeline_deployments("proj1", 2):
+            deployments_env2.extend(deployment_batch)
+
+        # ASSERT
+        assert len(deployments_env1) == 1
+        assert deployments_env1[0]["id"] == 1
+        assert deployments_env1[0]["environment"]["id"] == 1
+
+        assert len(deployments_env2) == 1
+        assert deployments_env2[0]["id"] == 2
+        assert deployments_env2[0]["environment"]["id"] == 2
+
+
+@pytest.mark.asyncio
+async def test_fetch_test_runs(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "test/runs" in url and "/results" not in url:
+            yield EXPECTED_TEST_RUNS
+        else:
+            yield []
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated_by_top_and_continuation_token,
+            ):
+                # ACT
+                test_runs: List[Dict[str, Any]] = []
+                async for test_run_batch in client.fetch_test_runs(
+                    include_results=False
+                ):
+                    test_runs.extend(test_run_batch)
+
+                # ASSERT
+                assert len(test_runs) == 2
+                assert test_runs[0]["id"] == 1
+                assert test_runs[0]["name"] == "Test Run 1"
+                assert test_runs[0]["__projectId"] == "proj1"
+                assert test_runs[1]["id"] == 2
+                assert test_runs[1]["name"] == "Test Run 2"
+                assert test_runs[1]["__projectId"] == "proj1"
+
+
+@pytest.mark.asyncio
+async def test_fetch_test_runs_with_results(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "test/runs" in url and "/results" not in url:
+            yield EXPECTED_TEST_RUNS
+        elif "test/runs/1/results" in url:
+            yield [EXPECTED_TEST_RESULTS[0]]
+        elif "test/runs/2/results" in url:
+            yield [EXPECTED_TEST_RESULTS[1]]
+        else:
+            yield []
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated_by_top_and_continuation_token,
+            ):
+                # ACT
+                test_runs: List[Dict[str, Any]] = []
+                async for test_run_batch in client.fetch_test_runs(
+                    include_results=True
+                ):
+                    test_runs.extend(test_run_batch)
+
+                # ASSERT
+                assert len(test_runs) == 2
+                assert test_runs[0]["id"] == 1
+                assert test_runs[0]["name"] == "Test Run 1"
+                assert test_runs[0]["__projectId"] == "proj1"
+                assert "__testResults" in test_runs[0]
+                assert len(test_runs[0]["__testResults"]) == 1
+                assert test_runs[0]["__testResults"][0]["id"] == 100000
+
+                assert test_runs[1]["id"] == 2
+                assert test_runs[1]["name"] == "Test Run 2"
+                assert test_runs[1]["__projectId"] == "proj1"
+                assert "__testResults" in test_runs[1]
+                assert len(test_runs[1]["__testResults"]) == 1
+                assert test_runs[1]["__testResults"][0]["id"] == 100001
+
+
+@pytest.mark.asyncio
+async def test_fetch_test_runs_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with (
+            patch.object(
+                client, "generate_projects", side_effect=mock_generate_projects
+            ),
+            patch.object(client._client, "request", side_effect=mock_make_request),
+        ):
+            test_runs: List[Dict[str, Any]] = []
+            async for test_run_batch in client.fetch_test_runs(include_results=False):
+                test_runs.extend(test_run_batch)
+
+            assert not test_runs
+
+
+@pytest.mark.asyncio
+async def test_enrich_test_runs() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    test_runs = [
+        {"id": 1, "name": "Test Run 1"},
+        {"id": 2, "name": "Test Run 2"},
+    ]
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "test/runs/1/results" in url:
+            yield [EXPECTED_TEST_RESULTS[0]]
+        elif "test/runs/2/results" in url:
+            yield [EXPECTED_TEST_RESULTS[1]]
+        else:
+            yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        # ACT
+        enriched_test_runs = await client._enrich_test_runs(
+            test_runs, "proj1", include_results=True
+        )
+
+        # ASSERT
+        assert len(enriched_test_runs) == 2
+        assert enriched_test_runs[0]["__projectId"] == "proj1"
+        assert "__testResults" in enriched_test_runs[0]
+        assert len(enriched_test_runs[0]["__testResults"]) == 1
+        assert enriched_test_runs[0]["__testResults"][0]["id"] == 100000
+
+        assert enriched_test_runs[1]["__projectId"] == "proj1"
+        assert "__testResults" in enriched_test_runs[1]
+        assert len(enriched_test_runs[1]["__testResults"]) == 1
+        assert enriched_test_runs[1]["__testResults"][0]["id"] == 100001
+
+
+@pytest.mark.asyncio
+async def test_enrich_test_runs_without_results() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    test_runs = [
+        {"id": 1, "name": "Test Run 1"},
+        {"id": 2, "name": "Test Run 2"},
+    ]
+
+    # ACT
+    enriched_test_runs = await client._enrich_test_runs(
+        test_runs, "proj1", include_results=False
+    )
+
+    # ASSERT
+    assert len(enriched_test_runs) == 2
+    assert enriched_test_runs[0]["__projectId"] == "proj1"
+    assert "__testResults" not in enriched_test_runs[0]
+
+    assert enriched_test_runs[1]["__projectId"] == "proj1"
+    assert "__testResults" not in enriched_test_runs[1]
