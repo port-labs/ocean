@@ -26,8 +26,8 @@ async def test_enrich_slos_with_related_entities(monkeypatch: MonkeyPatch) -> No
     client = DynatraceClient(host_url="http://test.com", api_key="test_key")
 
     slos_to_enrich = [
-        {"id": "slo-1", "filter": "filter-1"},
-        {"id": "slo-2", "filter": "filter-2"},
+        {"id": "slo-1", "name": "slo-1-name", "filter": "filter-1"},
+        {"id": "slo-2", "name": "slo-2-name", "filter": "filter-2"},
     ]
 
     related_entities_slo_1 = [{"entityId": "SERVICE-123"}]
@@ -46,8 +46,8 @@ async def test_enrich_slos_with_related_entities(monkeypatch: MonkeyPatch) -> No
     enriched_slos = await client.enrich_slos_with_related_entities(slos_to_enrich)
 
     expected_slos = [
-        {"id": "slo-1", "filter": "filter-1", "__entities": related_entities_slo_1},
-        {"id": "slo-2", "filter": "filter-2", "__entities": related_entities_slo_2},
+        {"id": "slo-1", "name": "slo-1-name", "filter": "filter-1", "__entities": related_entities_slo_1},
+        {"id": "slo-2", "name": "slo-2-name", "filter": "filter-2", "__entities": related_entities_slo_2},
     ]
 
     assert enriched_slos == expected_slos
@@ -66,7 +66,7 @@ async def test_enrich_slos_with_related_entities_exception(
     client = DynatraceClient(host_url="http://test.com", api_key="test_key")
 
     slos_to_enrich = [
-        {"id": "slo-1", "filter": "filter-1"},
+        {"id": "slo-1", "name": "slo-1-name", "filter": "filter-1"},
     ]
 
     # Mock the internal method to raise an exception
@@ -91,9 +91,9 @@ async def test_enrich_slos_with_empty_or_missing_filter(
     client = DynatraceClient(host_url="http://test.com", api_key="test_key")
 
     slos_to_enrich = [
-        {"id": "slo-1", "filter": "filter-1"},
-        {"id": "slo-2", "filter": ""},  # SLO with empty filter
-        {"id": "slo-3"},  # SLO without filter
+        {"id": "slo-1", "name": "slo-1-name", "filter": "filter-1"},
+        {"id": "slo-2", "name": "slo-2-name", "filter": ""},  # SLO with empty filter
+        {"id": "slo-3", "name": "slo-3-name"},  # SLO without filter
     ]
 
     related_entities_slo_1 = [{"entityId": "SERVICE-123"}]
@@ -109,9 +109,9 @@ async def test_enrich_slos_with_empty_or_missing_filter(
     enriched_slos = await client.enrich_slos_with_related_entities(slos_to_enrich)
 
     expected_slos = [
-        {"id": "slo-1", "filter": "filter-1", "__entities": related_entities_slo_1},
-        {"id": "slo-2", "filter": ""},
-        {"id": "slo-3"},
+        {"id": "slo-1", "name": "slo-1-name", "filter": "filter-1", "__entities": related_entities_slo_1},
+        {"id": "slo-2", "name": "slo-2-name", "filter": ""},
+        {"id": "slo-3", "name": "slo-3-name"},
     ]
 
     assert enriched_slos == expected_slos
