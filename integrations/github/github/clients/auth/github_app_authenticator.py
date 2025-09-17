@@ -84,5 +84,8 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             "iat": now,
             "exp": now + timedelta(minutes=self.JWT_EXPIRY_MINUTES),
         }
-        decoded_private_key = base64.b64decode(self.private_key)
+        if self.private_key.startswith("-----BEGIN"):
+            decoded_private_key = self.private_key
+        else:
+            decoded_private_key = base64.b64decode(self.private_key).decode()
         return jwt.encode(payload, decoded_private_key, algorithm="RS256")

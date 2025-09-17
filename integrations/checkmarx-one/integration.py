@@ -144,15 +144,6 @@ class CheckmarxOneApiSecSelector(Selector):
     )
 
 
-class CheckmarxOneProjectSelector(Selector):
-    pass
-
-
-class CheckmarxOneProjectResourcesConfig(ResourceConfig):
-    kind: Literal["project"]
-    selector: CheckmarxOneProjectSelector
-
-
 class CheckmarxOneApiSecResourcesConfig(ResourceConfig):
     kind: Literal["api-security"]
     selector: CheckmarxOneApiSecSelector
@@ -199,16 +190,14 @@ class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
 
 
 class CheckmarxOnePortAppConfig(PortAppConfig):
-    resources: List[
-        CheckmarxOneProjectResourcesConfig
-        | CheckmarxOneScanResourcesConfig
+    resources: list[
+        CheckmarxOneScanResourcesConfig
         | CheckmarxOneApiSecResourcesConfig
         | CheckmarxOneSastResourcesConfig
         | CheckmarxOneKicsResourcesConfig
         | CheckmarxOneScanResultResourcesConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore
+        | ResourceConfig
+    ] = Field(default_factory=list)
 
 
 class CheckmarxOneIntegration(BaseIntegration):
