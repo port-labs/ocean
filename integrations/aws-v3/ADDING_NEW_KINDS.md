@@ -345,6 +345,74 @@ features:
       - kind: AWS::YourService::YourResource  # Add your kind here
 ```
 
+### Step 8: Create Blueprint
+
+**File:** `.port/resources/blueprints.json`
+
+Add your blueprint to the blueprints array:
+
+```json
+{
+  "identifier": "yourResource",
+  "title": "Your Resource",
+  "icon": "AWS",
+  "schema": {
+    "properties": {
+      "arn": {
+        "type": "string",
+        "title": "ARN",
+        "description": "The Amazon Resource Name (ARN)"
+      },
+      "region": {
+        "type": "string",
+        "title": "Region",
+        "description": "AWS region"
+      },
+      "tags": {
+        "type": "array",
+        "title": "Tags",
+        "description": "Resource tags",
+        "items": {"type": "object"}
+      }
+    },
+    "required": []
+  },
+  "relations": {
+    "account": {
+      "title": "Account",
+      "target": "awsAccount",
+      "required": false,
+      "many": false
+    }
+  }
+}
+```
+
+### Step 9: Add Default Mapping
+
+**File:** `.port/resources/port-app-config.yml`
+
+Add your resource mapping after the existing resources:
+
+```yaml
+  - kind: AWS::YourService::YourResource
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.YourResourceId
+          title: .Properties.YourResourceName
+          blueprint: '"yourResource"'
+          properties:
+            # Map your resource properties
+            arn: .Properties.Arn
+            region: .Properties.Region
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
+```
+
 ## Testing Your Implementation
 
 ### 1. Unit Tests

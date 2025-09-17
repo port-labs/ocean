@@ -56,6 +56,8 @@ Thank you for your interest in contributing to the AWS-v3 integration! This docu
 - [ ] Added resync handler in `main.py`
 - [ ] Updated `.port/spec.yaml`
 - [ ] Added package `__init__.py`
+- [ ] Added to `.port/resources/blueprints.json`
+- [ ] Added to `.port/resources/port-app-config.yml`
 - [ ] Written comprehensive tests
 - [ ] Tested with real AWS resources
 - [ ] Updated documentation
