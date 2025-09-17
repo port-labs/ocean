@@ -196,10 +196,26 @@ class YourResourceActionsMap(ActionMap):
 
 **Key Points:**
 - Each action should have a single responsibility
-- Use `asyncio.gather` for concurrent API calls
+- **Consider batch operations**: Some AWS APIs support fetching multiple resources in a single call (e.g., `describe_instances`, `describe_services`). Use batch operations when available instead of concurrent individual calls for better performance and rate limit compliance.
+- Use `asyncio.gather` for concurrent API calls when batch operations aren't supported
 - Handle errors gracefully - one bad resource shouldn't break the batch
 - Log errors with context for debugging
 - Use proper type hints and casting
+
+**Batch vs Concurrent Operations:**
+```python
+# Option 1: Batch API call (preferred if supported)
+async def _fetch_resources_batch(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    resource_ids = [resource["id"] for resource in resources]
+    response = await self.client.describe_resources_batch(ResourceIds=resource_ids)
+    return response.get("Resources", [])
+
+# Option 2: Concurrent individual calls (fallback)
+details = await asyncio.gather(
+    *(self._fetch_resource_details(resource) for resource in resources),
+    return_exceptions=True,
+)
+```
 
 ### Step 4: Create the Exporter
 
