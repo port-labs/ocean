@@ -1175,8 +1175,8 @@ async def test_generate_pipeline_runs(mock_event_context: MagicMock) -> None:
                 assert len(runs) == 1
                 run = runs[0]
                 assert run["id"] == 101
-                assert run["__projectId"] == "proj1"
-                assert run["__pipelineId"] == 7
+                assert run["__project"]["id"] == "proj1"
+                assert run["__pipeline"]["id"] == 7
                 assert run["__pipeline"]["name"] == "Pipeline One"
 
 

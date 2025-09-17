@@ -330,6 +330,48 @@ class AzureDevopsClient(HTTPBaseClient):
             run["__project"] = project
             run["__pipeline"] = pipeline
 
+    @staticmethod
+    def _annotate_stages(
+        stages: Iterable[dict[str, Any]],
+        project: dict[str, Any],
+        build: dict[str, Any],
+    ) -> None:
+        """Mutate each stage to include project/build metadata."""
+        for stage in stages:
+            stage["__projectId"] = project["id"]
+            stage["__project"] = project
+            stage["__buildId"] = build["id"]
+            stage["__build"] = build
+
+    async def _fetch_stages_for_build(
+        self, project: dict[str, Any], build: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Fetch and process stage records for a specific build.
+
+        Returns a list of stage records enriched with project and build context.
+        Returns empty list if timeline fetch fails.
+        """
+        timeline_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds/{build['id']}/timeline"
+        try:
+            response = await self.send_request("GET", timeline_url)
+            if not response:
+                return []
+
+            timeline_data = response.json()
+            # Extract stage records from timeline
+            stage_records = [
+                record
+                for record in timeline_data.get("records", [])
+                if record.get("type") == "Stage"
+            ]
+            self._annotate_stages(stage_records, project=project, build=build)
+            return stage_records
+        except Exception as e:
+            logger.warning(
+                f"Failed to fetch timeline for build {build['id']}: {str(e)}"
+            )
+            return []
+
     def _enrich_builds_with_project_data(
         self,
         builds: list[dict[str, Any]],
@@ -378,29 +420,11 @@ class AzureDevopsClient(HTTPBaseClient):
                 async for builds_batch in self._generate_builds_for_project(project):
                     stages = []
                     for build in builds_batch:
-                        # Get timeline for each build to extract stages
-                        timeline_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds/{build['id']}/timeline"
-                        try:
-                            response = await self.send_request("GET", timeline_url)
-                            if response:
-                                timeline_data = response.json()
-                                # Extract stage records from timeline
-                                stage_records = [
-                                    record
-                                    for record in timeline_data.get("records", [])
-                                    if record.get("type") == "Stage"
-                                ]
-                                for stage in stage_records:
-                                    stage["__projectId"] = project["id"]
-                                    stage["__project"] = project
-                                    stage["__buildId"] = build["id"]
-                                    stage["__build"] = build
-                                stages.extend(stage_records)
-                        except Exception as e:
-                            logger.warning(
-                                f"Failed to fetch timeline for build {build['id']}: {str(e)}"
-                            )
-                            continue
+                        stage_records = await self._fetch_stages_for_build(
+                            project, build
+                        )
+                        if stage_records:
+                            stages.extend(stage_records)
 
                     if stages:
                         yield stages
