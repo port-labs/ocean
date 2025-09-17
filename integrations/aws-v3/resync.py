@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Callable, List, Type
+from typing import TYPE_CHECKING, Any, Callable, List, Type, AsyncIterator, cast
 
 import asyncio
 from functools import partial
@@ -16,22 +16,45 @@ from integration import AWSResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
 from aws.core.helpers.utils import get_allowed_regions
 from aws.core.modeling.resource_models import ResourceRequestModel
-
+from aws.core.helpers.utils import is_access_denied_exception
 
 if TYPE_CHECKING:
     from aws.core.interfaces.exporter import IResourceExporter
 
 
+async def safe_region_iterator(
+    region: str, kind: str, ait: AsyncIterator[Any]
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    try:
+        async for item in ait:
+            yield item
+    except Exception as e:
+        if is_access_denied_exception(e):
+            logger.error(
+                f"Region {region} failed during resync of {kind}: {e}, skipping ..."
+            )
+            return
+
+
 async def handle_global_resource_resync(
+    kind: str,
     regions: List[str],
     options_factory: Callable[[str], Any],
     exporter: "IResourceExporter",
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for region in regions:
-        options = options_factory(region)
-        async for batch in exporter.get_paginated_resources(options):
-            yield batch
-        return  # global resources → only need first region
+        try:
+            options = options_factory(region)
+            async for batch in exporter.get_paginated_resources(options):
+                yield batch
+            return  # global resources → only need one valid region
+        except Exception as e:
+            if is_access_denied_exception(e):
+                logger.debug(
+                    f"Global resource fetch failed in region {region} for {kind}: {e}, skipping ..."
+                )
+                continue
+    logger.error(f"All candidate regions [{regions}] failed for global resource resync of {kind}")
 
 
 async def handle_regional_resource_resync(
@@ -48,9 +71,13 @@ async def handle_regional_resource_resync(
     semaphore = asyncio.Semaphore(max_concurrent)
 
     tasks = [
-        semaphore_async_iterator(
-            semaphore,
-            partial(exporter.get_paginated_resources, options_factory(region)),
+        safe_region_iterator(
+            region,
+            kind,
+            semaphore_async_iterator(
+                semaphore,
+                partial(exporter.get_paginated_resources, options_factory(region)),
+            ),
         )
         for region in regions
     ]
@@ -68,7 +95,7 @@ async def resync_resource(
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     aws_resource_config = event.resource_config
-    assert isinstance(aws_resource_config, AWSResourceConfig)
+    aws_resource_config = cast(AWSResourceConfig, event.resource_config)
 
     async for account, session in get_all_account_sessions():
         logger.info(f"Resyncing {kind} for account {account['Id']}")
@@ -94,6 +121,6 @@ async def resync_resource(
                 yield batch
         else:
             async for batch in handle_global_resource_resync(
-                regions, options_factory, exporter
+                kind, regions, options_factory, exporter
             ):
                 yield batch
