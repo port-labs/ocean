@@ -1,10 +1,8 @@
-from typing import TYPE_CHECKING, Any, Callable, List, Type, AsyncIterator, cast
-
 import asyncio
 from functools import partial
+from typing import Any, Callable, List, Type, AsyncIterator, cast, TYPE_CHECKING
 
 from loguru import logger
-
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import (
@@ -14,9 +12,9 @@ from port_ocean.utils.async_iterators import (
 
 from integration import AWSResourceConfig
 from aws.auth.session_factory import get_all_account_sessions
-from aws.core.helpers.utils import get_allowed_regions
+from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
 from aws.core.modeling.resource_models import ResourceRequestModel
-from aws.core.helpers.utils import is_access_denied_exception
+from aws.auth.session_factory import AccountInfo
 
 if TYPE_CHECKING:
     from aws.core.interfaces.exporter import IResourceExporter
@@ -89,40 +87,76 @@ async def handle_regional_resource_resync(
             yield batch
 
 
+async def _resync_account(
+    kind: str,
+    exporter_cls: Type["IResourceExporter"],
+    request_cls: Type[ResourceRequestModel],
+    regional: bool,
+    account: AccountInfo,
+    session: Any,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    aws_resource_config = cast(AWSResourceConfig, event.resource_config)
+
+    regions = await get_allowed_regions(session, aws_resource_config.selector)
+    logger.info(
+        f"Resyncing {kind} for account {account['Id']} across {len(regions)} regions"
+    )
+
+    exporter = exporter_cls(session)
+
+    def options_factory(region: str) -> Any:
+        return request_cls(
+            region=region,
+            include=aws_resource_config.selector.include_actions,
+            account_id=account["Id"],
+        )
+
+    if regional:
+        async for batch in handle_regional_resource_resync(
+            exporter, options_factory, kind, regions, account["Id"]
+        ):
+            yield batch
+    else:
+        async for batch in handle_global_resource_resync(
+            kind, regions, options_factory, exporter
+        ):
+            yield batch
+
+
 async def resync_resource(
     kind: str,
     exporter_cls: Type["IResourceExporter"],
     request_cls: Type[ResourceRequestModel],
     regional: bool,
+    max_concurrent_accounts: int = 5,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Resync resources across multiple accounts concurrently, with
+    optional concurrency limit per account.
+    """
+    semaphore = asyncio.Semaphore(max_concurrent_accounts)
 
-    aws_resource_config = event.resource_config
-    aws_resource_config = cast(AWSResourceConfig, event.resource_config)
-
-    async for account, session in get_all_account_sessions():
-        logger.info(f"Resyncing {kind} for account {account['Id']}")
-
-        regions = await get_allowed_regions(session, aws_resource_config.selector)
-        logger.info(
-            f"Found {len(regions)} allowed regions: {regions} for account {account['Id']}"
-        )
-
-        exporter = exporter_cls(session)
-
-        def options_factory(region: str) -> Any:
-            return request_cls(
-                region=region,
-                include=aws_resource_config.selector.include_actions,
-                account_id=account["Id"],
+    async def account_iterator() -> AsyncIterator[ASYNC_GENERATOR_RESYNC_TYPE]:
+        async for account, session in get_all_account_sessions():
+            yield safe_region_iterator(
+                account["Id"],
+                kind,
+                semaphore_async_iterator(
+                    semaphore,
+                    partial(
+                        _resync_account,
+                        kind,
+                        exporter_cls,
+                        request_cls,
+                        regional,
+                        account,
+                        session,
+                    ),
+                ),
             )
 
-        if regional:
-            async for batch in handle_regional_resource_resync(
-                exporter, options_factory, kind, regions, account["Id"]
-            ):
-                yield batch
-        else:
-            async for batch in handle_global_resource_resync(
-                kind, regions, options_factory, exporter
-            ):
-                yield batch
+    tasks = [ait async for ait in account_iterator()]
+
+    async for batch in stream_async_iterators_tasks(*tasks):
+        if batch:
+            yield batch

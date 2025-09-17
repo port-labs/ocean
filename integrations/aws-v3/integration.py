@@ -21,9 +21,7 @@ class AWSResourceSelector(Selector):
     include_actions: List[str] = Field(
         alias="includeActions", default_factory=list, max_items=3
     )
-    max_concurrent_accounts: int = Field(
-        alias="maxConcurrentAccounts", default=20
-    )
+    max_concurrent_accounts: int = Field(alias="maxConcurrentAccounts", default=20)
 
     def is_region_allowed(self, region: str) -> bool:
         """
