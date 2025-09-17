@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.3.1-beta (2025-09-17)
+
+
+### Improvements
+
+- Improve runtime complexity by processing accessible accounts concurrently
+
+
 ## 1.3.0-beta (2025-09-17)
 
 

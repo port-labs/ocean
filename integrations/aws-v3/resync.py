@@ -134,7 +134,8 @@ async def resync_resource(
     Resync resources across multiple accounts concurrently, with
     optional concurrency limit per account.
     """
-    semaphore = asyncio.Semaphore(max_concurrent_accounts)
+    aws_resource_config = cast(AWSResourceConfig, event.resource_config)
+    semaphore = asyncio.Semaphore(aws_resource_config.selector.max_concurrent_accounts)
 
     async def account_iterator() -> AsyncIterator[ASYNC_GENERATOR_RESYNC_TYPE]:
         async for account, session in get_all_account_sessions():
