@@ -119,14 +119,16 @@ class DynatraceClient:
         logger.info(f"Fetching related entities for {len(slos)} slos")
 
         related_slo_tasks = [
-            self._get_slo_related_entities(slo["filter"]) for slo in slos
+            self._get_slo_related_entities(slo["filter"])
+            for slo in slos
+            if slo.get("filter")
         ]
         results = await asyncio.gather(*related_slo_tasks, return_exceptions=True)
 
         for slo, entities in zip(slos, results):
             if isinstance(entities, Exception):
                 logger.warning(
-                    f"Error {entities} occurred while fetching related entities for slo {slo['id']}"
+                    f"Error {entities} occurred while fetching related entities for slo {slo['name']}"
                 )
                 continue
             slo["__entities"] = entities
