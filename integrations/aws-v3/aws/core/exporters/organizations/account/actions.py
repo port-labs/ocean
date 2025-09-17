@@ -97,8 +97,3 @@ class OrganizationsAccountActionsMap(ActionMap):
         ListParentsAction,
         ListTagsForResourceAction,
     ]
-
-    def merge(self, include: List[str]) -> List[Type[Action]]:
-        return self.defaults + [
-            action for action in self.options if action.__name__ in include
-        ]
