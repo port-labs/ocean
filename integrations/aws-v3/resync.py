@@ -15,9 +15,13 @@ from aws.auth.session_factory import get_all_account_sessions
 from aws.core.helpers.utils import get_allowed_regions, is_access_denied_exception
 from aws.core.modeling.resource_models import ResourceRequestModel
 from aws.auth.session_factory import AccountInfo
+from aiobotocore.session import AioSession
+
 
 if TYPE_CHECKING:
     from aws.core.interfaces.exporter import IResourceExporter
+
+_MAX_CONCURRENT_REGIONS = 10
 
 
 async def safe_region_iterator(
@@ -63,7 +67,7 @@ async def handle_regional_resource_resync(
     kind: str,
     regions: List[str],
     account_id: str,
-    max_concurrent: int = 10,
+    max_concurrent: int = _MAX_CONCURRENT_REGIONS,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(
         f"Processing {kind} across {len(regions)} regions for account {account_id}"
@@ -93,11 +97,10 @@ async def _resync_account(
     request_cls: Type[ResourceRequestModel],
     regional: bool,
     account: AccountInfo,
-    session: Any,
+    session: AioSession,
+    actions: List[str],
+    regions: List[str],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    aws_resource_config = cast(AWSResourceConfig, event.resource_config)
-
-    regions = await get_allowed_regions(session, aws_resource_config.selector)
     logger.info(
         f"Resyncing {kind} for account {account['Id']} across {len(regions)} regions"
     )
@@ -107,7 +110,7 @@ async def _resync_account(
     def options_factory(region: str) -> Any:
         return request_cls(
             region=region,
-            include=aws_resource_config.selector.include_actions,
+            include=actions,
             account_id=account["Id"],
         )
 
@@ -128,17 +131,18 @@ async def resync_resource(
     exporter_cls: Type["IResourceExporter"],
     request_cls: Type[ResourceRequestModel],
     regional: bool,
-    max_concurrent_accounts: int = 5,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Resync resources across multiple accounts concurrently, with
     optional concurrency limit per account.
     """
     aws_resource_config = cast(AWSResourceConfig, event.resource_config)
+    include_actions = aws_resource_config.selector.include_actions
     semaphore = asyncio.Semaphore(aws_resource_config.selector.max_concurrent_accounts)
 
     async def account_iterator() -> AsyncIterator[ASYNC_GENERATOR_RESYNC_TYPE]:
         async for account, session in get_all_account_sessions():
+            regions = await get_allowed_regions(session, aws_resource_config.selector)
             yield safe_region_iterator(
                 account["Id"],
                 kind,
@@ -152,6 +156,8 @@ async def resync_resource(
                         regional,
                         account,
                         session,
+                        include_actions,
+                        regions,
                     ),
                 ),
             )
