@@ -1,6 +1,7 @@
 title: AWS Hosted by Port
 description: AWS integration for Port Ocean Hosted by Port
 icon: AWS
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3
 features:
   - type: exporter
     section: Cloud Providers
@@ -41,6 +42,11 @@ configurations:
     sensitive: true
     description: AWS Session Token for temporary static credentials (optional).
 disableDefaultInstallationMethods: true
+installationDocs:
+  saas:
+    - name: Saas
+      enabled: true
+      docs: build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3/installations#installation-methods
 saas:
   enabled: true
   liveEvents:
