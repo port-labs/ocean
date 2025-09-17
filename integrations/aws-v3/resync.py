@@ -54,7 +54,9 @@ async def handle_global_resource_resync(
                     f"Global resource fetch failed in region {region} for {kind}: {e}, skipping ..."
                 )
                 continue
-    logger.error(f"All candidate regions [{regions}] failed for global resource resync of {kind}")
+    logger.error(
+        f"All candidate regions [{regions}] failed for global resource resync of {kind}"
+    )
 
 
 async def handle_regional_resource_resync(
