@@ -125,6 +125,7 @@ class DynatraceClient:
         ]
         results = await asyncio.gather(*related_slo_tasks, return_exceptions=True)
 
+        # AI! due to the fact that a filter happens in related_slo_tasks list, a bug happens here if that list is out of order with the slos list
         for slo, entities in zip(slos, results):
             if isinstance(entities, Exception):
                 logger.warning(
