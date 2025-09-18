@@ -1,6 +1,6 @@
 import asyncio
 from functools import partial
-from typing import Any, Callable, List, Type, AsyncIterator, cast, TYPE_CHECKING
+from typing import Any, Callable, List, Type, AsyncIterator, cast, TYPE_CHECKING, Dict
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from aws.core.interfaces.exporter import IResourceExporter
 
 _MAX_CONCURRENT_REGIONS = 10
-_MAX_CONCURRENT_ACCOUNTS = 10
+_MAX_CONCURRENT_ACCOUNTS = 5
 
 
 async def safe_iterate(
@@ -34,7 +34,7 @@ async def safe_iterate(
             yield item
     except Exception as e:
         if is_access_denied_exception(e):
-            logger.debug(
+            logger.error(
                 f"{identifier} failed during resync of {kind}: {e}, skipping ..."
             )
             return
@@ -120,7 +120,7 @@ class GlobalResyncStrategy(ResyncStrategy):
                     continue
                 raise
         logger.error(
-            f"All candidate regions [{regions}] failed for global resource resync of {self.kind}"
+            f"All candidate regions [{regions}] failed for global resource {self.kind} in account {self.account_id}"
         )
 
 
@@ -185,7 +185,7 @@ class ResyncAWSService:
 
     async def __aiter__(self) -> ASYNC_GENERATOR_RESYNC_TYPE:
         semaphore = asyncio.Semaphore(self.max_concurrent_accounts)
-        tasks: List[AsyncIterator[List[dict[Any, Any]]]] = []
+        tasks: List[AsyncIterator[List[Dict[Any, Any]]]] = []
 
         async for account, session in get_all_account_sessions():
             regions = await get_allowed_regions(
