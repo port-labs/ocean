@@ -9,9 +9,6 @@ from okta.clients.client_factory import create_okta_client
 from okta.core.exporters.user_exporter import OktaUserExporter
 from okta.core.exporters.group_exporter import OktaGroupExporter
 from okta.core.options import ListUserOptions, ListGroupOptions
-from okta.webhook_processors.user_webhook_processor import UserWebhookProcessor
-from okta.webhook_processors.group_webhook_processor import GroupWebhookProcessor
-from okta.webhook_processors.webhook_client import OktaWebhookClient
 from integration import (
     OktaUserConfig,
     OktaGroupConfig,
@@ -20,27 +17,8 @@ from integration import (
 
 @ocean.on_start()
 async def on_start() -> None:
-    """Initialize the Okta integration."""
+    """Initialize the Okta integration (resync-only branch)."""
     logger.info("Starting Port Ocean Okta integration")
-
-    # Create event hooks in Okta if they don't exist
-    try:
-        okta_domain = ocean.integration_config.get("okta_domain")
-        api_token = ocean.integration_config.get("api_token")
-        if not okta_domain or not api_token:
-            logger.warning(
-                "Missing okta_domain or api_token in integration config; skipping event hook setup"
-            )
-        else:
-            webhook_client = OktaWebhookClient(
-                okta_domain=okta_domain,
-                api_token=api_token,
-            )
-            app_host = ocean.integration_config.get("app_host", "http://localhost:8000")
-            await webhook_client.create_webhook_if_not_exists(app_host)
-            logger.info("Okta event hooks setup completed")
-    except Exception as e:
-        logger.error(f"Failed to setup Okta event hooks: {e}")
 
 
 @ocean.on_resync("okta-user")
@@ -78,6 +56,4 @@ async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield groups
 
 
-# Register webhook processors for live events
-ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
-ocean.add_webhook_processor("/webhook", GroupWebhookProcessor)
+# Webhook registration is handled in the live-events branch
