@@ -34,11 +34,11 @@ async def safe_iterate(
             yield item
     except Exception as e:
         if is_access_denied_exception(e):
-            logger.error(
+            logger.debug(
                 f"{identifier} failed during resync of {kind}: {e}, skipping ..."
             )
             return
-        raise  # Re-raise other exceptions
+        raise
 
 
 class ResyncStrategy(ABC):
@@ -49,7 +49,7 @@ class ResyncStrategy(ABC):
         exporter: "IResourceExporter",
         options_factory: Callable[[str], Any],
         kind: str,
-        account_id: str | None = None,  # Required for regional, optional for global
+        account_id: str | None = None,
     ):
         self.exporter = exporter
         self.options_factory = options_factory
@@ -76,8 +76,6 @@ class RegionalResyncStrategy(ResyncStrategy):
         self.max_concurrent = max_concurrent
 
     async def run(self, regions: List[str]) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        if not self.account_id:
-            raise ValueError("account_id is required for RegionalResyncStrategy")
 
         logger.info(
             f"Processing {self.kind} across {len(regions)} regions for account {self.account_id}"
@@ -117,7 +115,7 @@ class GlobalResyncStrategy(ResyncStrategy):
             except Exception as e:
                 if is_access_denied_exception(e):
                     logger.debug(
-                        f"Global resource fetch failed in region {region} for {self.kind}: {e}, skipping ..."
+                        f"Failed to fetch global resource {self.kind} for account {self.account_id} in region {region}: {e}. Skipping this region ..."
                     )
                     continue
                 raise
