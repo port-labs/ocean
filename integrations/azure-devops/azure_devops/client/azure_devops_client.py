@@ -307,7 +307,24 @@ class AzureDevopsClient(HTTPBaseClient):
                         logger.warning(f"Failed to fetch pipeline runs: {result}")
                         continue
                     if result and isinstance(result, list):
-                        yield result
+    async def _runs_for_project(
+        self, project: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield runs (in batches) for every pipeline in a given project."""
+        async for pipelines in self._paginate_pipelines(project_id=project["id"]):
+            if not pipelines:
+                continue
+            pipeline_tasks = [
+                self._collect_pipeline_runs(project, pipeline) for pipeline in pipelines
+            ]
+            pipeline_results = await asyncio.gather(*pipeline_tasks, return_exceptions=True)
+    
+            for result in pipeline_results:
+                if isinstance(result, Exception):
+                    logger.warning(f"Failed to fetch pipeline runs: {result}")
+                    continue
+                if result:
+                    yield result
 
 
     async def _paginate_pipelines(
