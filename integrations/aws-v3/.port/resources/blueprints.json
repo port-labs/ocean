@@ -13,6 +13,51 @@
     "relations": {}
   },
   {
+    "identifier": "awsOrganizationAccount",
+    "title": "AWS Organization Account",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the account"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "description": "The email address associated with the account"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the AWS account (e.g., ACTIVE)"
+        },
+        "joinedTimestamp": {
+          "type": "string",
+          "title": "Joined Timestamp",
+          "description": "When the account joined the organization",
+          "format": "date-time"
+        },
+        "joinedMethod": {
+          "type": "string",
+          "title": "Joined Method",
+          "description": "Method used to join the account to the organization",
+          "enum": ["INVITED", "CREATED"],
+          "enumColors": {
+            "INVITED": "lightGray",
+            "CREATED": "lightGray"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
     "identifier": "s3Bucket",
     "title": "S3 Bucket",
     "icon": "AWS",

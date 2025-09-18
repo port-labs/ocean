@@ -24,6 +24,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Integration with Ocean's retry mechanism** using `RetryConfig` for 429 response handling```
 
 
+## 0.1.202 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.1.201 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
 ## 0.1.200 (2025-09-10)
 
 

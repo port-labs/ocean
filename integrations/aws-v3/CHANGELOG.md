@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.3.0-beta (2025-09-17)
+
+
+### Features
+
+- Add support for AWS::Organizations::Account Kind
+
+
+## 1.2.2-beta (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 1.2.1-beta (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
 ## 1.2.0-beta (2025-09-09)
 
 
