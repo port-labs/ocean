@@ -321,14 +321,6 @@ class AzureDevopsClient(HTTPBaseClient):
                     if result and isinstance(result, list):
                         yield result
 
-    async def _collect_pipeline_runs(
-        self, project: dict[str, Any], pipeline: dict[str, Any]
-    ) -> list[dict[str, Any]]:
-        """Collect all runs for a specific pipeline."""
-        all_runs = []
-        async for runs_batch in self._paginate_pipeline_runs(project, pipeline):
-            all_runs.extend(runs_batch)
-        return all_runs
 
     async def _paginate_pipelines(
         self, project_id: str
