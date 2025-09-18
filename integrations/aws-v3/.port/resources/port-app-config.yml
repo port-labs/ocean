@@ -10,6 +10,21 @@ resources:
           identifier: .Properties.Id
           title: .Properties.Name
           blueprint: '"awsAccount"'
+  - kind: AWS::Organizations::Account
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Id
+          title: .Properties.AccountName
+          blueprint: '"awsOrganizationAccount"'
+          properties:
+            arn: .Properties.Arn
+            email: .Properties.Email
+            status: .Properties.Status
+            joinedTimestamp: .Properties.JoinedTimestamp
+            joinedMethod: .Properties.JoinedMethod
   - kind: AWS::S3::Bucket
     selector:
       query: 'true'
