@@ -272,21 +272,63 @@ class AzureDevopsClient(HTTPBaseClient):
         https://learn.microsoft.com/en-us/rest/api/azure/devops/pipelines/runs/list
         """
         async for projects in self.generate_projects():
-            for project in projects:
-                async for runs_batch in self._runs_for_project(project):
-                    if runs_batch:
-                        yield runs_batch
+            # Process all projects in parallel
+            project_tasks = [
+                self._collect_project_runs(project) for project in projects
+            ]
+
+            if project_tasks:
+                project_results = await asyncio.gather(
+                    *project_tasks, return_exceptions=True
+                )
+
+                # Yield all collected runs from all projects
+                for result in project_results:
+                    if isinstance(result, Exception):
+                        logger.warning(f"Failed to fetch project runs: {result}")
+                        continue
+                    if result and isinstance(result, list):
+                        yield result
+
+    async def _collect_project_runs(
+        self, project: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Collect all runs for a specific project."""
+        all_runs = []
+        async for runs_batch in self._runs_for_project(project):
+            all_runs.extend(runs_batch)
+        return all_runs
 
     async def _runs_for_project(
         self, project: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Yield runs (in batches) for every pipeline in a given project."""
         async for pipelines in self._paginate_pipelines(project_id=project["id"]):
+            pipeline_tasks = []
             for pipeline in pipelines:
-                async for runs_batch in self._paginate_pipeline_runs(
-                    project=project, pipeline=pipeline
-                ):
-                    yield runs_batch
+                pipeline_tasks.append(self._collect_pipeline_runs(project, pipeline))
+
+            if pipeline_tasks:
+                pipeline_results = await asyncio.gather(
+                    *pipeline_tasks, return_exceptions=True
+                )
+
+                # Yield all collected runs
+                for result in pipeline_results:
+                    if isinstance(result, Exception):
+                        logger.warning(f"Failed to fetch pipeline runs: {result}")
+                        continue
+                    if result and isinstance(result, list):
+                        yield result
+
+    async def _collect_pipeline_runs(
+        self, project: dict[str, Any], pipeline: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Collect all runs for a specific pipeline."""
+        all_runs = []
+        async for runs_batch in self._paginate_pipeline_runs(project, pipeline):
+            all_runs.extend(runs_batch)
+        return all_runs
 
     async def _paginate_pipelines(
         self, project_id: str
@@ -418,12 +460,20 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             for project in projects:
                 async for builds_batch in self._generate_builds_for_project(project):
-                    stages = []
-                    for build in builds_batch:
-                        stage_records = await self._fetch_stages_for_build(
-                            project, build
-                        )
-                        if stage_records:
+                    stage_tasks = [
+                        self._fetch_stages_for_build(project, build)
+                        for build in builds_batch
+                    ]
+                    stage_results = await asyncio.gather(
+                        *stage_tasks, return_exceptions=True
+                    )
+
+                    stages: list[dict[str, Any]] = []
+                    for stage_records in stage_results:
+                        if isinstance(stage_records, Exception):
+                            logger.warning(f"Failed to fetch stages: {stage_records}")
+                            continue
+                        if stage_records and isinstance(stage_records, list):
                             stages.extend(stage_records)
 
                     if stages:
