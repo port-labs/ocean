@@ -19,32 +19,33 @@ from aws.core.exporters.organizations.account.models import PaginatedAccountRequ
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
-from resync import (
-    resync_resource,
-)
+from resync import ResyncAWSService
 
 
 @ocean.on_resync(ObjectKind.S3_BUCKET)
 async def resync_s3_bucket(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in resync_resource(
+    service = ResyncAWSService(
         kind, S3BucketExporter, PaginatedBucketRequest, regional=False
-    ):
+    )
+    async for batch in service:
         yield batch
 
 
 @ocean.on_resync(ObjectKind.EC2_INSTANCE)
 async def resync_ec2_instance(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in resync_resource(
+    service = ResyncAWSService(
         kind, EC2InstanceExporter, PaginatedEC2InstanceRequest, regional=True
-    ):
+    )
+    async for batch in service:
         yield batch
 
 
 @ocean.on_resync(ObjectKind.ECS_CLUSTER)
 async def resync_ecs_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in resync_resource(
+    service = ResyncAWSService(
         kind, EcsClusterExporter, PaginatedClusterRequest, regional=True
-    ):
+    )
+    async for batch in service:
         yield batch
 
 
