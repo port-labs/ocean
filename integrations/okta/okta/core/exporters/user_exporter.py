@@ -27,8 +27,7 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
         if options.include_groups:
             user["groups"] = await self.client.get_user_groups(options.user_id)
 
-        # Enrich applications only if requested or if not already present
-        if options.include_applications or "applications" not in user:
+        if options.include_applications:
             user["applications"] = await self.client.get_user_apps(options.user_id)
 
         return user
@@ -70,8 +69,8 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
                         user_groups = await self.client.get_user_groups(user["id"])
                         user["groups"] = user_groups
 
-                    # Enrich applications if requested or missing
-                    if options.include_applications or "applications" not in user:
+                    # Enrich applications strictly via API when requested
+                    if options.include_applications:
                         user_apps = await self.client.get_user_apps(user["id"])
                         user["applications"] = user_apps
 

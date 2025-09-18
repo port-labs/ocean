@@ -9,12 +9,12 @@ features:
       - kind: okta-user
       - kind: okta-group
 configurations:
-  - name: okta_domain
+  - name: oktaDomain
     required: true
     type: string
     description: Your Okta domain (e.g., dev-123456.okta.com)
     sensitive: false
-  - name: okta_api_token
+  - name: oktaApiToken
     required: true
     type: string
     description: Your Okta API token with appropriate permissions
