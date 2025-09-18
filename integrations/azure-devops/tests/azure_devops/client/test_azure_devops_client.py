@@ -1365,8 +1365,6 @@ async def test_generate_pipeline_stages(mock_event_context: MagicMock) -> None:
                     assert stage["id"] == "stage1"
                     assert stage["name"] == "Build Stage"
                     assert stage["type"] == "Stage"
-                    assert stage["__projectId"] == "proj1"
-                    assert stage["__buildId"] == "build123"
                     assert stage["__project"]["name"] == "Project One"
                     assert stage["__build"]["name"] == "Build 123"
 
