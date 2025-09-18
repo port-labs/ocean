@@ -197,7 +197,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .__project.id + "-" + (.id | tostring) | gsub(" "; "")
+          identifier: (.id | tostring) | gsub(" "; "")
           title: .buildNumber
           blueprint: '"build"'
           properties:
@@ -229,7 +229,7 @@ resources:
             stageType: .type
           relations:
             project: .__project.id | gsub(" "; "")
-            build: (.__project.id + "-" + (.__build.id | tostring)) | gsub(" "; "")
+            build: (.__build.id | tostring) | gsub(" "; "")
   - kind: pipeline-run
     selector:
       query: 'true'
