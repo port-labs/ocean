@@ -372,9 +372,7 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> None:
         """Mutate each stage to include project/build metadata."""
         for stage in stages:
-            stage["__projectId"] = project["id"]
             stage["__project"] = project
-            stage["__buildId"] = build["id"]
             stage["__build"] = build
 
     async def _fetch_stages_for_build(
