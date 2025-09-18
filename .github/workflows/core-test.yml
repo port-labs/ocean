@@ -153,7 +153,7 @@ jobs:
           echo "STMTS_COVERAGE=$stmts" >> $GITHUB_OUTPUT
 
       - name: Comment PR with code coverage summary
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           CODE_COVERAGE_ARTIFACT_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
           PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
@@ -187,7 +187,7 @@ jobs:
 
       - name: Comment if Coverage Regression
         if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (steps.pr-number.outputs.PR_NUMBER != 0) }}
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
           CURRENT_COVERAGE: ${{ steps.set-current-coverage.outputs.CURRENT_COVERAGE }}
