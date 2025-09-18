@@ -165,6 +165,52 @@ class TestOpsGenieClient:
                 f"{client.api_url}/v2/teams/{team_identifier}"
             )
 
+    async def test_get_alert_comments_success(self, client: OpsGenieClient) -> None:
+        # Arrange
+        alert_identifier = "alert123"
+        mock_response = {
+            "data": [
+                {
+                    "id": "comment1",
+                    "source": "web",
+                    "message": "This is a test comment",
+                    "createdAt": "2023-01-01T00:00:00Z",
+                },
+                {
+                    "id": "comment2",
+                    "source": "api",
+                    "message": "Another comment",
+                    "createdAt": "2023-01-01T01:00:00Z",
+                },
+            ]
+        }
+
+        with patch.object(
+            client, "_get_single_resource", AsyncMock(return_value=mock_response)
+        ) as mock_get:
+            # Act
+            async with event_context("test_event"):
+                result = await client.get_alert_comments(alert_identifier)
+
+            # Assert
+            assert result == [
+                {
+                    "id": "comment1",
+                    "source": "web",
+                    "message": "This is a test comment",
+                    "createdAt": "2023-01-01T00:00:00Z",
+                },
+                {
+                    "id": "comment2",
+                    "source": "api",
+                    "message": "Another comment",
+                    "createdAt": "2023-01-01T01:00:00Z",
+                },
+            ]
+            mock_get.assert_called_once_with(
+                f"{client.api_url}/v2/alerts/{alert_identifier}/comments"
+            )
+
     async def test_get_paginated_resources_respects_max_offset_limit(
         self, client: OpsGenieClient
     ) -> None:
