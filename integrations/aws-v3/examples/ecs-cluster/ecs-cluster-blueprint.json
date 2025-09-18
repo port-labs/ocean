@@ -1,0 +1,60 @@
+[
+  {
+    "identifier": "ecsCluster",
+    "title": "ECS Cluster",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "title": {
+          "type": "string",
+          "title": "Cluster Name",
+          "description": "The name of the ECS cluster"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the ECS cluster"
+        },
+        "runningTasksCount": {
+          "type": "integer",
+          "title": "Running Tasks Count",
+          "description": "The number of running tasks in the cluster"
+        },
+        "activeServicesCount": {
+          "type": "integer",
+          "title": "Active Services Count",
+          "description": "The number of active services in the cluster"
+        },
+        "pendingTasksCount": {
+          "type": "integer",
+          "title": "Pending Tasks Count",
+          "description": "The number of pending tasks in the cluster"
+        },
+        "registeredContainerInstancesCount": {
+          "type": "integer",
+          "title": "Registered Container Instances Count",
+          "description": "The number of registered container instances in the cluster"
+        },
+        "capacityProviders": {
+          "type": "array",
+          "title": "Capacity Providers",
+          "description": "The capacity providers associated with the cluster",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the cluster",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "calculationProperties": {},
+    "relations": {}
+  }
+]

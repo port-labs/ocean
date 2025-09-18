@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List
 
 
 class ResourceModel[PropertiesT: BaseModel](BaseModel):
@@ -9,14 +9,11 @@ class ResourceModel[PropertiesT: BaseModel](BaseModel):
     Attributes:
         Type (str): The AWS resource type identifier (e.g., "AWS::S3::Bucket").
         Properties (PropertiesT): The properties of the AWS resource, typed as a Pydantic model.
-        account_id (str): The AWS account ID for this resource (aliased as __AccountId).
-        region (str): The AWS region for this resource (aliased as __Region).
     """
 
     Type: str
     Properties: PropertiesT
-    account_id: Optional[str] = Field(None, alias="__AccountId")
-    region: Optional[str] = Field(None, alias="__Region")
+    ExtraContext: BaseModel = Field(default_factory=BaseModel, alias="__ExtraContext")
 
     class Config:
         extra = "ignore"
@@ -33,6 +30,9 @@ class ResourceRequestModel(BaseModel):
     """
 
     region: str = Field(..., description="The AWS region to export resources from")
+    account_id: str = Field(
+        ..., description="The AWS account ID to export resources from"
+    )
     include: List[str] = Field(
         default_factory=list, description="The resources to include in the export"
     )
