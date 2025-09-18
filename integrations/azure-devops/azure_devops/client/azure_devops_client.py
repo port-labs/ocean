@@ -479,6 +479,42 @@ class AzureDevopsClient(HTTPBaseClient):
                     if stages:
                         yield stages
 
+    @cache_iterator_result()
+    async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            for project in projects:
+                environments_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/distributedtask/environments"
+                async for (
+                    environments
+                ) in self._get_paginated_by_top_and_continuation_token(
+                    environments_url
+                ):
+                    yield environments
+
+    async def generate_release_deployments(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            for project in projects:
+                deployments_url = (
+                    self._format_service_url("vsrm")
+                    + f"/{project['id']}/{API_URL_PREFIX}/release/deployments"
+                )
+                async for (
+                    deployments
+                ) in self._get_paginated_by_top_and_continuation_token(deployments_url):
+                    yield deployments
+
+    async def generate_pipeline_deployments(
+        self, project_id: str, environment_id: int
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        deployments_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/distributedtask/environments/{environment_id}/environmentdeploymentrecords"
+        async for deployments in self._get_paginated_by_top_and_continuation_token(
+            deployments_url
+        ):
+            yield deployments
+
+
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -1301,3 +1337,39 @@ class AzureDevopsClient(HTTPBaseClient):
             enriched.append(pipeline)
 
         return enriched
+
+    async def fetch_test_runs(
+        self, include_results: bool
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(
+            f"Starting to fetch test runs with include_results={include_results}"
+        )
+        async for projects in self.generate_projects():
+            for project in projects:
+                project_id = project["id"]
+                url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
+                async for runs in self._get_paginated_by_top_and_continuation_token(
+                    url
+                ):
+                    yield await self._enrich_test_runs(
+                        runs, project_id, include_results
+                    )
+
+    async def _enrich_test_runs(
+        self,
+        test_runs: list[dict[str, Any]],
+        project_id: str,
+        include_results: bool = False,
+    ) -> list[dict[str, Any]]:
+        logger.info(
+            f"Enriching {len(test_runs)} test runs for project {project_id}, include_results={include_results}"
+        )
+        for run in test_runs:
+            run["__projectId"] = project_id
+            if include_results:
+                run["__testResults"] = []
+                async for page in self._get_paginated_by_top_and_continuation_token(
+                    f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs/{run['id']}/results"
+                ):
+                    run["__testResults"].extend(page)
+        return test_runs

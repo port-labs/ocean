@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.179 (2025-09-17)
+
+
+### Improvements
+
+- Don't fetch related entities for SLOs without a filter
+
+
+## 0.1.178 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
 ## 0.1.177 (2025-09-16)
 
 
