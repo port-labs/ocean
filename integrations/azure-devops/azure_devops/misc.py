@@ -26,6 +26,7 @@ class Kind(StrEnum):
     FILE = "file"
     USER = "user"
     FOLDER = "folder"
+    BRANCH = "branch"
 
 
 PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [
