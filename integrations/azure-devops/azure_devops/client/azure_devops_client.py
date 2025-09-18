@@ -1,7 +1,7 @@
 import asyncio
 import functools
 import json
-from typing import Any, AsyncGenerator, Optional, Callable
+from typing import Any, AsyncGenerator, Awaitable, Optional, Callable
 from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.context.event import event
@@ -31,8 +31,11 @@ from port_ocean.utils.async_iterators import (
 )
 from port_ocean.utils.queue_utils import process_in_queue
 from urllib.parse import urlparse
+from typing import TYPE_CHECKING
 import fnmatch
 
+if TYPE_CHECKING:
+    from integration import CodeCoverageConfig
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
@@ -1122,20 +1125,24 @@ class AzureDevopsClient(HTTPBaseClient):
         return enriched
 
     async def fetch_test_runs(
-        self, include_results: bool
+        self,
+        include_results: bool,
+        coverage_config: Optional["CodeCoverageConfig"] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(
             f"Starting to fetch test runs with include_results={include_results}"
         )
+
+        params = {"includeRunDetails": True}
         async for projects in self.generate_projects():
             for project in projects:
                 project_id = project["id"]
                 url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
                 async for runs in self._get_paginated_by_top_and_continuation_token(
-                    url
+                    url, additional_params=params
                 ):
                     yield await self._enrich_test_runs(
-                        runs, project_id, include_results
+                        runs, project_id, include_results, coverage_config
                     )
 
     async def _enrich_test_runs(
@@ -1143,16 +1150,82 @@ class AzureDevopsClient(HTTPBaseClient):
         test_runs: list[dict[str, Any]],
         project_id: str,
         include_results: bool = False,
+        coverage_config: Optional["CodeCoverageConfig"] = None,
     ) -> list[dict[str, Any]]:
         logger.info(
             f"Enriching {len(test_runs)} test runs for project {project_id}, include_results={include_results}"
         )
-        for run in test_runs:
-            run["__projectId"] = project_id
-            if include_results:
-                run["__testResults"] = []
-                async for page in self._get_paginated_by_top_and_continuation_token(
-                    f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs/{run['id']}/results"
-                ):
-                    run["__testResults"].extend(page)
+
+        async def attach_async_results(
+            runs: list[dict[str, Any]],
+            tasks: list[Awaitable[Any]],
+            field_name: str,
+            default_value: Any,
+        ) -> None:
+            if not tasks:
+                # If no tasks, we will set the default value for every run
+                for run in runs:
+                    run[field_name] = default_value
+                return
+
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for run, value in zip(runs, results):
+                if isinstance(value, Exception):
+                    logger.warning(
+                        "Error %s occurred while fetching %s for run %s",
+                        value,
+                        field_name,
+                        run.get("id"),
+                    )
+                    continue
+                run[field_name] = value
+
+        test_results_tasks: list[Awaitable[list[dict[str, Any]]]] = []
+        coverage_tasks: list[Awaitable[dict[str, Any]]] = []
+
+        if include_results:
+            test_results_tasks = [
+                self._fetch_test_results(project_id, run["id"]) for run in test_runs
+            ]
+
+        if coverage_config:
+            coverage_tasks = [
+                self._fetch_code_coverage(
+                    project_id, run["build"]["id"], coverage_config
+                )
+                for run in test_runs
+            ]
+
+        await attach_async_results(test_runs, test_results_tasks, "__testResults", [])
+        await attach_async_results(test_runs, coverage_tasks, "__codeCoverage", {})
+
         return test_runs
+
+    async def _fetch_test_results(
+        self, project_id: str, run_id: str
+    ) -> list[dict[str, Any]]:
+        """Fetch test results for a specific test run."""
+        results = []
+        async for page in self._get_paginated_by_top_and_continuation_token(
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs/{run_id}/results"
+        ):
+            results.extend(page)
+        return results
+
+    async def _fetch_code_coverage(
+        self, project_id: str, build_id: int, coverage_config: "CodeCoverageConfig"
+    ) -> dict[str, Any]:
+        logger.info(
+            f"Starting to fetch code coverage for project {project_id}, run id={build_id}, flags={coverage_config.flags}"
+        )
+
+        params = {"buildId": build_id}
+        if coverage_config.flags is not None:
+            params["flags"] = coverage_config.flags
+
+        coverage_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/codecoverage"
+        response = await self.send_request("GET", coverage_url, params=params)
+        if not response:
+            return {}
+
+        return response.json()
