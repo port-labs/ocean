@@ -272,23 +272,11 @@ class AzureDevopsClient(HTTPBaseClient):
         https://learn.microsoft.com/en-us/rest/api/azure/devops/pipelines/runs/list
         """
         async for projects in self.generate_projects():
-            # Process all projects in parallel
             project_tasks = [
-                self._collect_project_runs(project) for project in projects
+                self._runs_for_project(project) for project in projects
             ]
-
-            if project_tasks:
-                project_results = await asyncio.gather(
-                    *project_tasks, return_exceptions=True
-                )
-
-                # Yield all collected runs from all projects
-                for result in project_results:
-                    if isinstance(result, Exception):
-                        logger.warning(f"Failed to fetch project runs: {result}")
-                        continue
-                    if result and isinstance(result, list):
-                        yield result
+            async for batch in stream_async_iterators_tasks(**tasks):
+                  yield batch
 
     async def _collect_project_runs(
         self, project: dict[str, Any]
