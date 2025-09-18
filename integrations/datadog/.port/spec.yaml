@@ -15,6 +15,7 @@ features:
       - kind: slo
       - kind: sloHistory
       - kind: serviceMetric
+      - kind: serviceDependency
 
 
 configurations:

@@ -487,7 +487,9 @@ class DatadogClient:
                 result.update(
                     {
                         SERVICE_KEY: service_id,
-                        QUERY_ID_KEY: f"{query}/{service_tag}:{service_id}/{env_tag}:{env_to_fetch}",
+                        QUERY_ID_KEY: (
+                            f"{query}/{service_tag}:{service_id}/{env_tag}:{env_to_fetch}"
+                        ),
                         QUERY_KEY: query,
                         ENV_KEY: env_to_fetch,
                     }
@@ -566,7 +568,7 @@ class DatadogClient:
 
     async def _webhook_exists(self, webhook_url: str) -> bool:
         try:
-            webhook = await self._send_api_request(url=webhook_url, method="GET")
+            webhook = await self._send_api_request(url=webhook_url)
             return bool(webhook)
 
         except httpx.HTTPStatusError as err:
@@ -580,10 +582,12 @@ class DatadogClient:
     ) -> None:
 
         webhook_name = "PORT"
-        dd_webhook_url = f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
+        dd_webhook_url = (
+            f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks"
+        )
 
         try:
-            if await self._webhook_exists(dd_webhook_url):
+            if await self._webhook_exists(f"{dd_webhook_url}/{webhook_name}"):
                 logger.info("Webhook already exists")
                 return
 
@@ -641,6 +645,7 @@ class DatadogClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get service dependencies from Datadog, chunked into pages.
+
         Each yielded page is a list of service dependency dicts, e.g.,
         [{ "name": "service_a", "calls": [...] }, ...]
         Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-all-apm-service-dependencies
@@ -666,3 +671,8 @@ class DatadogClient:
 
         for i in range(0, len(items), MAX_PAGE_SIZE):
             yield items[i : i + MAX_PAGE_SIZE]
+
+    async def get_single_service_dependency(
+        self, env: str, start_time: float, service_id: str
+    ) -> dict[str, Any] | None:
+        pass
