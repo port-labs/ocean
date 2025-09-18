@@ -34,7 +34,7 @@ async def safe_iterate(
             yield item
     except Exception as e:
         if is_access_denied_exception(e):
-            logger.error(
+            logger.warning(
                 f"{identifier} failed during resync of {kind}: {e}, skipping ..."
             )
             return
