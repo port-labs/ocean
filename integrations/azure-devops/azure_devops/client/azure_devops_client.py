@@ -272,41 +272,10 @@ class AzureDevopsClient(HTTPBaseClient):
         https://learn.microsoft.com/en-us/rest/api/azure/devops/pipelines/runs/list
         """
         async for projects in self.generate_projects():
-            project_tasks = [
-                self._runs_for_project(project) for project in projects
-            ]
-            async for batch in stream_async_iterators_tasks(**tasks):
-                  yield batch
+            project_tasks = [self._runs_for_project(project) for project in projects]
+            async for batch in stream_async_iterators_tasks(*project_tasks):
+                yield batch
 
-    async def _collect_project_runs(
-        self, project: dict[str, Any]
-    ) -> list[dict[str, Any]]:
-        """Collect all runs for a specific project."""
-        all_runs = []
-        async for runs_batch in self._runs_for_project(project):
-            all_runs.extend(runs_batch)
-        return all_runs
-
-    async def _runs_for_project(
-        self, project: dict[str, Any]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Yield runs (in batches) for every pipeline in a given project."""
-        async for pipelines in self._paginate_pipelines(project_id=project["id"]):
-            pipeline_tasks = []
-            for pipeline in pipelines:
-                pipeline_tasks.append(self._collect_pipeline_runs(project, pipeline))
-
-            if pipeline_tasks:
-                pipeline_results = await asyncio.gather(
-                    *pipeline_tasks, return_exceptions=True
-                )
-
-                # Yield all collected runs
-                for result in pipeline_results:
-                    if isinstance(result, Exception):
-                        logger.warning(f"Failed to fetch pipeline runs: {result}")
-                        continue
-                    if result and isinstance(result, list):
     async def _runs_for_project(
         self, project: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -315,17 +284,11 @@ class AzureDevopsClient(HTTPBaseClient):
             if not pipelines:
                 continue
             pipeline_tasks = [
-                self._collect_pipeline_runs(project, pipeline) for pipeline in pipelines
+                self._paginate_pipeline_runs(project, pipeline)
+                for pipeline in pipelines
             ]
-            pipeline_results = await asyncio.gather(*pipeline_tasks, return_exceptions=True)
-    
-            for result in pipeline_results:
-                if isinstance(result, Exception):
-                    logger.warning(f"Failed to fetch pipeline runs: {result}")
-                    continue
-                if result:
-                    yield result
-
+            async for batch in stream_async_iterators_tasks(*pipeline_tasks):
+                yield batch
 
     async def _paginate_pipelines(
         self, project_id: str
