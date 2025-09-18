@@ -1145,6 +1145,31 @@ class AzureDevopsClient(HTTPBaseClient):
                         runs, project_id, include_results, coverage_config
                     )
 
+    async def _attach_async_results(
+        self,
+        runs: list[dict[str, Any]],
+        tasks: list[Awaitable[Any]],
+        field_name: str,
+        default_value: Any,
+    ) -> None:
+        if not tasks:
+            # If no tasks, we will set the default value for every run
+            for run in runs:
+                run[field_name] = default_value
+            return
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for run, value in zip(runs, results):
+            if isinstance(value, Exception):
+                logger.warning(
+                    "Error %s occurred while fetching %s for run %s",
+                    value,
+                    field_name,
+                    run.get("id"),
+                )
+                continue
+            run[field_name] = value
+
     async def _enrich_test_runs(
         self,
         test_runs: list[dict[str, Any]],
@@ -1155,30 +1180,6 @@ class AzureDevopsClient(HTTPBaseClient):
         logger.info(
             f"Enriching {len(test_runs)} test runs for project {project_id}, include_results={include_results}"
         )
-
-        async def attach_async_results(
-            runs: list[dict[str, Any]],
-            tasks: list[Awaitable[Any]],
-            field_name: str,
-            default_value: Any,
-        ) -> None:
-            if not tasks:
-                # If no tasks, we will set the default value for every run
-                for run in runs:
-                    run[field_name] = default_value
-                return
-
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            for run, value in zip(runs, results):
-                if isinstance(value, Exception):
-                    logger.warning(
-                        "Error %s occurred while fetching %s for run %s",
-                        value,
-                        field_name,
-                        run.get("id"),
-                    )
-                    continue
-                run[field_name] = value
 
         test_results_tasks: list[Awaitable[list[dict[str, Any]]]] = []
         coverage_tasks: list[Awaitable[dict[str, Any]]] = []
@@ -1196,8 +1197,12 @@ class AzureDevopsClient(HTTPBaseClient):
                 for run in test_runs
             ]
 
-        await attach_async_results(test_runs, test_results_tasks, "__testResults", [])
-        await attach_async_results(test_runs, coverage_tasks, "__codeCoverage", {})
+        await self._attach_async_results(
+            test_runs, test_results_tasks, "__testResults", []
+        )
+        await self._attach_async_results(
+            test_runs, coverage_tasks, "__codeCoverage", {}
+        )
 
         return test_runs
 
