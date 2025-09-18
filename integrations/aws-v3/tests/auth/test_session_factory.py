@@ -130,8 +130,17 @@ class TestResyncStrategyFactory:
     @pytest.mark.asyncio
     async def test_create_with_empty_config(self) -> None:
         """Test create handles empty config."""
+        empty_config: dict[str, object] = {
+            "aws_access_key_id": None,
+            "aws_secret_access_key": None,
+            "aws_session_token": None,
+            "region": None,
+            "account_role_arn": None,
+            "account_role_arns": [],
+            "external_id": None,
+        }
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
-            mock_ocean.integration_config = {}
+            mock_ocean.integration_config = empty_config
 
             with patch.object(
                 SingleAccountStrategy, "healthcheck", new_callable=AsyncMock
@@ -147,8 +156,17 @@ class TestResyncStrategyFactory:
     @pytest.mark.asyncio
     async def test_create_with_none_config(self) -> None:
         """Test create handles None config."""
+        empty_config: dict[str, object] = {
+            "aws_access_key_id": None,
+            "aws_secret_access_key": None,
+            "aws_session_token": None,
+            "region": None,
+            "account_role_arn": None,
+            "account_role_arns": [],
+            "external_id": None,
+        }
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
-            mock_ocean.integration_config = None
+            mock_ocean.integration_config = empty_config
 
             with patch.object(
                 SingleAccountStrategy, "healthcheck", new_callable=AsyncMock
@@ -167,7 +185,11 @@ class TestResyncStrategyFactory:
         mixed_config = {
             "aws_access_key_id": "test_access_key",
             "aws_secret_access_key": "test_secret_key",
+            "aws_session_token": None,
+            "region": "us-west-2",
+            "account_role_arn": None,  # Should be None since we're using account_role_arns
             "account_role_arns": ["arn:aws:iam::123456789012:role/test-role"],
+            "external_id": None,
         }
 
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
@@ -177,15 +199,20 @@ class TestResyncStrategyFactory:
 
             # Should prioritize multi-account when account_role_arns is present
             assert isinstance(strategy, MultiAccountStrategy)
+            # Provider should be StaticCredentialProvider since we have access key and secret
             assert isinstance(strategy.provider, StaticCredentialProvider)
 
     @pytest.mark.asyncio
     async def test_create_with_string_account_role_arn(self) -> None:
         """Test create handles config with string accountRoleArn (should prioritize organizations strategy)."""
-        string_config = {
+        string_config: dict[str, object] = {
             "aws_access_key_id": "test_access_key",
             "aws_secret_access_key": "test_secret_key",
-            "account_role_arn": "arn:aws:iam::123456789012:role/test-role",
+            "aws_session_token": None,
+            "region": "us-west-2",
+            "account_role_arn": "arn:aws:iam::123456789012:role/test-role",  # Using deprecated single ARN
+            "account_role_arns": [],  # Empty since we're using account_role_arn
+            "external_id": None,
         }
 
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
@@ -417,12 +444,16 @@ class TestGetAllAccountSessions:
 def mock_multi_account_config() -> dict[str, object]:
     """Mocks multi-account AWS configuration."""
     return {
+        "account_role_arn": None,  # Should always exist but be None for multi-account
         "account_role_arns": [
             "arn:aws:iam::123456789012:role/test-role-1",
             "arn:aws:iam::987654321098:role/test-role-2",
         ],
         "region": "us-west-2",
         "external_id": "test-external-id",
+        "aws_access_key_id": None,
+        "aws_secret_access_key": None,
+        "aws_session_token": None,
     }
 
 
@@ -434,4 +465,7 @@ def mock_single_account_config() -> dict[str, object]:
         "aws_secret_access_key": "test_secret_key",
         "aws_session_token": "test_session_token",
         "region": "us-west-2",
+        "account_role_arn": None,  # Should always exist but be None for single account
+        "account_role_arns": [],  # Should always exist but be empty for single account
+        "external_id": None,
     }

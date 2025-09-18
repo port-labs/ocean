@@ -21,6 +21,14 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kind.FILE]
 
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        if not await super().validate_payload(payload):
+            return False
+
+        repository = payload["resource"].get("repository", {})
+        ref_updates = payload["resource"].get("refUpdates")
+        return repository.get("id") and repository.get("name") and ref_updates
+
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
             event_type = event.payload["eventType"]

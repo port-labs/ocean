@@ -5,6 +5,7 @@ import httpx
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.utils import IgnoredError
+from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 
 
 # Create a concrete implementation of the abstract class for testing
@@ -12,6 +13,13 @@ class ConcreteGithubClient(AbstractGithubClient):
     @property
     def base_url(self) -> str:
         return "https://api.github.com"
+
+    @property
+    def rate_limiter_config(self) -> GitHubRateLimiterConfig:
+        return GitHubRateLimiterConfig(
+            api_type="rest",
+            max_concurrent=10,
+        )
 
     async def send_paginated_request(
         self,
@@ -33,22 +41,26 @@ class TestAbstractGithubClient:
     async def test_send_api_request_success(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
+        api_host = "https://api.github.com"
         # Test successful API request
         client = ConcreteGithubClient(
             organization="test-org",
-            github_host="https://api.github.com",
+            github_host=api_host,
             authenticator=authenticator,
         )
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
+        mock_response.headers = {}  # Add headers attribute
         mock_response.json.return_value = {"id": 1, "name": "test-repo"}
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
-            response = await client.send_api_request("repos/test-org/test-repo")
+            response = await client.send_api_request(
+                f"{api_host}/repos/test-org/test-repo"
+            )
 
             assert response == mock_response.json()
 
@@ -64,13 +76,14 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
+        mock_response.headers = {}  # Add headers attribute
 
         params = {"type": "public"}
         json_data = {"name": "new-repo", "private": False}
         url = "https://api.github.com/orgs/test-org/repos"
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
         ) as mock_request:
             await client.send_api_request(
@@ -98,13 +111,14 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 404
+        mock_response.headers = {}  # Add headers attribute
         mock_response.text = "Not Found"
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "404 Not Found", request=MagicMock(), response=mock_response
         )
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
             # Should return empty dict for 404 (ignored error)
@@ -123,13 +137,14 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 403
+        mock_response.headers = {}  # Add headers attribute
         mock_response.text = "Forbidden"
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "403 Forbidden", request=MagicMock(), response=mock_response
         )
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
             # Should return empty dict for 403 (ignored error)
@@ -148,13 +163,14 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 401
+        mock_response.headers = {}  # Add headers attribute
         mock_response.text = "Unauthorized"
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "401 Unauthorized", request=MagicMock(), response=mock_response
         )
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
             # Should return empty dict for 401 (ignored error)
@@ -173,6 +189,7 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 500
+        mock_response.headers = {}  # Add headers attribute
         mock_response.text = "Internal Server Error"
         http_error = httpx.HTTPStatusError(
             "500 Internal Server Error", request=MagicMock(), response=mock_response
@@ -180,7 +197,7 @@ class TestAbstractGithubClient:
         mock_response.raise_for_status.side_effect = http_error
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
@@ -200,6 +217,7 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 500
+        mock_response.headers = {}  # Add headers attribute
         mock_response.text = "Internal Server Error"
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "500 Internal Server Error", request=MagicMock(), response=mock_response
@@ -208,7 +226,7 @@ class TestAbstractGithubClient:
         custom_ignored_errors = [IgnoredError(status=500, message="Custom 500 error")]
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
         ):
             # Should return empty dict for 500 (custom ignored error)
@@ -231,10 +249,10 @@ class TestAbstractGithubClient:
         network_error = httpx.ConnectError("Connection failed")
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(side_effect=network_error),
         ):
-            with pytest.raises(httpx.HTTPError):
+            with pytest.raises(httpx.ConnectError):
                 await client.send_api_request("orgs/test-org/repos")
 
     async def test_send_api_request_different_http_methods(
@@ -249,10 +267,11 @@ class TestAbstractGithubClient:
 
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
+        mock_response.headers = {}  # Add headers attribute
         url = "https://api.github.com/repos/test-org/test-repo"
 
         with patch(
-            "port_ocean.utils.http_async_client.request",
+            "port_ocean.helpers.async_client.OceanAsyncClient.request",
             AsyncMock(return_value=mock_response),
         ) as mock_request:
             # Test GET (default)

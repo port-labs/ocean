@@ -32,8 +32,7 @@ async def mock_client(
     mock_integration_config: dict[str, str], mock_http_client: AsyncClient
 ) -> LaunchDarklyClient:
     """Create LaunchDarklyClient using create_from_ocean_config."""
-    with patch("client.http_async_client", mock_http_client):
-        return LaunchDarklyClient.create_from_ocean_configuration()
+    return LaunchDarklyClient.create_from_ocean_configuration()
 
 
 @pytest.mark.asyncio
