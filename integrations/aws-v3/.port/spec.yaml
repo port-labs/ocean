@@ -47,7 +47,7 @@ installationDocs:
   saas:
     - name: Saas
       enabled: true
-      docs: build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3/installations#installation-methods
+      docs: build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws-v3/installations?installation-method=single-account#installation-methods
 saas:
   enabled: true
   liveEvents:
