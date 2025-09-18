@@ -2725,6 +2725,7 @@ async def test_enrich_pipelines_with_repository(
     assert enriched_pipelines[1]["__repository"]["project"]["id"] == "project2"
     assert enriched_pipelines[1]["__repository"]["project"]["name"] == "Project 2"
 
+
 @pytest.mark.asyncio
 async def test_generate_builds() -> None:
     client = AzureDevopsClient(
@@ -2788,6 +2789,7 @@ async def test_generate_builds() -> None:
 
             # Assert
             assert builds == expected_builds
+
 
 @pytest.mark.asyncio
 async def test_generate_environments(mock_event_context: MagicMock) -> None:

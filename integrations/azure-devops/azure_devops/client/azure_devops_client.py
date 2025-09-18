@@ -514,7 +514,6 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield deployments
 
-
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
