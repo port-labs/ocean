@@ -190,15 +190,14 @@ class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
 
 
 class CheckmarxOnePortAppConfig(PortAppConfig):
-    resources: List[
+    resources: list[
         CheckmarxOneScanResourcesConfig
         | CheckmarxOneApiSecResourcesConfig
         | CheckmarxOneSastResourcesConfig
         | CheckmarxOneKicsResourcesConfig
         | CheckmarxOneScanResultResourcesConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore
+        | ResourceConfig
+    ] = Field(default_factory=list)
 
 
 class CheckmarxOneIntegration(BaseIntegration):
