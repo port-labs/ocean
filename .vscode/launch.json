@@ -248,6 +248,17 @@
       "python": "${workspaceFolder}/integrations/aikido/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/sailpoint",
+      "envFile": "${workspaceFolder}/integrations/sailpoint/.env",
+      "justMyCode": true,
+      "name": "Run sailpoint integration",
+      "program": "${workspaceFolder}/integrations/sailpoint/debug.py",
+      "python": "${workspaceFolder}/integrations/sailpoint/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }
