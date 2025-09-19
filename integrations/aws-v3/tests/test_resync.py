@@ -68,7 +68,7 @@ def _make_exporter(
     return _Exporter
 
 
-class TestSafeRegionIterator:
+class TestSafeIterate:
     @pytest.mark.asyncio
     async def test_yields_items_when_no_error(self) -> None:
         async def gen() -> AsyncIterator[List[Dict[str, int]]]:
@@ -76,7 +76,7 @@ class TestSafeRegionIterator:
                 yield [{"n": i}]
 
         out: List[Any] = []
-        async for x in resync.safe_region_iterator("us-east-1", "TestKind", gen()):
+        async for x in resync.safe_iterate(gen(), "us-east-1", "TestKind"):
             out.append(x)
 
         assert out == [[{"n": 1}], [{"n": 2}], [{"n": 3}]]
@@ -97,13 +97,13 @@ class TestSafeRegionIterator:
         )
 
         out: List[Any] = []
-        async for x in resync.safe_region_iterator("us-east-1", "TestKind", gen()):
+        async for x in resync.safe_iterate(gen(), "us-east-1", "TestKind"):
             out.append(x)
 
         assert out == []
 
     @pytest.mark.asyncio
-    async def test_non_access_denied_is_ignored(
+    async def test_raises_on_non_access_denied(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         test_exc = Exception("OtherError")
@@ -115,12 +115,10 @@ class TestSafeRegionIterator:
 
         monkeypatch.setattr(resync, "is_access_denied_exception", lambda e: False)
 
-        out: List[Any] = []
-        async for x in resync.safe_region_iterator("us-east-1", "TestKind", gen()):
-            out.append(x)
-
-        # Current behavior: exception is swallowed and nothing is yielded
-        assert out == []
+        with pytest.raises(Exception) as exc_info:
+            async for _ in resync.safe_iterate(gen(), "us-east-1", "TestKind"):
+                pass
+        assert str(exc_info.value) == "OtherError"
 
 
 class TestHandleGlobalResourceResync:
@@ -144,10 +142,10 @@ class TestHandleGlobalResourceResync:
         def options_factory(r: str) -> _Request:
             return _Request(region=r, include=["x"], account_id="123")
 
+        exporter = cast(Any, _Exporter(None))
+        strategy = resync.GlobalResyncStrategy(exporter, options_factory, "Kind")
         out: List[Any] = []
-        async for batch in resync.handle_global_resource_resync(
-            "Kind", regions, options_factory, cast(Any, _Exporter(None))
-        ):
+        async for batch in strategy.run(regions):
             out.append(batch)
 
         assert out == [["a"], ["b"]]
@@ -176,10 +174,10 @@ class TestHandleGlobalResourceResync:
         def options_factory(r: str) -> _Request:
             return _Request(region=r, include=["x"], account_id="123")
 
+        exporter = cast(Any, _Exporter(None))
+        strategy = resync.GlobalResyncStrategy(exporter, options_factory, "Kind")
         out: List[Any] = []
-        async for batch in resync.handle_global_resource_resync(
-            "Kind", regions, options_factory, cast(Any, _Exporter(None))
-        ):
+        async for batch in strategy.run(regions):
             out.append(batch)
 
         assert out == [["ok"]]
@@ -212,10 +210,10 @@ class TestHandleGlobalResourceResync:
         def options_factory(r: str) -> _Request:
             return _Request(region=r, include=["x"], account_id="123")
 
+        exporter = cast(Any, _Exporter(None))
+        strategy = resync.GlobalResyncStrategy(exporter, options_factory, "Kind")
         out: List[Any] = []
-        async for batch in resync.handle_global_resource_resync(
-            "Kind", regions, options_factory, cast(Any, _Exporter(None))
-        ):
+        async for batch in strategy.run(regions):
             out.append(batch)
 
         assert out == []
@@ -245,10 +243,12 @@ class TestHandleRegionalResourceResync:
         def options_factory(r: str) -> _Request:
             return _Request(region=r, include=["x"], account_id="123")
 
+        exporter = cast(Any, _Exporter(None))
+        strategy = resync.RegionalResyncStrategy(
+            exporter, options_factory, "Kind", account_id="123"
+        )
         out: List[Any] = []
-        async for batch in resync.handle_regional_resource_resync(
-            cast(Any, _Exporter(None)), options_factory, "Kind", regions, "123"
-        ):
+        async for batch in strategy.run(regions):
             out.append(batch)
 
         assert sorted(out) == sorted([["a1"], ["a2"], ["b1"]])
@@ -280,10 +280,12 @@ class TestHandleRegionalResourceResync:
         def options_factory(r: str) -> _Request:
             return _Request(region=r, include=["x"], account_id="123")
 
+        exporter = cast(Any, _Exporter(None))
+        strategy = resync.RegionalResyncStrategy(
+            exporter, options_factory, "Kind", account_id="123"
+        )
         out: List[Any] = []
-        async for batch in resync.handle_regional_resource_resync(
-            cast(Any, _Exporter(None)), options_factory, "Kind", regions, "123"
-        ):
+        async for batch in strategy.run(regions):
             out.append(batch)
 
         assert out == [["ok-west"]]
@@ -330,13 +332,11 @@ class TestResyncResource:
             {"us-east-1": [["e1"], ["e2"]], "us-west-2": [["w1"]]}
         )
 
+        service = resync.ResyncAWSService(
+            "Kind", Exporter, cast(Type[ResourceRequestModel], _Request), regional=True
+        )
         out: List[Any] = []
-        async for batch in resync.resync_resource(
-            "Kind",
-            Exporter,
-            cast(Type[ResourceRequestModel], _Request),
-            regional=True,
-        ):
+        async for batch in service:
             out.append(batch)
 
         assert sorted(out) == sorted([["e1"], ["e2"], ["w1"]])
@@ -378,13 +378,11 @@ class TestResyncResource:
         )
         monkeypatch.setattr(resync, "is_access_denied_exception", lambda e: e is ad_exc)
 
+        service = resync.ResyncAWSService(
+            "Kind", Exporter, cast(Type[ResourceRequestModel], _Request), regional=False
+        )
         out: List[Any] = []
-        async for batch in resync.resync_resource(
-            "Kind",
-            Exporter,
-            cast(Type[ResourceRequestModel], _Request),
-            regional=False,
-        ):
+        async for batch in service:
             out.append(batch)
 
         assert out == [["ok"]]
