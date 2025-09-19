@@ -53,12 +53,3 @@ class OktaClientFactory:
         if cls._instance:
             # Note: In a real implementation, you might want to close the client
             cls._instance = None
-
-
-def create_okta_client() -> OktaClient:
-    """Create an Okta client instance.
-
-    Returns:
-        OktaClient instance
-    """
-    return OktaClientFactory.create_client()
