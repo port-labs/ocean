@@ -9,13 +9,13 @@ from port_ocean.utils import http_async_client
 class ObjectKind(StrEnum):
     PROJECT = "project"
     APPLICATION = "application"
-    CLUSTER = "cluster"
 
 
 class ResourceKindsWithSpecialHandling(StrEnum):
     DEPLOYMENT_HISTORY = "deployment-history"
     KUBERNETES_RESOURCE = "kubernetes-resource"
     MANAGED_RESOURCE = "managed-resource"
+    CLUSTER = "cluster"
 
 
 DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
@@ -45,6 +45,13 @@ class ArgocdClient:
         else:
             self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
+
+    @staticmethod
+    def _is_cluster_unreachable_exception(exception: Exception) -> bool:
+        if isinstance(exception, httpx.HTTPError):
+            return "connection attempts failed" in str(exception).lower()
+
+        return False
 
     async def _send_api_request(
         self,
@@ -77,22 +84,27 @@ class ArgocdClient:
             )
             if self.ignore_server_error:
                 return {}
+            if self._is_cluster_unreachable_exception(e):
+                return {}
             raise e
 
     async def get_resources(self, resource_kind: ObjectKind) -> list[dict[str, Any]]:
-        url = f"{self.api_url}/{resource_kind}s"
         try:
+            url = f"{self.api_url}/{resource_kind}s"
             response_data = await self._send_api_request(url=url)
-            return response_data["items"] or []
+            return response_data.get("items", [])
         except Exception as e:
             logger.error(f"Failed to fetch resources of kind {resource_kind}: {e}")
-            if self.ignore_server_error:
-                return []
-            raise e
+            return []
+
+    async def get_clusters(self) -> list[dict[str, Any]]:
+        url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s"
+        response_data = await self._send_api_request(url)
+        return response_data.get("items", [])
 
     async def get_application_by_name(self, name: str) -> dict[str, Any]:
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{name}"
-        application = await self._send_api_request(url=url)
+        application = await self._send_api_request(url)
         return application
 
     async def get_deployment_history(
@@ -170,7 +182,8 @@ class ArgocdClient:
             logger.info(
                 f"Fetching managed resources for application: {application_name}"
             )
-            url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
+            kind = ObjectKind.APPLICATION
+            url = f"{self.api_url}/{kind}s/{application_name}/managed-resources"
             managed_resources = (await self._send_api_request(url=url)).get("items", [])
 
             batch: list[dict[str, Any]] = []
