@@ -3203,3 +3203,315 @@ async def test_enrich_test_runs_without_results() -> None:
 
     assert enriched_test_runs[1]["__projectId"] == "proj1"
     assert "__testResults" not in enriched_test_runs[1]
+
+
+@pytest.mark.asyncio
+async def test_generate_iterations(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "classificationnodes/iterations" in url:
+            iterations_data = {
+                "id": "root",
+                "name": "Project One",
+                "structureType": "iteration",
+                "hasChildren": True,
+                "path": "\\Project One\\Iteration",
+                "children": [
+                    {
+                        "id": 1,
+                        "name": "Sprint 1",
+                        "structureType": "iteration",
+                        "hasChildren": False,
+                        "path": "\\Project One\\Iteration\\Sprint 1",
+                        "url": "https://dev.azure.com/org/proj/_apis/wit/classificationNodes/Iterations/Sprint%201",
+                    },
+                    {
+                        "id": 2,
+                        "name": "Release 1.0",
+                        "structureType": "iteration",
+                        "hasChildren": False,
+                        "path": "\\Project One\\Iteration\\Release 1.0",
+                        "url": "https://dev.azure.com/org/proj/_apis/wit/classificationNodes/Iterations/Release%201.0",
+                    },
+                ],
+            }
+            return Response(status_code=200, json=iterations_data)
+        return None
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "send_request",
+                side_effect=mock_send_request,
+            ):
+                # ACT
+                iterations: List[Dict[str, Any]] = []
+                async for iteration_batch in client.generate_iterations():
+                    iterations.extend(iteration_batch)
+
+                # ASSERT
+                assert len(iterations) == 3  # Root + 2 children
+
+                # Check root iteration
+                root = next(
+                    iter for iter in iterations if iter["name"] == "Project One"
+                )
+                assert root["id"] == "root"
+                assert root["name"] == "Project One"
+                assert root["__iterationKind"] == "iteration"
+                assert root["__project"]["name"] == "Project One"
+
+                # Check Sprint 1
+                sprint1 = next(
+                    iter for iter in iterations if iter["name"] == "Sprint 1"
+                )
+                assert sprint1["id"] == 1
+                assert sprint1["name"] == "Sprint 1"
+                assert sprint1["path"] == "\\Project One\\Iteration\\Sprint 1"
+                assert sprint1["__iterationKind"] == "sprint"
+                assert sprint1["__project"]["name"] == "Project One"
+
+                # Check Release 1.0
+                release1 = next(
+                    iter for iter in iterations if iter["name"] == "Release 1.0"
+                )
+                assert release1["id"] == 2
+                assert release1["name"] == "Release 1.0"
+                assert release1["path"] == "\\Project One\\Iteration\\Release 1.0"
+                assert release1["__iterationKind"] == "release"
+                assert release1["__project"]["name"] == "Project One"
+
+
+@pytest.mark.asyncio
+async def test_generate_iterations_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "classificationnodes/iterations" in url:
+            return None  # Simulate 404 or empty response
+        return None
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "send_request",
+                side_effect=mock_send_request,
+            ):
+                # ACT
+                iterations: List[Dict[str, Any]] = []
+                async for iteration_batch in client.generate_iterations():
+                    iterations.extend(iteration_batch)
+
+                # ASSERT
+                assert len(iterations) == 0
+
+
+@pytest.mark.asyncio
+async def test_determine_iteration_type() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # Test sprint patterns
+    assert client._determine_iteration_type({"name": "Sprint 1"}, "") == "sprint"
+    assert client._determine_iteration_type({"name": "Sprint-2"}, "") == "sprint"
+    assert client._determine_iteration_type({"name": "Sprint_3"}, "") == "sprint"
+    assert client._determine_iteration_type({"name": "Sprint 4"}, "") == "sprint"
+    assert client._determine_iteration_type({"name": "2024.1.15"}, "") == "sprint"
+    assert client._determine_iteration_type({"name": "S1"}, "") == "sprint"
+    assert client._determine_iteration_type({"name": "s2"}, "") == "sprint"
+
+    # Test release patterns
+    assert client._determine_iteration_type({"name": "Release 1.0"}, "") == "release"
+    assert client._determine_iteration_type({"name": "Release-2.0"}, "") == "release"
+    assert client._determine_iteration_type({"name": "Release_3.0"}, "") == "release"
+    assert client._determine_iteration_type({"name": "v1.0"}, "") == "release"
+    assert client._determine_iteration_type({"name": "Version 2.0"}, "") == "release"
+
+    # Test milestone patterns
+    assert client._determine_iteration_type({"name": "Milestone 1"}, "") == "milestone"
+    assert client._determine_iteration_type({"name": "Milestone-2"}, "") == "milestone"
+    assert client._determine_iteration_type({"name": "Milestone_3"}, "") == "milestone"
+    assert client._determine_iteration_type({"name": "M1"}, "") == "milestone"
+    assert client._determine_iteration_type({"name": "m2"}, "") == "milestone"
+
+    # Test epic patterns
+    assert client._determine_iteration_type({"name": "Epic 1"}, "") == "epic"
+    assert client._determine_iteration_type({"name": "Epic-2"}, "") == "epic"
+    assert client._determine_iteration_type({"name": "Epic_3"}, "") == "epic"
+
+    # Test path patterns
+    assert (
+        client._determine_iteration_type(
+            {"name": "Iteration", "path": "\\Project\\Sprint\\Iteration"}, ""
+        )
+        == "sprint"
+    )
+    assert (
+        client._determine_iteration_type(
+            {"name": "Iteration", "path": "\\Project\\Release\\Iteration"}, ""
+        )
+        == "release"
+    )
+    assert (
+        client._determine_iteration_type(
+            {"name": "Iteration", "path": "\\Project\\Milestone\\Iteration"}, ""
+        )
+        == "milestone"
+    )
+    assert (
+        client._determine_iteration_type(
+            {"name": "Iteration", "path": "\\Project\\Epic\\Iteration"}, ""
+        )
+        == "epic"
+    )
+
+    # Test default case
+    assert client._determine_iteration_type({"name": "Q1 2024"}, "") == "iteration"
+    assert client._determine_iteration_type({"name": "Phase 1"}, "") == "iteration"
+
+
+@pytest.mark.asyncio
+async def test_parse_iteration_nodes() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    project = {"id": "proj1", "name": "Project One"}
+
+    # Test with hierarchical iteration data
+    node_data = {
+        "id": "root",
+        "name": "Project One",
+        "structureType": "iteration",
+        "hasChildren": True,
+        "path": "\\Project One\\Iteration",
+        "children": [
+            {
+                "id": 1,
+                "name": "Sprint 1",
+                "structureType": "iteration",
+                "hasChildren": False,
+                "path": "\\Project One\\Iteration\\Sprint 1",
+                "url": "https://dev.azure.com/org/proj/_apis/wit/classificationNodes/Iterations/Sprint%201",
+            },
+            {
+                "id": 2,
+                "name": "Release 1.0",
+                "structureType": "iteration",
+                "hasChildren": False,
+                "path": "\\Project One\\Iteration\\Release 1.0",
+                "url": "https://dev.azure.com/org/proj/_apis/wit/classificationNodes/Iterations/Release%201.0",
+            },
+        ],
+    }
+
+    # ACT
+    iterations = client._parse_iteration_nodes(node_data, project)
+
+    # ASSERT
+    assert len(iterations) == 3  # Root + 2 children
+
+    # Check root iteration
+    root = next(iter for iter in iterations if iter["name"] == "Project One")
+    assert root["id"] == "root"
+    assert root["name"] == "Project One"
+    assert root["__iterationKind"] == "iteration"
+    assert root["__project"]["name"] == "Project One"
+
+    # Check Sprint 1
+    sprint1 = next(iter for iter in iterations if iter["name"] == "Sprint 1")
+    assert sprint1["id"] == 1
+    assert sprint1["name"] == "Sprint 1"
+    assert sprint1["path"] == "\\Project One\\Iteration\\Sprint 1"
+    assert sprint1["__iterationKind"] == "sprint"
+    assert sprint1["__project"]["name"] == "Project One"
+
+    # Check Release 1.0
+    release1 = next(iter for iter in iterations if iter["name"] == "Release 1.0")
+    assert release1["id"] == 2
+    assert release1["name"] == "Release 1.0"
+    assert release1["path"] == "\\Project One\\Iteration\\Release 1.0"
+    assert release1["__iterationKind"] == "release"
+    assert release1["__project"]["name"] == "Project One"
+
+
+@pytest.mark.asyncio
+async def test_iterations_for_project() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    project = {"id": "proj1", "name": "Project One"}
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "classificationnodes/iterations" in url:
+            iterations_data = {
+                "id": "root",
+                "name": "Project One",
+                "structureType": "iteration",
+                "hasChildren": True,
+                "path": "\\Project One\\Iteration",
+                "children": [
+                    {
+                        "id": 1,
+                        "name": "Sprint 1",
+                        "structureType": "iteration",
+                        "hasChildren": False,
+                        "path": "\\Project One\\Iteration\\Sprint 1",
+                        "url": "https://dev.azure.com/org/proj/_apis/wit/classificationNodes/Iterations/Sprint%201",
+                    }
+                ],
+            }
+            return Response(status_code=200, json=iterations_data)
+        return None
+
+    with patch.object(client, "send_request", side_effect=mock_send_request):
+        # ACT
+        iterations: List[Dict[str, Any]] = []
+        async for iteration_batch in client._iterations_for_project(project):
+            iterations.extend(iteration_batch)
+
+        # ASSERT
+        assert len(iterations) == 2  # Root + 1 child
+
+        # Check root iteration
+        root = next(iter for iter in iterations if iter["name"] == "Project One")
+        assert root["id"] == "root"
+        assert root["name"] == "Project One"
+        assert root["__iterationKind"] == "iteration"
+        assert root["__project"]["name"] == "Project One"
+
+        # Check Sprint 1
+        sprint1 = next(iter for iter in iterations if iter["name"] == "Sprint 1")
+        assert sprint1["id"] == 1
+        assert sprint1["name"] == "Sprint 1"
+        assert sprint1["__iterationKind"] == "sprint"
+        assert sprint1["__project"]["name"] == "Project One"
