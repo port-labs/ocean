@@ -4,6 +4,7 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from checkmarx_one.core.options import ListKicsOptions
+from checkmarx_one.core.exporters.utils import enrich_result_with_metadata
 
 
 class CheckmarxKicsExporter(AbstractCheckmarxExporter):
@@ -27,13 +28,6 @@ class CheckmarxKicsExporter(AbstractCheckmarxExporter):
             "Single KICS result fetch is not implemented for the KICS exporter."
         )
 
-    def _enrich_kics_result_with_scan_id(
-        self, result: Dict[str, Any], scan_id: str
-    ) -> dict[str, Any]:
-        """Enrich a KICS result with the scan ID."""
-        result["__scan_id"] = scan_id
-        return result
-
     async def get_paginated_resources(
         self,
         options: ListKicsOptions,
@@ -56,6 +50,8 @@ class CheckmarxKicsExporter(AbstractCheckmarxExporter):
                 f"Fetched batch of {len(results)} KICS results for scan {options['scan_id']}"
             )
             yield [
-                self._enrich_kics_result_with_scan_id(result, options["scan_id"])
+                enrich_result_with_metadata(
+                    result, self.client.ui_base_url, options["scan_id"]
+                )
                 for result in results
             ]

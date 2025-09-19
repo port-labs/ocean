@@ -5,6 +5,7 @@ from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from checkmarx_one.core.options import ListSastOptions
 from checkmarx_one.utils import sast_visible_columns
+from checkmarx_one.core.exporters.utils import enrich_result_with_metadata
 
 
 class CheckmarxSastExporter(AbstractCheckmarxExporter):
@@ -38,7 +39,12 @@ class CheckmarxSastExporter(AbstractCheckmarxExporter):
             logger.info(
                 f"Fetched batch of {len(results)} SAST results for scan {options['scan_id']}"
             )
-            yield results
+            yield [
+                enrich_result_with_metadata(
+                    result, self.client.ui_base_url, options["scan_id"]
+                )
+                for result in results
+            ]
 
     def _build_paginated_resource_params(
         self, options: ListSastOptions

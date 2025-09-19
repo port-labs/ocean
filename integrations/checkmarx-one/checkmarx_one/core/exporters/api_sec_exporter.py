@@ -1,20 +1,14 @@
-from typing import Any, Dict
+from typing import Any
 from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from checkmarx_one.core.options import ListApiSecOptions
+from checkmarx_one.core.exporters.utils import enrich_result_with_metadata
 
 
 class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One API Security risks."""
-
-    def _enrich_scan_result_with_scan_id(
-        self, scan_result: Dict[str, Any], scan_id: str
-    ) -> dict[str, Any]:
-        """Enrich scan result with scan ID."""
-        scan_result["__scan_id"] = scan_id
-        return scan_result
 
     async def get_resource(self, options: Any) -> RAW_ITEM:
 
@@ -48,8 +42,9 @@ class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
                 f"Fetched batch of {len(results)} API sec risks for scan {options['scan_id']}"
             )
             yield [
-                self._enrich_scan_result_with_scan_id(
+                enrich_result_with_metadata(
                     result,
+                    self.client.ui_base_url,
                     options["scan_id"],
                 )
                 for result in results

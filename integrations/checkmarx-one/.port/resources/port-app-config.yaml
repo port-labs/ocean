@@ -19,6 +19,7 @@ resources:
             mainBranch: .mainBranch
             origin: .origin
             criticality: .criticality
+            link: '.__ui_base_url + "/projects/" + .id'
   - kind: scan
     selector:
       query: 'true'
@@ -36,6 +37,7 @@ resources:
             userAgent: .userAgent
             configs: (.configs // {})
             statusDetails: (.statusDetails // [])
+            link: '.__ui_base_url + "/projects/" + .projectId + "/scans/" + "?id=" + .id'
           relations:
             project: .projectId
   - kind: api-security
@@ -63,6 +65,7 @@ resources:
             sastRiskId: (.sast_risk_id // empty)
             projectId: .project_id
             state: .state
+            link: '.__ui_base_url + "/results/" + .scan_id + "/" + .project_id + "/apisec"'
           relations:
             scan: .scan_id
   - kind: sca
@@ -86,6 +89,8 @@ resources:
             recommendedVersion: .data.recommendedVersion
             packageData: .data.packageData
             cweId: .vulnerabilityDetails.cweId
+            similarityId: .similarityId
+            link: '.__ui_base_url + "/applicationsAndProjects/projects"'
           relations:
             scan: .__scan_id
   - kind: containers
@@ -111,6 +116,8 @@ resources:
             imageTag: .data.imageTag
             imageFilePath: .data.imageFilePath
             cweId: .vulnerabilityDetails.cweId
+            similarityId: .similarityId
+            link: '.__ui_base_url + "/applicationsAndProjects/projects"'
           relations:
             scan: .__scan_id
   - kind: kics
@@ -135,6 +142,8 @@ resources:
             issueType: (.issueType // empty)
             expectedValue: (.expectedValue // empty)
             value: (.value // empty)
+            similarityId: .similarityID
+            link: '.__ui_base_url + "/applicationsAndProjects/projects"'
           relations:
             scan: .__scan_id
   - kind: sast
@@ -155,5 +164,7 @@ resources:
             created: .firstFoundAt
             nodes: (.nodes // empty)
             cweId: (.cweID // empty)
+            similarityId: .similarityID
+            link: '.__ui_base_url + "/applicationsAndProjects/projects"'
           relations:
             scan: .scanID
