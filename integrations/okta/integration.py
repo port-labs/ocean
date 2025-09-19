@@ -21,6 +21,10 @@ class OktaUserSelector(Selector):
         default=True,
         description="Include user applications in the response",
     )
+    fields: str | None = Field(
+        default=None,
+        description="Comma-separated list of user fields to retrieve. Profile attributes should be contained within a profile:(field1,field2,...) directive. If not specified, uses default fields.",
+    )
 
 
 class OktaUserConfig(ResourceConfig):
@@ -30,26 +34,10 @@ class OktaUserConfig(ResourceConfig):
     kind: Literal["okta-user"]
 
 
-class OktaGroupSelector(Selector):
-    """Selector for Okta groups."""
-
-    include_members: bool = Field(
-        default=True,
-        description="Include group members in the response",
-    )
-
-
-class OktaGroupConfig(ResourceConfig):
-    """Configuration for Okta groups."""
-
-    selector: OktaGroupSelector
-    kind: Literal["okta-group"]
-
-
 class OktaPortAppConfig(PortAppConfig):
     """Port app configuration for Okta integration."""
 
-    resources: list[OktaUserConfig | OktaGroupConfig | ResourceConfig]
+    resources: list[OktaUserConfig | ResourceConfig]
 
 
 class OktaIntegration(BaseIntegration):

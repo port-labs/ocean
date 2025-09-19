@@ -1,13 +1,12 @@
 """Okta API client implementation."""
 
-import asyncio
 import logging
 import re
-from types import TracebackType
-from typing import Any, AsyncGenerator, Dict, List, Optional, Type
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
-from httpx import Response
+from httpx import Response, Timeout
+from port_ocean.utils import http_async_client
 
 logger = logging.getLogger(__name__)
 
@@ -39,15 +38,8 @@ class OktaClient:
         self.timeout = timeout
         self.max_retries = max_retries
 
-        self._client = httpx.AsyncClient(
-            timeout=timeout,
-            headers={
-                "Authorization": f"SSWS {api_token}",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "User-Agent": "Port-Ocean-Okta-Integration/1.0",
-            },
-        )
+        # Configure shared Ocean async HTTP client
+        http_async_client.timeout = Timeout(timeout)
 
     @property
     def base_url(self) -> str:
@@ -82,74 +74,36 @@ class OktaClient:
         base = self.base_url.rstrip("/")
         url = f"{base}/{normalized_endpoint}"
 
-        request_headers = self._client.headers.copy()
+        # Build request headers per request to avoid global mutation of shared client
+        request_headers: Dict[str, str] = {
+            "Authorization": f"SSWS {self.api_token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "Port-Ocean-Okta-Integration/1.0",
+        }
         if headers:
-            request_headers.update(headers)
+            request_headers |= headers
 
-        last_exception: Optional[Exception] = None
-        for attempt in range(self.max_retries + 1):
-            try:
-                logger.debug(
-                    f"Making {method} request to {url} (attempt {attempt + 1})"
-                )
+        logger.debug(f"Making {method} request to {url}")
 
-                response = await self._client.request(
-                    method=method,
-                    url=url,
-                    params=params,
-                    json=json_data,
-                    headers=request_headers,
-                )
-
-                response.raise_for_status()
-                return response
-
-            except httpx.HTTPStatusError as e:
-                last_exception = e
-                if (
-                    e.response.status_code == 429 and attempt < self.max_retries
-                ):  # Rate limited
-                    retry_after = int(e.response.headers.get("Retry-After", 1))
-                    logger.warning(
-                        f"Rate limited, retrying after {retry_after} seconds"
-                    )
-                    await asyncio.sleep(retry_after)
-                    continue
-
-                logger.error(f"HTTP error {e.response.status_code}: {e.response.text}")
-                break
-
-            except httpx.RequestError as e:
-                last_exception = e
-                if attempt < self.max_retries:
-                    logger.warning(f"Request failed, retrying: {e}")
-                    await asyncio.sleep(2**attempt)  # Exponential backoff
-                    continue
-
-                logger.error(
-                    f"Request failed after {self.max_retries + 1} attempts: {e}"
-                )
-                break
-
-        assert last_exception is not None
-        raise last_exception
-
-    async def close(self) -> None:
-        """Close the HTTP client."""
-        await self._client.aclose()
-
-    async def __aenter__(self) -> "OktaClient":
-        """Async context manager entry."""
-        return self
-
-    async def __aexit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
-    ) -> None:
-        """Async context manager exit."""
-        await self.close()
+        try:
+            response = await http_async_client.request(
+                method=method,
+                url=url,
+                params=params,
+                json=json_data,
+                headers=request_headers,
+            )
+            response.raise_for_status()
+            return response
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"HTTP error {e.response.status_code} for {method} {url}: {e.response.text}"
+            )
+            raise
+        except httpx.RequestError as e:
+            logger.error(f"Request error for {method} {url}: {e}")
+            raise
 
     def _get_next_link(self, link_header: str) -> Optional[str]:
         """Extract the URL from the 'next' link in an Okta Link header."""
@@ -204,84 +158,38 @@ class OktaClient:
 
     async def get_users(
         self,
-        search: Optional[str] = None,
-        filter_query: Optional[str] = None,
-        limit: Optional[int] = None,
+        fields: Optional[str] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Get users with pagination support.
 
         Args:
-            search: Search query for users
-            filter_query: Filter expression for users
-            limit: Maximum number of users to return
+            fields: Comma-separated list of user fields to retrieve
 
         Yields:
             List of users from each page
         """
         params: Dict[str, Any] = {}
-        if search:
-            params["search"] = search
-        if filter_query:
-            params["filter"] = filter_query
-        if limit:
-            params["limit"] = min(limit, self.PAGE_SIZE)
+        if fields:
+            params["fields"] = fields
 
         async for users in self.send_paginated_request("users", params=params):
             yield users
 
     async def get_groups(
         self,
-        search: Optional[str] = None,
-        filter_query: Optional[str] = None,
-        limit: Optional[int] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Get groups with pagination support.
 
         Args:
-            search: Search query for groups
-            filter_query: Filter expression for groups
-            limit: Maximum number of groups to return
+            None
 
         Yields:
             List of groups from each page
         """
         params: Dict[str, Any] = {}
-        if search:
-            params["search"] = search
-        if filter_query:
-            params["filter"] = filter_query
-        if limit:
-            params["limit"] = min(limit, self.PAGE_SIZE)
 
         async for groups in self.send_paginated_request("groups", params=params):
             yield groups
-
-    async def get_applications(
-        self,
-        search: Optional[str] = None,
-        filter_query: Optional[str] = None,
-        limit: Optional[int] = None,
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Get applications with pagination support.
-
-        Args:
-            search: Search query for applications
-            filter_query: Filter expression for applications
-            limit: Maximum number of applications to return
-
-        Yields:
-            List of applications from each page
-        """
-        params: Dict[str, Any] = {}
-        if search:
-            params["q"] = search
-        if filter_query:
-            params["filter"] = filter_query
-        if limit:
-            params["limit"] = min(limit, self.PAGE_SIZE)
-
-        async for apps in self.send_paginated_request("apps", params=params):
-            yield apps
 
     async def get_user_groups(self, user_id: str) -> List[Dict[str, Any]]:
         """Get groups for a specific user.
@@ -344,31 +252,3 @@ class OktaClient:
         endpoint = f"groups/{group_id}"
         response = await self.make_request(endpoint)
         return response.json()
-
-    async def get_application(self, app_id: str) -> Dict[str, Any]:
-        """Get a specific application by ID.
-
-        Args:
-            app_id: The application ID
-
-        Returns:
-            Application data
-        """
-        endpoint = f"apps/{app_id}"
-        response = await self.make_request(endpoint)
-        return response.json()
-
-    async def get_application_users(self, app_id: str) -> List[Dict[str, Any]]:
-        """Get users assigned to a specific application.
-
-        Args:
-            app_id: The application ID
-
-        Returns:
-            List of application users
-        """
-        endpoint = f"apps/{app_id}/users"
-        users: List[Dict[str, Any]] = []
-        async for user_batch in self.send_paginated_request(endpoint):
-            users.extend(user_batch)
-        return users

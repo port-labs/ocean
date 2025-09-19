@@ -32,7 +32,7 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
 
         return user
 
-    def get_paginated_resources(
+    async def get_paginated_resources(
         self, options: ListUserOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get users with pagination support.
@@ -43,23 +43,8 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
         Yields:
             List of users from each page
         """
-        return self._get_users_with_relations(options)
-
-    async def _get_users_with_relations(
-        self, options: ListUserOptions
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Get users with their related data (groups and applications).
-
-        Args:
-            options: Options for the request
-
-        Yields:
-            List of users with enriched data
-        """
         async for users in self.client.get_users(
-            search=options.search,
-            filter_query=options.filter_query,
-            limit=options.limit,
+            fields=options.fields,
         ):
             enriched_users = []
             for user in users:

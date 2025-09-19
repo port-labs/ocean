@@ -4,7 +4,6 @@ resources:
   - kind: okta-group
     selector:
       query: 'true'
-      include_members: true
     port:
       entity:
         mappings:
@@ -17,8 +16,6 @@ resources:
   - kind: okta-user
     selector:
       query: 'true'
-      include_groups: true
-      include_applications: true
     port:
       entity:
         mappings:

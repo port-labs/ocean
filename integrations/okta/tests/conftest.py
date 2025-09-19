@@ -29,3 +29,10 @@ context_pkg = _ensure_module("port_ocean.context")
 ocean_module = _ensure_module("port_ocean.context.ocean")
 ocean = types.SimpleNamespace(integration_config={})
 setattr(ocean_module, "ocean", ocean)
+
+# utils.http_async_client stub so code can import and tests can patch its request
+utils_module = _ensure_module("port_ocean.utils")
+http_async_client = types.SimpleNamespace()
+# Provide a placeholder attribute so patching works
+setattr(http_async_client, "request", None)
+setattr(utils_module, "http_async_client", http_async_client)

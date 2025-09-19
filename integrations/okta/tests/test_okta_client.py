@@ -1,8 +1,6 @@
-"""Tests for Okta client."""
-
 import pytest
 from typing import Any, AsyncGenerator, Dict, List
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, AsyncMock
 
 from okta.clients.http.client import OktaClient
 
@@ -40,7 +38,10 @@ class TestOktaClient:
         mock_response.json.return_value = {"id": "test_user"}
         mock_response.headers = {}
 
-        with patch.object(client._client, "request", return_value=mock_response):
+        with patch(
+            "port_ocean.utils.http_async_client.request",
+            new=AsyncMock(return_value=mock_response),
+        ):
             response = await client.make_request("/users")
             assert response.status_code == 200
             assert response.json() == {"id": "test_user"}
@@ -53,8 +54,9 @@ class TestOktaClient:
         mock_response.text = "Internal Server Error"
         mock_response.headers = {}
 
-        with patch.object(
-            client._client, "request", side_effect=Exception("Network error")
+        with patch(
+            "port_ocean.utils.http_async_client.request",
+            side_effect=Exception("Network error"),
         ):
             with pytest.raises(Exception):
                 await client.make_request("/users")
@@ -105,17 +107,6 @@ class TestOktaClient:
         with patch.object(client, "make_request", return_value=mock_response):
             groups = await client.get_user_groups("user123")
             assert groups == mock_groups
-
-    @pytest.mark.asyncio
-    async def test_get_user_apps(self, client: OktaClient) -> None:
-        """Test getting user applications."""
-        mock_apps: List[Dict[str, Any]] = [{"id": "app1", "name": "App 1"}]
-        mock_response = Mock()
-        mock_response.json.return_value = mock_apps
-
-        with patch.object(client, "make_request", return_value=mock_response):
-            apps = await client.get_user_apps("user123")
-            assert apps == mock_apps
 
     @pytest.mark.asyncio
     async def test_get_group_members(self, client: OktaClient) -> None:

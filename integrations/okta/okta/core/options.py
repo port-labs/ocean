@@ -1,30 +1,28 @@
-"""Options classes for Okta API requests."""
-
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Optional
+
+
+def get_default_user_fields() -> str:
+    """Get the default fields to retrieve for users.
+
+    Returns:
+        Comma-separated string of default user fields
+    """
+    return "id,status,created,activated,lastLogin,lastUpdated,profile:(login,firstName,lastName,displayName,email,title,department,employeeNumber,mobilePhone,primaryPhone,streetAddress,city,state,zipCode,countryCode)"
 
 
 @dataclass
 class ListUserOptions:
     """Options for listing users."""
 
-    search: Optional[str] = None
-    filter_query: Optional[str] = None
-    limit: Optional[int] = None
     include_groups: bool = False
     include_applications: bool = False
-    selector: Optional[Dict[str, Any]] = None
+    fields: Optional[str] = None
 
-
-@dataclass
-class ListGroupOptions:
-    """Options for listing groups."""
-
-    search: Optional[str] = None
-    filter_query: Optional[str] = None
-    limit: Optional[int] = None
-    include_members: bool = False
-    selector: Optional[Dict[str, Any]] = None
+    def __post_init__(self) -> None:
+        """Set default fields if not provided."""
+        if self.fields is None:
+            self.fields = get_default_user_fields()
 
 
 @dataclass
@@ -34,11 +32,9 @@ class GetUserOptions:
     user_id: str
     include_groups: bool = False
     include_applications: bool = False
+    fields: Optional[str] = None
 
-
-@dataclass
-class GetGroupOptions:
-    """Options for getting a single group."""
-
-    group_id: str
-    include_members: bool = False
+    def __post_init__(self) -> None:
+        """Set default fields if not provided."""
+        if self.fields is None:
+            self.fields = get_default_user_fields()

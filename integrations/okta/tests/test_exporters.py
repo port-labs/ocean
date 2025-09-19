@@ -8,9 +8,7 @@ from okta.core.exporters.user_exporter import OktaUserExporter
 from okta.core.exporters.group_exporter import OktaGroupExporter
 from okta.core.options import (
     ListUserOptions,
-    ListGroupOptions,
     GetUserOptions,
-    GetGroupOptions,
 )
 from okta.clients.http.client import OktaClient
 
@@ -38,7 +36,6 @@ class TestOktaUserExporter:
             {"id": "user2", "profile": {"email": "user2@test.com"}},
         ]
         mock_groups: List[Dict[str, Any]] = [{"id": "group1", "name": "Group 1"}]
-        mock_apps: List[Dict[str, Any]] = [{"id": "app1", "name": "App 1"}]
 
         async def mock_get_users(
             *args: Any, **kwargs: Any
@@ -48,9 +45,8 @@ class TestOktaUserExporter:
         # Assign async generator function to mock attribute
         object.__setattr__(mock_client, "get_users", mock_get_users)
         mock_client.get_user_groups = AsyncMock(return_value=mock_groups)
-        mock_client.get_user_apps = AsyncMock(return_value=mock_apps)
 
-        options = ListUserOptions(include_groups=True, include_applications=True)
+        options = ListUserOptions(include_groups=True)
         users: List[Dict[str, Any]] = []
         async for user_batch in exporter.get_paginated_resources(options):
             users.extend(user_batch)
@@ -58,7 +54,6 @@ class TestOktaUserExporter:
         assert len(users) == 2
         assert users[0]["id"] == "user1"
         assert users[0]["groups"] == mock_groups
-        assert users[0]["applications"] == mock_apps
 
     @pytest.mark.asyncio
     async def test_get_paginated_resources_with_error(
@@ -76,9 +71,8 @@ class TestOktaUserExporter:
 
         object.__setattr__(mock_client, "get_users", mock_get_users)
         mock_client.get_user_groups = AsyncMock(side_effect=Exception("API Error"))
-        mock_client.get_user_apps = AsyncMock(return_value=[])
 
-        options = ListUserOptions(include_groups=True, include_applications=True)
+        options = ListUserOptions(include_groups=True)
         users: List[Dict[str, Any]] = []
         async for user_batch in exporter.get_paginated_resources(options):
             users.extend(user_batch)
@@ -95,23 +89,19 @@ class TestOktaUserExporter:
 
         mock_user = {"id": "user1", "profile": {"email": "user1@example.com"}}
         mock_groups = [{"id": "group1", "name": "Group 1"}]
-        mock_apps = [{"id": "app1", "name": "App 1"}]
 
         cast(Any, mock_client).get_user = AsyncMock(return_value=mock_user)
         cast(Any, mock_client).get_user_groups = AsyncMock(return_value=mock_groups)
-        cast(Any, mock_client).get_user_apps = AsyncMock(return_value=mock_apps)
 
         options = GetUserOptions(
             user_id="user1",
             include_groups=True,
-            include_applications=True,
         )
 
         user: Dict[str, Any] = await exporter.get_resource(options)
 
         assert user["id"] == "user1"
         assert user["groups"] == mock_groups
-        assert user["applications"] == mock_apps
 
 
 class TestOktaGroupExporter:
@@ -136,7 +126,6 @@ class TestOktaGroupExporter:
             {"id": "group1", "profile": {"name": "Group 1"}},
             {"id": "group2", "profile": {"name": "Group 2"}},
         ]
-        mock_members: List[Dict[str, Any]] = [{"id": "user1", "name": "User 1"}]
 
         async def mock_get_groups(
             *args: Any, **kwargs: Any
@@ -144,16 +133,13 @@ class TestOktaGroupExporter:
             yield mock_groups
 
         object.__setattr__(mock_client, "get_groups", mock_get_groups)
-        mock_client.get_group_members = AsyncMock(return_value=mock_members)
 
-        options = ListGroupOptions(include_members=True)
         groups: List[Dict[str, Any]] = []
-        async for group_batch in exporter.get_paginated_resources(options):
+        async for group_batch in exporter.get_paginated_resources(object()):
             groups.extend(group_batch)
 
         assert len(groups) == 2
         assert groups[0]["id"] == "group1"
-        assert groups[0]["members"] == mock_members
 
     @pytest.mark.asyncio
     async def test_get_resource(self) -> None:
@@ -162,18 +148,10 @@ class TestOktaGroupExporter:
         exporter = OktaGroupExporter(mock_client)
 
         mock_group = {"id": "group1", "profile": {"name": "Group 1"}}
-        mock_members = [{"id": "user1", "name": "User 1"}]
 
         cast(Any, mock_client).get_group = AsyncMock(return_value=mock_group)
-        cast(Any, mock_client).get_group_members = AsyncMock(return_value=mock_members)
 
-        options = GetGroupOptions(
-            group_id="group1",
-            include_members=True,
-        )
-
-        group: Dict[str, Any] = await exporter.get_resource(options)
+        group: Dict[str, Any] = await exporter.get_resource("group1")
 
         assert group["id"] == "group1"
-        assert group["members"] == mock_members
         # No strict mock call assertions to keep type checker satisfied
