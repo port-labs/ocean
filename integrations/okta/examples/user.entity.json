@@ -1,0 +1,96 @@
+{
+  "id": "00u1234567890abcdef",
+  "status": "ACTIVE",
+  "created": "2023-01-15T09:00:00.000Z",
+  "activated": "2023-01-15T09:05:00.000Z",
+  "statusChanged": "2023-01-15T09:05:00.000Z",
+  "lastLogin": "2024-01-15T08:30:00.000Z",
+  "lastUpdated": "2024-01-10T14:20:00.000Z",
+  "passwordChanged": "2023-06-01T10:15:00.000Z",
+  "type": {
+    "id": "otyfed6d6ztMOe3Ze0h7"
+  },
+  "profile": {
+    "firstName": "John",
+    "lastName": "Doe",
+    "mobilePhone": "+1-555-415-1337",
+    "secondEmail": null,
+    "login": "john.doe@example.com",
+    "email": "john.doe@example.com",
+    "displayName": "John Doe",
+    "nickName": "Johnny",
+    "profileUrl": "https://dev-123456.okta.com/api/v1/users/00u1234567890abcdef",
+    "department": "Engineering",
+    "organization": "Example Corp",
+    "title": "Senior Software Engineer",
+    "locale": "en_US",
+    "timeZone": "America/Los_Angeles",
+    "userType": "Employee",
+    "employeeNumber": "E12345",
+    "costCenter": "CC001",
+    "division": "Product Development",
+    "manager": {
+      "id": "00u0987654321fedcba",
+      "displayName": "Jane Smith"
+    }
+  },
+  "credentials": {
+    "password": {},
+    "recovery_question": {
+      "question": "What is the food you least liked as a child?"
+    },
+    "provider": {
+      "type": "OKTA",
+      "name": "OKTA"
+    }
+  },
+  "groups": [
+    {
+      "id": "00g1234567890abcdef",
+      "name": "Engineering",
+      "description": "Engineering team members"
+    },
+    {
+      "id": "00g0987654321fedcba", 
+      "name": "Senior Engineers",
+      "description": "Senior level engineers"
+    }
+  ],
+  "roles": [
+    {
+      "id": "ra1234567890abcdef",
+      "type": "USER_ADMIN",
+      "label": "User Administrator"
+    }
+  ],
+  "_links": {
+    "suspend": {
+      "href": "https://dev-123456.okta.com/api/v1/users/00u1234567890abcdef/lifecycle/suspend",
+      "method": "POST"
+    },
+    "resetPassword": {
+      "href": "https://dev-123456.okta.com/api/v1/users/00u1234567890abcdef/lifecycle/reset_password",
+      "method": "POST"
+    },
+    "expirePassword": {
+      "href": "https://dev-123456.okta.com/api/v1/users/00u1234567890abcdef/lifecycle/expire_password",
+      "method": "POST"
+    },
+    "forgotPassword": {
+      "href": "https://dev-123456.okta.com/api/v1/users/00u1234567890abcdef/credentials/forgot_password",
+      "method": "POST"
+    },
+    "changeRecoveryQuestion": {
+      "href": "https://dev-123456.okta.com/api/v1/users/00u1234567890abcdef/credentials/change_recovery_question",
+      "method": "POST"
+    },
+    "deactivate": {
+      "href": "https://dev-123456.okta.com/api/v1/users/00u1234567890abcdef/lifecycle/deactivate",
+      "method": "POST"
+    },
+    "changePassword": {
+      "href": "https://dev-123456.okta.com/api/v1/users/00u1234567890abcdef/credentials/change_password",
+      "method": "POST"
+    }
+  }
+}
