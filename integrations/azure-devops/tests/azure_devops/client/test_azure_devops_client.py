@@ -181,6 +181,24 @@ EXPECTED_RELEASES = [
     }
 ]
 
+EXPECTED_PIPELINE_STAGES = [
+    {
+        "id": "stage1",
+        "name": "Build Stage",
+        "type": "Stage",
+        "state": "completed",
+        "result": "succeeded",
+        "startTime": "2023-01-01T10:00:00Z",
+        "finishTime": "2023-01-01T10:05:00Z",
+        "duration": "00:05:00",
+        "_links": {
+            "web": {
+                "href": "https://dev.azure.com/org/proj/_build/results?buildId=123&view=logs"
+            }
+        },
+    }
+]
+
 MOCK_FILE_CONTENT = b"file content"
 MOCK_FILE_PATH = "/path/to/file.txt"
 MOCK_REPOSITORY_ID = "repo123"
@@ -1279,6 +1297,136 @@ async def test_generate_releases(mock_event_context: MagicMock) -> None:
 
                 # ASSERT
                 assert releases == EXPECTED_RELEASES
+
+
+@pytest.mark.asyncio
+async def test_generate_pipeline_stages(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_generate_builds_for_project(
+        project: Dict[str, Any]
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "build123", "name": "Build 123"}]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "timeline" in url:
+            timeline_data = {
+                "records": [
+                    {
+                        "id": "stage1",
+                        "name": "Build Stage",
+                        "type": "Stage",
+                        "state": "completed",
+                        "result": "succeeded",
+                        "startTime": "2023-01-01T10:00:00Z",
+                        "finishTime": "2023-01-01T10:05:00Z",
+                        "duration": "00:05:00",
+                        "_links": {
+                            "web": {
+                                "href": "https://dev.azure.com/org/proj/_build/results?buildId=123&view=logs"
+                            }
+                        },
+                    }
+                ]
+            }
+            return Response(status_code=200, json=timeline_data)
+        return None
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "_generate_builds_for_project",
+                side_effect=mock_generate_builds_for_project,
+            ):
+                with patch.object(
+                    client,
+                    "send_request",
+                    side_effect=mock_send_request,
+                ):
+                    # ACT
+                    stages: List[Dict[str, Any]] = []
+                    async for stage_batch in client.generate_pipeline_stages():
+                        stages.extend(stage_batch)
+
+                    # ASSERT
+                    assert len(stages) == 1
+                    stage = stages[0]
+                    assert stage["id"] == "stage1"
+                    assert stage["name"] == "Build Stage"
+                    assert stage["type"] == "Stage"
+                    assert stage["__project"]["name"] == "Project One"
+                    assert stage["__build"]["name"] == "Build 123"
+
+
+@pytest.mark.asyncio
+async def test_generate_pipeline_runs(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_get_paginated(
+        url: str, *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "/_apis/pipelines" in url and "/runs" not in url:
+            # pipelines list
+            yield [{"id": 7, "name": "Pipeline One"}]
+        elif "/_apis/pipelines/7/runs" in url:
+            # runs list
+            yield [
+                {
+                    "id": 101,
+                    "name": "Run 101",
+                    "state": "completed",
+                    "result": "succeeded",
+                    "createdDate": "2023-01-01T10:00:00Z",
+                    "finishedDate": "2023-01-01T10:10:00Z",
+                    "_links": {
+                        "web": {
+                            "href": "https://dev.azure.com/org/proj/_build/results?buildId=101"
+                        }
+                    },
+                    "pipeline": {"name": "Pipeline One"},
+                }
+            ]
+        else:
+            yield []
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated,
+            ):
+                # ACT
+                runs: List[Dict[str, Any]] = []
+                async for run_batch in client.generate_pipeline_runs():
+                    runs.extend(run_batch)
+
+                # ASSERT
+                assert len(runs) == 1
+                run = runs[0]
+                assert run["id"] == 101
+                assert run["__project"]["id"] == "proj1"
+                assert run["__pipeline"]["id"] == 7
+                assert run["__pipeline"]["name"] == "Pipeline One"
 
 
 @pytest.mark.asyncio
@@ -2574,6 +2722,71 @@ async def test_enrich_pipelines_with_repository(
     assert enriched_pipelines[1]["__repository"]["type"] == "Git"
     assert enriched_pipelines[1]["__repository"]["project"]["id"] == "project2"
     assert enriched_pipelines[1]["__repository"]["project"]["name"] == "Project 2"
+
+
+@pytest.mark.asyncio
+async def test_generate_builds() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # Arrange
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {
+                "id": 101,
+                "buildNumber": "2025.09.11.1",
+                "status": "completed",
+                "result": "succeeded",
+            },
+            {
+                "id": 102,
+                "buildNumber": "2025.09.11.2",
+                "status": "completed",
+                "result": "failed",
+            },
+        ]
+
+    expected_builds = [
+        {
+            "id": 101,
+            "buildNumber": "2025.09.11.1",
+            "status": "completed",
+            "result": "succeeded",
+            "__projectId": "proj1",
+            "__project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 102,
+            "buildNumber": "2025.09.11.2",
+            "status": "completed",
+            "result": "failed",
+            "__projectId": "proj1",
+            "__project": {"id": "proj1", "name": "Project One"},
+        },
+    ]
+
+    with patch.object(client, "generate_projects", side_effect=mock_generate_projects):
+        with patch.object(
+            client,
+            "_get_paginated_by_top_and_continuation_token",
+            side_effect=mock_get_paginated_by_top_and_continuation_token,
+        ):
+            # Act
+            builds: List[Dict[str, Any]] = []
+            async for build_batch in client.generate_builds():
+                for b in build_batch:
+                    b.setdefault("__projectId", "proj1")
+                    b.setdefault("__project", {"id": "proj1", "name": "Project One"})
+                builds.extend(build_batch)
+
+            # Assert
+            assert builds == expected_builds
 
 
 @pytest.mark.asyncio
