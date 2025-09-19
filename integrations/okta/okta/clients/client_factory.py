@@ -1,12 +1,10 @@
 """Okta client factory for creating authenticated clients."""
 
-import logging
 from typing import Optional
+from loguru import logger
 
 from port_ocean.context.ocean import ocean
 from okta.clients.http.client import OktaClient
-
-logger = logging.getLogger(__name__)
 
 
 class OktaClientFactory:

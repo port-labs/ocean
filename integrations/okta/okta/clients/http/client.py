@@ -1,14 +1,12 @@
 """Okta API client implementation."""
 
-import logging
 import re
 from typing import Any, AsyncGenerator, Dict, List, Optional
+from loguru import logger
 
 import httpx
 from httpx import Response, Timeout
 from port_ocean.utils import http_async_client
-
-logger = logging.getLogger(__name__)
 
 
 class OktaClient:
@@ -155,100 +153,3 @@ class OktaClient:
             # Extract endpoint from next URL
             endpoint = next_url.replace(self.base_url.rstrip("/"), "").lstrip("/")
             params = None  # Reset params as they're included in the next URL
-
-    async def get_users(
-        self,
-        fields: Optional[str] = None,
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Get users with pagination support.
-
-        Args:
-            fields: Comma-separated list of user fields to retrieve
-
-        Yields:
-            List of users from each page
-        """
-        params: Dict[str, Any] = {}
-        if fields:
-            params["fields"] = fields
-
-        async for users in self.send_paginated_request("users", params=params):
-            yield users
-
-    async def get_groups(
-        self,
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Get groups with pagination support.
-
-        Args:
-            None
-
-        Yields:
-            List of groups from each page
-        """
-        params: Dict[str, Any] = {}
-
-        async for groups in self.send_paginated_request("groups", params=params):
-            yield groups
-
-    async def get_user_groups(self, user_id: str) -> List[Dict[str, Any]]:
-        """Get groups for a specific user.
-
-        Args:
-            user_id: The user ID
-
-        Returns:
-            List of groups for the user
-        """
-        response = await self.make_request(f"users/{user_id}/groups")
-        return response.json() if response else []
-
-    async def get_user_apps(self, user_id: str) -> List[Dict[str, Any]]:
-        """Get applications for a specific user.
-
-        Args:
-            user_id: The user ID
-
-        Returns:
-            List of applications for the user
-        """
-        response = await self.make_request(f"users/{user_id}/appLinks")
-        return response.json() if response else []
-
-    async def get_group_members(self, group_id: str) -> List[Dict[str, Any]]:
-        """Get members of a specific group.
-
-        Args:
-            group_id: The group ID
-
-        Returns:
-            List of group members
-        """
-        response = await self.make_request(f"groups/{group_id}/users")
-        return response.json() if response else []
-
-    async def get_user(self, user_id: str) -> Dict[str, Any]:
-        """Get a specific user by ID.
-
-        Args:
-            user_id: The user ID
-
-        Returns:
-            User data
-        """
-        endpoint = f"users/{user_id}"
-        response = await self.make_request(endpoint)
-        return response.json()
-
-    async def get_group(self, group_id: str) -> Dict[str, Any]:
-        """Get a specific group by ID.
-
-        Args:
-            group_id: The group ID
-
-        Returns:
-            Group data
-        """
-        endpoint = f"groups/{group_id}"
-        response = await self.make_request(endpoint)
-        return response.json()

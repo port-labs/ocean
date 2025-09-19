@@ -76,8 +76,8 @@ class TestOktaClient:
         assert next_url is None
 
     @pytest.mark.asyncio
-    async def test_get_users_pagination(self, client: OktaClient) -> None:
-        """Test user pagination."""
+    async def test_send_paginated_request_users(self, client: OktaClient) -> None:
+        """Test pagination helper yields pages for users resource."""
         mock_users_page1: List[Dict[str, Any]] = [{"id": "user1"}, {"id": "user2"}]
         mock_users_page2: List[Dict[str, Any]] = [{"id": "user3"}]
 
@@ -91,32 +91,10 @@ class TestOktaClient:
             client, "send_paginated_request", side_effect=mock_paginated_request
         ):
             users: List[Dict[str, Any]] = []
-            async for user_batch in client.get_users():
+            async for user_batch in client.send_paginated_request("users"):
                 users.extend(user_batch)
 
             assert len(users) == 3
             assert users[0]["id"] == "user1"
             assert users[1]["id"] == "user2"
             assert users[2]["id"] == "user3"
-
-    @pytest.mark.asyncio
-    async def test_get_user_groups(self, client: OktaClient) -> None:
-        """Test getting user groups."""
-        mock_groups: List[Dict[str, Any]] = [{"id": "group1", "name": "Group 1"}]
-        mock_response = Mock()
-        mock_response.json.return_value = mock_groups
-
-        with patch.object(client, "make_request", return_value=mock_response):
-            groups = await client.get_user_groups("user123")
-            assert groups == mock_groups
-
-    @pytest.mark.asyncio
-    async def test_get_group_members(self, client: OktaClient) -> None:
-        """Test getting group members."""
-        mock_members: List[Dict[str, Any]] = [{"id": "user1", "name": "User 1"}]
-        mock_response = Mock()
-        mock_response.json.return_value = mock_members
-
-        with patch.object(client, "make_request", return_value=mock_response):
-            members = await client.get_group_members("group123")
-            assert members == mock_members

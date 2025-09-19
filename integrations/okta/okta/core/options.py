@@ -15,14 +15,9 @@ def get_default_user_fields() -> str:
 class ListUserOptions:
     """Options for listing users."""
 
-    include_groups: bool = False
-    include_applications: bool = False
+    include_groups: Optional[bool] = None
+    include_applications: Optional[bool] = None
     fields: Optional[str] = None
-
-    def __post_init__(self) -> None:
-        """Set default fields if not provided."""
-        if self.fields is None:
-            self.fields = get_default_user_fields()
 
 
 @dataclass
@@ -30,11 +25,13 @@ class GetUserOptions:
     """Options for getting a single user."""
 
     user_id: str
-    include_groups: bool = False
-    include_applications: bool = False
+    include_groups: Optional[bool] = None
+    include_applications: Optional[bool] = None
     fields: Optional[str] = None
 
-    def __post_init__(self) -> None:
-        """Set default fields if not provided."""
-        if self.fields is None:
-            self.fields = get_default_user_fields()
+
+@dataclass
+class ListGroupOptions:
+    """Options for listing groups."""
+
+    pass

@@ -8,7 +8,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from okta.clients.client_factory import create_okta_client
 from okta.core.exporters.user_exporter import OktaUserExporter
 from okta.core.exporters.group_exporter import OktaGroupExporter
-from okta.core.options import ListUserOptions
+from okta.core.options import ListUserOptions, ListGroupOptions, get_default_user_fields
 from integration import (
     OktaUserConfig,
 )
@@ -31,9 +31,9 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     config = cast(OktaUserConfig, event.resource_config)
     options = ListUserOptions(
-        include_groups=getattr(config.selector, "include_groups", False),
-        include_applications=getattr(config.selector, "include_applications", False),
-        fields=getattr(config.selector, "fields", None),
+        include_groups=config.selector.include_groups,
+        include_applications=config.selector.include_applications,
+        fields=(config.selector.fields or get_default_user_fields()),
     )
     async for users in exporter.get_paginated_resources(options):
         yield users
@@ -47,5 +47,5 @@ async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_okta_client()
     exporter = OktaGroupExporter(client)
 
-    async for groups in exporter.get_paginated_resources(object()):
+    async for groups in exporter.get_paginated_resources(ListGroupOptions()):
         yield groups
