@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import json
+import re
 from typing import Any, AsyncGenerator, Optional, Callable, Iterable
 from httpx import HTTPStatusError
 from loguru import logger
@@ -427,6 +428,134 @@ class AzureDevopsClient(HTTPBaseClient):
 
                     if stages:
                         yield stages
+
+    @cache_iterator_result()
+    async def generate_iterations(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate iterations for all projects in the organization.
+
+        API: GET {org}/{project}/_apis/wit/classificationnodes/iterations?$depth=2
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/classification-nodes/list?view=azure-devops-rest-7.1
+        """
+        async for projects in self.generate_projects():
+            project_tasks = [
+                self._iterations_for_project(project) for project in projects
+            ]
+            async for batch in stream_async_iterators_tasks(*project_tasks):
+                yield batch
+
+    async def _iterations_for_project(
+        self, project: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield iterations (in batches) for a specific project."""
+        project_id = project["id"]
+        iterations_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/classificationnodes/iterations"
+
+        params = {"$depth": 2, "api-version": "7.1"}
+
+        try:
+            response = await self.send_request("GET", iterations_url, params=params)
+            if not response:
+                return
+
+            iterations_data = response.json()
+            iterations = self._parse_iteration_nodes(iterations_data, project)
+
+            if iterations:
+                yield iterations
+
+        except Exception as e:
+            logger.warning(
+                f"Failed to fetch iterations for project {project_id}: {str(e)}"
+            )
+
+    def _parse_iteration_nodes(
+        self, node: dict[str, Any], project: dict[str, Any], parent_path: str = ""
+    ) -> list[dict[str, Any]]:
+        """Parse iteration nodes recursively from Azure DevOps classification API response."""
+        iterations = []
+
+        current_iteration = {
+            **node,
+            "__project": project,
+            "__iterationKind": self._determine_iteration_type(node, parent_path),
+        }
+
+        if node.get("id") and node.get("name"):
+            iterations.append(current_iteration)
+
+        # Process children recursively
+        children = node.get("children", [])
+        current_path = (
+            f"{parent_path}/{node.get('name', '')}"
+            if parent_path
+            else node.get("name", "")
+        )
+
+        for child in children:
+            child_iterations = self._parse_iteration_nodes(child, project, current_path)
+            iterations.extend(child_iterations)
+        return iterations
+
+    def _determine_iteration_type(
+        self, iteration: dict[str, Any], parent_path: str
+    ) -> str:
+        """
+        Determine iteration type based on naming patterns and path structure.
+
+        Returns: 'sprint', 'release', 'milestone', 'epic', or 'iteration'
+        """
+        name = iteration.get("name", "").lower()
+        path = iteration.get("path", "").lower()
+
+        # Check for sprint patterns
+        if any(
+            pattern in name for pattern in ["sprint", "sprint-", "sprint_", "sprint "]
+        ):
+            return "sprint"
+
+        # Check for release patterns
+        if any(
+            pattern in name
+            for pattern in [
+                "release",
+                "release-",
+                "release_",
+                "release ",
+                "v",
+                "version",
+            ]
+        ):
+            return "release"
+
+        # Check for milestone patterns
+        if any(
+            pattern in name
+            for pattern in ["milestone", "milestone-", "milestone_", "milestone ", "m"]
+        ):
+            return "milestone"
+
+        # Check for epic patterns
+        if any(pattern in name for pattern in ["epic", "epic-", "epic_", "epic "]):
+            return "epic"
+
+        # Check path patterns
+        if "sprint" in path:
+            return "sprint"
+        elif "release" in path:
+            return "release"
+        elif "milestone" in path:
+            return "milestone"
+        elif "epic" in path:
+            return "epic"
+
+        # Check for date-based patterns (common in sprint naming)
+
+        if re.search(r"\d{4}\.\d{1,2}\.\d{1,2}", name) or re.search(r"s\d+", name):
+            return "sprint"
+
+        # Default classification
+        return "iteration"
 
     @cache_iterator_result()
     async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
