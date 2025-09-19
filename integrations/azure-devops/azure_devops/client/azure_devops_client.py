@@ -332,7 +332,6 @@ class AzureDevopsClient(HTTPBaseClient):
             run["__project"] = project
             run["__pipeline"] = pipeline
 
-
     async def _fetch_stages_for_build(
         self, project: dict[str, Any], build: dict[str, Any]
     ) -> list[dict[str, Any]]:
