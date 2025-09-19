@@ -484,7 +484,6 @@ class AzureDevopsClient(HTTPBaseClient):
         if node.get("id") and node.get("name"):
             iterations.append(current_iteration)
 
-        # Process children recursively
         children = node.get("children", [])
         current_path = (
             f"{parent_path}/{node.get('name', '')}"
@@ -549,12 +548,10 @@ class AzureDevopsClient(HTTPBaseClient):
         elif "epic" in path:
             return "epic"
 
-        # Check for date-based patterns (common in sprint naming)
-
+        # Check for date-based patterns
         if re.search(r"\d{4}\.\d{1,2}\.\d{1,2}", name) or re.search(r"s\d+", name):
             return "sprint"
 
-        # Default classification
         return "iteration"
 
     @cache_iterator_result()
