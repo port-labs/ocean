@@ -52,6 +52,16 @@ class CheckmarxOneClient:
         self.authenticator = authenticator
 
     @property
+    def ui_base_url(self) -> str:
+        """
+        Get the Checkmarx One UI base URL (without /api suffix).
+
+        Returns:
+            UI base URL for constructing deeplinks
+        """
+        return self.base_url.replace("/api", "")
+
+    @property
     async def auth_headers(self) -> dict[str, str]:
         """Get authentication headers for API requests."""
         return await self.authenticator.get_auth_headers()
