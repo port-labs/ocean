@@ -59,7 +59,6 @@ async def on_resync_segments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield segments
 
 
-
 @ocean.on_resync(kind=ObjectKind.FEATURE_FLAG_STATUS)
 async def on_resync_feature_flag_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LaunchDarklyClient.create_from_ocean_configuration()

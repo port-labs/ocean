@@ -10,7 +10,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from client import LaunchDarklyClient, ObjectKind
 from loguru import logger
 from webhook_processors.utils import (
-    extract_project_key_from_endpoint,
     enrich_resource_with_project,
 )
 
@@ -20,7 +19,9 @@ class SegmentWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Validate that the event header contains required Segment event type."""
-        logger.info(f"SegmentWebhookProcessor checking event: kind={event.payload.get('kind')}, ObjectKind.SEGMENT={ObjectKind.SEGMENT}")
+        logger.info(
+            f"SegmentWebhookProcessor checking event: kind={event.payload.get('kind')}, ObjectKind.SEGMENT={ObjectKind.SEGMENT}"
+        )
         return event.payload.get("kind") == ObjectKind.SEGMENT
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -66,14 +67,16 @@ class SegmentWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        logger.info(f"Processing segment: {segment_key} in project: {project_key}, environment: {environment_key}")
+        logger.info(
+            f"Processing segment: {segment_key} in project: {project_key}, environment: {environment_key}"
+        )
 
         if self.is_deletion_event(payload):
             deleted_segment = {
                 "key": segment_key,
                 "__projectKey": project_key,
                 "__environmentKey": environment_key,
-                "deleted": True
+                "deleted": True,
             }
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[deleted_segment]
@@ -96,7 +99,9 @@ class SegmentWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
         try:
             client = LaunchDarklyClient.create_from_ocean_configuration()
             endpoint = f"segments/{project_key}/{environment_key}/{segment_key}"
-            segment_data = await enrich_resource_with_project(endpoint, ObjectKind.SEGMENT, client)
+            segment_data = await enrich_resource_with_project(
+                endpoint, ObjectKind.SEGMENT, client
+            )
             segment_data["__environmentKey"] = environment_key
 
             return WebhookEventRawResults(
@@ -111,7 +116,7 @@ class SegmentWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
                 "name": target.get("name", segment_key),
                 "__webhookEventId": payload.get("_id"),
                 "__webhookDate": payload.get("date"),
-                "__webhookAction": payload.get("titleVerb", "")
+                "__webhookAction": payload.get("titleVerb", ""),
             }
             return WebhookEventRawResults(
                 updated_raw_results=[basic_segment], deleted_raw_results=[]

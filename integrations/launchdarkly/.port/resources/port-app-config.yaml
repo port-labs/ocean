@@ -14,34 +14,34 @@ resources:
             tags: .tags
   - kind: segment
     selector:
-        query: 'true'
-        tags: null
-        archived: null
-        include_inactive: true
-        name_pattern: null
-        description_pattern: null
-        has_rules: null
-        has_included_users: null
-        has_excluded_users: null
-        environment_key: null
+      query: 'true'
+      tags: null
+      archived: null
+      include_inactive: true
+      name_pattern: null
+      description_pattern: null
+      has_rules: null
+      has_included_users: null
+      has_excluded_users: null
+      environment_key: null
     port:
-        entity:
-          mappings:
-            identifier: .key + "-" + .__projectKey + "-" + .__environmentKey
-            title: .name
-            blueprint: '"launchDarklySegment"'
-            properties:
-              name: .name
-              description: .description
-              creationDate: (.creationDate / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ")) // null
-              tags: .tags
-              included: .included
-              excluded: .excluded
-              rules: .rules
-              archived: .archived
-            relations:
-              project: .__projectKey
-              environment: .__environmentKey + "-" + .__projectKey
+      entity:
+        mappings:
+          identifier: .key + "-" + .__projectKey + "-" + .__environmentKey
+          title: .name
+          blueprint: '"launchDarklySegment"'
+          properties:
+            name: .name
+            description: .description
+            creationDate: (.creationDate / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ")) // null
+            tags: .tags
+            included: .included
+            excluded: .excluded
+            rules: .rules
+            archived: .archived
+          relations:
+            project: .__projectKey
+            environment: .__environmentKey + "-" + .__projectKey
   - kind: flag
     selector:
       query: 'true'

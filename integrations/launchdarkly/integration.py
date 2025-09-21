@@ -16,64 +16,68 @@ class SegmentSelector(Selector):
 
     tags: Optional[List[str]] = Field(
         default=None,
-        description="Filter segments by tags. Only segments with any of the specified tags will be included."
+        description="Filter segments by tags. Only segments with any of the specified tags will be included.",
     )
 
     archived: Optional[bool] = Field(
         default=None,
-        description="Filter segments by archived status. If true, only archived segments. If false, only non-archived segments. If None, all segments."
+        description="Filter segments by archived status. If true, only archived segments. If false, only non-archived segments. If None, all segments.",
     )
 
     include_inactive: Optional[bool] = Field(
         default=True,
-        description="Whether to include inactive segments (segments with no rules and no included/excluded users)."
+        description="Whether to include inactive segments (segments with no rules and no included/excluded users).",
     )
 
     name_pattern: Optional[str] = Field(
         default=None,
-        description="Filter segments by name pattern. Supports partial matching. Case-insensitive."
+        description="Filter segments by name pattern. Supports partial matching. Case-insensitive.",
     )
 
     description_pattern: Optional[str] = Field(
         default=None,
-        description="Filter segments by description pattern. Supports partial matching. Case-insensitive."
+        description="Filter segments by description pattern. Supports partial matching. Case-insensitive.",
     )
 
     has_rules: Optional[bool] = Field(
         default=None,
-        description="Filter segments by whether they have rules. If true, only segments with rules. If false, only segments without rules. If None, all segments."
+        description="Filter segments by whether they have rules. If true, only segments with rules. If false, only segments without rules. If None, all segments.",
     )
 
     has_included_users: Optional[bool] = Field(
         default=None,
-        description="Filter segments by whether they have included users. If true, only segments with included users. If false, only segments without included users. If None, all segments."
+        description="Filter segments by whether they have included users. If true, only segments with included users. If false, only segments without included users. If None, all segments.",
     )
 
     has_excluded_users: Optional[bool] = Field(
         default=None,
-        description="Filter segments by whether they have excluded users. If true, only segments with excluded users. If false, only segments without excluded users. If None, all segments."
+        description="Filter segments by whether they have excluded users. If true, only segments with excluded users. If false, only segments without excluded users. If None, all segments.",
     )
 
     project_key: Optional[str] = Field(
         default=None,
-        description="Filter segments by project key. Only segments from the specified project will be included."
+        description="Filter segments by project key. Only segments from the specified project will be included.",
     )
 
     environment_key: Optional[str] = Field(
         default=None,
-        description="Filter segments by environment key. Only segments from the specified environment will be included."
+        description="Filter segments by environment key. Only segments from the specified environment will be included.",
     )
 
 
 class SegmentResourceConfig(ResourceConfig):
     """Custom resource config for LaunchDarkly segments with enhanced selector."""
+
     kind: Literal["segment"]
     selector: SegmentSelector
 
 
 class LaunchDarklyPortAppConfig(PortAppConfig):
     """Custom Port app config for LaunchDarkly with segment-specific configurations."""
-    resources: List[SegmentResourceConfig | ResourceConfig] = Field(default_factory=list)
+
+    resources: List[SegmentResourceConfig | ResourceConfig] = Field(
+        default_factory=list
+    )
 
 
 class LaunchDarklyIntegration(BaseIntegration):
@@ -86,9 +90,7 @@ class LaunchDarklyIntegration(BaseIntegration):
         super().__init__(context)
 
     async def _filter_segments(
-        self,
-        segments: List[dict[str, Any]],
-        selector: SegmentSelector
+        self, segments: List[dict[str, Any]], selector: SegmentSelector
     ) -> List[dict[str, Any]]:
         """Filter segments based on the selector criteria."""
         filtered_segments = []
@@ -147,7 +149,11 @@ class LaunchDarklyIntegration(BaseIntegration):
                 segment_included = segment.get("included", [])
                 segment_excluded = segment.get("excluded", [])
 
-                if len(segment_rules) == 0 and len(segment_included) == 0 and len(segment_excluded) == 0:
+                if (
+                    len(segment_rules) == 0
+                    and len(segment_included) == 0
+                    and len(segment_excluded) == 0
+                ):
                     continue
 
             filtered_segments.append(segment)
