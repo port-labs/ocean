@@ -255,14 +255,13 @@ resources:
     port:
       entity:
         mappings:
-          identifier: (.id | tostring) | gsub(" "; "")
+          identifier: .id | gsub(" "; "")
           title: .name
           blueprint: '"iteration"'
           properties:
             name: .name
             path: .path
             iterationKind: .__iterationKind
-            attributes: .attributes
-            link: .url
+            timeFrame: .attributes.timeFrame
           relations:
-            project: .__projectId | gsub(" "; "")
+            project: .__project.id | gsub(" "; "")
