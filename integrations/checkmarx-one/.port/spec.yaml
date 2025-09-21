@@ -2,6 +2,7 @@ title: Checkmarx One
 description: Checkmarx One integration for Port Ocean
 icon: Checkmarx
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/checkmarx-one
+recommendedInstallationMethod: Saas
 features:
   - type: exporter
     section: Code Quality & Security

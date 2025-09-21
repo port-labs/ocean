@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "komodor"
-version = "0.1.58"
+version = "0.1.59"
 description = "Komodor Ocean Integration"
 authors = ["Yotam Dekel <yotam@komodor.io>"]
 

@@ -1,3 +1,11 @@
+## 0.1.117-beta (2025-01-27)
+
+
+### Improvements
+
+- Added recommendedInstallationMethod: 'saas' to integration spec
+
+
 ## 0.1.116-beta (2025-09-08)
 
 
