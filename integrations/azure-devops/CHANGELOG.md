@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.5 (2025-09-18)
+
+
+### Features
+
+- Added support for build kind
+- Added support for pipeline stage kind
+- Added support for pipeline runs kind
+
+
 ## 0.4.4 (2025-09-17)
 
 
