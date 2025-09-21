@@ -63,7 +63,7 @@ class ExecutionManager(ActionsClientMixin):
         self._actions_executors[action_name] = executor_cls
         logger.info("Registered action executor", action=action_name)
 
-    async def start_processing_action_runs(self) -> None:
+    async def start_processing_action_runs(self):
         """
         Start polling and processing action runs for all registered actions.
         """
@@ -105,7 +105,9 @@ class ExecutionManager(ActionsClientMixin):
         """
         while True:
             await self._should_poll_more_runs.wait()
-            runs = await self.get_pending_runs(limit=ocean.config.max_runs_per_poll)
+            runs = await self.get_pending_runs(
+                limit=ocean.config.execution_agent.max_runs_per_poll
+            )
             for run in runs:
                 if run.action.name not in self._actions_executors:
                     logger.warning(
@@ -126,7 +128,5 @@ class ExecutionManager(ActionsClientMixin):
         Gracefully shutdown poller and all action queue workers.
         """
         logger.warning("Shutting down execution manager")
-        await self._polling_task.cancel()
-        await self._global_queue.teardown()
-        for partition_queue in self._partition_queues.values():
-            await partition_queue.teardown()
+        if self._polling_task and not self._polling_task.done():
+            self._polling_task.cancel()
