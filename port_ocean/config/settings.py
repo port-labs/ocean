@@ -82,6 +82,8 @@ class StreamingSettings(BaseOceanModel, extra=Extra.allow):
 
 class ExecutionAgentSettings(BaseOceanModel, extra=Extra.allow):
     enabled: bool = Field(default=False)
+    max_runs_per_poll: int = Field(default=50)
+    workers_count: int = Field(default=4)
 
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):

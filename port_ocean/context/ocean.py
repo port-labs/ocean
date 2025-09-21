@@ -214,7 +214,7 @@ class PortOceanContext:
         """
         self.app.webhook_manager.register_processor(path, processor)
 
-    def register_executor(self, executor: type[AbstractExecutor]) -> None:
+    def register_action_executor(self, executor: type[AbstractExecutor]) -> None:
         self.app.execution_manager.register_executor(executor)
 
 

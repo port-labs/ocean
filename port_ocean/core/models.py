@@ -140,14 +140,14 @@ class InvocationType(StrEnum):
     OCEAN = "ocean"
 
 
+class OceanExecution(BaseModel):
+    inputs: dict[str, Any]
+
+
 class IntegrationInvocationPayload(BaseModel):
     type: Literal[InvocationType.OCEAN]
     installationId: int
     action: str
-
-    class OceanExecution(BaseModel):
-        inputs: dict[str, Any]
-
     oceanExecution: OceanExecution
 
 
