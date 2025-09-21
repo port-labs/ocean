@@ -449,52 +449,57 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Yield iterations (in batches) for a specific project."""
         project_id = project["id"]
-        iterations_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/classificationnodes/iterations"
 
-        params = {"$depth": 2, "api-version": "7.1"}
+        # Get teams for the project
+        teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
 
         try:
-            response = await self.send_request("GET", iterations_url, params=params)
-            if not response:
+            teams_response = await self.send_request("GET", teams_url)
+            if not teams_response:
                 return
 
-            iterations_data = response.json()
-            iterations = self._parse_iteration_nodes(iterations_data, project)
+            teams = teams_response.json().get("value", [])
 
-            if iterations:
-                yield iterations
+            # Get iterations for each team
+            for team in teams:
+                team_id = team["id"]
+                iterations_url = f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/teamsettings/iterations"
+
+                params = {"api-version": "7.1"}
+
+                try:
+                    response = await self.send_request(
+                        "GET", iterations_url, params=params
+                    )
+                    if not response:
+                        continue
+
+                    iterations_data = response.json()
+                    iterations = iterations_data.get("value", [])
+
+                    # Process and enrich iterations
+                    enriched_iterations = []
+                    for iteration in iterations:
+                        enriched_iteration = {
+                            **iteration,
+                            "__project": project,
+                            "__team": team,
+                            "__iterationKind": self._determine_iteration_type(
+                                iteration, iteration.get("path", "")
+                            ),
+                        }
+                        enriched_iterations.append(enriched_iteration)
+
+                    if enriched_iterations:
+                        yield enriched_iterations
+
+                except Exception as e:
+                    logger.error(
+                        f"Failed to fetch iterations for team {team_id} in project {project_id}: {str(e)}"
+                    )
 
         except Exception as e:
-            logger.warning(
-                f"Failed to fetch iterations for project {project_id}: {str(e)}"
-            )
-
-    def _parse_iteration_nodes(
-        self, node: dict[str, Any], project: dict[str, Any], parent_path: str = ""
-    ) -> list[dict[str, Any]]:
-        """Parse iteration nodes recursively from Azure DevOps classification API response."""
-        iterations = []
-
-        current_iteration = {
-            **node,
-            "__project": project,
-            "__iterationKind": self._determine_iteration_type(node, parent_path),
-        }
-
-        if node.get("id") and node.get("name"):
-            iterations.append(current_iteration)
-
-        children = node.get("children", [])
-        current_path = (
-            f"{parent_path}/{node.get('name', '')}"
-            if parent_path
-            else node.get("name", "")
-        )
-
-        for child in children:
-            child_iterations = self._parse_iteration_nodes(child, project, current_path)
-            iterations.extend(child_iterations)
-        return iterations
+            logger.error(f"Failed to fetch teams for project {project_id}: {str(e)}")
 
     def _determine_iteration_type(
         self, iteration: dict[str, Any], parent_path: str

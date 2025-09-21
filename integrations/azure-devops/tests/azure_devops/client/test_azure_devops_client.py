@@ -3218,31 +3218,42 @@ async def test_generate_iterations(mock_event_context: MagicMock) -> None:
     async def mock_send_request(
         method: str, url: str, **kwargs: Any
     ) -> Optional[Response]:
-        if "classificationnodes/iterations" in url:
+        if "projects" in url and "teams" in url:
+            # Mock teams response
+            teams_data = {
+                "value": [
+                    {"id": "team1", "name": "Team One"},
+                    {"id": "team2", "name": "Team Two"},
+                ]
+            }
+            return Response(status_code=200, json=teams_data)
+        elif "work/teamsettings/iterations" in url:
+            # Mock iterations response
             iterations_data = {
-                "id": "root",
-                "name": "Project One",
-                "structureType": "iteration",
-                "hasChildren": True,
-                "path": "\\Project One\\Iteration",
-                "children": [
+                "value": [
                     {
-                        "id": 1,
+                        "id": "a589a806-bf11-4d4f-a031-c19813331553",
                         "name": "Sprint 1",
-                        "structureType": "iteration",
-                        "hasChildren": False,
                         "path": "\\Project One\\Iteration\\Sprint 1",
-                        "url": "https://dev.azure.com/org/proj/_apis/wit/classificationNodes/Iterations/Sprint%201",
+                        "attributes": {
+                            "startDate": "2024-01-01T00:00:00Z",
+                            "finishDate": "2024-01-15T00:00:00Z",
+                            "timeFrame": "current",
+                        },
+                        "url": "https://dev.azure.com/fabrikam/6d823a47-2d51-4f31-acff-74927f88ee1e/748b18b6-4b3c-425a-bcae-ff9b3e703012/_apis/work/teamsettings/iterations/a589a806-bf11-4d4f-a031-c19813331553",
                     },
                     {
-                        "id": 2,
+                        "id": "b589a806-bf11-4d4f-a031-c19813331554",
                         "name": "Release 1.0",
-                        "structureType": "iteration",
-                        "hasChildren": False,
                         "path": "\\Project One\\Iteration\\Release 1.0",
-                        "url": "https://dev.azure.com/org/proj/_apis/wit/classificationNodes/Iterations/Release%201.0",
+                        "attributes": {
+                            "startDate": "2024-01-16T00:00:00Z",
+                            "finishDate": "2024-02-15T00:00:00Z",
+                            "timeFrame": "future",
+                        },
+                        "url": "https://dev.azure.com/fabrikam/6d823a47-2d51-4f31-acff-74927f88ee1e/748b18b6-4b3c-425a-bcae-ff9b3e703012/_apis/work/teamsettings/iterations/b589a806-bf11-4d4f-a031-c19813331554",
                     },
-                ],
+                ]
             }
             return Response(status_code=200, json=iterations_data)
         return None
@@ -3262,36 +3273,43 @@ async def test_generate_iterations(mock_event_context: MagicMock) -> None:
                     iterations.extend(iteration_batch)
 
                 # ASSERT
-                assert len(iterations) == 3  # Root + 2 children
+                assert len(iterations) == 4  # 2 teams × 2 iterations each
 
-                # Check root iteration
-                root = next(
-                    iter for iter in iterations if iter["name"] == "Project One"
-                )
-                assert root["id"] == "root"
-                assert root["name"] == "Project One"
-                assert root["__iterationKind"] == "iteration"
-                assert root["__project"]["name"] == "Project One"
-
-                # Check Sprint 1
-                sprint1 = next(
+                # Check Sprint 1 (from both teams)
+                sprint1_iterations = [
                     iter for iter in iterations if iter["name"] == "Sprint 1"
-                )
-                assert sprint1["id"] == 1
-                assert sprint1["name"] == "Sprint 1"
-                assert sprint1["path"] == "\\Project One\\Iteration\\Sprint 1"
-                assert sprint1["__iterationKind"] == "sprint"
-                assert sprint1["__project"]["name"] == "Project One"
+                ]
+                assert len(sprint1_iterations) == 2
 
-                # Check Release 1.0
-                release1 = next(
+                for sprint1 in sprint1_iterations:
+                    assert sprint1["id"] == "a589a806-bf11-4d4f-a031-c19813331553"
+                    assert sprint1["name"] == "Sprint 1"
+                    assert sprint1["path"] == "\\Project One\\Iteration\\Sprint 1"
+                    assert sprint1["__iterationKind"] == "sprint"
+                    assert sprint1["__project"]["name"] == "Project One"
+                    assert sprint1["__team"]["name"] in ["Team One", "Team Two"]
+                    assert sprint1["attributes"]["startDate"] == "2024-01-01T00:00:00Z"
+                    assert sprint1["attributes"]["finishDate"] == "2024-01-15T00:00:00Z"
+                    assert sprint1["attributes"]["timeFrame"] == "current"
+
+                # Check Release 1.0 (from both teams)
+                release1_iterations = [
                     iter for iter in iterations if iter["name"] == "Release 1.0"
-                )
-                assert release1["id"] == 2
-                assert release1["name"] == "Release 1.0"
-                assert release1["path"] == "\\Project One\\Iteration\\Release 1.0"
-                assert release1["__iterationKind"] == "release"
-                assert release1["__project"]["name"] == "Project One"
+                ]
+                assert len(release1_iterations) == 2
+
+                for release1 in release1_iterations:
+                    assert release1["id"] == "b589a806-bf11-4d4f-a031-c19813331554"
+                    assert release1["name"] == "Release 1.0"
+                    assert release1["path"] == "\\Project One\\Iteration\\Release 1.0"
+                    assert release1["__iterationKind"] == "release"
+                    assert release1["__project"]["name"] == "Project One"
+                    assert release1["__team"]["name"] in ["Team One", "Team Two"]
+                    assert release1["attributes"]["startDate"] == "2024-01-16T00:00:00Z"
+                    assert (
+                        release1["attributes"]["finishDate"] == "2024-02-15T00:00:00Z"
+                    )
+                    assert release1["attributes"]["timeFrame"] == "future"
 
 
 @pytest.mark.asyncio
@@ -3309,8 +3327,10 @@ async def test_generate_iterations_will_skip_404(
     async def mock_send_request(
         method: str, url: str, **kwargs: Any
     ) -> Optional[Response]:
-        if "classificationnodes/iterations" in url:
-            return None  # Simulate 404 or empty response
+        if "projects" in url and "teams" in url:
+            return None  # Simulate 404 for teams
+        elif "work/teamsettings/iterations" in url:
+            return None  # Simulate 404 for iterations
         return None
 
     async with event_context("test_event"):
@@ -3397,71 +3417,6 @@ async def test_determine_iteration_type() -> None:
 
 
 @pytest.mark.asyncio
-async def test_parse_iteration_nodes() -> None:
-    client = AzureDevopsClient(
-        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
-    )
-
-    project = {"id": "proj1", "name": "Project One"}
-
-    # Test with hierarchical iteration data
-    node_data = {
-        "id": "root",
-        "name": "Project One",
-        "structureType": "iteration",
-        "hasChildren": True,
-        "path": "\\Project One\\Iteration",
-        "children": [
-            {
-                "id": 1,
-                "name": "Sprint 1",
-                "structureType": "iteration",
-                "hasChildren": False,
-                "path": "\\Project One\\Iteration\\Sprint 1",
-                "url": "https://dev.azure.com/org/proj/_apis/wit/classificationNodes/Iterations/Sprint%201",
-            },
-            {
-                "id": 2,
-                "name": "Release 1.0",
-                "structureType": "iteration",
-                "hasChildren": False,
-                "path": "\\Project One\\Iteration\\Release 1.0",
-                "url": "https://dev.azure.com/org/proj/_apis/wit/classificationNodes/Iterations/Release%201.0",
-            },
-        ],
-    }
-
-    # ACT
-    iterations = client._parse_iteration_nodes(node_data, project)
-
-    # ASSERT
-    assert len(iterations) == 3  # Root + 2 children
-
-    # Check root iteration
-    root = next(iter for iter in iterations if iter["name"] == "Project One")
-    assert root["id"] == "root"
-    assert root["name"] == "Project One"
-    assert root["__iterationKind"] == "iteration"
-    assert root["__project"]["name"] == "Project One"
-
-    # Check Sprint 1
-    sprint1 = next(iter for iter in iterations if iter["name"] == "Sprint 1")
-    assert sprint1["id"] == 1
-    assert sprint1["name"] == "Sprint 1"
-    assert sprint1["path"] == "\\Project One\\Iteration\\Sprint 1"
-    assert sprint1["__iterationKind"] == "sprint"
-    assert sprint1["__project"]["name"] == "Project One"
-
-    # Check Release 1.0
-    release1 = next(iter for iter in iterations if iter["name"] == "Release 1.0")
-    assert release1["id"] == 2
-    assert release1["name"] == "Release 1.0"
-    assert release1["path"] == "\\Project One\\Iteration\\Release 1.0"
-    assert release1["__iterationKind"] == "release"
-    assert release1["__project"]["name"] == "Project One"
-
-
-@pytest.mark.asyncio
 async def test_iterations_for_project() -> None:
     client = AzureDevopsClient(
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
@@ -3472,23 +3427,26 @@ async def test_iterations_for_project() -> None:
     async def mock_send_request(
         method: str, url: str, **kwargs: Any
     ) -> Optional[Response]:
-        if "classificationnodes/iterations" in url:
+        if "projects" in url and "teams" in url:
+            # Mock teams response
+            teams_data = {"value": [{"id": "team1", "name": "Team One"}]}
+            return Response(status_code=200, json=teams_data)
+        elif "work/teamsettings/iterations" in url:
+            # Mock iterations response based on the official API documentation
             iterations_data = {
-                "id": "root",
-                "name": "Project One",
-                "structureType": "iteration",
-                "hasChildren": True,
-                "path": "\\Project One\\Iteration",
-                "children": [
+                "value": [
                     {
-                        "id": 1,
+                        "id": "a589a806-bf11-4d4f-a031-c19813331553",
                         "name": "Sprint 1",
-                        "structureType": "iteration",
-                        "hasChildren": False,
                         "path": "\\Project One\\Iteration\\Sprint 1",
-                        "url": "https://dev.azure.com/org/proj/_apis/wit/classificationNodes/Iterations/Sprint%201",
+                        "attributes": {
+                            "startDate": "2024-01-01T00:00:00Z",
+                            "finishDate": "2024-01-15T00:00:00Z",
+                            "timeFrame": "current",
+                        },
+                        "url": "https://dev.azure.com/fabrikam/6d823a47-2d51-4f31-acff-74927f88ee1e/748b18b6-4b3c-425a-bcae-ff9b3e703012/_apis/work/teamsettings/iterations/a589a806-bf11-4d4f-a031-c19813331553",
                     }
-                ],
+                ]
             }
             return Response(status_code=200, json=iterations_data)
         return None
@@ -3500,18 +3458,16 @@ async def test_iterations_for_project() -> None:
             iterations.extend(iteration_batch)
 
         # ASSERT
-        assert len(iterations) == 2  # Root + 1 child
-
-        # Check root iteration
-        root = next(iter for iter in iterations if iter["name"] == "Project One")
-        assert root["id"] == "root"
-        assert root["name"] == "Project One"
-        assert root["__iterationKind"] == "iteration"
-        assert root["__project"]["name"] == "Project One"
+        assert len(iterations) == 1  # 1 team × 1 iteration
 
         # Check Sprint 1
-        sprint1 = next(iter for iter in iterations if iter["name"] == "Sprint 1")
-        assert sprint1["id"] == 1
+        sprint1 = iterations[0]
+        assert sprint1["id"] == "a589a806-bf11-4d4f-a031-c19813331553"
         assert sprint1["name"] == "Sprint 1"
+        assert sprint1["path"] == "\\Project One\\Iteration\\Sprint 1"
         assert sprint1["__iterationKind"] == "sprint"
         assert sprint1["__project"]["name"] == "Project One"
+        assert sprint1["__team"]["name"] == "Team One"
+        assert sprint1["attributes"]["startDate"] == "2024-01-01T00:00:00Z"
+        assert sprint1["attributes"]["finishDate"] == "2024-01-15T00:00:00Z"
+        assert sprint1["attributes"]["timeFrame"] == "current"
