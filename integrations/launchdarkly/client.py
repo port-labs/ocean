@@ -237,7 +237,7 @@ class LaunchDarklyClient:
     @cache_iterator_result()
     async def get_paginated_segments(
         self,
-        selector=None,
+        selector: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for environments in self.get_paginated_environments():
             tasks = [

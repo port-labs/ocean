@@ -40,9 +40,9 @@ class SegmentWebhookProcessor(_LaunchDarklyAbstractWebhookProcessor):
         environment_key = None
 
         if target and "resources" in target:
-            resource = target["resources"][0] if target["resources"] else ""
-            if ":" in resource:
-                parts = resource.split(":")
+            resource_str = target["resources"][0] if target["resources"] else ""
+            if ":" in resource_str:
+                parts = resource_str.split(":")
                 if len(parts) >= 3:
                     project_part = parts[0].replace("proj/", "")
                     env_part = parts[1].replace("env/", "")
