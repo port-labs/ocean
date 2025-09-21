@@ -1,4 +1,6 @@
 from loguru import logger
+
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from client import LaunchDarklyClient, ObjectKind
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -7,6 +9,7 @@ from webhook_processors import (
     EnvironmentWebhookProcessor,
     ProjectWebhookProcessor,
     AuditLogWebhookProcessor,
+    SegmentWebhookProcessor,
 )
 
 
@@ -41,6 +44,22 @@ async def on_resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield environments
 
 
+@ocean.on_resync(kind=ObjectKind.SEGMENT)
+async def on_resync_segments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = LaunchDarklyClient.create_from_ocean_configuration()
+
+    segment_selector = None
+    for resource in event.port_app_config.resources:
+        if resource.kind == ObjectKind.SEGMENT:
+            segment_selector = resource.selector
+            break
+
+    async for segments in client.get_paginated_segments(selector=segment_selector):
+        logger.info(f"Received {kind} batch with {len(segments)} items")
+        yield segments
+
+
+
 @ocean.on_resync(kind=ObjectKind.FEATURE_FLAG_STATUS)
 async def on_resync_feature_flag_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LaunchDarklyClient.create_from_ocean_configuration()
@@ -73,3 +92,4 @@ ocean.add_webhook_processor("/webhook", FeatureFlagWebhookProcessor)
 ocean.add_webhook_processor("/webhook", EnvironmentWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", AuditLogWebhookProcessor)
+ocean.add_webhook_processor("/webhook", SegmentWebhookProcessor)

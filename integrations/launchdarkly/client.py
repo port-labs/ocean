@@ -11,7 +11,8 @@ from port_ocean.context.ocean import ocean
 from rate_limiter import LaunchDarklyRateLimiter
 
 
-PAGE_SIZE = 100
+DEFAULT_PAGE_SIZE = 100
+SEGMENT_PAGE_SIZE = 50
 
 
 class ObjectKind(StrEnum):
@@ -20,6 +21,7 @@ class ObjectKind(StrEnum):
     FEATURE_FLAG = "flag"
     ENVIRONMENT = "environment"
     FEATURE_FLAG_STATUS = "flag-status"
+    SEGMENT = "segment"
 
 
 class LaunchDarklyClient:
@@ -53,7 +55,7 @@ class LaunchDarklyClient:
         )
 
     async def get_paginated_resource(
-        self, kind: str, resource_path: str | None = None, page_size: int = PAGE_SIZE
+        self, kind: str, resource_path: str | None = None, page_size: int = DEFAULT_PAGE_SIZE
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetch and paginate through resources from a LaunchDarkly API endpoint.
@@ -228,6 +230,150 @@ class LaunchDarklyClient:
             ]
             feature_flags.extend(updated_batch)
         return feature_flags
+
+    @cache_iterator_result()
+    async def get_paginated_segments(
+        self,
+        selector=None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for environments in self.get_paginated_environments():
+            tasks = [
+                self.fetch_segments_for_environment(environment) for environment in environments
+            ]
+            segments_batches = await asyncio.gather(*tasks)
+            for segments in segments_batches:
+                if selector:
+                    filtered_segments = self._filter_segments(segments, selector)
+                    yield filtered_segments
+                else:
+                    yield segments
+
+    def _filter_segments(
+        self,
+        segments: list[dict[str, Any]],
+        selector: Any
+    ) -> list[dict[str, Any]]:
+        """Filter segments based on the selector criteria."""
+        filtered_segments = []
+
+        for segment in segments:
+            # Check if selector has SegmentSelector-specific attributes
+            if hasattr(selector, 'tags') and selector.tags is not None:
+                segment_tags = segment.get("tags", [])
+                if not any(tag in segment_tags for tag in selector.tags):
+                    continue
+
+            if hasattr(selector, 'archived') and selector.archived is not None:
+                segment_archived = segment.get("archived", False)
+                if segment_archived != selector.archived:
+                    continue
+
+            if hasattr(selector, 'name_pattern') and selector.name_pattern is not None:
+                segment_name = segment.get("name", "").lower()
+                if selector.name_pattern.lower() not in segment_name:
+                    continue
+
+            if hasattr(selector, 'description_pattern') and selector.description_pattern is not None:
+                segment_description = segment.get("description", "").lower()
+                if selector.description_pattern.lower() not in segment_description:
+                    continue
+
+            if hasattr(selector, 'has_rules') and selector.has_rules is not None:
+                segment_rules = segment.get("rules", [])
+                has_rules = len(segment_rules) > 0
+                if has_rules != selector.has_rules:
+                    continue
+
+            if hasattr(selector, 'has_included_users') and selector.has_included_users is not None:
+                segment_included = segment.get("included", [])
+                has_included = len(segment_included) > 0
+                if has_included != selector.has_included_users:
+                    continue
+
+            if hasattr(selector, 'has_excluded_users') and selector.has_excluded_users is not None:
+                segment_excluded = segment.get("excluded", [])
+                has_excluded = len(segment_excluded) > 0
+                if has_excluded != selector.has_excluded_users:
+                    continue
+
+            if hasattr(selector, 'project_key') and selector.project_key is not None:
+                segment_project = segment.get("__projectKey")
+                if segment_project != selector.project_key:
+                    continue
+
+            if hasattr(selector, 'environment_key') and selector.environment_key is not None:
+                segment_environment = segment.get("__environmentKey")
+                if segment_environment != selector.environment_key:
+                    continue
+
+            if hasattr(selector, 'include_inactive') and not selector.include_inactive:
+                segment_rules = segment.get("rules", [])
+                segment_included = segment.get("included", [])
+                segment_excluded = segment.get("excluded", [])
+
+                if len(segment_rules) == 0 and len(segment_included) == 0 and len(segment_excluded) == 0:
+                    continue
+
+            filtered_segments.append(segment)
+
+        return filtered_segments
+
+    async def fetch_segments_for_environment(
+        self, environment: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        segments = []
+        project_key = environment["__projectKey"]
+        environment_key = environment["key"]
+
+        async for segments_batch in self.get_paginated_resource(
+            ObjectKind.SEGMENT,
+            resource_path=f"{project_key}/{environment_key}",
+            page_size=SEGMENT_PAGE_SIZE
+        ):
+            updated_batch = [
+                {
+                    **segment,
+                    "__projectKey": project_key,
+                    "__environmentKey": environment_key
+                } for segment in segments_batch
+            ]
+            segments.extend(updated_batch)
+        return segments
+
+    async def enrich_feature_flags_with_segments(
+        self, feature_flags: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Enrich feature flags with segment information."""
+        enriched_flags = []
+
+        for flag in feature_flags:
+            project_key = flag.get("__projectKey")
+            if not project_key:
+                enriched_flags.append(flag)
+                continue
+
+            segment_keys = set()
+
+            if targets := flag.get("targets"):
+                for variation_key, target_data in targets.items():
+                    if isinstance(target_data, dict) and "values" in target_data:
+                        segment_keys.update(target_data.get("values", []))
+
+            if rules := flag.get("rules"):
+                for rule in rules:
+                    if isinstance(rule, dict) and "clauses" in rule:
+                        for clause in rule["clauses"]:
+                            if clause.get("attribute") == "user" and clause.get("op") == "segmentMatch":
+                                segment_keys.update(clause.get("values", []))
+
+            if segment_keys:
+                flag["__hasSegments"] = True
+            else:
+                flag["__hasSegments"] = False
+
+            enriched_flags.append(flag)
+
+        return enriched_flags
 
     async def patch_webhook(self, webhook_id: str, webhook_secret: str) -> None:
         """Patch a webhook to add a secret."""

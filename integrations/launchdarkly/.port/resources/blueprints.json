@@ -23,6 +23,87 @@
     "relations": {}
   },
   {
+    "identifier": "launchDarklySegment",
+    "description": "This blueprint represents a segment in LaunchDarkly.",
+    "title": "LaunchDarkly Segment",
+    "icon": "Launchdarkly",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "The name of the segment."
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "A description of what the segment represents."
+        },
+        "creationDate": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Creation Date",
+          "description": "The date and time when the segment was created."
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags associated with the segment."
+        },
+        "included": {
+          "type": "array",
+          "title": "Included Users",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of user keys included in this segment."
+        },
+        "excluded": {
+          "type": "array",
+          "title": "Excluded Users",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of user keys excluded from this segment."
+        },
+        "rules": {
+          "type": "array",
+          "title": "Rules",
+          "items": {
+            "type": "object"
+          },
+          "description": "Rules that define the segment membership."
+        },
+        "archived": {
+          "type": "boolean",
+          "title": "Archived",
+          "description": "Indicates if the segment is archived."
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "launchDarklyProject",
+        "required": true,
+        "many": false
+      },
+      "environment": {
+        "title": "Environment",
+        "target": "launchDarklyEnvironment",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
     "identifier": "launchDarklyFeatureFlag",
     "description": "This blueprint represents a feature flag in LaunchDarkly.",
     "title": "LaunchDarkly Feature Flag",
@@ -87,6 +168,19 @@
           "type": "array",
           "title": "Variations",
           "description": "An array of possible variations for the flag"
+        },
+        "targets": {
+          "type": "object",
+          "title": "Targets",
+          "description": "Target rules for the feature flag, including segment-based targeting."
+        },
+        "rules": {
+          "type": "array",
+          "title": "Rules",
+          "items": {
+            "type": "object"
+          },
+          "description": "Rules that determine flag behavior, including segment-based rules."
         }
       },
       "required": []
@@ -100,6 +194,12 @@
         "target": "launchDarklyProject",
         "required": true,
         "many": false
+      },
+      "segments": {
+        "title": "Segments",
+        "target": "launchDarklySegment",
+        "required": false,
+        "many": true
       }
     }
   },
