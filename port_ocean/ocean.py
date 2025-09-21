@@ -26,6 +26,7 @@ from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
+from port_ocean.core.handlers.actions.execution_manager import ExecutionManager
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.models import ProcessExecutionMode
 from port_ocean.log.sensetive import sensitive_log_filter
@@ -87,6 +88,8 @@ class Ocean:
             max_event_processing_seconds=self.config.max_event_processing_seconds,
             max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
         )
+
+        self.execution_manager = ExecutionManager(self.webhook_manager, signal_handler)
 
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
@@ -188,6 +191,10 @@ class Ocean:
             )
         return self.config.base_url or integration_config.get("app_host")
 
+    @property
+    def execution_agent_enabled(self) -> bool:
+        return self.config.execution_agent.enabled
+
     def load_external_oauth_access_token(self) -> str | None:
         if self.config.oauth_access_token_file_path is not None:
             try:
@@ -200,6 +207,19 @@ class Ocean:
                 )
         return None
 
+    async def register_addons(self) -> None:
+        if self.base_url:
+            await self.webhook_manager.start_processing_event_messages()
+        else:
+            logger.warning("No base URL provided, skipping webhook processing")
+
+        if self.execution_agent_enabled:
+            self.execution_manager.start_processing_action_runs()
+        else:
+            logger.warning(
+                "Execution agent is not enabled, skipping execution agent setup"
+            )
+
     def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
         self.fast_api_app.include_router(
@@ -210,10 +230,7 @@ class Ocean:
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 await self.integration.start()
-                if self.base_url:
-                    await self.webhook_manager.start_processing_event_messages()
-                else:
-                    logger.warning("No base URL provided, skipping webhook processing")
+                await self.register_addons()
                 await self._setup_scheduled_resync()
                 yield None
             except Exception:

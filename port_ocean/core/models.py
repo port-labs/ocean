@@ -1,6 +1,7 @@
+from ctypes import Union
 from dataclasses import dataclass, field
 from enum import Enum, StrEnum
-from typing import Any, TypedDict
+from typing import Any, Literal, TypedDict
 
 from pydantic import BaseModel
 from pydantic.fields import Field
@@ -121,3 +122,37 @@ class EntityPortDiff:
     deleted: list[Entity] = field(default_factory=list)
     modified: list[Entity] = field(default_factory=list)
     created: list[Entity] = field(default_factory=list)
+
+
+class Action(BaseModel):
+    id: str
+    name: str
+    description: str
+
+
+class RunStatus(StrEnum):
+    IN_PROGRESS = "IN_PROGRESS"
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+
+
+class InvocationType(StrEnum):
+    OCEAN = "ocean"
+
+
+class IntegrationInvocationPayload(BaseModel):
+    type: Literal[InvocationType.OCEAN]
+    installationId: int
+    action: str
+
+    class OceanExecution(BaseModel):
+        inputs: dict[str, Any]
+
+    oceanExecution: OceanExecution
+
+
+class ActionRun(BaseModel):
+    id: str
+    status: RunStatus
+    action: Action
+    payload: Union[IntegrationInvocationPayload]
