@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added recommendedInstallationMethod: 'saas' to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
+- Added recommendedInstallationMethod: Saas to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
 
 
 # Port_Ocean 0.1.133 (2025-09-17)

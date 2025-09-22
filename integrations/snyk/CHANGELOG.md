@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added recommendedInstallationMethod: 'saas' to integration spec
+- Added recommendedInstallationMethod: Saas to integration spec
 
 
 ## 0.2.72 (2025-09-17)

@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added recommendedInstallationMethod: 'saas' to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
+- Added recommendedInstallationMethod: Saas to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
 
 
 ## 0.2.57 (2025-09-17)
