@@ -7,13 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.5-dev (2025-09-17)
+## 0.3.6-dev (2025-09-22)
 
 
 ### Improvements
 
 - Update default blueprints and mapping
-- Add checkmarx one ui base url to exported data
+
+
+## 0.3.5-dev (2025-09-22)
+
+
+### Improvements
+
+- Added recommendedInstallationMethod: Saas to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
 
 
 ## 0.3.4-dev (2025-09-17)
