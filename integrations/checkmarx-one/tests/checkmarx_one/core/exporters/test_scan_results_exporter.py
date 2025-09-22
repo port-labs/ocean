@@ -50,14 +50,7 @@ async def test__get_paginated_scan_results(
     async for batch in exporter._get_paginated_scan_results(params):
         results.extend(batch)
 
-    # Check that results contain the expected fields including __ui_base_url and __scan_id
-    assert len(results) == 2
-    assert results[0]["id"] == "1"
-    assert results[0]["__scan_id"] == "scan-123"
-    assert "__ui_base_url" in results[0]
-    assert results[1]["id"] == "2"
-    assert results[1]["__scan_id"] == "scan-123"
-    assert "__ui_base_url" in results[1]
+    assert results == [{"id": "1"}, {"id": "2"}]
     mock_client.send_paginated_request.assert_called_once_with(
         "/results", "results", {"scan-id": "scan-123"}
     )
@@ -79,16 +72,10 @@ async def test_get_paginated_resources_filters_and_enriches(
     async for batch in exporter.get_paginated_resources(options):
         batches.extend(batch)
 
-    # Check that results contain the expected fields including __ui_base_url and __scan_id
-    assert len(batches) == 2
-    assert batches[0]["id"] == "1"
-    assert batches[0]["type"] == "sast"
-    assert batches[0]["__scan_id"] == "scan-123"
-    assert "__ui_base_url" in batches[0]
-    assert batches[1]["id"] == "3"
-    assert batches[1]["type"] == "sast"
-    assert batches[1]["__scan_id"] == "scan-123"
-    assert "__ui_base_url" in batches[1]
+    assert batches == [
+        {"id": "1", "type": "sast", "__scan_id": "scan-123"},
+        {"id": "3", "type": "sast", "__scan_id": "scan-123"},
+    ]
 
 
 def test_get_params_with_all_options(exporter: CheckmarxScanResultExporter) -> None:

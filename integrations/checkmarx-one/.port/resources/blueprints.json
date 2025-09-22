@@ -46,11 +46,6 @@
           "type": "string",
           "title": "Criticality",
           "description": "The criticality level of the project."
-        },
-        "link": {
-          "type": "string",
-          "title": "Link",
-          "format": "url"
         }
       },
       "required": ["name"]
@@ -115,11 +110,6 @@
           },
           "title": "Status Details",
           "description": "Detailed status information for the scan."
-        },
-        "link": {
-          "type": "string",
-          "title": "Link",
-          "format": "url"
         }
       },
       "required": ["status", "projectId"]
@@ -233,11 +223,6 @@
             "false_positive"
           ],
           "description": "The state of the API security risk."
-        },
-        "link": {
-          "type": "string",
-          "title": "Link",
-          "format": "url"
         }
       },
       "required": [
@@ -373,11 +358,6 @@
           "type": "string",
           "title": "Similarity ID",
           "description": "The similarity ID used to group similar SCA findings together."
-        },
-        "link": {
-          "type": "string",
-          "title": "Link",
-          "format": "url"
         }
       },
       "required": []
@@ -510,11 +490,6 @@
           "type": "string",
           "title": "Similarity ID",
           "description": "The similarity ID used to group similar container security findings together."
-        },
-        "link": {
-          "type": "string",
-          "title": "Link",
-          "format": "url"
         }
       },
       "required": []
@@ -642,11 +617,6 @@
           "type": "string",
           "title": "Similarity ID",
           "description": "The similarity ID used to group similar KICS findings together."
-        },
-        "link": {
-          "type": "string",
-          "title": "Link",
-          "format": "url"
         }
       },
       "required": []
@@ -767,11 +737,6 @@
           "type": "string",
           "title": "Similarity ID",
           "description": "The similarity ID used to group similar SAST findings together."
-        },
-        "link": {
-          "type": "string",
-          "title": "Link",
-          "format": "url"
         }
       },
       "required": []

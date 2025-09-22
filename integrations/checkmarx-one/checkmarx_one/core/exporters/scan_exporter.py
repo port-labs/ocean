@@ -5,7 +5,6 @@ from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from port_ocean.utils.cache import cache_iterator_result
 from checkmarx_one.core.options import SingleScanOptions, ListScanOptions
-from checkmarx_one.core.exporters.utils import enrich_result_with_metadata
 
 
 class CheckmarxScanExporter(AbstractCheckmarxExporter):
@@ -41,10 +40,7 @@ class CheckmarxScanExporter(AbstractCheckmarxExporter):
             "/scans", "scans", params
         ):
             logger.info(f"Fetched batch of {len(scans)} scans")
-            yield [
-                enrich_result_with_metadata(scan, self.client.ui_base_url)
-                for scan in scans
-            ]
+            yield scans
 
     def _get_params(self, options: ListScanOptions) -> dict[str, Any]:
         params: dict[str, Any] = {}

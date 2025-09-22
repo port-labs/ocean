@@ -29,7 +29,6 @@ with patch.dict(
 ):
     from checkmarx_one.core.exporters.api_sec_exporter import CheckmarxApiSecExporter
     from checkmarx_one.clients.client import CheckmarxOneClient
-    from checkmarx_one.core.exporters.utils import enrich_result_with_metadata
 
 
 class TestCheckmarxApiSecExporter:
@@ -68,12 +67,12 @@ class TestCheckmarxApiSecExporter:
         """Test enriching scan result with scan ID."""
         scan_result = {"risk_id": "123", "name": "Test Risk"}
         scan_id = "scan-456"
-        ui_base_url = "https://example.com"
 
-        enriched_result = enrich_result_with_metadata(scan_result, ui_base_url, scan_id)
+        enriched_result = exporter._enrich_scan_result_with_scan_id(
+            scan_result, scan_id
+        )
 
         assert enriched_result["__scan_id"] == scan_id
-        assert enriched_result["__ui_base_url"] == ui_base_url
         assert enriched_result["risk_id"] == "123"
         assert enriched_result["name"] == "Test Risk"
 
@@ -128,16 +127,3 @@ class TestCheckmarxApiSecExporter:
 
         assert len(results) == 1
         assert len(results[0]) == 0
-
-    def test_enrich_result_with_metadata(self) -> None:
-        """Test enriching result with metadata."""
-        result = {"risk_id": "123", "name": "Test Risk"}
-        ui_base_url = "https://example.com"
-        scan_id = "scan-456"
-
-        enriched_result = enrich_result_with_metadata(result, ui_base_url, scan_id)
-
-        assert enriched_result["__ui_base_url"] == ui_base_url
-        assert enriched_result["__scan_id"] == scan_id
-        assert enriched_result["risk_id"] == "123"
-        assert enriched_result["name"] == "Test Risk"

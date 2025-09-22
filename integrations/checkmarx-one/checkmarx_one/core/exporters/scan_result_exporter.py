@@ -4,7 +4,6 @@ from loguru import logger
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from checkmarx_one.core.options import ListScanResultOptions
-from checkmarx_one.core.exporters.utils import enrich_result_with_metadata
 
 
 class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
@@ -52,12 +51,7 @@ class CheckmarxScanResultExporter(AbstractCheckmarxExporter):
             logger.info(
                 f"Fetched batch of {len(results)} scan results for scan {params['scan-id']}"
             )
-            yield [
-                enrich_result_with_metadata(
-                    result, self.client.ui_base_url, params["scan-id"]
-                )
-                for result in results
-            ]
+            yield results
 
     async def get_paginated_resources(
         self, options: ListScanResultOptions

@@ -3,7 +3,6 @@ from loguru import logger
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
 from checkmarx_one.core.options import SingleProjectOptions, ListProjectOptions
-from checkmarx_one.core.exporters.utils import enrich_result_with_metadata
 
 
 class CheckmarxProjectExporter(AbstractCheckmarxExporter):
@@ -36,7 +35,4 @@ class CheckmarxProjectExporter(AbstractCheckmarxExporter):
             "/projects", "projects"
         ):
             logger.info(f"Fetched batch of {len(projects)} projects")
-            yield [
-                enrich_result_with_metadata(project, self.client.ui_base_url)
-                for project in projects
-            ]
+            yield projects
