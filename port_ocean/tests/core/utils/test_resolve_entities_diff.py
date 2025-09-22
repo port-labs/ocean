@@ -619,7 +619,7 @@ def test_get_port_diff_with_dictionary_identifier() -> None:
     as it is an unhashable type and cannot be used as a dictionary key in the function.
     """
     entity_with_dict_id = create_test_entity(
-        identifier={"id": "some_id"},  # type: ignore
+        identifier={"rules": "some_id", "combinator": "some combinator"},  # type: ignore
         blueprint="bp1",
         properties={},
         relations={},
