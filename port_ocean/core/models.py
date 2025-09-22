@@ -124,6 +124,12 @@ class EntityPortDiff:
     created: list[Entity] = field(default_factory=list)
 
 
+class IntegrationFeatureFlag(StrEnum):
+    USE_PROVISIONED_DEFAULTS = "USE_PROVISIONED_DEFAULTS"
+    LAKEHOUSE_ELIGIBLE = "LAKEHOUSE_ELIGIBLE"
+    OCEAN_EXECUTION_AGENT_ELIGIBLE = "OCEAN_EXECUTION_AGENT_ELIGIBLE"
+
+
 class Action(BaseModel):
     id: str
     name: str
@@ -140,15 +146,11 @@ class InvocationType(StrEnum):
     OCEAN = "ocean"
 
 
-class OceanExecution(BaseModel):
-    inputs: dict[str, Any]
-
-
 class IntegrationInvocationPayload(BaseModel):
     type: Literal[InvocationType.OCEAN]
     installationId: int
     action: str
-    oceanExecution: OceanExecution
+    oceanExecution: Any = Field(default_factory=dict)
 
 
 class ActionRun(BaseModel):

@@ -41,13 +41,8 @@ class ActionsClientMixin:
         return response.json()
 
     async def get_pending_runs(self, limit: int = 50) -> list[ActionRun]:
-        # response = await self.client.get(
-        #     f"{self.auth.api_url}/runs/pending?installation_id={self.auth.integration_identifier}",
-        #     headers=await self.auth.headers(),
-        # )
-        # handle_port_status_code(response)
-        # return response.json()
-        return [{}]
+        # TODO: Implement
+        pass
 
     async def patch_run(self, run_id: str, run: dict[str, Any]) -> None:
         response = await self.client.patch(

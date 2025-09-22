@@ -76,7 +76,9 @@ class PortOceanContext:
     @property
     def event_listener_type(
         self,
-    ) -> Literal["WEBHOOK", "KAFKA", "POLLING", "ONCE", "WEBHOOKS_ONLY"]:
+    ) -> Literal[
+        "WEBHOOK", "KAFKA", "POLLING", "ONCE", "WEBHOOKS_ONLY", "ACTIONS_ONLY"
+    ]:
         return self.app.config.event_listener.type
 
     def on_resync(
