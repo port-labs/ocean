@@ -1,5 +1,6 @@
 description: Amplication integration for Port Ocean
 icon: Amplication
+recommendedInstallationMethod: Saas
 features:
   - type: exporter
     section: Other
