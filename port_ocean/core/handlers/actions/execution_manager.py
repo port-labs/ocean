@@ -139,19 +139,15 @@ class ExecutionManager(ActionsClientMixin):
                         continue
 
                     # TODO: Ack this run in action service
-                    partition_key_value = self._actions_executors[
-                        action_name
-                    ].partition_key()
-                    if partition_key_value:
-                        partition_name = self._extract_partition_key(
-                            run, partition_key_value
-                        )
+                    partition_key = self._actions_executors[action_name].partition_key()
+                    if partition_key:
+                        partition_name = self._extract_partition_key(run, partition_key)
                         if partition_name not in self._partition_queues:
                             self._partition_queues[partition_name] = LocalQueue()
                         await self.add_run_to_queue(
                             run,
-                            self._partition_queues[partition_key_value],
-                            partition_key_value,
+                            self._partition_queues[partition_name],
+                            partition_name,
                         )
                     else:
                         await self.add_run_to_queue(
@@ -198,46 +194,38 @@ class ExecutionManager(ActionsClientMixin):
         if await self._global_queue.size() == 0:
             return False
         run = await self._global_queue.get()
-        run_lock_key = f"run:{run.id}"
-        locked = await self._try_lock(run_lock_key)
         try:
-            if not locked:
-                # Put back and skip; someone else holds the lock
-                await self._global_queue.put(run)
-                await self._global_queue.commit()
-                return False
             await self._execute_run(run)
-            await self._global_queue.commit()
-            return True
-        finally:
-            if locked:
-                await self._unlock(run_lock_key)
 
-    async def _handle_partition_queue_once(self, partition_name: str):
+        finally:
+            await self._global_queue.commit()
+
+        return True
+
+    async def _handle_partition_queue_once(self, partition_name: str) -> bool:
         """
         Try to process a single run from the given partition queue.
+        Returns True if work was done, False otherwise.
         """
         queue = self._partition_queues[partition_name]
         if await queue.size() == 0:
             return False
         queue_lock_key = f"queue:{partition_name}"
-        locked = await self._try_lock(queue_lock_key)
-        if not locked:
+        successfully_locked = await self._try_lock(queue_lock_key)
+        if not successfully_locked:
             return False
         try:
             run = await queue.get()
             await self._execute_run(run)
-            await queue.commit()
-            return True
         finally:
+            await queue.commit()
             await self._unlock(queue_lock_key)
+
+        return True
 
     async def _worker(self) -> None:
         """
         Round-robin worker across global queue and partition queues.
-
-        - Global queue uses task-level locks: one lock per run id
-        - Partition queues use queue-level locks: one lock per partition name
         """
         while True:
             try:
@@ -245,11 +233,13 @@ class ExecutionManager(ActionsClientMixin):
 
                 try:
                     if source == GLOBAL_SOURCE:
-                        await self._handle_global_queue_once()
+                        did_work = await self._handle_global_queue_once()
                     else:
-                        await self._handle_partition_queue_once(source)
+                        did_work = await self._handle_partition_queue_once(source)
 
-                    # Re-add source if it still has work
+                    if not did_work:
+                        continue
+
                     async with self._queue_state_lock:
                         if source == GLOBAL_SOURCE:
                             queue = self._global_queue
@@ -280,6 +270,7 @@ class ExecutionManager(ActionsClientMixin):
             await self.patch_run(
                 run.id, {"summary": str(e), "status": RunStatus.FAILURE}
             )
+            raise e
 
     async def shutdown(self) -> None:
         """
