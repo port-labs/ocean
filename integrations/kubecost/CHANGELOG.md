@@ -7,12 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.200 (2025-01-27)
+## 0.1.203 (2025-01-27)
 
 
 ### Improvements
 
 - Added recommendedInstallationMethod: 'saas' to integration spec
+
+
+## 0.1.202 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.1.201 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.1.200 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
 
 
 ## 0.1.199 (2025-09-08)

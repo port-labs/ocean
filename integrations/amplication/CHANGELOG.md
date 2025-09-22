@@ -1,9 +1,33 @@
-## 0.1.69 (2025-01-27)
+## 0.1.72 (2025-01-27)
 
 
 ### Improvements
 
 - Added recommendedInstallationMethod: 'saas' to integration spec
+
+
+## 0.1.71 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.1.70 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.1.69 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
 
 
 ## 0.1.68 (2025-09-08)

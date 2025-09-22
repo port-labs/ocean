@@ -7,7 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.3.2-beta (2025-09-18)
+
+
+### Improvements
+
+- Add docs and installation docs to the integration
+
+
+## 1.3.1-beta (2025-09-17)
+
+
+### Improvements
+
+- Improve runtime complexity by processing accessible accounts concurrently
+
+
+## 1.3.0-beta (2025-09-17)
+
+
+### Features
+
+- Add support for AWS::Organizations::Account Kind
+
+
+## 1.2.2-beta (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 1.2.1-beta (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 1.2.0-beta (2025-09-09)
+
+
+### Features
+
+- Add support for AWS::Account:Info Kind
+
+### Improvements
+
+- Relate Existing resources to Account
+
+
+## 1.1.2-beta (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
 ## 1.1.1-beta (2025-09-09)
+
 
 ### Features
 
@@ -15,6 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 1.1.0-beta (2025-09-09)
+
 
 ### Features
 
@@ -53,6 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 1.0.1-beta (2025-09-01)
 
+
 ### Improvements
 
 - Renamed integration to AWS Hosted by Port
@@ -60,6 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 1.0.0-beta (2025-08-31)
+
 
 ### Features
 

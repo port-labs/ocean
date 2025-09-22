@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.5 (2025-09-18)
+
+
+### Features
+
+- Added support for build kind
+- Added support for pipeline stage kind
+- Added support for pipeline runs kind
+
+
+## 0.4.4 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.4.3 (2025-09-16)
+
+
+### Features
+
+- Added support for test-run kind in Azure DevOps integration
+- Added enrichment to include test results
+
+
+## 0.4.2 (2025-09-16)
+
+
+### Features
+
+- Added support for envrionments kind in Azure DevOps integration
+- Added support for release_deployment kind in Azure DevOps integration
+- Added support for pipeline_deployment kind in Azure DevOps integration
+
+
+## 0.4.1 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.4.0 (2025-09-11)
+
+
+### Improvements
+
+- Implemented rate limiter to handle both `X-RateLimit-Reset` and `Retry-After` headers
+
+
+## 0.3.12 (2025-09-11)
+
+
+### Improvements
+
+- Enhanced payload validation for file, folder, and pull request event kinds.
+- Improved error handling and schema checks to ensure consistent processing and reduced failed syncs.
+
+
+## 0.3.11 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
 ## 0.3.10 (2025-09-08)
 
 

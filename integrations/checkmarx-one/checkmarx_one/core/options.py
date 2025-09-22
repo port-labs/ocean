@@ -42,12 +42,6 @@ class ListApiSecOptions(TypedDict):
     scan_id: Required[str]
 
 
-class SingleApiSecOptions(TypedDict):
-    """Options for fetching a single API sec scan result."""
-
-    risk_id: Required[str]
-
-
 class ListScanResultOptions(TypedDict):
     """Options for listing scan results."""
 
@@ -72,14 +66,6 @@ class ListScanResultOptions(TypedDict):
     ]
     status: NotRequired[Optional[List[Literal["NEW", "RECURRENT", "FIXED"]]]]
     exclude_result_types: NotRequired[Optional[Literal["DEV_AND_TEST", "NONE"]]]
-
-
-class SingleScanResultOptions(TypedDict):
-    """Options for fetching a single scan result."""
-
-    type: Literal["sca", "containers"]
-    scan_id: Required[str]
-    result_id: Required[str]
 
 
 class ListKicsOptions(TypedDict):
@@ -119,13 +105,4 @@ class ListSastOptions(TypedDict, total=False):
             ]
         ]
     ]
-    visible_columns: NotRequired[Optional[List[str]]]
-
-
-class SingleSastOptions(TypedDict):
-    """Options for fetching a single SAST scan result via filters."""
-
-    scan_id: Required[str]
-    result_id: Required[str]
-    include_nodes: NotRequired[Optional[bool]]
     visible_columns: NotRequired[Optional[List[str]]]

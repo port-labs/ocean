@@ -7,12 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.1-dev (2025-01-27)
+## 0.3.5-dev (2025-01-27)
 
 
 ### Improvements
 
 - Added recommendedInstallationMethod: 'saas' to integration spec
+
+
+## 0.3.4-dev (2025-09-17)
+
+
+### Improvements
+
+- Add ResourceConfig to list of resource in integration config file
+
+
+## 0.3.3-dev (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.3.2-dev (2025-09-16)
+
+
+### Features
+
+- Added webhook processor for project creation events
+
+
+## 0.3.1-dev (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.3.0-dev (2025-09-10)
+
+
+### Features
+
+- Added webhook support for the KICS and SAST Scan Result
+
+
+## 0.2.2-dev (2025-09-10)
+
+
+### Improvements
+
+- Added webhook support for the Scan and API-Security kinds
+- Added webhook support for the SCA and Containers
+
+
+## 0.2.1-dev (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
 
 
 ## 0.2.0-dev (2025-09-08)

@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.179 (2025-09-17)
+
+
+### Improvements
+
+- Don't fetch related entities for SLOs without a filter
+
+
+## 0.1.178 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.1.177 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.1.176 (2025-09-12)
+
+
+### Bugfix
+
+- Graceful handling of asynchronous errors during SLO enrichment
+
+
+## 0.1.175 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
 ## 0.1.174 (2025-09-08)
 
 
