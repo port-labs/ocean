@@ -70,7 +70,7 @@ def test_get_port_diff_with_dictionary_identifier() -> None:
         title="test",
     )
     before = [entity_with_dict_id]
-    after = []
+    after: list[Entity] = []
 
     with pytest.raises(TypeError, match="unhashable type: 'dict'"):
         get_port_diff(before, after)
@@ -97,7 +97,7 @@ def test_get_port_diff_created_entities() -> None:
     """
     Test get_port_diff with only new entities.
     """
-    before = []
+    before: list[Entity] = []
     after = [entity1, entity2]
 
     diff = get_port_diff(before, after)
@@ -114,7 +114,7 @@ def test_get_port_diff_deleted_entities() -> None:
     Test get_port_diff with only deleted entities.
     """
     before = [entity1, entity2]
-    after = []
+    after: list[Entity] = []
 
     diff = get_port_diff(before, after)
 
