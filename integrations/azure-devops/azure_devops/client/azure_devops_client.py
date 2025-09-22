@@ -1346,16 +1346,22 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Enriching {len(test_runs)} test runs for project {project_id}, include_results={include_results}"
         )
 
-        test_results_tasks: list[Awaitable[list[dict[str, Any]]]] = [
-            self._fetch_test_results(project_id, run["id"]) for run in test_runs
-        ] if include_results else []
+        test_results_tasks: list[Awaitable[list[dict[str, Any]]]] = (
+            [self._fetch_test_results(project_id, run["id"]) for run in test_runs]
+            if include_results
+            else []
+        )
 
-        coverage_tasks: list[Awaitable[dict[str, Any]]] = [
-            self._fetch_code_coverage(
-                project_id, run["build"]["id"], coverage_config
-            )
-            for run in test_runs
-        ] if coverage_config else []
+        coverage_tasks: list[Awaitable[dict[str, Any]]] = (
+            [
+                self._fetch_code_coverage(
+                    project_id, run["build"]["id"], coverage_config
+                )
+                for run in test_runs
+            ]
+            if coverage_config
+            else []
+        )
 
         await self._attach_async_results(
             test_runs, test_results_tasks, "__testResults", []
