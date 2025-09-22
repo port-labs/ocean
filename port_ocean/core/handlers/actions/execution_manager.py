@@ -1,16 +1,8 @@
 from __future__ import annotations
 
 from typing import Dict, Type, Set, Optional, List
-
 from loguru import logger
-import random
-from port_ocean.core.models import (
-    Action,
-    ActionRun,
-    RunStatus,
-    IntegrationInvocationPayload,
-    InvocationType,
-)
+from port_ocean.core.models import ActionRun, RunStatus
 import asyncio
 import time
 from integrations.github.github.webhook.registry import WEBHOOK_PATH
@@ -26,6 +18,9 @@ from port_ocean.core.models import IntegrationFeatureFlag
 from port_ocean.utils.signal import SignalHandler
 
 
+GLOBAL_SOURCE = "__global__"
+
+
 class ExecutionManager(ActionsClientMixin):
     """Orchestrates action executors, polling and their webhook handlers"""
 
@@ -33,7 +28,7 @@ class ExecutionManager(ActionsClientMixin):
         self,
         webhook_manager: LiveEventsProcessorManager,
         signal_handler: SignalHandler,
-        lock_timeout: float = 300,
+        lock_timeout_seconds: float,
     ):
         self._polling_task: asyncio.Task[None] | None = None
         self._should_fetch_more_runs = asyncio.Condition()
@@ -42,11 +37,12 @@ class ExecutionManager(ActionsClientMixin):
         self._global_queue = LocalQueue()
         self._partition_queues: Dict[str, AbstractQueue[ActionRun]] = {}
         self._locked: Set[str] = set()
-        self._queue_not_empty = asyncio.Condition()
-        self.lock_timeout = lock_timeout
+        self.lock_timeout_seconds = lock_timeout_seconds
         self._lock_timestamps: Dict[str, float] = {}
         self._webhook_manager = webhook_manager
         self._timeout_task: Optional[asyncio.Task[None]] = None
+        self._active_sources = LocalQueue()
+        self._queue_state_lock = asyncio.Lock()
 
         signal_handler.register(self.shutdown)
 
@@ -88,9 +84,12 @@ class ExecutionManager(ActionsClientMixin):
 
         workers_count = max(1, ocean.config.execution_agent.workers_count)
         for worker_index in range(workers_count):
-            task = asyncio.create_task(self._process_actions(worker_index))
+            task = asyncio.create_task(self._worker(worker_index))
             self._workers_pool.add(task)
             task.add_done_callback(self._workers_pool.discard)
+
+        async with self._should_fetch_more_runs:
+            self._should_fetch_more_runs.notify_all()
 
     def _extract_partition_key(self, run: ActionRun, partition_key: str) -> str:
         """
@@ -104,16 +103,17 @@ class ExecutionManager(ActionsClientMixin):
             f"Partition key '{partition_key}' not found in invocation payload"
         )
 
-    async def _add_to_partition_queue(self, run: ActionRun, partition_key: str) -> None:
+    async def add_run_to_queue(
+        self, run: ActionRun, queue: AbstractQueue[ActionRun], queue_name: str
+    ) -> None:
         """
-        Add a run to the partition queue.
+        Add a run to the queue.
         """
-        partition_name = self._extract_partition_key(run, partition_key)
-        if partition_name not in self._partition_queues:
-            self._partition_queues[partition_name] = LocalQueue()
-        await self._partition_queues[partition_name].put(run)
-        async with self._queue_not_empty:
-            self._queue_not_empty.notify_all()
+        async with self._queue_state_lock:
+            was_empty = await queue.size() == 0
+            await queue.put(run)
+            if was_empty:
+                await self._active_sources.put(queue_name)
 
     async def _poll_action_runs(self):
         """
@@ -124,48 +124,9 @@ class ExecutionManager(ActionsClientMixin):
                 async with self._should_fetch_more_runs:
                     await self._should_fetch_more_runs.wait()
 
-                # TODO: Uncomment this when the API is implemented
-                # runs = await self.get_pending_runs(
-                #     limit=ocean.config.execution_agent.max_runs_per_poll
-                # )
-                mock_actions = [
-                    "dispatch_workflow",
-                    "create_issue",
-                    "create_pull_request",
-                ]
-                mock_actions_payloads = {
-                    "dispatch_workflow": {
-                        "repo": "test",
-                        "workflow": "test.yml",
-                        "reportWorkflowStatus": True,
-                        "workflowInputs": {"param1": "value1", "param2": 1},
-                    },
-                    "create_issue": {"title": "test", "body": "test"},
-                    "create_pull_request": {"title": "test", "body": "test"},
-                }
-                num_runs = random.randint(
-                    2, ocean.config.execution_agent.max_runs_per_poll
+                runs = await self.get_pending_runs(
+                    limit=ocean.config.execution_agent.max_runs_per_poll
                 )
-                runs = [
-                    ActionRun(
-                        id=str(i),
-                        status=RunStatus.IN_PROGRESS,
-                        action=Action(
-                            id=f"action_{i}",
-                            name=f"test_action_{i}",
-                            description=f"Test action {i}",
-                        ),
-                        payload=IntegrationInvocationPayload(
-                            type=InvocationType.OCEAN,
-                            installationId=ocean.config.integration.identifier,
-                            action=mock_actions[i % len(mock_actions)],
-                            oceanExecution=mock_actions_payloads[
-                                mock_actions[i % len(mock_actions)]
-                            ],
-                        ),
-                    )
-                    for i in range(num_runs)
-                ]
 
                 for run in runs:
                     action_name = run.action.name
@@ -177,17 +138,25 @@ class ExecutionManager(ActionsClientMixin):
                         )
                         continue
 
+                    # TODO: Ack this run in action service
                     partition_key_value = self._actions_executors[
                         action_name
                     ].partition_key()
                     if partition_key_value:
-                        await self._add_to_partition_queue(run, partition_key_value)
+                        partition_name = self._extract_partition_key(
+                            run, partition_key_value
+                        )
+                        if partition_name not in self._partition_queues:
+                            self._partition_queues[partition_name] = LocalQueue()
+                        await self.add_run_to_queue(
+                            run,
+                            self._partition_queues[partition_key_value],
+                            partition_key_value,
+                        )
                     else:
-                        await self._global_queue.put(run)
-
-                    # TODO: Ack this run in action service
-                    async with self._queue_not_empty:
-                        self._queue_not_empty.notify_all()
+                        await self.add_run_to_queue(
+                            run, self._global_queue, GLOBAL_SOURCE
+                        )
             except asyncio.CancelledError:
                 break
 
@@ -197,110 +166,102 @@ class ExecutionManager(ActionsClientMixin):
         """
         while True:
             try:
-                await asyncio.sleep(self.lock_timeout / 4)
-                async with self._queue_not_empty:
-                    now = time.time()
-                    expired: List[str] = []
-                    for key, ts in list(self._lock_timestamps.items()):
-                        if now - ts > self.lock_timeout:
-                            expired.append(key)
-                            self._locked.discard(key)
-                            del self._lock_timestamps[key]
-                    if expired:
-                        logger.warning("Released expired locks", keys=expired)
-                        self._queue_not_empty.notify_all()
+                await asyncio.sleep(self.lock_timeout_seconds / 4)
+                now = time.time()
+                expired: List[str] = []
+                for key, ts in list(self._lock_timestamps.items()):
+                    if now - ts > self.lock_timeout_seconds:
+                        expired.append(key)
+                        self._locked.discard(key)
+                        del self._lock_timestamps[key]
+                if expired:
+                    logger.warning("Released expired locks", keys=expired)
             except asyncio.CancelledError:
                 break
 
     async def _try_lock(self, key: str) -> bool:
-        async with self._queue_not_empty:
-            if key in self._locked:
-                return False
-            self._locked.add(key)
-            self._lock_timestamps[key] = time.time()
-            return True
+        if key in self._locked:
+            return False
+        self._locked.add(key)
+        self._lock_timestamps[key] = time.time()
+        return True
 
     async def _unlock(self, key: str) -> None:
-        async with self._queue_not_empty:
-            self._locked.discard(key)
-            self._lock_timestamps.pop(key, None)
-            self._queue_not_empty.notify_all()
+        self._locked.discard(key)
+        self._lock_timestamps.pop(key, None)
 
-    async def _request_more_runs(self) -> None:
-        async with self._should_fetch_more_runs:
-            self._should_fetch_more_runs.notify_all()
+    async def _handle_global_queue_once(self) -> bool:
+        """
+        Try to process a single run from the global queue.
+        Returns True if work was done, False otherwise.
+        """
+        if await self._global_queue.size() == 0:
+            return False
+        run = await self._global_queue.get()
+        run_lock_key = f"run:{run.id}"
+        locked = await self._try_lock(run_lock_key)
+        try:
+            if not locked:
+                # Put back and skip; someone else holds the lock
+                await self._global_queue.put(run)
+                await self._global_queue.commit()
+                return False
+            await self._execute_run(run)
+            await self._global_queue.commit()
+            return True
+        finally:
+            if locked:
+                await self._unlock(run_lock_key)
 
-    async def _process_actions(self, worker_index: int) -> None:
+    async def _handle_partition_queue_once(self, partition_name: str):
+        """
+        Try to process a single run from the given partition queue.
+        """
+        queue = self._partition_queues[partition_name]
+        if await queue.size() == 0:
+            return False
+        queue_lock_key = f"queue:{partition_name}"
+        locked = await self._try_lock(queue_lock_key)
+        if not locked:
+            return False
+        try:
+            run = await queue.get()
+            await self._execute_run(run)
+            await queue.commit()
+            return True
+        finally:
+            await self._unlock(queue_lock_key)
+
+    async def _worker(self) -> None:
         """
         Round-robin worker across global queue and partition queues.
 
         - Global queue uses task-level locks: one lock per run id
         - Partition queues use queue-level locks: one lock per partition name
         """
-        next_start_index = worker_index
         while True:
-            did_work = False
-
-            # Compose fair-order source list: global marker + current partitions
-            sources: List[str] = ["__global__"] + list(self._partition_queues.keys())
-            if not sources:
-                await self._request_more_runs()
-                await asyncio.sleep(0.05)
-                continue
-
-            count = len(sources)
-            for step in range(count):
-                idx = (next_start_index + step) % count
-                source = sources[idx]
+            try:
+                source = await self._active_sources.get()
 
                 try:
-                    if source == "__global__":
-                        if await self._global_queue.size() == 0:
-                            continue
-                        run = await self._global_queue.get()
-                        run_lock_key = f"run:{run.id}"
-                        locked = await self._try_lock(run_lock_key)
-                        try:
-                            if not locked:
-                                # Put back and skip; someone else holds the lock
-                                await self._global_queue.put(run)
-                                await self._global_queue.commit()
-                                continue
-                            did_work = True
-                            await self._execute_run(run)
-                            await self._global_queue.commit()
-                        finally:
-                            if locked:
-                                await self._unlock(run_lock_key)
+                    if source == GLOBAL_SOURCE:
+                        await self._handle_global_queue_once()
                     else:
-                        queue = self._partition_queues.get(source)
-                        if queue is None or await queue.size() == 0:
-                            continue
-                        queue_lock_key = f"queue:{source}"
-                        locked = await self._try_lock(queue_lock_key)
-                        if not locked:
-                            continue
-                        try:
-                            run = await queue.get()
-                            did_work = True
-                            await self._execute_run(run)
-                            await queue.commit()
-                        finally:
-                            await self._unlock(queue_lock_key)
-                except asyncio.CancelledError:
-                    break
-                except Exception as exc:
-                    logger.exception(
-                        "Worker processing error", error=str(exc), source=source
-                    )
+                        await self._handle_partition_queue_once(source)
 
-                if did_work:
-                    next_start_index = (idx + 1) % count
-                    break
+                    # Re-add source if it still has work
+                    async with self._queue_state_lock:
+                        if source == GLOBAL_SOURCE:
+                            queue = self._global_queue
+                        else:
+                            queue = self._partition_queues[source]
 
-            if not did_work:
-                await self._request_more_runs()
-                await asyncio.sleep(0.05)
+                        if await queue.size() > 0:
+                            await self._active_sources.put(source)
+                except Exception:
+                    logger.exception("Worker processing error", source=source)
+            except asyncio.CancelledError:
+                break
 
     async def _execute_run(self, run: ActionRun) -> None:
         """
@@ -336,5 +297,14 @@ class ExecutionManager(ActionsClientMixin):
             self._timeout_task.cancel()
             try:
                 await self._timeout_task
+            except asyncio.CancelledError:
+                pass
+
+        for task in list(self._workers_pool):
+            if task and not task.done():
+                task.cancel()
+        for task in list(self._workers_pool):
+            try:
+                await task
             except asyncio.CancelledError:
                 pass

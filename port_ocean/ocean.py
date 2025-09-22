@@ -89,7 +89,11 @@ class Ocean:
             max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
         )
 
-        self.execution_manager = ExecutionManager(self.webhook_manager, signal_handler)
+        self.execution_manager = ExecutionManager(
+            self.webhook_manager,
+            signal_handler,
+            self.config.execution_agent.lock_timeout_seconds,
+        )
 
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
