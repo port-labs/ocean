@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.4.5 (2025-09-18)
+## 0.4.6 (2025-09-22)
 
 
 ### Improvements
@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `codeCoverage` selector option to include coverage data with test runs
 - Enhanced test runs enrichment with configurable coverage flags
 - Optimized async processing for test results and coverage data fetching
+
+
+## 0.4.5 (2025-09-18)
+
+
+### Features
+
+- Added support for build kind
+- Added support for pipeline stage kind
+- Added support for pipeline runs kind
 
 
 ## 0.4.4 (2025-09-17)

@@ -1,7 +1,7 @@
 import asyncio
 import functools
 import json
-from typing import Any, AsyncGenerator, Awaitable, Optional, Callable
+from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError
 from loguru import logger
 from port_ocean.context.event import event
@@ -264,6 +264,172 @@ class AzureDevopsClient(HTTPBaseClient):
                     releases_url
                 ):
                     yield releases
+
+    async def generate_pipeline_runs(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate pipeline runs for all pipelines in all projects.
+
+        API: GET {org}/{project}/_apis/pipelines/{pipelineId}/runs
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/pipelines/runs/list
+        """
+        async for projects in self.generate_projects():
+            project_tasks = [self._runs_for_project(project) for project in projects]
+            async for batch in stream_async_iterators_tasks(*project_tasks):
+                yield batch
+
+    async def _runs_for_project(
+        self, project: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield runs (in batches) for every pipeline in a given project."""
+        async for pipelines in self._paginate_pipelines(project_id=project["id"]):
+            if not pipelines:
+                continue
+            pipeline_tasks = [
+                self._paginate_pipeline_runs(project, pipeline)
+                for pipeline in pipelines
+            ]
+            async for batch in stream_async_iterators_tasks(*pipeline_tasks):
+                yield batch
+
+    async def _paginate_pipelines(
+        self, project_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Paginate pipelines for a project, yielding pipeline batches."""
+        pipelines_url = (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/pipelines"
+        )
+        async for pipelines in self._get_paginated_by_top_and_continuation_token(
+            pipelines_url
+        ):
+            yield pipelines
+
+    async def _paginate_pipeline_runs(
+        self, project: dict[str, Any], pipeline: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Paginate runs for a specific pipeline, annotate each run
+        with project/pipeline context, and yield batches.
+        """
+        runs_url = (
+            f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}"
+            f"/pipelines/{pipeline['id']}/runs"
+        )
+        async for runs in self._get_paginated_by_top_and_continuation_token(
+            runs_url, data_key="value"
+        ):
+            if not runs:
+                continue
+            self._annotate_runs(runs, project=project, pipeline=pipeline)
+            yield runs
+
+    @staticmethod
+    def _annotate_runs(
+        runs: Iterable[dict[str, Any]],
+        project: dict[str, Any],
+        pipeline: dict[str, Any],
+    ) -> None:
+        """Mutate each run to include project/pipeline metadata."""
+        for run in runs:
+            run["__project"] = project
+            run["__pipeline"] = pipeline
+
+    async def _fetch_stages_for_build(
+        self, project: dict[str, Any], build: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Fetch and process stage records for a specific build.
+
+        Returns a list of stage records enriched with project and build context.
+        Returns empty list if timeline fetch fails.
+        """
+        timeline_url = (
+            f"{self._organization_base_url}/{project['id']}/"
+            f"{API_URL_PREFIX}/build/builds/{build['id']}/timeline"
+        )
+        try:
+            response = await self.send_request("GET", timeline_url)
+            if not response:
+                return []
+
+            records = response.json().get("records", [])
+            project_ref, build_ref = project, build
+
+            stage_records = [
+                {**record, "__project": project_ref, "__build": build_ref}
+                for record in records
+                if record.get("type") == "Stage"
+            ]
+            return stage_records
+
+        except Exception as e:
+            logger.warning(f"Failed to fetch timeline for build {build['id']}: {e}")
+            return []
+
+    def _enrich_builds_with_project_data(
+        self,
+        builds: list[dict[str, Any]],
+        project: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        enriched: list[dict[str, Any]] = []
+        for build in builds:
+            b = dict(build)
+            b["__projectId"] = project["id"]
+            b["__project"] = project
+            enriched.append(b)
+        return enriched
+
+    async def _generate_builds_for_project(
+        self,
+        project: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield paginated builds for a single project, enriched with project data."""
+        builds_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds"
+        async for builds in self._get_paginated_by_top_and_continuation_token(
+            builds_url
+        ):
+            yield self._enrich_builds_with_project_data(builds, project)
+
+    async def generate_builds(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generate builds across all projects in the organization.
+
+        Uses continuation token pagination as per Azure DevOps Builds API.
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/build/builds/list?view=azure-devops-rest-7.1
+        """
+        async for projects in self.generate_projects():
+            tasks = [self._generate_builds_for_project(project) for project in projects]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+
+    async def generate_pipeline_stages(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generate pipeline stages across all builds in the organization.
+
+        Uses the Build Timeline API to fetch stage information for each build.
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/build/timeline/get?view=azure-devops-rest-7.1
+        """
+        async for projects in self.generate_projects():
+            for project in projects:
+                async for builds_batch in self._generate_builds_for_project(project):
+                    stage_tasks = [
+                        self._fetch_stages_for_build(project, build)
+                        for build in builds_batch
+                    ]
+                    stage_results = await asyncio.gather(
+                        *stage_tasks, return_exceptions=True
+                    )
+
+                    stages: list[dict[str, Any]] = []
+                    for stage_records in stage_results:
+                        if isinstance(stage_records, Exception):
+                            logger.warning(f"Failed to fetch stages: {stage_records}")
+                            continue
+                        if stage_records and isinstance(stage_records, list):
+                            stages.extend(stage_records)
+
+                    if stages:
+                        yield stages
 
     @cache_iterator_result()
     async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -939,7 +1105,6 @@ class AzureDevopsClient(HTTPBaseClient):
         repository_id: str,
         pattern: str,
     ) -> Callable[[], AsyncGenerator[list[dict[str, Any]], None]]:
-
         # Get the base path (everything before the first wildcard)
         parts = pattern.split("/")
         base_parts = []
@@ -1180,22 +1345,17 @@ class AzureDevopsClient(HTTPBaseClient):
         logger.info(
             f"Enriching {len(test_runs)} test runs for project {project_id}, include_results={include_results}"
         )
+        
+        test_results_tasks: list[Awaitable[list[dict[str, Any]]]] = [
+            self._fetch_test_results(project_id, run["id"]) for run in test_runs
+        ] if include_results else []
 
-        test_results_tasks: list[Awaitable[list[dict[str, Any]]]] = []
-        coverage_tasks: list[Awaitable[dict[str, Any]]] = []
-
-        if include_results:
-            test_results_tasks = [
-                self._fetch_test_results(project_id, run["id"]) for run in test_runs
-            ]
-
-        if coverage_config:
-            coverage_tasks = [
-                self._fetch_code_coverage(
-                    project_id, run["build"]["id"], coverage_config
-                )
-                for run in test_runs
-            ]
+        coverage_tasks: list[Awaitable[dict[str, Any]]] = [
+            self._fetch_code_coverage(
+                project_id, run["build"]["id"], coverage_config
+            )
+            for run in test_runs
+        ] if coverage_config else []
 
         await self._attach_async_results(
             test_runs, test_results_tasks, "__testResults", []
