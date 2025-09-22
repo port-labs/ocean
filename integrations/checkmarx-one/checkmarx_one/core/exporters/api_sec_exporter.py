@@ -8,7 +8,7 @@ from checkmarx_one.core.options import ListApiSecOptions
 
 class CheckmarxApiSecExporter(AbstractCheckmarxExporter):
     """Exporter for Checkmarx One API Security risks."""
-    
+
     def _enrich_scan_result_with_scan_id(
         self, scan_result: Dict[str, Any], scan_id: str
     ) -> dict[str, Any]:
