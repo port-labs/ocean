@@ -1326,7 +1326,7 @@ class AzureDevopsClient(HTTPBaseClient):
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for run, value in zip(runs, results):
             if isinstance(value, Exception):
-                logger.warning(
+                logger.error(
                     "Error %s occurred while fetching %s for run %s",
                     value,
                     field_name,
@@ -1345,7 +1345,7 @@ class AzureDevopsClient(HTTPBaseClient):
         logger.info(
             f"Enriching {len(test_runs)} test runs for project {project_id}, include_results={include_results}"
         )
-        
+
         test_results_tasks: list[Awaitable[list[dict[str, Any]]]] = [
             self._fetch_test_results(project_id, run["id"]) for run in test_runs
         ] if include_results else []
