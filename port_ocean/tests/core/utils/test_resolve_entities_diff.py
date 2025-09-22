@@ -1,7 +1,9 @@
+import pytest
 from unittest.mock import patch
 from port_ocean.core.models import Entity
 from port_ocean.core.utils.utils import (
     are_entities_different,
+    get_port_diff,
     resolve_entities_diff,
     are_entities_fields_equal,
 )
@@ -609,3 +611,22 @@ def test_resolve_entities_diff_multiple_entities() -> None:
     assert changed[0] == entity1_modified_properties
     assert changed[1] == entity2
     assert changed[2] == entity_with_search_identifier
+
+
+def test_get_port_diff_with_dictionary_identifier() -> None:
+    """
+    Test that get_port_diff raises a TypeError when Entity.identifier is a dictionary,
+    as it is an unhashable type and cannot be used as a dictionary key in the function.
+    """
+    entity_with_dict_id = create_test_entity(
+        identifier={"id": "some_id"},  # type: ignore
+        blueprint="bp1",
+        properties={},
+        relations={},
+        title="test",
+    )
+    before = [entity_with_dict_id]
+    after = []
+
+    with pytest.raises(TypeError, match="unhashable type: 'dict'"):
+        get_port_diff(before, after)

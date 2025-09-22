@@ -79,7 +79,6 @@ async def gather_and_split_errors_from_results(
     return valid_items, errors
 
 
-# AI! generate a test case for this function where the Entity.identifier is a dictionary, don't attempt to make this function pass the test, I have added the test file to the chat
 def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPortDiff:
     before_dict = {}
     after_dict = {}
