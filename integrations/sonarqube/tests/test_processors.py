@@ -123,30 +123,6 @@ def resource_config() -> ResourceConfig:
 
 
 @pytest.fixture
-def issue_resource_config() -> ResourceConfig:
-    # Create a mock selector with the required generate_request_params method
-    class MockIssueSelector(Selector):
-        def generate_request_params(self) -> dict[str, Any]:
-            return {}
-
-    return ResourceConfig(
-        kind="issues",
-        selector=MockIssueSelector(query="test"),
-        port=PortResourceConfig(
-            entity=MappingsConfig(
-                mappings=EntityMapping(
-                    identifier=".id",
-                    title=".name",
-                    blueprint='"issue"',
-                    properties={},
-                    relations={},
-                )
-            )
-        ),
-    )
-
-
-@pytest.fixture
 def mock_context(monkeypatch: Any) -> MagicMock:
     mock_context = MagicMock()
     monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_context)

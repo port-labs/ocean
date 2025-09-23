@@ -2,7 +2,6 @@ from typing import cast
 from initialize_client import init_sonar_client
 from webhook_processors.base_webhook_processor import BaseSonarQubeWebhookProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from typing import cast
 
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -35,6 +34,6 @@ class IssueWebhookProcessor(BaseSonarQubeWebhookProcessor):
             issues.extend(issues_batch)
 
         return WebhookEventRawResults(
-            updated_raw_results=updated_issue_results,
+            updated_raw_results=issues,
             deleted_raw_results=[],
         )

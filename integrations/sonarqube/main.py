@@ -91,7 +91,7 @@ async def on_onprem_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         SonarQubeOnPremAnalysisResourceConfig, event.resource_config
     ).selector
     sonar_client.metrics = selector.metrics
-    
+
     if ocean.integration_config["sonar_is_on_premise"]:
         logger.info("Sonar is on-premise, processing on-premise SonarQube analysis")
         async for analyses_list in sonar_client.get_all_sonarqube_analyses():
