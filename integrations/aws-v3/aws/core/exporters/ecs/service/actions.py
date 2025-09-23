@@ -3,6 +3,16 @@ from aws.core.interfaces.action import Action, ActionMap
 from loguru import logger
 
 
+class ListServicesAction(Action):
+    """List services as a pass-through function."""
+
+    async def _execute(
+        self, service_identifiers: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Return services as is"""
+        return service_identifiers
+
+
 class DescribeServicesAction(Action):
     """Describes services with cluster context."""
 
@@ -32,6 +42,7 @@ class DescribeServicesAction(Action):
 
 class EcsServiceActionsMap(ActionMap):
     defaults: List[Type[Action]] = [
+        ListServicesAction,
         DescribeServicesAction,
     ]
     options: List[Type[Action]] = []
