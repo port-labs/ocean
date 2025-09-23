@@ -7,6 +7,166 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.58 (2025-09-22)
+
+
+### Improvements
+
+- Added recommendedInstallationMethod: Saas to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
+
+
+## 0.2.57 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.2.56 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.2.55 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
+## 0.2.54 (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
+## 0.2.53 (2025-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.2
+
+
+## 0.2.52 (2025-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.1
+
+
+## 0.2.51 (2025-08-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.0
+
+
+## 0.2.50 (2025-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.10
+
+
+## 0.2.49 (2025-08-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.9
+
+
+## 0.2.48 (2025-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.8
+
+
+## 0.2.47 (2025-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.7
+
+
+## 0.2.46 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 0.2.45 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 0.2.44 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+## 0.2.43 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
+
+
+## 0.2.42 (2025-08-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.1
+
+
+## 0.2.41 (2025-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.0
+
+
+## 0.2.40 (2025-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.3
+
+
+## 0.2.39 (2025-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.2
+
+
 ## 0.2.38 (2025-07-20)
 
 

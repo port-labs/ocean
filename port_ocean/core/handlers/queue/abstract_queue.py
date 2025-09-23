@@ -7,6 +7,9 @@ T = TypeVar("T")
 class AbstractQueue(ABC, Generic[T]):
     """Abstract interface for queues"""
 
+    def __init__(self, name: str | None = None):
+        pass
+
     @abstractmethod
     async def put(self, item: T) -> None:
         """Put an item into the queue"""
@@ -20,6 +23,11 @@ class AbstractQueue(ABC, Generic[T]):
     @abstractmethod
     async def teardown(self) -> None:
         """Wait for all items to be processed"""
+        pass
+
+    @abstractmethod
+    async def size(self) -> int:
+        """Size of the queue"""
         pass
 
     @abstractmethod

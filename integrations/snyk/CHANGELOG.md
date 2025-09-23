@@ -7,6 +7,181 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.73 (2025-09-22)
+
+
+### Improvements
+
+- Added recommendedInstallationMethod: Saas to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
+
+
+## 0.2.72 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.2.71 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.2.70 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
+## 0.2.69 (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
+## 0.2.68 (2025-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.2
+
+
+## 0.2.67 (2025-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.1
+
+
+## 0.2.66 (2025-08-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.0
+
+
+## 0.2.65 (2025-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.10
+
+
+## 0.2.64 (2025-08-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.9
+
+
+## 0.2.63 (2025-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.8
+
+
+## 0.2.62 (2025-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.7
+
+
+## 0.2.61 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 0.2.60 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 0.2.59 (2025-08-13)
+
+
+### Improvements
+
+- fixed description in the spec.yaml
+
+## 0.2.58 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+## 0.2.57 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
+
+
+## 0.2.56 (2025-08-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.1
+
+
+## 0.2.55 (2025-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.0
+
+
+## 0.2.54 (2025-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.3
+
+
+## 0.2.53 (2025-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.2
+
+
+## 0.2.52 (2025-07-28)
+
+
+### Improvements
+
+- Properly log 401 and 403 errors
+
+
 ## 0.2.51 (2025-07-20)
 
 

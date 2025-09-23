@@ -1,14 +1,16 @@
-from typing import List, NotRequired, Optional, Required, TypedDict, Any
+from typing import List, NotRequired, Optional, Required, TypedDict
 
 
 class SingleRepositoryOptions(TypedDict):
     name: str
+    included_relationships: NotRequired[Optional[list[str]]]
 
 
 class ListRepositoryOptions(TypedDict):
     """Options for listing repositories."""
 
     type: str
+    included_relationships: NotRequired[Optional[list[str]]]
 
 
 class SingleFolderOptions(TypedDict):
@@ -17,9 +19,7 @@ class SingleFolderOptions(TypedDict):
 
 
 class ListFolderOptions(TypedDict):
-    repo: Required[dict[str, Any]]
-    path: Required[str]
-    branch: NotRequired[Optional[str]]
+    repo_mapping: Required[dict[str, dict[str, list[str]]]]
 
 
 class RepositoryIdentifier(TypedDict):
@@ -37,7 +37,9 @@ class SinglePullRequestOptions(RepositoryIdentifier):
 class ListPullRequestOptions(RepositoryIdentifier):
     """Options for listing pull requests."""
 
-    state: Required[str]
+    states: Required[list[str]]
+    max_results: Required[int]
+    since: Required[int]
 
 
 class SingleIssueOptions(RepositoryIdentifier):
@@ -103,10 +105,14 @@ class SingleBranchOptions(RepositoryIdentifier):
     """Options for fetching a single branch."""
 
     branch_name: Required[str]
+    protection_rules: Optional[bool]
 
 
 class ListBranchOptions(RepositoryIdentifier):
     """Options for listing branches."""
+
+    protection_rules: Required[bool]
+    detailed: Required[bool]
 
 
 class SingleEnvironmentOptions(RepositoryIdentifier):
@@ -174,3 +180,31 @@ class ListFileSearchOptions(TypedDict):
 
     repo_name: Required[str]
     files: Required[List[FileSearchOptions]]
+
+
+class SingleCollaboratorOptions(RepositoryIdentifier):
+    """Options for fetching a single collaborator."""
+
+    username: Required[str]
+
+
+class ListCollaboratorOptions(RepositoryIdentifier):
+    """Options for listing collaborators."""
+
+
+class BaseSecretScanningAlertOptions(RepositoryIdentifier):
+    """Base options for secret scanning alerts."""
+
+    hide_secret: Required[bool]
+
+
+class SingleSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
+    """Options for fetching a single secret scanning alert."""
+
+    alert_number: Required[str]
+
+
+class ListSecretScanningAlertOptions(BaseSecretScanningAlertOptions):
+    """Options for listing secret scanning alerts."""
+
+    state: Required[str]

@@ -7,6 +7,145 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.134 (2025-09-22)
+
+### Improvements
+
+- Added recommendedInstallationMethod: Saas to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
+
+
+# Port_Ocean 0.1.133 (2025-09-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+# Port_Ocean 0.1.132 (2025-09-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+# Port_Ocean 0.1.131 (2025-09-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+# Port_Ocean 0.1.130 (2025-09-08)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
+# Port_Ocean 0.1.129 (2025-08-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.2
+
+
+# Port_Ocean 0.1.128 (2025-08-27)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.1
+
+
+# Port_Ocean 0.1.127 (2025-08-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.0
+
+
+# Port_Ocean 0.1.126 (2025-08-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.27.10
+
+
+# Port_Ocean 0.1.125 (2025-08-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.27.9
+
+
+# Port_Ocean 0.1.124 (2025-08-18)
+
+### Improvements
+
+- Bumped ocean version to ^0.27.8
+
+
+# Port_Ocean 0.1.123 (2025-08-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.27.7
+
+
+# Port_Ocean 0.1.122 (2025-08-13)
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+# Port_Ocean 0.1.121 (2025-08-13)
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+# Port_Ocean 0.1.120 (2025-08-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+# Port_Ocean 0.1.119 (2025-08-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
+
+
+# Port_Ocean 0.1.118 (2025-08-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.27.1
+
+
+# Port_Ocean 0.1.117 (2025-08-05)
+
+### Improvements
+
+- Bumped ocean version to ^0.27.0
+
+
+# Port_Ocean 0.1.116 (2025-08-04)
+
+### Improvements
+
+- Bumped ocean version to ^0.26.3
+
+
+# Port_Ocean 0.1.115 (2025-08-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.26.2
+
+
 # Port_Ocean 0.1.114 (2025-07-20)
 
 ### Improvements

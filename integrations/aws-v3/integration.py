@@ -14,12 +14,14 @@ class RegionPolicy(BaseModel):
     deny: List[str] = Field(default_factory=list)
 
 
-class AWSDescribeResourcesSelector(Selector):
-    use_get_resource_api: bool = Field(alias="useGetResourceAPI", default=False)
+class AWSResourceSelector(Selector):
     region_policy: RegionPolicy = Field(
         alias="regionPolicy", default_factory=RegionPolicy
     )
-    list_group_resources: bool = Field(alias="listGroupResources", default=False)
+    include_actions: List[str] = Field(
+        alias="includeActions", default_factory=list, max_items=3
+    )
+    max_concurrent_accounts: int = Field(alias="maxConcurrentAccounts", default=5)
 
     def is_region_allowed(self, region: str) -> bool:
         """
@@ -56,11 +58,11 @@ class AWSDescribeResourcesSelector(Selector):
 
 
 class AWSResourceConfig(ResourceConfig):
-    selector: AWSDescribeResourcesSelector
+    selector: AWSResourceSelector
 
 
 class AWSPortAppConfig(PortAppConfig):
-    resources: list[AWSResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: List[AWSResourceConfig] = Field(default_factory=list)  # type: ignore
 
 
 class AWSIntegration(BaseIntegration):

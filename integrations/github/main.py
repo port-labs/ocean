@@ -28,14 +28,23 @@ from github.core.exporters.environment_exporter import RestEnvironmentExporter
 from github.core.exporters.file_exporter import RestFileExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.exporters.pull_request_exporter import RestPullRequestExporter
-from github.core.exporters.repository_exporter import RestRepositoryExporter
+from github.core.exporters.repository_exporter import (
+    RestRepositoryExporter,
+)
 from github.core.exporters.release_exporter import RestReleaseExporter
 from github.core.exporters.tag_exporter import RestTagExporter
 from github.core.exporters.dependabot_exporter import RestDependabotAlertExporter
 from github.core.exporters.code_scanning_alert_exporter import (
     RestCodeScanningAlertExporter,
 )
-from github.core.exporters.folder_exporter import RestFolderExporter
+from github.core.exporters.secret_scanning_alert_exporter import (
+    RestSecretScanningAlertExporter,
+)
+from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
+from github.core.exporters.folder_exporter import (
+    RestFolderExporter,
+    create_path_mapping,
+)
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 
 from github.core.options import (
@@ -52,7 +61,8 @@ from github.core.options import (
     ListTagOptions,
     ListDependabotAlertOptions,
     ListCodeScanningAlertOptions,
-    SingleRepositoryOptions,
+    ListCollaboratorOptions,
+    ListSecretScanningAlertOptions,
 )
 from github.helpers.utils import ObjectKind, GithubClientType
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
@@ -65,8 +75,11 @@ from integration import (
     GithubPullRequestConfig,
     GithubDependabotAlertConfig,
     GithubCodeScanningAlertConfig,
+    GithubRepositoryConfig,
     GithubTeamConfig,
     GithubFileResourceConfig,
+    GithubBranchConfig,
+    GithubSecretScanningAlertConfig,
 )
 
 
@@ -108,8 +121,14 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     rest_client = create_github_client()
     exporter = RestRepositoryExporter(rest_client)
 
-    port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    options = ListRepositoryOptions(type=port_app_config.repository_type)
+    config = cast(GithubRepositoryConfig, event.resource_config)
+    repository_type = cast(GithubPortAppConfig, event.port_app_config).repository_type
+    included_relationships = config.selector.include
+
+    options = ListRepositoryOptions(
+        type=repository_type,
+        included_relationships=cast(list[str], included_relationships),
+    )
 
     async for repositories in exporter.get_paginated_resources(options):
         yield repositories
@@ -223,7 +242,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             pull_request_exporter.get_paginated_resources(
                 ListPullRequestOptions(
                     repo_name=repo["name"],
-                    state=config.selector.state,
+                    states=list(config.selector.states),
+                    max_results=config.selector.max_results,
+                    since=config.selector.since,
                 )
             )
             for repo in repos
@@ -316,6 +337,7 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     rest_client = create_github_client()
     repository_exporter = RestRepositoryExporter(rest_client)
     branch_exporter = RestBranchExporter(rest_client)
+    selector = cast(GithubBranchConfig, event.resource_config).selector
 
     repo_options = ListRepositoryOptions(
         type=cast(GithubPortAppConfig, event.port_app_config).repository_type
@@ -324,7 +346,11 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for repositories in repository_exporter.get_paginated_resources(repo_options):
         tasks = [
             branch_exporter.get_paginated_resources(
-                ListBranchOptions(repo_name=repo["name"])
+                ListBranchOptions(
+                    repo_name=repo["name"],
+                    detailed=selector.detailed,
+                    protection_rules=selector.protection_rules,
+                )
             )
             for repo in repositories
         ]
@@ -447,7 +473,6 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     rest_client = create_github_client()
     folder_exporter = RestFolderExporter(rest_client)
-    repo_exporter = RestRepositoryExporter(rest_client)
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
     if not selector.folders:
@@ -456,19 +481,11 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         return
 
-    for folder_config in selector.folders:
-        for repo in folder_config.repos:
-            logger.info(f"fetching folders for {repo.name}")
-            repo_options = SingleRepositoryOptions(name=repo.name)
-            repository = await repo_exporter.get_resource(repo_options)
+    repo_path_map = create_path_mapping(selector.folders)
+    folder_options = ListFolderOptions(repo_mapping=repo_path_map)
 
-            folder_options = ListFolderOptions(
-                repo=repository, path=folder_config.path, branch=repo.branch
-            )
-            async for folders in folder_exporter.get_paginated_resources(
-                folder_options
-            ):
-                yield folders
+    async for folders in folder_exporter.get_paginated_resources(folder_options):
+        yield folders
 
 
 @ocean.on_resync(ObjectKind.FILE)
@@ -477,15 +494,72 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     rest_client = create_github_client()
-    exporter = RestFileExporter(rest_client)
+    file_exporter = RestFileExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
 
     config = cast(GithubFileResourceConfig, event.resource_config)
+    app_config = cast(GithubPortAppConfig, event.port_app_config)
     files_pattern = config.selector.files
 
-    repo_path_map = group_file_patterns_by_repositories_in_selector(files_pattern)
+    repo_path_map = await group_file_patterns_by_repositories_in_selector(
+        files_pattern, repo_exporter, app_config.repository_type
+    )
 
-    async for file_results in exporter.get_paginated_resources(repo_path_map):
+    async for file_results in file_exporter.get_paginated_resources(repo_path_map):
         yield file_results
+
+
+@ocean.on_resync(ObjectKind.COLLABORATOR)
+async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all collaborators in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    collaborator_exporter = RestCollaboratorExporter(rest_client)
+
+    repo_options = ListRepositoryOptions(
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
+    )
+
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        tasks = [
+            collaborator_exporter.get_paginated_resources(
+                ListCollaboratorOptions(repo_name=repo["name"])
+            )
+            for repo in repositories
+        ]
+        async for collaborators in stream_async_iterators_tasks(*tasks):
+            yield collaborators
+
+
+@ocean.on_resync(ObjectKind.SECRET_SCANNING_ALERT)
+async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all secret scanning alerts in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    secret_scanning_alert_exporter = RestSecretScanningAlertExporter(rest_client)
+
+    config = cast(GithubSecretScanningAlertConfig, event.resource_config)
+    repo_options = ListRepositoryOptions(
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
+    )
+
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        tasks = [
+            secret_scanning_alert_exporter.get_paginated_resources(
+                ListSecretScanningAlertOptions(
+                    repo_name=repo["name"],
+                    state=config.selector.state,
+                    hide_secret=config.selector.hide_secret,
+                )
+            )
+            for repo in repositories
+        ]
+        async for alerts in stream_async_iterators_tasks(*tasks):
+            yield alerts
 
 
 # Register webhook processors

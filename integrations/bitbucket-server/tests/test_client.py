@@ -47,6 +47,7 @@ async def test_get_paginated_resource(mock_client: BitbucketClient) -> None:
         {
             "values": [{"id": 1}, {"id": 2}],
             "isLastPage": False,
+            "nextPageStart": 2,
         },
         {
             "values": [{"id": 3}],

@@ -1,3 +1,4 @@
+from fastapi import Request
 from pydantic import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -6,6 +7,14 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
+from port_ocean.core.handlers.queue import GroupQueue
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    AbstractWebhookProcessor,
+)
+from port_ocean.core.handlers.webhook.webhook_event import (
+    LiveEventTimestamp,
+    WebhookEvent,
+)
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
@@ -15,13 +24,25 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from github.entity_processors.file_entity_processor import FileEntityProcessor
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from typing import Any, Optional, Type, Literal
+from typing import Any, Dict, List, Optional, Type, Literal
 from loguru import logger
 from port_ocean.utils.signal import signal_handler
 from github.helpers.utils import ObjectKind
-
+from github.webhook.live_event_group_selector import get_primary_id
 
 FILE_PROPERTY_PREFIX = "file://"
+
+
+class GithubRepositorySelector(Selector):
+    include: Optional[List[Literal["collaborators", "teams"]]] = Field(
+        default_factory=list,
+        description="Specify the relationships to include in the repository",
+    )
+
+
+class GithubRepositoryConfig(ResourceConfig):
+    selector: GithubRepositorySelector
+    kind: Literal["repository"]
 
 
 class RepositoryBranchMapping(BaseModel):
@@ -49,9 +70,22 @@ class GithubFolderResourceConfig(ResourceConfig):
 
 
 class GithubPullRequestSelector(Selector):
-    state: Literal["open", "closed", "all"] = Field(
-        default="open",
-        description="Filter by pull request state (e.g., open, closed, all)",
+    states: list[Literal["open", "closed"]] = Field(
+        default=["open"],
+        description="Filter by pull request state (e.g., open, closed)",
+    )
+    max_results: int = Field(
+        alias="maxResults",
+        default=100,
+        ge=1,
+        le=300,
+        description="Limit the number of pull requests returned",
+    )
+    since: int = Field(
+        default=60,
+        ge=1,
+        le=90,
+        description="Only fetch pull requests created within the last N days (1-90 days)",
     )
 
 
@@ -105,19 +139,42 @@ class GithubCodeScanningAlertConfig(ResourceConfig):
     kind: Literal["code-scanning-alerts"]
 
 
+class GithubSecretScanningAlertSelector(Selector):
+    state: Literal["open", "resolved", "all"] = Field(
+        default="open",
+        description="Filter alerts by state (open, resolved, all)",
+    )
+    hide_secret: bool = Field(
+        alias="hideSecret",
+        default=True,
+        description="Whether to hide the actual secret content in the alert data for security purposes",
+    )
+
+
+class GithubSecretScanningAlertConfig(ResourceConfig):
+    selector: GithubSecretScanningAlertSelector
+    kind: Literal["secret-scanning-alerts"]
+
+
 class GithubFilePattern(BaseModel):
     path: str = Field(
         alias="path",
         description="Specify the path to match files from",
     )
-    repos: list[RepositoryBranchMapping] = Field(
+    repos: Optional[list[RepositoryBranchMapping]] = Field(
         alias="repos",
         description="Specify the repositories and branches to fetch files from",
+        default=None,
     )
     skip_parsing: bool = Field(
         default=False,
         alias="skipParsing",
         description="Skip parsing the files and just return the raw file content",
+    )
+    validation_check: bool = Field(
+        default=False,
+        alias="validationCheck",
+        description="Enable validation for this file pattern during pull request processing",
     )
 
 
@@ -130,16 +187,35 @@ class GithubFileResourceConfig(ResourceConfig):
     selector: GithubFileSelector
 
 
+class GithubBranchSelector(Selector):
+    detailed: bool = Field(
+        default=False, description="Include extra details about the branch"
+    )
+    protection_rules: bool = Field(
+        default=False,
+        alias="protectionRules",
+        description="Include protection rules for the branch",
+    )
+
+
+class GithubBranchConfig(ResourceConfig):
+    kind: Literal["branch"]
+    selector: GithubBranchSelector
+
+
 class GithubPortAppConfig(PortAppConfig):
     repository_type: str = Field(alias="repositoryType", default="all")
     resources: list[
-        GithubPullRequestConfig
+        GithubRepositoryConfig
+        | GithubPullRequestConfig
         | GithubIssueConfig
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig
+        | GithubBranchConfig
+        | GithubSecretScanningAlertConfig
         | ResourceConfig
     ]
 
@@ -162,6 +238,49 @@ class GithubLiveEventsProcessorManager(LiveEventsProcessorManager, GithubHandler
     pass
 
 
+class GithubLiveEventsGroupProcessorManager(
+    LiveEventsProcessorManager, GithubHandlerMixin
+):
+    def register_processor(
+        self, path: str, processor: Type[AbstractWebhookProcessor]
+    ) -> None:
+        """Register a webhook processor for a specific path with optional filter
+
+        Args:
+            path: The webhook path to register
+            processor: The processor class to register
+            kind: The resource kind to associate with this processor, or None to match any kind
+        """
+        if not issubclass(processor, AbstractWebhookProcessor):
+            raise ValueError("Processor must extend AbstractWebhookProcessor")
+
+        if path not in self._processors_classes:
+            self._processors_classes[path] = []
+            self._event_queues[path] = GroupQueue(("group_id"))
+            self._register_route(path)
+
+        self._processors_classes[path].append(processor)
+
+    def _register_route(self, path: str) -> None:
+        async def handle_webhook(request: Request) -> Dict[str, str]:
+            """Handle incoming webhook requests for a specific path."""
+            try:
+                webhook_event = await WebhookEvent.from_request(request)
+                webhook_event.set_timestamp(LiveEventTimestamp.AddedToQueue)
+                webhook_event.group_id = get_primary_id(webhook_event)
+                await self._event_queues[path].put(webhook_event)
+                return {"status": "ok"}
+            except Exception as e:
+                logger.exception(f"Error processing webhook: {str(e)}")
+                return {"status": "error", "message": str(e)}
+
+        self._router.add_api_route(
+            path,
+            handle_webhook,
+            methods=["POST"],
+        )
+
+
 class GithubIntegration(BaseIntegration, GithubHandlerMixin):
     def __init__(self, context: PortOceanContext):
         logger.info("Initializing Github Integration")
@@ -172,7 +291,13 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
         # GitManipulationHandler to handle file:// prefixed properties and enable
         # dynamic switching between JQEntityProcessor and FileEntityProcessor
         # for GitHub-specific file content processing.
-        self.context.app.webhook_manager = GithubLiveEventsProcessorManager(
+        event_workers_count = context.config.event_workers_count
+        ProcessManager = (
+            GithubLiveEventsGroupProcessorManager
+            if event_workers_count > 1
+            else GithubLiveEventsProcessorManager
+        )
+        self.context.app.webhook_manager = ProcessManager(
             self.context.app.integration_router,
             signal_handler,
             self.context.config.max_event_processing_seconds,

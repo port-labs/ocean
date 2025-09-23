@@ -123,6 +123,30 @@ def resource_config() -> ResourceConfig:
 
 
 @pytest.fixture
+def issue_resource_config() -> ResourceConfig:
+    # Create a mock selector with the required generate_request_params method
+    class MockIssueSelector(Selector):
+        def generate_request_params(self) -> dict[str, Any]:
+            return {}
+
+    return ResourceConfig(
+        kind="issues",
+        selector=MockIssueSelector(query="test"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".name",
+                    blueprint='"issue"',
+                    properties={},
+                    relations={},
+                )
+            )
+        ),
+    )
+
+
+@pytest.fixture
 def mock_context(monkeypatch: Any) -> MagicMock:
     mock_context = MagicMock()
     monkeypatch.setattr("port_ocean.context.ocean.ocean", mock_context)
@@ -222,8 +246,9 @@ async def test_issue_handle_event(
         test_issues = [[{"issue": "1"}, {"issue": "2"}], [{"issue": "3"}]]
 
         async def mock_issues_generator(
-            project: Dict[str, Any], query_params: Dict[str, Any]
+            component: Dict[str, Any], query_params: Dict[str, Any] = {}
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            assert component == mock_component
             for batch in test_issues:
                 yield batch
 

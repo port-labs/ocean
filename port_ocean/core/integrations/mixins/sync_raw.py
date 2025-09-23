@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import uuid
 from graphlib import CycleError
 import inspect
@@ -116,7 +117,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.info(
                     f"Found async generator function for {resource_config.kind} name: {task.__qualname__}"
                 )
-                results.append(resync_generator_wrapper(task, resource_config.kind))
+                results.append(resync_generator_wrapper(task, resource_config.kind, resource_config.port.items_to_parse_name, resource_config.port.items_to_parse))
             else:
                 logger.info(
                     f"Found sync function for {resource_config.kind} name: {task.__qualname__}"
@@ -363,9 +364,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results, errors = await self._get_resource_raw_results(resource_config)
         async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
         raw_results: RAW_RESULT = []
+        lakehouse_data_enabled = await self._lakehouse_data_enabled()
+
         for result in results:
             if isinstance(result, dict):
                 raw_results.append(result)
+                if lakehouse_data_enabled:
+                    await ocean.port_client.post_integration_raw_data(result, event.id, resource_config.kind)
             else:
                 async_generators.append(result)
 
@@ -397,6 +402,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         for generator in async_generators:
             try:
                 async for items in generator:
+                    if lakehouse_data_enabled:
+                        await ocean.port_client.post_integration_raw_data(items, event.id, resource_config.kind)
                     number_of_raw_results += len(items)
                     if send_raw_data_examples_amount > 0:
                         send_raw_data_examples_amount = max(
@@ -449,18 +456,31 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             ],
             value=number_of_transformed_entities,
         )
-
-        ocean.metrics.inc_metric(
-            name=MetricType.OBJECT_COUNT_NAME,
-            labels=[
-                ocean.metrics.current_resource_kind(),
-                MetricPhase.TRANSFORM,
-                MetricPhase.TransformResult.FILTERED_OUT,
-            ],
-            value=number_of_raw_results - number_of_transformed_entities,
-        )
+        if number_of_raw_results > number_of_transformed_entities :
+            ocean.metrics.inc_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.TRANSFORM,
+                    MetricPhase.TransformResult.FILTERED_OUT,
+                ],
+                value=number_of_raw_results - number_of_transformed_entities,
+            )
 
         return passed_entities, errors
+
+    async def _lakehouse_data_enabled(
+        self
+    ) -> bool:
+        """Check if lakehouse data is enabled.
+
+        Returns:
+            bool: True if lakehouse data is enabled, False otherwise
+        """
+        flags = await ocean.port_client.get_organization_feature_flags()
+        if "LAKEHOUSE_ELIGIBLE" in flags and ocean.config.lakehouse_enabled:
+            return True
+        return False
 
     async def register_raw(
         self,
@@ -957,6 +977,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             ocean.metrics.initialize_metrics(kinds)
             await ocean.metrics.report_sync_metrics(kinds=kinds, blueprints=blueprints)
 
+            async with metric_resource_context(MetricResourceKind.RUNTIME):
+                ocean.metrics.sync_state = SyncState.SYNCING
+                await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RUNTIME)
+                await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RUNTIME])
+
             # Clear cache
             await ocean.app.cache_provider.clear()
 
@@ -978,7 +1003,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
-            multiprocessing.set_start_method("fork", True)
+            if sys.platform.startswith("win"):
+                # fork is not supported on windows
+                multiprocessing.set_start_method("spawn", True)
+            else:
+                multiprocessing.set_start_method("fork", True)
             try:
                 for index, resource in enumerate(app_config.resources):
                     logger.info(
@@ -991,8 +1020,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.warning(
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
                 )
+
+                async with metric_resource_context(MetricResourceKind.RUNTIME):
+                    ocean.metrics.sync_state = SyncState.FAILED
+                    await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RUNTIME)
+                    await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RUNTIME])
                 raise
             else:
+                async with metric_resource_context(MetricResourceKind.RECONCILIATION):
+                    ocean.metrics.sync_state = SyncState.SYNCING
+                    await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RECONCILIATION)
+                    await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
+
                 success = await self.resync_reconciliation(
                     creation_results,
                     did_fetched_current_state,
@@ -1000,9 +1039,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     app_config,
                     silent,
                 )
-                await ocean.metrics.report_sync_metrics(
-                    kinds=[MetricResourceKind.RECONCILIATION]
-                )
+
+                async with metric_resource_context(MetricResourceKind.RECONCILIATION):
+                    ocean.metrics.sync_state = SyncState.COMPLETED if success else SyncState.FAILED
+                    await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RECONCILIATION)
+                    await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
+
                 return success
             finally:
                 await ocean.app.cache_provider.clear()

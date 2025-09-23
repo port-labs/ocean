@@ -1,9 +1,10 @@
 import asyncio
-from typing import Any, Dict, List, TYPE_CHECKING, Optional, TypedDict
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 from urllib.parse import quote_plus
 
 import httpx
 from loguru import logger
+
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
@@ -125,7 +126,7 @@ class IntegrationClientMixin:
 
         while attempts < INTEGRATION_POLLING_RETRY_LIMIT:
             logger.info(
-                f"Fetching created integration and validating config, attempt {attempts+1}/{INTEGRATION_POLLING_RETRY_LIMIT}",
+                f"Fetching created integration and validating config, attempt {attempts + 1}/{INTEGRATION_POLLING_RETRY_LIMIT}",
                 attempt=attempts,
             )
             response = await self._get_current_integration()
@@ -288,3 +289,18 @@ class IntegrationClientMixin:
         response = await self._delete_current_integration()
         handle_port_status_code(response, should_raise, should_log)
         return response.json()
+
+    async def post_integration_raw_data(
+        self, raw_data: list[dict[Any, Any]], sync_id: str, kind: str
+    ) -> None:
+        logger.debug("starting POST raw data request", raw_data=raw_data)
+        headers = await self.auth.headers()
+        response = await self.client.post(
+            f"{self.auth.ingest_url}/lakehouse/integration-type/{self.auth.integration_type}/integration/{self.integration_identifier}/sync/{sync_id}/kind/{kind}/items",
+            headers=headers,
+            json={
+                "items": raw_data,
+            },
+        )
+        handle_port_status_code(response, should_log=False)
+        logger.debug("Finished POST raw data request")
