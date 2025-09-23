@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
@@ -73,7 +73,7 @@ class TestListTagsForResourceAction:
         # Mock should return different responses for each individual call
         def mock_list_tags_for_resource(
             ResourceName: str, **kwargs: Any
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             if ResourceName == "arn:aws:rds:us-east-1:123456789012:db:db-1":
                 return {
                     "TagList": [
@@ -145,7 +145,7 @@ class TestListTagsForResourceAction:
         # First call succeeds, second call fails
         def mock_list_tags_for_resource(
             ResourceName: str, **kwargs: Any
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             if ResourceName == "arn:aws:rds:us-east-1:123456789012:db:db-1":
                 return {"TagList": [{"Key": "Environment", "Value": "production"}]}
             else:

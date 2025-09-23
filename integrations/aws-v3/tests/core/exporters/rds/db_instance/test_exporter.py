@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, List, Dict, Any
+from typing import AsyncGenerator, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
@@ -146,7 +146,7 @@ class TestRdsDbInstanceExporter:
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
-        async def mock_paginate() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        async def mock_paginate() -> AsyncGenerator[list[dict[str, Any]], None]:
             yield [
                 {
                     "DBInstances": [
@@ -176,7 +176,7 @@ class TestRdsDbInstanceExporter:
             ]
 
         class MockPaginator:
-            def paginate(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            def paginate(self) -> AsyncGenerator[list[dict[str, Any]], None]:
                 return mock_paginate()
 
         paginator_instance = MockPaginator()
@@ -241,11 +241,11 @@ class TestRdsDbInstanceExporter:
         mock_proxy.client = mock_client
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
-        async def mock_paginate() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        async def mock_paginate() -> AsyncGenerator[list[dict[str, Any]], None]:
             yield []
 
         class MockPaginator:
-            def paginate(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            def paginate(self) -> AsyncGenerator[list[dict[str, Any]], None]:
                 return mock_paginate()
 
         paginator_instance = MockPaginator()

@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Any
 from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 from datetime import datetime
@@ -18,18 +18,18 @@ class DbInstanceProperties(BaseModel):
     DbInstancePort: int = Field(default=0, alias="Port")
     DBInstanceStatus: str = Field(default_factory=str)
     DBName: Optional[str] = Field(default=None)
-    DBParameterGroups: List[Dict[str, Any]] = Field(default_factory=list)
-    DBSecurityGroups: List[Dict[str, Any]] = Field(default_factory=list)
-    DBSubnetGroup: Optional[Dict[str, Any]] = Field(default=None)
+    DBParameterGroups: list[dict[str, Any]] = Field(default_factory=list)
+    DBSecurityGroups: list[dict[str, Any]] = Field(default_factory=list)
+    DBSubnetGroup: Optional[dict[str, Any]] = Field(default=None)
     DbiResourceId: str = Field(default_factory=str)
-    DomainMemberships: List[Dict[str, Any]] = Field(default_factory=list)
+    DomainMemberships: list[dict[str, Any]] = Field(default_factory=list)
     IAMDatabaseAuthenticationEnabled: bool = Field(
         default=False, alias="EnableIAMDatabaseAuthentication"
     )
     PerformanceInsightsEnabled: bool = Field(
         default=False, alias="EnablePerformanceInsights"
     )
-    Endpoint: Optional[Dict[str, Any]] = Field(default=None)
+    Endpoint: Optional[dict[str, Any]] = Field(default=None)
     Engine: str = Field(default_factory=str)
     EngineVersion: str = Field(default_factory=str)
     EnhancedMonitoringResourceArn: Optional[str] = Field(default=None)
@@ -42,28 +42,28 @@ class DbInstanceProperties(BaseModel):
     MonitoringInterval: int = Field(default=0)
     MonitoringRoleArn: Optional[str] = Field(default=None)
     MultiAZ: bool = Field(default=False)
-    OptionGroupMemberships: List[Dict[str, Any]] = Field(default_factory=list)
-    PendingModifiedValues: Dict[str, Any] = Field(default_factory=dict)
+    OptionGroupMemberships: list[dict[str, Any]] = Field(default_factory=list)
+    PendingModifiedValues: dict[str, Any] = Field(default_factory=dict)
     PreferredBackupWindow: str = Field(default_factory=str)
     PreferredMaintenanceWindow: str = Field(default_factory=str)
     PubliclyAccessible: bool = Field(default=False)
-    ReadReplicaDBInstanceIdentifiers: List[str] = Field(default_factory=list)
+    ReadReplicaDBInstanceIdentifiers: list[str] = Field(default_factory=list)
     SecondaryAvailabilityZone: Optional[str] = Field(default=None)
     StorageEncrypted: bool = Field(default=False)
     StorageType: str = Field(default_factory=str)
-    Tags: List[Dict[str, Any]] = Field(default_factory=list)
-    VpcSecurityGroups: List[Dict[str, Any]] = Field(
+    Tags: list[dict[str, Any]] = Field(default_factory=list)
+    VpcSecurityGroups: list[dict[str, Any]] = Field(
         default_factory=list, alias="VPCSecurityGroups"
     )
     DatabaseInsightsMode: Optional[str] = Field(default=None)
     DeletionProtection: bool = Field(default=False)
-    AssociatedRoles: List[Dict[str, Any]] = Field(default_factory=list)
+    AssociatedRoles: list[dict[str, Any]] = Field(default_factory=list)
     CustomerOwnedIpEnabled: bool = Field(default=False)
     ActivityStreamStatus: Optional[str] = Field(default=None)
     BackupTarget: Optional[str] = Field(default=None)
     NetworkType: Optional[str] = Field(default=None)
     StorageThroughput: Optional[int] = Field(default=None)
-    CertificateDetails: Optional[Dict[str, Any]] = Field(default=None)
+    CertificateDetails: Optional[dict[str, Any]] = Field(default=None)
     DedicatedLogVolume: bool = Field(default=False)
     IsStorageConfigUpgradeAvailable: bool = Field(default=False)
     EngineLifecycleSupport: Optional[str] = Field(default=None)
