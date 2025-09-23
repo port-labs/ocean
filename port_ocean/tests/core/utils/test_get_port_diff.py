@@ -1,4 +1,3 @@
-import pytest
 from typing import Any
 
 from port_ocean.core.models import Entity

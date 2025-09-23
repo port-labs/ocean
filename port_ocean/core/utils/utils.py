@@ -90,9 +90,11 @@ def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPo
     for entity in before:
         identifier = entity.identifier
         key = (
-            json.dumps(identifier, sort_keys=True)
-            if isinstance(identifier, dict)
-            else str(identifier),
+            (
+                json.dumps(identifier, sort_keys=True)
+                if isinstance(identifier, dict)
+                else str(identifier)
+            ),
             entity.blueprint,
         )
         before_dict[key] = entity
@@ -100,9 +102,11 @@ def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPo
     for entity in after:
         identifier = entity.identifier
         key = (
-            json.dumps(identifier, sort_keys=True)
-            if isinstance(identifier, dict)
-            else str(identifier),
+            (
+                json.dumps(identifier, sort_keys=True)
+                if isinstance(identifier, dict)
+                else str(identifier)
+            ),
             entity.blueprint,
         )
         after_dict[key] = entity

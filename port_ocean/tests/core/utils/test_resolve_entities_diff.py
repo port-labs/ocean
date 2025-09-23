@@ -1,9 +1,7 @@
-import pytest
 from unittest.mock import patch
 from port_ocean.core.models import Entity
 from port_ocean.core.utils.utils import (
     are_entities_different,
-    get_port_diff,
     resolve_entities_diff,
     are_entities_fields_equal,
 )
@@ -611,5 +609,3 @@ def test_resolve_entities_diff_multiple_entities() -> None:
     assert changed[0] == entity1_modified_properties
     assert changed[1] == entity2
     assert changed[2] == entity_with_search_identifier
-
-
