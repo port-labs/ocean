@@ -59,8 +59,8 @@ entity3 = create_test_entity(
 
 def test_get_port_diff_with_dictionary_identifier() -> None:
     """
-    Test that get_port_diff raises a TypeError when Entity.identifier is a dictionary,
-    as it is an unhashable type and cannot be used as a dictionary key in the function.
+    Test that get_port_diff handles dictionary identifiers by converting them to strings.
+    An entity with a dictionary identifier in 'before' and not in 'after' should be marked as deleted.
     """
     entity_with_dict_id = create_test_entity(
         identifier={"rules": "some_id", "combinator": "some combinator"},  # type: ignore
@@ -72,8 +72,12 @@ def test_get_port_diff_with_dictionary_identifier() -> None:
     before = [entity_with_dict_id]
     after: list[Entity] = []
 
-    with pytest.raises(TypeError, match="unhashable type: 'dict'"):
-        get_port_diff(before, after)
+    diff = get_port_diff(before, after)
+
+    assert not diff.created
+    assert not diff.modified
+    assert len(diff.deleted) == 1
+    assert entity_with_dict_id in diff.deleted
 
 
 def test_get_port_diff_no_changes() -> None:
