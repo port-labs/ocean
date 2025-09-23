@@ -689,6 +689,6 @@ class DatadogClient:
             logger.warning(
                 f"No service dependencies found for service {service_id} in environment {env}"
             )
-            return
+            return None
 
         return result
