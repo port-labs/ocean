@@ -155,7 +155,7 @@ class TestEcsServiceExporter:
             ]
 
         class MockServicePaginator:
-            def paginate(self, cluster: Any = None) -> AsyncGenerator[list[str], None]:
+            def paginate(self, cluster: Any = None, batch_size: Any = None) -> AsyncGenerator[list[str], None]:
                 return mock_service_paginate()
 
         # Use MagicMock for get_paginator to avoid coroutine issues
