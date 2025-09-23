@@ -86,6 +86,7 @@ resources:
             recommendedVersion: .data.recommendedVersion
             packageData: .data.packageData
             cweId: .vulnerabilityDetails.cweId
+            similarityId: .similarityId
           relations:
             scan: .__scan_id
   - kind: containers
@@ -111,6 +112,7 @@ resources:
             imageTag: .data.imageTag
             imageFilePath: .data.imageFilePath
             cweId: .vulnerabilityDetails.cweId
+            similarityId: .similarityId
           relations:
             scan: .__scan_id
   - kind: kics
@@ -135,6 +137,7 @@ resources:
             issueType: (.issueType // empty)
             expectedValue: (.expectedValue // empty)
             value: (.value // empty)
+            similarityId: .similarityID
           relations:
             scan: .__scan_id
   - kind: sast
@@ -155,5 +158,6 @@ resources:
             created: .firstFoundAt
             nodes: (.nodes // empty)
             cweId: (.cweID // empty)
+            similarityId: .similarityID
           relations:
             scan: .scanID

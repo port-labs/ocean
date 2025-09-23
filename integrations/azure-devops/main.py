@@ -277,10 +277,13 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.TEST_RUN)
 async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    config = cast(AzureDevopsTestRunResourceConfig, event.resource_config)
-    include_results = config.selector.include_results
+    selector = cast(AzureDevopsTestRunResourceConfig, event.resource_config).selector
+    include_results = selector.include_results
+    coverage_config = selector.code_coverage
 
-    async for test_runs in azure_devops_client.fetch_test_runs(include_results):
+    async for test_runs in azure_devops_client.fetch_test_runs(
+        include_results, coverage_config
+    ):
         logger.info(f"Fetched {len(test_runs)} test runs")
         yield test_runs
 
