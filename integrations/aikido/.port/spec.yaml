@@ -2,6 +2,7 @@ description: Aikido integration for Port Ocean
 icon: Aikido
 title: Aikido
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/aikido
+recommendedInstallationMethod: Saas
 features:
   - type: exporter
     section: Code Quality & Security
