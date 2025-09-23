@@ -19,9 +19,6 @@ class DescribeServicesAction(Action):
     async def _execute(
         self, service_identifiers: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
-        if not service_identifiers:
-            return []
-
         cluster_arn = service_identifiers[0]["clusterArn"]
         service_arns = [
             service_info["serviceArn"] for service_info in service_identifiers
