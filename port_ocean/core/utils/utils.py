@@ -88,11 +88,11 @@ def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPo
 
     # Create dictionaries for before and after lists
     for entity in before:
-        key = (entity.identifier, entity.blueprint)
+        key = (str(entity.identifier), entity.blueprint)
         before_dict[key] = entity
 
     for entity in after:
-        key = (entity.identifier, entity.blueprint)
+        key = (str(entity.identifier), entity.blueprint)
         after_dict[key] = entity
 
     # Find created, modified, and deleted objects
