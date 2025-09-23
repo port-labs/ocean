@@ -318,7 +318,7 @@ EXPECTED_TEST_RUNS = [
         "createdBy": {"displayName": "John Doe"},
         "build": {"id": 123, "name": "Build 123"},
         "release": {"id": 456, "name": "Release 456"},
-        "__projectId": "proj1",
+        "project": {"id": "proj1", "name": "Project One"},
     },
     {
         "id": 2,
@@ -330,7 +330,7 @@ EXPECTED_TEST_RUNS = [
         "createdBy": {"displayName": "Jane Smith"},
         "build": {"id": 124, "name": "Build 124"},
         "release": None,
-        "__projectId": "proj1",
+        "project": {"id": "proj1", "name": "Project One"},
     },
 ]
 
@@ -3020,9 +3020,12 @@ async def test_fetch_test_runs(mock_event_context: MagicMock) -> None:
         yield [{"id": "proj1", "name": "Project One"}]
 
     async def mock_get_paginated_by_top_and_continuation_token(
-        url: str, **kwargs: Any
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         if "test/runs" in url and "/results" not in url:
+            # Verify that includeRunDetails is set to True
+            assert additional_params is not None
+            assert additional_params.get("includeRunDetails") is True
             yield EXPECTED_TEST_RUNS
         else:
             yield []
@@ -3047,10 +3050,10 @@ async def test_fetch_test_runs(mock_event_context: MagicMock) -> None:
                 assert len(test_runs) == 2
                 assert test_runs[0]["id"] == 1
                 assert test_runs[0]["name"] == "Test Run 1"
-                assert test_runs[0]["__projectId"] == "proj1"
+                assert test_runs[0]["project"]["id"] == "proj1"
                 assert test_runs[1]["id"] == 2
                 assert test_runs[1]["name"] == "Test Run 2"
-                assert test_runs[1]["__projectId"] == "proj1"
+                assert test_runs[1]["project"]["id"] == "proj1"
 
 
 @pytest.mark.asyncio
@@ -3064,9 +3067,12 @@ async def test_fetch_test_runs_with_results(mock_event_context: MagicMock) -> No
         yield [{"id": "proj1", "name": "Project One"}]
 
     async def mock_get_paginated_by_top_and_continuation_token(
-        url: str, **kwargs: Any
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         if "test/runs" in url and "/results" not in url:
+            # Verify that includeRunDetails is set to True
+            assert additional_params is not None
+            assert additional_params.get("includeRunDetails") is True
             yield EXPECTED_TEST_RUNS
         elif "test/runs/1/results" in url:
             yield [EXPECTED_TEST_RESULTS[0]]
@@ -3095,14 +3101,14 @@ async def test_fetch_test_runs_with_results(mock_event_context: MagicMock) -> No
                 assert len(test_runs) == 2
                 assert test_runs[0]["id"] == 1
                 assert test_runs[0]["name"] == "Test Run 1"
-                assert test_runs[0]["__projectId"] == "proj1"
+                assert test_runs[0]["project"]["id"] == "proj1"
                 assert "__testResults" in test_runs[0]
                 assert len(test_runs[0]["__testResults"]) == 1
                 assert test_runs[0]["__testResults"][0]["id"] == 100000
 
                 assert test_runs[1]["id"] == 2
                 assert test_runs[1]["name"] == "Test Run 2"
-                assert test_runs[1]["__projectId"] == "proj1"
+                assert test_runs[1]["project"]["id"] == "proj1"
                 assert "__testResults" in test_runs[1]
                 assert len(test_runs[1]["__testResults"]) == 1
                 assert test_runs[1]["__testResults"][0]["id"] == 100001
@@ -3143,24 +3149,33 @@ async def test_enrich_test_runs() -> None:
     )
 
     test_runs = [
-        {"id": 1, "name": "Test Run 1"},
-        {"id": 2, "name": "Test Run 2"},
+        {
+            "id": 1,
+            "name": "Test Run 1",
+            "build": {"id": 123},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 2,
+            "name": "Test Run 2",
+            "build": {"id": 124},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
     ]
 
-    async def mock_get_paginated_by_top_and_continuation_token(
-        url: str, **kwargs: Any
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        if "test/runs/1/results" in url:
-            yield [EXPECTED_TEST_RESULTS[0]]
-        elif "test/runs/2/results" in url:
-            yield [EXPECTED_TEST_RESULTS[1]]
-        else:
-            yield []
+    async def mock_fetch_test_results(
+        project_id: str, run_id: str
+    ) -> List[Dict[str, Any]]:
+        if run_id == 1 or run_id == "1":
+            return [EXPECTED_TEST_RESULTS[0]]
+        elif run_id == 2 or run_id == "2":
+            return [EXPECTED_TEST_RESULTS[1]]
+        return []
 
     with patch.object(
         client,
-        "_get_paginated_by_top_and_continuation_token",
-        side_effect=mock_get_paginated_by_top_and_continuation_token,
+        "_fetch_test_results",
+        side_effect=mock_fetch_test_results,
     ):
         # ACT
         enriched_test_runs = await client._enrich_test_runs(
@@ -3169,12 +3184,12 @@ async def test_enrich_test_runs() -> None:
 
         # ASSERT
         assert len(enriched_test_runs) == 2
-        assert enriched_test_runs[0]["__projectId"] == "proj1"
+        assert enriched_test_runs[0]["project"]["id"] == "proj1"
         assert "__testResults" in enriched_test_runs[0]
         assert len(enriched_test_runs[0]["__testResults"]) == 1
         assert enriched_test_runs[0]["__testResults"][0]["id"] == 100000
 
-        assert enriched_test_runs[1]["__projectId"] == "proj1"
+        assert enriched_test_runs[1]["project"]["id"] == "proj1"
         assert "__testResults" in enriched_test_runs[1]
         assert len(enriched_test_runs[1]["__testResults"]) == 1
         assert enriched_test_runs[1]["__testResults"][0]["id"] == 100001
@@ -3187,8 +3202,18 @@ async def test_enrich_test_runs_without_results() -> None:
     )
 
     test_runs = [
-        {"id": 1, "name": "Test Run 1"},
-        {"id": 2, "name": "Test Run 2"},
+        {
+            "id": 1,
+            "name": "Test Run 1",
+            "build": {"id": 123},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 2,
+            "name": "Test Run 2",
+            "build": {"id": 124},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
     ]
 
     # ACT
@@ -3198,8 +3223,249 @@ async def test_enrich_test_runs_without_results() -> None:
 
     # ASSERT
     assert len(enriched_test_runs) == 2
-    assert enriched_test_runs[0]["__projectId"] == "proj1"
-    assert "__testResults" not in enriched_test_runs[0]
+    assert enriched_test_runs[0]["project"]["id"] == "proj1"
+    assert "__testResults" in enriched_test_runs[0]
+    assert len(enriched_test_runs[0]["__testResults"]) == 0
+    assert "__codeCoverage" in enriched_test_runs[0]
+    assert enriched_test_runs[0]["__codeCoverage"] == {}
 
-    assert enriched_test_runs[1]["__projectId"] == "proj1"
-    assert "__testResults" not in enriched_test_runs[1]
+    assert enriched_test_runs[1]["project"]["id"] == "proj1"
+    assert "__testResults" in enriched_test_runs[1]
+    assert len(enriched_test_runs[1]["__testResults"]) == 0
+    assert "__codeCoverage" in enriched_test_runs[1]
+    assert enriched_test_runs[1]["__codeCoverage"] == {}
+
+
+@pytest.mark.asyncio
+async def test_enrich_test_runs_with_coverage() -> None:
+    """Test enriching test runs with code coverage data."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    test_runs = [
+        {
+            "id": 1,
+            "name": "Test Run 1",
+            "build": {"id": 123},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 2,
+            "name": "Test Run 2",
+            "build": {"id": 124},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+    ]
+
+    # Mock coverage config
+    from integration import CodeCoverageConfig
+
+    coverage_config = CodeCoverageConfig(flags=1)
+
+    async def mock_fetch_code_coverage(
+        project_id: str, build_id: int, config: CodeCoverageConfig
+    ) -> Dict[str, Any]:
+        if build_id == 123:
+            return {"coverageData": {"linesCovered": 100, "linesNotCovered": 50}}
+        elif build_id == 124:
+            return {"coverageData": {"linesCovered": 80, "linesNotCovered": 20}}
+        return {}
+
+    with patch.object(
+        client,
+        "_fetch_code_coverage",
+        side_effect=mock_fetch_code_coverage,
+    ):
+        # ACT
+        enriched_test_runs = await client._enrich_test_runs(
+            test_runs, "proj1", include_results=False, coverage_config=coverage_config
+        )
+
+        # ASSERT
+        assert len(enriched_test_runs) == 2
+        assert enriched_test_runs[0]["project"]["id"] == "proj1"
+        assert "__codeCoverage" in enriched_test_runs[0]
+        assert (
+            enriched_test_runs[0]["__codeCoverage"]["coverageData"]["linesCovered"]
+            == 100
+        )
+
+        assert enriched_test_runs[1]["project"]["id"] == "proj1"
+        assert "__codeCoverage" in enriched_test_runs[1]
+        assert (
+            enriched_test_runs[1]["__codeCoverage"]["coverageData"]["linesCovered"]
+            == 80
+        )
+
+
+@pytest.mark.asyncio
+async def test_enrich_test_runs_with_results_and_coverage() -> None:
+    """Test enriching test runs with both results and coverage data."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    test_runs = [
+        {
+            "id": 1,
+            "name": "Test Run 1",
+            "build": {"id": 123},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 2,
+            "name": "Test Run 2",
+            "build": {"id": 124},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+    ]
+
+    # Mock coverage config
+    from integration import CodeCoverageConfig
+
+    coverage_config = CodeCoverageConfig(flags=1)
+
+    async def mock_fetch_test_results(
+        project_id: str, run_id: str
+    ) -> List[Dict[str, Any]]:
+        if run_id == 1 or run_id == "1":
+            return [EXPECTED_TEST_RESULTS[0]]
+        elif run_id == 2 or run_id == "2":
+            return [EXPECTED_TEST_RESULTS[1]]
+        return []
+
+    async def mock_fetch_code_coverage(
+        project_id: str, build_id: int, config: CodeCoverageConfig
+    ) -> Dict[str, Any]:
+        if build_id == 123:
+            return {"coverageData": {"linesCovered": 100, "linesNotCovered": 50}}
+        elif build_id == 124:
+            return {"coverageData": {"linesCovered": 80, "linesNotCovered": 20}}
+        return {}
+
+    with (
+        patch.object(
+            client,
+            "_fetch_test_results",
+            side_effect=mock_fetch_test_results,
+        ),
+        patch.object(
+            client,
+            "_fetch_code_coverage",
+            side_effect=mock_fetch_code_coverage,
+        ),
+    ):
+        # ACT
+        enriched_test_runs = await client._enrich_test_runs(
+            test_runs, "proj1", include_results=True, coverage_config=coverage_config
+        )
+
+        # ASSERT
+        assert len(enriched_test_runs) == 2
+        assert enriched_test_runs[0]["project"]["id"] == "proj1"
+        assert "__testResults" in enriched_test_runs[0]
+        assert "__codeCoverage" in enriched_test_runs[0]
+        assert len(enriched_test_runs[0]["__testResults"]) == 1
+        assert enriched_test_runs[0]["__testResults"][0]["id"] == 100000
+        assert (
+            enriched_test_runs[0]["__codeCoverage"]["coverageData"]["linesCovered"]
+            == 100
+        )
+
+        assert enriched_test_runs[1]["project"]["id"] == "proj1"
+        assert "__testResults" in enriched_test_runs[1]
+        assert "__codeCoverage" in enriched_test_runs[1]
+        assert len(enriched_test_runs[1]["__testResults"]) == 1
+        assert enriched_test_runs[1]["__testResults"][0]["id"] == 100001
+        assert (
+            enriched_test_runs[1]["__codeCoverage"]["coverageData"]["linesCovered"]
+            == 80
+        )
+
+
+@pytest.mark.asyncio
+async def test_fetch_code_coverage() -> None:
+    """Test fetching code coverage data."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    from integration import CodeCoverageConfig
+
+    coverage_config = CodeCoverageConfig(flags=1)
+
+    # Mock response
+    mock_response_data = {
+        "coverageData": {
+            "linesCovered": 100,
+            "linesNotCovered": 50,
+            "branchesCovered": 80,
+            "branchesNotCovered": 20,
+        }
+    }
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_response = Response(status_code=200, json=mock_response_data)
+        mock_send_request.return_value = mock_response
+
+        # ACT
+        coverage_data = await client._fetch_code_coverage("proj1", 123, coverage_config)
+
+        # ASSERT
+        assert coverage_data == mock_response_data
+        mock_send_request.assert_called_once_with(
+            "GET",
+            f"{MOCK_ORG_URL}/proj1/_apis/test/codecoverage",
+            params={"buildId": 123, "flags": 1},
+        )
+
+
+@pytest.mark.asyncio
+async def test_fetch_code_coverage_no_response() -> None:
+    """Test fetching code coverage when no response is returned."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    from integration import CodeCoverageConfig
+
+    coverage_config = CodeCoverageConfig(flags=1)
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = None
+
+        # ACT
+        coverage_data = await client._fetch_code_coverage("proj1", 123, coverage_config)
+
+        # ASSERT
+        assert coverage_data == {}
+
+
+@pytest.mark.asyncio
+async def test_fetch_test_results() -> None:
+    """Test fetching test results for a specific test run."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "test/runs/1/results" in url:
+            yield [EXPECTED_TEST_RESULTS[0]]
+        else:
+            yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        # ACT
+        results = await client._fetch_test_results("proj1", "1")
+
+        # ASSERT
+        assert len(results) == 1
+        assert results[0]["id"] == 100000
+        assert results[0]["outcome"] == "Passed"
