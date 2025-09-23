@@ -227,108 +227,41 @@
     "icon": "AWS",
     "schema": {
       "properties": {
-        "dbInstanceIdentifier": {
+        "DBInstanceIdentifier": {
           "type": "string",
           "title": "DB Instance Identifier",
           "description": "The unique identifier of the RDS DB instance"
         },
-        "dbInstanceArn": {
+        "DBInstanceArn": {
           "type": "string",
           "title": "ARN",
           "description": "The Amazon Resource Name (ARN) of the DB instance"
         },
-        "engine": {
+        "Engine": {
           "type": "string",
           "title": "Engine",
           "description": "The database engine type (e.g., mysql, postgres, oracle-ee)"
         },
-        "engineVersion": {
-          "type": "string",
-          "title": "Engine Version",
-          "description": "The version of the database engine"
-        },
-        "dbInstanceClass": {
+        "DBInstanceClass": {
           "type": "string",
           "title": "Instance Class",
           "description": "The compute and memory capacity of the DB instance (e.g., db.t3.micro, db.m4.xlarge)"
         },
-        "dbInstanceStatus": {
+        "DBInstanceStatus": {
           "type": "string",
           "title": "Status",
           "description": "The current status of the DB instance",
           "enum": ["available", "backing-up", "creating", "deleting", "failed", "incompatible-credentials", "incompatible-network", "incompatible-option-group", "incompatible-parameters", "incompatible-restore", "maintenance", "modifying", "rebooting", "renaming", "resetting-master-credentials", "restore-error", "storage-full", "storage-optimization", "upgrading"]
         },
-        "endpoint": {
-          "type": "object",
-          "title": "Endpoint",
-          "description": "The connection endpoint for the DB instance",
-          "properties": {
-            "address": {
-              "type": "string",
-              "title": "Address"
-            },
-            "port": {
-              "type": "number",
-              "title": "Port"
-            }
-          }
-        },
-        "allocatedStorage": {
-          "type": "number",
-          "title": "Allocated Storage",
-          "description": "The amount of storage allocated to the DB instance in GB"
-        },
-        "storageType": {
-          "type": "string",
-          "title": "Storage Type",
-          "description": "The storage type of the DB instance",
-          "enum": ["standard", "gp2", "gp3", "io1", "io2"]
-        },
-        "multiAZ": {
+        "MultiAZ": {
           "type": "boolean",
           "title": "Multi-AZ",
           "description": "Whether the DB instance is deployed in multiple Availability Zones"
         },
-        "publiclyAccessible": {
-          "type": "boolean",
-          "title": "Publicly Accessible",
-          "description": "Whether the DB instance is publicly accessible"
-        },
-        "storageEncrypted": {
+        "StorageEncrypted": {
           "type": "boolean",
           "title": "Storage Encrypted",
           "description": "Whether the DB instance storage is encrypted"
-        },
-        "backupRetentionPeriod": {
-          "type": "number",
-          "title": "Backup Retention Period",
-          "description": "The number of days to retain automated backups"
-        },
-        "availabilityZone": {
-          "type": "string",
-          "title": "Availability Zone",
-          "description": "The Availability Zone where the DB instance is located"
-        },
-        "masterUsername": {
-          "type": "string",
-          "title": "Master Username",
-          "description": "The master username for the DB instance"
-        },
-        "tags": {
-          "type": "array",
-          "title": "Tags",
-          "description": "The tags associated with the DB instance",
-          "items": {
-            "type": "object",
-            "properties": {
-              "key": {
-                "type": "string"
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          }
         }
       },
       "required": []

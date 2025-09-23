@@ -10,7 +10,6 @@ from aws.core.exporters.rds.db_instance.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
-from loguru import logger
 
 
 class RdsDbInstanceExporter(IResourceExporter):
@@ -28,17 +27,13 @@ class RdsDbInstanceExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            # For single resource, we need to call describe_db_instances with the specific identifier
-            response = await proxy.client.describe_db_instances(
+            response = await proxy.client.describe_db_instances(  # type: ignore[attr-defined]
                 DBInstanceIdentifier=options.db_instance_identifier
             )
 
-            if response.get("DBInstances"):
-                db_instance = response["DBInstances"][0]
-                action_result = await inspector.inspect([db_instance], options.include)
-                return action_result[0] if action_result else {}
-
-            return {}
+            db_instance = response["DBInstances"][0]
+            action_result = await inspector.inspect([db_instance], options.include)
+            return action_result[0] if action_result else {}
 
     async def get_paginated_resources(
         self, options: PaginatedDbInstanceRequest
@@ -54,7 +49,6 @@ class RdsDbInstanceExporter(IResourceExporter):
             paginator = proxy.get_paginator("describe_db_instances", "DBInstances")
 
             async for db_instances in paginator.paginate():
-                logger.info(f"DB instances: {db_instances}")
                 if db_instances:
                     action_result = await inspector.inspect(
                         db_instances,

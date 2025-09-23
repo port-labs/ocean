@@ -23,8 +23,12 @@ class DbInstanceProperties(BaseModel):
     DBSubnetGroup: Optional[Dict[str, Any]] = Field(default=None)
     DbiResourceId: str = Field(default_factory=str)
     DomainMemberships: List[Dict[str, Any]] = Field(default_factory=list)
-    IAMDatabaseAuthenticationEnabled: bool = Field(default=False, alias="EnableIAMDatabaseAuthentication")
-    PerformanceInsightsEnabled: bool = Field(default=False, alias="EnablePerformanceInsights")
+    IAMDatabaseAuthenticationEnabled: bool = Field(
+        default=False, alias="EnableIAMDatabaseAuthentication"
+    )
+    PerformanceInsightsEnabled: bool = Field(
+        default=False, alias="EnablePerformanceInsights"
+    )
     Endpoint: Optional[Dict[str, Any]] = Field(default=None)
     Engine: str = Field(default_factory=str)
     EngineVersion: str = Field(default_factory=str)
@@ -48,7 +52,9 @@ class DbInstanceProperties(BaseModel):
     StorageEncrypted: bool = Field(default=False)
     StorageType: str = Field(default_factory=str)
     Tags: List[Dict[str, Any]] = Field(default_factory=list)
-    VpcSecurityGroups: List[Dict[str, Any]] = Field(default_factory=list, alias="VPCSecurityGroups")
+    VpcSecurityGroups: List[Dict[str, Any]] = Field(
+        default_factory=list, alias="VPCSecurityGroups"
+    )
     DatabaseInsightsMode: Optional[str] = Field(default=None)
     DeletionProtection: bool = Field(default=False)
     AssociatedRoles: List[Dict[str, Any]] = Field(default_factory=list)
