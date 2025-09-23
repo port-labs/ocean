@@ -122,11 +122,9 @@ class TestEcsServiceExporter:
         exporter: EcsServiceExporter,
     ) -> None:
         """Test successful paginated resource fetching."""
-        # Setup cluster exporter mock
         mock_cluster_exporter = AsyncMock()
         mock_cluster_exporter_class.return_value = mock_cluster_exporter
 
-        # Mock cluster data
         mock_clusters = [
             {
                 "Properties": {
@@ -135,7 +133,6 @@ class TestEcsServiceExporter:
             }
         ]
 
-        # Mock the get_paginated_resources method to return an async generator
         async def mock_cluster_generator(
             options: Any,
         ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -143,11 +140,9 @@ class TestEcsServiceExporter:
 
         mock_cluster_exporter.get_paginated_resources = mock_cluster_generator
 
-        # Setup proxy/client
         mock_proxy = AsyncMock()
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
-        # Mock service pagination
         async def mock_service_paginate() -> AsyncGenerator[list[str], None]:
             yield [
                 "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1",
@@ -160,10 +155,8 @@ class TestEcsServiceExporter:
             ) -> AsyncGenerator[list[str], None]:
                 return mock_service_paginate()
 
-        # Use MagicMock for get_paginator to avoid coroutine issues
         mock_proxy.get_paginator = MagicMock(return_value=MockServicePaginator())
 
-        # Setup inspector
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
 

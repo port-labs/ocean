@@ -44,7 +44,6 @@ class TestDescribeServicesAction:
         assert result[0]["desiredCount"] == 2
         assert result[0]["runningCount"] == 2
 
-        # Verify the API call was made correctly
         mock_client.describe_services.assert_called_once_with(
             cluster="arn:aws:ecs:us-east-1:123456789012:cluster/cluster1",
             services=["arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1"],
