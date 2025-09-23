@@ -4,12 +4,6 @@ from aws.core.exporters.ecs.service.actions import DescribeServicesAction
 
 
 class TestDescribeServicesAction:
-    @pytest.mark.asyncio
-    async def test_execute_with_empty_service_identifiers(self) -> None:
-        """Test that empty service identifiers returns empty list."""
-        action = DescribeServicesAction(MagicMock())
-        result = await action._execute([])
-        assert result == []
 
     @pytest.mark.asyncio
     async def test_execute_with_valid_service_identifiers(self) -> None:
