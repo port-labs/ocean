@@ -3285,7 +3285,6 @@ async def test_generate_iterations(mock_event_context: MagicMock) -> None:
                     assert sprint1["id"] == "a589a806-bf11-4d4f-a031-c19813331553"
                     assert sprint1["name"] == "Sprint 1"
                     assert sprint1["path"] == "\\Project One\\Iteration\\Sprint 1"
-                    assert sprint1["__iterationKind"] == "sprint"
                     assert sprint1["__project"]["name"] == "Project One"
                     assert sprint1["__team"]["name"] in ["Team One", "Team Two"]
                     assert sprint1["attributes"]["startDate"] == "2024-01-01T00:00:00Z"
@@ -3302,7 +3301,6 @@ async def test_generate_iterations(mock_event_context: MagicMock) -> None:
                     assert release1["id"] == "b589a806-bf11-4d4f-a031-c19813331554"
                     assert release1["name"] == "Release 1.0"
                     assert release1["path"] == "\\Project One\\Iteration\\Release 1.0"
-                    assert release1["__iterationKind"] == "release"
                     assert release1["__project"]["name"] == "Project One"
                     assert release1["__team"]["name"] in ["Team One", "Team Two"]
                     assert release1["attributes"]["startDate"] == "2024-01-16T00:00:00Z"
@@ -3349,71 +3347,6 @@ async def test_generate_iterations_will_skip_404(
 
                 # ASSERT
                 assert len(iterations) == 0
-
-
-@pytest.mark.asyncio
-async def test_determine_iteration_type() -> None:
-    client = AzureDevopsClient(
-        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
-    )
-
-    # Test sprint patterns
-    assert client._determine_iteration_type({"name": "Sprint 1"}, "") == "sprint"
-    assert client._determine_iteration_type({"name": "Sprint-2"}, "") == "sprint"
-    assert client._determine_iteration_type({"name": "Sprint_3"}, "") == "sprint"
-    assert client._determine_iteration_type({"name": "Sprint 4"}, "") == "sprint"
-    assert client._determine_iteration_type({"name": "2024.1.15"}, "") == "sprint"
-    assert client._determine_iteration_type({"name": "S1"}, "") == "sprint"
-    assert client._determine_iteration_type({"name": "s2"}, "") == "sprint"
-
-    # Test release patterns
-    assert client._determine_iteration_type({"name": "Release 1.0"}, "") == "release"
-    assert client._determine_iteration_type({"name": "Release-2.0"}, "") == "release"
-    assert client._determine_iteration_type({"name": "Release_3.0"}, "") == "release"
-    assert client._determine_iteration_type({"name": "v1.0"}, "") == "release"
-    assert client._determine_iteration_type({"name": "Version 2.0"}, "") == "release"
-
-    # Test milestone patterns
-    assert client._determine_iteration_type({"name": "Milestone 1"}, "") == "milestone"
-    assert client._determine_iteration_type({"name": "Milestone-2"}, "") == "milestone"
-    assert client._determine_iteration_type({"name": "Milestone_3"}, "") == "milestone"
-    assert client._determine_iteration_type({"name": "M1"}, "") == "milestone"
-    assert client._determine_iteration_type({"name": "m2"}, "") == "milestone"
-
-    # Test epic patterns
-    assert client._determine_iteration_type({"name": "Epic 1"}, "") == "epic"
-    assert client._determine_iteration_type({"name": "Epic-2"}, "") == "epic"
-    assert client._determine_iteration_type({"name": "Epic_3"}, "") == "epic"
-
-    # Test path patterns
-    assert (
-        client._determine_iteration_type(
-            {"name": "Iteration", "path": "\\Project\\Sprint\\Iteration"}, ""
-        )
-        == "sprint"
-    )
-    assert (
-        client._determine_iteration_type(
-            {"name": "Iteration", "path": "\\Project\\Release\\Iteration"}, ""
-        )
-        == "release"
-    )
-    assert (
-        client._determine_iteration_type(
-            {"name": "Iteration", "path": "\\Project\\Milestone\\Iteration"}, ""
-        )
-        == "milestone"
-    )
-    assert (
-        client._determine_iteration_type(
-            {"name": "Iteration", "path": "\\Project\\Epic\\Iteration"}, ""
-        )
-        == "epic"
-    )
-
-    # Test default case
-    assert client._determine_iteration_type({"name": "Q1 2024"}, "") == "iteration"
-    assert client._determine_iteration_type({"name": "Phase 1"}, "") == "iteration"
 
 
 @pytest.mark.asyncio
@@ -3465,7 +3398,6 @@ async def test_iterations_for_project() -> None:
         assert sprint1["id"] == "a589a806-bf11-4d4f-a031-c19813331553"
         assert sprint1["name"] == "Sprint 1"
         assert sprint1["path"] == "\\Project One\\Iteration\\Sprint 1"
-        assert sprint1["__iterationKind"] == "sprint"
         assert sprint1["__project"]["name"] == "Project One"
         assert sprint1["__team"]["name"] == "Team One"
         assert sprint1["attributes"]["startDate"] == "2024-01-01T00:00:00Z"

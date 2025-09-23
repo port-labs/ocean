@@ -1,7 +1,6 @@
 import asyncio
 import functools
 import json
-import re
 from typing import Any, AsyncGenerator, Optional, Callable, Iterable
 from httpx import HTTPStatusError
 from loguru import logger
@@ -458,106 +457,57 @@ class AzureDevopsClient(HTTPBaseClient):
             if not teams_response:
                 return
 
-            teams = teams_response.json().get("value", [])
+            teams = teams_response.json()["value"]
 
-            # Get iterations for each team
-            for team in teams:
-                team_id = team["id"]
-                iterations_url = f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/teamsettings/iterations"
+            # Process teams concurrently
+            team_tasks = [
+                self._get_iterations_for_team(project, team) for team in teams
+            ]
 
-                params = {"api-version": "7.1"}
+            if team_tasks:
+                team_results = await asyncio.gather(*team_tasks, return_exceptions=True)
 
-                try:
-                    response = await self.send_request(
-                        "GET", iterations_url, params=params
-                    )
-                    if not response:
+                for result in team_results:
+                    if isinstance(result, Exception):
+                        logger.error(f"Failed to fetch team iterations: {result}")
                         continue
-
-                    iterations_data = response.json()
-                    iterations = iterations_data.get("value", [])
-
-                    # Process and enrich iterations
-                    enriched_iterations = []
-                    for iteration in iterations:
-                        enriched_iteration = {
-                            **iteration,
-                            "__project": project,
-                            "__team": team,
-                            "__iterationKind": self._determine_iteration_type(
-                                iteration, iteration.get("path", "")
-                            ),
-                        }
-                        enriched_iterations.append(enriched_iteration)
-
-                    if enriched_iterations:
-                        yield enriched_iterations
-
-                except Exception as e:
-                    logger.error(
-                        f"Failed to fetch iterations for team {team_id} in project {project_id}: {str(e)}"
-                    )
+                    if result and isinstance(result, list):
+                        yield result
 
         except Exception as e:
             logger.error(f"Failed to fetch teams for project {project_id}: {str(e)}")
 
-    def _determine_iteration_type(
-        self, iteration: dict[str, Any], parent_path: str
-    ) -> str:
-        """
-        Determine iteration type based on naming patterns and path structure.
+    async def _get_iterations_for_team(
+        self, project: dict[str, Any], team: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Get iterations for a specific team."""
+        project_id = project["id"]
+        team_id = team["id"]
+        iterations_url = f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/teamsettings/iterations"
 
-        Returns: 'sprint', 'release', 'milestone', 'epic', or 'iteration'
-        """
-        name = iteration.get("name", "").lower()
-        path = iteration.get("path", "").lower()
+        params = {"api-version": "7.1"}
 
-        # Check for sprint patterns
-        if any(
-            pattern in name for pattern in ["sprint", "sprint-", "sprint_", "sprint "]
-        ):
-            return "sprint"
+        try:
+            response = await self.send_request("GET", iterations_url, params=params)
+            if not response:
+                return []
 
-        # Check for release patterns
-        if any(
-            pattern in name
-            for pattern in [
-                "release",
-                "release-",
-                "release_",
-                "release ",
-                "v",
-                "version",
+            iterations_data = response.json()
+            iterations = iterations_data.get("value", [])
+
+            # Process and enrich iterations
+            enriched_iterations = [
+                {**iteration, "__project": project, "__team": team}
+                for iteration in iterations
             ]
-        ):
-            return "release"
 
-        # Check for milestone patterns
-        if any(
-            pattern in name
-            for pattern in ["milestone", "milestone-", "milestone_", "milestone ", "m"]
-        ):
-            return "milestone"
+            return enriched_iterations
 
-        # Check for epic patterns
-        if any(pattern in name for pattern in ["epic", "epic-", "epic_", "epic "]):
-            return "epic"
-
-        # Check path patterns
-        if "sprint" in path:
-            return "sprint"
-        elif "release" in path:
-            return "release"
-        elif "milestone" in path:
-            return "milestone"
-        elif "epic" in path:
-            return "epic"
-
-        # Check for date-based patterns
-        if re.search(r"\d{4}\.\d{1,2}\.\d{1,2}", name) or re.search(r"s\d+", name):
-            return "sprint"
-
-        return "iteration"
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch iterations for team {team_id} in project {project_id}: {str(e)}"
+            )
+            return []
 
     @cache_iterator_result()
     async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
