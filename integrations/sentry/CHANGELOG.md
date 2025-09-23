@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.0 (2025-09-09)
+## 0.2.0 (2025-09-23)
 
 
 ### Bug Fixes
@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Centralized API requests** through new `send_api_request()` method
 - **Comprehensive test coverage** with 123 lines of tests for rate limiter scenarios
 - **Integration with Ocean's retry mechanism** using `RetryConfig` for 429 response handling```
+
+
+## 0.1.203 (2025-09-22)
+
+
+### Improvements
+
+- Added recommendedInstallationMethod: Saas to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
 
 
 ## 0.1.202 (2025-09-17)
