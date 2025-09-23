@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from aws.core.exporters.ecs.service.actions import DescribeServicesAction
 
 
