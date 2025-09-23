@@ -1,3 +1,11 @@
+## 0.1.120-beta (2025-09-22)
+
+
+### Improvements
+
+- Added recommendedInstallationMethod: Saas to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
+
+
 ## 0.1.119-beta (2025-09-17)
 
 
