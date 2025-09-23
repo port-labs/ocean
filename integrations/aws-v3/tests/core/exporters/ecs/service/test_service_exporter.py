@@ -31,7 +31,9 @@ class TestEcsServiceExporter:
         assert exporter._service_name == "ecs"
 
     @pytest.mark.asyncio
-    async def test_get_resource_single_service(self, exporter: EcsServiceExporter) -> None:
+    async def test_get_resource_single_service(
+        self, exporter: EcsServiceExporter
+    ) -> None:
         """Test fetching a single ECS service."""
         options = SingleServiceRequest(
             service_name="test-service",
@@ -80,7 +82,9 @@ class TestEcsServiceExporter:
         )
 
     @pytest.mark.asyncio
-    async def test_get_resource_empty_response(self, exporter: EcsServiceExporter) -> None:
+    async def test_get_resource_empty_response(
+        self, exporter: EcsServiceExporter
+    ) -> None:
         """Test handling empty response from inspector."""
         options = SingleServiceRequest(
             service_name="nonexistent-service",
@@ -132,7 +136,9 @@ class TestEcsServiceExporter:
         ]
 
         # Mock the get_paginated_resources method to return an async generator
-        async def mock_cluster_generator(options: Any) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async def mock_cluster_generator(
+            options: Any,
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
             yield mock_clusters
 
         mock_cluster_exporter.get_paginated_resources = mock_cluster_generator
