@@ -1,4 +1,4 @@
-from typing import cast, Union
+from typing import cast, Union, Any
 
 from initialize_client import init_client
 from integration import ObjectKind
@@ -13,13 +13,13 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from loguru import logger
+import asyncio
 
 
 class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         """Only process events that are related to service dependencies."""
-        payload = event.payload
-        event_type = payload.get("event_type", "")
+        event_type = event.payload["event_type"]
 
         # Event types that may indicate changes in service behavior or dependencies
         service_related_events = [
@@ -40,30 +40,46 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        """Handle service dependency webhook events."""
+        service_ids: list[str] = []
+        for tag in payload["tags"]:
+            if tag.startswith("service:"):
+                service_ids.append(tag.split(":")[1])
+
         config = cast(
             Union[ResourceConfig, ServiceDependencyResourceConfig], resource_config
         )
         selector = cast(DatadogServiceDependencySelector, config.selector)
         dd_client = init_client()
-        service_dependency = await dd_client.get_single_service_dependency(
-            service_id=payload["service_id"],
-            env=selector.environment,
-            start_time=selector.start_time,
-        )
+
+        tasks = [
+            dd_client.get_single_service_dependency(
+                service_id=service_id,
+                env=selector.environment,
+                start_time=selector.start_time,
+            )
+            for service_id in service_ids
+        ]
+
+        results: list[dict[str, Any] | None] = await asyncio.gather(*tasks)
+        service_dependencies = [
+            service_dependency for service_dependency in results if service_dependency
+        ]
 
         return WebhookEventRawResults(
-            updated_raw_results=[service_dependency] if service_dependency else [],
+            updated_raw_results=service_dependencies,
             deleted_raw_results=[],
         )
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        """Validate that the payload contains required fields for service dependency events."""
-        has_service_info = "service_id" in payload
         has_event_info = "event_type" in payload
 
-        is_valid = has_service_info and has_event_info
+        has_service_info = False
+        for tag in payload.get("tags", []):
+            has_service_info = tag.startswith("service:")
+            if has_service_info:
+                break
 
+        is_valid = has_service_info and has_event_info
         if not is_valid:
             logger.warning(f"Invalid webhook payload for service dependency: {payload}")
 

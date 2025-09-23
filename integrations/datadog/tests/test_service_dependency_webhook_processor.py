@@ -44,12 +44,17 @@ async def test_get_matching_kinds(
 async def test_validate_payload(processor: ServiceDependencyWebhookProcessor) -> None:
     assert (
         await processor.validate_payload(
-            {"event_type": "service_check", "service_id": "123"}
+            {"event_type": "service_check", "tags": ["service:service-a", "env:prod"]}
         )
         is True
     )
 
-    assert await processor.validate_payload({"service_id": "123"}) is False
+    assert (
+        await processor.validate_payload(
+            {"event_type": "service_check", "tags": ["service:service-a", "env:prod"]}
+        )
+        is True
+    )
 
     assert await processor.validate_payload({"event_type": "service_check"}) is False
 
@@ -60,9 +65,12 @@ async def test_handle_event_with_service_dependency(
     resource_config: Any,
     mock_integration_config: dict[str, str],
 ) -> None:
-    test_payload = {"event_type": "service_check", "service_id": "123"}
+    test_payload = {
+        "event_type": "service_check",
+        "tags": ["service:service-a", "env:prod"],
+    }
     mock_service_dependency = {
-        "service_id": "123",
+        "service_id": "service-a",
         "service_name": "Test Service Dependency",
     }
 
@@ -76,7 +84,7 @@ async def test_handle_event_with_service_dependency(
         result = await processor.handle_event(test_payload, resource_config)
 
         mock_client.get_single_service_dependency.assert_awaited_once_with(
-            service_id="123",
+            service_id="service-a",
             env=resource_config.selector.environment,
             start_time=resource_config.selector.start_time,
         )
@@ -90,7 +98,7 @@ async def test_handle_event_without_service_dependency(
     processor: ServiceDependencyWebhookProcessor,
     resource_config: Any,
 ) -> None:
-    test_payload = {"event_type": "service_check", "service_id": "123"}
+    test_payload = {"event_type": "service_check", "tags": ["env:prod"]}
 
     with patch(
         "webhook_processors.service_dependency_webhook_processor.init_client"
@@ -100,10 +108,6 @@ async def test_handle_event_without_service_dependency(
         mock_init.return_value = mock_client
 
         result = await processor.handle_event(test_payload, resource_config)
-        mock_client.get_single_service_dependency.assert_awaited_once_with(
-            service_id="123",
-            env=resource_config.selector.environment,
-            start_time=resource_config.selector.start_time,
-        )
+        mock_client.get_single_service_dependency.assert_not_called()
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 0

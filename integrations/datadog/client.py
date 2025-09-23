@@ -675,4 +675,20 @@ class DatadogClient:
     async def get_single_service_dependency(
         self, env: str, start_time: float, service_id: str
     ) -> dict[str, Any] | None:
-        pass
+        end_time = int(time.time())
+
+        start_time = time.time() - (FETCH_WINDOW_TIME_IN_SECONDS * start_time)
+
+        url = f"{self.api_url}/api/v1/service_dependencies/{service_id}"
+        result: dict[str, Any] = await self._send_api_request(
+            url,
+            params={"env": env, "start": int(start_time), "end": end_time},
+        )
+
+        if not result:
+            logger.warning(
+                f"No service dependencies found for service {service_id} in environment {env}"
+            )
+            return
+
+        return result

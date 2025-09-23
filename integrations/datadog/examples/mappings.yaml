@@ -96,9 +96,9 @@ resources:
 
   - kind: serviceDependency
     selector:
-      query: "true"
-      environment: "prod"
-      startTime: "date -u -v-1H +%s"
+      query: 'true'
+      environment: prod
+      startTime: 1
     port:
       entity:
         mappings:
@@ -108,4 +108,4 @@ resources:
           properties:
             sourceService: .name
           relations:
-            dependencies: '[.calls[] | tostring]'
+            dependencies: if .calls then .calls[] else [] end
