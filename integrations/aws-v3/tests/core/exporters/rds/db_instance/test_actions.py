@@ -181,7 +181,7 @@ class TestListTagsForResourceAction:
 
         result = await action.execute(db_instances)
 
-        expected_result = [{"Tags": []}]
+        expected_result: list[dict[str, Any]] = [{"Tags": []}]
         assert result == expected_result
 
         action.client.list_tags_for_resource.assert_called_once_with(

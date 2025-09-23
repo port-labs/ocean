@@ -5,17 +5,17 @@
     "icon": "AWS",
     "schema": {
       "properties": {
-        "ActivityStreamStatus": {
+        "activityStreamStatus": {
           "type": "string",
           "title": "Activity Stream Status",
           "description": "The status of the database activity stream"
         },
-        "AllocatedStorage": {
+        "allocatedStorage": {
           "type": "number",
           "title": "Allocated Storage",
           "description": "The amount of storage allocated to the DB instance in GB"
         },
-        "AssociatedRoles": {
+        "associatedRoles": {
           "type": "array",
           "title": "Associated Roles",
           "description": "The IAM roles associated with the DB instance",
@@ -23,78 +23,78 @@
             "type": "object"
           }
         },
-        "AutoMinorVersionUpgrade": {
+        "autoMinorVersionUpgrade": {
           "type": "boolean",
           "title": "Auto Minor Version Upgrade",
           "description": "Whether minor version upgrades are applied automatically"
         },
-        "AvailabilityZone": {
+        "availabilityZone": {
           "type": "string",
           "title": "Availability Zone",
           "description": "The Availability Zone where the DB instance is located"
         },
-        "BackupRetentionPeriod": {
+        "backupRetentionPeriod": {
           "type": "number",
           "title": "Backup Retention Period",
           "description": "The number of days to retain automated backups"
         },
-        "BackupTarget": {
+        "backupTarget": {
           "type": "string",
           "title": "Backup Target",
           "description": "The target for automated backups"
         },
-        "CACertificateIdentifier": {
+        "caCertificateIdentifier": {
           "type": "string",
           "title": "CA Certificate Identifier",
           "description": "The identifier of the CA certificate for the DB instance"
         },
-        "CertificateDetails": {
+        "certificateDetails": {
           "type": "object",
           "title": "Certificate Details",
           "description": "Details about the certificate associated with the DB instance"
         },
-        "CharacterSetName": {
+        "characterSetName": {
           "type": "string",
           "title": "Character Set Name",
           "description": "The character set name for the DB instance"
         },
-        "CopyTagsToSnapshot": {
+        "copyTagsToSnapshot": {
           "type": "boolean",
           "title": "Copy Tags To Snapshot",
           "description": "Whether to copy tags to snapshots"
         },
-        "CustomerOwnedIpEnabled": {
+        "customerOwnedIpEnabled": {
           "type": "boolean",
           "title": "Customer Owned IP Enabled",
           "description": "Whether customer-owned IP is enabled"
         },
-        "DBInstanceArn": {
+        "dbInstanceArn": {
           "type": "string",
           "title": "ARN",
           "description": "The Amazon Resource Name (ARN) of the DB instance"
         },
-        "DBInstanceClass": {
+        "dbInstanceClass": {
           "type": "string",
           "title": "Instance Class",
           "description": "The compute and memory capacity of the DB instance (e.g., db.t3.micro, db.m4.xlarge)"
         },
-        "DBInstanceIdentifier": {
+        "dbInstanceIdentifier": {
           "type": "string",
           "title": "DB Instance Identifier",
           "description": "The unique identifier of the RDS DB instance"
         },
-        "DBInstanceStatus": {
+        "dbInstanceStatus": {
           "type": "string",
           "title": "Status",
           "description": "The current status of the DB instance",
           "enum": ["available", "backing-up", "creating", "deleting", "failed", "incompatible-credentials", "incompatible-network", "incompatible-option-group", "incompatible-parameters", "incompatible-restore", "maintenance", "modifying", "rebooting", "renaming", "resetting-master-credentials", "restore-error", "storage-full", "storage-optimization", "upgrading"]
         },
-        "DBName": {
+        "dbName": {
           "type": "string",
           "title": "Database Name",
           "description": "The name of the initial database"
         },
-        "DBParameterGroups": {
+        "dbParameterGroups": {
           "type": "array",
           "title": "DB Parameter Groups",
           "description": "The parameter groups associated with the DB instance",
@@ -102,7 +102,7 @@
             "type": "object"
           }
         },
-        "DBSecurityGroups": {
+        "dbSecurityGroups": {
           "type": "array",
           "title": "DB Security Groups",
           "description": "The security groups associated with the DB instance",
@@ -110,32 +110,32 @@
             "type": "object"
           }
         },
-        "DBSubnetGroup": {
+        "dbSubnetGroup": {
           "type": "object",
           "title": "DB Subnet Group",
           "description": "The subnet group associated with the DB instance"
         },
-        "DbiResourceId": {
+        "dbiResourceId": {
           "type": "string",
           "title": "DBi Resource ID",
           "description": "The unique resource identifier for the DB instance"
         },
-        "DatabaseInsightsMode": {
+        "databaseInsightsMode": {
           "type": "string",
           "title": "Database Insights Mode",
           "description": "The database insights mode for the DB instance"
         },
-        "DedicatedLogVolume": {
+        "dedicatedLogVolume": {
           "type": "boolean",
           "title": "Dedicated Log Volume",
           "description": "Whether dedicated log volume is enabled"
         },
-        "DeletionProtection": {
+        "deletionProtection": {
           "type": "boolean",
           "title": "Deletion Protection",
           "description": "Whether deletion protection is enabled"
         },
-        "DomainMemberships": {
+        "domainMemberships": {
           "type": "array",
           "title": "Domain Memberships",
           "description": "The domain memberships for the DB instance",
@@ -143,17 +143,17 @@
             "type": "object"
           }
         },
-        "EnableIAMDatabaseAuthentication": {
+        "enableIAMDatabaseAuthentication": {
           "type": "boolean",
           "title": "IAM Database Authentication Enabled",
           "description": "Whether IAM database authentication is enabled"
         },
-        "EnablePerformanceInsights": {
+        "enablePerformanceInsights": {
           "type": "boolean",
           "title": "Performance Insights Enabled",
           "description": "Whether Performance Insights is enabled"
         },
-        "Endpoint": {
+        "endpoint": {
           "type": "object",
           "title": "Endpoint",
           "description": "The connection endpoint for the DB instance",
@@ -172,82 +172,82 @@
             }
           }
         },
-        "Engine": {
+        "engine": {
           "type": "string",
           "title": "Engine",
           "description": "The database engine type (e.g., mysql, postgres, oracle-ee)"
         },
-        "EngineLifecycleSupport": {
+        "engineLifecycleSupport": {
           "type": "string",
           "title": "Engine Lifecycle Support",
           "description": "The engine lifecycle support status"
         },
-        "EngineVersion": {
+        "engineVersion": {
           "type": "string",
           "title": "Engine Version",
           "description": "The version of the database engine"
         },
-        "EnhancedMonitoringResourceArn": {
+        "enhancedMonitoringResourceArn": {
           "type": "string",
           "title": "Enhanced Monitoring Resource ARN",
           "description": "The ARN of the enhanced monitoring resource"
         },
-        "InstanceCreateTime": {
+        "instanceCreateTime": {
           "type": "string",
           "title": "Instance Create Time",
           "description": "The time when the DB instance was created"
         },
-        "Iops": {
+        "iops": {
           "type": "number",
           "title": "IOPS",
           "description": "The number of IOPS for the DB instance"
         },
-        "IsStorageConfigUpgradeAvailable": {
+        "isStorageConfigUpgradeAvailable": {
           "type": "boolean",
           "title": "Storage Config Upgrade Available",
           "description": "Whether storage configuration upgrade is available"
         },
-        "KmsKeyId": {
+        "kmsKeyId": {
           "type": "string",
           "title": "KMS Key ID",
           "description": "The KMS key identifier for encryption"
         },
-        "LatestRestorableTime": {
+        "latestRestorableTime": {
           "type": "string",
           "title": "Latest Restorable Time",
           "description": "The latest time to which the DB instance can be restored"
         },
-        "LicenseModel": {
+        "licenseModel": {
           "type": "string",
           "title": "License Model",
           "description": "The license model for the DB instance"
         },
-        "MasterUsername": {
+        "masterUsername": {
           "type": "string",
           "title": "Master Username",
           "description": "The master username for the DB instance"
         },
-        "MonitoringInterval": {
+        "monitoringInterval": {
           "type": "number",
           "title": "Monitoring Interval",
           "description": "The monitoring interval in seconds"
         },
-        "MonitoringRoleArn": {
+        "monitoringRoleArn": {
           "type": "string",
           "title": "Monitoring Role ARN",
           "description": "The ARN of the monitoring role"
         },
-        "MultiAZ": {
+        "multiAZ": {
           "type": "boolean",
           "title": "Multi-AZ",
           "description": "Whether the DB instance is deployed in multiple Availability Zones"
         },
-        "NetworkType": {
+        "networkType": {
           "type": "string",
           "title": "Network Type",
           "description": "The network type for the DB instance"
         },
-        "OptionGroupMemberships": {
+        "optionGroupMemberships": {
           "type": "array",
           "title": "Option Group Memberships",
           "description": "The option group memberships for the DB instance",
@@ -255,32 +255,32 @@
             "type": "object"
           }
         },
-        "PendingModifiedValues": {
+        "pendingModifiedValues": {
           "type": "object",
           "title": "Pending Modified Values",
           "description": "Values that are pending modification"
         },
-        "Port": {
+        "port": {
           "type": "number",
           "title": "Port",
           "description": "The port number for the DB instance"
         },
-        "PreferredBackupWindow": {
+        "preferredBackupWindow": {
           "type": "string",
           "title": "Preferred Backup Window",
           "description": "The preferred backup window"
         },
-        "PreferredMaintenanceWindow": {
+        "preferredMaintenanceWindow": {
           "type": "string",
           "title": "Preferred Maintenance Window",
           "description": "The preferred maintenance window"
         },
-        "PubliclyAccessible": {
+        "publiclyAccessible": {
           "type": "boolean",
           "title": "Publicly Accessible",
           "description": "Whether the DB instance is publicly accessible"
         },
-        "ReadReplicaDBInstanceIdentifiers": {
+        "readReplicaDBInstanceIdentifiers": {
           "type": "array",
           "title": "Read Replica DB Instance Identifiers",
           "description": "The identifiers of read replica DB instances",
@@ -288,28 +288,28 @@
             "type": "string"
           }
         },
-        "SecondaryAvailabilityZone": {
+        "secondaryAvailabilityZone": {
           "type": "string",
           "title": "Secondary Availability Zone",
           "description": "The secondary Availability Zone for Multi-AZ deployments"
         },
-        "StorageEncrypted": {
+        "storageEncrypted": {
           "type": "boolean",
           "title": "Storage Encrypted",
           "description": "Whether the DB instance storage is encrypted"
         },
-        "StorageThroughput": {
+        "storageThroughput": {
           "type": "number",
           "title": "Storage Throughput",
           "description": "The storage throughput for the DB instance"
         },
-        "StorageType": {
+        "storageType": {
           "type": "string",
           "title": "Storage Type",
           "description": "The storage type of the DB instance",
           "enum": ["standard", "gp2", "gp3", "io1", "io2"]
         },
-        "Tags": {
+        "tags": {
           "type": "array",
           "title": "Tags",
           "description": "The tags associated with the DB instance",
@@ -325,7 +325,7 @@
             }
           }
         },
-        "VPCSecurityGroups": {
+        "vpcSecurityGroups": {
           "type": "array",
           "title": "VPC Security Groups",
           "description": "The VPC security groups associated with the DB instance",

@@ -227,38 +227,38 @@
     "icon": "AWS",
     "schema": {
       "properties": {
-        "DBInstanceIdentifier": {
+        "dbInstanceIdentifier": {
           "type": "string",
           "title": "DB Instance Identifier",
           "description": "The unique identifier of the RDS DB instance"
         },
-        "DBInstanceArn": {
+        "dbInstanceArn": {
           "type": "string",
           "title": "ARN",
           "description": "The Amazon Resource Name (ARN) of the DB instance"
         },
-        "Engine": {
+        "engine": {
           "type": "string",
           "title": "Engine",
           "description": "The database engine type (e.g., mysql, postgres, oracle-ee)"
         },
-        "DBInstanceClass": {
+        "dbInstanceClass": {
           "type": "string",
           "title": "Instance Class",
           "description": "The compute and memory capacity of the DB instance (e.g., db.t3.micro, db.m4.xlarge)"
         },
-        "DBInstanceStatus": {
+        "dbInstanceStatus": {
           "type": "string",
           "title": "Status",
           "description": "The current status of the DB instance",
           "enum": ["available", "backing-up", "creating", "deleting", "failed", "incompatible-credentials", "incompatible-network", "incompatible-option-group", "incompatible-parameters", "incompatible-restore", "maintenance", "modifying", "rebooting", "renaming", "resetting-master-credentials", "restore-error", "storage-full", "storage-optimization", "upgrading"]
         },
-        "MultiAZ": {
+        "multiAZ": {
           "type": "boolean",
           "title": "Multi-AZ",
           "description": "Whether the DB instance is deployed in multiple Availability Zones"
         },
-        "StorageEncrypted": {
+        "storageEncrypted": {
           "type": "boolean",
           "title": "Storage Encrypted",
           "description": "Whether the DB instance storage is encrypted"

@@ -89,12 +89,12 @@ resources:
           title: .Properties.DBInstanceIdentifier
           blueprint: '"rdsDbInstance"'
           properties:
-            DBInstanceIdentifier: .Properties.DBInstanceIdentifier
-            DBInstanceArn: .Properties.DBInstanceArn
-            Engine: .Properties.Engine
-            DBInstanceClass: .Properties.DBInstanceClass
-            DBInstanceStatus: .Properties.DBInstanceStatus
-            MultiAZ: .Properties.MultiAZ
-            StorageEncrypted: .Properties.StorageEncrypted
+            dbInstanceIdentifier: .Properties.DBInstanceIdentifier
+            dbInstanceArn: .Properties.DBInstanceArn
+            engine: .Properties.Engine
+            dbInstanceClass: .Properties.DBInstanceClass
+            dbInstanceStatus: .Properties.DBInstanceStatus
+            multiAZ: .Properties.MultiAZ
+            storageEncrypted: .Properties.StorageEncrypted
           relations:
             account: .__ExtraContext.AccountId
