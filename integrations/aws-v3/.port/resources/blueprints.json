@@ -220,5 +220,74 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "ecsService",
+    "title": "ECS Service",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "serviceName": {
+          "type": "string",
+          "title": "Service Name",
+          "description": "The name of the ECS service"
+        },
+        "serviceArn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the service"
+        },
+        "clusterArn": {
+          "type": "string",
+          "title": "Cluster ARN",
+          "description": "The ARN of the cluster that hosts the service"
+        },
+        "taskDefinition": {
+          "type": "string",
+          "title": "Task Definition",
+          "description": "The ARN of the task definition associated with the service"
+        },
+        "desiredCount": {
+          "type": "number",
+          "title": "Desired Count",
+          "description": "The desired number of tasks for the service"
+        },
+        "runningCount": {
+          "type": "number",
+          "title": "Running Count",
+          "description": "The number of tasks that are currently running"
+        },
+        "launchType": {
+          "type": "string",
+          "title": "Launch Type",
+          "description": "The launch type of the service",
+          "enum": ["EC2", "FARGATE", "EXTERNAL"]
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the service",
+          "enum": ["ACTIVE", "DRAINING", "INACTIVE"]
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      },
+      "cluster": {
+        "title": "Cluster",
+        "target": "ecsCluster",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
