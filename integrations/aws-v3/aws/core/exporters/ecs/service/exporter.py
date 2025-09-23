@@ -68,7 +68,7 @@ class EcsServiceExporter(IResourceExporter):
                 for cluster in clusters_batch:
                     cluster_arn = cluster["Properties"]["ClusterArn"]
 
-                    async for services in paginator.paginate(cluster=cluster_arn):
+                    async for services in paginator.paginate(cluster=cluster_arn, batch_size=10):
                         if services:
                             service_identifiers = [
                                 {"serviceArn": service_arn, "clusterArn": cluster_arn}
