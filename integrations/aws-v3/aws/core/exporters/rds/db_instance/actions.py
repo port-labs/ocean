@@ -1,53 +1,54 @@
-from typing import Dict, Any, List, Type
+from typing import Dict, Any, List, Type, cast
 from aws.core.interfaces.action import Action, ActionMap
 from loguru import logger
 import asyncio
 
 
+class DescribeDBInstancesAction(Action):
+    """Describe DB instances as a pass-through function."""
+
+    async def _execute(
+        self, db_instances: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Return DB instances as is"""
+        return db_instances
+
+
 class ListTagsForResourceAction(Action):
     """Fetches tags for RDS DB instances."""
 
-    async def _execute(self, db_instances: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        if not db_instances:
-            return []
+    async def _execute(
+        self, db_instances: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Fetch detailed tag information for the RDS DB instances."""
 
-        # Get tags for each DB instance concurrently
         tag_results = await asyncio.gather(
             *(self._fetch_tags(instance) for instance in db_instances),
-            return_exceptions=True
+            return_exceptions=True,
         )
 
-        # Merge tags into the instances
+        results: List[Dict[str, Any]] = []
         for idx, tag_result in enumerate(tag_results):
             if isinstance(tag_result, Exception):
-                logger.warning(
-                    f"Failed to fetch tags for DB instance {db_instances[idx].get('DBInstanceIdentifier', 'unknown')}: {tag_result}"
+                instance_id = db_instances[idx].get("DBInstanceIdentifier", "unknown")
+                logger.error(
+                    f"Error fetching tags for DB instance '{instance_id}': {tag_result}"
                 )
-                db_instances[idx]["Tags"] = []
-            else:
-                db_instances[idx]["Tags"] = tag_result.get("TagList", [])
+                continue
+            results.extend(cast(List[Dict[str, Any]], tag_result))
+        logger.info(f"Successfully fetched tags for {len(db_instances)} DB instances")
+        return results
 
-        return db_instances
-
-    async def _fetch_tags(self, db_instance: Dict[str, Any]) -> Dict[str, Any]:
-        try:
-            response = await self.client.list_tags_for_resource(
-                ResourceName=db_instance["DBInstanceArn"]
-            )
-            logger.debug(
-                f"Successfully fetched tags for DB instance {db_instance.get('DBInstanceIdentifier', 'unknown')}"
-            )
-            return response
-        except Exception as e:
-            logger.error(
-                f"Error fetching tags for DB instance {db_instance.get('DBInstanceIdentifier', 'unknown')}: {e}"
-            )
-            return {"TagList": []}
+    async def _fetch_tags(self, db_instance: Dict[str, Any]) -> List[Dict[str, Any]]:
+        response = await self.client.list_tags_for_resource(
+            ResourceName=db_instance["DBInstanceArn"]
+        )
+        return [{"Tags": response["TagList"]}]
 
 
 class RdsDbInstanceActionsMap(ActionMap):
     defaults: List[Type[Action]] = [
-        # No default actions - paginator provides the data
+        DescribeDBInstancesAction,
     ]
     options: List[Type[Action]] = [
         ListTagsForResourceAction,

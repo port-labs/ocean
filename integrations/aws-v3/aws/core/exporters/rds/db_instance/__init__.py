@@ -6,6 +6,6 @@ from aws.core.exporters.rds.db_instance.models import (
 
 __all__ = [
     "RdsDbInstanceExporter",
-    "SingleDbInstanceRequest", 
+    "SingleDbInstanceRequest",
     "PaginatedDbInstanceRequest",
 ]

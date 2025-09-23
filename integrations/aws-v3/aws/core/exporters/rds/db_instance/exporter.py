@@ -10,6 +10,7 @@ from aws.core.exporters.rds.db_instance.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
+from loguru import logger
 
 
 class RdsDbInstanceExporter(IResourceExporter):
@@ -34,11 +35,9 @@ class RdsDbInstanceExporter(IResourceExporter):
 
             if response.get("DBInstances"):
                 db_instance = response["DBInstances"][0]
-                action_result = await inspector.inspect(
-                    [db_instance], options.include
-                )
+                action_result = await inspector.inspect([db_instance], options.include)
                 return action_result[0] if action_result else {}
-            
+
             return {}
 
     async def get_paginated_resources(
@@ -55,6 +54,7 @@ class RdsDbInstanceExporter(IResourceExporter):
             paginator = proxy.get_paginator("describe_db_instances", "DBInstances")
 
             async for db_instances in paginator.paginate():
+                logger.info(f"DB instances: {db_instances}")
                 if db_instances:
                     action_result = await inspector.inspect(
                         db_instances,

@@ -5,74 +5,62 @@ from datetime import datetime
 
 
 class DbInstanceProperties(BaseModel):
-    # Core identifiers
-    dbInstanceIdentifier: str = Field(default_factory=str, alias="DBInstanceIdentifier")
-    dbInstanceArn: str = Field(default_factory=str, alias="DBInstanceArn")
-    dbiResourceId: str = Field(default_factory=str, alias="DbiResourceId")
-    
-    # Instance configuration
-    dbInstanceClass: str = Field(default_factory=str, alias="DBInstanceClass")
-    engine: str = Field(default_factory=str, alias="Engine")
-    engineVersion: str = Field(default_factory=str, alias="EngineVersion")
-    dbInstanceStatus: str = Field(default_factory=str, alias="DBInstanceStatus")
-    
-    # Storage configuration
-    allocatedStorage: int = Field(default=0, alias="AllocatedStorage")
-    storageType: str = Field(default_factory=str, alias="StorageType")
-    iops: Optional[int] = Field(default=None, alias="Iops")
-    storageEncrypted: bool = Field(default=False, alias="StorageEncrypted")
-    kmsKeyId: Optional[str] = Field(default=None, alias="KmsKeyId")
-    
-    # Network configuration
-    endpoint: Optional[Dict[str, Any]] = Field(default=None, alias="Endpoint")
-    publiclyAccessible: bool = Field(default=False, alias="PubliclyAccessible")
-    availabilityZone: str = Field(default_factory=str, alias="AvailabilityZone")
-    secondaryAvailabilityZone: Optional[str] = Field(default=None, alias="SecondaryAvailabilityZone")
-    multiAZ: bool = Field(default=False, alias="MultiAZ")
-    
-    # Security configuration
-    vpcSecurityGroups: List[Dict[str, Any]] = Field(default_factory=list, alias="VpcSecurityGroups")
-    dbSubnetGroup: Optional[Dict[str, Any]] = Field(default=None, alias="DBSubnetGroup")
-    iamDatabaseAuthenticationEnabled: bool = Field(default=False, alias="IAMDatabaseAuthenticationEnabled")
-    
-    # Backup configuration
-    backupRetentionPeriod: int = Field(default=0, alias="BackupRetentionPeriod")
-    preferredBackupWindow: str = Field(default_factory=str, alias="PreferredBackupWindow")
-    preferredMaintenanceWindow: str = Field(default_factory=str, alias="PreferredMaintenanceWindow")
-    copyTagsToSnapshot: bool = Field(default=False, alias="CopyTagsToSnapshot")
-    
-    # Monitoring configuration
-    monitoringInterval: int = Field(default=0, alias="MonitoringInterval")
-    monitoringRoleArn: Optional[str] = Field(default=None, alias="MonitoringRoleArn")
-    enhancedMonitoringResourceArn: Optional[str] = Field(default=None, alias="EnhancedMonitoringResourceArn")
-    performanceInsightsEnabled: bool = Field(default=False, alias="PerformanceInsightsEnabled")
-    
-    # Database configuration
-    masterUsername: str = Field(default_factory=str, alias="MasterUsername")
-    dbName: Optional[str] = Field(default=None, alias="DBName")
-    characterSetName: Optional[str] = Field(default=None, alias="CharacterSetName")
-    licenseModel: str = Field(default_factory=str, alias="LicenseModel")
-    
-    # Parameter and option groups
-    dbParameterGroups: List[Dict[str, Any]] = Field(default_factory=list, alias="DBParameterGroups")
-    optionGroupMemberships: List[Dict[str, Any]] = Field(default_factory=list, alias="OptionGroupMemberships")
-    
-    # Replication configuration
-    readReplicaDBInstanceIdentifiers: List[str] = Field(default_factory=list, alias="ReadReplicaDBInstanceIdentifiers")
-    
-    # Time information
-    instanceCreateTime: Optional[datetime] = Field(default=None, alias="InstanceCreateTime")
-    latestRestorableTime: Optional[datetime] = Field(default=None, alias="LatestRestorableTime")
-    
-    # Additional configuration
-    autoMinorVersionUpgrade: bool = Field(default=False, alias="AutoMinorVersionUpgrade")
-    caCertificateIdentifier: str = Field(default_factory=str, alias="CACertificateIdentifier")
-    dbInstancePort: int = Field(default=0, alias="DbInstancePort")
-    domainMemberships: List[Dict[str, Any]] = Field(default_factory=list, alias="DomainMemberships")
-    pendingModifiedValues: Dict[str, Any] = Field(default_factory=dict, alias="PendingModifiedValues")
-    
-    # Tags
-    tags: List[Dict[str, Any]] = Field(default_factory=list, alias="Tags")
+    AllocatedStorage: int = Field(default=0)
+    AutoMinorVersionUpgrade: bool = Field(default=False)
+    AvailabilityZone: str = Field(default_factory=str)
+    BackupRetentionPeriod: int = Field(default=0)
+    CACertificateIdentifier: str = Field(default_factory=str)
+    CharacterSetName: Optional[str] = Field(default=None)
+    CopyTagsToSnapshot: bool = Field(default=False)
+    DBInstanceArn: str = Field(default_factory=str)
+    DBInstanceClass: str = Field(default_factory=str)
+    DBInstanceIdentifier: str = Field(default_factory=str)
+    DbInstancePort: int = Field(default=0, alias="Port")
+    DBInstanceStatus: str = Field(default_factory=str)
+    DBName: Optional[str] = Field(default=None)
+    DBParameterGroups: List[Dict[str, Any]] = Field(default_factory=list)
+    DBSecurityGroups: List[Dict[str, Any]] = Field(default_factory=list)
+    DBSubnetGroup: Optional[Dict[str, Any]] = Field(default=None)
+    DbiResourceId: str = Field(default_factory=str)
+    DomainMemberships: List[Dict[str, Any]] = Field(default_factory=list)
+    IAMDatabaseAuthenticationEnabled: bool = Field(default=False, alias="EnableIAMDatabaseAuthentication")
+    PerformanceInsightsEnabled: bool = Field(default=False, alias="EnablePerformanceInsights")
+    Endpoint: Optional[Dict[str, Any]] = Field(default=None)
+    Engine: str = Field(default_factory=str)
+    EngineVersion: str = Field(default_factory=str)
+    EnhancedMonitoringResourceArn: Optional[str] = Field(default=None)
+    InstanceCreateTime: Optional[datetime] = Field(default=None)
+    Iops: Optional[int] = Field(default=None)
+    KmsKeyId: Optional[str] = Field(default=None)
+    LatestRestorableTime: Optional[datetime] = Field(default=None)
+    LicenseModel: str = Field(default_factory=str)
+    MasterUsername: str = Field(default_factory=str)
+    MonitoringInterval: int = Field(default=0)
+    MonitoringRoleArn: Optional[str] = Field(default=None)
+    MultiAZ: bool = Field(default=False)
+    OptionGroupMemberships: List[Dict[str, Any]] = Field(default_factory=list)
+    PendingModifiedValues: Dict[str, Any] = Field(default_factory=dict)
+    PreferredBackupWindow: str = Field(default_factory=str)
+    PreferredMaintenanceWindow: str = Field(default_factory=str)
+    PubliclyAccessible: bool = Field(default=False)
+    ReadReplicaDBInstanceIdentifiers: List[str] = Field(default_factory=list)
+    SecondaryAvailabilityZone: Optional[str] = Field(default=None)
+    StorageEncrypted: bool = Field(default=False)
+    StorageType: str = Field(default_factory=str)
+    Tags: List[Dict[str, Any]] = Field(default_factory=list)
+    VpcSecurityGroups: List[Dict[str, Any]] = Field(default_factory=list, alias="VPCSecurityGroups")
+    DatabaseInsightsMode: Optional[str] = Field(default=None)
+    DeletionProtection: bool = Field(default=False)
+    AssociatedRoles: List[Dict[str, Any]] = Field(default_factory=list)
+    CustomerOwnedIpEnabled: bool = Field(default=False)
+    ActivityStreamStatus: Optional[str] = Field(default=None)
+    BackupTarget: Optional[str] = Field(default=None)
+    NetworkType: Optional[str] = Field(default=None)
+    StorageThroughput: Optional[int] = Field(default=None)
+    CertificateDetails: Optional[Dict[str, Any]] = Field(default=None)
+    DedicatedLogVolume: bool = Field(default=False)
+    IsStorageConfigUpgradeAvailable: bool = Field(default=False)
+    EngineLifecycleSupport: Optional[str] = Field(default=None)
 
     class Config:
         allow_population_by_field_name = True
@@ -87,7 +75,9 @@ class DbInstance(ResourceModel[DbInstanceProperties]):
 class SingleDbInstanceRequest(ResourceRequestModel):
     """Options for exporting a single RDS DB instance."""
 
-    db_instance_identifier: str = Field(..., description="The identifier of the RDS DB instance to export")
+    db_instance_identifier: str = Field(
+        ..., description="The identifier of the RDS DB instance to export"
+    )
 
 
 class PaginatedDbInstanceRequest(ResourceRequestModel):
