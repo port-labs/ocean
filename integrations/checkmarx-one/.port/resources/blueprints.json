@@ -251,12 +251,42 @@
         "severity": {
           "type": "string",
           "title": "Severity",
-          "description": "The severity level of the SCA finding."
+          "description": "The severity level of the SCA finding.",
+          "enum": [
+            "INFO",
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL"
+          ],
+          "enumColors": {
+            "INFO": "lightGray",
+            "LOW": "green",
+            "MEDIUM": "yellow",
+            "HIGH": "orange",
+            "CRITICAL": "red"
+          }
         },
         "state": {
           "type": "string",
           "title": "State",
-          "description": "The state of the SCA finding."
+          "description": "The state of the SCA finding.",
+          "enum": [
+            "TO_VERIFY",
+            "CONFIRMED",
+            "URGENT",
+            "NOT_EXPLOITABLE",
+            "PROPOSED_NOT_EXPLOITABLE",
+            "FALSE_POSITIVE"
+          ],
+          "enumColors": {
+            "TO_VERIFY": "blue",
+            "CONFIRMED": "yellow",
+            "URGENT": "orange",
+            "NOT_EXPLOITABLE": "green",
+            "PROPOSED_NOT_EXPLOITABLE": "yellow",
+            "FALSE_POSITIVE": "purple"
+          }
         },
         "description": {
           "type": "string",
@@ -271,7 +301,17 @@
         "status": {
           "type": "string",
           "title": "Status",
-          "description": "The current status of the SCA finding."
+          "description": "The current status of the SCA finding.",
+          "enum": [
+            "NEW",
+            "RECURRENT",
+            "FIXED"
+          ],
+          "enumColors": {
+            "NEW": "blue",
+            "RECURRENT": "yellow",
+            "FIXED": "green"
+          }
         },
         "created": {
           "type": "string",
@@ -313,6 +353,11 @@
           "type": "string",
           "title": "Confidence Level",
           "description": "The confidence level of the SCA finding."
+        },
+        "similarityId": {
+          "type": "string",
+          "title": "Similarity ID",
+          "description": "The similarity ID used to group similar SCA findings together."
         }
       },
       "required": []
@@ -343,17 +388,57 @@
         "status": {
           "type": "string",
           "title": "Status",
-          "description": "The current status of the container security finding."
+          "description": "The current status of the container security finding.",
+          "enum": [
+            "NEW",
+            "RECURRENT",
+            "FIXED"
+          ],
+          "enumColors": {
+            "NEW": "red",
+            "RECURRENT": "yellow",
+            "FIXED": "green"
+          }
         },
         "state": {
           "type": "string",
           "title": "State",
-          "description": "The state of the container security finding."
+          "description": "The state of the container security finding.",
+          "enum": [
+            "TO_VERIFY",
+            "CONFIRMED",
+            "URGENT",
+            "NOT_EXPLOITABLE",
+            "PROPOSED_NOT_EXPLOITABLE",
+            "FALSE_POSITIVE"
+          ],
+          "enumColors": {
+            "TO_VERIFY": "blue",
+            "CONFIRMED": "yellow",
+            "URGENT": "orange",
+            "NOT_EXPLOITABLE": "green",
+            "PROPOSED_NOT_EXPLOITABLE": "yellow",
+            "FALSE_POSITIVE": "purple"
+          }
         },
         "severity": {
           "type": "string",
           "title": "Severity",
-          "description": "The severity level of the container security finding."
+          "description": "The severity level of the container security finding.",
+          "enum": [
+            "INFO",
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL"
+          ],
+          "enumColors": {
+            "INFO": "lightGray",
+            "LOW": "green",
+            "MEDIUM": "yellow",
+            "HIGH": "orange",
+            "CRITICAL": "red"
+          }
         },
         "confidenceLevel": {
           "type": "string",
@@ -400,6 +485,258 @@
           "type": "string",
           "title": "CWE ID",
           "description": "The Common Weakness Enumeration (CWE) identifier related to the vulnerability."
+        },
+        "similarityId": {
+          "type": "string",
+          "title": "Similarity ID",
+          "description": "The similarity ID used to group similar container security findings together."
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "scan": {
+        "title": "Scan",
+        "target": "checkmarxScan",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "checkmarxKics",
+    "description": "Represents a KICS issue detected by Checkmarx One",
+    "title": "Checkmarx KICS",
+    "icon": "Checkmarx",
+    "schema": {
+      "properties": {
+        "firstScanId": {
+          "type": "string",
+          "title": "First Scan ID",
+          "description": "The identifier of the first scan in which this KICS issue was detected"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the KICS issue, indicating if it is new, recurring, or has been fixed.",
+          "enum": [
+            "NEW",
+            "RECURRENT",
+            "FIXED"
+          ],
+          "enumColors": {
+            "NEW": "red",
+            "RECURRENT": "yellow",
+            "FIXED": "green"
+          }
+        },
+        "state": {
+          "type": "string",
+          "description": "The state of the KICS issue, reflecting its verification and remediation status",
+          "title": "State",
+          "enum": [
+            "TO_VERIFY",
+            "CONFIRMED",
+            "URGENT",
+            "NOT_EXPLOITABLE",
+            "PROPOSED_NOT_EXPLOITABLE",
+            "FALSE_POSITIVE"
+          ],
+          "enumColors": {
+            "TO_VERIFY": "blue",
+            "CONFIRMED": "yellow",
+            "URGENT": "orange",
+            "NOT_EXPLOITABLE": "green",
+            "PROPOSED_NOT_EXPLOITABLE": "yellow",
+            "FALSE_POSITIVE": "purple"
+          }
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": [
+            "INFO",
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL"
+          ],
+          "enumColors": {
+            "INFO": "lightGray",
+            "LOW": "green",
+            "MEDIUM": "yellow",
+            "HIGH": "orange",
+            "CRITICAL": "red"
+          }
+        },
+        "created": {
+          "type": "string",
+          "title": "Created At",
+          "description": "The date and time when the KICS issue was first identified",
+          "format": "date-time"
+        },
+        "description": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Description",
+          "description": "A description of the KICS issue."
+        },
+        "fileName": {
+          "type": "string",
+          "title": "File Name",
+          "description": "The name of the file where the KICS issue was found."
+        },
+        "line": {
+          "type": "string",
+          "title": "Line Number",
+          "description": "The line number in the file where the KICS issue occurs"
+        },
+        "platform": {
+          "type": "string",
+          "title": "Platform"
+        },
+        "issueType": {
+          "type": "string",
+          "title": "Issue Type",
+          "description": "The type or category of the KICS issue"
+        },
+        "expected_value": {
+          "type": "string",
+          "title": "Expected Value",
+          "description": "The value that was expected in the configuration"
+        },
+        "value": {
+          "type": "string",
+          "title": "Value",
+          "description": "The actual value found in the configuration that triggered the KICS issue"
+        },
+        "similarityId": {
+          "type": "string",
+          "title": "Similarity ID",
+          "description": "The similarity ID used to group similar KICS findings together."
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "scan": {
+        "title": "Scan",
+        "target": "checkmarxScan",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "checkmarxSast",
+    "description": "Represents a Checkmarx Static Application Security Testing (SAST) finding in the catalogue",
+    "title": "Checkmarx SAST",
+    "icon": "Checkmarx",
+    "schema": {
+      "properties": {
+        "firstScanId": {
+          "type": "string",
+          "title": "First Scan ID",
+          "description": "The identifier of the first scan in which this SAST finding appeared."
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the SAST finding",
+          "enum": [
+            "NEW",
+            "RECURRENT",
+            "FIXED"
+          ],
+          "enumColors": {
+            "NEW": "red",
+            "RECURRENT": "yellow",
+            "FIXED": "green"
+          }
+        },
+        "state": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "State",
+          "description": "The state of the SAST finding",
+          "enum": [
+            "TO_VERIFY",
+            "CONFIRMED",
+            "URGENT",
+            "NOT_EXPLOITABLE",
+            "PROPOSED_NOT_EXPLOITABLE",
+            "FALSE_POSITIVE"
+          ],
+          "enumColors": {
+            "TO_VERIFY": "blue",
+            "CONFIRMED": "yellow",
+            "URGENT": "orange",
+            "NOT_EXPLOITABLE": "green",
+            "PROPOSED_NOT_EXPLOITABLE": "yellow",
+            "FALSE_POSITIVE": "purple"
+          }
+        },
+        "severity": {
+          "type": "string",
+          "description": "The severity level of the SAST finding",
+          "title": "Severity",
+          "enum": [
+            "INFO",
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL"
+          ],
+          "enumColors": {
+            "INFO": "lightGray",
+            "LOW": "green",
+            "MEDIUM": "yellow",
+            "HIGH": "orange",
+            "CRITICAL": "red"
+          }
+        },
+        "confidenceLevel": {
+          "type": "number",
+          "title": "Confidence Level",
+          "description": "The confidence level (0-100) assigned to the SAST finding",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "created": {
+          "type": "string",
+          "title": "Created At",
+          "description": "The date and time when the SAST finding was created",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "The description of the SAST result"
+        },
+        "nodes": {
+          "items": {
+            "type": "object"
+          },
+          "icon": "DefaultProperty",
+          "type": "array",
+          "title": "Nodes",
+          "description": "The list of nodes or code locations related to the SAST finding"
+        },
+        "cweId": {
+          "type": "string",
+          "title": "CWE ID",
+          "description": "The CWE (Common Weakness Enumeration) identifier associated with this SAST finding"
+        },
+        "similarityId": {
+          "type": "string",
+          "title": "Similarity ID",
+          "description": "The similarity ID used to group similar SAST findings together."
         }
       },
       "required": []

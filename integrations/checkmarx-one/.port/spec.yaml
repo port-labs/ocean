@@ -2,6 +2,7 @@ title: Checkmarx One
 description: Checkmarx One integration for Port Ocean
 icon: Checkmarx
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/checkmarx-one
+recommendedInstallationMethod: Saas
 features:
   - type: exporter
     section: Code Quality & Security
@@ -9,8 +10,10 @@ features:
       - kind: project
       - kind: scan
       - kind: api-security
+      - kind: kics
       - kind: sca
       - kind: containers
+      - kind: sast
 configurations:
   - name: checkmarxBaseUrl
     required: false
@@ -56,3 +59,15 @@ configurations:
     description: |
       Checkmarx One API Key.
       Generate in: Settings > Identity and Access Management > API Keys
+
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: |
+      Optional secret used to verify incoming webhook requests.
+      Ensures that only legitimate events from Checkmarx One are accepted.
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true

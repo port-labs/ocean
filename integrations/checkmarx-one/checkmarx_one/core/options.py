@@ -42,12 +42,6 @@ class ListApiSecOptions(TypedDict):
     scan_id: Required[str]
 
 
-class SingleApiSecOptions(TypedDict):
-    """Options for fetching a single API sec scan result."""
-
-    risk_id: Required[str]
-
-
 class ListScanResultOptions(TypedDict):
     """Options for listing scan results."""
 
@@ -74,9 +68,41 @@ class ListScanResultOptions(TypedDict):
     exclude_result_types: NotRequired[Optional[Literal["DEV_AND_TEST", "NONE"]]]
 
 
-class SingleScanResultOptions(TypedDict):
-    """Options for fetching a single scan result."""
+class ListKicsOptions(TypedDict):
+    """Options for listing KICS scan results (IaC Security)."""
 
-    type: Literal["sca", "containers"]
     scan_id: Required[str]
-    result_id: Required[str]
+    severity: NotRequired[
+        Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
+    ]
+    status: NotRequired[Optional[List[Literal["NEW", "RECURRENT", "FIXED"]]]]
+
+
+class ListSastOptions(TypedDict, total=False):
+    """Options for listing SAST scan results."""
+
+    scan_id: Required[str]
+    compliance: NotRequired[Optional[str]]
+    group: NotRequired[Optional[str]]
+    include_nodes: NotRequired[bool]
+    language: NotRequired[Optional[List[str]]]
+    result_id: NotRequired[Optional[str]]
+    severity: NotRequired[
+        Optional[List[Literal["critical", "high", "medium", "low", "info"]]]
+    ]
+    status: NotRequired[Optional[List[Literal["new", "recurrent", "fixed"]]]]
+    category: NotRequired[Optional[str]]
+    state: NotRequired[
+        Optional[
+            List[
+                Literal[
+                    "to_verify",
+                    "not_exploitable",
+                    "proposed_not_exploitable",
+                    "confirmed",
+                    "urgent",
+                ]
+            ]
+        ]
+    ]
+    visible_columns: NotRequired[Optional[List[str]]]

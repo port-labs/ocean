@@ -7,15 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.49-beta (2025-09-01)
+## 0.1.52-beta (2025-09-17)
 
-### Features
-- Added support for wildcard project keys and paths in folder and file patterns
-- Fixed handling of different API response formats for directory contents
 
 ### Improvements
-- Enhanced error handling for file and folder operations
-- Better handling of file metadata for proper entity mapping
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.1.51-beta (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.1.50-beta (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
+## 0.1.49-beta (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
 
 
 ## 0.1.48-beta (2025-08-28)

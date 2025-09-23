@@ -45,6 +45,61 @@ resources:
             link: ._links.web.href | gsub("_release?releaseId="; "")
           relations:
             project: .projectReference.id | gsub(" "; "")
+  - kind: environment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name | tostring
+          blueprint: '"azureDevopsEnvironment"'
+          properties:
+            description: .description
+            createdOn: .createdOn
+            lastModifiedOn: .lastModifiedOn
+          relations:
+            project: .project.id
+  - kind: release-deployment
+    selector:
+      query: 'true'
+      includeRelease: true
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .release.name + "-" + (.id | tostring) | gsub(" "; "")
+          blueprint: '"azureDevopsReleaseDeployment"'
+          properties:
+            status: .deploymentStatus
+            url: .url
+            reason: .reason
+            startedOn: .startedOn
+            completedOn: .completedOn
+            requestedBy: .requestedBy.displayName
+            operationStatus: .operationStatus
+            environment: .releaseEnvironment.name
+          relations:
+            release: .release.id | tostring
+  - kind: pipeline-deployment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .requestIdentifier | tostring
+          blueprint: '"azureDevopsPipelineDeployment"'
+          properties:
+            planType: .planType
+            stageName: .stageName
+            jobName: .jobName
+            result: .result
+            startTime: .startTime
+            finishTime: .finishTime
+          relations:
+            environment: .environment.id | tostring
+
   - kind: file
     selector:
       query: 'true'
@@ -136,3 +191,61 @@ resources:
             defaultBranch: .__repository.defaultBranch
           relations:
             project: .__repository.project.id | gsub(" "; "")
+  - kind: build
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.id | tostring) | gsub(" "; "")
+          title: .buildNumber
+          blueprint: '"build"'
+          properties:
+            status: .status
+            result: .result
+            queueTime: .queueTime
+            startTime: .startTime
+            finishTime: .finishTime
+            definitionName: .definition.name
+            requestedFor: .requestedFor.displayName
+          relations:
+            project: .__project.id | gsub(" "; "")
+  - kind: pipeline-stage
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            .__project.id + "-" + (.__build.id | tostring) + "-" + (.id |
+            tostring) | gsub(" "; "")
+          title: .name
+          blueprint: '"pipeline-stage"'
+          properties:
+            state: .state
+            result: .result
+            startTime: .startTime
+            finishTime: .finishTime
+            stageType: .type
+          relations:
+            project: .__project.id | gsub(" "; "")
+            build: (.__build.id | tostring) | gsub(" "; "")
+  - kind: pipeline-run
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            .__project.id + "-" + (.__pipeline.id | tostring) + "-" + (.id |
+            tostring) | gsub(" "; "")
+          title: .name // .runNumber // (.id | tostring)
+          blueprint: '"pipeline-run"'
+          properties:
+            state: .state
+            result: .result
+            createdDate: .createdDate
+            finishedDate: .finishedDate
+            pipelineName: .pipeline.name
+          relations:
+            project: .__project.id | gsub(" "; "")
