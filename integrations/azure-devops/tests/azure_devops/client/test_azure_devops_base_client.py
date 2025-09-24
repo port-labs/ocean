@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch
-from httpx import Response
+from httpx import Response, ReadTimeout
 from azure_devops.client.base_client import HTTPBaseClient, CONTINUATION_TOKEN_HEADER
 
 
@@ -81,3 +81,88 @@ async def test_get_paginated_by_top_and_continuation_token_with_custom_data_key(
 
         assert len(results) == 1
         assert results[0]["id"] == 1
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_by_top_and_continuation_token_retry_on_timeout(
+    mock_client: HTTPBaseClient,
+) -> None:
+    """Test pagination retries successfully after a timeout."""
+    mock_response = AsyncMock(spec=Response)
+    mock_response.status_code = 200
+    mock_response.headers = {}
+    mock_response.json.return_value = {"value": [{"id": 1}]}
+
+    with patch.object(
+        mock_client,
+        "send_request",
+        side_effect=[ReadTimeout("Request timed out"), mock_response],
+    ) as mock_send:
+        generator = mock_client._get_paginated_by_top_and_continuation_token("test_url")
+        results = [item async for page in generator for item in page]
+
+        assert len(results) == 1
+        assert mock_send.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_by_top_and_continuation_token_exhausts_retries(
+    mock_client: HTTPBaseClient,
+) -> None:
+    """Test pagination raises ReadTimeout after exhausting retries."""
+    side_effects = [
+        ReadTimeout("Request timed out 1"),
+        ReadTimeout("Request timed out 2"),
+        ReadTimeout("Request timed out 3"),
+    ]
+    with patch.object(
+        mock_client, "send_request", side_effect=side_effects
+    ) as mock_send:
+        with pytest.raises(ReadTimeout):
+            generator = mock_client._get_paginated_by_top_and_continuation_token(
+                "test_url"
+            )
+            _ = [item async for page in generator for item in page]
+
+        assert mock_send.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_by_top_and_skip_retry_on_timeout(
+    mock_client: HTTPBaseClient,
+) -> None:
+    """Test _get_paginated_by_top_and_skip retries successfully after a timeout."""
+    mock_response = AsyncMock(spec=Response)
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"value": [{"id": 1}]}
+
+    with patch.object(
+        mock_client,
+        "send_request",
+        side_effect=[ReadTimeout("Request timed out"), mock_response],
+    ) as mock_send:
+        generator = mock_client._get_paginated_by_top_and_skip("test_url")
+        results = [item async for page in generator for item in page]
+
+        assert len(results) == 1
+        assert mock_send.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_by_top_and_skip_exhausts_retries(
+    mock_client: HTTPBaseClient,
+) -> None:
+    """Test _get_paginated_by_top_and_skip raises ReadTimeout after exhausting retries."""
+    side_effects = [
+        ReadTimeout("Request timed out 1"),
+        ReadTimeout("Request timed out 2"),
+        ReadTimeout("Request timed out 3"),
+    ]
+    with patch.object(
+        mock_client, "send_request", side_effect=side_effects
+    ) as mock_send:
+        with pytest.raises(ReadTimeout):
+            generator = mock_client._get_paginated_by_top_and_skip("test_url")
+            _ = [item async for page in generator for item in page]
+
+        assert mock_send.call_count == 3
