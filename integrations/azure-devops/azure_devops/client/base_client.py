@@ -1,7 +1,7 @@
 from typing import Any, AsyncGenerator, Optional
 
 import httpx
-from httpx import BasicAuth, Response
+from httpx import BasicAuth, ReadTimeout, Response
 from loguru import logger
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
@@ -32,6 +32,7 @@ class HTTPBaseClient:
         data: Optional[Any] = None,
         params: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, Any]] = None,
+        timeout: Optional[float] = None
     ) -> Response | None:
         self._client.auth = BasicAuth("", self._personal_access_token)
         self._client.follow_redirects = True
@@ -44,6 +45,7 @@ class HTTPBaseClient:
                     data=data,
                     params=params,
                     headers=headers,
+                    timeout=timeout
                 )
                 response.raise_for_status()
         except httpx.HTTPStatusError as e:
@@ -74,6 +76,8 @@ class HTTPBaseClient:
         additional_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         continuation_token = None
+        timeout_retries = 3
+
         while True:
             params: dict[str, Any] = {
                 "$top": PAGE_SIZE,
@@ -84,41 +88,59 @@ class HTTPBaseClient:
             ):  # Only add continuationToken if it's not None or empty
                 params["continuationToken"] = continuation_token
 
-            response = await self.send_request("GET", url, params=params)
-            if not response:
-                break
-            response_json = response.json()
-            items = response_json[data_key]
+            try:
+                    response = await self.send_request("GET", url, params=params, timeout=30)
+                    if not response:
+                        break
+                    response_json = response.json()
+                    items = response_json[data_key]
 
-            logger.info(
-                f"Found {len(items)} objects in url {url} with params: {params}"
-            )
-            yield items
-            continuation_token = response.headers.get(
-                CONTINUATION_TOKEN_HEADER
-            ) or response_json.get(CONTINUATION_TOKEN_KEY)
-            if not continuation_token:
-                logger.info(
-                    f"No continuation token found, pagination complete for {url}"
-                )
-                break
+                    logger.info(
+                        f"Found {len(items)} objects in url {url} with params: {params}"
+                    )
+                    yield items
+                    timeout_retries = 0
+                    continuation_token = response.headers.get(
+                        CONTINUATION_TOKEN_HEADER
+                    ) or response_json.get(CONTINUATION_TOKEN_KEY)
+                    if not continuation_token:
+                        logger.info(
+                            f"No continuation token found, pagination complete for {url}")
+                        
+                    break
+            except ReadTimeout as e:
+                timeout_retries = timeout_retries + 1
+                if timeout_retries < 3:
+                    logger.warning(f"Request to {url} with {params} timed out, retrying ...")
+                else:
+                    logger.error(f"Request to {url} with {params} has timed out thrice.")
+                    raise e
 
     async def _get_paginated_by_top_and_skip(
         self, url: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         default_params = {"$top": PAGE_SIZE, "$skip": 0}
         params = {**default_params, **(params or {})}
+        timeout_retries = 3
         while True:
-            response = await self.send_request("GET", url, params=params)
-            if not response:
-                break
+            try:
+                response = await self.send_request("GET", url, params=params)
+                if not response:
+                    break
 
-            objects_page = response.json()["value"]
-            if objects_page:
-                logger.info(
-                    f"Found {len(objects_page)} objects in url {url} with params: {params}"
-                )
-                yield objects_page
-                params["$skip"] += PAGE_SIZE
-            else:
-                break
+                objects_page = response.json()["value"]
+                if objects_page:
+                    logger.info(
+                        f"Found {len(objects_page)} objects in url {url} with params: {params}"
+                    )
+                    yield objects_page
+                    params["$skip"] += PAGE_SIZE
+                else:
+                    break
+            except ReadTimeout as e:
+                timeout_retries = timeout_retries + 1
+                if timeout_retries < 3:
+                    logger.warning(f"Request to {url} with {params} timed out, retrying ...")
+                else:
+                    logger.error(f"Request to {url} with {params} has timed out thrice.")
+                    raise e
