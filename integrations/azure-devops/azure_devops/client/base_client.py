@@ -17,11 +17,10 @@ class HTTPBaseClient:
         self._client = OceanAsyncClient(
             retry_config=RetryConfig(
                 retry_after_headers=[
-                    "X-RateLimit-Reset",
-                    "Retry-After",
+                    "x-ratelimit-reset",
+                    "retry-after",
                 ],
             ),
-            timeout=30,
         )
         self._personal_access_token = personal_access_token
         self._rate_limiter = AzureDevOpsRateLimiter()

@@ -122,9 +122,9 @@ class AzureDevOpsRateLimiter:
         """
         async with self._lock:
             try:
-                limit_header = headers.get("X-RateLimit-Limit")
-                remaining_header = headers.get("X-RateLimit-Remaining")
-                reset_header = headers.get("X-RateLimit-Reset")
+                limit_header = headers.get("x-ratelimit-limit")
+                remaining_header = headers.get("x-ratelimit-remaining")
+                reset_header = headers.get("x-ratelimit-reset")
 
                 # Update limit and remaining if both are present
                 if limit_header and remaining_header:
