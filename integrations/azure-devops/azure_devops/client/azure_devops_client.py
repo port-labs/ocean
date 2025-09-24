@@ -431,7 +431,6 @@ class AzureDevopsClient(HTTPBaseClient):
                     if stages:
                         yield stages
 
-    @cache_iterator_result()
     async def generate_iterations(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Generate iterations for all projects in the organization.
