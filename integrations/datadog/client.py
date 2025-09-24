@@ -690,5 +690,7 @@ class DatadogClient:
                 f"No service dependencies found for service {service_id} in environment {env}"
             )
             return None
-
+        
+        # enrich with service name for consistency with get_service_dependencies
+        result["name"] = service_id
         return result

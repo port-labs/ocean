@@ -74,10 +74,11 @@ class ServiceDependencyWebhookProcessor(_AbstractDatadogWebhookProcessor):
         has_event_info = "event_type" in payload
 
         has_service_info = False
-        for tag in payload.get("tags", []):
-            has_service_info = tag.startswith("service:")
-            if has_service_info:
-                break
+        if "tags" in payload:
+            service_tags = [tag for tag in payload["tags"] if tag.startswith("service:")]
+            if service_tags:
+                if all(len(tag.split(":", 1)) > 1 and tag.split(":", 1)[1] for tag in service_tags):
+                    has_service_info = True
 
         is_valid = has_service_info and has_event_info
         if not is_valid:
