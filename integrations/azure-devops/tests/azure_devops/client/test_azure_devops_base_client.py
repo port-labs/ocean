@@ -141,16 +141,24 @@ async def test_get_paginated_by_top_and_skip_retry_on_timeout(
     mock_response.status_code = 200
     mock_response.json.return_value = {"value": [{"id": 1}]}
 
+    mock_response_empty = AsyncMock(spec=Response)
+    mock_response_empty.status_code = 200
+    mock_response_empty.json.return_value = {"value": []}
+
     with patch.object(
         mock_client,
         "send_request",
-        side_effect=[ReadTimeout("Request timed out"), mock_response],
+        side_effect=[
+            ReadTimeout("Request timed out"),
+            mock_response,
+            mock_response_empty,
+        ],
     ) as mock_send:
         generator = mock_client._get_paginated_by_top_and_skip("test_url")
         results = [item async for page in generator for item in page]
 
         assert len(results) == 1
-        assert mock_send.call_count == 2
+        assert mock_send.call_count == 3
 
 
 @pytest.mark.asyncio
