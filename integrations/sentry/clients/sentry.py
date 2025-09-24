@@ -1,25 +1,18 @@
-import asyncio
 from itertools import chain
-import time
-from typing import Any, AsyncGenerator, AsyncIterator, Optional, cast
-from loguru import logger
-
-
-from port_ocean.utils import http_async_client
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-from port_ocean.utils.cache import cache_iterator_result
-from integration import SentryResourceConfig
-from port_ocean.context.event import event
+from typing import Any, AsyncGenerator, AsyncIterator, cast, Optional, List
 
 import httpx
+from integration import SentryResourceConfig
+from loguru import logger
+from port_ocean.context.event import event
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from port_ocean.utils.cache import cache_iterator_result
 
-MAXIMUM_CONCURRENT_REQUESTS_SINGLE_RESOURCE = 22
-MAXIMUM_CONCURRENT_REQUESTS_ISSUES = 3
-MAXIMUM_CONCURRENT_REQUESTS_PROJECTS = 3
-MAXIMUM_CONCURRENT_REQUESTS_DEFAULT = 1
-MINIMUM_LIMIT_REMAINING = 10
-MINIMUM_ISSUES_LIMIT_REMAINING = 3
-DEFAULT_SLEEP_TIME = 0.1
+from .exceptions import IgnoredError, ResourceNotFoundError
+from .rate_limiter import SentryRateLimiter
+
 PAGE_SIZE = 100
 
 
@@ -27,11 +20,18 @@ def flatten_list(lst: list[Any]) -> list[Any]:
     return list(chain.from_iterable(lst))
 
 
-class ResourceNotFoundError(Exception):
-    pass
-
-
 class SentryClient:
+    _DEFAULT_IGNORED_ERRORS = [
+        IgnoredError(
+            status=401,
+            message="Unauthorized access to endpoint — authentication required or token invalid",
+        ),
+        IgnoredError(
+            status=403,
+            message="Forbidden access to endpoint — insufficient permissions",
+        ),
+    ]
+
     def __init__(
         self, sentry_base_url: str, auth_token: str, sentry_organization: str
     ) -> None:
@@ -40,69 +40,16 @@ class SentryClient:
         self.base_headers = {"Authorization": "Bearer " + f"{self.auth_token}"}
         self.api_url = f"{self.sentry_base_url}/api/0"
         self.organization = sentry_organization
-        self.client = http_async_client
-        self.client.headers.update(self.base_headers)
+        retry_config = RetryConfig(
+            retry_after_headers=["X-Sentry-Rate-Limit-Reset", "Retry-After"],
+            max_attempts=5,
+        )
+        self._client = OceanAsyncClient(retry_config=retry_config)
         self.selector = cast(SentryResourceConfig, event.resource_config).selector
+        self._rate_limiter = SentryRateLimiter()
 
-        # These are created to limit the concurrent requests we are making to specific routes.
-        # The limits provided to each semaphore were pre-determined by the headers sent for each one of the routes.
-        # For more information about Sentry's rate limits, please read this: https://docs.sentry.io/api/ratelimits/
-        self._default_semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_DEFAULT)
-        self._single_resource_semaphore = asyncio.Semaphore(
-            MAXIMUM_CONCURRENT_REQUESTS_SINGLE_RESOURCE
-        )
-        self._issues_semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_ISSUES)
-        self._projects_semaphore = asyncio.Semaphore(
-            MAXIMUM_CONCURRENT_REQUESTS_PROJECTS
-        )
-
-    async def _fetch_with_rate_limit_handling(
-        self,
-        url: str,
-        semaphore: asyncio.Semaphore,
-        params: dict[str, Any] | None = None,
-    ) -> httpx.Response:
-        """Rate limit handler
-        This method makes sure requests aren't abusing Sentry's rate-limits.
-        It references:
-        Requests per "window" - By adding a sleep after each request that had a RATE_LIMIT_REMAINING below a threshold
-        for more information about Sentry's rate limits, please check out https://docs.sentry.io/api/ratelimits/
-        """
-        while True:
-            async with semaphore:
-                response = await self.client.get(url, params=params)
-            try:
-                response.raise_for_status()
-                rate_limit_remaining = int(
-                    response.headers["X-Sentry-Rate-Limit-Remaining"]
-                )
-                if rate_limit_remaining <= MINIMUM_ISSUES_LIMIT_REMAINING:
-                    current_time = int(time.time())
-                    rate_limit_reset = int(
-                        response.headers["X-Sentry-Rate-Limit-Reset"]
-                    )
-                    wait_time = (
-                        rate_limit_reset - current_time
-                        if rate_limit_reset > current_time
-                        else DEFAULT_SLEEP_TIME
-                    )
-                    logger.debug(
-                        f"Approaching rate limit. Waiting for {wait_time} seconds before retrying. "
-                        f"URL: {url}, Remaining: {rate_limit_remaining} "
-                    )
-                    await asyncio.sleep(wait_time)
-            except KeyError as e:
-                logger.warning(
-                    f"Rate limit headers not found in response: {str(e)} for url {url}"
-                )
-            except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"Got HTTP error to url: {url} with status code: {e.response.status_code} and response text: {e.response.text}"
-                )
-                raise
-            return response
-
-    def get_next_link(self, link_header: str) -> str:
+    @staticmethod
+    def get_next_link(link_header: str) -> str:
         """Information about the next page of results is provided in the link header. The pagination cursors are returned for both the previous and the next page.
         One of the URLs in the link response has rel=next, which indicates the next results page. It also has results=true, which means that there are more results.
         You can find more information about pagination in Sentry here: https://docs.sentry.io/api/pagination/
@@ -118,20 +65,87 @@ class SentryClient:
                     return url
         return ""
 
+    def _should_ignore_error(
+        self,
+        error: httpx.HTTPStatusError,
+        resource: str,
+        ignored_errors: Optional[List[IgnoredError]] = None,
+    ) -> bool:
+        all_ignored_errors = (ignored_errors or []) + self._DEFAULT_IGNORED_ERRORS
+        status_code = error.response.status_code
+
+        for ignored_error in all_ignored_errors:
+            if str(status_code) == str(ignored_error.status):
+                logger.warning(
+                    f"Failed to fetch resources at {resource} due to {ignored_error.message}"
+                )
+                return True
+        return False
+
+    async def send_api_request(
+        self,
+        method: str,
+        url: str,
+        *,
+        params: Optional[dict[str, Any]] = None,
+        ignored_errors: Optional[List[IgnoredError]] = None,
+        **kwargs: Any,
+    ) -> httpx.Response:
+        """
+        Sends an API request with rate limiting and robust error handling.
+        This method centralizes all Sentry API calls.
+
+        Args:
+            method (str): The HTTP method (e.g., "GET", "POST").
+            url (str): The URL endpoint (relative or absolute).
+            params (dict[str, Any]): Optional query parameters.
+            ignored_errors (List[IgnoredError]): Optional list of ignored errors.
+            **kwargs: Additional keyword arguments for httpx.AsyncClient.request.
+
+        Returns:
+            httpx.Response: The response from the API.
+
+        Raises:
+            ResourceNotFoundError: If the response status code is 404.
+            httpx.HTTPStatusError: For any other non-2xx status codes
+                                   (except 401, 403, and 404).
+        """
+        async with self._rate_limiter:
+            full_url = (
+                url if url.startswith("http") else f"{self.api_url}/{url.lstrip('/')}"
+            )
+            try:
+                response = await self._client.request(
+                    method, full_url, params=params, headers=self.base_headers, **kwargs
+                )
+                response.raise_for_status()
+                return response
+            except httpx.HTTPStatusError as e:
+                if self._should_ignore_error(e, url, ignored_errors):
+                    return httpx.Response(200, content=b"{}")
+                # Handle 404 specifically for ResourceNotFoundError
+                if e.response.status_code == 404:
+                    raise ResourceNotFoundError(f"Resource not found at {full_url}")
+                else:
+                    raise
+            except httpx.HTTPError:
+                # Re-raise non-HTTP status errors
+                raise
+            finally:
+                if "response" in locals() and response:
+                    await self._rate_limiter.update_from_headers(response.headers)
+
     async def _get_paginated_resource(
-        self, url: str, semaphore: asyncio.Semaphore | None = None
+        self, url: str, ignored_errors: Optional[List[IgnoredError]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params: Optional[dict[str, Any]] = {"per_page": PAGE_SIZE}
         logger.debug(f"Getting paginated resource from Sentry for URL: {url}")
 
         while url:
             try:
-                response = await self._fetch_with_rate_limit_handling(
-                    url=url,
-                    params=params,
-                    semaphore=semaphore or self._default_semaphore,
+                response = await self.send_api_request(
+                    "GET", url, params=params, ignored_errors=ignored_errors
                 )
-                response.raise_for_status()
                 records = response.json()
                 logger.debug(
                     f"Received {len(records)} records from Sentry for URL: {url}"
@@ -150,25 +164,13 @@ class SentryClient:
                 logger.error(f"HTTP occurred while fetching Sentry data: {e}")
                 raise
 
-    async def _get_single_resource(
-        self, url: str, semaphore: asyncio.Semaphore | None = None
-    ) -> list[dict[str, Any]]:
+    async def _get_single_resource(self, url: str) -> list[dict[str, Any]]:
         logger.debug(f"Getting single resource from Sentry for URL: {url}")
         try:
-            response = await self._fetch_with_rate_limit_handling(
-                url=url, semaphore=semaphore or self._single_resource_semaphore
-            )
-            response.raise_for_status()
+            response = await self.send_api_request("GET", url)
             return response.json()
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code:
-                raise ResourceNotFoundError()
-            logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
-            )
-            return []
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP occurred while fetching Sentry data: {e}")
+        except httpx.HTTPStatusError:
+            logger.debug(f"Ignoring non-fatal error for single resource: {url}")
             return []
 
     async def _get_project_tags_iterator(
@@ -201,9 +203,7 @@ class SentryClient:
     async def get_paginated_projects(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for project in self._get_paginated_resource(
-            f"{self.api_url}/projects/", semaphore=self._projects_semaphore
-        ):
+        async for project in self._get_paginated_resource(f"{self.api_url}/projects/"):
             yield project
 
     @cache_iterator_result()
@@ -217,7 +217,6 @@ class SentryClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for issues in self._get_paginated_resource(
             f"{self.api_url}/projects/{self.organization}/{project_slug}/issues/",
-            semaphore=self._issues_semaphore,
         ):
             yield issues
 
