@@ -2,7 +2,7 @@ import asyncio
 import functools
 import json
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
-from httpx import HTTPStatusError
+from httpx import HTTPStatusError, ReadTimeout
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -932,6 +932,11 @@ class AzureDevopsClient(HTTPBaseClient):
                 file for sublist in batch_results.get("value", []) for file in sublist
             ]
 
+        except ReadTimeout:
+            logger.error(
+                f"Request timeout while fetching items for {repository['name']}"
+            )
+            return []
         except HTTPStatusError as e:
             logger.error(e.response.status_code)
             logger.error(e.response.text)

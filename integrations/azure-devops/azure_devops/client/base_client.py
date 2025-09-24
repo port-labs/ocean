@@ -20,7 +20,8 @@ class HTTPBaseClient:
                     "X-RateLimit-Reset",
                     "Retry-After",
                 ],
-            )
+            ),
+            timeout=30,
         )
         self._personal_access_token = personal_access_token
         self._rate_limiter = AzureDevOpsRateLimiter()
@@ -32,7 +33,6 @@ class HTTPBaseClient:
         data: Optional[Any] = None,
         params: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, Any]] = None,
-        timeout: Optional[float] = None
     ) -> Response | None:
         self._client.auth = BasicAuth("", self._personal_access_token)
         self._client.follow_redirects = True
@@ -45,7 +45,6 @@ class HTTPBaseClient:
                     data=data,
                     params=params,
                     headers=headers,
-                    timeout=timeout
                 )
                 response.raise_for_status()
         except httpx.HTTPStatusError as e:
@@ -89,31 +88,39 @@ class HTTPBaseClient:
                 params["continuationToken"] = continuation_token
 
             try:
-                    response = await self.send_request("GET", url, params=params, timeout=30)
-                    if not response:
-                        break
-                    response_json = response.json()
-                    items = response_json[data_key]
+                response = await self.send_request(
+                    "GET",
+                    url,
+                    params=params,
+                )
+                if not response:
+                    break
+                response_json = response.json()
+                items = response_json[data_key]
 
+                logger.info(
+                    f"Found {len(items)} objects in url {url} with params: {params}"
+                )
+                yield items
+                timeout_retries = 0
+                continuation_token = response.headers.get(
+                    CONTINUATION_TOKEN_HEADER
+                ) or response_json.get(CONTINUATION_TOKEN_KEY)
+                if not continuation_token:
                     logger.info(
-                        f"Found {len(items)} objects in url {url} with params: {params}"
+                        f"No continuation token found, pagination complete for {url}"
                     )
-                    yield items
-                    timeout_retries = 0
-                    continuation_token = response.headers.get(
-                        CONTINUATION_TOKEN_HEADER
-                    ) or response_json.get(CONTINUATION_TOKEN_KEY)
-                    if not continuation_token:
-                        logger.info(
-                            f"No continuation token found, pagination complete for {url}"
-                        )
-                        break
+                    break
             except ReadTimeout as e:
                 timeout_retries = timeout_retries + 1
                 if timeout_retries < 3:
-                    logger.warning(f"Request to {url} with {params} timed out, retrying ...")
+                    logger.warning(
+                        f"Request to {url} with {params} timed out, retrying ..."
+                    )
                 else:
-                    logger.error(f"Request to {url} with {params} has timed out thrice.")
+                    logger.error(
+                        f"Request to {url} with {params} has timed out thrice."
+                    )
                     raise e
 
     async def _get_paginated_by_top_and_skip(
@@ -141,7 +148,11 @@ class HTTPBaseClient:
             except ReadTimeout as e:
                 timeout_retries = timeout_retries + 1
                 if timeout_retries < 3:
-                    logger.warning(f"Request to {url} with {params} timed out, retrying ...")
+                    logger.warning(
+                        f"Request to {url} with {params} timed out, retrying ..."
+                    )
                 else:
-                    logger.error(f"Request to {url} with {params} has timed out thrice.")
+                    logger.error(
+                        f"Request to {url} with {params} has timed out thrice."
+                    )
                     raise e
