@@ -163,6 +163,22 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield releases
 
 
+@ocean.on_resync(Kind.BUILD)
+async def resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for builds in azure_devops_client.generate_builds():
+        logger.info(f"Resyncing {len(builds)} builds")
+        yield builds
+
+
+@ocean.on_resync(Kind.PIPELINE_STAGE)
+async def resync_pipeline_stages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for stages in azure_devops_client.generate_pipeline_stages():
+        logger.info(f"Resyncing {len(stages)} pipeline stages")
+        yield stages
+
+
 @ocean.on_resync(Kind.ENVIRONMENT)
 async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
@@ -213,6 +229,14 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield files_batch
 
 
+@ocean.on_resync(Kind.PIPELINE_RUN)
+async def resync_pipeline_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for runs in azure_devops_client.generate_pipeline_runs():
+        logger.info(f"Resyncing {len(runs)} pipeline runs")
+        yield runs
+
+
 @ocean.on_start()
 async def setup_webhooks() -> None:
     base_url = ocean.app.base_url
@@ -253,10 +277,13 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.TEST_RUN)
 async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    config = cast(AzureDevopsTestRunResourceConfig, event.resource_config)
-    include_results = config.selector.include_results
+    selector = cast(AzureDevopsTestRunResourceConfig, event.resource_config).selector
+    include_results = selector.include_results
+    coverage_config = selector.code_coverage
 
-    async for test_runs in azure_devops_client.fetch_test_runs(include_results):
+    async for test_runs in azure_devops_client.fetch_test_runs(
+        include_results, coverage_config
+    ):
         logger.info(f"Fetched {len(test_runs)} test runs")
         yield test_runs
 
