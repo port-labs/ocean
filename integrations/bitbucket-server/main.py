@@ -20,8 +20,6 @@ from webhook_processors.processors import (
     ProjectWebhookProcessor,
     PullRequestWebhookProcessor,
     RepositoryWebhookProcessor,
-    # FolderWebhookProcessor,
-    # FileWebhookProcessor,
 )
 from webhook_processors.webhook_client import (
     initialize_client as initialize_webhook_client,
@@ -109,5 +107,3 @@ async def on_start() -> None:
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
-# ocean.add_webhook_processor("/webhook", FolderWebhookProcessor)
-# ocean.add_webhook_processor("/webhook", FileWebhookProcessor)
