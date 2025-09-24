@@ -28,7 +28,9 @@ async def test_get_paginated_by_top_and_continuation_token_single_page(
         assert len(results) == 2
         assert results[0]["id"] == 1
         assert results[1]["id"] == 2
-        mock_send.assert_called_once_with("GET", "test_url", params={"$top": 50})
+        mock_send.assert_called_once_with(
+            "GET", "test_url", params={"$top": 50}, timeout=30
+        )
 
 
 @pytest.mark.asyncio
@@ -57,9 +59,12 @@ async def test_get_paginated_by_top_and_continuation_token_multiple_pages(
         assert results[3]["id"] == 4
 
         assert mock_send.call_count == 2
-        mock_send.assert_any_call("GET", "test_url", params={"$top": 50})
+        mock_send.assert_any_call("GET", "test_url", params={"$top": 50}, timeout=30)
         mock_send.assert_any_call(
-            "GET", "test_url", params={"$top": 50, "continuationToken": "token123"}
+            "GET",
+            "test_url",
+            params={"$top": 50, "continuationToken": "token123"},
+            timeout=30,
         )
 
 

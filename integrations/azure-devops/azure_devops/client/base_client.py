@@ -76,7 +76,7 @@ class HTTPBaseClient:
         additional_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         continuation_token = None
-        timeout_retries = 3
+        timeout_retries = 0
 
         while True:
             params: dict[str, Any] = {
@@ -105,9 +105,9 @@ class HTTPBaseClient:
                     ) or response_json.get(CONTINUATION_TOKEN_KEY)
                     if not continuation_token:
                         logger.info(
-                            f"No continuation token found, pagination complete for {url}")
-                        
-                    break
+                            f"No continuation token found, pagination complete for {url}"
+                        )
+                        break
             except ReadTimeout as e:
                 timeout_retries = timeout_retries + 1
                 if timeout_retries < 3:
@@ -121,7 +121,7 @@ class HTTPBaseClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         default_params = {"$top": PAGE_SIZE, "$skip": 0}
         params = {**default_params, **(params or {})}
-        timeout_retries = 3
+        timeout_retries = 0
         while True:
             try:
                 response = await self.send_request("GET", url, params=params)
@@ -135,6 +135,7 @@ class HTTPBaseClient:
                     )
                     yield objects_page
                     params["$skip"] += PAGE_SIZE
+                    timeout_retries = 0
                 else:
                     break
             except ReadTimeout as e:
