@@ -20,12 +20,12 @@ from webhook_processors.processors import (
     ProjectWebhookProcessor,
     PullRequestWebhookProcessor,
     RepositoryWebhookProcessor,
+    # FolderWebhookProcessor,
+    # FileWebhookProcessor,
 )
 from webhook_processors.webhook_client import (
     initialize_client as initialize_webhook_client,
 )
-from helpers.folder import process_folder_patterns
-from helpers.file_kind import process_file_patterns
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -72,14 +72,11 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync folders based on configuration."""
     logger.info("Resyncing folders")
-    config = cast(
-        Union[ResourceConfig, BitbucketServerFolderResourceConfig], event.resource_config
-    )
+    config = cast(BitbucketServerFolderResourceConfig, event.resource_config)
     selector = cast(BitbucketServerFolderSelector, config.selector)
-    logger.info(f"Folder patterns: {selector.folders}")
     client = initialize_client()
 
-    async for matching_folders in process_folder_patterns(selector.folders, client):
+    async for matching_folders in client.get_folders_by_patterns(selector.folders):
         logger.info(f"Received {len(matching_folders)} folders")
         yield matching_folders
 
@@ -87,12 +84,11 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync files based on configuration."""
     logger.info("Resyncing files")
-    config = cast(
-        Union[ResourceConfig, BitbucketServerFileResourceConfig], event.resource_config
-    )
+    config = cast(BitbucketServerFileResourceConfig, event.resource_config)
     selector = cast(BitbucketServerFileSelector, config.selector)
-    logger.info(f"File patterns: {selector.files}")
-    async for file_result in process_file_patterns(selector.files):
+    client = initialize_client()
+
+    async for file_result in client.get_files_by_patterns(selector.files):
         logger.info(f"Received {len(file_result)} files")
         yield file_result
 
@@ -113,3 +109,5 @@ async def on_start() -> None:
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+# ocean.add_webhook_processor("/webhook", FolderWebhookProcessor)
+# ocean.add_webhook_processor("/webhook", FileWebhookProcessor)

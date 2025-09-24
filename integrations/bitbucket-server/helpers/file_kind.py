@@ -1,13 +1,15 @@
 import fnmatch
 from pathlib import Path
-from typing import Dict, List, Any, AsyncGenerator, Optional, Tuple
+from typing import Dict, List, Any, AsyncGenerator, Optional, Tuple, TYPE_CHECKING
 from loguru import logger
 from integration import BitbucketServerFilePattern
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-from utils import initialize_client
+
+if TYPE_CHECKING:
+    from client import BitbucketClient
 
 async def get_repositories_for_pattern(
-    client, file_pattern: BitbucketServerFilePattern
+    client: "BitbucketClient", file_pattern: BitbucketServerFilePattern
 ) -> List[Dict[str, Any]]:
     """Get repositories matching the given file pattern."""
     repos_to_process = []
@@ -126,6 +128,7 @@ async def process_repository_files(
 
 async def process_file_patterns(
     file_pattern: BitbucketServerFilePattern,
+    client: "BitbucketClient"
 ) -> AsyncGenerator[List[Dict[str, Any]], None]:
     """Process file patterns and retrieve matching files."""
     logger.info(
@@ -139,14 +142,12 @@ async def process_file_patterns(
         logger.info("No filenames provided, skipping file search")
         return
 
-    bitbucket_client = initialize_client()
-
     # Get repositories matching the pattern
-    repos_to_process = await get_repositories_for_pattern(bitbucket_client, file_pattern)
+    repos_to_process = await get_repositories_for_pattern(client, file_pattern)
 
     # Process each repository
     for repo in repos_to_process:
-        async for result in process_repository_files(bitbucket_client, repo, file_pattern):
+        async for result in process_repository_files(client, repo, file_pattern):
             yield result
 
 async def list_files_recursively(client, project_key, repo_slug, path, result_list):

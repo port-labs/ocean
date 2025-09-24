@@ -1,4 +1,5 @@
-from typing import Any, AsyncGenerator, Dict, Optional, cast
+from typing import Any, AsyncGenerator, Dict, Optional, cast, TYPE_CHECKING
+import fnmatch
 
 import httpx
 from aiolimiter import AsyncLimiter
@@ -7,6 +8,9 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
+
+from helpers.folder import process_folder_patterns
+from helpers.file_kind import process_file_patterns
 
 # Rate limit docs: https://support.atlassian.com/bitbucket-cloud/docs/api-request-limits/
 BITBUCKET_RATE_LIMIT = 1000  # requests per hour
@@ -433,3 +437,35 @@ class BitbucketClient:
         except Exception as e:
             logger.error(f"Failed to connect to Bitbucket Server: {e}")
             raise ConnectionError("Failed to connect to Bitbucket Server") from e
+
+    async def get_folders_by_patterns(
+        self,
+        folder_patterns: list["BitbucketServerFolderPattern"]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Get folders matching the specified patterns.
+
+        Args:
+            folder_patterns: List of folder patterns to match
+
+        Yields:
+            Lists of matching folders with their metadata
+        """
+        async for result in process_folder_patterns(folder_patterns, self):
+            yield result
+
+    async def get_files_by_patterns(
+        self,
+        file_pattern: "BitbucketServerFilePattern"
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Get files matching the specified pattern.
+
+        Args:
+            file_pattern: File pattern to match
+
+        Yields:
+            Lists of matching files with their metadata
+        """
+        async for result in process_file_patterns(file_pattern, self):
+            yield result

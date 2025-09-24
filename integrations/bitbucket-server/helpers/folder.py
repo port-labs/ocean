@@ -1,13 +1,15 @@
 from collections import defaultdict
-from typing import Any, AsyncGenerator, Dict, List, Set, Tuple
+from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, TYPE_CHECKING
 import fnmatch
 from loguru import logger
 from integration import BitbucketServerFolderPattern
-from client import BitbucketClient
+
+if TYPE_CHECKING:
+    from client import BitbucketClient
 
 async def get_repositories_for_pattern(
     pattern: BitbucketServerFolderPattern,
-    client: BitbucketClient
+    client: "BitbucketClient"
 ) -> List[Tuple[Dict[str, Any], str]]:
     """Get repositories matching the given folder pattern."""
     repos_to_process = []
@@ -24,7 +26,7 @@ async def get_repositories_for_pattern(
 
 
 async def collect_repos_for_all_projects(
-    client: BitbucketClient,
+    client: "BitbucketClient",
     pattern: BitbucketServerFolderPattern,
     repos_list: List[Tuple[Dict[str, Any], str]]
 ) -> None:
@@ -39,7 +41,7 @@ async def collect_repos_for_all_projects(
 
 
 async def collect_repos_for_project(
-    client: BitbucketClient,
+    client: "BitbucketClient",
     project_key: str,
     repo_filter: List[str],
     repos_list: List[Tuple[Dict[str, Any], str]]
@@ -52,7 +54,7 @@ async def collect_repos_for_project(
 
 
 async def process_repository_folders(
-    client: BitbucketClient,
+    client: "BitbucketClient",
     repo_info: Tuple[Dict[str, Any], str],
     pattern: BitbucketServerFolderPattern
 ) -> List[Dict[str, Any]]:
@@ -133,7 +135,7 @@ def process_string_item(
 
 async def process_folder_patterns(
     folder_patterns: list[BitbucketServerFolderPattern],
-    client: BitbucketClient
+    client: "BitbucketClient"
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     """Process folder patterns for Bitbucket Server."""
     for pattern in folder_patterns:
