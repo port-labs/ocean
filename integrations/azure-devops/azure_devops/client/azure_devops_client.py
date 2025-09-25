@@ -431,6 +431,86 @@ class AzureDevopsClient(HTTPBaseClient):
                     if stages:
                         yield stages
 
+    async def generate_iterations(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate iterations for all projects in the organization.
+
+        API: GET {org}/{project}/_apis/wit/classificationnodes/iterations?$depth=2
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/classification-nodes/list?view=azure-devops-rest-7.1
+        """
+        async for projects in self.generate_projects():
+            project_tasks = [
+                self._iterations_for_project(project) for project in projects
+            ]
+            async for batch in stream_async_iterators_tasks(*project_tasks):
+                yield batch
+
+    async def _iterations_for_project(
+        self, project: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield iterations (in batches) for a specific project."""
+        project_id = project["id"]
+
+        # Get teams for the project
+        teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
+
+        try:
+            teams_response = await self.send_request("GET", teams_url)
+            if not teams_response:
+                return
+
+            teams = teams_response.json()["value"]
+
+            # Process teams concurrently
+            team_tasks = [
+                self._get_iterations_for_team(project, team) for team in teams
+            ]
+
+            if team_tasks:
+                team_results = await asyncio.gather(*team_tasks, return_exceptions=True)
+
+                for result in team_results:
+                    if isinstance(result, Exception):
+                        logger.error(f"Failed to fetch team iterations: {result}")
+                        continue
+                    if result and isinstance(result, list):
+                        yield result
+
+        except Exception as e:
+            logger.error(f"Failed to fetch teams for project {project_id}: {str(e)}")
+
+    async def _get_iterations_for_team(
+        self, project: dict[str, Any], team: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Get iterations for a specific team."""
+        project_id = project["id"]
+        team_id = team["id"]
+        iterations_url = f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/teamsettings/iterations"
+
+        params = {"api-version": "7.1"}
+
+        try:
+            response = await self.send_request("GET", iterations_url, params=params)
+            if not response:
+                return []
+
+            iterations_data = response.json()
+            iterations = iterations_data.get("value", [])
+
+            # Process and enrich iterations
+            enriched_iterations = [
+                {**iteration, "__project": project, "__team": team}
+                for iteration in iterations
+            ]
+
+            return enriched_iterations
+
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch iterations for team {team_id} in project {project_id}: {str(e)}"
+            )
+            return []
+
     @cache_iterator_result()
     async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():

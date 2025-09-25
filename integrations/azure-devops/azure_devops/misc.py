@@ -29,6 +29,7 @@ class Kind(StrEnum):
     FILE = "file"
     USER = "user"
     FOLDER = "folder"
+    ITERATION = "iteration"
 
 
 PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [

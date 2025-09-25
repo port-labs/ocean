@@ -249,3 +249,19 @@ resources:
             pipelineName: .pipeline.name
           relations:
             project: .__project.id | gsub(" "; "")
+  - kind: iteration
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | gsub(" "; "")
+          title: .name
+          blueprint: '"iteration"'
+          properties:
+            name: .name
+            path: .path
+            iterationKind: .__iterationKind
+            timeFrame: .attributes.timeFrame
+          relations:
+            project: .__project.id | gsub(" "; "")
