@@ -6,7 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-<<<<<<< HEAD
+
+## 0.28.9 (2025-09-21)
+
+### Bug Fixes
+
+- revert memory optimization commit
+
+
 ## 0.28.8 (2025-09-21)
 
 ### Improvements
@@ -21,8 +28,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Support for events which their payload offloaded to the fs
 - Memory optimizations of itemstoparse feature
 
-=======
->>>>>>> parent of 03c2fba8b ([Core] memory optimizations (#2134))
 ## 0.28.6 (2025-09-16)
 
 ### Improvements
