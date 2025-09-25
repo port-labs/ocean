@@ -29,6 +29,18 @@ def is_resource_not_found_exception(e: Exception) -> bool:
     return False
 
 
+def get_cluster_arn_from_service_arn(service_arn: str) -> str:
+    """Extract cluster ARN from ECS service ARN.
+
+    Args:
+        service_arn: ECS service ARN in format arn:aws:ecs:region:account:service/cluster/service
+
+    Returns:
+        Cluster ARN in format arn:aws:ecs:region:account:cluster/cluster
+    """
+    return service_arn.replace(":service/", ":cluster/").rsplit("/", 1)[0]
+
+
 async def get_allowed_regions(session: AioSession, selector: Any) -> list[str]:
     resolver = RegionResolver(session, selector)
     return list(await resolver.get_allowed_regions())
