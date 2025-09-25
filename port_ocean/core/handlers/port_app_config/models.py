@@ -39,7 +39,7 @@ class MappingsConfig(BaseModel):
 class PortResourceConfig(BaseModel):
     entity: MappingsConfig
     items_to_parse: str | None = Field(alias="itemsToParse")
-    items_to_parse_name: str = Field(alias="itemsToParseName", default="item")
+    items_to_parse_name: str | None = Field(alias="itemsToParseName", default="item")
 
 
 class Selector(BaseModel):

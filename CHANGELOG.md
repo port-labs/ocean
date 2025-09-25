@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.28.9 (2025-09-21)
+
+### Bug Fixes
+
+- revert memory optimization commit
+
+
 ## 0.28.8 (2025-09-21)
 
 ### Improvements
