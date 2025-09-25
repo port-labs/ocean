@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 from urllib.parse import quote_plus
 
@@ -300,6 +301,7 @@ class IntegrationClientMixin:
             headers=headers,
             json={
                 "items": raw_data,
+                "extractionTimestamp": datetime.now().isoformat(),
             },
         )
         handle_port_status_code(response, should_log=False)
