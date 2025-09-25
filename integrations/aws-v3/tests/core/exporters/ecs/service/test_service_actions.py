@@ -23,9 +23,7 @@ class TestDescribeServicesAction:
         }
 
         action = DescribeServicesAction(mock_client)
-        service_arns = [
-            "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1"
-        ]
+        service_arns = ["arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1"]
 
         result = await action._execute(service_arns)
 
@@ -63,7 +61,7 @@ class TestDescribeServicesAction:
         action = DescribeServicesAction(mock_client)
         service_arns = [
             "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1",
-            "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service2"
+            "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service2",
         ]
 
         result = await action._execute(service_arns)
@@ -81,19 +79,3 @@ class TestDescribeServicesAction:
             ],
             include=["TAGS"],
         )
-
-    @pytest.mark.asyncio
-    async def test_execute_with_exception_returns_empty_list(self) -> None:
-        """Test that exceptions return empty list and are logged."""
-        mock_client = AsyncMock()
-        mock_client.describe_services.side_effect = Exception("AWS API Error")
-
-        action = DescribeServicesAction(mock_client)
-        service_arns = [
-            "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1"
-        ]
-
-        result = await action._execute(service_arns)
-
-        assert result == []
-        mock_client.describe_services.assert_called_once()

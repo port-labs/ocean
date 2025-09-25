@@ -192,14 +192,14 @@ class TestEcsServiceExporter:
         assert results[0]["serviceName"] == "service1"
         assert results[1]["serviceName"] == "service2"
 
-        # Verify service identifiers were constructed correctly
+        # Verify service ARNs were passed correctly
         call_args = mock_inspector.inspect.call_args[0][0]
         assert len(call_args) == 2
         assert (
-            call_args[0]["serviceArn"]
+            call_args[0]
             == "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1"
         )
         assert (
-            call_args[0]["clusterArn"]
-            == "arn:aws:ecs:us-east-1:123456789012:cluster/cluster1"
+            call_args[1]
+            == "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service2"
         )
