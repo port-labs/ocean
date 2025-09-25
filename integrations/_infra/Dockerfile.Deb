@@ -48,7 +48,6 @@ RUN apt-get update \
         curl \
         acl \
         sudo \
-        jq \
     && apt-get clean
 
 LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
