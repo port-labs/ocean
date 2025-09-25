@@ -5,16 +5,15 @@ from datetime import datetime
 
 
 class ServiceProperties(BaseModel):
-    serviceName: str = Field(default_factory=str, alias="ServiceName")
-    serviceArn: str = Field(default_factory=str, alias="ServiceArn")
+    availabilityZoneRebalancing: Optional[str] = Field(
+        default=None, alias="AvailabilityZoneRebalancing"
+    )
+    capacityProviderStrategy: List[Dict[str, Any]] = Field(
+        default_factory=list, alias="CapacityProviderStrategy"
+    )
     clusterArn: str = Field(default_factory=str, alias="ClusterArn")
-    taskDefinition: str = Field(default_factory=str, alias="TaskDefinition")
-    desiredCount: int = Field(default=0, alias="DesiredCount")
-    runningCount: int = Field(default=0, alias="RunningCount")
-    pendingCount: int = Field(default=0, alias="PendingCount")
-    launchType: Optional[str] = Field(default=None, alias="LaunchType")
-    schedulingStrategy: Optional[str] = Field(default=None, alias="SchedulingStrategy")
-    status: Optional[str] = Field(default=None, alias="Status")
+    createdAt: Optional[datetime] = Field(default=None, alias="CreatedAt")
+    createdBy: Optional[str] = Field(default=None, alias="CreatedBy")
     deploymentConfiguration: Optional[Dict[str, Any]] = Field(
         default=None, alias="DeploymentConfiguration"
     )
@@ -22,45 +21,46 @@ class ServiceProperties(BaseModel):
         default=None, alias="DeploymentController"
     )
     deployments: List[Dict[str, Any]] = Field(default_factory=list, alias="Deployments")
-    events: List[Dict[str, Any]] = Field(default_factory=list, alias="Events")
-    networkConfiguration: Optional[Dict[str, Any]] = Field(
-        default=None, alias="NetworkConfiguration"
-    )
-    loadBalancers: List[Dict[str, Any]] = Field(
-        default_factory=list, alias="LoadBalancers"
-    )
-    serviceRegistries: List[Dict[str, Any]] = Field(
-        default_factory=list, alias="ServiceRegistries"
-    )
-    platformVersion: Optional[str] = Field(default=None, alias="PlatformVersion")
-    platformFamily: Optional[str] = Field(default=None, alias="PlatformFamily")
-    capacityProviderStrategy: List[Dict[str, Any]] = Field(
-        default_factory=list, alias="CapacityProviderStrategy"
+    desiredCount: int = Field(default=0, alias="DesiredCount")
+    enableECSManagedTags: Optional[bool] = Field(
+        default=None, alias="EnableECSManagedTags"
     )
     enableExecuteCommand: Optional[bool] = Field(
         default=None, alias="EnableExecuteCommand"
     )
-    enableECSManagedTags: Optional[bool] = Field(
-        default=None, alias="EnableECSManagedTags"
-    )
+    events: List[Dict[str, Any]] = Field(default_factory=list, alias="Events")
     healthCheckGracePeriodSeconds: Optional[int] = Field(
         default=None, alias="HealthCheckGracePeriodSeconds"
     )
+    launchType: Optional[str] = Field(default=None, alias="LaunchType")
+    loadBalancers: List[Dict[str, Any]] = Field(
+        default_factory=list, alias="LoadBalancers"
+    )
+    networkConfiguration: Optional[Dict[str, Any]] = Field(
+        default=None, alias="NetworkConfiguration"
+    )
+    pendingCount: int = Field(default=0, alias="PendingCount")
     placementConstraints: List[Dict[str, Any]] = Field(
         default_factory=list, alias="PlacementConstraints"
     )
     placementStrategy: List[Dict[str, Any]] = Field(
         default_factory=list, alias="PlacementStrategy"
     )
+    platformFamily: Optional[str] = Field(default=None, alias="PlatformFamily")
+    platformVersion: Optional[str] = Field(default=None, alias="PlatformVersion")
     propagateTags: Optional[str] = Field(default=None, alias="PropagateTags")
     roleArn: Optional[str] = Field(default=None, alias="RoleArn")
-    taskSets: List[Dict[str, Any]] = Field(default_factory=list, alias="TaskSets")
-    availabilityZoneRebalancing: Optional[str] = Field(
-        default=None, alias="AvailabilityZoneRebalancing"
+    runningCount: int = Field(default=0, alias="RunningCount")
+    schedulingStrategy: Optional[str] = Field(default=None, alias="SchedulingStrategy")
+    serviceArn: str = Field(default_factory=str, alias="ServiceArn")
+    serviceName: str = Field(default_factory=str, alias="ServiceName")
+    serviceRegistries: List[Dict[str, Any]] = Field(
+        default_factory=list, alias="ServiceRegistries"
     )
+    status: Optional[str] = Field(default=None, alias="Status")
     tags: List[Dict[str, Any]] = Field(default_factory=list, alias="Tags")
-    createdBy: Optional[str] = Field(default=None, alias="CreatedBy")
-    createdAt: Optional[datetime] = Field(default=None, alias="CreatedAt")
+    taskDefinition: str = Field(default_factory=str, alias="TaskDefinition")
+    taskSets: List[Dict[str, Any]] = Field(default_factory=list, alias="TaskSets")
     updatedAt: Optional[datetime] = Field(default=None, alias="UpdatedAt")
 
     class Config:

@@ -23,14 +23,11 @@ class TestDescribeServicesAction:
         }
 
         action = DescribeServicesAction(mock_client)
-        service_identifiers = [
-            {
-                "serviceArn": "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1",
-                "clusterArn": "arn:aws:ecs:us-east-1:123456789012:cluster/cluster1",
-            }
+        service_arns = [
+            "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1"
         ]
 
-        result = await action._execute(service_identifiers)
+        result = await action._execute(service_arns)
 
         assert len(result) == 1
         assert result[0]["serviceName"] == "service1"
@@ -64,18 +61,12 @@ class TestDescribeServicesAction:
         }
 
         action = DescribeServicesAction(mock_client)
-        service_identifiers = [
-            {
-                "serviceArn": "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1",
-                "clusterArn": "arn:aws:ecs:us-east-1:123456789012:cluster/cluster1",
-            },
-            {
-                "serviceArn": "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service2",
-                "clusterArn": "arn:aws:ecs:us-east-1:123456789012:cluster/cluster1",
-            },
+        service_arns = [
+            "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1",
+            "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service2"
         ]
 
-        result = await action._execute(service_identifiers)
+        result = await action._execute(service_arns)
 
         assert len(result) == 2
         assert result[0]["serviceName"] == "service1"
@@ -98,14 +89,11 @@ class TestDescribeServicesAction:
         mock_client.describe_services.side_effect = Exception("AWS API Error")
 
         action = DescribeServicesAction(mock_client)
-        service_identifiers = [
-            {
-                "serviceArn": "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1",
-                "clusterArn": "arn:aws:ecs:us-east-1:123456789012:cluster/cluster1",
-            }
+        service_arns = [
+            "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1"
         ]
 
-        result = await action._execute(service_identifiers)
+        result = await action._execute(service_arns)
 
         assert result == []
         mock_client.describe_services.assert_called_once()

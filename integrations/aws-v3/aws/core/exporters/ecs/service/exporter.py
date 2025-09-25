@@ -72,13 +72,8 @@ class EcsServiceExporter(IResourceExporter):
                         cluster=cluster_arn, batch_size=10
                     ):
                         if services:
-                            service_identifiers = [
-                                {"serviceArn": service_arn, "clusterArn": cluster_arn}
-                                for service_arn in services
-                            ]
-
                             action_result = await inspector.inspect(
-                                service_identifiers,
+                                services,
                                 options.include,
                                 extra_context={
                                     "AccountId": options.account_id,
