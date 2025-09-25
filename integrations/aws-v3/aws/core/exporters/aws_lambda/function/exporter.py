@@ -34,7 +34,14 @@ class LambdaFunctionExporter(IResourceExporter):
             )
 
             function = response["Configuration"]
-            action_result = await inspector.inspect([function], options.include)
+            action_result = await inspector.inspect(
+                [function],
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
+            )
             return action_result[0] if action_result else {}
 
     async def get_paginated_resources(

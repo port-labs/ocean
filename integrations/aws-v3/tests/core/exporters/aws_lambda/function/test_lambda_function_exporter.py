@@ -92,6 +92,11 @@ class TestLambdaFunctionExporter:
         mock_inspector_class.assert_called_once()
         mock_inspector.inspect.assert_called_once()
 
+        # Verify extra_context was passed correctly
+        call_kwargs = mock_inspector.inspect.call_args[1]
+        assert call_kwargs["extra_context"]["AccountId"] == "123456789012"
+        assert call_kwargs["extra_context"]["Region"] == "us-east-1"
+
     @pytest.mark.asyncio
     @patch("aws.core.exporters.aws_lambda.function.exporter.AioBaseClientProxy")
     @patch("aws.core.exporters.aws_lambda.function.exporter.ResourceInspector")
@@ -189,6 +194,13 @@ class TestLambdaFunctionExporter:
         mock_proxy.get_paginator.assert_called_once_with("list_functions", "Functions")
         assert mock_inspector.inspect.call_count == 2
 
+        # Verify the calls were made with the correct extra context
+        calls = mock_inspector.inspect.call_args_list
+        for call in calls:
+            call_kwargs = call[1]
+            assert call_kwargs["extra_context"]["AccountId"] == "123456789012"
+            assert call_kwargs["extra_context"]["Region"] == "us-east-1"
+
     @pytest.mark.asyncio
     @patch("aws.core.exporters.aws_lambda.function.exporter.AioBaseClientProxy")
     @patch("aws.core.exporters.aws_lambda.function.exporter.ResourceInspector")
@@ -281,6 +293,12 @@ class TestLambdaFunctionExporter:
         assert result["Type"] == "AWS::Lambda::Function"
 
         mock_inspector.inspect.assert_called_once()
+
+        # Verify extra_context was passed correctly
+        call_kwargs = mock_inspector.inspect.call_args[1]
+        assert call_kwargs["extra_context"]["AccountId"] == "123456789012"
+        assert call_kwargs["extra_context"]["Region"] == "us-west-2"
+
         mock_proxy_class.assert_called_once_with(
             exporter.session, "us-west-2", "lambda"
         )
