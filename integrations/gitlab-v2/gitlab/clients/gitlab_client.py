@@ -54,9 +54,10 @@ class GitLabClient:
             "GET", f"projects/{project_id}/jobs/{job_id}"
         )
 
-    async def get_group_member(self, group_id: int, member_id: int) -> dict[str, Any]:
+    async def get_group_member(self, group_id: int, member_id: int, include_inherited_members: bool = False) -> dict[str, Any]:
+        members_api = "members/all" if include_inherited_members else "members"
         return await self.rest.send_api_request(
-            "GET", f"groups/{group_id}/members/{member_id}"
+            "GET", f"groups/{group_id}/{members_api}/{member_id}"
         )
 
     async def get_projects(
