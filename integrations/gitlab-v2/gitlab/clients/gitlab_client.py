@@ -361,7 +361,7 @@ class GitLabClient:
                         if "bot" not in member["username"].lower()
                     ]
                 logger.info(
-                    f"Received batch of {len(filtered_batch)} members for group {group_id}"
+                    f"Fetched {len(filtered_batch)} member(s) from '{members_api}' for group '{group_id}' after bot filtering"
                 )
                 yield filtered_batch
 
