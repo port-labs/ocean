@@ -12,10 +12,13 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent, LiveEventTimestamp
+from port_ocean.core.handlers.webhook.webhook_event import (
+    WebhookEvent,
+    LiveEventTimestamp,
+)
 from port_ocean.utils.signal import signal_handler
 from port_ocean.context.ocean import PortOceanContext
-from fastapi import Request, status
+from fastapi import Request
 from loguru import logger
 
 
@@ -61,10 +64,12 @@ class OktaLiveEventsProcessorManager(LiveEventsProcessorManager, OktaHandlerMixi
             if request.method == "GET":
                 challenge = request.headers.get("x-okta-verification-challenge")
                 if challenge:
-                    logger.info("Responding to Okta verification challenge", webhook_path=path)
+                    logger.info(
+                        "Responding to Okta verification challenge", webhook_path=path
+                    )
                     return {"verification": challenge}
                 else:
-                    return status.HTTP_405_METHOD_NOT_ALLOWED
+                    return {"status": "method_not_allowed"}
 
             try:
                 webhook_event = await WebhookEvent.from_request(request)

@@ -52,7 +52,9 @@ class OktaBaseWebhookProcessor(AbstractWebhookProcessor):
         provided = event.headers.get("authorization", "")
         return provided == webhook_secret
 
-    async def authenticate(self, payload: EventPayload, headers: dict[str, Any]) -> bool:
+    async def authenticate(
+        self, payload: EventPayload, headers: dict[str, Any]
+    ) -> bool:
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
@@ -60,5 +62,3 @@ class OktaBaseWebhookProcessor(AbstractWebhookProcessor):
         return isinstance(payload, dict) and isinstance(
             payload.get("data", {}).get("events"), list
         )
-
-

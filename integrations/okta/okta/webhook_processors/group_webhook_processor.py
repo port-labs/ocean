@@ -10,7 +10,6 @@ from okta.webhook_processors.base_webhook_processor import OktaBaseWebhookProces
 from okta.clients.client_factory import OktaClientFactory
 from okta.utils import ObjectKind, OktaEventType
 from okta.core.exporters.group_exporter import OktaGroupExporter
-from loguru import logger
 
 
 class OktaGroupWebhookProcessor(OktaBaseWebhookProcessor):
@@ -35,9 +34,8 @@ class OktaGroupWebhookProcessor(OktaBaseWebhookProcessor):
                         deleted.append({"id": group_id})
                     else:
                         group = await exporter.get_resource(group_id)
-                        logger.warning(f"Group data retrieved: {group}")
                         updated.append(group)
 
-        return WebhookEventRawResults(updated_raw_results=updated, deleted_raw_results=deleted)
-
-
+        return WebhookEventRawResults(
+            updated_raw_results=updated, deleted_raw_results=deleted
+        )

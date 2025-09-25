@@ -17,7 +17,10 @@ class OktaWebhookClient(OktaClient):
 
     async def _event_hook_exists(self, webhook_url: str) -> bool:
         async for hooks in self.list_event_hooks():
-            if any(hook.get("channel", {}).get("config", {}).get("uri") == webhook_url for hook in hooks):
+            if any(
+                hook.get("channel", {}).get("config", {}).get("uri") == webhook_url
+                for hook in hooks
+            ):
                 return True
         return False
 
@@ -25,7 +28,7 @@ class OktaWebhookClient(OktaClient):
         """Create an event hook if missing, subscribing to relevant events."""
         logger.info("Ensuring Okta Event Hook exists")
 
-        app_host = app_host.strip('/')
+        app_host = app_host.strip("/")
         webhook_url = f"{app_host}/integration/webhook"
         if await self._event_hook_exists(webhook_url):
             logger.info("Event Hook already exists; skipping creation")
@@ -33,23 +36,23 @@ class OktaWebhookClient(OktaClient):
 
         subscribed_events = default_event_subscriptions()
 
-        channel_config = {
-            "type": "HTTP",
-            "version": "1.0.0",
-            "config": {
-                "uri": webhook_url,
-                "headers": [],
-                "authScheme": None,
-            },
+        config_dict: Dict[str, Any] = {
+            "uri": webhook_url,
+            "headers": [],
         }
 
-        secret = ocean.integration_config.get("webhook_secret")
-        if secret:
-            channel_config["config"]["authScheme"] = {
+        if secret := ocean.integration_config.get("webhook_secret"):
+            config_dict["authScheme"] = {
                 "type": "HEADER",
                 "key": "Authorization",
                 "value": secret,
             }
+
+        channel_config = {
+            "type": "HTTP",
+            "version": "1.0.0",
+            "config": config_dict,
+        }
 
         body = {
             "name": "Port Okta Event Hook",
@@ -67,13 +70,15 @@ class OktaWebhookClient(OktaClient):
             verify = links.get("verify", {})
             if href := verify.get("href"):
                 try:
-                    await self.make_request(href.replace(self.base_url, ""), method="POST")
+                    await self.make_request(
+                        href.replace(self.base_url, ""), method="POST"
+                    )
                     logger.info("Okta Event Hook verification triggered")
                 except Exception as verr:
-                    logger.warning("Failed to trigger Okta Event Hook verification: {}", verr)
+                    logger.warning(
+                        "Failed to trigger Okta Event Hook verification: {}", verr
+                    )
         except HTTPStatusError as http_err:
             logger.error("HTTP error while creating Okta Event Hook: {}", http_err)
         except Exception as err:
             logger.error("Unexpected error while creating Okta Event Hook: {}", err)
-
-

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -11,9 +11,9 @@ from okta.clients.client_factory import OktaClientFactory
 from okta.utils import ObjectKind
 from okta.core.exporters.user_exporter import OktaUserExporter
 from okta.core.options import GetUserOptions, get_default_user_fields
-from integration import OktaUserConfig
 from okta.utils import OktaEventType
-from loguru import logger
+from integration import OktaUserConfig
+
 
 class OktaUserWebhookProcessor(OktaBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -25,8 +25,7 @@ class OktaUserWebhookProcessor(OktaBaseWebhookProcessor):
         client = OktaClientFactory.get_client()
         exporter = OktaUserExporter(client)
 
-        config = resource_config
-        okta_config = config
+        okta_config = cast(OktaUserConfig, resource_config)
         selector = okta_config.selector
         include_groups = selector.include_groups
         include_applications = selector.include_applications
@@ -46,8 +45,7 @@ class OktaUserWebhookProcessor(OktaBaseWebhookProcessor):
 
                 user_id = target["id"]
                 is_delete_event = (
-                    event_type
-                    == OktaEventType.USER_LIFECYCLE_DELETE_INITIATED.value
+                    event_type == OktaEventType.USER_LIFECYCLE_DELETE_INITIATED.value
                 )
 
                 if is_delete_event:
@@ -61,11 +59,8 @@ class OktaUserWebhookProcessor(OktaBaseWebhookProcessor):
                             fields=fields,
                         )
                     )
-                    logger.warning(f"User data retrieved: {user}")
                     updated_results.append(user)
 
         return WebhookEventRawResults(
             updated_raw_results=updated_results, deleted_raw_results=deleted_results
         )
-
-
