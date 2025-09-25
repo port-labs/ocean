@@ -5,6 +5,11 @@ from typing import Any, Optional, Type
 import httpx
 from loguru import logger
 
+LIMIT_HEADER = "x-ratelimit-limit"
+LIMIT_REMAINING_HEADER = "x-ratelimit-remaining"
+LIMIT_RESET_HEADER = "x-ratelimit-reset"
+LIMIT_RETRY_AFTER_HEADER = "retry-after"
+
 
 class AzureDevOpsRateLimiter:
     """Rate limiter for Azure DevOps API requests.
@@ -122,9 +127,9 @@ class AzureDevOpsRateLimiter:
         """
         async with self._lock:
             try:
-                limit_header = headers.get("x-ratelimit-limit")
-                remaining_header = headers.get("x-ratelimit-remaining")
-                reset_header = headers.get("x-ratelimit-reset")
+                limit_header = headers.get(LIMIT_HEADER)
+                remaining_header = headers.get(LIMIT_REMAINING_HEADER)
+                reset_header = headers.get(LIMIT_RESET_HEADER)
 
                 # Update limit and remaining if both are present
                 if limit_header and remaining_header:

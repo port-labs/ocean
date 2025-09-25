@@ -5,11 +5,16 @@ from httpx import BasicAuth, ReadTimeout, Response
 from loguru import logger
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
-from azure_devops.client.rate_limiter import AzureDevOpsRateLimiter
+from azure_devops.client.rate_limiter import (
+    AzureDevOpsRateLimiter,
+    LIMIT_RESET_HEADER,
+    LIMIT_RETRY_AFTER_HEADER,
+)
 
 PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
 CONTINUATION_TOKEN_KEY = "continuationToken"
+MAX_TIMEMOUT_RETRIES = 3
 
 
 class HTTPBaseClient:
@@ -17,8 +22,8 @@ class HTTPBaseClient:
         self._client = OceanAsyncClient(
             retry_config=RetryConfig(
                 retry_after_headers=[
-                    "x-ratelimit-reset",
-                    "retry-after",
+                    LIMIT_RESET_HEADER,
+                    LIMIT_RETRY_AFTER_HEADER,
                 ],
             ),
         )
@@ -112,13 +117,13 @@ class HTTPBaseClient:
                     break
             except ReadTimeout as e:
                 timeout_retries = timeout_retries + 1
-                if timeout_retries < 3:
+                if timeout_retries < MAX_TIMEMOUT_RETRIES:
                     logger.warning(
                         f"Request to {url} with {params} timed out, retrying ..."
                     )
                 else:
                     logger.error(
-                        f"Request to {url} with {params} has timed out thrice."
+                        f"Request to {url} with {params} has timed out {MAX_TIMEMOUT_RETRIES} times."
                     )
                     raise e
 
@@ -146,12 +151,12 @@ class HTTPBaseClient:
                     break
             except ReadTimeout as e:
                 timeout_retries = timeout_retries + 1
-                if timeout_retries < 3:
+                if timeout_retries < MAX_TIMEMOUT_RETRIES:
                     logger.warning(
                         f"Request to {url} with {params} timed out, retrying ..."
                     )
                 else:
                     logger.error(
-                        f"Request to {url} with {params} has timed out thrice."
+                        f"Request to {url} with {params} has timed out {MAX_TIMEMOUT_RETRIES} times."
                     )
                     raise e
