@@ -89,6 +89,11 @@ class TestRdsDbInstanceExporter:
             "ListTagsForResourceAction"
         ]  # Second argument should be the include list
 
+        # Verify extra_context was passed correctly
+        call_kwargs = mock_inspector.inspect.call_args[1]
+        assert call_kwargs["extra_context"]["AccountId"] == "123456789012"
+        assert call_kwargs["extra_context"]["Region"] == "us-west-2"
+
     @pytest.mark.asyncio
     @patch("aws.core.exporters.rds.db_instance.exporter.AioBaseClientProxy")
     @patch("aws.core.exporters.rds.db_instance.exporter.ResourceInspector")
@@ -321,6 +326,12 @@ class TestRdsDbInstanceExporter:
         mock_inspector.inspect.assert_called_once()
         call_args = mock_inspector.inspect.call_args
         assert call_args[0][1] == []  # Second argument should be the include list
+
+        # Verify extra_context was passed correctly
+        call_kwargs = mock_inspector.inspect.call_args[1]
+        assert call_kwargs["extra_context"]["AccountId"] == "123456789012"
+        assert call_kwargs["extra_context"]["Region"] == "us-west-2"
+
         mock_proxy_class.assert_called_once_with(exporter.session, "us-west-2", "rds")
         mock_proxy_class.return_value.__aenter__.assert_called_once()
         mock_proxy_class.return_value.__aexit__.assert_called_once()
