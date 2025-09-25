@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.8 (2025-09-25)
+
+
+### Bug fixes
+
+- Handle request timeouts introduced by throttling delays.
+- Change expected headers to lowercase
+
+
 ## 0.4.7 (2025-09-24)
 
 
