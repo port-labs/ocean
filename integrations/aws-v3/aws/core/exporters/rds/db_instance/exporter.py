@@ -31,8 +31,8 @@ class RdsDbInstanceExporter(IResourceExporter):
                 DBInstanceIdentifier=options.db_instance_identifier
             )
 
-            db_instance = response["DBInstances"][0]
-            action_result = await inspector.inspect([db_instance], options.include)
+            db_instance = response["DBInstances"]
+            action_result = await inspector.inspect(db_instance, options.include)
             return action_result[0] if action_result else {}
 
     async def get_paginated_resources(
