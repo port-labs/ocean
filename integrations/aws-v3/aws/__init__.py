@@ -6,7 +6,7 @@ from aws.auth import (
     MultiAccountStrategy,
     OrganizationsStrategy,
     RegionResolver,
-    ResyncStrategyFactory,
+    AccountStrategyFactory,
     SingleAccountStrategy,
     StaticCredentialProvider,
 )
@@ -19,7 +19,7 @@ __all__ = [
     "MultiAccountStrategy",
     "OrganizationsStrategy",
     "RegionResolver",
-    "ResyncStrategyFactory",
+    "AccountStrategyFactory",
     "SingleAccountStrategy",
     "StaticCredentialProvider",
 ]
