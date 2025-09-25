@@ -29,7 +29,9 @@ class EntityMapping(BaseModel):
 
     @property
     def is_using_search_identifier(self) -> bool:
-        return isinstance(self.identifier, dict) or isinstance(self.identifier, IngestSearchQuery)
+        return isinstance(self.identifier, dict) or isinstance(
+            self.identifier, IngestSearchQuery
+        )
 
 
 class MappingsConfig(BaseModel):
