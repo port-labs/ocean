@@ -172,18 +172,40 @@ async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
 async def test_get_paginated_issues_with_jql_param(
     mock_jira_client: JiraClient,
 ) -> None:
-    params: dict[str, Any] = {"jql": "project = TEST"}
-    async for issues in mock_jira_client.get_paginated_issues(params):
-        assert issues is not None
+    """Test get_paginated_issues with JQL parameter"""
+    issues_data = {"issues": [{"key": "TEST-1"}, {"key": "TEST-2"}], "total": 2}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [issues_data, {"issues": []}]
+
+        issues = []
+        async for issue_batch in mock_jira_client.get_paginated_issues(
+            params={"jql": "project = TEST"}
+        ):
+            issues.extend(issue_batch)
+
+        assert len(issues) == 2
 
 
 @pytest.mark.asyncio
 async def test_get_paginated_issues_without_jql_param(
     mock_jira_client: JiraClient,
 ) -> None:
-    params: dict[str, Any] = {}
-    async for issues in mock_jira_client.get_paginated_issues(params):
-        assert issues is not None
+    """Test get_paginated_issues without JQL parameter"""
+    issues_data = {"issues": [{"key": "TEST-1"}, {"key": "TEST-2"}], "total": 2}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [issues_data, {"issues": []}]
+
+        issues = []
+        async for issue_batch in mock_jira_client.get_paginated_issues(params={}):
+            issues.extend(issue_batch)
+
+        assert len(issues) == 2
 
 
 @pytest.mark.asyncio
