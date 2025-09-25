@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.183 (2025-09-25)
+
+
+### Bug Fix
+
+- Fixes Failing to Sync Jobs and Builds due to malformed URLs with Double Slashes
+
+
 ## 0.1.182 (2025-09-17)
 
 

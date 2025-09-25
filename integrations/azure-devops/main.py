@@ -288,6 +288,14 @@ async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield test_runs
 
 
+@ocean.on_resync(Kind.ITERATION)
+async def resync_iterations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for iterations in azure_devops_client.generate_iterations():
+        logger.info(f"Resyncing {len(iterations)} iterations")
+        yield iterations
+
+
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FileWebhookProcessor)
