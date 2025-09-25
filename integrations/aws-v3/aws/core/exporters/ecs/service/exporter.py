@@ -33,13 +33,13 @@ class EcsServiceExporter(IResourceExporter):
             service_arn = f"arn:aws:ecs:{options.region}:{options.account_id}:service/{options.cluster_name}/{options.service_name}"
 
             response = await inspector.inspect(
-                [
-                    {
-                        "serviceArn": service_arn,
-                        "clusterArn": cluster_arn,
-                    }
-                ],
+                [service_arn],
                 options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                    "ClusterArn": cluster_arn,
+                },
             )
 
             return response[0] if response else {}

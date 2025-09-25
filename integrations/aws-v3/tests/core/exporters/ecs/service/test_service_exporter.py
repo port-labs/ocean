@@ -69,15 +69,20 @@ class TestEcsServiceExporter:
         assert result == mock_service_data
         mock_inspector.inspect.assert_called_once()
 
-        # Verify the service ARN was constructed correctly
+        # Verify the service ARN was passed correctly
         call_args = mock_inspector.inspect.call_args[0][0]
         assert len(call_args) == 1
         assert (
-            call_args[0]["serviceArn"]
+            call_args[0]
             == "arn:aws:ecs:us-east-1:123456789012:service/test-cluster/test-service"
         )
+
+        # Verify extra_context was passed correctly
+        extra_context = mock_inspector.inspect.call_args[1]["extra_context"]
+        assert extra_context["AccountId"] == "123456789012"
+        assert extra_context["Region"] == "us-east-1"
         assert (
-            call_args[0]["clusterArn"]
+            extra_context["ClusterArn"]
             == "arn:aws:ecs:us-east-1:123456789012:cluster/test-cluster"
         )
 
