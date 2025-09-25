@@ -305,9 +305,13 @@ class JiraClient(OAuthClient):
         params = params or {}
         if "jql" in params:
             logger.info(f"Using JQL filter: {params['jql']}")
+            url = f"{self.api_url}/search/jql"
+        else:
+            logger.warning("JQL filter not found in params")
+            url = f"{self.api_url}/search"
 
         async for issues in self._get_paginated_data_using_next_page_token(
-            f"{self.api_url}/search/jql", "issues", initial_params=params
+            url, "issues", initial_params=params
         ):
             yield issues
 

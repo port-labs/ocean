@@ -6,12 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-## 0.28.8 (2025-09-23)
+## 0.28.9 (2025-09-25)
 
 ### Bug fixes
 
 - Convert Entity dictionary identifiers to consistent json representation
 - Fix buggy check in EntityMapping that always resolves to False
+
+
+## 0.28.8 (2025-09-21)
+
+### Improvements
+
+- added extractionTimestamp to post_integration_raw_data
 
 
 ## 0.28.7 (2025-09-16)

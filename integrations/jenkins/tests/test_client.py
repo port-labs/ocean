@@ -207,3 +207,33 @@ async def test_jenkins_client_url_no_trailing_slashes(
         for url in test_urls:
             client = JenkinsClient(url, "user", "token")
             assert client.jenkins_base_url == "http://jenkins.example.com"
+
+
+@pytest.mark.asyncio
+@patch(
+    "port_ocean.context.ocean.PortOceanContext.integration_config",
+    new_callable=AsyncMock,
+)
+@patch("port_ocean.utils.async_http.OceanAsyncClient", new_callable=AsyncMock)
+async def test_build_base_url_removes_trailing_slash(
+    mock_ocean_client: AsyncMock, mock_integration_config: AsyncMock
+) -> None:
+    mock_integration_config.return_value = {
+        "jenkins_host": "http://localhost:8080",
+        "jenkins_user": "user",
+        "jenkins_token": "token",
+    }
+
+    with patch("client.http_async_client", new=mock_ocean_client):
+        client = JenkinsClient("http://jenkins.example.com", "user", "token")
+
+    # Simulate a parent_job with a trailing slash in the URL
+    parent_job = {"url": "http://jenkins.example.com/job/my-job/"}
+    url = client._build_base_url(parent_job)
+    assert not url.endswith("/"), f"URL should not end with a slash: {url}"
+    assert url == "http://jenkins.example.com/job/my-job"
+
+    # Also test with no parent_job
+    url2 = client._build_base_url(None)
+    assert not url2.endswith("/"), f"URL should not end with a slash: {url2}"
+    assert url2 == "http://jenkins.example.com"
