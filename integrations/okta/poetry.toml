@@ -1,0 +1,4 @@
+[tool.poetry.urls]
+"Homepage" = "https://getport.io/"
+"Bug Reports" = "https://github.com/port-labs/ocean/issues"
+"Slack Community" = "https://getport.io/community/"
