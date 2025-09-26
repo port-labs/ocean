@@ -3469,3 +3469,197 @@ async def test_fetch_test_results() -> None:
         assert len(results) == 1
         assert results[0]["id"] == 100000
         assert results[0]["outcome"] == "Passed"
+
+
+@pytest.mark.asyncio
+async def test_generate_iterations(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "projects" in url and "teams" in url:
+            # Mock teams response
+            teams_data = {
+                "value": [
+                    {"id": "team1", "name": "Team One"},
+                    {"id": "team2", "name": "Team Two"},
+                ]
+            }
+            return Response(status_code=200, json=teams_data)
+        elif "work/teamsettings/iterations" in url:
+            # Mock iterations response
+            iterations_data = {
+                "value": [
+                    {
+                        "id": "a589a806-bf11-4d4f-a031-c19813331553",
+                        "name": "Sprint 1",
+                        "path": "\\Project One\\Iteration\\Sprint 1",
+                        "attributes": {
+                            "startDate": "2024-01-01T00:00:00Z",
+                            "finishDate": "2024-01-15T00:00:00Z",
+                            "timeFrame": "current",
+                        },
+                        "url": "https://dev.azure.com/fabrikam/6d823a47-2d51-4f31-acff-74927f88ee1e/748b18b6-4b3c-425a-bcae-ff9b3e703012/_apis/work/teamsettings/iterations/a589a806-bf11-4d4f-a031-c19813331553",
+                    },
+                    {
+                        "id": "b589a806-bf11-4d4f-a031-c19813331554",
+                        "name": "Release 1.0",
+                        "path": "\\Project One\\Iteration\\Release 1.0",
+                        "attributes": {
+                            "startDate": "2024-01-16T00:00:00Z",
+                            "finishDate": "2024-02-15T00:00:00Z",
+                            "timeFrame": "future",
+                        },
+                        "url": "https://dev.azure.com/fabrikam/6d823a47-2d51-4f31-acff-74927f88ee1e/748b18b6-4b3c-425a-bcae-ff9b3e703012/_apis/work/teamsettings/iterations/b589a806-bf11-4d4f-a031-c19813331554",
+                    },
+                ]
+            }
+            return Response(status_code=200, json=iterations_data)
+        return None
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "send_request",
+                side_effect=mock_send_request,
+            ):
+                # ACT
+                iterations: List[Dict[str, Any]] = []
+                async for iteration_batch in client.generate_iterations():
+                    iterations.extend(iteration_batch)
+
+                # ASSERT
+                assert len(iterations) == 4  # 2 teams × 2 iterations each
+
+                # Check Sprint 1 (from both teams)
+                sprint1_iterations = [
+                    iter for iter in iterations if iter["name"] == "Sprint 1"
+                ]
+                assert len(sprint1_iterations) == 2
+
+                # Verify Sprint iterations have correct structure and are linked to both teams
+                assert len(sprint1_iterations) == 2
+                sprint_ids = {sprint["id"] for sprint in sprint1_iterations}
+                assert len(sprint_ids) == 1  # Same sprint ID for both teams
+                assert "a589a806-bf11-4d4f-a031-c19813331553" in sprint_ids
+
+                team_names = {sprint["__team"]["name"] for sprint in sprint1_iterations}
+                assert team_names == {"Team One", "Team Two"}
+
+                # Check Release 1.0 iterations
+                release1_iterations = [
+                    iter for iter in iterations if iter["name"] == "Release 1.0"
+                ]
+                assert len(release1_iterations) == 2
+
+                # Verify Release iterations have correct structure and are linked to both teams
+                release_ids = {release["id"] for release in release1_iterations}
+                assert len(release_ids) == 1  # Same release ID for both teams
+                assert "b589a806-bf11-4d4f-a031-c19813331554" in release_ids
+
+                team_names = {
+                    release["__team"]["name"] for release in release1_iterations
+                }
+                assert team_names == {"Team One", "Team Two"}
+
+
+@pytest.mark.asyncio
+async def test_generate_iterations_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "projects" in url and "teams" in url:
+            return None  # Simulate 404 for teams
+        elif "work/teamsettings/iterations" in url:
+            return None  # Simulate 404 for iterations
+        return None
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "send_request",
+                side_effect=mock_send_request,
+            ):
+                # ACT
+                iterations: List[Dict[str, Any]] = []
+                async for iteration_batch in client.generate_iterations():
+                    iterations.extend(iteration_batch)
+
+                # ASSERT
+                assert len(iterations) == 0
+
+
+@pytest.mark.asyncio
+async def test_iterations_for_project() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    project = {"id": "proj1", "name": "Project One"}
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "projects" in url and "teams" in url:
+            # Mock teams response
+            teams_data = {"value": [{"id": "team1", "name": "Team One"}]}
+            return Response(status_code=200, json=teams_data)
+        elif "work/teamsettings/iterations" in url:
+            # Mock iterations response based on the official API documentation
+            iterations_data = {
+                "value": [
+                    {
+                        "id": "a589a806-bf11-4d4f-a031-c19813331553",
+                        "name": "Sprint 1",
+                        "path": "\\Project One\\Iteration\\Sprint 1",
+                        "attributes": {
+                            "startDate": "2024-01-01T00:00:00Z",
+                            "finishDate": "2024-01-15T00:00:00Z",
+                            "timeFrame": "current",
+                        },
+                        "url": "https://dev.azure.com/fabrikam/6d823a47-2d51-4f31-acff-74927f88ee1e/748b18b6-4b3c-425a-bcae-ff9b3e703012/_apis/work/teamsettings/iterations/a589a806-bf11-4d4f-a031-c19813331553",
+                    }
+                ]
+            }
+            return Response(status_code=200, json=iterations_data)
+        return None
+
+    with patch.object(client, "send_request", side_effect=mock_send_request):
+        # ACT
+        iterations: List[Dict[str, Any]] = []
+        async for iteration_batch in client._iterations_for_project(project):
+            iterations.extend(iteration_batch)
+
+        # ASSERT
+        assert len(iterations) == 1  # 1 team × 1 iteration
+
+        # Verify the iteration has the essential properties
+        sprint = iterations[0]
+        assert sprint["id"] == "a589a806-bf11-4d4f-a031-c19813331553"
+        assert sprint["name"] == "Sprint 1"
+        assert sprint["__project"]["name"] == "Project One"
+        assert sprint["__team"]["name"] == "Team One"
+        assert sprint["attributes"]["timeFrame"] == "current"

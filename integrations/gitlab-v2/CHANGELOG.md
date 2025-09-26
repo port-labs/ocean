@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.33 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.2.32 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 0.2.31 (2025-09-25)
+
+
+### Improvements
+
+- You can now choose to include inherited members during ingestion by using the `includeInheritedMembers` selector.
+
+
 ## 0.2.30 (2025-09-17)
 
 
