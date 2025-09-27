@@ -3,6 +3,7 @@ from typing import Any
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
+from port_ocean.clients.port.mixins.actions import ActionsClientMixin
 from port_ocean.clients.port.mixins.blueprints import BlueprintClientMixin
 from port_ocean.clients.port.mixins.entities import EntityClientMixin
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
@@ -24,6 +25,7 @@ class PortClient(
     BlueprintClientMixin,
     MigrationClientMixin,
     OrganizationClientMixin,
+    ActionsClientMixin,
 ):
     def __init__(
         self,
@@ -54,6 +56,7 @@ class PortClient(
         BlueprintClientMixin.__init__(self, self.auth, self.client)
         MigrationClientMixin.__init__(self, self.auth, self.client)
         OrganizationClientMixin.__init__(self, self.auth, self.client)
+        ActionsClientMixin.__init__(self, self.auth, self.client)
 
     async def get_kafka_creds(self) -> KafkaCreds:
         logger.info("Fetching organization kafka credentials")

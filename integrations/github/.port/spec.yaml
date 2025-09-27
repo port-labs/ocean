@@ -52,6 +52,25 @@ configurations:
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from GitHub are accepted.
     sensitive: true
     required: false
+actions:
+  - name: dispatch_github_workflow
+    description: Dispatch a GitHub workflow
+    inputs:
+      - name: repo
+        type: string
+        description: The name of the GitHub repository that contains the target workflow
+        required: true
+      - name: workflow
+        type: string
+        description: The name of the file (under /.github/workflows/) that defines the target workflow, for example - deploy.yml
+        required: true
+      - name: workflowInputs
+        type: object
+        description: 'The following values will be sent upon the action invocation. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. You can reference secrets using {{ .secrets["secret-name"] }}. <a href="https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload" target="_blank">Learn more</a>'
+      - name: reportWorkflowStatus
+        type: boolean
+        description: Whether to report the workflow status
+        default: true
 saas:
   enabled: true
   liveEvents:

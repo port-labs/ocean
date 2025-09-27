@@ -13,6 +13,10 @@ from port_ocean.core.event_listener import (
     KafkaEventListenerSettings,
     PollingEventListenerSettings,
 )
+from port_ocean.core.event_listener.actions_only import (
+    ActionsOnlyEventListener,
+    ActionsOnlyEventListenerSettings,
+)
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
     EventListenerEvents,
@@ -97,6 +101,11 @@ class EventListenerFactory:
                     config, WebhooksOnlyEventListenerSettings
                 ), assert_message.format(type(config))
                 event_listener = WebhooksOnlyEventListener(wrapped_events, config)
+            case "actions_only":
+                assert isinstance(
+                    config, ActionsOnlyEventListenerSettings
+                ), assert_message.format(type(config))
+                event_listener = ActionsOnlyEventListener(wrapped_events, config)
             case _:
                 raise UnsupportedEventListenerTypeException(
                     f"Event listener {_type} not supported"

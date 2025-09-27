@@ -13,13 +13,15 @@ from port_ocean.core.defaults.common import (
     get_port_integration_defaults,
 )
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
-from port_ocean.core.models import Blueprint, CreatePortResourcesOrigin
+from port_ocean.core.models import (
+    Blueprint,
+    CreatePortResourcesOrigin,
+    IntegrationFeatureFlag,
+)
 from port_ocean.core.utils.utils import gather_and_split_errors_from_results
 from port_ocean.exceptions.port_defaults import (
     AbortDefaultCreationError,
 )
-
-ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG = "USE_PROVISIONED_DEFAULTS"
 
 
 def deconstruct_blueprints_to_creation_steps(
@@ -75,6 +77,9 @@ async def _initialize_required_integration_settings(
                 integration_config.integration.type,
                 integration_config.event_listener.get_changelog_destination_details(),
                 port_app_config=default_mapping,
+                extra_json={
+                    "isExecutionAgent": integration_config.execution_agent.enabled,
+                },
                 create_port_resources_origin_in_port=integration_config.create_port_resources_origin
                 == CreatePortResourcesOrigin.Port,
             )
@@ -101,9 +106,13 @@ async def _initialize_required_integration_settings(
         integration.get("changelogDestination") != changelog_destination
         or integration.get("installationAppType") != integration_config.integration.type
         or integration.get("version") != port_client.integration_version
+        or integration.get("isExecutionAgent")
+        != integration_config.execution_agent.enabled
     ):
         await port_client.patch_integration(
-            integration_config.integration.type, changelog_destination
+            _type=integration_config.integration.type,
+            changelog_destination=changelog_destination,
+            is_execution_agent=integration_config.execution_agent.enabled,
         )
 
 
@@ -219,7 +228,7 @@ async def _initialize_defaults(
         )
     )
 
-    has_provision_feature_flag = ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG in (
+    has_provision_feature_flag = IntegrationFeatureFlag.USE_PROVISIONED_DEFAULTS in (
         await port_client.get_organization_feature_flags()
     )
 
