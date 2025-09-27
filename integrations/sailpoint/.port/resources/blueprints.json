@@ -1,0 +1,575 @@
+[
+  {
+    "identifier": "sailpointIdentity",
+    "title": "SailPoint Identity",
+    "icon": "User",
+    "schema": {
+      "properties": {
+        "alias": {
+          "title": "Alias",
+          "type": "string",
+          "description": "Technical name of the Identity"
+        },
+        "name": {
+          "title": "Display Name",
+          "type": "string",
+          "description": "Display name of the Identity"
+        },
+        "emailAddress": {
+          "title": "Email Address",
+          "type": "string"
+        },
+        "isManager": {
+          "title": "Is Manager",
+          "type": "boolean"
+        },
+        "lastRefresh": {
+          "title": "Last Refresh",
+          "type": "string",
+          "format": "date-time"
+        },
+        "lifecycleState": {
+          "title": "Lifecycle State",
+          "type": "object"
+        },
+        "identityStatus": {
+          "title": "Identity Status",
+          "type": "string"
+        },
+        "created": {
+          "title": "Created",
+          "type": "string",
+          "format": "date-time"
+        },
+        "modified": {
+          "title": "Modified",
+          "type": "string",
+          "format": "date-time"
+        },
+        "firstName": {
+          "title": "First Name",
+          "type": "string"
+        },
+        "lastName": {
+          "title": "Last Name",
+          "type": "string"
+        }
+      }
+    },
+    "relations": {
+      "manager": {
+        "target": "sailpointIdentity",
+        "required": false,
+        "many": false,
+        "title": "Manager"
+      }
+    }
+  },
+  {
+    "identifier": "sailpointEntitlement",
+    "title": "SailPoint Entitlement",
+    "icon": "Lock",
+    "schema": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "description": "The name of the entitlement"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "The description of the entitlement"
+        },
+        "privileged": {
+          "title": "Privileged",
+          "type": "boolean",
+          "description": "Indicates if the entitlement is privileged"
+        },
+        "cloudGoverned": {
+          "title": "Cloud Governed",
+          "type": "boolean",
+          "description": "Indicates if the entitlement is cloud governed"
+        },
+        "attribute": {
+          "title": "Attribute",
+          "type": "string",
+          "description": "The entitlement attribute name"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string",
+          "description": "The value of the entitlement"
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "object",
+          "description": "The identity that owns the entitlement",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "title": "The display name of the identity",
+              "type": "string"
+            },
+            "type": {
+              "title": "The type of the object",
+              "type": "string"
+            }
+          }
+        },
+        "created": {
+          "title": "Created",
+          "type": "string",
+          "format": "date-time"
+        },
+        "modified": {
+          "title": "Modified",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "relations": {
+      "source": {
+        "target": "sailpointSource",
+        "title": "Source",
+        "required": false,
+        "many": false
+      },
+      "accounts": {
+        "target": "sailpointAccount",
+        "title": "Accounts",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "sailpointAccount",
+    "title": "SailPoint Account",
+    "icon": "Service",
+    "schema": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "description": "Name of the object"
+        },
+        "created": {
+          "title": "Created",
+          "type": "string",
+          "format": "date-time"
+        },
+        "modified": {
+          "title": "Modified",
+          "type": "string",
+          "format": "date-time"
+        },
+        "sourceName": {
+          "title": "Source Name",
+          "type": "string",
+          "description": "The display name of the source this account belongs to"
+        },
+        "cloudLifecycleState": {
+          "title": "Cloud Lifecycle State",
+          "type": "string",
+          "description": "The lifecycle state of the identity this account is correlated to"
+        },
+        "identityState": {
+          "title": "Identity State",
+          "type": "string",
+          "description": "The identity state of the identity this account is correlated to"
+        },
+        "connectionType": {
+          "title": "Connection Type",
+          "type": "string",
+          "description": "The connection type of the source this account is from"
+        },
+        "isMachine": {
+          "title": "Is Machine",
+          "type": "boolean",
+          "description": "Indicates if the account is of machine type"
+        },
+        "authoritative": {
+          "title": "Authoritative",
+          "type": "boolean",
+          "description": "Indicates if this account is from an authoritative source"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "disabled": {
+          "title": "Disabled",
+          "type": "boolean",
+          "description": "Indicates if the account is currently disabled"
+        },
+        "locked": {
+          "title": "Locked",
+          "type": "boolean",
+          "description": "Indicates if the account is currently locked"
+        },
+        "nativeIdentity": {
+          "title": "Native Identity",
+          "type": "string",
+          "description": "The unique ID of the account generated by the source system"
+        },
+        "systemAccount": {
+          "title": "System Account",
+          "type": "boolean",
+          "description": "If true, this is a user account within IdentityNow"
+        },
+        "uncorrelated": {
+          "title": "Uncorrelated",
+          "type": "boolean",
+          "description": "Indicates if this account is not correlated to an identity"
+        },
+        "uuid": {
+          "title": "UUID",
+          "type": "string",
+          "description": "The unique ID of the account"
+        },
+        "manuallyCorrelated": {
+          "title": "Manually Correlated",
+          "type": "boolean",
+          "description": "Indicates if the account has been manually correlated to an identity"
+        },
+        "hasEntitlements": {
+          "title": "Has Entitlements",
+          "type": "boolean",
+          "description": "Indicates if the account has entitlements"
+        },
+        "features": {
+          "title": "Features",
+          "type": "string",
+          "description": "A string list containing the owning source's features"
+        },
+        "origin": {
+          "title": "Origin",
+          "type": "string",
+          "description": "The origin of the account either aggregated or provisioned"
+        }
+      }
+    },
+    "relations": {
+      "identity": {
+        "target": "sailpointIdentity",
+        "title": "Identity",
+        "required": false,
+        "many": false,
+        "description": "The identity this account is correlated to"
+      },
+      "source": {
+        "target": "sailpointSource",
+        "title": "Source",
+        "required": false,
+        "many": false,
+        "description": "The source system this account belongs to"
+      },
+      "entitlements": {
+        "target": "sailpointEntitlement",
+        "title": "Entitlements",
+        "description": "The entitlements assigned to this account",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "sailpointAccessProfile",
+    "title": "SailPoint Access Profile",
+    "icon": "Package",
+    "schema": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "description": "Access profile name"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "Access profile description"
+        },
+        "created": {
+          "title": "Created",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date and time when the access profile was created"
+        },
+        "modified": {
+          "title": "Modified",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date and time when the access profile was last modified"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean",
+          "description": "Indicates whether the access profile is enabled"
+        },
+        "requestable": {
+          "title": "Requestable",
+          "type": "boolean",
+          "description": "Indicates whether the access profile is requestable by access request"
+        },
+        "accessRequestConfig": {
+          "title": "Access Request Config",
+          "type": "object",
+          "description": "Access request configuration settings"
+        },
+        "revocationRequestConfig": {
+          "title": "Revocation Request Config",
+          "type": "object",
+          "description": "Revocation request configuration settings"
+        },
+        "segments": {
+          "title": "Segments",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of segment IDs that the access profile is assigned to"
+        },
+        "provisioningCriteria": {
+          "title": "Provisioning Criteria",
+          "type": "object",
+          "description": "Provisioning criteria configuration"
+        }
+      }
+    },
+    "relations": {
+      "owner": {
+        "target": "sailpointIdentity",
+        "title": "Owner",
+        "description": "The identity that owns this access profile",
+        "required": false,
+        "many": false
+      },
+      "source": {
+        "target": "sailpointSource",
+        "title": "Source",
+        "description": "The source system this access profile belongs to",
+        "required": false,
+        "many": false
+      },
+      "entitlements": {
+        "target": "sailpointEntitlement",
+        "title": "Entitlements",
+        "description": "The entitlements grouped by this access profile",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "sailpointRole",
+    "title": "SailPoint Role",
+    "icon": "Team",
+    "schema": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "description": "The display name of the Role"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "A description of the Role"
+        },
+        "created": {
+          "title": "Created",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date the Role was created"
+        },
+        "modified": {
+          "title": "Modified",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date the Role was last modified"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "type": "boolean",
+          "description": "Whether the Role is enabled or not"
+        },
+        "requestable": {
+          "title": "Requestable",
+          "type": "boolean",
+          "description": "Whether the Role can be the target of access requests"
+        },
+        "dimensional": {
+          "title": "Dimensional",
+          "type": "boolean",
+          "description": "Whether the Role is dimensional"
+        },
+        "segments": {
+          "title": "Segments",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of IDs of segments to which this Role is assigned"
+        },
+        "membership": {
+          "title": "Membership",
+          "type": "object",
+          "description": "Role membership configuration and criteria"
+        },
+        "accessRequestConfig": {
+          "title": "Access Request Config",
+          "type": "object",
+          "description": "Access request configuration settings"
+        },
+        "revocationRequestConfig": {
+          "title": "Revocation Request Config",
+          "type": "object",
+          "description": "Revocation request configuration settings"
+        }
+      }
+    },
+    "relations": {
+      "owner": {
+        "target": "sailpointIdentity",
+        "title": "Owner",
+        "description": "The identity that owns this role",
+        "required": false,
+        "many": false
+      },
+      "accessProfiles": {
+        "target": "sailpointAccessProfile",
+        "title": "Access Profiles",
+        "description": "The access profiles grouped by this role",
+        "required": false,
+        "many": true
+      },
+      "entitlements": {
+        "target": "sailpointEntitlement",
+        "title": "Entitlements",
+        "description": "The entitlements associated with this role",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "sailpointSource",
+    "title": "SailPoint Source",
+    "icon": "Server",
+    "schema": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "description": "Source name"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "Source description"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "description": "Source type"
+        },
+        "connector": {
+          "title": "Connector",
+          "type": "string",
+          "description": "Connector identifier"
+        },
+        "connectorClass": {
+          "title": "Connector Class",
+          "type": "string",
+          "description": "Java class name of the connector"
+        },
+        "connectorName": {
+          "title": "Connector Name",
+          "type": "string",
+          "description": "Display name of the connector"
+        },
+        "connectionType": {
+          "title": "Connection Type",
+          "type": "string",
+          "description": "Type of connection (file, direct, etc.)"
+        },
+        "authoritative": {
+          "title": "Authoritative",
+          "type": "boolean",
+          "description": "Whether this is an authoritative source"
+        },
+        "healthy": {
+          "title": "Healthy",
+          "type": "boolean",
+          "description": "Whether the source is healthy"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "description": "Current status of the source"
+        },
+        "since": {
+          "title": "Since",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date since current status"
+        },
+        "created": {
+          "title": "Created",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date the source was created"
+        },
+        "modified": {
+          "title": "Modified",
+          "type": "string",
+          "format": "date-time",
+          "description": "Date the source was last modified"
+        },
+        "deleteThreshold": {
+          "title": "Delete Threshold",
+          "type": "number",
+          "description": "Delete threshold percentage"
+        },
+        "features": {
+          "title": "Features",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of source features"
+        },
+        "credentialProviderEnabled": {
+          "title": "Credential Provider Enabled",
+          "type": "boolean",
+          "description": "Whether credential provider is enabled"
+        },
+        "category": {
+          "title": "Category",
+          "type": "string",
+          "description": "Source category"
+        }
+      }
+    },
+    "relations": {
+      "owner": {
+        "target": "sailpointIdentity",
+        "title": "Owner",
+        "description": "The identity that owns this source",
+        "required": false,
+        "many": false
+      },
+      "managementWorkgroup": {
+        "target": "sailpointIdentity",
+        "title": "Management Workgroup",
+        "description": "The governance group that manages this source",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]
