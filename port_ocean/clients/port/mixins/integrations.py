@@ -295,13 +295,16 @@ class IntegrationClientMixin:
         self, raw_data: list[dict[Any, Any]], sync_id: str, kind: str
     ) -> None:
         logger.debug("starting POST raw data request", raw_data=raw_data)
+        now = datetime.datetime.now()
+        timestamp_as_int = int(now.timestamp())
+
         headers = await self.auth.headers()
         response = await self.client.post(
             f"{self.auth.ingest_url}/lakehouse/integration-type/{self.auth.integration_type}/integration/{self.integration_identifier}/sync/{sync_id}/kind/{kind}/items",
             headers=headers,
             json={
                 "items": raw_data,
-                "extractionTimestamp": datetime.now().isoformat(),
+                "extractionTimestamp": timestamp_as_int,
             },
         )
         handle_port_status_code(response, should_log=False)
