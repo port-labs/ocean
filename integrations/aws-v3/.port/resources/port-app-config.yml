@@ -79,3 +79,33 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::SQS::Queue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Arn
+          title: .Properties.QueueName
+          blueprint: '"sqsQueue"'
+          properties:
+            arn: .Properties.Arn
+            region: .__ExtraContext.Region
+            queueUrl: .Properties.QueueUrl
+            approximateNumberOfMessages: .Properties.ApproximateNumberOfMessages
+            approximateNumberOfMessagesNotVisible: .Properties.ApproximateNumberOfMessagesNotVisible
+            approximateNumberOfMessagesDelayed: .Properties.ApproximateNumberOfMessagesDelayed
+            createdTimestamp: .Properties.CreatedTimestamp
+            lastModifiedTimestamp: .Properties.LastModifiedTimestamp
+            visibilityTimeoutSeconds: .Properties.VisibilityTimeoutSeconds
+            messageRetentionPeriod: .Properties.MessageRetentionPeriod
+            delaySeconds: .Properties.DelaySeconds
+            receiveMessageWaitTimeSeconds: .Properties.ReceiveMessageWaitTimeSeconds
+            fifoQueue: .Properties.FifoQueue
+            contentBasedDeduplication: .Properties.ContentBasedDeduplication
+            kmsMasterKeyId: .Properties.KmsMasterKeyId
+            sqsManagedSseEnabled: .Properties.SqsManagedSseEnabled
+            maxReceiveCount: .Properties.MaxReceiveCount
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId

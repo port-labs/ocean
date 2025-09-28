@@ -11,6 +11,7 @@ features:
       - kind: AWS::EC2::Instance
       - kind: AWS::ECS::Cluster
       - kind: AWS::Organizations::Account
+      - kind: AWS::SQS::Queue
 configurations:
   - name: accountRoleArn
     required: false

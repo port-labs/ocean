@@ -220,5 +220,121 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "sqsQueue",
+    "title": "SQS Queue",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the SQS queue"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "The AWS region where the SQS queue is located"
+        },
+        "queueUrl": {
+          "type": "string",
+          "title": "Queue URL",
+          "description": "The URL of the SQS queue"
+        },
+        "approximateNumberOfMessages": {
+          "type": "number",
+          "title": "Approx Number of Messages",
+          "description": "The approximate number of messages available for retrieval from the queue"
+        },
+        "approximateNumberOfMessagesNotVisible": {
+          "type": "number",
+          "title": "Approx Number of Messages Not Visible",
+          "description": "The approximate number of messages that are in flight"
+        },
+        "approximateNumberOfMessagesDelayed": {
+          "type": "number",
+          "title": "Approx Number of Messages Delayed",
+          "description": "The approximate number of messages in the queue that are delayed"
+        },
+        "createdTimestamp": {
+          "type": "string",
+          "title": "Created Timestamp",
+          "description": "The time when the queue was created",
+          "format": "date-time"
+        },
+        "lastModifiedTimestamp": {
+          "type": "string",
+          "title": "Last Modified Timestamp",
+          "description": "The time when the queue was last modified",
+          "format": "date-time"
+        },
+        "visibilityTimeoutSeconds": {
+          "type": "number",
+          "title": "Visibility Timeout (seconds)",
+          "description": "The visibility timeout for the queue in seconds"
+        },
+        "messageRetentionPeriod": {
+          "type": "number",
+          "title": "Message Retention Period",
+          "description": "The length of time, in seconds, for which Amazon SQS retains a message"
+        },
+        "delaySeconds": {
+          "type": "number",
+          "title": "Delay Seconds",
+          "description": "The time in seconds for which the delivery of all messages in the queue is delayed"
+        },
+        "receiveMessageWaitTimeSeconds": {
+          "type": "number",
+          "title": "Receive Message Wait Time (seconds)",
+          "description": "The length of time for which a ReceiveMessage action waits for a message to arrive"
+        },
+        "fifoQueue": {
+          "type": "boolean",
+          "title": "FIFO Queue",
+          "description": "Whether the queue is a FIFO (First-In-First-Out) queue"
+        },
+        "contentBasedDeduplication": {
+          "type": "boolean",
+          "title": "Content Based Deduplication",
+          "description": "Whether content-based deduplication is enabled for the queue"
+        },
+        "kmsMasterKeyId": {
+          "type": "string",
+          "title": "KMS Master Key ID",
+          "description": "The ID of an AWS managed customer master key (CMK) for Amazon SQS"
+        },
+        "sqsManagedSseEnabled": {
+          "type": "boolean",
+          "title": "SQS Managed SSE Enabled",
+          "description": "Whether SQS managed server-side encryption is enabled"
+        },
+        "maxReceiveCount": {
+          "type": "number",
+          "title": "Max Receive Count",
+          "description": "The maximum number of times a message can be received before being moved to the dead letter queue"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the SQS queue",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
