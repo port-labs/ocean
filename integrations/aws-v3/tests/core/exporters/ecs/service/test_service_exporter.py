@@ -116,43 +116,32 @@ class TestEcsServiceExporter:
         assert result == {}
 
     @pytest.mark.asyncio
-    @patch("aws.core.exporters.ecs.service.exporter.EcsClusterExporter")
     @patch("aws.core.exporters.ecs.service.exporter.AioBaseClientProxy")
     @patch("aws.core.exporters.ecs.service.exporter.ResourceInspector")
     async def test_get_paginated_resources_success(
         self,
         mock_inspector_class: MagicMock,
         mock_proxy_class: MagicMock,
-        mock_cluster_exporter_class: MagicMock,
         exporter: EcsServiceExporter,
     ) -> None:
         """Test successful paginated resource fetching."""
-        mock_cluster_exporter = AsyncMock()
-        mock_cluster_exporter_class.return_value = mock_cluster_exporter
-
-        mock_clusters = [
-            {
-                "Properties": {
-                    "ClusterArn": "arn:aws:ecs:us-east-1:123456789012:cluster/cluster1"
-                }
-            }
-        ]
-
-        async def mock_cluster_generator(
-            options: Any,
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            yield mock_clusters
-
-        mock_cluster_exporter.get_paginated_resources = mock_cluster_generator
-
         mock_proxy = AsyncMock()
         mock_proxy_class.return_value.__aenter__.return_value = mock_proxy
 
+        # Mock cluster paginator
+        async def mock_cluster_paginate() -> AsyncGenerator[list[str], None]:
+            yield ["arn:aws:ecs:us-east-1:123456789012:cluster/cluster1"]
+
+        # Mock service paginator
         async def mock_service_paginate() -> AsyncGenerator[list[str], None]:
             yield [
                 "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service1",
                 "arn:aws:ecs:us-east-1:123456789012:service/cluster1/service2",
             ]
+
+        class MockClusterPaginator:
+            def paginate(self) -> AsyncGenerator[list[str], None]:
+                return mock_cluster_paginate()
 
         class MockServicePaginator:
             def paginate(
@@ -160,7 +149,14 @@ class TestEcsServiceExporter:
             ) -> AsyncGenerator[list[str], None]:
                 return mock_service_paginate()
 
-        mock_proxy.get_paginator = MagicMock(return_value=MockServicePaginator())
+        def mock_get_paginator(operation: str, result_key: str) -> Any:
+            if operation == "list_clusters":
+                return MockClusterPaginator()
+            elif operation == "list_services":
+                return MockServicePaginator()
+            return None
+
+        mock_proxy.get_paginator = MagicMock(side_effect=mock_get_paginator)
 
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
