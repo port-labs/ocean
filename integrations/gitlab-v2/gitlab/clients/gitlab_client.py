@@ -54,9 +54,12 @@ class GitLabClient:
             "GET", f"projects/{project_id}/jobs/{job_id}"
         )
 
-    async def get_group_member(self, group_id: int, member_id: int) -> dict[str, Any]:
+    async def get_group_member(
+        self, group_id: int, member_id: int, include_inherited_members: bool = False
+    ) -> dict[str, Any]:
+        members_api = "members/all" if include_inherited_members else "members"
         return await self.rest.send_api_request(
-            "GET", f"groups/{group_id}/members/{member_id}"
+            "GET", f"groups/{group_id}/{members_api}/{member_id}"
         )
 
     async def get_projects(
@@ -342,9 +345,13 @@ class GitLabClient:
         return project
 
     async def get_group_members(
-        self, group_id: str, include_bot_members: bool
+        self, group_id: str, include_bot_members: bool, include_inherited_members: bool
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        async for batch in self.rest.get_paginated_group_resource(group_id, "members"):
+        members_api = "members/all" if include_inherited_members else "members"
+        logger.info(f"Fetching members for group {group_id} with {members_api} API")
+        async for batch in self.rest.get_paginated_group_resource(
+            group_id, members_api
+        ):
             if batch:
                 filtered_batch = batch
                 if not include_bot_members:
@@ -354,17 +361,20 @@ class GitLabClient:
                         if "bot" not in member["username"].lower()
                     ]
                 logger.info(
-                    f"Received batch of {len(filtered_batch)} members for group {group_id}"
+                    f"Fetched {len(filtered_batch)} member(s) from '{members_api}' for group '{group_id}' after bot filtering"
                 )
                 yield filtered_batch
 
     async def enrich_group_with_members(
-        self, group: dict[str, Any], include_bot_members: bool
+        self,
+        group: dict[str, Any],
+        include_bot_members: bool,
+        include_inherited_members: bool,
     ) -> dict[str, Any]:
         logger.info(f"Enriching group {group['id']} with members")
         members = []
         async for members_batch in self.get_group_members(
-            group["id"], include_bot_members
+            group["id"], include_bot_members, include_inherited_members
         ):
             for member in members_batch:
                 members.append(

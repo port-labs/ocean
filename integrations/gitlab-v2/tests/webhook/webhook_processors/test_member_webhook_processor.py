@@ -64,6 +64,7 @@ class TestMemberWebhookProcessor:
         resource_config = MagicMock()
         resource_config.selector = MagicMock()
         resource_config.selector.include_bot_members = True
+        resource_config.selector.include_inherited_members = False
 
         group_id = member_payload["group_id"]
         user_id = member_payload["user_id"]
@@ -83,7 +84,7 @@ class TestMemberWebhookProcessor:
         result = await processor.handle_event(member_payload, resource_config)
 
         processor._gitlab_webhook_client.get_group_member.assert_called_once_with(
-            group_id, user_id
+            group_id, user_id, False
         )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == expected_member
