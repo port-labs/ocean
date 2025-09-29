@@ -582,12 +582,10 @@ class DatadogClient:
     ) -> None:
 
         webhook_name = "PORT"
-        dd_webhook_url = (
-            f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks"
-        )
+        dd_webhook_url = f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks/{webhook_name}"
 
         try:
-            if await self._webhook_exists(f"{dd_webhook_url}/{webhook_name}"):
+            if await self._webhook_exists(dd_webhook_url):
                 logger.info("Webhook already exists")
                 return
 
@@ -691,6 +689,4 @@ class DatadogClient:
             )
             return None
 
-        # enrich with service name for consistency with get_service_dependencies
-        result["name"] = service_id
         return result
