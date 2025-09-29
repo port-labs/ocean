@@ -1,0 +1,27 @@
+description: A GitHub integration for Port Ocean
+title: JGitHub
+icon: GitHub
+features:
+  - type: exporter
+    section: Git Providers
+    resources:
+      - kind: repository
+      - kind: pull-request
+      - kind: team
+      - kind: workflow
+      - kind: issue
+configurations:
+  - name: githubToken
+    required: true
+    type: string
+    description: 'The GitHub token to authenticate with the GitHub API.'
+    sensitive: true
+  - name: githubHost
+    required: false
+    type: url
+    default: https://api.github.com
+    description: The host of the GitHub API. If not specified, the default will be https://api.github.com.
+  - name: githubOrganization
+    type: string
+    required: true
+    description: "The GitHub organization to which the workspace belongs"
