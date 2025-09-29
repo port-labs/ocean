@@ -18,7 +18,7 @@ class TestWebhookProcessor(_AbstractDatadogWebhookProcessor):
 
     async def handle_event(self, payload: dict[str, Any], resource_config: Any) -> Any:
         return None
-    
+
     async def should_process_event(self, event: WebhookEvent) -> bool:
         return True
 
