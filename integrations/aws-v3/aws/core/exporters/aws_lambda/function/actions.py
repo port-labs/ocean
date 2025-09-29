@@ -1,5 +1,6 @@
 from typing import Any, Type, cast
 from aws.core.interfaces.action import Action, ActionMap
+from aws.core.helpers.utils import is_recoverable_aws_exception
 from loguru import logger
 import asyncio
 
@@ -27,12 +28,18 @@ class ListTagsAction(Action):
         for idx, tag_result in enumerate(tag_results):
             if isinstance(tag_result, Exception):
                 function_name = functions[idx].get("FunctionName", "unknown")
-                logger.error(
-                    f"Error fetching tags for Lambda function '{function_name}': {tag_result}"
-                )
-                continue
+                if is_recoverable_aws_exception(tag_result):
+                    logger.warning(
+                        f"Skipping tags for Lambda function '{function_name}': {tag_result}"
+                    )
+                    continue
+                else:
+                    logger.error(
+                        f"Error fetching tags for Lambda function '{function_name}': {tag_result}"
+                    )
+                    raise tag_result
             results.extend(cast(list[dict[str, Any]], tag_result))
-        logger.info(f"Successfully fetched tags for {len(functions)} Lambda functions")
+        logger.info(f"Successfully fetched tags for {len(results)} Lambda functions")
         return results
 
     async def _fetch_tags(self, function: dict[str, Any]) -> list[dict[str, Any]]:
