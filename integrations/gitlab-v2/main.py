@@ -207,6 +207,7 @@ async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
         GitlabGroupWithMembersResourceConfig, event.resource_config
     ).selector
     include_bot_members = bool(selector.include_bot_members)
+    include_inherited_members = selector.include_inherited_members
 
     async for groups_batch in client.get_groups(params=_build_visibility_params()):
         for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
@@ -216,7 +217,9 @@ async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
             )
 
             tasks = [
-                client.enrich_group_with_members(group, include_bot_members)
+                client.enrich_group_with_members(
+                    group, include_bot_members, include_inherited_members
+                )
                 for group in current_batch
             ]
             results = await asyncio.gather(*tasks)
@@ -228,12 +231,15 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitlabMemberResourceConfig, event.resource_config).selector
     include_bot_members = bool(selector.include_bot_members)
+    include_inherited_members = selector.include_inherited_members
 
     async for groups_batch in client.get_groups(params=_build_visibility_params()):
         for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
             current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
             tasks = [
-                client.get_group_members(group["id"], include_bot_members)
+                client.get_group_members(
+                    group["id"], include_bot_members, include_inherited_members
+                )
                 for group in current_batch
             ]
             async for batch in stream_async_iterators_tasks(*tasks):
