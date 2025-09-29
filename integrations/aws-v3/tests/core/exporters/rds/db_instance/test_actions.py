@@ -1,6 +1,7 @@
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
+from botocore.exceptions import ClientError
 
 from aws.core.exporters.rds.db_instance.actions import (
     DescribeDBInstancesAction,
@@ -127,10 +128,10 @@ class TestListTagsForResourceAction:
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.rds.db_instance.actions.logger")
-    async def test_execute_with_exception_handling(
+    async def test_execute_with_recoverable_exception(
         self, mock_logger: MagicMock, action: ListTagsForResourceAction
     ) -> None:
-        """Test that exceptions are handled gracefully and logged."""
+        """Test that recoverable exceptions are handled gracefully and logged as warnings."""
         db_instances = [
             {
                 "DBInstanceIdentifier": "db-1",
@@ -142,14 +143,17 @@ class TestListTagsForResourceAction:
             },
         ]
 
-        # First call succeeds, second call fails
+        # First call succeeds, second call fails with AccessDenied (recoverable)
         def mock_list_tags_for_resource(
             ResourceName: str, **kwargs: Any
         ) -> dict[str, Any]:
             if ResourceName == "arn:aws:rds:us-east-1:123456789012:db:db-1":
                 return {"TagList": [{"Key": "Environment", "Value": "production"}]}
             else:
-                raise Exception("Access denied")
+                raise ClientError(
+                    {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
+                    "ListTagsForResource",
+                )
 
         action.client.list_tags_for_resource.side_effect = mock_list_tags_for_resource
 
@@ -159,10 +163,52 @@ class TestListTagsForResourceAction:
         expected_result = [{"Tags": [{"Key": "Environment", "Value": "production"}]}]
         assert result == expected_result
 
-        # Verify error logging
-        mock_logger.error.assert_called_once_with(
-            "Error fetching tags for DB instance 'db-2': Access denied"
+        # Verify warning logging for recoverable exception
+        mock_logger.warning.assert_called_once()
+        warning_call = mock_logger.warning.call_args[0][0]
+        assert "Skipping tags for DB instance 'db-2'" in warning_call
+        assert "Access denied" in warning_call
+
+        # Verify success logging
+        mock_logger.info.assert_called_once_with(
+            "Successfully fetched tags for 1 DB instances"
         )
+
+    @pytest.mark.asyncio
+    @patch("aws.core.exporters.rds.db_instance.actions.logger")
+    async def test_execute_with_non_recoverable_exception(
+        self, mock_logger: MagicMock, action: ListTagsForResourceAction
+    ) -> None:
+        """Test that non-recoverable exceptions are raised."""
+        db_instances = [
+            {
+                "DBInstanceIdentifier": "db-1",
+                "DBInstanceArn": "arn:aws:rds:us-east-1:123456789012:db:db-1",
+            },
+        ]
+
+        # Mock a non-recoverable exception (network error)
+        def mock_list_tags_for_resource(
+            ResourceName: str, **kwargs: Any
+        ) -> dict[str, Any]:
+            raise ClientError(
+                {"Error": {"Code": "NetworkError", "Message": "Network timeout"}},
+                "ListTagsForResource",
+            )
+
+        action.client.list_tags_for_resource.side_effect = mock_list_tags_for_resource
+
+        # Should raise the exception
+        with pytest.raises(ClientError) as exc_info:
+            await action.execute(db_instances)
+
+        assert exc_info.value.response["Error"]["Code"] == "NetworkError"
+
+        # Verify error logging
+        mock_logger.error.assert_called_once()
+        error_call = mock_logger.error.call_args[0][0]
+        assert "Error fetching tags for DB instance 'db-1'" in error_call
+        assert "Network timeout" in error_call
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.rds.db_instance.actions.logger")
