@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.12 (2025-09-29)
+
+
+### Improvements
+
+- Updated spec file of Azure DevOps to support docs
+
+
 ## 0.4.11 (2025-09-28)
 
 
