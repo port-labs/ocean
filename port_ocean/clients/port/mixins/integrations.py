@@ -301,7 +301,7 @@ class IntegrationClientMixin:
             headers=headers,
             json={
                 "items": raw_data,
-                "extractionTimestamp": datetime.now().isoformat(),
+                "extractionTimestamp": int(datetime.now().timestamp()),
             },
         )
         handle_port_status_code(response, should_log=False)

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.3.6-beta (2025-09-28)
+
+
+### Bug Fixes
+
+- Fixed a bug in the AWS Organization Account kind where the title property was incorrectly set to use "AccountName" instead of the correct "Name" property.
+
+
+## 1.3.5-beta (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
 ## 1.3.4-beta (2025-09-25)
 
 
