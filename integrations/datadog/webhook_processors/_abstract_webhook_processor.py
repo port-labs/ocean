@@ -1,4 +1,5 @@
 import base64
+import binascii
 from loguru import logger
 from typing import Any
 
@@ -63,6 +64,6 @@ class _AbstractDatadogWebhookProcessor(AbstractWebhookProcessor):
 
             return is_valid
 
-        except (ValueError, UnicodeDecodeError, base64.binascii.Error) as e:
+        except (ValueError, UnicodeDecodeError, binascii.Error) as e:
             logger.warning(f"Error decoding authorization header: {str(e)}")
             return False
