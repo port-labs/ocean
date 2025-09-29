@@ -1,8 +1,8 @@
 import asyncio
 import functools
 import json
-from typing import Any, AsyncGenerator, Optional, Callable, Iterable
-from httpx import HTTPStatusError
+from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
+from httpx import HTTPStatusError, ReadTimeout
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -31,8 +31,11 @@ from port_ocean.utils.async_iterators import (
 )
 from port_ocean.utils.queue_utils import process_in_queue
 from urllib.parse import urlparse
+from typing import TYPE_CHECKING
 import fnmatch
 
+if TYPE_CHECKING:
+    from integration import CodeCoverageConfig
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
@@ -427,6 +430,86 @@ class AzureDevopsClient(HTTPBaseClient):
 
                     if stages:
                         yield stages
+
+    async def generate_iterations(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate iterations for all projects in the organization.
+
+        API: GET {org}/{project}/_apis/wit/classificationnodes/iterations?$depth=2
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/classification-nodes/list?view=azure-devops-rest-7.1
+        """
+        async for projects in self.generate_projects():
+            project_tasks = [
+                self._iterations_for_project(project) for project in projects
+            ]
+            async for batch in stream_async_iterators_tasks(*project_tasks):
+                yield batch
+
+    async def _iterations_for_project(
+        self, project: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield iterations (in batches) for a specific project."""
+        project_id = project["id"]
+
+        # Get teams for the project
+        teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
+
+        try:
+            teams_response = await self.send_request("GET", teams_url)
+            if not teams_response:
+                return
+
+            teams = teams_response.json()["value"]
+
+            # Process teams concurrently
+            team_tasks = [
+                self._get_iterations_for_team(project, team) for team in teams
+            ]
+
+            if team_tasks:
+                team_results = await asyncio.gather(*team_tasks, return_exceptions=True)
+
+                for result in team_results:
+                    if isinstance(result, Exception):
+                        logger.error(f"Failed to fetch team iterations: {result}")
+                        continue
+                    if result and isinstance(result, list):
+                        yield result
+
+        except Exception as e:
+            logger.error(f"Failed to fetch teams for project {project_id}: {str(e)}")
+
+    async def _get_iterations_for_team(
+        self, project: dict[str, Any], team: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Get iterations for a specific team."""
+        project_id = project["id"]
+        team_id = team["id"]
+        iterations_url = f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/teamsettings/iterations"
+
+        params = {"api-version": "7.1"}
+
+        try:
+            response = await self.send_request("GET", iterations_url, params=params)
+            if not response:
+                return []
+
+            iterations_data = response.json()
+            iterations = iterations_data.get("value", [])
+
+            # Process and enrich iterations
+            enriched_iterations = [
+                {**iteration, "__project": project, "__team": team}
+                for iteration in iterations
+            ]
+
+            return enriched_iterations
+
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch iterations for team {team_id} in project {project_id}: {str(e)}"
+            )
+            return []
 
     @cache_iterator_result()
     async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -929,6 +1012,11 @@ class AzureDevopsClient(HTTPBaseClient):
                 file for sublist in batch_results.get("value", []) for file in sublist
             ]
 
+        except ReadTimeout:
+            logger.error(
+                f"Request timeout while fetching items for {repository['name']}"
+            )
+            return []
         except HTTPStatusError as e:
             logger.error(e.response.status_code)
             logger.error(e.response.text)
@@ -1287,37 +1375,113 @@ class AzureDevopsClient(HTTPBaseClient):
         return enriched
 
     async def fetch_test_runs(
-        self, include_results: bool
+        self,
+        include_results: bool,
+        coverage_config: Optional["CodeCoverageConfig"] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(
             f"Starting to fetch test runs with include_results={include_results}"
         )
+
+        params = {"includeRunDetails": True}
         async for projects in self.generate_projects():
             for project in projects:
                 project_id = project["id"]
                 url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
                 async for runs in self._get_paginated_by_top_and_continuation_token(
-                    url
+                    url, additional_params=params
                 ):
                     yield await self._enrich_test_runs(
-                        runs, project_id, include_results
+                        runs, project_id, include_results, coverage_config
                     )
+
+    async def _attach_async_results(
+        self,
+        runs: list[dict[str, Any]],
+        tasks: list[Awaitable[Any]],
+        field_name: str,
+        default_value: Any,
+    ) -> None:
+        if not tasks:
+            # If no tasks, we will set the default value for every run
+            for run in runs:
+                run[field_name] = default_value
+            return
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for run, value in zip(runs, results):
+            if isinstance(value, Exception):
+                logger.error(
+                    "Error %s occurred while fetching %s for run %s",
+                    value,
+                    field_name,
+                    run.get("id"),
+                )
+                continue
+            run[field_name] = value
 
     async def _enrich_test_runs(
         self,
         test_runs: list[dict[str, Any]],
         project_id: str,
         include_results: bool = False,
+        coverage_config: Optional["CodeCoverageConfig"] = None,
     ) -> list[dict[str, Any]]:
         logger.info(
             f"Enriching {len(test_runs)} test runs for project {project_id}, include_results={include_results}"
         )
-        for run in test_runs:
-            run["__projectId"] = project_id
-            if include_results:
-                run["__testResults"] = []
-                async for page in self._get_paginated_by_top_and_continuation_token(
-                    f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs/{run['id']}/results"
-                ):
-                    run["__testResults"].extend(page)
+
+        test_results_tasks: list[Awaitable[list[dict[str, Any]]]] = (
+            [self._fetch_test_results(project_id, run["id"]) for run in test_runs]
+            if include_results
+            else []
+        )
+
+        coverage_tasks: list[Awaitable[dict[str, Any]]] = (
+            [
+                self._fetch_code_coverage(
+                    project_id, run["build"]["id"], coverage_config
+                )
+                for run in test_runs
+            ]
+            if coverage_config
+            else []
+        )
+
+        await self._attach_async_results(
+            test_runs, test_results_tasks, "__testResults", []
+        )
+        await self._attach_async_results(
+            test_runs, coverage_tasks, "__codeCoverage", {}
+        )
+
         return test_runs
+
+    async def _fetch_test_results(
+        self, project_id: str, run_id: str
+    ) -> list[dict[str, Any]]:
+        """Fetch test results for a specific test run."""
+        results = []
+        async for page in self._get_paginated_by_top_and_continuation_token(
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs/{run_id}/results"
+        ):
+            results.extend(page)
+        return results
+
+    async def _fetch_code_coverage(
+        self, project_id: str, build_id: int, coverage_config: "CodeCoverageConfig"
+    ) -> dict[str, Any]:
+        logger.info(
+            f"Starting to fetch code coverage for project {project_id}, run id={build_id}, flags={coverage_config.flags}"
+        )
+
+        params = {"buildId": build_id}
+        if coverage_config.flags is not None:
+            params["flags"] = coverage_config.flags
+
+        coverage_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/codecoverage"
+        response = await self.send_request("GET", coverage_url, params=params)
+        if not response:
+            return {}
+
+        return response.json()

@@ -139,11 +139,24 @@ class AzureDevopsPipelineResourceConfig(ResourceConfig):
     selector: AzureDevopsPipelineSelector
 
 
+class CodeCoverageConfig(BaseModel):
+    flags: int | None = Field(
+        default=None,
+        alias="flags",
+        description="Flags to control how detailed the coverage response will be",
+    )
+
+
 class AzureDevopsTestRunSelector(Selector):
     include_results: bool = Field(
         default=True,
         alias="includeResults",
         description="Whether to include test results for each test run, defaults to true",
+    )
+    code_coverage: Optional[CodeCoverageConfig] = Field(
+        default=None,
+        alias="codeCoverage",
+        description="Whether to include code coverage data for each test run, defaults to None",
     )
 
 
