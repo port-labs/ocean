@@ -2,6 +2,7 @@ title: Kubecost
 description: kubecost integration for Port Ocean
 icon: Kubecost
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-cost/kubecost
+recommendedInstallationMethod: Saas
 features:
   - type: exporter
     section: Cloud Cost

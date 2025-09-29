@@ -37,6 +37,9 @@ from github.core.exporters.dependabot_exporter import RestDependabotAlertExporte
 from github.core.exporters.code_scanning_alert_exporter import (
     RestCodeScanningAlertExporter,
 )
+from github.core.exporters.secret_scanning_alert_exporter import (
+    RestSecretScanningAlertExporter,
+)
 from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
 from github.core.exporters.folder_exporter import (
     RestFolderExporter,
@@ -59,6 +62,7 @@ from github.core.options import (
     ListDependabotAlertOptions,
     ListCodeScanningAlertOptions,
     ListCollaboratorOptions,
+    ListSecretScanningAlertOptions,
 )
 from github.helpers.utils import ObjectKind, GithubClientType
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
@@ -74,6 +78,8 @@ from integration import (
     GithubRepositoryConfig,
     GithubTeamConfig,
     GithubFileResourceConfig,
+    GithubBranchConfig,
+    GithubSecretScanningAlertConfig,
 )
 
 
@@ -117,10 +123,11 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     config = cast(GithubRepositoryConfig, event.resource_config)
     repository_type = cast(GithubPortAppConfig, event.port_app_config).repository_type
-    included_property = config.selector.include
+    included_relationships = config.selector.include
 
     options = ListRepositoryOptions(
-        type=repository_type, included_property=included_property
+        type=repository_type,
+        included_relationships=cast(list[str], included_relationships),
     )
 
     async for repositories in exporter.get_paginated_resources(options):
@@ -235,7 +242,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             pull_request_exporter.get_paginated_resources(
                 ListPullRequestOptions(
                     repo_name=repo["name"],
-                    state=config.selector.state,
+                    states=list(config.selector.states),
+                    max_results=config.selector.max_results,
+                    since=config.selector.since,
                 )
             )
             for repo in repos
@@ -328,6 +337,7 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     rest_client = create_github_client()
     repository_exporter = RestRepositoryExporter(rest_client)
     branch_exporter = RestBranchExporter(rest_client)
+    selector = cast(GithubBranchConfig, event.resource_config).selector
 
     repo_options = ListRepositoryOptions(
         type=cast(GithubPortAppConfig, event.port_app_config).repository_type
@@ -336,7 +346,11 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for repositories in repository_exporter.get_paginated_resources(repo_options):
         tasks = [
             branch_exporter.get_paginated_resources(
-                ListBranchOptions(repo_name=repo["name"])
+                ListBranchOptions(
+                    repo_name=repo["name"],
+                    detailed=selector.detailed,
+                    protection_rules=selector.protection_rules,
+                )
             )
             for repo in repositories
         ]
@@ -517,6 +531,35 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ]
         async for collaborators in stream_async_iterators_tasks(*tasks):
             yield collaborators
+
+
+@ocean.on_resync(ObjectKind.SECRET_SCANNING_ALERT)
+async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all secret scanning alerts in the organization's repositories."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    rest_client = create_github_client()
+    repository_exporter = RestRepositoryExporter(rest_client)
+    secret_scanning_alert_exporter = RestSecretScanningAlertExporter(rest_client)
+
+    config = cast(GithubSecretScanningAlertConfig, event.resource_config)
+    repo_options = ListRepositoryOptions(
+        type=cast(GithubPortAppConfig, event.port_app_config).repository_type
+    )
+
+    async for repositories in repository_exporter.get_paginated_resources(repo_options):
+        tasks = [
+            secret_scanning_alert_exporter.get_paginated_resources(
+                ListSecretScanningAlertOptions(
+                    repo_name=repo["name"],
+                    state=config.selector.state,
+                    hide_secret=config.selector.hide_secret,
+                )
+            )
+            for repo in repositories
+        ]
+        async for alerts in stream_async_iterators_tasks(*tasks):
+            yield alerts
 
 
 # Register webhook processors

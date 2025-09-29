@@ -126,6 +126,45 @@ class AzureDevopsTeamResourceConfig(ResourceConfig):
     selector: TeamSelector
 
 
+class AzureDevopsPipelineSelector(Selector):
+    include_repo: bool = Field(
+        default=False,
+        alias="includeRepo",
+        description="Whether to include the repository for each pipeline, defaults to false",
+    )
+
+
+class AzureDevopsPipelineResourceConfig(ResourceConfig):
+    kind: Literal["pipeline"]
+    selector: AzureDevopsPipelineSelector
+
+
+class CodeCoverageConfig(BaseModel):
+    flags: int | None = Field(
+        default=None,
+        alias="flags",
+        description="Flags to control how detailed the coverage response will be",
+    )
+
+
+class AzureDevopsTestRunSelector(Selector):
+    include_results: bool = Field(
+        default=True,
+        alias="includeResults",
+        description="Whether to include test results for each test run, defaults to true",
+    )
+    code_coverage: Optional[CodeCoverageConfig] = Field(
+        default=None,
+        alias="codeCoverage",
+        description="Whether to include code coverage data for each test run, defaults to None",
+    )
+
+
+class AzureDevopsTestRunResourceConfig(ResourceConfig):
+    kind: Literal["test-run"]
+    selector: AzureDevopsTestRunSelector
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -145,6 +184,8 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsWorkItemResourceConfig
         | AzureDevopsTeamResourceConfig
         | AzureDevopsFileResourceConfig
+        | AzureDevopsPipelineResourceConfig
+        | AzureDevopsTestRunResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

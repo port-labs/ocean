@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, TypedDict
 from urllib.parse import quote_plus
 
@@ -296,10 +297,11 @@ class IntegrationClientMixin:
         logger.debug("starting POST raw data request", raw_data=raw_data)
         headers = await self.auth.headers()
         response = await self.client.post(
-            f"{self.auth.api_url}/lakehouse/integration/{self.integration_identifier}/sync/{sync_id}/kind/{kind}/items",
+            f"{self.auth.ingest_url}/lakehouse/integration-type/{self.auth.integration_type}/integration/{self.integration_identifier}/sync/{sync_id}/kind/{kind}/items",
             headers=headers,
             json={
                 "items": raw_data,
+                "extractionTimestamp": int(datetime.now().timestamp()),
             },
         )
         handle_port_status_code(response, should_log=False)

@@ -7,10 +7,12 @@ from azure_devops.misc import (
     AzureDevopsFolderResourceConfig,
 )
 from integration import (
+    AzureDevopsPipelineResourceConfig,
     AzureDevopsProjectResourceConfig,
     AzureDevopsFileResourceConfig,
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
+    AzureDevopsTestRunResourceConfig,
 )
 
 from azure_devops.webhooks.webhook_processors.pull_request_processor import (
@@ -34,6 +36,7 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
 @ocean.on_resync(Kind.PROJECT)
@@ -84,8 +87,16 @@ async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.PIPELINE)
 async def resync_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    config = cast(AzureDevopsPipelineResourceConfig, event.resource_config)
+    include_repo = config.selector.include_repo
+
     async for pipelines in azure_devops_client.generate_pipelines():
         logger.info(f"Resyncing {len(pipelines)} pipelines")
+        if include_repo:
+            logger.info(f"Enriching {len(pipelines)} pipelines with repository")
+            pipelines = await azure_devops_client.enrich_pipelines_with_repository(
+                pipelines
+            )
         yield pipelines
 
 
@@ -152,6 +163,56 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield releases
 
 
+@ocean.on_resync(Kind.BUILD)
+async def resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for builds in azure_devops_client.generate_builds():
+        logger.info(f"Resyncing {len(builds)} builds")
+        yield builds
+
+
+@ocean.on_resync(Kind.PIPELINE_STAGE)
+async def resync_pipeline_stages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for stages in azure_devops_client.generate_pipeline_stages():
+        logger.info(f"Resyncing {len(stages)} pipeline stages")
+        yield stages
+
+
+@ocean.on_resync(Kind.ENVIRONMENT)
+async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for environments in azure_devops_client.generate_environments():
+        logger.info(f"Fetched {len(environments)} environments")
+        yield environments
+
+
+@ocean.on_resync(Kind.RELEASE_DEPLOYMENT)
+async def resync_release_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+
+    async for deployments in azure_devops_client.generate_release_deployments():
+        logger.info(f"Fetched {len(deployments)} release deployments")
+        yield deployments
+
+
+@ocean.on_resync(Kind.PIPELINE_DEPLOYMENT)
+async def resync_pipeline_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+
+    async for environments in azure_devops_client.generate_environments():
+        tasks = [
+            azure_devops_client.generate_pipeline_deployments(
+                project_id=environment["project"]["id"],
+                environment_id=environment["id"],
+            )
+            for environment in environments
+        ]
+        async for deployments in stream_async_iterators_tasks(*tasks):
+            logger.info(f"Fetched {len(deployments)} pipeline deployments")
+            yield deployments
+
+
 @ocean.on_resync(Kind.FILE)
 async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
@@ -166,6 +227,14 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if files_batch:
             logger.info(f"Resyncing batch of {len(files_batch)} files")
             yield files_batch
+
+
+@ocean.on_resync(Kind.PIPELINE_RUN)
+async def resync_pipeline_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for runs in azure_devops_client.generate_pipeline_runs():
+        logger.info(f"Resyncing {len(runs)} pipeline runs")
+        yield runs
 
 
 @ocean.on_start()
@@ -203,6 +272,28 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         selector.folders, selector.project_name
     ):
         yield matching_folders
+
+
+@ocean.on_resync(Kind.TEST_RUN)
+async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    selector = cast(AzureDevopsTestRunResourceConfig, event.resource_config).selector
+    include_results = selector.include_results
+    coverage_config = selector.code_coverage
+
+    async for test_runs in azure_devops_client.fetch_test_runs(
+        include_results, coverage_config
+    ):
+        logger.info(f"Fetched {len(test_runs)} test runs")
+        yield test_runs
+
+
+@ocean.on_resync(Kind.ITERATION)
+async def resync_iterations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for iterations in azure_devops_client.generate_iterations():
+        logger.info(f"Resyncing {len(iterations)} iterations")
+        yield iterations
 
 
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)

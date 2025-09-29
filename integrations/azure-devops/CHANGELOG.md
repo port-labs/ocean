@@ -7,6 +7,240 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.11 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.4.10 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.4.9 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+## 0.4.8 (2025-09-25)
+
+
+### Bug fixes
+
+- Handle request timeouts introduced by throttling delays.
+- Change expected headers to lowercase
+
+
+## 0.4.7 (2025-09-24)
+
+
+### Features
+
+- Added support for Iteration kind
+
+
+## 0.4.6 (2025-09-22)
+
+
+### Improvements
+
+- Added code coverage support for test runs in Azure DevOps integration
+- Added `codeCoverage` selector option to include coverage data with test runs
+- Enhanced test runs enrichment with configurable coverage flags
+- Optimized async processing for test results and coverage data fetching
+
+
+## 0.4.5 (2025-09-18)
+
+
+### Features
+
+- Added support for build kind
+- Added support for pipeline stage kind
+- Added support for pipeline runs kind
+
+
+## 0.4.4 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.4.3 (2025-09-16)
+
+
+### Features
+
+- Added support for test-run kind in Azure DevOps integration
+- Added enrichment to include test results
+
+
+## 0.4.2 (2025-09-16)
+
+
+### Features
+
+- Added support for envrionments kind in Azure DevOps integration
+- Added support for release_deployment kind in Azure DevOps integration
+- Added support for pipeline_deployment kind in Azure DevOps integration
+
+
+## 0.4.1 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.4.0 (2025-09-11)
+
+
+### Improvements
+
+- Implemented rate limiter to handle both `X-RateLimit-Reset` and `Retry-After` headers
+
+
+## 0.3.12 (2025-09-11)
+
+
+### Improvements
+
+- Enhanced payload validation for file, folder, and pull request event kinds.
+- Improved error handling and schema checks to ensure consistent processing and reduced failed syncs.
+
+
+## 0.3.11 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
+## 0.3.10 (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
+## 0.3.9 (2025-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.2
+
+
+## 0.3.8 (2025-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.1
+
+
+## 0.3.7 (2025-08-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.0
+
+
+## 0.3.6 (2025-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.10
+
+
+## 0.3.5 (2025-08-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.9
+
+
+## 0.3.4 (2025-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.8
+
+
+## 0.3.3 (2025-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.7
+
+
+## 0.3.2 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 0.3.1 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 0.3.0 (2025-08-12)
+
+
+### Improvements
+
+- Enhanced pipeline resync logic to conditionally enrich with repository data based on selector configuration
+- Extended Azure DevOps resource configs to support pipeline-specific selectors
+
+
+## 0.2.41 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+## 0.2.40 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
+
+
+## 0.2.39 (2025-08-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.1
+
+
 ## 0.2.38 (2025-08-06)
 
 
