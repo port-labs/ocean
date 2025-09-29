@@ -1,5 +1,6 @@
 from typing import Any, Type, cast
 from aws.core.interfaces.action import Action, ActionMap
+from aws.core.helpers.utils import is_recoverable_aws_exception
 from loguru import logger
 import asyncio
 
@@ -31,12 +32,18 @@ class ListTagsForResourceAction(Action):
         for idx, tag_result in enumerate(tag_results):
             if isinstance(tag_result, Exception):
                 instance_id = db_instances[idx].get("DBInstanceIdentifier", "unknown")
-                logger.error(
-                    f"Error fetching tags for DB instance '{instance_id}': {tag_result}"
-                )
-                continue
+                if is_recoverable_aws_exception(tag_result):
+                    logger.warning(
+                        f"Skipping tags for DB instance '{instance_id}' : {tag_result}"
+                    )
+                    continue
+                else:
+                    logger.error(
+                        f"Error fetching tags for DB instance '{instance_id}': {tag_result}"
+                    )
+                    raise tag_result
             results.extend(cast(list[dict[str, Any]], tag_result))
-        logger.info(f"Successfully fetched tags for {len(db_instances)} DB instances")
+        logger.info(f"Successfully fetched tags for {len(results)} DB instances")
         return results
 
     async def _fetch_tags(self, db_instance: dict[str, Any]) -> list[dict[str, Any]]:
