@@ -5,6 +5,7 @@ from loguru import logger
 
 from port_ocean.context.ocean import ocean
 from okta.clients.http.client import OktaClient
+from okta.helpers.exceptions import MissingIntegrationCredentialException
 
 
 class OktaClientFactory:
@@ -36,9 +37,13 @@ class OktaClientFactory:
         api_token = config.get("okta_api_token")
 
         if not okta_domain:
-            raise ValueError("okta_domain is required in integration configuration")
+            raise MissingIntegrationCredentialException(
+                "okta_domain is required in integration configuration"
+            )
         if not api_token:
-            raise ValueError("okta_api_token is required in integration configuration")
+            raise MissingIntegrationCredentialException(
+                "okta_api_token is required in integration configuration"
+            )
 
         logger.info(f"Creating Okta client for domain: {okta_domain}")
 
@@ -46,10 +51,3 @@ class OktaClientFactory:
             okta_domain=okta_domain,
             api_token=api_token,
         )
-
-    @classmethod
-    def reset_client(cls) -> None:
-        """Reset the singleton client instance."""
-        if cls._instance:
-            # Note: In a real implementation, you might want to close the client
-            cls._instance = None

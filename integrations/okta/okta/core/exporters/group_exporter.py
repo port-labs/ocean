@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 
 from okta.clients.http.client import OktaClient
 from okta.core.exporters.abstract_exporter import AbstractOktaExporter
@@ -9,10 +9,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 class OktaGroupExporter(AbstractOktaExporter[OktaClient]):
     """Exporter for Okta groups."""
 
-    async def _fetch_group(self, group_id: str) -> RAW_ITEM:
-        response = await self.client.make_request(f"groups/{group_id}")
-        return response.json()
-
     async def get_resource(self, group_id: str) -> RAW_ITEM:
         """Get a single group resource.
 
@@ -22,18 +18,19 @@ class OktaGroupExporter(AbstractOktaExporter[OktaClient]):
         Returns:
             Group data
         """
-        return await self._fetch_group(group_id)
+        return await self.client.get_single_resource(f"groups/{group_id}")
 
     async def get_paginated_resources(
         self, options: Optional[ListGroupOptions] = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get groups with pagination support.
 
-        Args:
-            None
-
         Yields:
             List of groups from each page
         """
         async for groups in self.client.send_paginated_request("groups"):
             yield groups
+
+    async def get_user_groups(self, user_id: str) -> list[dict[str, Any]]:
+        """Return the list of groups for a specific user (non-paginated)."""
+        return await self.client.get_list_resource(f"users/{user_id}/groups")
