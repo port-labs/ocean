@@ -1,6 +1,6 @@
 from typing import Dict, Any, List, Type
 from aws.core.interfaces.action import Action, ActionMap
-from aws.core.helpers.utils import get_cluster_arn_from_service_arn
+from aws.core.exporters.ecs.utils import get_cluster_arn_from_service_arn
 from loguru import logger
 
 
