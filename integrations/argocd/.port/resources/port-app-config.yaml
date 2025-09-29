@@ -96,7 +96,7 @@ resources:
           properties:
             kind: .kind
             namespace: .namespace
-            version: .resourceVersion
+            version: if .kind == "Deployment" then .resourceVersion else null end
             annotations: (.liveState // .targetState) | fromjson | .metadata.annotations
             labels: (.liveState // .targetState) | fromjson | .metadata.labels
           relations:
