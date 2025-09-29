@@ -1,5 +1,5 @@
 import asyncio
-from typing import Dict, Any, List, Type
+from typing import Dict, Any, List, Type, cast
 from loguru import logger
 from aws.core.interfaces.action import Action, ActionMap
 from aws.core.helpers.utils import is_recoverable_aws_exception
@@ -16,16 +16,20 @@ class DescribeClusterAction(Action):
         )
 
         results: List[Dict[str, Any]] = []
-        for result in cluster_results:
+        for idx, result in enumerate(cluster_results):
             if isinstance(result, Exception):
+                cluster_name = (
+                    cluster_names[idx] if idx < len(cluster_names) else "unknown"
+                )
                 if is_recoverable_aws_exception(result):
                     logger.warning(
-                        f"Skipping EKS cluster due to recoverable e rror: {result}"
+                        f"Skipping EKS cluster '{cluster_name}' due to error: {result}"
                     )
+                    continue
                 else:
+                    logger.error(f"Error fetching EKS cluster '{cluster_name}'")
                     raise result
-            else:
-                results.append(result)
+            results.append(cast(Dict[str, Any], result))
 
         return results
 
