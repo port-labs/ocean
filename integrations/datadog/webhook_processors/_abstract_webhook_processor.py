@@ -15,31 +15,54 @@ class _AbstractDatadogWebhookProcessor(AbstractWebhookProcessor):
         self, payload: EventPayload, headers: dict[str, Any]
     ) -> bool:
         webhook_secret = ocean.integration_config.get("webhook_secret")
-        if not webhook_secret:
-            logger.info("No webhook secret found. Skipping authentication")
-            return True
-
         authorization = headers.get("authorization")
+
+        if not webhook_secret:
+            if authorization:
+                logger.warning(
+                    "Authorization header present but no webhook secret configured. "
+                    "Configure webhook_secret to enable authentication."
+                )
+            else:
+                logger.info("No webhook secret configured. Authentication disabled.")
+            return not authorization  # Allow only if no auth header is present
+
         if not authorization:
             logger.warning(
-                "Webhook authentication failed due to missing Authorization header in the event"
+                "Webhook authentication failed: missing Authorization header"
             )
             return False
 
+        return self._validate_basic_auth(authorization, webhook_secret)
+
+    @staticmethod
+    def _validate_basic_auth(authorization: str, expected_secret: str) -> bool:
+        """Validate Basic Authentication header against expected webhook secret."""
         try:
-            auth_type, encoded_token = authorization.split(" ", 1)
-            if auth_type.lower() != "basic":
-                logger.warning(f"Invalid authorization type: {auth_type}")
+            auth_parts = authorization.split(" ", 1)
+            if len(auth_parts) != 2:
+                logger.warning("Invalid authorization header format")
                 return False
 
-            decoded = base64.b64decode(encoded_token).decode("utf-8")
-            _, token = decoded.split(":", 1)
-            is_valid = token == webhook_secret
+            auth_type, encoded_token = auth_parts
+            if auth_type.lower() != "basic":
+                logger.warning(f"Unsupported authorization type: {auth_type}")
+                return False
+
+            decoded_credentials = base64.b64decode(encoded_token).decode("utf-8")
+            credential_parts = decoded_credentials.split(":", 1)
+            if len(credential_parts) != 2:
+                logger.warning("Invalid Basic Auth credentials format")
+                return False
+
+            _, provided_secret = credential_parts
+            is_valid = provided_secret == expected_secret
 
             if not is_valid:
-                logger.warning("Invalid webhook secret")
+                logger.warning("Webhook authentication failed: invalid secret")
 
             return is_valid
-        except (ValueError, UnicodeDecodeError) as e:
+
+        except (ValueError, UnicodeDecodeError, base64.binascii.Error) as e:
             logger.warning(f"Error decoding authorization header: {str(e)}")
             return False

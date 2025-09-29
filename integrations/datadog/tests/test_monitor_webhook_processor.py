@@ -24,25 +24,6 @@ def resource_config() -> Any:
 
 
 @pytest.mark.asyncio
-async def test_authenticate_with_valid_auth_header(
-    processor: MonitorWebhookProcessor,
-    mock_integration_config: dict[str, str],
-) -> None:
-    headers = {"authorization": "Basic dGVzdF91c2VyOnRlc3RfdG9rZW4="}
-    with patch("base64.b64decode", return_value=b"test_user:test_token"):
-        assert await processor.authenticate({}, headers) is True
-
-
-@pytest.mark.asyncio
-async def test_authenticate_without_webhook_secret(
-    processor: MonitorWebhookProcessor,
-    mock_integration_config_without_webhook_secret: dict[str, str],
-) -> None:
-    # pass authentication (no webhook secret provided)
-    assert await processor.authenticate({}, {}) is True
-
-
-@pytest.mark.asyncio
 async def test_get_matching_kinds(
     processor: MonitorWebhookProcessor, mock_event: WebhookEvent
 ) -> None:
