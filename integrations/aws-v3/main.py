@@ -16,6 +16,8 @@ from aws.core.exporters.organizations.account.exporter import (
     OrganizationsAccountExporter,
 )
 from aws.core.exporters.organizations.account.models import PaginatedAccountRequest
+from aws.core.exporters.dynamodb import DynamoDBTableExporter
+from aws.core.exporters.dynamodb.table.models import PaginatedTableRequest
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
@@ -44,6 +46,15 @@ async def resync_ec2_instance(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_ecs_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, EcsClusterExporter, PaginatedClusterRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.DYNAMODB_TABLE)
+async def resync_dynamodb_table(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, DynamoDBTableExporter, PaginatedTableRequest, regional=True
     )
     async for batch in service:
         yield batch

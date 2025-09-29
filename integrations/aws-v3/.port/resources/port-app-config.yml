@@ -79,3 +79,29 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::DynamoDB::Table
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.TableArn
+          title: .Properties.TableName
+          blueprint: '"dynamodbTable"'
+          properties:
+            arn: .Properties.TableArn
+            region: .__ExtraContext.Region
+            tableStatus: .Properties.TableStatus
+            billingMode: .Properties.BillingModeSummary.BillingMode // "PROVISIONED"
+            itemCount: .Properties.ItemCount
+            tableSizeBytes: .Properties.TableSizeBytes
+            creationDateTime: .Properties.CreationDateTime
+            keySchema: .Properties.KeySchema
+            attributeDefinitions: .Properties.AttributeDefinitions
+            globalSecondaryIndexes: .Properties.GlobalSecondaryIndexes
+            localSecondaryIndexes: .Properties.LocalSecondaryIndexes
+            deletionProtectionEnabled: .Properties.DeletionProtectionEnabled
+            pointInTimeRecoveryEnabled: .Properties.PointInTimeRecoveryDescription.PointInTimeRecoveryStatus == "ENABLED"
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
