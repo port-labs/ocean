@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict
 from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
@@ -6,17 +6,20 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 class QueueProperties(BaseModel):
     QueueName: str = Field(default_factory=str)
     QueueUrl: str = Field(default_factory=str)
-    Arn: str = Field(default_factory=str)
+    QueueArn: Optional[str] = None
     ApproximateNumberOfMessages: Optional[int] = None
     ApproximateNumberOfMessagesNotVisible: Optional[int] = None
     ApproximateNumberOfMessagesDelayed: Optional[int] = None
     CreatedTimestamp: Optional[str] = None
     LastModifiedTimestamp: Optional[str] = None
-    VisibilityTimeoutSeconds: Optional[int] = None
-    MaxReceiveCount: Optional[int] = None
+    VisibilityTimeout: Optional[int] = None
+    MaximumMessageSize: Optional[int] = None
     MessageRetentionPeriod: Optional[int] = None
     DelaySeconds: Optional[int] = None
     ReceiveMessageWaitTimeSeconds: Optional[int] = None
+    Policy: Optional[str] = None
+    RedrivePolicy: Optional[str] = None
+    RedriveAllowPolicy: Optional[str] = None
     KmsMasterKeyId: Optional[str] = None
     KmsDataKeyReusePeriodSeconds: Optional[int] = None
     SqsManagedSseEnabled: Optional[bool] = None
@@ -24,15 +27,11 @@ class QueueProperties(BaseModel):
     ContentBasedDeduplication: Optional[bool] = None
     DeduplicationScope: Optional[str] = None
     FifoThroughputLimit: Optional[str] = None
-    Tags: List[Dict[str, Any]] = Field(default_factory=list)
-
-    # Optional fields for dead letter queue
-    RedrivePolicy: Optional[Dict[str, Any]] = None
-    RedriveAllowPolicy: Optional[Dict[str, Any]] = None
+    Tags: Dict[str, str] = Field(default_factory=dict)
 
     class Config:
         extra = "forbid"
-        populate_by_name = True
+        allow_population_by_field_name = True
 
 
 class Queue(ResourceModel[QueueProperties]):
@@ -42,10 +41,11 @@ class Queue(ResourceModel[QueueProperties]):
 
 class SingleQueueRequest(ResourceRequestModel):
     """Options for exporting a single SQS queue."""
-    
+
     queue_url: str = Field(..., description="The URL of the SQS queue to export")
 
 
 class PaginatedQueueRequest(ResourceRequestModel):
     """Options for exporting all SQS queues in a region."""
+
     pass

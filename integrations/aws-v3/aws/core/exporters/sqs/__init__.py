@@ -6,6 +6,6 @@ from aws.core.exporters.sqs.queue.models import (
 
 __all__ = [
     "SqsQueueExporter",
-    "SingleQueueRequest", 
+    "SingleQueueRequest",
     "PaginatedQueueRequest",
 ]

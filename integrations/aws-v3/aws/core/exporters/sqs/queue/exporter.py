@@ -25,7 +25,12 @@ class SqsQueueExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
             response = await inspector.inspect(
-                [{"QueueUrl": options.queue_url}], options.include
+                [options.queue_url],
+                options.include,
+                extra_context={
+                    "AccountId": options.account_id,
+                    "Region": options.region,
+                },
             )
             return response[0] if response else {}
 
@@ -39,19 +44,14 @@ class SqsQueueExporter(IResourceExporter):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            
+
             # Use the list_queues paginator
             paginator = proxy.get_paginator("list_queues", "QueueUrls")
 
             async for queue_urls in paginator.paginate():
                 if queue_urls:
-                    # Convert queue URLs to the expected format for inspection
-                    queue_data = []
-                    for queue_url in queue_urls:
-                        queue_data.append({"QueueUrl": queue_url})
-                    
                     action_result = await inspector.inspect(
-                        queue_data,
+                        queue_urls,
                         options.include,
                         extra_context={
                             "AccountId": options.account_id,
