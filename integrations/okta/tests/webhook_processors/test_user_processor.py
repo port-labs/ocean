@@ -2,10 +2,12 @@ import pytest
 from unittest.mock import AsyncMock, patch
 
 from okta.webhook_processors.user_webhook_processor import OktaUserWebhookProcessor
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEventRawResults, WebhookEvent
+from port_ocean.core.handlers.webhook.webhook_event import (
+    WebhookEventRawResults,
+    WebhookEvent,
+)
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
@@ -36,7 +38,9 @@ def _resource_config() -> ResourceConfig:
 
 @pytest.mark.asyncio
 async def test_user_processor_delete_event() -> None:
-    processor = OktaUserWebhookProcessor(event=WebhookEvent(trace_id="t", payload={}, headers={}))
+    processor = OktaUserWebhookProcessor(
+        event=WebhookEvent(trace_id="t", payload={}, headers={})
+    )
     payload = {
         "data": {
             "events": [
@@ -56,7 +60,9 @@ async def test_user_processor_delete_event() -> None:
 
 @pytest.mark.asyncio
 async def test_user_processor_upsert_event_calls_exporter() -> None:
-    processor = OktaUserWebhookProcessor(event=WebhookEvent(trace_id="t", payload={}, headers={}))
+    processor = OktaUserWebhookProcessor(
+        event=WebhookEvent(trace_id="t", payload={}, headers={})
+    )
 
     payload = {
         "data": {
@@ -72,9 +78,14 @@ async def test_user_processor_upsert_event_calls_exporter() -> None:
         }
     }
 
-    with patch("okta.webhook_processors.user_webhook_processor.OktaClientFactory.get_client") as get_client, patch(
-        "okta.webhook_processors.user_webhook_processor.OktaUserExporter"
-    ) as exporter_cls:
+    with (
+        patch(
+            "okta.webhook_processors.user_webhook_processor.OktaClientFactory.get_client"
+        ) as get_client,
+        patch(
+            "okta.webhook_processors.user_webhook_processor.OktaUserExporter"
+        ) as exporter_cls,
+    ):
         mock_client = object()
         get_client.return_value = mock_client
         exporter = exporter_cls.return_value
@@ -84,5 +95,3 @@ async def test_user_processor_upsert_event_calls_exporter() -> None:
         assert res.updated_raw_results == [{"id": "u1"}, {"id": "u2"}]
         assert res.deleted_raw_results == []
         assert exporter.get_resource.await_count == 2
-
-

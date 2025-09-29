@@ -1,14 +1,21 @@
 import pytest
 
 from okta.webhook_processors.base_webhook_processor import OktaBaseWebhookProcessor
-from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
+from port_ocean.core.handlers.webhook.webhook_event import (
+    WebhookEvent,
+    EventPayload,
+    WebhookEventRawResults,
+)
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 
 class DummyProcessor(OktaBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return ["okta-user", "okta-group"]
 
-    async def handle_event(self, payload, resource_config):
+    async def handle_event(
+        self, payload: EventPayload, resource_config: ResourceConfig
+    ) -> WebhookEventRawResults:
         raise NotImplementedError
 
 
@@ -18,7 +25,7 @@ class TestOktaBaseWebhookProcessor:
         event = WebhookEvent(
             trace_id="t1", payload={}, headers={}, original_request=object()  # type: ignore[arg-type]
         )
-        
+
         from port_ocean.context.ocean import ocean
 
         prev = ocean.integration_config.get("webhook_secret")
@@ -62,5 +69,3 @@ class TestOktaBaseWebhookProcessor:
         proc = DummyProcessor(WebhookEvent(trace_id="t5", payload={}, headers={}))
         assert await proc.validate_payload({"data": {"events": []}}) is True
         assert await proc.validate_payload({}) is False
-
-
