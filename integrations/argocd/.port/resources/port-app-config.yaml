@@ -101,4 +101,4 @@ resources:
             labels: (.liveState // .targetState) | fromjson | .metadata.labels
           relations:
             application: .__application.metadata.uid
-            image: 'if .kind == "Deployment" then .liveState | fromjson | .spec.template.spec.containers[0].image else null end'
+            image: 'if .kind == "Deployment" then (.liveState // .targetState) | fromjson | .spec.template.spec.containers[0].image else null end'
