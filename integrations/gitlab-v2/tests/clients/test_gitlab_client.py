@@ -294,7 +294,7 @@ class TestGitLabClient:
             # Act - with bot members
             results_with_bots = []
             async for batch in client.get_group_members(
-                group_id, include_bot_members=True
+                group_id, include_bot_members=True, include_inherited_members=False
             ):
                 results_with_bots.extend(batch)
 
@@ -312,7 +312,7 @@ class TestGitLabClient:
             # Act - without bot members
             results_without_bots = []
             async for batch in client.get_group_members(
-                group_id, include_bot_members=False
+                group_id, include_bot_members=False, include_inherited_members=False
             ):
                 results_without_bots.extend(batch)
 
@@ -321,6 +321,37 @@ class TestGitLabClient:
             assert results_without_bots[0]["username"] == "user1"
             assert results_without_bots[1]["username"] == "user2"
             mock_get_resource.assert_called_with(group_id, "members")
+
+    async def test_get_group_members_with_inherited_members(
+        self, client: GitLabClient
+    ) -> None:
+        """Test fetching group members with inherited members"""
+        # Arrange
+        group_id = "456"
+        mock_members = [
+            {"id": 1, "username": "user1", "name": "User One"},
+            {"id": 2, "username": "bot1", "name": "Bot One"},
+            {"id": 3, "username": "user2", "name": "User Two"},
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_group_resource",
+            return_value=async_mock_generator([mock_members]),
+        ) as mock_get_resource:
+            # Act
+            results = []
+            async for batch in client.get_group_members(
+                group_id, include_bot_members=True, include_inherited_members=True
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 3
+            assert results[0]["username"] == "user1"
+            assert results[1]["username"] == "bot1"
+            assert results[2]["username"] == "user2"
+            mock_get_resource.assert_called_with(group_id, "members/all")
 
     async def test_enrich_group_with_members(self, client: GitLabClient) -> None:
         """Test enriching a group with its members"""
@@ -343,7 +374,7 @@ class TestGitLabClient:
         ) as mock_get_members:
             # Act
             result = await client.enrich_group_with_members(
-                group, include_bot_members=True
+                group, include_bot_members=True, include_inherited_members=False
             )
 
             # Assert
@@ -355,7 +386,7 @@ class TestGitLabClient:
             assert result["__members"][1]["username"] == "user2"
             assert result["__members"][0]["email"] == "user1@example.com"
             assert result["__members"][1]["email"] is None
-            mock_get_members.assert_called_once_with("456", True)
+            mock_get_members.assert_called_once_with("456", True, False)
 
     async def test_enrich_batch(self, client: GitLabClient) -> None:
         """Test the _enrich_batch method"""

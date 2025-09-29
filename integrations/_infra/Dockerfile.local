@@ -26,7 +26,6 @@ RUN apt-get update \
         python3-pip \
         python3-poetry \
         build-essential\
-        jq \
         git \
         python3-venv \
         acl \
