@@ -17,7 +17,7 @@ resources:
       entity:
         mappings:
           identifier: .Properties.Id
-          title: .Properties.AccountName
+          title: .Properties.Name
           blueprint: '"awsOrganizationAccount"'
           properties:
             arn: .Properties.Arn
