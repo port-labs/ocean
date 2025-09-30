@@ -1,45 +1,62 @@
-from typing import Any, AsyncGenerator
+from typing import Any
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from loguru import logger
 
-from initialize_client import init_armorcode_client
-from integration import ObjectKind
+from armorcode.clients.client_factory import create_armorcode_client
 from armorcode.core.exporters import (
     ProductExporter,
     SubProductExporter,
     FindingExporter,
 )
+from armorcode.helpers.utils import ObjectKind
+
+
+def _create_client() -> Any:
+    """Create ArmorCode client with configuration from ocean context."""
+    return create_armorcode_client(
+        base_url=ocean.integration_config["armorcode_api_base_url"],
+        api_key=ocean.integration_config["armorcode_api_key"],
+    )
 
 
 @ocean.on_resync(ObjectKind.PRODUCT)
-async def on_products_resync(
-    kind: str,
-) -> AsyncGenerator[list[dict[str, Any]], None]:
-    client = init_armorcode_client()
+async def resync_products(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all products from ArmorCode."""
+    logger.info("Starting products resync")
+
+    client = _create_client()
     exporter = ProductExporter(client)
-    logger.info("Fetching products from Armorcode API")
+    logger.info("Fetching products from ArmorCode API")
+
     async for products_batch in exporter.get_paginated_resources():
         logger.info(f"Yielding products batch of size: {len(products_batch)}")
         yield products_batch
 
 
 @ocean.on_resync(ObjectKind.SUB_PRODUCT)
-async def on_subproducts_resync(
-    kind: str,
-) -> AsyncGenerator[list[dict[str, Any]], None]:
-    client = init_armorcode_client()
+async def resync_subproducts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all subproducts from ArmorCode."""
+    logger.info("Starting subproducts resync")
+
+    client = _create_client()
     exporter = SubProductExporter(client)
-    logger.info("Fetching all subproducts from Armorcode API")
+    logger.info("Fetching subproducts from ArmorCode API")
+
     async for subproducts_batch in exporter.get_paginated_resources():
         logger.info(f"Yielding subproducts batch of size: {len(subproducts_batch)}")
         yield subproducts_batch
 
 
 @ocean.on_resync(ObjectKind.FINDING)
-async def on_findings_resync(kind: str) -> AsyncGenerator[list[dict[str, Any]], None]:
-    client = init_armorcode_client()
+async def resync_findings(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all findings from ArmorCode."""
+    logger.info("Starting findings resync")
+
+    client = _create_client()
     exporter = FindingExporter(client)
-    logger.info("Fetching all findings from Armorcode API")
+    logger.info("Fetching findings from ArmorCode API")
+
     async for findings_batch in exporter.get_paginated_resources():
         logger.info(f"Yielding findings batch of size: {len(findings_batch)}")
         yield findings_batch

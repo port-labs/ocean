@@ -1,11 +1,21 @@
-from typing import Any, AsyncGenerator
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from clients.armorcode_client import ArmorcodeClient
+from .abstract_exporter import AbstractArmorcodeExporter
 
 
-class SubProductExporter:
-    def __init__(self, client: ArmorcodeClient) -> None:
-        self.client = client
+class SubProductExporter(AbstractArmorcodeExporter):
+    """Exporter for ArmorCode subproducts."""
 
-    def get_paginated_resources(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        return self.client.get_all_subproducts()
+    async def get_paginated_resources(self) -> ASYNC_GENERATOR_RESYNC_TYPE:  # type: ignore[override]
+        """Get paginated subproducts from the API."""
+        async for subproducts in self.client.send_paginated_request(
+            endpoint="user/sub-product/elastic",
+            method="GET",
+            content_key="content",
+            is_last_key="last",
+        ):
+            yield subproducts
+
+    def get_resource_kind(self) -> str:
+        """Get the resource kind this exporter handles."""
+        return "sub-product"

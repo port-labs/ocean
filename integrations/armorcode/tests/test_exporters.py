@@ -2,7 +2,7 @@ import pytest
 from typing import Any, AsyncGenerator
 from unittest.mock import MagicMock
 
-from clients.armorcode_client import ArmorcodeClient
+from armorcode.clients.http.armorcode_client import ArmorcodeClient
 from armorcode.core.exporters import (
     ProductExporter,
     SubProductExporter,
@@ -21,7 +21,7 @@ async def _agen(
 async def test_product_exporter_yields_batches() -> None:
     batches = [[{"id": "p1"}], [{"id": "p2"}]]
     client = MagicMock(spec=ArmorcodeClient)
-    client.get_products.return_value = _agen(batches)
+    client.send_paginated_request.return_value = _agen(batches)
 
     exporter = ProductExporter(client)
 
@@ -30,14 +30,20 @@ async def test_product_exporter_yields_batches() -> None:
         collected.extend(batch)
 
     assert [item["id"] for item in collected] == ["p1", "p2"]
-    client.get_products.assert_called_once_with()
+    client.send_paginated_request.assert_called_once_with(
+        endpoint="user/product/elastic/paged",
+        method="GET",
+        content_key="content",
+        is_last_key="last",
+    )
+    assert exporter.get_resource_kind() == "product"
 
 
 @pytest.mark.asyncio
 async def test_subproduct_exporter_yields_batches() -> None:
     batches = [[{"id": "sp1"}], [{"id": "sp2"}]]
     client = MagicMock(spec=ArmorcodeClient)
-    client.get_all_subproducts.return_value = _agen(batches)
+    client.send_paginated_request.return_value = _agen(batches)
 
     exporter = SubProductExporter(client)
 
@@ -46,14 +52,20 @@ async def test_subproduct_exporter_yields_batches() -> None:
         collected.extend(batch)
 
     assert [item["id"] for item in collected] == ["sp1", "sp2"]
-    client.get_all_subproducts.assert_called_once_with()
+    client.send_paginated_request.assert_called_once_with(
+        endpoint="user/sub-product/elastic",
+        method="GET",
+        content_key="content",
+        is_last_key="last",
+    )
+    assert exporter.get_resource_kind() == "sub-product"
 
 
 @pytest.mark.asyncio
 async def test_finding_exporter_yields_batches() -> None:
     batches = [[{"id": "f1"}], [{"id": "f2"}]]
     client = MagicMock(spec=ArmorcodeClient)
-    client.get_all_findings.return_value = _agen(batches)
+    client.send_paginated_request.return_value = _agen(batches)
 
     exporter = FindingExporter(client)
 
@@ -62,4 +74,12 @@ async def test_finding_exporter_yields_batches() -> None:
         collected.extend(batch)
 
     assert [item["id"] for item in collected] == ["f1", "f2"]
-    client.get_all_findings.assert_called_once_with()
+    client.send_paginated_request.assert_called_once_with(
+        endpoint="api/findings",
+        method="POST",
+        content_key="findings",
+        is_last_key=None,
+        json_data={},
+        use_offset_pagination=False,
+    )
+    assert exporter.get_resource_kind() == "finding"
