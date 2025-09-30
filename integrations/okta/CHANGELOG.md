@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.0-beta (2025-09-17)
+## 0.1.0-dev (2025-09-30)
 
 
 ### Features
 
-- Created a new Okta integration with usersa and groups resources kind
+- Created Okta integration with support for users and groups resources kind
