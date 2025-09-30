@@ -49,7 +49,10 @@ class OktaUserConfig(ResourceConfig):
 class OktaPortAppConfig(PortAppConfig):
     """Port app configuration for Okta integration."""
 
-    resources: list[OktaUserConfig | ResourceConfig]
+    resources: list[OktaUserConfig | ResourceConfig] = Field(
+        default_factory=list,
+        description="Specify the resources to include in the sync",
+    )
 
 
 class OktaIntegration(BaseIntegration):

@@ -15,7 +15,6 @@ _DEFAULT_IGNORED_ERRORS = [
     IgnoredError(
         status=403,
         message="Forbidden access to endpoint — insufficient permissions",
-        type="FORBIDDEN",
     ),
     IgnoredError(
         status=404,
@@ -139,42 +138,6 @@ class OktaClient:
         headers: Optional[Dict[str, str]] = None,
     ) -> Any:
         """Send a request to the Okta API and return parsed JSON content."""
-        response = await self._make_request(
-            endpoint=endpoint,
-            method=method,
-            params=params,
-            json_data=json_data,
-            headers=headers,
-        )
-        return response.json()
-
-    async def get_single_resource(
-        self,
-        endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        method: str = "GET",
-        json_data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
-        """Get a single resource from the Okta API (returns a dict)."""
-        response = await self._make_request(
-            endpoint=endpoint,
-            method=method,
-            params=params,
-            json_data=json_data,
-            headers=headers,
-        )
-        return response.json()
-
-    async def get_list_resource(
-        self,
-        endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        method: str = "GET",
-        json_data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-    ) -> List[Dict[str, Any]]:
-        """Get a list resource from the Okta API (returns a list)."""
         response = await self._make_request(
             endpoint=endpoint,
             method=method,
