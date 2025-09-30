@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.181 (2025-09-29)
+
+
+### Improvements
+
+- Enhanced permission denied error handling for resource synchronization
+  - Resource functions now yield empty list instead of silently skipping when access is denied
+  - Improved logging with detailed error information and account context
+
+
 ## 0.2.180 (2025-09-28)
 
 
