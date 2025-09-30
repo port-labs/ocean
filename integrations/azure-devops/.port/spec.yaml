@@ -44,25 +44,22 @@ saas:
   liveEvents:
     enabled: true
 installationDocs:
-  - name: Saas__SaasOAuth2
-    enabled: false
-  - name: Saas__Saas
-    enabled: false
-  - name: githubWorkflow
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: false
+  githubWorkflow:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/azure-devops/installation?installation-methods=hosted-by-port&cicd-method=github
-    jumpTo: prerequisites
-  - name: gitlabCI
+    docs: build-your-software-catalog/sync-data-to-catalog/git/azure-devops/?installation-methods=one-time-ci&cicd-method=github#setup
+  gitlabCI:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/azure-devops/installation?installation-methods=hosted-by-port&cicd-method=gitlab
-    jumpTo: prerequisites
-  - name: azurePipeline
+    docs: build-your-software-catalog/sync-data-to-catalog/git/azure-devops/?installation-methods=one-time-ci&cicd-method=gitlab#setup
+  azurePipeline:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/azure-devops/installation?installation-methods=hosted-by-port&cicd-method=azure
-    jumpTo: prerequisites
-  - name: helm
+    docs: build-your-software-catalog/sync-data-to-catalog/git/azure-devops/?installation-methods=one-time-ci&cicd-method=azure#setup
+  helm:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/azure-devops/installation?installation-methods=hosted-by-port
-    jumpTo: prerequisites
-  - name: docker
+    docs: build-your-software-catalog/sync-data-to-catalog/git/azure-devops/?installation-methods=real-time-self-hosted#setup
+  docker:
     enabled: false
