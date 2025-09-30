@@ -7,8 +7,6 @@ from aws.core.helpers.utils import is_recoverable_aws_exception
 
 class DescribeClusterAction(Action):
     async def _execute(self, cluster_names: List[str]) -> List[Dict[str, Any]]:
-        if not cluster_names:
-            return []
 
         cluster_results = await asyncio.gather(
             *(self._fetch_cluster(name) for name in cluster_names),
