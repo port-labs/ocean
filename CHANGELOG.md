@@ -26,7 +26,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - revert memory optimization commit
 
-
 ## 0.28.8 (2025-09-21)
 
 ### Improvements
