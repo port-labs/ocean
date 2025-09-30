@@ -345,8 +345,9 @@ class JQEntityProcessor(BaseEntityProcessor):
         if items_to_parse:
             items_to_parse_key = items_to_parse_name
             if not ocean.config.yield_items_to_parse:
-                if data.get("file", {}).get("content", {}).get("path", None):
-                    with open(data["file"]["content"]["path"], "r") as f:
+                if isinstance(data, dict) and data.get("__type") == "path":
+                    file_path = data.get("file", {}).get("content", {}).get("path")
+                    with open(file_path, "r") as f:
                         data["file"]["content"] = json.loads(f.read())
                 items = await self._search(data, items_to_parse)
                 if not isinstance(items, list):
@@ -465,15 +466,15 @@ class JQEntityProcessor(BaseEntityProcessor):
         if mapping_dicts[InputEvaluationResult.SINGLE]:
             mappings[InputEvaluationResult.SINGLE][key] = mapping_dicts[
                 InputEvaluationResult.SINGLE
-            ][key]
+            ]
         if mapping_dicts[InputEvaluationResult.ALL]:
             mappings[InputEvaluationResult.ALL][key] = mapping_dicts[
                 InputEvaluationResult.ALL
-            ][key]
+            ]
         if mapping_dicts[InputEvaluationResult.NONE]:
             mappings[InputEvaluationResult.NONE][key] = mapping_dicts[
                 InputEvaluationResult.NONE
-            ][key]
+            ]
 
     def group_search_query_mapping_value(
         self,
