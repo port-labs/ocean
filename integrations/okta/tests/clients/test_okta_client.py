@@ -16,7 +16,6 @@ class TestOktaClient:
         return OktaClient(
             okta_domain="test.okta.com",
             api_token="test_token",
-            timeout=30,
             max_retries=3,
         )
 
@@ -24,7 +23,6 @@ class TestOktaClient:
         """Test client initialization."""
         assert client.okta_domain == "test.okta.com"
         assert client.api_token == "test_token"
-        assert client.timeout == 30
         assert client.max_retries == 3
 
     def test_base_url_property(self, client: OktaClient) -> None:
@@ -44,7 +42,7 @@ class TestOktaClient:
             "port_ocean.utils.http_async_client.request",
             new=AsyncMock(return_value=mock_response),
         ):
-            response = await client.make_request("/users")
+            response = await client._make_request("/users")
             assert response.status_code == 200
             assert response.json() == {"id": "test_user"}
 
@@ -61,7 +59,7 @@ class TestOktaClient:
             side_effect=Exception("Network error"),
         ):
             with pytest.raises(Exception):
-                await client.make_request("/users")
+                await client._make_request("/users")
 
     def test_get_next_link(self, client: OktaClient) -> None:
         """Test parsing of next link from Link header."""
