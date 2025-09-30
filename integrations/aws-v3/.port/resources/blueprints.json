@@ -220,5 +220,113 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "dynamodbTable",
+    "title": "DynamoDB Table",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the DynamoDB table"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "AWS region where the DynamoDB table is located"
+        },
+        "tableStatus": {
+          "type": "string",
+          "title": "Table Status",
+          "description": "Current status of the DynamoDB table",
+          "enum": ["CREATING", "UPDATING", "DELETING", "ACTIVE", "INACCESSIBLE_ENCRYPTION_CREDENTIALS", "ARCHIVING", "ARCHIVED"]
+        },
+        "billingMode": {
+          "type": "string",
+          "title": "Billing Mode",
+          "description": "Billing mode for the DynamoDB table"
+        },
+        "itemCount": {
+          "type": "number",
+          "title": "Item Count",
+          "description": "Number of items in the table"
+        },
+        "tableSizeBytes": {
+          "type": "number",
+          "title": "Table Size (Bytes)",
+          "description": "Total size of the table in bytes"
+        },
+        "creationDateTime": {
+          "type": "string",
+          "title": "Creation Date",
+          "description": "When the table was created",
+          "format": "date-time"
+        },
+        "keySchema": {
+          "type": "array",
+          "title": "Key Schema",
+          "description": "Primary key schema of the table",
+          "items": {
+            "type": "object"
+          }
+        },
+        "attributeDefinitions": {
+          "type": "array",
+          "title": "Attribute Definitions",
+          "description": "Attribute definitions for the table",
+          "items": {
+            "type": "object"
+          }
+        },
+        "globalSecondaryIndexes": {
+          "type": "array",
+          "title": "Global Secondary Indexes",
+          "description": "Global Secondary Indexes configured for the table",
+          "items": {
+            "type": "object"
+          }
+        },
+        "localSecondaryIndexes": {
+          "type": "array",
+          "title": "Local Secondary Indexes",
+          "description": "Local Secondary Indexes configured for the table",
+          "items": {
+            "type": "object"
+          }
+        },
+        "deletionProtectionEnabled": {
+          "type": "boolean",
+          "title": "Deletion Protection Enabled",
+          "description": "Whether deletion protection is enabled for the table"
+        },
+        "pointInTimeRecoveryEnabled": {
+          "type": "boolean",
+          "title": "Point-in-Time Recovery Enabled",
+          "description": "Whether point-in-time recovery is enabled for the table"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the DynamoDB table",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

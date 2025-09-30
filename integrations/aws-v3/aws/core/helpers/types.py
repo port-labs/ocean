@@ -8,6 +8,7 @@ class ObjectKind(StrEnum):
     ORGANIZATIONS_ACCOUNT = "AWS::Organizations::Account"
     AccountInfo = "AWS::Account::Info"
     ECS_CLUSTER = "AWS::ECS::Cluster"
+    DYNAMODB_TABLE = "AWS::DynamoDB::Table"
 
 
-SupportedServices = Literal["s3", "ecs", "ec2", "sqs", "organizations"]
+SupportedServices = Literal["s3", "ecs", "ec2", "sqs", "organizations", "dynamodb"]
