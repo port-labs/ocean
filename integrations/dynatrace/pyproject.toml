@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "dynatrace"
-version = "0.1.181"
+version = "0.1.183"
 description = "An integration used to import Dynatrace resources into Port"
 authors = ["Ayodeji Adeoti <<ayodeji.adeoti@getport.io>>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.28.9", extras = ["cli"]}
+port_ocean = {version = "^0.28.12", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration
