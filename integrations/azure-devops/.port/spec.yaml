@@ -66,6 +66,3 @@ installationDocs:
     jumpTo: prerequisites
   - name: docker
     enabled: false
-
-
-# build-your-software-catalog/sync-data-to-catalog/git/azure-devops/installation?installation-methods=hosted-by-port
