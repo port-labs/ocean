@@ -57,7 +57,6 @@ async def resync_eks_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         kind, EksClusterExporter, PaginatedEksClusterRequest, regional=True
     )
     async for batch in service:
-        logger.info(batch)
         yield batch
 
 
