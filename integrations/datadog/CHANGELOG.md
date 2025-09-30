@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.24 (2025-09-29)
+## 0.3.25 (2025-09-30)
 
 
 ### Improvements
 
 - Added support for live events for Service Dependencies
+
+
+## 0.3.24 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
 
 
 ## 0.3.23 (2025-09-28)
