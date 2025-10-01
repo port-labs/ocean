@@ -1,0 +1,228 @@
+[
+  {
+    "identifier": "lambdaFunction",
+    "title": "Lambda Function",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "FunctionName": {
+          "type": "string",
+          "title": "Function Name",
+          "description": "The name of the Lambda function"
+        },
+        "FunctionArn": {
+          "type": "string",
+          "title": "Function ARN",
+          "description": "The Amazon Resource Name (ARN) of the Lambda function"
+        },
+        "Runtime": {
+          "type": "string",
+          "title": "Runtime",
+          "description": "The runtime environment for the Lambda function"
+        },
+        "Handler": {
+          "type": "string",
+          "title": "Handler",
+          "description": "The function entry point"
+        },
+        "MemorySize": {
+          "type": "number",
+          "title": "Memory Size",
+          "description": "The amount of memory available to the function in MB"
+        },
+        "Timeout": {
+          "type": "number",
+          "title": "Timeout",
+          "description": "The function execution time limit in seconds"
+        },
+        "State": {
+          "type": "string",
+          "title": "State",
+          "description": "The current state of the function"
+        },
+        "LastModified": {
+          "type": "string",
+          "title": "Last Modified",
+          "description": "The date and time the function was last modified"
+        },
+        "CodeSha256": {
+          "type": "string",
+          "title": "Code SHA256",
+          "description": "The SHA256 hash of the function's deployment package"
+        },
+        "CodeSize": {
+          "type": "number",
+          "title": "Code Size",
+          "description": "The size of the function's deployment package in bytes"
+        },
+        "Description": {
+          "type": "string",
+          "title": "Description",
+          "description": "The description of the function"
+        },
+        "Role": {
+          "type": "string",
+          "title": "Role",
+          "description": "The function's execution role"
+        },
+        "LastUpdateStatus": {
+          "type": "string",
+          "title": "Last Update Status",
+          "description": "The status of the last update that was performed on the function"
+        },
+        "LastUpdateStatusReason": {
+          "type": "string",
+          "title": "Last Update Status Reason",
+          "description": "The reason for the last update that was performed on the function"
+        },
+        "LastUpdateStatusReasonCode": {
+          "type": "string",
+          "title": "Last Update Status Reason Code",
+          "description": "The reason code for the last update that was performed on the function"
+        },
+        "Version": {
+          "type": "string",
+          "title": "Version",
+          "description": "The version of the Lambda function"
+        },
+        "RevisionId": {
+          "type": "string",
+          "title": "Revision ID",
+          "description": "The revision ID of the function"
+        },
+        "PackageType": {
+          "type": "string",
+          "title": "Package Type",
+          "description": "The type of deployment package"
+        },
+        "MasterArn": {
+          "type": "string",
+          "title": "Master ARN",
+          "description": "The ARN of the master function"
+        },
+        "SigningJobArn": {
+          "type": "string",
+          "title": "Signing Job ARN",
+          "description": "The ARN of the signing job"
+        },
+        "SigningProfileVersionArn": {
+          "type": "string",
+          "title": "Signing Profile Version ARN",
+          "description": "The ARN of the signing profile version"
+        },
+        "StateReason": {
+          "type": "string",
+          "title": "State Reason",
+          "description": "The reason for the function's current state"
+        },
+        "StateReasonCode": {
+          "type": "string",
+          "title": "State Reason Code",
+          "description": "The reason code for the function's current state"
+        },
+        "DeadLetterConfig": {
+          "type": "object",
+          "title": "Dead Letter Config",
+          "description": "The dead letter queue configuration"
+        },
+        "Environment": {
+          "type": "object",
+          "title": "Environment",
+          "description": "The environment variables for the function"
+        },
+        "VpcConfig": {
+          "type": "object",
+          "title": "VPC Config",
+          "description": "The VPC configuration for the function"
+        },
+        "TracingConfig": {
+          "type": "object",
+          "title": "Tracing Config",
+          "description": "The tracing configuration for the function"
+        },
+        "LoggingConfig": {
+          "type": "object",
+          "title": "Logging Config",
+          "description": "The logging configuration for the function"
+        },
+        "EphemeralStorage": {
+          "type": "object",
+          "title": "Ephemeral Storage",
+          "description": "The ephemeral storage configuration for the function"
+        },
+        "ImageConfigResponse": {
+          "type": "object",
+          "title": "Image Config Response",
+          "description": "The image configuration response for the function"
+        },
+        "RuntimeVersionConfig": {
+          "type": "object",
+          "title": "Runtime Version Config",
+          "description": "The runtime version configuration for the function"
+        },
+        "SnapStart": {
+          "type": "object",
+          "title": "Snap Start",
+          "description": "The SnapStart configuration for the function"
+        },
+        "Layers": {
+          "type": "array",
+          "title": "Layers",
+          "description": "The layers for the function",
+          "items": {
+            "type": "object"
+          }
+        },
+        "Architectures": {
+          "type": "array",
+          "title": "Architectures",
+          "description": "The architectures supported by the function",
+          "items": {
+            "type": "string"
+          }
+        },
+        "FileSystemConfigs": {
+          "type": "array",
+          "title": "File System Configs",
+          "description": "The file system configurations for the function",
+          "items": {
+            "type": "object"
+          }
+        },
+        "Tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "The tags associated with the function",
+          "items": {
+            "type": "object",
+            "properties": {
+              "Key": {
+                "type": "string"
+              },
+              "Value": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "KmsKeyArn": {
+          "type": "string",
+          "title": "KMS Key ARN",
+          "description": "The KMS key ARN for encryption"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

@@ -18,6 +18,8 @@ from aws.core.exporters.organizations.account.exporter import (
     OrganizationsAccountExporter,
 )
 from aws.core.exporters.organizations.account.models import PaginatedAccountRequest
+from aws.core.exporters.aws_lambda.function.exporter import LambdaFunctionExporter
+from aws.core.exporters.aws_lambda.function.models import PaginatedLambdaFunctionRequest
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
@@ -55,6 +57,15 @@ async def resync_ecs_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_eks_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, EksClusterExporter, PaginatedEksClusterRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.LAMBDA_FUNCTION)
+async def resync_lambda_function(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, LambdaFunctionExporter, PaginatedLambdaFunctionRequest, regional=True
     )
     async for batch in service:
         yield batch
