@@ -5,6 +5,7 @@ features:
   - type: exporter
     section: Git
     resources:
+      - kind: organization
       - kind: repository
       - kind: folder
       - kind: user
@@ -28,6 +29,10 @@ configurations:
     default: https://api.github.com
     type: url
     description: For Github Enterprise users, if Github url is not passed, the default Github API "api.github.com" will be used.
+  - name: githubOrganizations
+    required: false
+    type: string
+    description: GitHub organization name (optional - if not provided, will sync all organizations the personal access token user is a member of)
   - name: githubToken
     required: false
     type: string
@@ -43,10 +48,6 @@ configurations:
     type: string
     sensitive: true
     description: If App ID is passed, then app private key is required.
-  - name: githubOrganization
-    required: true
-    type: string
-    description: GitHub organization name
   - name: webhookSecret
     type: string
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from GitHub are accepted.

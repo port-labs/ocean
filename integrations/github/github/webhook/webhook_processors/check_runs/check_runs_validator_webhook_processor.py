@@ -74,6 +74,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
             pr_number,
             repository_type,
             validation_mappings,
+            payload["organization"]["login"],
         )
 
         return self._NoWebhookEventResults
@@ -86,12 +87,13 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
         pr_number: int,
         repository_type: str,
         validation_mappings: List[ResourceConfigToPatternMapping],
+        github_organization: str,
     ) -> None:
         logger.info(
             f"Fetching commit diff for repository {repo_name} from {base_sha} to {head_sha}"
         )
 
-        rest_client = create_github_client()
+        rest_client = create_github_client(github_organization)
         file_exporter = RestFileExporter(rest_client)
         diff_data = await file_exporter.fetch_commit_diff(repo_name, base_sha, head_sha)
         changed_files = diff_data["files"]
@@ -104,7 +106,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
             f"Validation needed for {len(validation_mappings)} patterns, creating validation service"
         )
 
-        validation_service = FileValidationService()
+        validation_service = FileValidationService(github_organization)
 
         for validation_mapping in validation_mappings:
             files_pattern = validation_mapping.patterns

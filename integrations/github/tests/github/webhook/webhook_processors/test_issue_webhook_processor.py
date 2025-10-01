@@ -83,6 +83,7 @@ class TestIssueWebhookProcessor:
                     "action": action,
                     "issue": {"number": 101, "state": "open"},
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 }
                 assert await issue_webhook_processor._validate_payload(payload) is True
 
@@ -136,7 +137,7 @@ class TestIssueWebhookProcessor:
         repo_data = {"name": "test-repo"}
 
         # Setup payload
-        payload = {"action": action, "issue": issue_data, "repository": repo_data}
+        payload = {"action": action, "issue": issue_data, "repository": repo_data, "organization": {"login": "test-org"}}
 
         # Setup resource config
         resource_config.selector.state = selector_state

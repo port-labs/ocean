@@ -113,7 +113,7 @@ class TestTeamMemberWebhookProcessor:
         team_data = {"name": "test-team-name", "slug": "test-team-slug"}
         member_data = {"login": "test-member"}
 
-        payload = {"action": action, "team": team_data, "member": member_data}
+        payload = {"action": action, "team": team_data, "member": member_data, "organization": {"login": "test-org"}}
 
         resource_config = GithubTeamConfig(
             kind=ObjectKind.TEAM,
@@ -168,7 +168,7 @@ class TestTeamMemberWebhookProcessor:
                     payload, resource_config
                 )
 
-                mock_create_client.assert_called_once_with(GithubClientType.GRAPHQL)
+                mock_create_client.assert_called_once_with("test-org", GithubClientType.GRAPHQL)
                 mock_exporter_class_constructor.assert_called_once_with(
                     mock_graphql_client
                 )
@@ -206,6 +206,7 @@ class TestTeamMemberWebhookProcessor:
                         "slug": "team1-slug",
                     },  # slug also present, name is validated
                     "member": {"login": "user1"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -263,7 +264,7 @@ class TestTeamMemberWebhookProcessor:
 
         team_data = {"name": "test-team-name", "deleted": True}
         member_data = {"login": "test-member"}
-        payload = {"action": action, "team": team_data, "member": member_data}
+        payload = {"action": action, "team": team_data, "member": member_data, "organization": {"login": "test-org"}}
 
         resource_config = GithubTeamConfig(
             kind=ObjectKind.TEAM,

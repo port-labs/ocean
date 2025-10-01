@@ -58,3 +58,6 @@ class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
         if not (event._original_request and await self._should_process_event(event)):
             return False
         return await self._verify_webhook_signature(event._original_request)
+
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        return "organization" in payload and "login" in payload["organization"]

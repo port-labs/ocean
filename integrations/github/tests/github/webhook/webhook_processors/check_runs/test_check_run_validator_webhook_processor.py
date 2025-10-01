@@ -123,6 +123,7 @@ def mock_payload() -> dict[str, Any]:
             "base": {"sha": "base-sha-123"},
             "head": {"sha": "head-sha-456"},
         },
+        "organization": {"login": "test-org"},
     }
 
 
@@ -274,6 +275,7 @@ class TestCheckRunValidatorWebhookProcessor:
                     "base": {"sha": "base-sha-123"},
                     "head": {"sha": "head-sha-456"},
                 },
+                "organization": {"login": "test-org"},
             }
 
             async with event_context("test_event") as event:

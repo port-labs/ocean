@@ -130,7 +130,7 @@ class TestFileValidation:
         file_resource_config: GithubFileResourceConfig,
     ) -> None:
         """Test FileValidationService.validate_pull_request_files method."""
-        validation_service = FileValidationService()
+        validation_service = FileValidationService("test-org")
 
         file_object = FileObject(
             content="",
@@ -173,7 +173,7 @@ class TestFileValidation:
         file_resource_config: GithubFileResourceConfig,
     ) -> None:
         """Test FileValidationService.validate_pull_request_files method with validation errors."""
-        validation_service = FileValidationService()
+        validation_service = FileValidationService("test-org")
 
         file_object = FileObject(
             content="",
@@ -216,7 +216,7 @@ class TestFileValidation:
         file_resource_config: GithubFileResourceConfig,
     ) -> None:
         """Test FileValidationService.validate_pull_request_files method handles exceptions."""
-        validation_service = FileValidationService()
+        validation_service = FileValidationService("test-org")
 
         file_object = FileObject(
             content="",

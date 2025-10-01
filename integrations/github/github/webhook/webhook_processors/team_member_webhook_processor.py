@@ -69,7 +69,9 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
                 deleted_raw_results=[],
             )
 
-        graphql_client = create_github_client(GithubClientType.GRAPHQL)
+        graphql_client = create_github_client(
+            payload["organization"]["login"], GithubClientType.GRAPHQL
+        )
         exporter = GraphQLTeamWithMembersExporter(graphql_client)
 
         data_to_upsert = await exporter.get_resource(
@@ -85,4 +87,6 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def validate_payload(self, payload: EventPayload) -> bool:
         if not {"action", "team", "member"} <= payload.keys():
             return False
-        return bool(payload["team"].get("slug"))
+        return await super().validate_payload(payload) and bool(
+            payload["team"].get("slug")
+        )

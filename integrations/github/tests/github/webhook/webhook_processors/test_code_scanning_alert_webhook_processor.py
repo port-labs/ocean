@@ -179,6 +179,7 @@ class TestCodeScanningAlertWebhookProcessor:
             "action": action,
             "alert": alert_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         # Mock the RestCodeScanningAlertExporter
@@ -261,6 +262,7 @@ class TestCodeScanningAlertWebhookProcessor:
             "action": action,
             "alert": alert_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         result = await code_scanning_webhook_processor.handle_event(

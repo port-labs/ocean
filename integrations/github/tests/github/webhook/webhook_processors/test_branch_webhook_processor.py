@@ -69,7 +69,7 @@ class TestBranchWebhookProcessor:
         result: bool,
     ) -> None:
         mock_request = AsyncMock()
-        payload = {"ref": ref}
+        payload = {"ref": ref, "organization": {"login": "test-org"}}
         if ref_type:
             payload["ref_type"] = ref_type
 
@@ -124,6 +124,7 @@ class TestBranchWebhookProcessor:
             "ref": branch_ref,
             "ref_type": "branch",
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         branch_webhook_processor._event_type = event_type

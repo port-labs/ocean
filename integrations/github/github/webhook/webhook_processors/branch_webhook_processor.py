@@ -55,7 +55,7 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[data_to_delete]
             )
 
-        rest_client = create_github_client()
+        rest_client = create_github_client(payload["organization"]["login"])
         exporter = RestBranchExporter(rest_client)
         selector = cast(GithubBranchConfig, resource_config).selector
 

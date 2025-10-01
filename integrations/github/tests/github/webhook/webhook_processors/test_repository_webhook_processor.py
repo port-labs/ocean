@@ -98,7 +98,7 @@ class TestRepositoryWebhookProcessor:
             "description": "Test repository",
         }
 
-        payload = {"action": action, "repository": repo_data}
+        payload = {"action": action, "repository": repo_data, "organization": {"login": "test-org"}}
 
         if is_deletion:
             result = await repository_webhook_processor.handle_event(
@@ -152,7 +152,7 @@ class TestRepositoryWebhookProcessor:
 
         resource_config.selector.include = include_relationships
 
-        payload = {"action": "created", "repository": repo_data}
+        payload = {"action": "created", "repository": repo_data, "organization": {"login": "test-org"}}
 
         # Mock the RepositoryExporter
         mock_exporter = AsyncMock()

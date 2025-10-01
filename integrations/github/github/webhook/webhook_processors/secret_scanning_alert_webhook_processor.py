@@ -71,7 +71,7 @@ class SecretScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
             f"The action {action} is allowed for secret scanning alert {alert_number} in {repo_name}. Updating resource."
         )
 
-        rest_client = create_github_client()
+        rest_client = create_github_client(payload["organization"]["login"])
         exporter = RestSecretScanningAlertExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(

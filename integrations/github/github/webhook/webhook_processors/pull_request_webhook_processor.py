@@ -52,7 +52,9 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 deleted_raw_results=[pull_request],
             )
 
-        exporter = RestPullRequestExporter(create_github_client())
+        exporter = RestPullRequestExporter(
+            create_github_client(payload["organization"]["login"])
+        )
         data_to_upsert = await exporter.get_resource(
             SinglePullRequestOptions(repo_name=repo_name, pr_number=number)
         )

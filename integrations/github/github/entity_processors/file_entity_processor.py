@@ -14,11 +14,15 @@ class FileEntityProcessor(JQEntityProcessor):
     prefix = FILE_PROPERTY_PREFIX
 
     async def _get_file_content(
-        self, repo_name: str, file_path: str, branch: Optional[str] = None
+        self,
+        github_organization: str,
+        repo_name: str,
+        file_path: str,
+        branch: Optional[str] = None,
     ) -> Optional[Any]:
         """Helper method to fetch and process file content."""
 
-        rest_client = create_github_client()
+        rest_client = create_github_client(github_organization)
         exporter = RestFileExporter(rest_client)
 
         file_content_response = await exporter.get_resource(
@@ -53,6 +57,7 @@ class FileEntityProcessor(JQEntityProcessor):
         is_monorepo = "repository" in data
 
         repo_name = repo_data["name"]
+        github_organization = repo_data["owner"]["login"]
         ref = data["branch"] if is_monorepo else repo_data.get("default_branch")
 
         base_pattern = pattern.replace(self.prefix, "")
@@ -68,4 +73,6 @@ class FileEntityProcessor(JQEntityProcessor):
             f"Searching for file {file_path} in Repository {repo_name}, ref {ref}"
         )
 
-        return await self._get_file_content(repo_name, file_path, ref)
+        return await self._get_file_content(
+            github_organization, repo_name, file_path, ref
+        )

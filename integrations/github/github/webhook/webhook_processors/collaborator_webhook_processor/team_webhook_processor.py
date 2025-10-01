@@ -58,7 +58,9 @@ class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        graphql_client = create_github_client(client_type=GithubClientType.GRAPHQL)
+        graphql_client = create_github_client(
+            payload["organization"]["login"], client_type=GithubClientType.GRAPHQL
+        )
         team_exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
         team_data = await team_exporter.get_resource(SingleTeamOptions(slug=team_slug))
 

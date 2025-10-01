@@ -91,6 +91,7 @@ class TestPullRequestWebhookProcessor:
                 "action": action,
                 "pull_request": {"number": 101},
                 "repository": {"name": "test-repo"},
+                "organization": {"login": "test-org"},
             }
             assert (
                 await pull_request_webhook_processor._validate_payload(payload) is True
@@ -140,7 +141,7 @@ class TestPullRequestWebhookProcessor:
             "state": "open" if action == "opened" else "closed",
         }
         repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
-        payload = {"action": action, "pull_request": pr_data, "repository": repo_data}
+        payload = {"action": action, "pull_request": pr_data, "repository": repo_data, "organization": {"login": "test-org"}}
 
         updated_pr_data = {**pr_data, "additional_data": "from_api"}
         mock_exporter = AsyncMock()

@@ -105,7 +105,7 @@ class TestUserWebhookProcessor:
             "type": "User",
         }
 
-        payload = {"action": action, "membership": {"user": user_data}}
+        payload = {"action": action, "membership": {"user": user_data}, "organization": {"login": "test-org"}}
 
         if is_deletion:
             result = await user_webhook_processor.handle_event(payload, resource_config)
@@ -142,6 +142,7 @@ class TestUserWebhookProcessor:
                 {
                     "action": USER_UPSERT_EVENTS[0],
                     "membership": {"user": {"login": "user1"}},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -149,6 +150,7 @@ class TestUserWebhookProcessor:
                 {
                     "action": USER_DELETE_EVENTS[0],
                     "membership": {"user": {"login": "user2"}},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),

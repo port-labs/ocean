@@ -52,7 +52,9 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
                 deleted_raw_results=[issue],
             )
 
-        exporter = RestIssueExporter(create_github_client())
+        exporter = RestIssueExporter(
+            create_github_client(payload["organization"]["login"])
+        )
         data_to_upsert = await exporter.get_resource(
             SingleIssueOptions(repo_name=repo_name, issue_number=issue_number)
         )

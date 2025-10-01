@@ -74,7 +74,7 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        rest_client = create_github_client()
+        rest_client = create_github_client(payload["organization"]["login"])
         team_exporter = RestTeamExporter(rest_client)
 
         repositories = []

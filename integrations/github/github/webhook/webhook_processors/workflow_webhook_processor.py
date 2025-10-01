@@ -51,7 +51,7 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         repo_name = repo["name"]
 
-        rest_client = create_github_client()
+        rest_client = create_github_client(payload["organization"]["login"])
         commit_diff = await fetch_commit_diff(
             rest_client, repo_name, payload["before"], payload["after"]
         )

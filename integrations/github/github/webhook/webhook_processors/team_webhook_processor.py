@@ -57,12 +57,17 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[team]
             )
 
+        github_organization = payload["organization"]["login"]
         exporter: AbstractGithubExporter[Any]
         if selector.members:
-            graphql_client = create_github_client(GithubClientType.GRAPHQL)
+            graphql_client = create_github_client(
+                github_organization, GithubClientType.GRAPHQL
+            )
             exporter = GraphQLTeamWithMembersExporter(graphql_client)
         else:
-            rest_client = create_github_client(GithubClientType.REST)
+            rest_client = create_github_client(
+                github_organization, GithubClientType.REST
+            )
             exporter = RestTeamExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
@@ -78,4 +83,6 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
         if not {"action", "team"} <= payload.keys():
             return False
 
-        return bool(payload["team"].get("slug"))
+        return await super().validate_payload(payload) and bool(
+            payload["team"].get("slug")
+        )

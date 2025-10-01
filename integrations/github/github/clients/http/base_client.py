@@ -18,12 +18,14 @@ if TYPE_CHECKING:
     )
 
 
-class AbstractGithubClient(ABC):
+class BaseGithubClient(ABC):
+    """Base GitHub client where organization may be optional."""
+
     def __init__(
         self,
-        organization: str,
         github_host: str,
         authenticator: "AbstractGitHubAuthenticator",
+        organization: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         self.organization = organization
@@ -172,3 +174,22 @@ class AbstractGithubClient(ABC):
             Lists of items from paginated responses
         """
         pass
+
+
+class AbstractGithubClient(BaseGithubClient):
+    """Abstract GitHub client that *requires* an organization."""
+
+    organization: str
+
+    def __init__(
+        self,
+        github_host: str,
+        authenticator: "AbstractGitHubAuthenticator",
+        organization: Optional[str],
+        **kwargs: Any,
+    ) -> None:
+        if organization is None:
+            raise ValueError("organization must not be None for AbstractGithubClient")
+
+        super().__init__(github_host, authenticator, organization, **kwargs)
+        self.organization = organization

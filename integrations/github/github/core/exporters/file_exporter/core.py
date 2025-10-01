@@ -224,7 +224,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         # Each file blob can be up to 100KB; 7 files keeps payloads safely under ~700KB,
         # reducing risk of GraphQL timeouts while improving efficiency over smaller batches.
 
-        client = create_github_client(client_type=GithubClientType.GRAPHQL)
+        client = create_github_client(
+            github_organization=self.client.organization,
+            client_type=GithubClientType.GRAPHQL,
+        )
 
         grouped: Dict[Tuple[str, str], List[Dict[str, Any]]] = defaultdict(list)
         for entry in matched_file_entries:

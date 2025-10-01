@@ -28,6 +28,7 @@ class GithubClientType(StrEnum):
 class ObjectKind(StrEnum):
     """Enum for GitHub resource kinds."""
 
+    ORGANIZATION = "organization"
     REPOSITORY = "repository"
     FOLDER = "folder"
     USER = "user"

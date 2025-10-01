@@ -112,6 +112,7 @@ class TestWorkflowRunWebhookProcessor:
             "action": action,
             "repository": repo_data,
             "workflow_run": workflow_run,
+            "organization": {"login": "test-org"},
         }
 
         if is_deletion:

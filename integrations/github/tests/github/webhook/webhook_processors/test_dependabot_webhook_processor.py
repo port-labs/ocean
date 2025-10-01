@@ -157,6 +157,7 @@ class TestDependabotAlertWebhookProcessor:
             "action": "created",
             "alert": alert_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         # Mock the RestDependabotAlertExporter
@@ -234,6 +235,7 @@ class TestDependabotAlertWebhookProcessor:
             "action": "dismissed",
             "alert": alert_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         result = await dependabot_webhook_processor.handle_event(

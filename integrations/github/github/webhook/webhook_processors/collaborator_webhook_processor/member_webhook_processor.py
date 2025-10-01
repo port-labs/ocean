@@ -60,7 +60,7 @@ class CollaboratorMemberWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
         logger.info(f"Creating REST client and exporter for collaborator {username}")
-        rest_client = create_github_client()
+        rest_client = create_github_client(payload["organization"]["login"])
         exporter = RestCollaboratorExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
