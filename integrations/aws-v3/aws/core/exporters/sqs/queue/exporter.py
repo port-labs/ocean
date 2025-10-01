@@ -45,7 +45,6 @@ class SqsQueueExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            # Use the list_queues paginator
             paginator = proxy.get_paginator("list_queues", "QueueUrls")
 
             async for queue_urls in paginator.paginate():
