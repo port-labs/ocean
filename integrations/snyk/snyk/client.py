@@ -2,7 +2,7 @@ from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator
 
 import httpx
-from httpx import Timeout
+from httpx import URL, Timeout
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
@@ -21,6 +21,12 @@ PAGE_SIZE = 100
 
 
 class SnykClient:
+    _IGNORED_ERRORS = {
+        404: "Resource not found",
+        403: "Request forbidden",
+        401: "Request unauthorized",
+    }
+
     def __init__(
         self,
         token: str,
@@ -69,6 +75,13 @@ class SnykClient:
                 return response.json()
 
             except httpx.HTTPStatusError as e:
+                response_status = e.response.status_code
+                if response_status in self._IGNORED_ERRORS:
+                    log_message = self._IGNORED_ERRORS[response_status]
+                    logger.warning(
+                        f"{log_message}: {e.response.url}; Error message: {e.response.text}"
+                    )
+                    return {}
                 logger.error(
                     f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
                     f"version: {version}, json: {json_data}. "
@@ -93,8 +106,14 @@ class SnykClient:
                 yield data.get("data", [])
 
                 # Check if there is a "next" URL in the links object
-                url_path = data.get("links", {}).get("next", "").replace("/rest", "")
-                query_params = {}  # Reset query params for the next iteration
+                next_url = data.get("links", {}).get("next", "")
+                if next_url:
+                    parsed_url = URL(next_url)
+                    url_path = parsed_url.raw_path.decode().replace("/rest", "")
+                    query_params = dict(parsed_url.params)
+                else:
+                    url_path = ""
+                    query_params = {}
             except httpx.HTTPStatusError as e:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
@@ -120,7 +139,6 @@ class SnykClient:
         return issues
 
     async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-
         all_organizations = await self.get_organizations_in_groups()
         for org in all_organizations:
             logger.info(f"Fetching paginated issues for organization: {org['id']}")
@@ -172,7 +190,6 @@ class SnykClient:
             async for projects in self._get_paginated_resources(
                 url_path=url, query_params=query_params
             ):
-
                 event.attributes.setdefault(CacheKeys.PROJECT, []).extend(projects)
 
                 projects_to_yield = self._get_projects_by_target(

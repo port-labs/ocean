@@ -39,7 +39,7 @@ For production deployments, we recommend using our dedicated cloud provider repo
 
 :::info Integration Configuration
 The generic configuration for integrations can be found in
-the [Integration Configuration](../develop-an-integration/integration-configuration.md) guide.
+the [Integration Configuration](../developing-an-integration/testing-the-integration.md#configuration-mapping) guide.
 :::
 
 :::info Event Listener

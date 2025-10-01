@@ -29,7 +29,7 @@ or
 
 ## Features
 
-The [feature](../../develop-an-integration/integration-spec-and-default-resources.md#features---integration-feature-specification) specified in the user agent header allows Ocean to distinguish between entities created by different features of the same
+The [feature](../../developing-an-integration/defining-configuration-files#features-specification) specified in the user agent header allows Ocean to distinguish between entities created by different features of the same
 integration.
 
 For example, if an integration creates entities using both the `exporter` feature and the `gitops` feature,

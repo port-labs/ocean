@@ -20,7 +20,7 @@ class DiskCacheProvider(CacheProvider):
 
     def __init__(self, cache_dir: str | None = None) -> None:
         if cache_dir is None:
-            cache_dir = ".ocean_cache"
+            cache_dir = "/tmp/ocean/.ocean_cache"
         self._cache_dir = Path(cache_dir)
         self._cache_dir.mkdir(parents=True, exist_ok=True)
 

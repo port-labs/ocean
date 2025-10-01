@@ -14,8 +14,8 @@ from port_ocean.context.event import event_context, EventType
 
 
 @pytest.mark.asyncio
-async def test_delete_diff_no_deleted_entities() -> None:
-    applier = HttpEntitiesStateApplier(Mock())
+async def test_delete_diff_no_deleted_entities(mock_context: PortOceanContext) -> None:
+    applier = HttpEntitiesStateApplier(mock_context)
     entities = EntityDiff(
         before=[Entity(identifier="1", blueprint="test")],
         after=[Entity(identifier="1", blueprint="test")],
@@ -228,3 +228,61 @@ async def test_using_create_entity_helper(
 
         mock_upsert.assert_called_once()
         assert len(result) == 1
+
+
+@pytest.mark.asyncio
+async def test_upsert_groups_entities_by_blueprint(
+    mock_ocean: Ocean,
+    mock_context: PortOceanContext,
+    mock_port_app_config: PortAppConfig,
+) -> None:
+    """Test that upsert groups entities by blueprint and calls upsert_entities_in_batches separately for each group."""
+    applier = HttpEntitiesStateApplier(mock_context)
+
+    # Create entities with different blueprints
+    service_entity_1 = Entity(identifier="service_1", blueprint="service")
+    service_entity_2 = Entity(identifier="service_2", blueprint="service")
+    deployment_entity = Entity(identifier="deployment_1", blueprint="deployment")
+    user_entity = Entity(identifier="user_1", blueprint="user")
+
+    entities = [service_entity_1, deployment_entity, service_entity_2, user_entity]
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = mock_port_app_config
+
+        mock_ocean.config.upsert_entities_batch_max_length = 100
+        mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1000
+
+        # Mock the upsert_entities_in_batches method to track calls
+        mock_upsert = AsyncMock()
+        mock_upsert.side_effect = [
+            [
+                (True, service_entity_1),
+                (True, service_entity_2),
+            ],  # First call for "service" blueprint
+            [(True, deployment_entity)],  # Second call for "deployment" blueprint
+            [(True, user_entity)],  # Third call for "user" blueprint
+        ]
+        setattr(mock_ocean.port_client, "upsert_entities_in_batches", mock_upsert)
+
+        result = await applier.upsert(entities, UserAgentType.exporter)
+
+        assert mock_upsert.call_count == 3
+
+        assert len(result) == 4
+
+        calls = mock_upsert.call_args_list
+
+        called_entities_groups = [call[0][0] for call in calls]
+        blueprint_counts = {}
+        for entities_group in called_entities_groups:
+            blueprint = entities_group[0].blueprint
+            for entity in entities_group:
+                assert entity.blueprint == blueprint
+            blueprint_counts[blueprint] = len(entities_group)
+
+        # Verify the expected blueprint counts
+        assert blueprint_counts["service"] == 2
+        assert blueprint_counts["deployment"] == 1
+        assert blueprint_counts["user"] == 1
+        assert len(blueprint_counts) == 3

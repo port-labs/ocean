@@ -3,6 +3,7 @@ type: datadog
 description: Datadog integration for Port Ocean
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/apm-alerting/datadog
 icon: Datadog
+recommendedInstallationMethod: Saas
 features:
   - type: exporter
     section: APM & Alerting

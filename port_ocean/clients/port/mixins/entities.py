@@ -24,6 +24,7 @@ from port_ocean.helpers.metric.metric import MetricPhase, MetricType
 ENTITIES_BULK_SAMPLES_SIZE = 10
 ENTITIES_BULK_ESTIMATED_SIZE_MULTIPLIER = 1.5
 ENTITIES_BULK_MINIMUM_BATCH_SIZE = 1
+ENTITIES_BULK_UPSERT_CONCURRENCY = 5
 
 
 class EntityClientMixin:
@@ -199,7 +200,8 @@ class EntityClientMixin:
         :return: httpx.HTTPStatusError if there was an HTTP error and should_raise is False
         """
         validation_only = request_options["validation_only"]
-        async with self.semaphore:
+        bulk_semaphore = asyncio.Semaphore(ENTITIES_BULK_UPSERT_CONCURRENCY)
+        async with bulk_semaphore:
             logger.debug(
                 f"{'Validating' if validation_only else 'Upserting'} {len(entities)} of blueprint: {blueprint}"
             )
@@ -378,7 +380,7 @@ class EntityClientMixin:
             ):
                 if should_raise:
                     raise bulk_result
-                # If should_raise is False, retry batch in sequential order as a fallback only for 413 errors
+                # If should_raise is False, retry bulk in sequential order as a fallback only for 413 errors
                 if (
                     isinstance(bulk_result, httpx.HTTPStatusError)
                     and bulk_result.response.status_code == 413
@@ -397,6 +399,15 @@ class EntityClientMixin:
                             self._reduce_entity(entity),
                         )
                         entities_results.append(failed_result)
+                        ocean.metrics.inc_metric(
+                            name=MetricType.OBJECT_COUNT_NAME,
+                            labels=[
+                                ocean.metrics.current_resource_kind(),
+                                MetricPhase.LOAD,
+                                MetricPhase.LoadResult.FAILED,
+                            ],
+                            value=1,
+                        )
             elif isinstance(bulk_result, list):
                 for status, entity in bulk_result:
                     if (
@@ -472,38 +483,56 @@ class EntityClientMixin:
         query: dict[Any, Any] | None = None,
         parameters_to_include: list[str] | None = None,
     ) -> list[Entity]:
-        default_query = {
-            "combinator": "and",
-            "rules": [
-                {
-                    "property": "$datasource",
-                    "operator": "contains",
-                    "value": f"port-ocean/{self.auth.integration_type}/",
-                },
-                {
-                    "property": "$datasource",
-                    "operator": "contains",
-                    "value": f"/{self.auth.integration_identifier}/{user_agent_type.value}",
-                },
-            ],
-        }
-
         if query is None:
-            query = default_query
-        elif query.get("rules"):
-            query["rules"].append(default_query)
+            datasource_prefix = f"port-ocean/{self.auth.integration_type}/"
+            datasource_suffix = (
+                f"/{self.auth.integration_identifier}/{user_agent_type.value}"
+            )
+            logger.info(
+                f"Searching entities with datasource prefix: {datasource_prefix} and suffix: {datasource_suffix}"
+            )
 
-        logger.info(f"Searching entities with query {query}")
-        response = await self.client.post(
-            f"{self.auth.api_url}/entities/search",
-            json=query,
-            headers=await self.auth.headers(user_agent_type),
-            params={
-                "exclude_calculated_properties": "true",
-                "include": parameters_to_include or ["blueprint", "identifier"],
-            },
-            extensions={"retryable": True},
-        )
+            response = await self.client.post(
+                f"{self.auth.api_url}/blueprints/entities/datasource-entities",
+                json={
+                    "datasource_prefix": datasource_prefix,
+                    "datasource_suffix": datasource_suffix,
+                },
+                headers=await self.auth.headers(user_agent_type),
+                extensions={"retryable": True},
+            )
+        else:
+            default_query = {
+                "combinator": "and",
+                "rules": [
+                    {
+                        "property": "$datasource",
+                        "operator": "contains",
+                        "value": f"port-ocean/{self.auth.integration_type}/",
+                    },
+                    {
+                        "property": "$datasource",
+                        "operator": "contains",
+                        "value": f"/{self.auth.integration_identifier}/{user_agent_type.value}",
+                    },
+                ],
+            }
+
+            if query.get("rules"):
+                query["rules"].extend(default_query["rules"])
+
+            logger.info(f"Searching entities with custom query: {query}")
+            response = await self.client.post(
+                f"{self.auth.api_url}/entities/search",
+                json=query,
+                headers=await self.auth.headers(user_agent_type),
+                params={
+                    "exclude_calculated_properties": "true",
+                    "include": parameters_to_include or ["blueprint", "identifier"],
+                },
+                extensions={"retryable": True},
+            )
+
         handle_port_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
 

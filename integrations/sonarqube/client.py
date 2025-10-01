@@ -121,6 +121,11 @@ class SonarQubeClient:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
+            if e.response.status_code == 404:
+                logger.warning(
+                    f"Resource not found for endpoint {endpoint} with query params {query_params}: {e.response.text}"
+                )
+                return {}
             raise
 
     async def _send_paginated_request(

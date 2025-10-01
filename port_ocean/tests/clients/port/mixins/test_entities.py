@@ -1,11 +1,11 @@
-from typing import Any, List, Generator
-from unittest.mock import MagicMock, patch, AsyncMock
+from typing import Any, Generator, List
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from httpx import ReadTimeout
 
 from port_ocean.clients.port.mixins.entities import EntityClientMixin
 from port_ocean.core.models import Entity
-from httpx import ReadTimeout
 
 # Mock the ocean context at module level
 pytestmark = pytest.mark.usefixtures("mock_ocean")
@@ -172,3 +172,44 @@ async def test_batch_upsert_entities_read_timeout_should_raise_true(
             await entity_client.upsert_entities_in_batches(
                 entities=all_entities, request_options=MagicMock(), should_raise=True
             )
+
+
+async def test_search_entities_uses_datasource_route_when_query_is_none(
+    entity_client: EntityClientMixin,
+) -> None:
+    """Test that search_entities uses datasource route when query is None"""
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"entities": []}
+    mock_response.is_error = False
+    mock_response.status_code = 200
+    mock_response.headers = {}
+    entity_client.client.post = AsyncMock(return_value=mock_response)  # type: ignore
+    entity_client.auth.headers = AsyncMock(  # type: ignore
+        return_value={"Authorization": "Bearer test"}
+    )
+
+    entity_client.auth.integration_type = "test-integration"
+    entity_client.auth.integration_identifier = "test-identifier"
+    entity_client.auth.api_url = "https://api.getport.io/v1"
+
+    mock_user_agent_type = MagicMock()
+    mock_user_agent_type.value = "sync"
+
+    await entity_client.search_entities(
+        user_agent_type=mock_user_agent_type,
+        query=None,
+    )
+
+    entity_client.client.post.assert_called_once()
+    call_args = entity_client.client.post.call_args
+
+    assert (
+        call_args[0][0]
+        == "https://api.getport.io/v1/blueprints/entities/datasource-entities"
+    )
+
+    expected_json = {
+        "datasource_prefix": "port-ocean/test-integration/",
+        "datasource_suffix": "/test-identifier/sync",
+    }
+    assert call_args[1]["json"] == expected_json

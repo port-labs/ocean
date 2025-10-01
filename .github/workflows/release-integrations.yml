@@ -12,7 +12,7 @@ jobs:
       matrix: ${{ steps.prepare-matrix.outputs.INTEGRATIONS_MATRIX }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Prepare matrix
         id: prepare-matrix
@@ -57,7 +57,7 @@ jobs:
         integration: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Prepare Docker images tags
         id: prepare_tags
@@ -77,19 +77,19 @@ jobs:
             dockerfile_path=$folder/../Dockerfile
           fi
           echo "dockerfile_path=$dockerfile_path" >> $GITHUB_OUTPUT
-          # Check if the version is either numeric (e.g. 1.2.3) or has a post suffix (e.g. 1.2.3.post1 or 1.2.3-post1)
-          if [[ "$version" =~ ^[0-9.]+$ || "$version" =~ ^[0-9.]+[.-]post[0-9]+$ ]]; then
-            # Allowed versions: stable and .post suffix → apply latest tag
+          # Check if the version is either numeric (e.g. 1.2.3), has a post suffix (e.g. 1.2.3.post1 or 1.2.3-post1), or is a beta version (e.g. 1.2.3-beta)
+          if [[ "$version" =~ ^[0-9.]+$ || "$version" =~ ^[0-9.]+[.-]post[0-9]+$ || "$version" =~ ^[0-9.]+-beta[0-9]*$ ]]; then
+            # Allowed versions: stable, post-release, and beta → apply latest tag
             tags="ghcr.io/port-labs/port-ocean-$type:$version,ghcr.io/port-labs/port-ocean-$type:latest"
             echo "tags=$tags" >> $GITHUB_OUTPUT
             echo "is_dev_version=false" >> $GITHUB_OUTPUT
-            echo "Version is stable or post-release. Building with 'latest' tag."
+            echo "Version is stable, post-release, or beta. Building with 'latest' tag."
           else
-            # Other versions like beta, rc, etc. → skip latest tag
+            # Other versions like rc, alpha, etc. → skip latest tag
             tags="ghcr.io/port-labs/port-ocean-$type:$version"
             echo "tags=$tags" >> $GITHUB_OUTPUT
             echo "is_dev_version=true" >> $GITHUB_OUTPUT
-            echo "Version is pre-release. Building without 'latest' tag."
+            echo "Version is pre-release (excluding beta). Building without 'latest' tag."
           fi
 
       - name: Build Docker Image
@@ -112,7 +112,7 @@ jobs:
     needs: release-integration
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Configure AWS Credentials 🔒
         id: aws-credentials
         uses: aws-actions/configure-aws-credentials@v4

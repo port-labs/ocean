@@ -113,11 +113,12 @@ class TestLaunchDarklyAbstractWebhookProcessor:
 
         mock_request = create_ld_mock_request(b"{}", {})
 
+        ocean.integration_config["webhook_secret"] = "test-secret"
         result = await ld_processor._verify_webhook_signature(mock_request)
         assert result is False
 
     async def test_verify_webhook_signature_valid(
-        self, ld_processor: MockLaunchDarklyAbstractProcessor, mock_ocean_context: Any
+        self, mock_ocean_context: Any, ld_processor: MockLaunchDarklyAbstractProcessor
     ) -> None:
         """Test signature verification with a valid signature."""
         # Set up the test
@@ -125,6 +126,7 @@ class TestLaunchDarklyAbstractWebhookProcessor:
         payload = {"test": "data"}
         payload_bytes = json.dumps(payload).encode("utf-8")
 
+        ocean.integration_config["webhook_secret"] = "test-secret"
         valid_signature = generate_ld_signature(
             ocean.integration_config["webhook_secret"], payload
         )
@@ -143,6 +145,7 @@ class TestLaunchDarklyAbstractWebhookProcessor:
         payload = {"test": "data"}
         payload_bytes = json.dumps(payload).encode("utf-8")
 
+        ocean.integration_config["webhook_secret"] = "test-secret"
         invalid_signature = "invalid-signature"
         headers = {"x-ld-signature": invalid_signature}
 

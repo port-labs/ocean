@@ -1,0 +1,81 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: AWS::Account::Info
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Id
+          title: .Properties.Name
+          blueprint: '"awsAccount"'
+  - kind: AWS::Organizations::Account
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Id
+          title: .Properties.Name
+          blueprint: '"awsOrganizationAccount"'
+          properties:
+            arn: .Properties.Arn
+            email: .Properties.Email
+            status: .Properties.Status
+            joinedTimestamp: .Properties.JoinedTimestamp
+            joinedMethod: .Properties.JoinedMethod
+  - kind: AWS::S3::Bucket
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Arn
+          title: .Properties.BucketName
+          blueprint: '"s3Bucket"'
+          properties:
+            arn: .Properties.Arn
+            region: .Properties.LocationConstraint
+            creationDate: .Properties.CreationDate
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::EC2::Instance
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.InstanceId
+          title: .Properties.InstanceId
+          blueprint: '"ec2Instance"'
+          properties:
+            instanceType: .Properties.InstanceType
+            state: .Properties.State.Name
+            publicIpAddress: .Properties.PublicIpAddress
+            privateIpAddress: .Properties.PrivateIpAddress
+            tags: .Properties.Tags
+            arn: '"arn:aws:ec2:" + .__Region + ":" + .__AccountId + ":instance/" + .Properties.InstanceId'
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::ECS::Cluster
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ClusterArn
+          title: .Properties.ClusterName
+          blueprint: '"ecsCluster"'
+          properties:
+            status: .Properties.Status
+            runningTasksCount: .Properties.RunningTasksCount
+            activeServicesCount: .Properties.ActiveServicesCount
+            pendingTasksCount: .Properties.PendingTasksCount
+            registeredContainerInstancesCount: .Properties.RegisteredContainerInstancesCount
+            capacityProviders: .Properties.CapacityProviders
+            clusterArn: .Properties.ClusterArn
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId

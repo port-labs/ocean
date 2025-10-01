@@ -26,12 +26,12 @@ To start testing your integration, you can use the `ocean sail` command. This co
 and will allow you to test it and verify its interaction and behavior both with the integrated service and Port.
 
 Then proceed with triggering the integration as mentioned in
-the [trigger your integration](/develop-an-integration/trigger-your-integration) guide.
+the [trigger your integration](/developing-an-integration/trigger-your-integration) guide.
 
 ## How can I debug my integration?
 
 To debug your integration follow the steps in
-the [debugging](/develop-an-integration/update-integration-code#debugpy---debug-an-integration) guide.
+the [debugging](/developing-an-integration/testing-the-integration#debug-mode) guide.
 
 ## Is it necessary to publish my integration?
 
@@ -39,7 +39,7 @@ No, publishing your integration is optional. But we highly encourage the communi
 
 ## How can I publish my integration?
 
-To publish your integration, follow the steps in the [publishing](./develop-an-integration/publish-an-integration.md)
+To publish your integration, follow the steps in the [publishing](./developing-an-integration/publishing-your-integration.md)
 guide.
 
 ## How do I remove my integration from Port?
@@ -69,13 +69,13 @@ You can read all about writing an integration with live events in our [Live even
 
 ## My integration is experiencing sluggish performance. Any solutions?
 
-You can read about how to improve your integration's performance in our [Performance](/develop-an-integration/performance) page.
+You can read about how to improve your integration's performance in our [Performance](/developing-an-integration/performance) page.
 
 ## My integration isn't functioning correctly. What should I do?
 
 You should first check the logs of your integration to see if there are any errors. If there are no errors, you try to debug your integration.
 
-You can read about debugging your integration in our [Debugging](/develop-an-integration/update-integration-code#debugpy---debug-an-integration) page.
+You can read about debugging your integration in our [Debugging](/developing-an-integration/testing-the-integration#debug-mode) page.
 
 If you are still experiencing issues, you can contact us at any of the following:
 
@@ -85,7 +85,7 @@ If you are still experiencing issues, you can contact us at any of the following
 
 ## How do I incorporate custom fields into my integration?
 
-Extend the integration configuration by following the steps in the [Integration Configuration](/develop-an-integration/integration-configuration) page.
+Extend the integration configuration by following the steps in the [Integration Configuration](/developing-an-integration/testing-the-integration#configuration-mapping) page.
 
 ## How can I add support GitOps operations in my integration?
 

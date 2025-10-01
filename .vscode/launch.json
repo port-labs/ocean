@@ -128,6 +128,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/aws-v3",
+      "envFile": "${workspaceFolder}/integrations/aws-v3/.env",
+      "justMyCode": false,
+      "name": "Run AWS-v3 integration",
+      "program": "${workspaceFolder}/integrations/aws-v3/debug.py",
+      "python": "${workspaceFolder}/integrations/aws-v3/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/test-integration",
       "envFile": "${workspaceFolder}/integrations/test-integration/.env",
       "justMyCode": true,
@@ -224,6 +235,28 @@
       "name": "Run komodor integration",
       "program": "${workspaceFolder}/integrations/komodor/debug.py",
       "python": "${workspaceFolder}/integrations/komodor/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/checkmarx-one",
+      "envFile": "${workspaceFolder}/integrations/checkmarx-one/.env",
+      "justMyCode": true,
+      "name": "Run checkmarx_one integration",
+      "program": "${workspaceFolder}/integrations/checkmarx-one/debug.py",
+      "python": "${workspaceFolder}/integrations/checkmarx-one/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/aikido",
+      "envFile": "${workspaceFolder}/integrations/aikido/.env",
+      "justMyCode": true,
+      "name": "Run aikido integration",
+      "program": "${workspaceFolder}/integrations/aikido/debug.py",
+      "python": "${workspaceFolder}/integrations/aikido/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     }

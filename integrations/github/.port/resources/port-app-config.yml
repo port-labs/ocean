@@ -15,5 +15,36 @@ resources:
             description: if .description then .description else "" end
             visibility: if .private then "private" else "public" end
             defaultBranch: .default_branch
+            readme: file://README.md
             url: .html_url
             language: if .language then .language else "" end
+  - kind: pull-request
+    selector:
+      query: 'true'
+      state: "open"
+    port:
+      entity:
+        mappings:
+          identifier: ".head.repo.name + (.id|tostring)"
+          title: ".title"
+          blueprint: '"githubPullRequest"'
+          properties:
+            creator: ".user.login"
+            assignees: "[.assignees[].login]"
+            reviewers: "[.requested_reviewers[].login]"
+            status: ".state"
+            closedAt: ".closed_at"
+            updatedAt: ".updated_at"
+            mergedAt: ".merged_at"
+            createdAt: ".created_at"
+            prNumber: ".id"
+            link: ".html_url"
+            leadTimeHours: >-
+                (.created_at as $createdAt | .merged_at as $mergedAt |
+                ($createdAt | sub("\\..*Z$"; "Z") | strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) as $createdTimestamp |
+                ($mergedAt | if . == null then null else sub("\\..*Z$"; "Z") |
+                strptime("%Y-%m-%dT%H:%M:%SZ") | mktime end) as $mergedTimestamp |
+                if $mergedTimestamp == null then null else
+                (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
+          relations:
+            repository: .__repository

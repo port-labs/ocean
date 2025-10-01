@@ -1,21 +1,22 @@
 import os
-from typing import Any, TYPE_CHECKING, Optional, Dict, List, Tuple
-from fastapi import APIRouter
-from port_ocean.exceptions.context import ResourceContextNotFoundError
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
 import prometheus_client
-from httpx import AsyncClient
-from fastapi.responses import PlainTextResponse
-from loguru import logger
-from port_ocean.context import metric_resource, resource
-from prometheus_client import Gauge
 import prometheus_client.openmetrics
 import prometheus_client.openmetrics.exposition
 import prometheus_client.parser
-from prometheus_client import multiprocess
+from fastapi import APIRouter
+from fastapi.responses import PlainTextResponse
+from httpx import AsyncClient
+from loguru import logger
+from prometheus_client import Gauge, multiprocess
+
+from port_ocean.context import metric_resource, resource
+from port_ocean.exceptions.context import ResourceContextNotFoundError
 
 if TYPE_CHECKING:
-    from port_ocean.config.settings import MetricsSettings, IntegrationSettings
     from port_ocean.clients.port.client import PortClient
+    from port_ocean.config.settings import IntegrationSettings, MetricsSettings
 
 
 class MetricPhase:
@@ -61,6 +62,7 @@ class SyncState:
 class MetricResourceKind:
     RECONCILIATION = "__reconciliation__"
     RESYNC = "__resync__"
+    RUNTIME = "__runtime__"
 
 
 # Registry for core and custom metrics
@@ -129,7 +131,7 @@ class Metrics:
         self.load_metrics()
         self._integration_version: Optional[str] = None
         self._ocean_version: Optional[str] = None
-        self.event_id = ""
+        self._event_id = ""
         self.sync_state = SyncState.PENDING
 
     @property
@@ -278,7 +280,7 @@ class Metrics:
         try:
             return metric_resource.metric_resource.metric_resource_kind
         except ResourceContextNotFoundError:
-            return "__runtime__"
+            return MetricResourceKind.RUNTIME
 
     def generate_latest(self) -> str:
         return prometheus_client.openmetrics.exposition.generate_latest(
