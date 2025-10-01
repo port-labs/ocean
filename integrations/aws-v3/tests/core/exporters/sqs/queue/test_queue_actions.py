@@ -270,10 +270,8 @@ class TestSqsQueueActionsMap:
         actions_map = SqsQueueActionsMap()
         assert ListQueuesAction in actions_map.defaults
         assert GetQueueAttributesAction in actions_map.defaults
-        assert GetQueueTagsAction in actions_map.defaults
 
     def test_merge_with_options(self) -> None:
-        """Test that merge works with options."""
+        """Test that merge works with options and includes tag action as optional."""
         actions_map = SqsQueueActionsMap()
-        # For now, there are no optional actions, but this tests the structure
-        assert actions_map.options == []
+        assert actions_map.options == [GetQueueTagsAction]
