@@ -92,9 +92,8 @@ class SqsQueueActionsMap(ActionMap):
 
     defaults: list[Type[Action]] = [
         ListQueuesAction,
-        GetQueueAttributesAction,
-        GetQueueTagsAction,
+        GetQueueAttributesAction
     ]
     options: list[Type[Action]] = [
-        # Add optional actions here if needed in the future
+        GetQueueTagsAction
     ]
