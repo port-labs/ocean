@@ -9,6 +9,7 @@ class ObjectKind(StrEnum):
     ORGANIZATIONS_ACCOUNT = "AWS::Organizations::Account"
     AccountInfo = "AWS::Account::Info"
     RDS_DB_INSTANCE = "AWS::RDS::DBInstance"
+    EKS_CLUSTER = "AWS::EKS::Cluster"
 
 
-SupportedServices = Literal["s3", "ecs", "ec2", "sqs", "organizations", "rds"]
+SupportedServices = Literal["s3", "ecs", "ec2", "sqs", "organizations", "eks", "rds"]
