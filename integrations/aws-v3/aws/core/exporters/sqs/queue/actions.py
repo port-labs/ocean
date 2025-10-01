@@ -9,8 +9,6 @@ class GetQueueAttributesAction(Action):
     """Fetches detailed attributes for SQS queues."""
 
     async def _execute(self, queues: list[str]) -> list[dict[str, Any]]:
-        if not queues:
-            return []
 
         attributes = await asyncio.gather(
             *(self._fetch_queue_attributes(queue) for queue in queues),
