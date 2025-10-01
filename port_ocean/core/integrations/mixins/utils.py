@@ -62,10 +62,16 @@ def _process_path_type_items(
                     # If file doesn't exist, keep the original item
                     processed_result.append(item)
             except (json.JSONDecodeError, IOError, OSError) as e:
-                logger.warning(
-                    f"Failed to read or parse file content for path "
-                    f"{item.get('file', {}).get('content', {}).get('path')}: {e}"
-                )
+                if isinstance(item, dict) and item.get("file") is not None:
+                    content = item["file"].get("content") if isinstance(item["file"].get("content"), dict) else {}
+                    data_path = content.get("path", None)
+                    logger.warning(
+                        f"Failed to read or parse file content for path {data_path}: {e}"
+                    )
+                else:
+                    logger.warning(
+                        f"Failed to read or parse file content for unknown path: {e}. item: {json.dumps(item)}"
+                    )
                 # Keep the original item if there's an error
                 processed_result.append(item)
         else:
