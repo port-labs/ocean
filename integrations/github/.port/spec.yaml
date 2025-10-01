@@ -29,7 +29,7 @@ configurations:
     default: https://api.github.com
     type: url
     description: For Github Enterprise users, if Github url is not passed, the default Github API "api.github.com" will be used.
-  - name: githubOrganizations
+  - name: githubOrganization
     required: false
     type: string
     description: GitHub organization name (optional - if not provided, will sync all organizations the personal access token user is a member of)
