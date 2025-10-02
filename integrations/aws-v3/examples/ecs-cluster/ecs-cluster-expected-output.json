@@ -1,0 +1,31 @@
+{
+  "identifier": "arn:aws:ecs:us-west-2:123456789012:cluster/my-production-cluster",
+  "title": "my-production-cluster",
+  "blueprint": "ecsCluster",
+  "properties": {
+    "title": "my-production-cluster",
+    "status": "ACTIVE",
+    "runningTasksCount": 12,
+    "activeServicesCount": 5,
+    "pendingTasksCount": 2,
+    "registeredContainerInstancesCount": 8,
+    "capacityProviders": [
+      "FARGATE",
+      "FARGATE_SPOT"
+    ],
+    "tags": [
+      {
+        "key": "Environment",
+        "value": "production"
+      },
+      {
+        "key": "Team",
+        "value": "platform"
+      },
+      {
+        "key": "CostCenter",
+        "value": "engineering"
+      }
+    ]
+  }
+}

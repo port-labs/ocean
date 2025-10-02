@@ -1,5 +1,5 @@
 from typing import Literal, Any, Type, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers import APIPortAppConfig, JQEntityProcessor
@@ -41,6 +41,11 @@ class GitlabMemberSelector(Selector):
         alias="includeBotMembers",
         default=False,
         description="If set to false, bots will be filtered out from the members list. Default value is false",
+    )
+    include_inherited_members: bool = Field(
+        alias="includeInheritedMembers",
+        default=False,
+        description="If set to true, the integration will include inherited members in the group members list. Default value is false",
     )
 
 
@@ -139,7 +144,41 @@ class GitLabFoldersResourceConfig(ResourceConfig):
     kind: Literal["folder"]
 
 
+class GitlabVisibilityConfig(BaseModel):
+    use_min_access_level: bool = Field(
+        alias="useMinAccessLevel",
+        default=True,
+        description="If true, apply min_access_level filtering. If false, include all accessible resources without filtering",
+    )
+    min_access_level: int = Field(
+        alias="minAccessLevel",
+        default=30,
+        description="Minimum access level required (10=Guest, 20=Reporter, 30=Developer, 40=Maintainer, 50=Owner)",
+    )
+
+    @validator("min_access_level")
+    def validate_access_level(cls, value: int) -> int:
+        """Validate that min_access_level is a valid GitLab access level."""
+        valid_levels = [
+            10,
+            20,
+            30,
+            40,
+            50,
+        ]  # Guest, Reporter, Developer, Maintainer, Owner
+        if value not in valid_levels:
+            raise ValueError(
+                f"min_access_level must be one of: {valid_levels} (10=Guest, 20=Reporter, 30=Developer, 40=Maintainer, 50=Owner)"
+            )
+        return value
+
+
 class GitlabPortAppConfig(PortAppConfig):
+    visibility: GitlabVisibilityConfig = Field(
+        default_factory=GitlabVisibilityConfig,
+        alias="visibility",
+        description="Configuration for resource visibility and access control",
+    )
     resources: list[
         ProjectResourceConfig
         | GitlabGroupWithMembersResourceConfig

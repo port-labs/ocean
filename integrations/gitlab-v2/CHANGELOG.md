@@ -7,6 +7,96 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.35 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.2.34 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.2.33 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.2.32 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 0.2.31 (2025-09-25)
+
+
+### Improvements
+
+- You can now choose to include inherited members during ingestion by using the `includeInheritedMembers` selector.
+
+
+## 0.2.30 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.2.29 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.2.28 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
+## 0.2.27 (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
+## 0.2.26 (2025-09-05)
+
+
+### Improvements
+
+- Enrich pipelines with project data when resyncing pipelines.
+
+
+## 0.2.25 (2025-08-31)
+
+
+### Features
+
+- Added configurable access control with `GitlabVisibilityConfig` allowing configuration of GitLab access levels
+- Replaced hardcoded `owned` parameter with flexible `params` system
+- Removed hardcoded `DEFAULT_MIN_ACCESS_LEVEL = 30`
+
+
 ## 0.2.24 (2025-08-28)
 
 

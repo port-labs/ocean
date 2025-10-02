@@ -1,0 +1,48 @@
+[
+  {
+    "identifier": "s3Bucket",
+    "title": "S3 Bucket",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the bucket"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "The AWS region where the bucket is located"
+        },
+        "creationDate": {
+          "type": "string",
+          "title": "Creation Date",
+          "description": "The date when the bucket was created",
+          "format": "date-time"
+        },
+        "encryption": {
+          "type": "object",
+          "title": "Encryption",
+          "description": "The encryption configuration for the bucket"
+        },
+        "publicAccessBlockConfiguration": {
+          "type": "object",
+          "title": "Public Access Block Configuration",
+          "description": "The public access block configuration for the bucket"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the bucket",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "calculationProperties": {},
+    "relations": {}
+  }
+]

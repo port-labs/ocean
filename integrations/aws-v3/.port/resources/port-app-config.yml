@@ -1,56 +1,100 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
 resources:
-  - kind: AWS::S3::Bucket
+  - kind: AWS::Account::Info
     selector:
       query: 'true'
-      useGetResourceAPI: 'true'
     port:
       entity:
         mappings:
-          identifier: .Identifier
-          title: .Identifier
-          blueprint: '"cloudResource"'
+          identifier: .Properties.Id
+          title: .Properties.Name
+          blueprint: '"awsAccount"'
+  - kind: AWS::Organizations::Account
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Id
+          title: .Properties.Name
+          blueprint: '"awsOrganizationAccount"'
           properties:
-            kind: .__Kind
-            region: >-
-              .Properties.RegionalDomainName |
-              capture(".*\\.(?<region>[^\\.]+)\\.amazonaws\\.com") | .region
-            tags: .Properties.Tags
             arn: .Properties.Arn
-            link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
+            email: .Properties.Email
+            status: .Properties.Status
+            joinedTimestamp: .Properties.JoinedTimestamp
+            joinedMethod: .Properties.JoinedMethod
+  - kind: AWS::S3::Bucket
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Arn
+          title: .Properties.BucketName
+          blueprint: '"s3Bucket"'
+          properties:
+            arn: .Properties.Arn
+            region: .Properties.LocationConstraint
+            creationDate: .Properties.CreationDate
+            tags: .Properties.Tags
           relations:
-            account: .__AccountId
+            account: .__ExtraContext.AccountId
   - kind: AWS::EC2::Instance
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: .Identifier
-          title: .Identifier
-          blueprint: '"cloudResource"'
+          identifier: .Properties.InstanceId
+          title: .Properties.InstanceId
+          blueprint: '"ec2Instance"'
           properties:
-            kind: .__Kind
-            region: .__Region
+            instanceType: .Properties.InstanceType
+            state: .Properties.State.Name
+            publicIpAddress: .Properties.PublicIpAddress
+            privateIpAddress: .Properties.PrivateIpAddress
             tags: .Properties.Tags
-            arn: .Properties.Arn
-            link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
+            arn: '"arn:aws:ec2:" + .__Region + ":" + .__AccountId + ":instance/" + .Properties.InstanceId'
           relations:
-            account: .__AccountId
+            account: .__ExtraContext.AccountId
   - kind: AWS::ECS::Cluster
     selector:
       query: 'true'
-      useGetResourceAPI: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ClusterArn
+          title: .Properties.ClusterName
+          blueprint: '"ecsCluster"'
+          properties:
+            status: .Properties.Status
+            runningTasksCount: .Properties.RunningTasksCount
+            activeServicesCount: .Properties.ActiveServicesCount
+            pendingTasksCount: .Properties.PendingTasksCount
+            registeredContainerInstancesCount: .Properties.RegisteredContainerInstancesCount
+            capacityProviders: .Properties.CapacityProviders
+            clusterArn: .Properties.ClusterArn
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::EKS::Cluster
+    selector:
+      query: 'true'
     port:
       entity:
         mappings:
           identifier: .Properties.Arn
-          title: .Identifier
-          blueprint: '"cloudResource"'
+          title: .Properties.Name
+          blueprint: '"eksCluster"'
           properties:
-            kind: .__Kind
-            region: .__Region
-            tags: .Properties.Tags
             arn: .Properties.Arn
-            link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
+            name: .Properties.Name
+            version: .Properties.Version
+            status: .Properties.Status
+            endpoint: .Properties.Endpoint
+            roleArn: .Properties.RoleArn
+            tags: .Properties.Tags
           relations:
-            account: .__AccountId
+            account: .__ExtraContext.AccountId

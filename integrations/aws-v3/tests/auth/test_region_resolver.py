@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from aiobotocore.session import AioSession
 
 from aws.auth.region_resolver import RegionResolver
-from integration import AWSDescribeResourcesSelector, RegionPolicy
+from integration import AWSResourceSelector, RegionPolicy
 
 
 class TestRegionResolver:
@@ -17,7 +17,7 @@ class TestRegionResolver:
     @pytest.fixture
     def mock_selector(self) -> MagicMock:
         """Create a mock AWSDescribeResourcesSelector."""
-        return MagicMock(spec=AWSDescribeResourcesSelector)
+        return MagicMock(spec=AWSResourceSelector)
 
     @pytest.fixture
     def resolver(
@@ -116,9 +116,7 @@ class TestRegionResolver:
         """Test get_allowed_regions with a real AWSDescribeResourcesSelector instance."""
         # Create a real selector with region policy
         region_policy = RegionPolicy(allow=["us-east-1", "us-west-2"])
-        real_selector = AWSDescribeResourcesSelector(
-            query="test", regionPolicy=region_policy
-        )
+        real_selector = AWSResourceSelector(query="test", regionPolicy=region_policy)
 
         # Update resolver with real selector
         resolver.selector = real_selector

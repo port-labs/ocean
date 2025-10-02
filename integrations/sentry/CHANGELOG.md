@@ -7,6 +7,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.4 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.2.3 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.2.2 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.2.1 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 0.2.0 (2025-09-23)
+
+
+### Bug Fixes
+
+- **Fixed critical rate limit loop issue** that was causing Sentry integration failures
+- **Replaced legacy rate limiting** with robust `SentryRateLimiter` using context manager pattern
+
+### Improvements
+
+- **Enhanced rate limiting** with proactive monitoring of `X-Sentry-Rate-Limit-Remaining` headers
+- **Better error handling** with proper exception hierarchy and HTTP status code management
+- **Centralized API requests** through new `send_api_request()` method
+- **Comprehensive test coverage** with 123 lines of tests for rate limiter scenarios
+- **Integration with Ocean's retry mechanism** using `RetryConfig` for 429 response handling```
+
+
+## 0.1.203 (2025-09-22)
+
+
+### Improvements
+
+- Added recommendedInstallationMethod: Saas to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
+
+
+## 0.1.202 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.1.201 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.1.200 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
+## 0.1.199 (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
 ## 0.1.198 (2025-08-28)
 
 

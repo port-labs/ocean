@@ -188,7 +188,7 @@ class JenkinsClient:
 
     def _build_base_url(self, parent_job: Optional[dict[str, Any]]) -> str:
         job_path = urlparse(parent_job["url"]).path if parent_job else ""
-        return f"{self.jenkins_base_url}{job_path}"
+        return f"{self.jenkins_base_url}{job_path}".rstrip("/")
 
     def enrich_jobs(
         self, jobs: list[dict[str, Any]], parent_job: dict[str, Any] | None

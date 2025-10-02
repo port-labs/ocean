@@ -3,22 +3,23 @@ from unittest.mock import MagicMock, patch
 from unittest.mock import AsyncMock
 from typing import Generator
 
-from aws.auth.session_factory import ResyncStrategyFactory, get_all_account_sessions
+from aws.auth.session_factory import AccountStrategyFactory, get_all_account_sessions
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
 from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
+from aws.auth.strategies.organizations_strategy import OrganizationsStrategy
 
 from aws.auth.utils import AWSSessionError
 
 
-class TestResyncStrategyFactory:
-    """Test ResyncStrategyFactory."""
+class TestAccountStrategyFactory:
+    """Test AccountStrategyFactory."""
 
     @pytest.fixture(autouse=True)
     def reset_cached_strategy(self) -> Generator[None, None, None]:
         """Reset the cached strategy by clearing the class variable."""
-        ResyncStrategyFactory._cached_strategy = None
+        AccountStrategyFactory._cached_strategy = None
         yield
 
     @pytest.mark.asyncio
@@ -32,7 +33,7 @@ class TestResyncStrategyFactory:
             with patch.object(
                 SingleAccountStrategy, "healthcheck", new_callable=AsyncMock
             ) as mock_healthcheck:
-                strategy = await ResyncStrategyFactory.create()
+                strategy = await AccountStrategyFactory.create()
                 assert isinstance(strategy, SingleAccountStrategy)
                 assert isinstance(strategy.provider, StaticCredentialProvider)
                 with pytest.raises(AWSSessionError):
@@ -48,7 +49,7 @@ class TestResyncStrategyFactory:
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mock_multi_account_config
 
-            strategy = await ResyncStrategyFactory.create()
+            strategy = await AccountStrategyFactory.create()
 
             assert isinstance(strategy, MultiAccountStrategy)
             assert isinstance(strategy.provider, AssumeRoleProvider)
@@ -65,12 +66,12 @@ class TestResyncStrategyFactory:
                 SingleAccountStrategy, "healthcheck", new_callable=AsyncMock
             ) as mock_healthcheck:
                 # First call should create new strategy
-                strategy1 = await ResyncStrategyFactory.create()
+                strategy1 = await AccountStrategyFactory.create()
                 with pytest.raises(AWSSessionError):
                     async for _ in strategy1.get_account_sessions():
                         break
                 # Second call should return cached strategy
-                strategy2 = await ResyncStrategyFactory.create()
+                strategy2 = await AccountStrategyFactory.create()
                 with pytest.raises(AWSSessionError):
                     async for _ in strategy2.get_account_sessions():
                         break
@@ -89,7 +90,7 @@ class TestResyncStrategyFactory:
             with patch.object(
                 SingleAccountStrategy, "healthcheck", new_callable=AsyncMock
             ) as mock_healthcheck:
-                strategy = await ResyncStrategyFactory.create()
+                strategy = await AccountStrategyFactory.create()
                 with pytest.raises(AWSSessionError):
                     async for _ in strategy.get_account_sessions():
                         break
@@ -104,7 +105,7 @@ class TestResyncStrategyFactory:
             mock_ocean.integration_config = mock_multi_account_config
 
             with patch.object(MultiAccountStrategy, "healthcheck") as mock_healthcheck:
-                await ResyncStrategyFactory.create()
+                await AccountStrategyFactory.create()
                 mock_healthcheck.assert_not_called()
 
     @pytest.mark.asyncio
@@ -120,7 +121,7 @@ class TestResyncStrategyFactory:
                 "healthcheck",
                 side_effect=Exception("Health check failed"),
             ):
-                strategy = await ResyncStrategyFactory.create()
+                strategy = await AccountStrategyFactory.create()
                 # Do not set _session or account_id here, so healthcheck is called and fails
                 with pytest.raises(Exception, match="Health check failed"):
                     async for _ in strategy.get_account_sessions():
@@ -129,13 +130,22 @@ class TestResyncStrategyFactory:
     @pytest.mark.asyncio
     async def test_create_with_empty_config(self) -> None:
         """Test create handles empty config."""
+        empty_config: dict[str, object] = {
+            "aws_access_key_id": None,
+            "aws_secret_access_key": None,
+            "aws_session_token": None,
+            "region": None,
+            "account_role_arn": None,
+            "account_role_arns": [],
+            "external_id": None,
+        }
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
-            mock_ocean.integration_config = {}
+            mock_ocean.integration_config = empty_config
 
             with patch.object(
                 SingleAccountStrategy, "healthcheck", new_callable=AsyncMock
             ) as mock_healthcheck:
-                strategy = await ResyncStrategyFactory.create()
+                strategy = await AccountStrategyFactory.create()
                 with pytest.raises(AWSSessionError):
                     async for _ in strategy.get_account_sessions():
                         break
@@ -146,13 +156,22 @@ class TestResyncStrategyFactory:
     @pytest.mark.asyncio
     async def test_create_with_none_config(self) -> None:
         """Test create handles None config."""
+        empty_config: dict[str, object] = {
+            "aws_access_key_id": None,
+            "aws_secret_access_key": None,
+            "aws_session_token": None,
+            "region": None,
+            "account_role_arn": None,
+            "account_role_arns": [],
+            "external_id": None,
+        }
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
-            mock_ocean.integration_config = None
+            mock_ocean.integration_config = empty_config
 
             with patch.object(
                 SingleAccountStrategy, "healthcheck", new_callable=AsyncMock
             ) as mock_healthcheck:
-                strategy = await ResyncStrategyFactory.create()
+                strategy = await AccountStrategyFactory.create()
                 with pytest.raises(AWSSessionError):
                     async for _ in strategy.get_account_sessions():
                         break
@@ -166,16 +185,43 @@ class TestResyncStrategyFactory:
         mixed_config = {
             "aws_access_key_id": "test_access_key",
             "aws_secret_access_key": "test_secret_key",
-            "account_role_arn": ["arn:aws:iam::123456789012:role/test-role"],
+            "aws_session_token": None,
+            "region": "us-west-2",
+            "account_role_arn": None,  # Should be None since we're using account_role_arns
+            "account_role_arns": ["arn:aws:iam::123456789012:role/test-role"],
+            "external_id": None,
         }
 
         with patch("aws.auth.session_factory.ocean") as mock_ocean:
             mock_ocean.integration_config = mixed_config
 
-            strategy = await ResyncStrategyFactory.create()
+            strategy = await AccountStrategyFactory.create()
 
-            # Should prioritize multi-account when account_role_arn is present
+            # Should prioritize multi-account when account_role_arns is present
             assert isinstance(strategy, MultiAccountStrategy)
+            # Provider should be StaticCredentialProvider since we have access key and secret
+            assert isinstance(strategy.provider, StaticCredentialProvider)
+
+    @pytest.mark.asyncio
+    async def test_create_with_string_account_role_arn(self) -> None:
+        """Test create handles config with string accountRoleArn (should prioritize organizations strategy)."""
+        string_config: dict[str, object] = {
+            "aws_access_key_id": "test_access_key",
+            "aws_secret_access_key": "test_secret_key",
+            "aws_session_token": None,
+            "region": "us-west-2",
+            "account_role_arn": "arn:aws:iam::123456789012:role/test-role",  # Using deprecated single ARN
+            "account_role_arns": [],  # Empty since we're using account_role_arn
+            "external_id": None,
+        }
+
+        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+            mock_ocean.integration_config = string_config
+
+            strategy = await AccountStrategyFactory.create()
+
+            # Should prioritize organizations strategy when single string ARN is provided
+            assert isinstance(strategy, OrganizationsStrategy)
             assert isinstance(strategy.provider, StaticCredentialProvider)
 
 
@@ -188,7 +234,7 @@ class TestGetAllAccountSessions:
     ) -> None:
         """Test get_all_account_sessions with single account strategy."""
         with patch(
-            "aws.auth.session_factory.ResyncStrategyFactory.create"
+            "aws.auth.session_factory.AccountStrategyFactory.create"
         ) as mock_create:
             mock_strategy = MagicMock(spec=SingleAccountStrategy)
             mock_strategy.get_account_sessions.return_value.__aiter__.return_value = [
@@ -215,7 +261,7 @@ class TestGetAllAccountSessions:
     ) -> None:
         """Test get_all_account_sessions with multi account strategy."""
         with patch(
-            "aws.auth.session_factory.ResyncStrategyFactory.create"
+            "aws.auth.session_factory.AccountStrategyFactory.create"
         ) as mock_create:
             mock_strategy = MagicMock(spec=MultiAccountStrategy)
             mock_strategy.get_account_sessions.return_value.__aiter__.return_value = [
@@ -242,7 +288,7 @@ class TestGetAllAccountSessions:
     async def test_get_all_account_sessions_empty(self) -> None:
         """Test get_all_account_sessions with no accounts."""
         with patch(
-            "aws.auth.session_factory.ResyncStrategyFactory.create"
+            "aws.auth.session_factory.AccountStrategyFactory.create"
         ) as mock_create:
             mock_strategy = MagicMock(spec=SingleAccountStrategy)
             mock_strategy.get_account_sessions.return_value.__aiter__.return_value = []
@@ -260,7 +306,7 @@ class TestGetAllAccountSessions:
     ) -> None:
         """Test get_all_account_sessions handles strategy creation error."""
         with patch(
-            "aws.auth.session_factory.ResyncStrategyFactory.create",
+            "aws.auth.session_factory.AccountStrategyFactory.create",
             side_effect=Exception("Strategy error"),
         ):
             with pytest.raises(Exception, match="Strategy error"):
@@ -273,7 +319,7 @@ class TestGetAllAccountSessions:
     ) -> None:
         """Test get_all_account_sessions yields correct types."""
         with patch(
-            "aws.auth.session_factory.ResyncStrategyFactory.create"
+            "aws.auth.session_factory.AccountStrategyFactory.create"
         ) as mock_create:
             mock_strategy = MagicMock(spec=SingleAccountStrategy)
             mock_strategy.get_account_sessions.return_value.__aiter__.return_value = [
@@ -324,14 +370,14 @@ class TestGetAllAccountSessions:
                     SingleAccountStrategy, "healthcheck", new=fake_healthcheck
                 ):
                     with patch(
-                        "aws.auth.session_factory.ResyncStrategyFactory.create",
+                        "aws.auth.session_factory.AccountStrategyFactory.create",
                         new=AsyncMock(
                             return_value=SingleAccountStrategy(
                                 StaticCredentialProvider(), mock_single_account_config
                             )
                         ),
                     ):
-                        strategy = await ResyncStrategyFactory.create()
+                        strategy = await AccountStrategyFactory.create()
                         sessions = []
                         async for (
                             account_info,
@@ -373,14 +419,14 @@ class TestGetAllAccountSessions:
                     MultiAccountStrategy, "healthcheck", new=fake_healthcheck
                 ):
                     with patch(
-                        "aws.auth.session_factory.ResyncStrategyFactory.create",
+                        "aws.auth.session_factory.AccountStrategyFactory.create",
                         new=AsyncMock(
                             return_value=MultiAccountStrategy(
                                 AssumeRoleProvider(), mock_multi_account_config
                             )
                         ),
                     ):
-                        strategy = await ResyncStrategyFactory.create()
+                        strategy = await AccountStrategyFactory.create()
                         sessions = []
                         async for (
                             account_info,
@@ -398,12 +444,16 @@ class TestGetAllAccountSessions:
 def mock_multi_account_config() -> dict[str, object]:
     """Mocks multi-account AWS configuration."""
     return {
-        "account_role_arn": [
+        "account_role_arn": None,  # Should always exist but be None for multi-account
+        "account_role_arns": [
             "arn:aws:iam::123456789012:role/test-role-1",
             "arn:aws:iam::987654321098:role/test-role-2",
         ],
         "region": "us-west-2",
         "external_id": "test-external-id",
+        "aws_access_key_id": None,
+        "aws_secret_access_key": None,
+        "aws_session_token": None,
     }
 
 
@@ -415,4 +465,7 @@ def mock_single_account_config() -> dict[str, object]:
         "aws_secret_access_key": "test_secret_key",
         "aws_session_token": "test_session_token",
         "region": "us-west-2",
+        "account_role_arn": None,  # Should always exist but be None for single account
+        "account_role_arns": [],  # Should always exist but be empty for single account
+        "external_id": None,
     }

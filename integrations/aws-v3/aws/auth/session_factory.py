@@ -16,8 +16,8 @@ import os
 StrategyType = SingleAccountStrategy | MultiAccountStrategy | OrganizationsStrategy
 
 
-class ResyncStrategyFactory:
-    """A factory for creating resync strategies based on the global configuration."""
+class AccountStrategyFactory:
+    """A factory for creating account strategies based on the global configuration."""
 
     _cached_strategy: StrategyType | None = None
 
@@ -31,17 +31,17 @@ class ResyncStrategyFactory:
         # Check for web identity token first (highest priority)
         if os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"):
             logger.info(
-                "[SessionStrategyFactory] Using AssumeRoleWithWebIdentityProvider (found AWS_WEB_IDENTITY_TOKEN_FILE)"
+                "[AccountStrategyFactory] Using AssumeRoleWithWebIdentityProvider (found AWS_WEB_IDENTITY_TOKEN_FILE)"
             )
             return AssumeRoleWithWebIdentityProvider(config=config)
 
         if config.get("aws_access_key_id") and config.get("aws_secret_access_key"):
             logger.info(
-                "[SessionStrategyFactory] Using StaticCredentialProvider (found aws_access_key_id and aws_secret_access_key)"
+                "[AccountStrategyFactory] Using StaticCredentialProvider (found aws_access_key_id and aws_secret_access_key)"
             )
             return StaticCredentialProvider(config=config)
 
-        logger.info("[SessionStrategyFactory] Using AssumeRoleProvider")
+        logger.info("[AccountStrategyFactory] Using AssumeRoleProvider")
         return AssumeRoleProvider(config=config)
 
     @classmethod
@@ -49,25 +49,21 @@ class ResyncStrategyFactory:
         """
         Detect the appropriate strategy type based on the global configuration.
         """
-        account_role_arn = config.get("account_role_arn", [])
-        use_organizations = config.get("use_organizations", False)
 
-        # If organizations flag is enabled, use organizations strategy
-        if use_organizations:
+        if config["account_role_arn"]:
             return OrganizationsStrategy
 
-        # If we have any role ARNs, use multi-account strategy
-        if len(account_role_arn) > 0:
+        account_role_arns = config["account_role_arns"]
+        if account_role_arns and len(account_role_arns) > 0:
             return MultiAccountStrategy
 
-        # Default to single account strategy
         return SingleAccountStrategy
 
     @classmethod
     async def create(cls) -> StrategyType:
         if cls._cached_strategy is not None:
             return cls._cached_strategy
-        config = ocean.integration_config or {}
+        config = ocean.integration_config
 
         provider: CredentialProvider
         strategy_cls: type[StrategyType]
@@ -89,6 +85,6 @@ class AccountInfo(TypedDict):
 
 
 async def get_all_account_sessions() -> AsyncIterator[tuple[AccountInfo, AioSession]]:
-    strategy = await ResyncStrategyFactory.create()
+    strategy = await AccountStrategyFactory.create()
     async for account_info, session in strategy.get_account_sessions():
         yield AccountInfo(Id=account_info["Id"], Name=account_info["Name"]), session
