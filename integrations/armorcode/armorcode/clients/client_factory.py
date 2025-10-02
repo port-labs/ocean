@@ -1,7 +1,7 @@
 from loguru import logger
 
-from .auth.api_key_authenticator import ApiKeyAuthenticator
-from .http.armorcode_client import ArmorcodeClient
+from armorcode.clients.auth.api_key_authenticator import ApiKeyAuthenticator
+from armorcode.clients.http.armorcode_client import ArmorcodeClient
 
 
 class ArmorcodeClientType:
@@ -13,8 +13,18 @@ class ArmorcodeClientType:
 class ArmorcodeClientFactory:
     """Factory for creating ArmorCode clients."""
 
+    _instance: "ArmorcodeClientFactory" = None
+    _initialized: bool = False
+
+    def __new__(cls) -> "ArmorcodeClientFactory":
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self) -> None:
-        self._instances: dict[str, ArmorcodeClient] = {}
+        if not self._initialized:
+            self._instances: dict[str, ArmorcodeClient] = {}
+            self._initialized = True
 
     def get_client(
         self,
@@ -31,14 +41,11 @@ class ArmorcodeClientFactory:
         return self._instances[client_type]
 
 
-# Global factory instance
-_client_factory = ArmorcodeClientFactory()
-
-
 def create_armorcode_client(
     base_url: str,
     api_key: str,
     client_type: str = ArmorcodeClientType.REST,
 ) -> ArmorcodeClient:
     """Create an ArmorCode client using the factory."""
-    return _client_factory.get_client(client_type, base_url, api_key)
+    factory = ArmorcodeClientFactory()
+    return factory.get_client(client_type, base_url, api_key)

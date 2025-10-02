@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from ...clients.http.armorcode_client import ArmorcodeClient
+from armorcode.clients.http.armorcode_client import ArmorcodeClient
 
 
 class AbstractArmorcodeExporter(ABC):
@@ -10,7 +11,9 @@ class AbstractArmorcodeExporter(ABC):
         self.client = client
 
     @abstractmethod
-    async def get_paginated_resources(self) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources(
+        self, options: Optional[Dict[str, Any]] = None
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get paginated resources from the API."""
 
     @abstractmethod

@@ -1,5 +1,5 @@
-from .abstract_authenticator import AbstractArmorcodeAuthenticator
-from .api_key_authenticator import ApiKeyAuthenticator
+from armorcode.clients.auth.abstract_authenticator import AbstractArmorcodeAuthenticator
+from armorcode.clients.auth.api_key_authenticator import ApiKeyAuthenticator
 
 __all__ = [
     "AbstractArmorcodeAuthenticator",

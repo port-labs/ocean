@@ -1,4 +1,4 @@
-from .base_client import BaseArmorcodeClient
+from armorcode.clients.http.base_client import BaseArmorcodeClient
 
 
 class ArmorcodeClient(BaseArmorcodeClient):
