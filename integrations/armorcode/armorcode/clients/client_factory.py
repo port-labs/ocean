@@ -1,3 +1,4 @@
+from typing import Optional
 from loguru import logger
 
 from armorcode.clients.auth.api_key_authenticator import ApiKeyAuthenticator
@@ -13,7 +14,7 @@ class ArmorcodeClientType:
 class ArmorcodeClientFactory:
     """Factory for creating ArmorCode clients."""
 
-    _instance: "ArmorcodeClientFactory" = None
+    _instance: Optional["ArmorcodeClientFactory"] = None
     _initialized: bool = False
 
     def __new__(cls) -> "ArmorcodeClientFactory":

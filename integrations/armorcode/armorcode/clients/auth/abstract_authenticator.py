@@ -2,7 +2,10 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from armorcode.clients.auth.api_key_authenticator import ArmorcodeHeaders, ArmorcodeAuthParams
+    from armorcode.clients.auth.api_key_authenticator import (
+        ArmorcodeHeaders,
+        ArmorcodeAuthParams,
+    )
 
 
 class AbstractArmorcodeAuthenticator(ABC):
