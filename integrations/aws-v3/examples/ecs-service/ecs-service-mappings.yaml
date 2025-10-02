@@ -1,0 +1,46 @@
+resources:
+  - kind: AWS::ECS::Service
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ServiceArn
+          title: .Properties.ServiceName
+          blueprint: '"ecsService"'
+          properties:
+            serviceName: .Properties.ServiceName
+            serviceArn: .Properties.ServiceArn
+            clusterArn: .Properties.ClusterArn
+            taskDefinition: .Properties.TaskDefinition
+            desiredCount: .Properties.DesiredCount
+            runningCount: .Properties.RunningCount
+            pendingCount: .Properties.PendingCount
+            launchType: .Properties.LaunchType
+            schedulingStrategy: .Properties.SchedulingStrategy
+            status: .Properties.Status
+            deploymentConfiguration: .Properties.DeploymentConfiguration
+            deploymentController: .Properties.DeploymentController
+            deployments: .Properties.Deployments
+            enableECSManagedTags: .Properties.EnableECSManagedTags
+            enableExecuteCommand: .Properties.EnableExecuteCommand
+            events: .Properties.Events
+            healthCheckGracePeriodSeconds: .Properties.HealthCheckGracePeriodSeconds
+            loadBalancers: .Properties.LoadBalancers
+            networkConfiguration: .Properties.NetworkConfiguration
+            placementConstraints: .Properties.PlacementConstraints
+            placementStrategy: .Properties.PlacementStrategy
+            platformFamily: .Properties.PlatformFamily
+            platformVersion: .Properties.PlatformVersion
+            propagateTags: .Properties.PropagateTags
+            roleArn: .Properties.RoleArn
+            serviceRegistries: .Properties.ServiceRegistries
+            tags: .Properties.Tags
+            taskSets: .Properties.TaskSets
+            capacityProviderStrategy: .Properties.CapacityProviderStrategy
+            availabilityZoneRebalancing: .Properties.AvailabilityZoneRebalancing
+            createdAt: .Properties.CreatedAt
+            createdBy: .Properties.CreatedBy
+          relations:
+            account: .__ExtraContext.AccountId
+            cluster: .Properties.ClusterArn

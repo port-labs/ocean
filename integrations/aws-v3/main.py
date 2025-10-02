@@ -14,6 +14,8 @@ from aws.core.exporters.ecs.cluster.exporter import EcsClusterExporter
 from aws.core.exporters.ecs.cluster.models import PaginatedClusterRequest
 from aws.core.exporters.eks.cluster.exporter import EksClusterExporter
 from aws.core.exporters.eks.cluster.models import PaginatedEksClusterRequest
+from aws.core.exporters.ecs.service.exporter import EcsServiceExporter
+from aws.core.exporters.ecs.service.models import PaginatedServiceRequest
 from aws.core.exporters.organizations.account.exporter import (
     OrganizationsAccountExporter,
 )
@@ -55,6 +57,15 @@ async def resync_ecs_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_eks_cluster(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, EksClusterExporter, PaginatedEksClusterRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.ECS_SERVICE)
+async def resync_ecs_service(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, EcsServiceExporter, PaginatedServiceRequest, regional=True
     )
     async for batch in service:
         yield batch

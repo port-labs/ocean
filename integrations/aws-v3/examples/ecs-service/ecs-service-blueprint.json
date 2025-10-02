@@ -1,0 +1,221 @@
+[
+  {
+    "identifier": "ecsService",
+    "title": "ECS Service",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "serviceName": {
+          "type": "string",
+          "title": "Service Name",
+          "description": "The name of the ECS service"
+        },
+        "serviceArn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the service"
+        },
+        "clusterArn": {
+          "type": "string",
+          "title": "Cluster ARN",
+          "description": "The ARN of the cluster that hosts the service"
+        },
+        "taskDefinition": {
+          "type": "string",
+          "title": "Task Definition",
+          "description": "The ARN of the task definition associated with the service"
+        },
+        "desiredCount": {
+          "type": "number",
+          "title": "Desired Count",
+          "description": "The desired number of tasks for the service"
+        },
+        "runningCount": {
+          "type": "number",
+          "title": "Running Count",
+          "description": "The number of tasks that are currently running"
+        },
+        "pendingCount": {
+          "type": "number",
+          "title": "Pending Count",
+          "description": "The number of tasks in the PENDING state"
+        },
+        "launchType": {
+          "type": "string",
+          "title": "Launch Type",
+          "description": "The launch type of the service",
+          "enum": ["EC2", "FARGATE", "EXTERNAL"]
+        },
+        "schedulingStrategy": {
+          "type": "string",
+          "title": "Scheduling Strategy",
+          "description": "The scheduling strategy to use for the service",
+          "enum": ["REPLICA", "DAEMON"]
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the service",
+          "enum": ["ACTIVE", "DRAINING", "INACTIVE"]
+        },
+        "deploymentConfiguration": {
+          "type": "object",
+          "title": "Deployment Configuration",
+          "description": "The deployment configuration for the service"
+        },
+        "deploymentController": {
+          "type": "object",
+          "title": "Deployment Controller",
+          "description": "The deployment controller type for the service"
+        },
+        "deployments": {
+          "type": "array",
+          "title": "Deployments",
+          "description": "The current deployments of the service",
+          "items": {
+            "type": "object"
+          }
+        },
+        "enableECSManagedTags": {
+          "type": "boolean",
+          "title": "ECS Managed Tags",
+          "description": "Whether to enable ECS managed tags"
+        },
+        "enableExecuteCommand": {
+          "type": "boolean",
+          "title": "Execute Command",
+          "description": "Whether to enable ECS Exec for the service"
+        },
+        "events": {
+          "type": "array",
+          "title": "Events",
+          "description": "The events associated with the service",
+          "items": {
+            "type": "object"
+          }
+        },
+        "healthCheckGracePeriodSeconds": {
+          "type": "number",
+          "title": "Health Check Grace Period",
+          "description": "The grace period for health checks in seconds"
+        },
+        "loadBalancers": {
+          "type": "array",
+          "title": "Load Balancers",
+          "description": "The load balancers associated with the service",
+          "items": {
+            "type": "object"
+          }
+        },
+        "networkConfiguration": {
+          "type": "object",
+          "title": "Network Configuration",
+          "description": "The network configuration for the service"
+        },
+        "placementConstraints": {
+          "type": "array",
+          "title": "Placement Constraints",
+          "description": "The placement constraints for the service",
+          "items": {
+            "type": "object"
+          }
+        },
+        "placementStrategy": {
+          "type": "array",
+          "title": "Placement Strategy",
+          "description": "The placement strategy for the service",
+          "items": {
+            "type": "object"
+          }
+        },
+        "platformFamily": {
+          "type": "string",
+          "title": "Platform Family",
+          "description": "The platform family for the service"
+        },
+        "platformVersion": {
+          "type": "string",
+          "title": "Platform Version",
+          "description": "The platform version for the service"
+        },
+        "propagateTags": {
+          "type": "string",
+          "title": "Propagate Tags",
+          "description": "Whether to propagate tags from the service or task definition",
+          "enum": ["SERVICE", "TASK_DEFINITION"]
+        },
+        "roleArn": {
+          "type": "string",
+          "title": "Role ARN",
+          "description": "The ARN of the IAM role associated with the service"
+        },
+        "serviceRegistries": {
+          "type": "array",
+          "title": "Service Registries",
+          "description": "The service registries associated with the service",
+          "items": {
+            "type": "object"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "The tags associated with the service",
+          "items": {
+            "type": "object"
+          }
+        },
+        "taskSets": {
+          "type": "array",
+          "title": "Task Sets",
+          "description": "The task sets associated with the service",
+          "items": {
+            "type": "object"
+          }
+        },
+        "capacityProviderStrategy": {
+          "type": "array",
+          "title": "Capacity Provider Strategy",
+          "description": "The capacity provider strategy for the service",
+          "items": {
+            "type": "object"
+          }
+        },
+        "availabilityZoneRebalancing": {
+          "type": "string",
+          "title": "Availability Zone Rebalancing",
+          "description": "Whether availability zone rebalancing is enabled",
+          "enum": ["ENABLED", "DISABLED"]
+        },
+        "createdAt": {
+          "type": "number",
+          "title": "Created At",
+          "description": "The timestamp when the service was created"
+        },
+        "createdBy": {
+          "type": "string",
+          "title": "Created By",
+          "description": "The ARN of the entity that created the service"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      },
+      "cluster": {
+        "title": "Cluster",
+        "target": "ecsCluster",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]
