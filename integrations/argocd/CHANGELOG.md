@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.223 (2025-09-29)
+## 0.1.224 (2025-10-02)
 
 
 ### Bug Fixes
 
 - Made `managed-resource` JQ mappings more robust by handling null `liveState` and falling back to `targetState`.
+
+
+## 0.1.223 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
 
 
 ## 0.1.222 (2025-09-28)
