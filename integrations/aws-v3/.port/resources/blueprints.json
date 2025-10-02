@@ -222,6 +222,65 @@
     }
   },
   {
+    "identifier": "eksCluster",
+    "title": "EKS Cluster",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the EKS cluster"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "The name of the EKS cluster"
+        },
+        "version": {
+          "type": "string",
+          "title": "Kubernetes Version",
+          "description": "The Kubernetes version of the EKS cluster"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the EKS cluster"
+        },
+        "endpoint": {
+          "type": "string",
+          "title": "Endpoint",
+          "description": "The endpoint URL for the EKS cluster"
+        },
+        "roleArn": {
+          "type": "string",
+          "title": "Role ARN",
+          "description": "The IAM role ARN associated with the EKS cluster"
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags",
+          "description": "Tags associated with the EKS cluster",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
     "identifier": "sqsQueue",
     "title": "SQS Queue",
     "icon": "AWS",
