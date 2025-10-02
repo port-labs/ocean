@@ -52,9 +52,7 @@ class BaseArmorcodeClient(ABC):
         ignored_errors.extend(self._DEFAULT_IGNORED_ERRORS)
 
         for ignored_error in ignored_errors:
-            if ignored_error.status == error.response.status_code and (
-                ignored_error.type is None or ignored_error.type in str(error)
-            ):
+            if ignored_error.status == error.response.status_code:
                 logger.warning(
                     f"{ignored_error.message} for endpoint '{endpoint}': {str(error)}"
                 )

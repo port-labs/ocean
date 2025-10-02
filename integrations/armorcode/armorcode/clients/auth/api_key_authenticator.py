@@ -35,7 +35,7 @@ class ApiKeyAuthenticator(AbstractArmorcodeAuthenticator):
         return ArmorcodeHeaders(
             Authorization=f"Bearer {self.api_key}",
             Accept="application/json",
-            Content_Type="application/json",
+            **{"Content-Type": "application/json"},
         )
 
     def get_auth_params(self) -> ArmorcodeAuthParams:
