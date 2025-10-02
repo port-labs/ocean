@@ -1,0 +1,26 @@
+title: Azure Multi Subscription
+description: Azure Multi Subscription integration for Port Ocean
+icon: Azure
+features:
+  - type: exporter
+    section: Cloud Providers
+    resources:
+      - kind: resourceContainer
+      - kind: resource
+configurations:
+  - name: subscriptionBatchSize
+    type: string
+    required: false
+    default: 1000
+  - name: azureClientId
+    type: string
+    required: true
+    sensitive: true
+  - name: azureClientSecret
+    type: string
+    required: true
+    sensitive: true
+  - name: azureTenantId
+    type: string
+    required: true
+    sensitive: true
