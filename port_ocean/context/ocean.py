@@ -1,6 +1,7 @@
 from typing import Callable, TYPE_CHECKING, Any, Literal, Union
 
 from fastapi import APIRouter
+from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.helpers.metric.metric import Metrics
 from pydantic.main import BaseModel
 from werkzeug.local import LocalProxy
@@ -75,7 +76,9 @@ class PortOceanContext:
     @property
     def event_listener_type(
         self,
-    ) -> Literal["WEBHOOK", "KAFKA", "POLLING", "ONCE", "WEBHOOKS_ONLY"]:
+    ) -> Literal[
+        "WEBHOOK", "KAFKA", "POLLING", "ONCE", "WEBHOOKS_ONLY", "ACTIONS_ONLY"
+    ]:
         return self.app.config.event_listener.type
 
     def on_resync(
@@ -212,6 +215,9 @@ class PortOceanContext:
             ValueError: If the processor does not extend AbstractWebhookProcessor.
         """
         self.app.webhook_manager.register_processor(path, processor)
+
+    def register_action_executor(self, executor: type[AbstractExecutor]) -> None:
+        self.app.execution_manager.register_executor(executor)
 
 
 _port_ocean: PortOceanContext = PortOceanContext(None)
