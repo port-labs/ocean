@@ -16,7 +16,7 @@ class TestResourceContainersFiltering:
         filters = ResourceGroupTagFilters(included={"Environment": "Production"})
         result = build_rg_tag_filter_clause(filters)
         assert "| where " in result
-        assert "tostring(tags['Environment']) =~ 'Production'" in result
+        assert "tostring(rgTags['Environment']) =~ 'Production'" in result
 
     def test_build_rg_tag_filter_clause_exclude_only(self) -> None:
         """Test building filter clause with exclude filters only."""
@@ -24,7 +24,7 @@ class TestResourceContainersFiltering:
         result = build_rg_tag_filter_clause(filters)
         assert "| where " in result
         assert "not (" in result
-        assert "tostring(tags['Temporary']) =~ 'true'" in result
+        assert "tostring(rgTags['Temporary']) =~ 'true'" in result
 
     def test_build_rg_tag_filter_clause_both_include_and_exclude(self) -> None:
         """Test building filter clause with both include and exclude filters."""
