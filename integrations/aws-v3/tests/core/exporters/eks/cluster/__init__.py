@@ -1,1 +1,1 @@
-# EKS cluster tests package
+"""EKS cluster exporter tests package."""
