@@ -79,6 +79,25 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::EKS::Cluster
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Arn
+          title: .Properties.Name
+          blueprint: '"eksCluster"'
+          properties:
+            arn: .Properties.Arn
+            name: .Properties.Name
+            version: .Properties.Version
+            status: .Properties.Status
+            endpoint: .Properties.Endpoint
+            roleArn: .Properties.RoleArn
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
   - kind: AWS::ECS::Service
     selector:
       query: 'true'
