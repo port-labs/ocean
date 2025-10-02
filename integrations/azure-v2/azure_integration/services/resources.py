@@ -1,7 +1,7 @@
 from typing import Any, AsyncGenerator
 from loguru import logger
 
-from clients.azure_client import AzureClient
+from azure_integration.client import AzureClient
 
 
 def build_full_sync_query(resource_types: list[str] | None = None) -> str:

@@ -1,11 +1,12 @@
+from types import SimpleNamespace
 from typing import Any, AsyncGenerator, Iterable
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from types import SimpleNamespace
-from clients.azure_client import AzureClient
+import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+
+from azure_integration.client import AzureClient
 
 
 @pytest.fixture(autouse=True)

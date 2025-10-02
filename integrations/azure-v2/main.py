@@ -1,17 +1,17 @@
-from typing import Generator, cast
 from enum import StrEnum
+from typing import Generator, cast
 
-from port_ocean.context.ocean import ocean
-from port_ocean.context.event import event
-from clients.azure_client import AzureClient
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from integration import AzureResourceConfig
-from services.resource_containers import ResourceContainers
-from services.resources import Resources
-from utils import turn_sequence_to_chunks
-
-from loguru import logger
 from azure.mgmt.subscription.models._models_py3 import Subscription
+from loguru import logger
+from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from azure_integration.client import AzureClient
+from azure_integration.services.resource_containers import ResourceContainers
+from azure_integration.services.resources import Resources
+from azure_integration.utils import turn_sequence_to_chunks
+from integration import AzureResourceConfig
 
 
 class Kind(StrEnum):

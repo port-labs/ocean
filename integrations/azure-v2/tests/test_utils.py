@@ -1,5 +1,5 @@
-from azure.models import ResourceGroupTagFilters
-from azure.utils import build_rg_tag_filter_clause
+from azure_integration.models import ResourceGroupTagFilters
+from azure_integration.utils import build_rg_tag_filter_clause
 
 
 class TestResourceContainersFiltering:
