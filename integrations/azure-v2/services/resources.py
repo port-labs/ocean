@@ -14,11 +14,11 @@ def build_full_sync_query(resource_types: list[str] | None = None) -> str:
 
     query = f"""
     resources
+    {filter_clause}
     | extend resourceId=tolower(id)
-    | project resourceId, type, name, location, tags, subscriptionId, resourceGroup
     | extend resourceGroup=tolower(resourceGroup)
     | extend type=tolower(type)
-    {filter_clause}
+    | project id, type, name, location, tags, subscriptionId, resourceGroup
     """
 
     return query
@@ -38,12 +38,15 @@ class Resources:
             f"{len(subscriptions)} subscriptions"
         )
 
+        query = build_full_sync_query(resource_types)
+        print(query)
         async for items in self.azure_client.run_query(
-            build_full_sync_query(resource_types),
+            query,
             subscriptions,
         ):
             logger.info(f"Received batch of {len(items)} resources")
             if not items:
                 logger.info("No resources found in this batch")
                 continue
+            print(items)
             yield items

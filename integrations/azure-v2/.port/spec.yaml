@@ -8,13 +8,6 @@ features:
       - kind: resourceContainer
       - kind: resource
 configurations:
-  - name: resourceTypes
-    type: array
-    required: false
-  - name: changeWindowMinutes
-    type: string
-    required: false
-    default: 15
   - name: subscriptionBatchSize
     type: string
     required: false
