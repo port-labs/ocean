@@ -54,10 +54,22 @@ class BaseArmorcodeClient(ABC):
         """Check if an error should be ignored based on the provided ignored errors list."""
         ignored_errors = (ignored_errors or []) + self._DEFAULT_IGNORED_ERRORS
 
+        status_code_str = str(error.response.status_code)
         for ignored_error in ignored_errors:
-            if str(ignored_error.status) == str(error.response.status_code):
+            if str(ignored_error.status) == status_code_str:
+                err_msg = None
+                try:
+                    data = error.response.json()
+                    err_msg = data.get("message") or data.get("detail")
+                except Exception:
+                    pass
+
+                if not err_msg:
+                    err_msg = error.response.text or f"HTTP {status_code_str}"
+
                 logger.warning(
-                    f"Failed to fetch resources at {endpoint} due to {ignored_error.message}. Error Message: {error.response.text}"
+                    f"Failed to fetch resources at {endpoint} due to {ignored_error.message}. "
+                    f"Error Message: {err_msg}"
                 )
                 return True
         return False
