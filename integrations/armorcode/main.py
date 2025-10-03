@@ -1,4 +1,3 @@
-from typing import Any
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from loguru import logger
@@ -12,20 +11,12 @@ from armorcode.core.exporters import (
 from armorcode.helpers.utils import ObjectKind
 
 
-def init_webhook_client() -> Any:
-    """Create ArmorCode client with configuration from ocean context."""
-    return create_armorcode_client(
-        base_url=ocean.integration_config["armorcode_api_base_url"],
-        api_key=ocean.integration_config["armorcode_api_key"],
-    )
-
-
 @ocean.on_resync(ObjectKind.PRODUCT)
 async def resync_products(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all products from ArmorCode."""
     logger.info("Starting products resync")
 
-    client = init_webhook_client()
+    client = create_armorcode_client()
     exporter = ProductExporter(client)
     logger.info("Fetching products from ArmorCode API")
 
@@ -39,7 +30,7 @@ async def resync_subproducts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all subproducts from ArmorCode."""
     logger.info("Starting subproducts resync")
 
-    client = init_webhook_client()
+    client = create_armorcode_client()
     exporter = SubProductExporter(client)
     logger.info("Fetching subproducts from ArmorCode API")
 
@@ -53,7 +44,7 @@ async def resync_findings(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all findings from ArmorCode."""
     logger.info("Starting findings resync")
 
-    client = init_webhook_client()
+    client = create_armorcode_client()
     exporter = FindingExporter(client)
     logger.info("Fetching findings from ArmorCode API")
 
