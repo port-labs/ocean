@@ -281,7 +281,7 @@ async def test_cache_iterator_result_on_instance_method(
     monkeypatch.setattr(cache, "ocean", mock_ocean)
 
     class Sample:
-        def __init__(self):
+        def __init__(self) -> None:
             self.calls = 0
 
         @cache.cache_iterator_result()
@@ -404,7 +404,7 @@ async def test_cache_coroutine_result_on_instance_method(
     monkeypatch.setattr(cache, "ocean", mock_ocean)
 
     class Sample:
-        def __init__(self):
+        def __init__(self) -> None:
             self.calls = 0
 
         @cache.cache_coroutine_result()

@@ -26,7 +26,7 @@ def sanitize_identifier(name: str) -> str:
     )
 
 
-def hash_func(func: Callable, *args: Any, **kwargs: Any) -> str:
+def hash_func(func: Callable[..., Any], *args: Any, **kwargs: Any) -> str:
     """
     Generate a backend-safe cache key.
 
