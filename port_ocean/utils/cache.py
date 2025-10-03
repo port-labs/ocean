@@ -10,14 +10,50 @@ AsyncIteratorCallable = Callable[..., AsyncIterator[list[Any]]]
 AsyncCallable = Callable[..., Awaitable[Any]]
 
 
-def hash_func(function_name: str, *args: Any, **kwargs: Any) -> str:
-    args_str = str(args)
-    kwargs_str = str(kwargs)
-    concatenated_string = args_str + kwargs_str
-    hash_object = hashlib.sha256(concatenated_string.encode())
-    short_hash = base64.urlsafe_b64encode(hash_object.digest()[:8]).decode("ascii")
+def sanitize_identifier(name: str) -> str:
+    """
+    Sanitize a function identifier so it is safe for all cache backends:
+    - Replace non-alphanumeric character with "_".
+    - Convert to lowercase for consistency.
+    """
+    return (
+        name.replace(".", "_")
+        .replace("-", "_")
+        .replace(" ", "_")
+        .replace("<", "_")
+        .replace(">", "_")
+        .lower()
+    )
+
+
+def hash_func(func: Callable, *args: Any, **kwargs: Any) -> str:
+    """
+    Generate a backend-safe cache key.
+
+    - Drops first arg if it's instance/class methods.
+    - Keeps all args for static/free functions.
+    - Key = sanitized module+qualname + short hash of args/kwargs.
+    """
+
+    if args and hasattr(args[0], func.__name__):
+        filtered_args = args[1:]
+    else:
+        filtered_args = args
+
+    arg_string = repr(filtered_args)
+    kwarg_string = repr(sorted(kwargs.items()))
+    concatenated = arg_string + kwarg_string
+
+    # Short hash
+    digest = hashlib.sha256(concatenated.encode()).digest()[:8]
+    short_hash = base64.urlsafe_b64encode(digest).decode("ascii")
     short_hash = short_hash.rstrip("=").replace("-", "_").replace("+", "_")
-    return f"{function_name}_{short_hash}"
+
+    # Unique function identifier
+    func_id = f"{func.__module__}_{func.__qualname__}"
+    safe_func_id = sanitize_identifier(func_id)
+
+    return f"{safe_func_id}_{short_hash}"
 
 
 def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCallable]:
@@ -45,7 +81,7 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
     def decorator(func: AsyncIteratorCallable) -> AsyncIteratorCallable:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            cache_key = hash_func(func.__name__, *args, **kwargs)
+            cache_key = hash_func(func, *args, **kwargs)
 
             # Check if the result is already in the cache
             try:
@@ -98,7 +134,7 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
     def decorator(func: AsyncCallable) -> AsyncCallable:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            cache_key = hash_func(func.__name__, *args, **kwargs)
+            cache_key = hash_func(func, *args, **kwargs)
             try:
                 if cache := await ocean.app.cache_provider.get(cache_key):
                     return cache

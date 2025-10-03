@@ -272,3 +272,243 @@ async def test_cache_failures_dont_affect_execution(
     # Verify that both read and write errors were raised
     assert isinstance(mock_cache_provider.get.side_effect, FailedToReadCacheError)
     assert isinstance(mock_cache_provider.set.side_effect, FailedToWriteCacheError)
+
+
+@pytest.mark.asyncio
+async def test_cache_iterator_result_on_instance_method(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
+
+    class Sample:
+        def __init__(self):
+            self.calls = 0
+
+        @cache.cache_iterator_result()
+        async def inst_method(self, x: int) -> AsyncGenerator[List[int], None]:
+            self.calls += 1
+            for i in range(x):
+                await asyncio.sleep(0.01)
+                yield [i]
+
+    s = Sample()
+
+    # First call should MISS and increment calls
+    result1 = await collect_iterator_results(s.inst_method(3))
+    assert result1 == [0, 1, 2]
+    assert s.calls == 1
+
+    # Second call with same args should HIT cache
+    result2 = await collect_iterator_results(s.inst_method(3))
+    assert result2 == [0, 1, 2]
+    assert s.calls == 1  # no extra call
+
+    # Different args should MISS again
+    result3 = await collect_iterator_results(s.inst_method(4))
+    assert result3 == [0, 1, 2, 3]
+    assert s.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_cache_iterator_result_on_class_method(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
+
+    class Sample:
+        calls = 0
+
+        @classmethod
+        @cache.cache_iterator_result()
+        async def cls_method(cls, x: int) -> AsyncGenerator[List[int], None]:
+            cls.calls += 1
+            for i in range(x):
+                await asyncio.sleep(0.01)
+                yield [i]
+
+    # First call should MISS
+    result1 = await collect_iterator_results(Sample.cls_method(3))
+    assert result1 == [0, 1, 2]
+    assert Sample.calls == 1
+
+    # Second call with same args should HIT cache
+    result2 = await collect_iterator_results(Sample.cls_method(3))
+    assert result2 == [0, 1, 2]
+    assert Sample.calls == 1
+
+    # Different args should MISS
+    result3 = await collect_iterator_results(Sample.cls_method(2))
+    assert result3 == [0, 1]
+    assert Sample.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_cache_iterator_result_on_static_method(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
+
+    class Sample:
+        calls = 0
+
+        @staticmethod
+        @cache.cache_iterator_result()
+        async def static_method(x: int) -> AsyncGenerator[List[int], None]:
+            Sample.calls += 1
+            for i in range(x):
+                await asyncio.sleep(0.01)
+                yield [i]
+
+    # First call should MISS
+    result1 = await collect_iterator_results(Sample.static_method(3))
+    assert result1 == [0, 1, 2]
+    assert Sample.calls == 1
+
+    # Second call with same args should HIT
+    result2 = await collect_iterator_results(Sample.static_method(3))
+    assert result2 == [0, 1, 2]
+    assert Sample.calls == 1
+
+    # Different args should MISS
+    result3 = await collect_iterator_results(Sample.static_method(4))
+    assert result3 == [0, 1, 2, 3]
+    assert Sample.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_regular_iterator_with_self_param_not_filtered(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    """Test that regular iterator functions with 'self' parameter are not filtered (by design)."""
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
+
+    async def regular_function_with_self(
+        self: int, y: int
+    ) -> AsyncGenerator[List[int], None]:
+        for i in range(self + y):
+            await asyncio.sleep(0.01)
+            yield [i]
+
+    # Test that 'self' parameter IS filtered (by design, for consistency)
+    key1 = cache.hash_func(regular_function_with_self, 5, y=3)
+    key2 = cache.hash_func(regular_function_with_self, 4, y=3)
+
+    # Keys should not be the same because 'self' is not filtered (by design)
+    assert key1 != key2
+
+
+@pytest.mark.asyncio
+async def test_cache_coroutine_result_on_instance_method(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
+
+    class Sample:
+        def __init__(self):
+            self.calls = 0
+
+        @cache.cache_coroutine_result()
+        async def inst_method(self, x: int) -> int:
+            self.calls += 1
+            await asyncio.sleep(0.01)
+            return x * 2
+
+    s = Sample()
+
+    # First call should MISS and increment calls
+    result1 = await s.inst_method(3)
+    assert result1 == 6
+    assert s.calls == 1
+
+    # Second call with same args should HIT cache
+    result2 = await s.inst_method(3)
+    assert result2 == 6
+    assert s.calls == 1  # still 1 call
+
+    # Different args should MISS again
+    result3 = await s.inst_method(4)
+    assert result3 == 8
+    assert s.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_cache_coroutine_result_on_class_method(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
+
+    class Sample:
+        calls = 0
+
+        @classmethod
+        @cache.cache_coroutine_result()
+        async def cls_method(cls, x: int) -> int:
+            cls.calls += 1
+            await asyncio.sleep(0.01)
+            return x + 5
+
+    # First call should MISS
+    result1 = await Sample.cls_method(3)
+    assert result1 == 8
+    assert Sample.calls == 1
+
+    # Second call with same args should HIT
+    result2 = await Sample.cls_method(3)
+    assert result2 == 8
+    assert Sample.calls == 1
+
+    # Different args should MISS
+    result3 = await Sample.cls_method(2)
+    assert result3 == 7
+    assert Sample.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_cache_coroutine_result_on_static_method(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
+
+    class Sample:
+        calls = 0
+
+        @staticmethod
+        @cache.cache_coroutine_result()
+        async def static_method(x: int) -> int:
+            Sample.calls += 1
+            await asyncio.sleep(0.01)
+            return x * x
+
+    # First call should MISS
+    result1 = await Sample.static_method(3)
+    assert result1 == 9
+    assert Sample.calls == 1
+
+    # Second call with same args should HIT
+    result2 = await Sample.static_method(3)
+    assert result2 == 9
+    assert Sample.calls == 1
+
+    # Different args should MISS
+    result3 = await Sample.static_method(4)
+    assert result3 == 16
+    assert Sample.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_regular_coroutine_with_self_param_not_filtered(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    """Test that regular coroutines with 'self' parameter are not filtered (by design)."""
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
+
+    @cache.cache_coroutine_result()
+    async def regular_function_with_self(self: int, y: int) -> int:
+        await asyncio.sleep(0.01)
+        return self + y
+
+    key1 = cache.hash_func(regular_function_with_self, 5, y=3)
+    key2 = cache.hash_func(regular_function_with_self, 4, y=3)
+
+    # Keys should not be the same because 'self' is not filtered
+    assert key1 != key2
