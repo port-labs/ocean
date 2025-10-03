@@ -19,11 +19,6 @@ configurations:
     required: false
     description: The base URL for the Armorcode API.
     default: https://app.armorcode.com
-  - name: webhookSecret
-    required: false
-    type: string
-    sensitive: true
-    description: Secret used to sign and validate incoming webhooks from Armorcode.
 saas:
   enabled: true
   liveEvents:
