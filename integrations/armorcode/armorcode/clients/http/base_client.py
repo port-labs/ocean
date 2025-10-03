@@ -14,16 +14,6 @@ PAGE_SIZE = 100
 class BaseArmorcodeClient(ABC):
     """Base client for ArmorCode API interactions."""
 
-    def __init__(self, base_url: str, authenticator: AbstractArmorcodeAuthenticator):
-        self.base_url = base_url.rstrip("/")
-        self.authenticator = authenticator
-        self.http_client: AsyncClient = http_async_client
-
-    @property
-    async def headers(self) -> Dict[str, str]:
-        """Build and return headers for ArmorCode API requests."""
-        return (await self.authenticator.get_headers()).as_dict()
-
     DEFAULT_PARAMS: Dict[str, Any] = {
         "tags": "",
         "sortBy": "NAME",
@@ -45,6 +35,16 @@ class BaseArmorcodeClient(ABC):
         ),
     ]
 
+    def __init__(self, base_url: str, authenticator: AbstractArmorcodeAuthenticator):
+        self.base_url = base_url.rstrip("/")
+        self.authenticator = authenticator
+        self.http_client: AsyncClient = http_async_client
+
+    @property
+    async def headers(self) -> Dict[str, str]:
+        """Build and return headers for ArmorCode API requests."""
+        return (await self.authenticator.get_headers()).as_dict()
+
     def _should_ignore_error(
         self,
         error: HTTPStatusError,
@@ -57,7 +57,7 @@ class BaseArmorcodeClient(ABC):
         for ignored_error in ignored_errors:
             if str(ignored_error.status) == str(error.response.status_code):
                 logger.warning(
-                    f"Failed to fetch resources at {endpoint} due to {ignored_error.message}"
+                    f"Failed to fetch resources at {endpoint} due to {ignored_error.message}. Error Message: {error.response.text}"
                 )
                 return True
         return False

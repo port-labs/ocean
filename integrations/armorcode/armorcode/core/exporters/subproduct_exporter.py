@@ -14,7 +14,3 @@ class SubProductExporter(AbstractArmorcodeExporter[ArmorcodeClient]):
             endpoint="user/sub-product/elastic", method="GET"
         ):
             yield subproducts
-
-    def get_resource_kind(self) -> str:
-        """Get the resource kind this exporter handles."""
-        return "sub-product"

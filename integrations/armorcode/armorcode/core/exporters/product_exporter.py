@@ -14,7 +14,3 @@ class ProductExporter(AbstractArmorcodeExporter[ArmorcodeClient]):
             endpoint="user/product/elastic/paged", method="GET"
         ):
             yield products
-
-    def get_resource_kind(self) -> str:
-        """Get the resource kind this exporter handles."""
-        return "product"

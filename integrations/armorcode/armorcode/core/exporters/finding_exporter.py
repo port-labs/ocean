@@ -17,7 +17,3 @@ class FindingExporter(AbstractArmorcodeExporter[ArmorcodeClient]):
             use_offset_pagination=False,
         ):
             yield findings
-
-    def get_resource_kind(self) -> str:
-        """Get the resource kind this exporter handles."""
-        return "finding"

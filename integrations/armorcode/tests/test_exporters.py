@@ -34,7 +34,6 @@ async def test_product_exporter_yields_batches() -> None:
         endpoint="user/product/elastic/paged",
         method="GET",
     )
-    assert exporter.get_resource_kind() == "product"
 
 
 @pytest.mark.asyncio
@@ -54,7 +53,6 @@ async def test_subproduct_exporter_yields_batches() -> None:
         endpoint="user/sub-product/elastic",
         method="GET",
     )
-    assert exporter.get_resource_kind() == "sub-product"
 
 
 @pytest.mark.asyncio
@@ -76,4 +74,3 @@ async def test_finding_exporter_yields_batches() -> None:
         json_data={},
         use_offset_pagination=False,
     )
-    assert exporter.get_resource_kind() == "finding"
