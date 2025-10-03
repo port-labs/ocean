@@ -7,6 +7,7 @@ from httpx import Response
 from loguru import logger
 
 from github.helpers.utils import IgnoredError
+from github.helpers.exceptions import OrganizationRequiredException
 from github.clients.rate_limiter.limiter import GitHubRateLimiter
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
@@ -189,7 +190,9 @@ class AbstractGithubClient(BaseGithubClient):
         **kwargs: Any,
     ) -> None:
         if organization is None:
-            raise ValueError("organization must not be None for AbstractGithubClient")
+            raise OrganizationRequiredException(
+                "organization must not be None for AbstractGithubClient"
+            )
 
         super().__init__(github_host, authenticator, organization, **kwargs)
         self.organization = organization

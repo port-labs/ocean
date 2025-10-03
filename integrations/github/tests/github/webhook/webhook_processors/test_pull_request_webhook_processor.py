@@ -141,7 +141,12 @@ class TestPullRequestWebhookProcessor:
             "state": "open" if action == "opened" else "closed",
         }
         repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
-        payload = {"action": action, "pull_request": pr_data, "repository": repo_data, "organization": {"login": "test-org"}}
+        payload = {
+            "action": action,
+            "pull_request": pr_data,
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
 
         updated_pr_data = {**pr_data, "additional_data": "from_api"}
         mock_exporter = AsyncMock()

@@ -8,7 +8,11 @@ MOCK_PORT_OCEAN_CONTEXT = AsyncMock()
 @pytest.mark.asyncio
 async def test_file_entity_processor_search_monorepo_success() -> None:
     data = {
-        "repository": {"name": "test-repo", "default_branch": "main", "owner": {"login": "test-org"}},
+        "repository": {
+            "name": "test-repo",
+            "default_branch": "main",
+            "owner": {"login": "test-org"},
+        },
         "branch": "develop",
         "metadata": {"path": "src/config.yaml"},
     }
@@ -170,7 +174,11 @@ async def test_file_entity_processor_search_missing_default_branch() -> None:
 async def test_file_entity_processor_search_monorepo_missing_metadata_path() -> None:
     # Monorepo data without metadata path
     data = {
-        "repository": {"name": "test-repo", "default_branch": "main", "owner": {"login": "test-org"}},
+        "repository": {
+            "name": "test-repo",
+            "default_branch": "main",
+            "owner": {"login": "test-org"},
+        },
         "branch": "develop",
         "metadata": {},  # Missing path
     }
@@ -249,7 +257,11 @@ async def test_file_entity_processor_search_nested_path() -> None:
 @pytest.mark.asyncio
 async def test_file_entity_processor_search_monorepo_nested_path() -> None:
     data = {
-        "repository": {"name": "test-repo", "default_branch": "main", "owner": {"login": "test-org"}},
+        "repository": {
+            "name": "test-repo",
+            "default_branch": "main",
+            "owner": {"login": "test-org"},
+        },
         "branch": "develop",
         "metadata": {"path": "services/auth/config.yaml"},
     }

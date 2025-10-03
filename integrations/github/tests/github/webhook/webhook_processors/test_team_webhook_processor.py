@@ -105,7 +105,11 @@ class TestTeamWebhookProcessor:
             }
         }
 
-        payload = {"action": action, "team": team_data, "organization": {"login": "test-org"}}
+        payload = {
+            "action": action,
+            "team": team_data,
+            "organization": {"login": "test-org"},
+        }
 
         # Create resource_config based on include_members
         resource_config = GithubTeamConfig(

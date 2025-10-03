@@ -137,7 +137,12 @@ class TestIssueWebhookProcessor:
         repo_data = {"name": "test-repo"}
 
         # Setup payload
-        payload = {"action": action, "issue": issue_data, "repository": repo_data, "organization": {"login": "test-org"}}
+        payload = {
+            "action": action,
+            "issue": issue_data,
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
 
         # Setup resource config
         resource_config.selector.state = selector_state

@@ -105,7 +105,11 @@ class TestUserWebhookProcessor:
             "type": "User",
         }
 
-        payload = {"action": action, "membership": {"user": user_data}, "organization": {"login": "test-org"}}
+        payload = {
+            "action": action,
+            "membership": {"user": user_data},
+            "organization": {"login": "test-org"},
+        }
 
         if is_deletion:
             result = await user_webhook_processor.handle_event(payload, resource_config)
