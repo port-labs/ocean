@@ -33,8 +33,6 @@ async def test_product_exporter_yields_batches() -> None:
     client.send_paginated_request.assert_called_once_with(
         endpoint="user/product/elastic/paged",
         method="GET",
-        content_key="content",
-        is_last_key="last",
     )
     assert exporter.get_resource_kind() == "product"
 
@@ -55,8 +53,6 @@ async def test_subproduct_exporter_yields_batches() -> None:
     client.send_paginated_request.assert_called_once_with(
         endpoint="user/sub-product/elastic",
         method="GET",
-        content_key="content",
-        is_last_key="last",
     )
     assert exporter.get_resource_kind() == "sub-product"
 
@@ -77,8 +73,6 @@ async def test_finding_exporter_yields_batches() -> None:
     client.send_paginated_request.assert_called_once_with(
         endpoint="api/findings",
         method="POST",
-        content_key="findings",
-        is_last_key=None,
         json_data={},
         use_offset_pagination=False,
     )

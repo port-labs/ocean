@@ -1,19 +1,17 @@
-from typing import Any, Dict, Optional
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
+from armorcode.clients.http.armorcode_client import ArmorcodeClient
 from armorcode.core.exporters.abstract_exporter import AbstractArmorcodeExporter
 
 
-class ProductExporter(AbstractArmorcodeExporter):
+class ProductExporter(AbstractArmorcodeExporter[ArmorcodeClient]):
     """Exporter for ArmorCode products."""
 
-    async def get_paginated_resources(self, options: Optional[Dict[str, Any]] = None) -> ASYNC_GENERATOR_RESYNC_TYPE:  # type: ignore[override]
+    async def get_paginated_resources(
+        self, options: None = None
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get paginated products from the API."""
         async for products in self.client.send_paginated_request(
-            endpoint="user/product/elastic/paged",
-            method="GET",
-            content_key="content",
-            is_last_key="last",
+            endpoint="user/product/elastic/paged", method="GET"
         ):
             yield products
 

@@ -214,7 +214,8 @@
         },
         "slaDueDate": {
           "title": "SLA Due Date",
-          "type": "integer",
+          "type": "string",
+          "format": "date-time",
           "description": "SLA due date as a Unix timestamp in milliseconds"
         },
         "resolutionSlaStatus": {

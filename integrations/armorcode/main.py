@@ -12,7 +12,7 @@ from armorcode.core.exporters import (
 from armorcode.helpers.utils import ObjectKind
 
 
-def _create_client() -> Any:
+def init_webhook_client() -> Any:
     """Create ArmorCode client with configuration from ocean context."""
     return create_armorcode_client(
         base_url=ocean.integration_config["armorcode_api_base_url"],
@@ -25,7 +25,7 @@ async def resync_products(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all products from ArmorCode."""
     logger.info("Starting products resync")
 
-    client = _create_client()
+    client = init_webhook_client()
     exporter = ProductExporter(client)
     logger.info("Fetching products from ArmorCode API")
 
@@ -39,7 +39,7 @@ async def resync_subproducts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all subproducts from ArmorCode."""
     logger.info("Starting subproducts resync")
 
-    client = _create_client()
+    client = init_webhook_client()
     exporter = SubProductExporter(client)
     logger.info("Fetching subproducts from ArmorCode API")
 
@@ -53,7 +53,7 @@ async def resync_findings(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all findings from ArmorCode."""
     logger.info("Starting findings resync")
 
-    client = _create_client()
+    client = init_webhook_client()
     exporter = FindingExporter(client)
     logger.info("Fetching findings from ArmorCode API")
 

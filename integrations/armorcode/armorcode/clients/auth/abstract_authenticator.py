@@ -1,20 +1,26 @@
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import Dict
 
-if TYPE_CHECKING:
-    from armorcode.clients.auth.api_key_authenticator import (
-        ArmorcodeHeaders,
-        ArmorcodeAuthParams,
-    )
+from pydantic import BaseModel, Field
+
+
+class ArmorcodeHeaders(BaseModel):
+    """Typed model for ArmorCode API headers."""
+
+    authorization: str = Field(alias="Authorization")
+    accept: str = Field(alias="Accept", default="application/json")
+    content_type: str = Field(alias="Content-Type", default="application/json")
+
+    def as_dict(self) -> Dict[str, str]:
+        """Convert the model to a dictionary with proper header names."""
+        headers = self.dict(by_alias=True)
+        return headers
 
 
 class AbstractArmorcodeAuthenticator(ABC):
     """Abstract base class for ArmorCode authentication strategies."""
 
     @abstractmethod
-    def get_headers(self) -> "ArmorcodeHeaders":
+    async def get_headers(self) -> ArmorcodeHeaders:
         """Get authentication headers for API requests."""
-
-    @abstractmethod
-    def get_auth_params(self) -> "ArmorcodeAuthParams":
-        """Get authentication parameters for API requests."""
+        pass
