@@ -79,6 +79,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
             matching_patterns,
             repository,
             current_branch,
+            payload["organization"]["login"],
         )
 
         return WebhookEventRawResults(
@@ -132,11 +133,12 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         matching_patterns: list["GithubFilePattern"],
         repository: dict[str, Any],
         current_branch: str,
+        github_organization: str,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         logger.info(
             f"Fetching commit diff for repository {repo_name} from {before_sha} to {after_sha}"
         )
-        rest_client = create_github_client()
+        rest_client = create_github_client(github_organization)
         exporter = RestFileExporter(rest_client)
 
         diff_data = await exporter.fetch_commit_diff(repo_name, before_sha, after_sha)

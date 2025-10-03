@@ -190,6 +190,7 @@ class TestWorkflowWebhookProcessor:
             "after": "sha2",
             "commits": [{}],
             "ref": "refs/heads/main",
+            "organization": {"login": "test-org"},
         }
 
         mock_rest_client = MagicMock()

@@ -46,7 +46,9 @@ class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[user]
             )
 
-        client = create_github_client(GithubClientType.GRAPHQL)
+        client = create_github_client(
+            payload["organization"]["login"], GithubClientType.GRAPHQL
+        )
         exporter = GraphQLUserExporter(client)
 
         data_to_upsert = await exporter.get_resource(
@@ -62,4 +64,6 @@ class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
         if not {"action", "membership"} <= payload.keys():
             return False
 
-        return bool(payload["membership"].get("user"))
+        return await super().validate_payload(payload) and bool(
+            payload["membership"].get("user")
+        )

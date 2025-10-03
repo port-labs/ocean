@@ -95,6 +95,7 @@ class TestFolderWebhookProcessor:
                     "repository": {"name": "test"},
                     "before": "ldl",
                     "after": "jdj",
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -152,6 +153,7 @@ class TestFolderWebhookProcessor:
             "ref": f"refs/heads/{branch_name}",
             "after": ref_sha_after,
             "before": ref_sha_before,
+            "organization": {"login": "test-org"},
         }
 
         all_folders_from_exporter = [
@@ -263,6 +265,7 @@ class TestFolderWebhookProcessor:
             "ref": f"refs/heads/{branch_name}",
             "after": ref_sha_after,
             "before": ref_sha_before,
+            "organization": {"login": "test-org"},
         }
 
         mock_client = MagicMock()

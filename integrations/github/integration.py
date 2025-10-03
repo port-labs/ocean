@@ -218,6 +218,10 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubSecretScanningAlertConfig
         | ResourceConfig
     ]
+    organizations: Optional[List[str]] = Field(
+        default=None,
+        description="List of specific organization names to sync (optional - if not provided, syncs all organizations)",
+    )
 
 
 class GitManipulationHandler(JQEntityProcessor):

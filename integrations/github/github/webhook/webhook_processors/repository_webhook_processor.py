@@ -50,7 +50,7 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[repo]
             )
 
-        rest_client = create_github_client()
+        rest_client = create_github_client(payload["organization"]["login"])
         exporter = RestRepositoryExporter(rest_client)
 
         resource_config = cast(GithubRepositoryConfig, resource_config)

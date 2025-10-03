@@ -66,13 +66,13 @@ def mock_ocean_context() -> None:
 @pytest.fixture
 def rest_client(mock_ocean_context: Any) -> AbstractGithubClient:
     """Provide a GitHubClient instance with mocked Ocean context."""
-    return create_github_client(GithubClientType.REST)
+    return create_github_client("test-org", GithubClientType.REST)
 
 
 @pytest.fixture
 def graphql_client(mock_ocean_context: Any) -> AbstractGithubClient:
     """Provide a GitHubClient instance with mocked Ocean context."""
-    return create_github_client(GithubClientType.GRAPHQL)
+    return create_github_client("test-org", GithubClientType.GRAPHQL)
 
 
 @pytest.fixture

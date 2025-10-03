@@ -49,7 +49,7 @@ class TagWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[data_to_delete]
             )
 
-        rest_client = create_github_client()
+        rest_client = create_github_client(payload["organization"]["login"])
         exporter = RestTagExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(

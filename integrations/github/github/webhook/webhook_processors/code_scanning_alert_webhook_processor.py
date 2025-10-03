@@ -66,7 +66,7 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[alert]
             )
 
-        rest_client = create_github_client()
+        rest_client = create_github_client(payload["organization"]["login"])
         exporter = RestCodeScanningAlertExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(

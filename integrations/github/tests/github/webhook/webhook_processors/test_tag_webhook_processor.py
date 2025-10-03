@@ -67,7 +67,7 @@ class TestTagWebhookProcessor:
         result: bool,
     ) -> None:
         mock_request = AsyncMock()
-        payload = {"ref": ref}
+        payload = {"ref": ref, "organization": {"login": "test-org"}}
         if ref_type:
             payload["ref_type"] = ref_type
 
@@ -118,6 +118,7 @@ class TestTagWebhookProcessor:
             "ref": tag_ref,
             "ref_type": "tag",
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         tag_webhook_processor._event_type = event_type

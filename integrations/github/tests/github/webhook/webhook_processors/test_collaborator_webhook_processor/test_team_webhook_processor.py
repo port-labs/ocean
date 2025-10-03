@@ -248,7 +248,7 @@ class TestCollaboratorTeamWebhookProcessor:
 
                     # Verify GraphQL client was created with correct type
                     mock_create_client.assert_called_once_with(
-                        client_type=GithubClientType.GRAPHQL
+                        "test-org", client_type=GithubClientType.GRAPHQL
                     )
 
                     # Verify team exporter was called
@@ -297,5 +297,5 @@ class TestCollaboratorTeamWebhookProcessor:
 
                 # Verify GraphQL client was created
                 mock_create_client.assert_called_once_with(
-                    client_type=GithubClientType.GRAPHQL
+                    "test-org", client_type=GithubClientType.GRAPHQL
                 )

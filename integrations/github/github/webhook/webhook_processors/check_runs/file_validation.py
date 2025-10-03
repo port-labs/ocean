@@ -35,8 +35,8 @@ class MatchedFile:
 class CheckRuns:
     """Handles GitHub check run operations for file validation."""
 
-    def __init__(self) -> None:
-        self.client = create_github_client()
+    def __init__(self, github_organization: str) -> None:
+        self.client = create_github_client(github_organization)
 
     async def create_validation_check(self, repo_name: str, head_sha: str) -> str:
         """Create a new check run for validation."""
@@ -96,8 +96,8 @@ class CheckRuns:
 class FileValidationService:
     """Service for validating files during pull request processing."""
 
-    def __init__(self) -> None:
-        self.check_runs = CheckRuns()
+    def __init__(self, github_organization: str) -> None:
+        self.check_runs = CheckRuns(github_organization)
 
     async def validate_pull_request_files(
         self,

@@ -104,6 +104,7 @@ class TestReleaseWebhookProcessor:
             "action": action,
             "release": release_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         if is_deletion:

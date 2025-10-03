@@ -1,6 +1,12 @@
 from typing import List, NotRequired, Optional, Required, TypedDict
 
 
+class ListOrganizationOptions(TypedDict):
+    """Options for listing organizations."""
+
+    organizations: NotRequired[Optional[List[str]]]
+
+
 class SingleRepositoryOptions(TypedDict):
     name: str
     included_relationships: NotRequired[Optional[list[str]]]

@@ -29,3 +29,7 @@ class GraphQLErrorGroup(Exception):
 
 class CheckRunsException(Exception):
     """Exception for check runs errors."""
+
+
+class OrganizationRequiredException(Exception):
+    """Raised when organization is required but not provided."""

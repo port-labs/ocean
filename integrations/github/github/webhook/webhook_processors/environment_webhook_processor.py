@@ -33,7 +33,7 @@ class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
             f"Processing deployment event: {action} for {resource_config_kind} in {repo}"
         )
 
-        client = create_github_client()
+        client = create_github_client(payload["organization"]["login"])
         environment_exporter = RestEnvironmentExporter(client)
         data_to_upsert = await environment_exporter.get_resource(
             SingleEnvironmentOptions(

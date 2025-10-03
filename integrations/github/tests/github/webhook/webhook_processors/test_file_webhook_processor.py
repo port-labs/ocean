@@ -70,6 +70,7 @@ def payload() -> EventPayload:
         "after": "def456",
         "commits": [],
         "repository": {"name": "test-repo", "default_branch": "main"},
+        "organization": {"login": "test-org"},
     }
 
 

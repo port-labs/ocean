@@ -73,6 +73,7 @@ class TestEnvironmentWebhookProcessor:
                 "production_environment": True,
             },
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         expected_data = {

@@ -27,7 +27,10 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         return [ObjectKind.FOLDER]
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return {"ref", "repository", "before", "after"} <= payload.keys()
+        return (
+            await super().validate_payload(payload)
+            and {"ref", "repository", "before", "after"} <= payload.keys()
+        )
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -103,7 +106,8 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         branch: str,
         event_payload: EventPayload,
     ) -> list[dict[str, Any]]:
-        client = create_github_client()
+
+        client = create_github_client(event_payload["organization"]["login"])
         commit_diff = await fetch_commit_diff(
             client,
             repository["name"],

@@ -41,7 +41,9 @@ class WorkflowRunWebhookProcessor(BaseRepositoryWebhookProcessor):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[workflow_run]
             )
-        exporter = RestWorkflowRunExporter(create_github_client())
+        exporter = RestWorkflowRunExporter(
+            create_github_client(payload["organization"]["login"])
+        )
         options = SingleWorkflowRunOptions(
             repo_name=repo["name"], run_id=workflow_run["id"]
         )

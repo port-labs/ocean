@@ -105,7 +105,11 @@ class TestTeamWebhookProcessor:
             }
         }
 
-        payload = {"action": action, "team": team_data}
+        payload = {
+            "action": action,
+            "team": team_data,
+            "organization": {"login": "test-org"},
+        }
 
         # Create resource_config based on include_members
         resource_config = GithubTeamConfig(
@@ -149,7 +153,7 @@ class TestTeamWebhookProcessor:
                 )
 
                 # Verify create_github_client was called with correct type
-                mock_create_client.assert_called_once_with(client_type)
+                mock_create_client.assert_called_once_with("test-org", client_type)
 
                 # Verify exporter was called with correct team slug
                 mock_exporter.get_resource.assert_called_once_with(
@@ -179,6 +183,7 @@ class TestTeamWebhookProcessor:
                 {
                     "action": TEAM_UPSERT_EVENTS[0],
                     "team": {"slug": "team1", "name": "team1"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -186,6 +191,7 @@ class TestTeamWebhookProcessor:
                 {
                     "action": TEAM_DELETE_EVENTS[0],
                     "team": {"slug": "team2"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
