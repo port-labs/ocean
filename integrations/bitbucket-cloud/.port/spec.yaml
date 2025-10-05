@@ -41,3 +41,20 @@ saas:
   enabled: true
   liveEvents:
     enabled: true
+installationDocs:
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: false
+  githubWorkflow:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/bitbucket/bitbucket-cloud/?installation-methods=one-time-ci&cicd-method=github#setup
+  gitlabCI:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/bitbucket/bitbucket-cloud/?installation-methods=one-time-ci&cicd-method=gitlab#setup
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/bitbucket/bitbucket-cloud/?installation-methods=real-time-self-hosted#setup
+  docker:
+    enabled: false
