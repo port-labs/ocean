@@ -1,0 +1,262 @@
+[
+  {
+    "identifier": "entraid_user",
+    "title": "Entra ID User",
+    "icon": "User",
+    "description": "A user from Microsoft Entra ID",
+    "schema": {
+      "properties": {
+        "display_name": {
+          "title": "Display Name",
+          "type": "string",
+          "description": "The name displayed in the address book for the user"
+        },
+        "given_name": {
+          "title": "Given Name",
+          "type": "string",
+          "description": "The given name (first name) of the user"
+        },
+        "surname": {
+          "title": "Surname",
+          "type": "string",
+          "description": "The user's surname (family name or last name)"
+        },
+        "mail": {
+          "title": "Email",
+          "type": "string",
+          "format": "email",
+          "description": "The SMTP address for the user"
+        },
+        "user_principal_name": {
+          "title": "User Principal Name",
+          "type": "string",
+          "description": "The user principal name (UPN) of the user"
+        },
+        "job_title": {
+          "title": "Job Title",
+          "type": "string",
+          "description": "The user's job title"
+        },
+        "department": {
+          "title": "Department",
+          "type": "string",
+          "description": "The name for the department in which the user works"
+        },
+        "office_location": {
+          "title": "Office Location",
+          "type": "string",
+          "description": "The office location in the user's place of business"
+        },
+        "mobile_phone": {
+          "title": "Mobile Phone",
+          "type": "string",
+          "description": "The primary cellular telephone number for the user"
+        },
+        "business_phones": {
+          "title": "Business Phones",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The telephone numbers for the user"
+        },
+        "account_enabled": {
+          "title": "Account Enabled",
+          "type": "boolean",
+          "description": "True if the account is enabled; otherwise, false"
+        },
+        "user_type": {
+          "title": "User Type",
+          "type": "string",
+          "description": "A string value that can classify user types",
+          "enum": ["Member", "Guest"],
+          "enumColors": {
+            "Member": "green",
+            "Guest": "blue"
+          }
+        },
+        "created_date_time": {
+          "title": "Created Date",
+          "type": "string",
+          "description": "The date and time the user was created"
+        },
+        "last_sign_in_date_time": {
+          "title": "Last Sign In",
+          "type": "string",
+          "description": "The date and time of the user's last sign-in"
+        },
+        "assigned_licenses": {
+          "title": "Assigned Licenses",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The licenses that are assigned to the user"
+        }
+      }
+    },
+    "relations": {},
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {}
+  },
+  {
+    "identifier": "entraid_group",
+    "title": "Entra ID Group",
+    "icon": "Team",
+    "description": "A group/team from Microsoft Entra ID",
+    "schema": {
+      "properties": {
+        "display_name": {
+          "title": "Display Name",
+          "type": "string",
+          "description": "The display name for the group"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "An optional description for the group"
+        },
+        "mail": {
+          "title": "Email",
+          "type": "string",
+          "format": "email",
+          "description": "The SMTP address for the group"
+        },
+        "mail_nickname": {
+          "title": "Mail Nickname",
+          "type": "string",
+          "description": "The mail alias for the group"
+        },
+        "group_types": {
+          "title": "Group Types",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Specifies the group type and its membership"
+        },
+        "security_enabled": {
+          "title": "Security Enabled",
+          "type": "boolean",
+          "description": "Specifies whether the group is a security group"
+        },
+        "mail_enabled": {
+          "title": "Mail Enabled",
+          "type": "boolean",
+          "description": "Specifies whether the group is mail-enabled"
+        },
+        "visibility": {
+          "title": "Visibility",
+          "type": "string",
+          "description": "Specifies the group join policy and group content visibility",
+          "enum": ["Private", "Public", "HiddenMembership"],
+          "enumColors": {
+            "Private": "red",
+            "Public": "green",
+            "HiddenMembership": "yellow"
+          }
+        },
+        "created_date_time": {
+          "title": "Created Date",
+          "type": "string",
+          "description": "Timestamp of when the group was created"
+        },
+        "renewed_date_time": {
+          "title": "Renewed Date",
+          "type": "string",
+          "description": "Timestamp of when the group was last renewed"
+        },
+        "expiration_date_time": {
+          "title": "Expiration Date",
+          "type": "string",
+          "description": "Timestamp of when the group expires"
+        },
+        "member_count": {
+          "title": "Member Count",
+          "type": "number",
+          "description": "Number of members in the group"
+        },
+        "owner_count": {
+          "title": "Owner Count",
+          "type": "number",
+          "description": "Number of owners of the group"
+        }
+      }
+    },
+    "relations": {},
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {}
+  },
+  {
+    "identifier": "entraid_group_member",
+    "title": "Entra ID Group Member",
+    "icon": "UserGroup",
+    "description": "A user's membership in an Entra ID group using dynamic path parameters",
+    "schema": {
+      "properties": {
+        "user_id": {
+          "title": "User ID",
+          "type": "string",
+          "description": "The ID of the user"
+        },
+        "group_id": {
+          "title": "Group ID",
+          "type": "string",
+          "description": "The ID of the group"
+        },
+        "display_name": {
+          "title": "User Display Name",
+          "type": "string",
+          "description": "Display name of the user"
+        },
+        "user_principal_name": {
+          "title": "User Principal Name",
+          "type": "string",
+          "description": "The user principal name"
+        },
+        "mail": {
+          "title": "Email",
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address"
+        },
+        "job_title": {
+          "title": "Job Title",
+          "type": "string",
+          "description": "The user's job title"
+        },
+        "department": {
+          "title": "Department",
+          "type": "string",
+          "description": "The user's department"
+        },
+        "user_type": {
+          "title": "User Type",
+          "type": "string",
+          "description": "Type of user (Member/Guest)"
+        }
+      }
+    },
+    "relations": {
+      "user": {
+        "title": "User",
+        "target": "entraid_user",
+        "required": false,
+        "many": false
+      },
+      "group": {
+        "title": "Group",
+        "target": "entraid_group",
+        "required": false,
+        "many": false
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {}
+  }
+]
+
+

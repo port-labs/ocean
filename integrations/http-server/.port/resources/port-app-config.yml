@@ -1,0 +1,121 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+
+resources:
+  # Static API endpoints - fetch data directly
+  - kind: api_resource
+    selector:
+      query: "true"
+      endpoint: "/api/v1/users"
+      method: "GET"
+      query_params:
+        limit: "100"
+    port:
+      entity:
+        mappings:
+          identifier: .user_id
+          title: .name
+          blueprint: '"api_user"'
+          properties:
+            email: .email
+            department: .department
+            active: .is_active
+            role: .role
+            created_at: .created_at
+            last_login: .last_login
+            employee_id: .metadata.employee_id
+            office: .metadata.office
+            team_size: .metadata.team_size
+
+  - kind: api_resource
+    selector:
+      query: "true"
+      endpoint: "/api/v1/projects"
+      method: "GET"
+      query_params:
+        limit: "100"
+    port:
+      entity:
+        mappings:
+          identifier: .project_id
+          title: .project_name
+          blueprint: '"api_project"'
+          properties:
+            description: .description
+            status: .status
+            owner_name: .owner.name
+            owner_email: .owner.email
+            owner_user_id: .owner.user_id
+            budget_amount: .budget_amount
+            created_date: .created_date
+            due_date: .due_date
+            tags: .tags
+            completion_percentage: .metrics.completion_percentage
+            team_members: .metrics.team_members
+            issues_count: .metrics.issues_count
+
+  - kind: api_resource
+    selector:
+      query: "true"
+      endpoint: "/api/v1/deployments"
+      method: "GET"
+      query_params:
+        limit: "100"
+    port:
+      entity:
+        mappings:
+          identifier: .deployment_id
+          title: .service_name
+          blueprint: '"api_deployment"'
+          properties:
+            version: .version
+            environment: .env
+            deployment_status: .deployment_status
+            deployed_at: .deployed_at
+            deployed_by: .deployed_by
+            replicas: .config.replicas
+            cpu_limit: .config.cpu_limit
+            memory_limit: .config.memory_limit
+            namespace: .config.namespace
+            health_status: .health.status
+            uptime_hours: .health.uptime_hours
+            last_health_check: .health.last_check
+
+  # Dynamic API endpoints - use one endpoint to discover parameters for another
+  # This example fetches all active users, then gets projects for each user
+  - kind: api_resource
+    selector:
+      query: "true"
+      endpoint: "/api/v1/users/{user_id}/projects"
+      method: "GET"
+      path_parameters:
+        user_id:
+          endpoint: "/api/v1/users"          # Discovery endpoint
+          method: "GET"
+          query_params:                      # Filter discovery request
+            status: "active"
+            limit: "100"
+          field: ".user_id"                  # JQ: extract user_id from each record
+          filter: ".is_active == true"       # JQ: only include active users
+      query_params:
+        limit: "50"
+    port:
+      entity:
+        mappings:
+          identifier: '.project_id + "_" + .owner.user_id'
+          title: .project_name
+          blueprint: '"api_user_project"'
+          properties:
+            project_id: .project_id
+            user_id: .owner.user_id
+            project_name: .project_name
+            description: .description
+            status: .status
+            created_date: .created_date
+            owner_name: .owner.name
+            owner_email: .owner.email
+            budget_amount: .budget_amount
+            due_date: .due_date
+            tags: .tags
+          relations:
+            owner: .owner.user_id

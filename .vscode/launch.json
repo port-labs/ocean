@@ -248,6 +248,72 @@
       "python": "${workspaceFolder}/integrations/aikido/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/test-config-no-auth.env",
+      "justMyCode": true,
+      "name": "HTTP Server - No Auth",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/test-config-bearer-token.env",
+      "justMyCode": true,
+      "name": "HTTP Server - Bearer Token",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/test-config-basic-auth.env",
+      "justMyCode": true,
+      "name": "HTTP Server - Basic Auth",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/test-config-api-key.env",
+      "justMyCode": true,
+      "name": "HTTP Server - API Key",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/entraid-config.env",
+      "justMyCode": true,
+      "name": "HTTP Server - Entra ID",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/test-slack-integration.env",
+      "justMyCode": true,
+      "name": "HTTP Server - Slack Test",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }

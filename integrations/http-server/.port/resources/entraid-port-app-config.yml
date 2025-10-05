@@ -1,0 +1,106 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+
+resources:
+  # Fetch all users from Microsoft Graph API
+  - kind: api_resource
+    selector:
+      query: "true"
+      endpoint: "/v1.0/users"
+      method: "GET"
+      query_params:
+        $select: "id,displayName,givenName,surname,mail,userPrincipalName,jobTitle,department,officeLocation,mobilePhone,businessPhones,accountEnabled,userType,createdDateTime,signInActivity,assignedLicenses"
+        $top: "999"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .displayName
+          blueprint: '"entraid_user"'
+          properties:
+            display_name: .displayName
+            given_name: .givenName
+            surname: .surname
+            mail: .mail
+            user_principal_name: .userPrincipalName
+            job_title: .jobTitle
+            department: .department
+            office_location: .officeLocation
+            mobile_phone: .mobilePhone
+            business_phones: .businessPhones
+            account_enabled: .accountEnabled
+            user_type: .userType
+            created_date_time: .createdDateTime
+            last_sign_in_date_time: .signInActivity.lastSignInDateTime
+            assigned_licenses: '[.assignedLicenses[]? | .skuId]'
+      items_to_parse: ".value"
+
+  # Fetch all groups/teams from Microsoft Graph API
+  - kind: api_resource
+    selector:
+      query: "true"
+      endpoint: "/v1.0/groups"
+      method: "GET"
+      query_params:
+        $select: "id,displayName,description,mail,mailNickname,groupTypes,securityEnabled,mailEnabled,visibility,createdDateTime,renewedDateTime,expirationDateTime"
+        $top: "999"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .displayName
+          blueprint: '"entraid_group"'
+          properties:
+            display_name: .displayName
+            description: .description
+            mail: .mail
+            mail_nickname: .mailNickname
+            group_types: .groupTypes
+            security_enabled: .securityEnabled
+            mail_enabled: .mailEnabled
+            visibility: .visibility
+            created_date_time: .createdDateTime
+            renewed_date_time: .renewedDateTime
+            expiration_date_time: .expirationDateTime
+            member_count: 0  # Will be calculated separately
+            owner_count: 0   # Will be calculated separately
+      items_to_parse: ".value"
+
+  # Dynamic endpoint: Fetch group members for each group
+  # This demonstrates API-to-API parameter discovery
+  - kind: api_resource
+    selector:
+      query: "true"
+      endpoint: "/v1.0/groups/{group_id}/members"
+      method: "GET"
+      path_parameters:
+        group_id:
+          endpoint: "/v1.0/groups"          # Discovery endpoint
+          method: "GET"
+          query_params:                     # Filter discovery request
+            $select: "id,displayName"
+            $top: "999"
+          field: ".id"                      # JQ: extract group ID from each record
+          filter: ".securityEnabled == true or .mailEnabled == true"  # JQ: only active groups
+      query_params:
+        $select: "id,displayName,userPrincipalName,mail,jobTitle,department,userType"
+        $top: "999"
+    port:
+      entity:
+        mappings:
+          identifier: '.id + "_" + (.["@odata.context"] | capture("/groups/(?<groupId>[^/]+)/members") | .groupId)'
+          title: .displayName + " (Member)"
+          blueprint: '"entraid_group_member"'
+          properties:
+            user_id: .id
+            group_id: '(.["@odata.context"] | capture("/groups/(?<groupId>[^/]+)/members") | .groupId)'
+            display_name: .displayName
+            user_principal_name: .userPrincipalName
+            mail: .mail
+            job_title: .jobTitle
+            department: .department
+            user_type: .userType
+          relations:
+            user: .id
+            group: '(.["@odata.context"] | capture("/groups/(?<groupId>[^/]+)/members") | .groupId)'
+      items_to_parse: ".value"
