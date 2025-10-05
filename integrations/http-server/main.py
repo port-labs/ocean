@@ -5,15 +5,12 @@ Main entry point for the HTTP server integration with resync handlers.
 """
 
 import re
-from typing import Any, cast, List, Dict
+from typing import cast, List
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
-    JQEntityProcessor,
-)
 
 from initialize_client import init_client
 from http_server.overrides import (
@@ -21,19 +18,6 @@ from http_server.overrides import (
     HttpServerSelector,
     ApiPathParameter,
 )
-
-
-async def extract_data_with_jq(data: Dict[str, Any], jq_path: str) -> Any:
-    """Extract data from a dictionary using Ocean's JQ processor"""
-    try:
-        # Use Ocean's JQ entity processor with ocean context
-        processor = JQEntityProcessor(ocean.app)  # type: ignore[arg-type]
-        result = await processor._search(data, jq_path)
-        return result
-
-    except Exception as e:
-        logger.error(f"Error extracting data with JQ path '{jq_path}': {e}")
-        return None
 
 
 @ocean.on_resync()
@@ -51,20 +35,11 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     logger.info(f"Resolved {len(endpoints)} endpoints to call for kind: {kind}")
 
-    # Extract method, query_params, headers, data_path from selector (handle both formats)
-    query = getattr(selector, "query", None)
-    if isinstance(query, dict):
-        # Old format: fields inside query dict
-        method = query.get("method", "GET")
-        query_params = query.get("query_params", {})
-        headers = query.get("headers", {})
-        data_path = query.get("data_path")
-    else:
-        # New format: direct fields on selector
-        method = getattr(selector, "method", "GET")
-        query_params = getattr(selector, "query_params", None) or {}
-        headers = getattr(selector, "headers", None) or {}
-        data_path = getattr(selector, "data_path", None)
+    # Extract method, query_params, headers, data_path from selector
+    method = getattr(selector, "method", "GET")
+    query_params = getattr(selector, "query_params", None) or {}
+    headers = getattr(selector, "headers", None) or {}
+    data_path = getattr(selector, "data_path", None)
 
     # Call each resolved endpoint
     for endpoint in endpoints:
@@ -83,11 +58,20 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 if data_path:
                     processed_batch = []
                     for item in batch:
-                        extracted_data = await extract_data_with_jq(item, data_path)
-                        if isinstance(extracted_data, list):
-                            processed_batch.extend(extracted_data)
-                        elif extracted_data is not None:
-                            processed_batch.append(extracted_data)
+                        try:
+                            # Use Ocean's built-in JQ processor
+                            extracted_data = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
+                                item, data_path
+                            )
+                            if isinstance(extracted_data, list):
+                                processed_batch.extend(extracted_data)
+                            elif extracted_data is not None:
+                                processed_batch.append(extracted_data)
+                        except Exception as e:
+                            logger.error(
+                                f"Error extracting data with JQ path '{data_path}': {e}"
+                            )
+                            continue
 
                     if processed_batch:
                         logger.info(
@@ -116,33 +100,24 @@ async def resolve_dynamic_endpoints(
     Returns:
         List of resolved endpoint URLs
     """
-    # The kind IS the endpoint
-    endpoint = kind
-
-    # Get path_parameters from selector if they exist
-    query = getattr(selector, "query", None)
-    if isinstance(query, dict):
-        # Old format: path_parameters inside query dict
-        path_parameters = query.get("path_parameters", {})
-    else:
-        # New format: path_parameters as direct field on selector
-        path_parameters = getattr(selector, "path_parameters", None) or {}
-
-    if not endpoint:
+    if not kind:
         logger.error("Kind (endpoint) is empty")
         return []
 
+    # Get path_parameters from selector if they exist
+    path_parameters = getattr(selector, "path_parameters", None) or {}
+
     # Find path parameters in endpoint template
-    param_names = re.findall(r"\{(\w+)\}", endpoint)
+    param_names = re.findall(r"\{(\w+)\}", kind)
 
     if not param_names:
-        return [endpoint]
+        return [kind]
 
     # Validate that all parameters are configured
     missing_params = [name for name in param_names if name not in path_parameters]
     if missing_params:
         logger.error(f"Missing configuration for path parameters: {missing_params}")
-        return [endpoint]
+        return [kind]
 
     # For now, handle single parameter (can extend for multiple later)
     if len(param_names) > 1:
@@ -164,7 +139,7 @@ async def resolve_dynamic_endpoints(
     # Generate resolved endpoints
     resolved_endpoints = []
     for value in parameter_values:
-        resolved_endpoint = endpoint.replace(f"{{{param_name}}}", str(value))
+        resolved_endpoint = kind.replace(f"{{{param_name}}}", str(value))
         resolved_endpoints.append(resolved_endpoint)
 
     logger.info(
@@ -189,17 +164,24 @@ async def query_api_for_parameters(param_config: ApiPathParameter) -> List[str]:
             # Extract values using JQ expression
             values = []
             for item in batch:
-                extracted_value = await extract_data_with_jq(item, param_config.field)
-                if extracted_value is not None:
-                    # Apply optional filter
-                    if param_config.filter:
-                        filter_result = await extract_data_with_jq(
-                            item, param_config.filter
-                        )
-                        if filter_result is True:
+                try:
+                    # Use Ocean's built-in JQ processor
+                    extracted_value = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
+                        item, param_config.field
+                    )
+                    if extracted_value is not None:
+                        # Apply optional filter
+                        if param_config.filter:
+                            filter_result = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
+                                item, param_config.filter
+                            )
+                            if filter_result is True:
+                                values.append(str(extracted_value))
+                        else:
                             values.append(str(extracted_value))
-                    else:
-                        values.append(str(extracted_value))
+                except Exception as e:
+                    logger.warning(f"Error extracting value from item: {e}")
+                    continue
 
             if values:
                 return values
