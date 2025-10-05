@@ -1,5 +1,5 @@
-from typing import Dict, Any, Literal, Optional
-from pydantic import Field, BaseModel, validator
+from typing import Dict, Any, Optional
+from pydantic import Field, BaseModel
 
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,

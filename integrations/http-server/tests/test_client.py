@@ -1,6 +1,5 @@
 """Tests for HTTP Server client"""
 
-import pytest
 from http_server.client import HttpServerClient
 
 

@@ -163,6 +163,41 @@ async def resolve_dynamic_endpoints(selector: HttpServerSelector, kind: str) -> 
     return resolved_endpoints
 
 
+async def query_api_for_parameters(param_config: ApiPathParameter) -> List[str]:
+    """Query an API to get values for a path parameter"""
+    http_client = init_client()
+    
+    logger.info(f"Querying API for parameter values from {param_config.endpoint}")
+    
+    try:
+        async for batch in http_client.fetch_paginated_data(
+            endpoint=param_config.endpoint,
+            method=param_config.method,
+            query_params=param_config.query_params,
+            headers=param_config.headers,
+        ):
+            # Extract values using JQ expression
+            values = []
+            for item in batch:
+                extracted_value = await extract_data_with_jq(item, param_config.field)
+                if extracted_value is not None:
+                    # Apply optional filter
+                    if param_config.filter:
+                        filter_result = await extract_data_with_jq(item, param_config.filter)
+                        if filter_result is True:
+                            values.append(str(extracted_value))
+                    else:
+                        values.append(str(extracted_value))
+            
+            if values:
+                return values
+                
+    except Exception as e:
+        logger.error(f"Error querying API for parameter values from {param_config.endpoint}: {str(e)}")
+    
+    return []
+
+
 async def query_port_entities(param_config: ApiPathParameter) -> List[str]:
     """Query Port entities using Ocean's existing Port client with validation"""
     
