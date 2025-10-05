@@ -11,7 +11,7 @@ class AuthClient(OAuthClient):
             auth_token = self.external_access_token
         except ValueError:
             auth_token = self.token
-        request.headers["Authorization"] = auth_token
+        request.headers["Authorization"] = f"Bearer {auth_token}"
         return request
 
     def get_headers(self) -> dict[str, str]:
