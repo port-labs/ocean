@@ -220,5 +220,121 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "eksCluster",
+    "title": "EKS Cluster",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the EKS cluster"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "The name of the EKS cluster"
+        },
+        "version": {
+          "type": "string",
+          "title": "Kubernetes Version",
+          "description": "The Kubernetes version of the EKS cluster"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the EKS cluster"
+        },
+        "endpoint": {
+          "type": "string",
+          "title": "Endpoint",
+          "description": "The endpoint URL for the EKS cluster"
+        },
+        "roleArn": {
+          "type": "string",
+          "title": "Role ARN",
+          "description": "The IAM role ARN associated with the EKS cluster"
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags",
+          "description": "Tags associated with the EKS cluster",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "rdsDbInstance",
+    "title": "RDS DB Instance",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "dbInstanceIdentifier": {
+          "type": "string",
+          "title": "DB Instance Identifier",
+          "description": "The unique identifier of the RDS DB instance"
+        },
+        "dbInstanceArn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the DB instance"
+        },
+        "engine": {
+          "type": "string",
+          "title": "Engine",
+          "description": "The database engine type (e.g., mysql, postgres, oracle-ee)"
+        },
+        "dbInstanceClass": {
+          "type": "string",
+          "title": "Instance Class",
+          "description": "The compute and memory capacity of the DB instance (e.g., db.t3.micro, db.m4.xlarge)"
+        },
+        "dbInstanceStatus": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the DB instance",
+          "enum": ["available", "backing-up", "creating", "deleting", "failed", "incompatible-credentials", "incompatible-network", "incompatible-option-group", "incompatible-parameters", "incompatible-restore", "maintenance", "modifying", "rebooting", "renaming", "resetting-master-credentials", "restore-error", "storage-full", "storage-optimization", "upgrading"]
+        },
+        "multiAZ": {
+          "type": "boolean",
+          "title": "Multi-AZ",
+          "description": "Whether the DB instance is deployed in multiple Availability Zones"
+        },
+        "storageEncrypted": {
+          "type": "boolean",
+          "title": "Storage Encrypted",
+          "description": "Whether the DB instance storage is encrypted"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

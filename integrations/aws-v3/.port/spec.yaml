@@ -10,6 +10,8 @@ features:
       - kind: AWS::S3::Bucket
       - kind: AWS::EC2::Instance
       - kind: AWS::ECS::Cluster
+      - kind: AWS::EKS::Cluster
+      - kind: AWS::RDS::DBInstance
       - kind: AWS::Organizations::Account
 configurations:
   - name: accountRoleArn
