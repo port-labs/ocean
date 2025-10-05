@@ -1,4 +1,4 @@
-from typing import Callable, TYPE_CHECKING, Any, Literal, Union
+from typing import Callable, TYPE_CHECKING, Any, Union
 
 from fastapi import APIRouter
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
@@ -8,7 +8,7 @@ from werkzeug.local import LocalProxy
 
 from port_ocean.clients.port.types import UserAgentType
 
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, EventListenerType
 from port_ocean.core.ocean_types import (
     RESYNC_EVENT_LISTENER,
     START_EVENT_LISTENER,
@@ -74,11 +74,7 @@ class PortOceanContext:
         return self.app.port_client
 
     @property
-    def event_listener_type(
-        self,
-    ) -> Literal[
-        "WEBHOOK", "KAFKA", "POLLING", "ONCE", "WEBHOOKS_ONLY", "ACTIONS_ONLY"
-    ]:
+    def event_listener_type(self) -> EventListenerType:
         return self.app.config.event_listener.type
 
     def on_resync(

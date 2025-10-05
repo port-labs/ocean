@@ -195,10 +195,6 @@ class Ocean:
             )
         return self.config.base_url or integration_config.get("app_host")
 
-    @property
-    def execution_agent_enabled(self) -> bool:
-        return self.config.execution_agent.enabled
-
     def load_external_oauth_access_token(self) -> str | None:
         if self.config.oauth_access_token_file_path is not None:
             try:
@@ -211,18 +207,21 @@ class Ocean:
                 )
         return None
 
-    async def register_addons(self) -> None:
+    async def _register_addons(self) -> None:
         if self.base_url:
-            await self.webhook_manager.start_processing_event_messages()
-        else:
-            logger.warning("No base URL provided, skipping webhook processing")
+            logger.warning(
+                "No base URL provided, skipping webhook processing and execution agent setup"
+            )
+            return
 
-        if self.execution_agent_enabled:
-            self.execution_manager.start_processing_action_runs()
-        else:
+        await self.webhook_manager.start_processing_event_messages()
+        if not self.config.execution_agent.enabled:
             logger.warning(
                 "Execution agent is not enabled, skipping execution agent setup"
             )
+
+        if self.config.event_listener.should_run_execution_agent_if_enabled:
+            await self.execution_manager.start_processing_action_runs()
 
     def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
@@ -234,7 +233,7 @@ class Ocean:
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 await self.integration.start()
-                await self.register_addons()
+                await self._register_addons()
                 await self._setup_scheduled_resync()
                 yield None
             except Exception:

@@ -7,6 +7,15 @@ from pydantic import BaseModel
 from pydantic.fields import Field
 
 
+class EventListenerType(StrEnum):
+    WEBHOOK = "WEBHOOK"
+    KAFKA = "KAFKA"
+    POLLING = "POLLING"
+    ONCE = "ONCE"
+    WEBHOOKS_ONLY = "WEBHOOKS_ONLY"
+    ACTIONS_ONLY = "ACTIONS_ONLY"
+
+
 class CreatePortResourcesOrigin(StrEnum):
     Ocean = "Ocean"
     Port = "Port"

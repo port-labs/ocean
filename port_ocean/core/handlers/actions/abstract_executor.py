@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Type
 
-from pydantic import BaseModel
 
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -45,17 +44,15 @@ class AbstractExecutor(ABC):
         """
         return cls.action_name
 
+    async def can_execute(self, payload: dict[str, Any]) -> bool:
+        """
+        Check if the action can be executed.
+        """
+        return True
+
     @abstractmethod
-    async def execute(self, inputs: dict[str, Any] | BaseModel) -> Any:
+    async def execute(self, payload: dict[str, Any]) -> None:
         """
         Execute the action.
         """
         pass
-
-    async def handle_execution_update(self, payload: dict[str, Any]):
-        """
-        Optional callback for handling execution updates if not using a dedicated
-        WebhookProcessor. Most implementations should provide a webhook processor
-        via `get_webhook_processor` instead of overriding this.
-        """
-        return None

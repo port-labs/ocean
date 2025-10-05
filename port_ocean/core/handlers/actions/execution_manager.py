@@ -34,7 +34,7 @@ class ExecutionManager(ActionsClientMixin):
         self._should_fetch_more_runs = asyncio.Condition()
         self._workers_pool: set[asyncio.Task[None]] = set()
         self._actions_executors: Dict[str, Type[AbstractExecutor]] = {}
-        self._global_queue = LocalQueue()
+        self._global_queue = LocalQueue[ActionRun]()
         self._partition_queues: Dict[str, AbstractQueue[ActionRun]] = {}
         self._locked: Set[str] = set()
         self.lock_timeout_seconds = lock_timeout_seconds
@@ -138,7 +138,6 @@ class ExecutionManager(ActionsClientMixin):
                         )
                         continue
 
-                    # TODO: Ack this run in action service
                     partition_key = self._actions_executors[action_name].partition_key()
                     if partition_key:
                         partition_name = self._extract_partition_key(run, partition_key)
@@ -210,10 +209,12 @@ class ExecutionManager(ActionsClientMixin):
         queue = self._partition_queues[partition_name]
         if await queue.size() == 0:
             return False
+
         queue_lock_key = f"queue:{partition_name}"
         successfully_locked = await self._try_lock(queue_lock_key)
         if not successfully_locked:
             return False
+
         try:
             run = await queue.get()
             await self._execute_run(run)
@@ -232,7 +233,12 @@ class ExecutionManager(ActionsClientMixin):
                 source = await self._active_sources.get()
 
                 try:
+                    # TODO: Check if the action can be executed, if not then don't ack this run
+                    # TODO: Ack this run in action service
                     if source == GLOBAL_SOURCE:
+                        # If the global queue is not empty, put it back in the active sources so it can be consumed concurrently
+                        if await self._global_queue.size() > 0:
+                            await self._active_sources.put(source)
                         did_work = await self._handle_global_queue_once()
                     else:
                         did_work = await self._handle_partition_queue_once(source)
@@ -264,7 +270,6 @@ class ExecutionManager(ActionsClientMixin):
 
             executor = executor_cls()
             await executor.execute(run.payload.oceanExecution.inputs)
-            await self.patch_run(run.id, {"status": RunStatus.SUCCESS})
         except Exception as e:
             logger.exception("Error executing run", run=run.id, action=run.action.name)
             await self.patch_run(

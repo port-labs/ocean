@@ -1,5 +1,3 @@
-from typing import Literal
-
 from loguru import logger
 
 from port_ocean.core.event_listener.base import (
@@ -7,6 +5,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
+from port_ocean.core.models import EventListenerType
 
 
 class ActionsOnlyEventListenerSettings(EventListenerSettings):
@@ -14,7 +13,7 @@ class ActionsOnlyEventListenerSettings(EventListenerSettings):
     This class inherits from `EventListenerSettings`, which provides a foundation for creating event listener settings.
     """
 
-    type: Literal["ACTIONS_ONLY"]
+    type: EventListenerType = EventListenerType.ACTIONS_ONLY
     should_resync: bool = False
 
 

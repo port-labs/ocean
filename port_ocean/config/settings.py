@@ -12,6 +12,7 @@ from port_ocean.core.event_listener import EventListenerSettingsType
 from port_ocean.core.models import (
     CachingStorageMode,
     CreatePortResourcesOrigin,
+    EventListenerType,
     ProcessExecutionMode,
     Runtime,
 )
@@ -101,7 +102,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     base_url: str | None = None
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(
-        default=cast(EventListenerSettingsType, {"type": "POLLING"})
+        default=cast(EventListenerSettingsType, {"type": EventListenerType.POLLING})
     )
     event_workers_count: int = 1
     # If an identifier or type is not provided, it will be generated based on the integration name

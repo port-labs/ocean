@@ -32,6 +32,7 @@ EventListenerSettingsType = (
     | PollingEventListenerSettings
     | OnceEventListenerSettings
     | WebhooksOnlyEventListenerSettings
+    | ActionsOnlyEventListenerSettings
 )
 
 __all__ = [

@@ -25,6 +25,7 @@ from port_ocean.core.event_listener.webhooks_only import (
     WebhooksOnlyEventListener,
     WebhooksOnlyEventListenerSettings,
 )
+from port_ocean.core.models import EventListenerType
 from port_ocean.exceptions.core import UnsupportedEventListenerTypeException
 
 
@@ -61,12 +62,11 @@ class EventListenerFactory:
         wrapped_events: EventListenerEvents = {"on_resync": self.events["on_resync"]}
         event_listener: BaseEventListener
         config = self.context.config.event_listener
-        _type = config.type.lower()
         assert_message = "Invalid event listener config, expected KafkaEventListenerSettings and got {0}"
-        logger.info(f"Found event listener type: {_type}")
+        logger.info(f"Found event listener type: {config.type}")
 
-        match _type:
-            case "kafka":
+        match config.type:
+            case EventListenerType.KAFKA:
                 assert isinstance(
                     config, KafkaEventListenerSettings
                 ), assert_message.format(type(config))
@@ -79,36 +79,36 @@ class EventListenerFactory:
                     self.context.config.integration.type,
                 )
 
-            case "webhook":
+            case EventListenerType.WEBHOOK:
                 assert isinstance(
                     config, HttpEventListenerSettings
                 ), assert_message.format(type(config))
                 event_listener = HttpEventListener(wrapped_events, config)
 
-            case "polling":
+            case EventListenerType.POLLING:
                 assert isinstance(
                     config, PollingEventListenerSettings
                 ), assert_message.format(type(config))
                 event_listener = PollingEventListener(wrapped_events, config)
 
-            case "once":
+            case EventListenerType.ONCE:
                 assert isinstance(
                     config, OnceEventListenerSettings
                 ), assert_message.format(type(config))
                 event_listener = OnceEventListener(wrapped_events, config)
-            case "webhooks_only":
+            case EventListenerType.WEBHOOKS_ONLY:
                 assert isinstance(
                     config, WebhooksOnlyEventListenerSettings
                 ), assert_message.format(type(config))
                 event_listener = WebhooksOnlyEventListener(wrapped_events, config)
-            case "actions_only":
+            case EventListenerType.ACTIONS_ONLY:
                 assert isinstance(
                     config, ActionsOnlyEventListenerSettings
                 ), assert_message.format(type(config))
                 event_listener = ActionsOnlyEventListener(wrapped_events, config)
             case _:
                 raise UnsupportedEventListenerTypeException(
-                    f"Event listener {_type} not supported"
+                    f"Event listener {config.type} not supported"
                 )
 
         return event_listener
