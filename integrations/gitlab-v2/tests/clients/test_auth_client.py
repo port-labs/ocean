@@ -48,8 +48,8 @@ def test_auth_client_get_refreshed_token() -> None:
     # Mock the external_access_token property
     with patch.object(
         type(client),
-        'external_access_token',
-        new_callable=lambda: property(lambda self: "external-token")
+        "external_access_token",
+        new_callable=lambda: property(lambda self: "external-token"),
     ):
         # Act
         refreshed_token = client.get_refreshed_token()
@@ -67,8 +67,10 @@ def test_auth_client_get_refreshed_token_raises_value_error() -> None:
     # Mock the external_access_token property to raise ValueError
     with patch.object(
         type(client),
-        'external_access_token',
-        new_callable=lambda: property(lambda self: (_ for _ in ()).throw(ValueError("Token not available")))
+        "external_access_token",
+        new_callable=lambda: property(
+            lambda self: (_ for _ in ()).throw(ValueError("Token not available"))
+        ),
     ):
         # Act & Assert
         with pytest.raises(ValueError, match="Token not available"):

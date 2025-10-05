@@ -35,7 +35,9 @@ class TestTokenRefreshIntegration:
             "https://gitlab.example.com", "test-token", endpoint="api/v4"
         )
 
-    async def test_token_refresh_integration_success(self, client: HTTPBaseClient) -> None:
+    async def test_token_refresh_integration_success(
+        self, client: HTTPBaseClient
+    ) -> None:
         """Test complete token refresh flow when 401 occurs and refresh succeeds"""
         method = "GET"
         path = "projects"
@@ -51,11 +53,18 @@ class TestTokenRefreshIntegration:
         mock_success_response.json.return_value = {"id": 1, "name": "Test Project"}
         mock_success_response.raise_for_status = MagicMock()
 
-        with patch.object(
-            client._client, "request", AsyncMock(side_effect=[mock_401_response, mock_success_response])
-        ) as mock_request, patch.object(
-            client._auth_client, "get_refreshed_token", return_value="refreshed-token"
-        ) as mock_get_refreshed_token:
+        with (
+            patch.object(
+                client._client,
+                "request",
+                AsyncMock(side_effect=[mock_401_response, mock_success_response]),
+            ) as mock_request,
+            patch.object(
+                client._auth_client,
+                "get_refreshed_token",
+                return_value="refreshed-token",
+            ) as mock_get_refreshed_token,
+        ):
             # Act
             result = await client.send_api_request(method, path)
 
@@ -66,7 +75,9 @@ class TestTokenRefreshIntegration:
             assert mock_request.call_count == 2
             mock_get_refreshed_token.assert_called_once()
 
-    async def test_token_refresh_integration_failure(self, client: HTTPBaseClient) -> None:
+    async def test_token_refresh_integration_failure(
+        self, client: HTTPBaseClient
+    ) -> None:
         """Test token refresh flow when 401 occurs but refresh fails"""
         method = "GET"
         path = "projects"
@@ -76,11 +87,16 @@ class TestTokenRefreshIntegration:
             "Unauthorized", request=MagicMock(), response=MagicMock(status_code=401)
         )
 
-        with patch.object(
-            client._client, "request", AsyncMock(return_value=mock_401_response)
-        ) as mock_request, patch.object(
-            client._auth_client, "get_refreshed_token", side_effect=ValueError("External token not available")
-        ) as mock_get_refreshed_token:
+        with (
+            patch.object(
+                client._client, "request", AsyncMock(return_value=mock_401_response)
+            ) as mock_request,
+            patch.object(
+                client._auth_client,
+                "get_refreshed_token",
+                side_effect=ValueError("External token not available"),
+            ) as mock_get_refreshed_token,
+        ):
             # Act & Assert
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
                 await client.send_api_request(method, path)
@@ -102,11 +118,16 @@ class TestTokenRefreshIntegration:
             "Unauthorized", request=MagicMock(), response=MagicMock(status_code=401)
         )
 
-        with patch.object(
-            client._client, "request", AsyncMock(return_value=mock_401_response)
-        ) as mock_request, patch.object(
-            client._auth_client, "get_refreshed_token", return_value="refreshed-token"
-        ) as mock_get_refreshed_token:
+        with (
+            patch.object(
+                client._client, "request", AsyncMock(return_value=mock_401_response)
+            ) as mock_request,
+            patch.object(
+                client._auth_client,
+                "get_refreshed_token",
+                return_value="refreshed-token",
+            ) as mock_get_refreshed_token,
+        ):
             # Act & Assert
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
                 await client.send_api_request(method, path)
@@ -117,21 +138,28 @@ class TestTokenRefreshIntegration:
             assert mock_request.call_count == 2  # Original + retry
             mock_get_refreshed_token.assert_called_once()
 
-    async def test_no_token_refresh_for_non_401_errors(self, client: HTTPBaseClient) -> None:
+    async def test_no_token_refresh_for_non_401_errors(
+        self, client: HTTPBaseClient
+    ) -> None:
         """Test that token refresh is not attempted for non-401 errors"""
         method = "GET"
         path = "projects"
 
         mock_500_response = MagicMock()
         mock_500_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "Internal Server Error", request=MagicMock(), response=MagicMock(status_code=500)
+            "Internal Server Error",
+            request=MagicMock(),
+            response=MagicMock(status_code=500),
         )
 
-        with patch.object(
-            client._client, "request", AsyncMock(return_value=mock_500_response)
-        ) as mock_request, patch.object(
-            client._auth_client, "get_refreshed_token"
-        ) as mock_get_refreshed_token:
+        with (
+            patch.object(
+                client._client, "request", AsyncMock(return_value=mock_500_response)
+            ) as mock_request,
+            patch.object(
+                client._auth_client, "get_refreshed_token"
+            ) as mock_get_refreshed_token,
+        ):
             # Act & Assert
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
                 await client.send_api_request(method, path)
@@ -141,7 +169,9 @@ class TestTokenRefreshIntegration:
             mock_request.assert_called_once()
             mock_get_refreshed_token.assert_not_called()  # Refresh should not be attempted
 
-    async def test_successful_request_no_refresh_needed(self, client: HTTPBaseClient) -> None:
+    async def test_successful_request_no_refresh_needed(
+        self, client: HTTPBaseClient
+    ) -> None:
         """Test that successful requests don't trigger token refresh"""
         method = "GET"
         path = "projects"
@@ -150,11 +180,14 @@ class TestTokenRefreshIntegration:
         mock_success_response.json.return_value = {"id": 1, "name": "Test Project"}
         mock_success_response.raise_for_status = MagicMock()
 
-        with patch.object(
-            client._client, "request", AsyncMock(return_value=mock_success_response)
-        ) as mock_request, patch.object(
-            client._auth_client, "get_refreshed_token"
-        ) as mock_get_refreshed_token:
+        with (
+            patch.object(
+                client._client, "request", AsyncMock(return_value=mock_success_response)
+            ) as mock_request,
+            patch.object(
+                client._auth_client, "get_refreshed_token"
+            ) as mock_get_refreshed_token,
+        ):
             # Act
             result = await client.send_api_request(method, path)
 

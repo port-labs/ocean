@@ -6,6 +6,7 @@ from port_ocean.utils import http_async_client
 
 from gitlab.clients.auth_client import AuthClient
 
+
 class HTTPBaseClient:
     def __init__(self, base_url: str, token: str, endpoint: str):
         self.token = token

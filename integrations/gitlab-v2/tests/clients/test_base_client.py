@@ -211,7 +211,9 @@ class TestHTTPBaseClient:
                 json=None,
             )
 
-    async def test_send_api_request_401_no_refresh(self, client: HTTPBaseClient) -> None:
+    async def test_send_api_request_401_no_refresh(
+        self, client: HTTPBaseClient
+    ) -> None:
         """Test API request with 401 Unauthorized response when token refresh fails"""
         # Arrange
         method = "GET"
@@ -221,11 +223,14 @@ class TestHTTPBaseClient:
             "Unauthorized", request=MagicMock(), response=MagicMock(status_code=401)
         )
 
-        with patch.object(
-            client._client, "request", AsyncMock(return_value=mock_response)
-        ) as mock_request, patch.object(
-            client, "_refresh_token", AsyncMock(return_value=False)
-        ) as mock_refresh:
+        with (
+            patch.object(
+                client._client, "request", AsyncMock(return_value=mock_response)
+            ) as mock_request,
+            patch.object(
+                client, "_refresh_token", AsyncMock(return_value=False)
+            ) as mock_refresh,
+        ):
             # Act & Assert
             with pytest.raises(httpx.HTTPStatusError) as exc_info:
                 await client.send_api_request(method, path)
@@ -240,7 +245,9 @@ class TestHTTPBaseClient:
             )
             mock_refresh.assert_called_once()
 
-    async def test_send_api_request_401_with_successful_refresh(self, client: HTTPBaseClient) -> None:
+    async def test_send_api_request_401_with_successful_refresh(
+        self, client: HTTPBaseClient
+    ) -> None:
         """Test API request with 401 that succeeds after token refresh"""
         # Arrange
         method = "GET"
@@ -257,11 +264,16 @@ class TestHTTPBaseClient:
         mock_success_response.json.return_value = {"id": 1, "name": "Private Project"}
         mock_success_response.raise_for_status = MagicMock()
 
-        with patch.object(
-            client._client, "request", AsyncMock(side_effect=[mock_401_response, mock_success_response])
-        ) as mock_request, patch.object(
-            client, "_refresh_token", AsyncMock(return_value=True)
-        ) as mock_refresh:
+        with (
+            patch.object(
+                client._client,
+                "request",
+                AsyncMock(side_effect=[mock_401_response, mock_success_response]),
+            ) as mock_request,
+            patch.object(
+                client, "_refresh_token", AsyncMock(return_value=True)
+            ) as mock_refresh,
+        ):
             # Act
             result = await client.send_api_request(method, path)
 
@@ -273,8 +285,6 @@ class TestHTTPBaseClient:
     async def test_refresh_token_success(self, client: HTTPBaseClient) -> None:
         """Test successful token refresh"""
         # Arrange
-        original_token = client.token
-
         with patch.object(
             client._auth_client, "get_refreshed_token", return_value="new-token"
         ) as mock_get_token:
@@ -293,7 +303,9 @@ class TestHTTPBaseClient:
         original_token = client.token
 
         with patch.object(
-            client._auth_client, "get_refreshed_token", side_effect=ValueError("Token not available")
+            client._auth_client,
+            "get_refreshed_token",
+            side_effect=ValueError("Token not available"),
         ) as mock_get_token:
             # Act
             result = await client._refresh_token()
