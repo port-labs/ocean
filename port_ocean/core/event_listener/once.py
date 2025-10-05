@@ -23,6 +23,7 @@ class OnceEventListenerSettings(EventListenerSettings):
     """
 
     type: EventListenerType = EventListenerType.ONCE
+    should_create_webhooks_if_enabled: bool = False
     should_run_execution_agent_if_enabled: bool = False
 
 

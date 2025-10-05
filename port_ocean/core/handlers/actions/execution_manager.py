@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import Dict, Type, Set, Optional, List
 from loguru import logger
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    WebhookProcessorType,
+)
 from port_ocean.core.models import ActionRun, RunStatus
 import asyncio
 import time
@@ -57,7 +60,7 @@ class ExecutionManager(ActionsClientMixin):
         webhook_processor_cls = executor_cls.get_webhook_processor()
         if webhook_processor_cls:
             self._webhook_manager.register_processor(
-                WEBHOOK_PATH, webhook_processor_cls
+                WEBHOOK_PATH, webhook_processor_cls, WebhookProcessorType.ACTION
             )
             logger.info(
                 "Registered executor webhook processor",

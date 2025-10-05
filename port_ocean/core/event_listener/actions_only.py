@@ -15,6 +15,7 @@ class ActionsOnlyEventListenerSettings(EventListenerSettings):
 
     type: EventListenerType = EventListenerType.ACTIONS_ONLY
     should_resync: bool = False
+    should_create_webhooks_if_enabled: bool = False
 
 
 class ActionsOnlyEventListener(BaseEventListener):

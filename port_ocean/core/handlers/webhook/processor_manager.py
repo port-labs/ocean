@@ -10,14 +10,30 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.queue.abstract_queue import AbstractQueue
 from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
+from port_ocean.core.models import EventListenerType
 from port_ocean.exceptions.webhook_processor import WebhookEventNotSupportedError
-from .webhook_event import WebhookEvent, WebhookEventRawResults, LiveEventTimestamp
+from port_ocean.core.handlers.webhook.webhook_event import (
+    WebhookEvent,
+    WebhookEventRawResults,
+    LiveEventTimestamp,
+)
 from port_ocean.context.event import event
 
-
-from .abstract_webhook_processor import AbstractWebhookProcessor
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    AbstractWebhookProcessor,
+    WebhookProcessorType,
+)
 from port_ocean.utils.signal import SignalHandler
 from port_ocean.core.handlers.queue import LocalQueue
+
+
+PROCESSOR_TO_EVENT_LISTENER_TYPES_COMPATIBILITY: Dict[
+    EventListenerType, list[WebhookProcessorType]
+] = {
+    EventListenerType.WEBHOOKS_ONLY: [WebhookProcessorType.WEBHOOK],
+    EventListenerType.ACTIONS_ONLY: [WebhookProcessorType.ACTION],
+    EventListenerType.ONCE: [],
+}
 
 
 class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
@@ -258,7 +274,10 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         return webhook_event_raw_results
 
     def register_processor(
-        self, path: str, processor: Type[AbstractWebhookProcessor]
+        self,
+        path: str,
+        processor: Type[AbstractWebhookProcessor],
+        processor_type: WebhookProcessorType = WebhookProcessorType.WEBHOOK,
     ) -> None:
         """Register a webhook processor for a specific path with optional filter
 
@@ -270,6 +289,17 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
         if not issubclass(processor, AbstractWebhookProcessor):
             raise ValueError("Processor must extend AbstractWebhookProcessor")
+
+        if processor_type not in PROCESSOR_TO_EVENT_LISTENER_TYPES_COMPATIBILITY.get(
+            ocean.event_listener_type,
+            [WebhookProcessorType.WEBHOOK, WebhookProcessorType.ACTION],
+        ):
+            logger.warning(
+                "Processor type is not compatible with event listener type, skipping registration",
+                processor_type=processor_type,
+                event_listener_type=ocean.event_listener_type,
+            )
+            return
 
         if path not in self._processors_classes:
             self._processors_classes[path] = []

@@ -3,6 +3,7 @@ from typing import Any, cast
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.models import EventListenerType
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
@@ -88,8 +89,8 @@ async def on_start() -> None:
     """Initialize the integration and set up webhooks."""
     logger.info("Starting Port Ocean GitHub integration")
 
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
+    if not ocean.app.config.event_listener.should_create_webhooks_if_enabled:
+        logger.info("Skipping webhook creation as it's not supported for this event listener")
         return
 
     base_url = ocean.app.base_url
