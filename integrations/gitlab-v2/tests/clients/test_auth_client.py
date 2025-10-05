@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -37,3 +37,39 @@ def test_auth_client_headers() -> None:
         "Authorization": "Bearer test-token",
         "Content-Type": "application/json",
     }
+
+
+def test_auth_client_get_refreshed_token() -> None:
+    """Test getting refreshed external token"""
+    # Arrange
+    token = "test-token"
+    client = AuthClient(token)
+
+    # Mock the external_access_token property
+    with patch.object(
+        type(client),
+        'external_access_token',
+        new_callable=lambda: property(lambda self: "external-token")
+    ):
+        # Act
+        refreshed_token = client.get_refreshed_token()
+
+        # Assert
+        assert refreshed_token == "external-token"
+
+
+def test_auth_client_get_refreshed_token_raises_value_error() -> None:
+    """Test that get_refreshed_token raises ValueError when external token is not available"""
+    # Arrange
+    token = "test-token"
+    client = AuthClient(token)
+
+    # Mock the external_access_token property to raise ValueError
+    with patch.object(
+        type(client),
+        'external_access_token',
+        new_callable=lambda: property(lambda self: (_ for _ in ()).throw(ValueError("Token not available")))
+    ):
+        # Act & Assert
+        with pytest.raises(ValueError, match="Token not available"):
+            client.get_refreshed_token()
