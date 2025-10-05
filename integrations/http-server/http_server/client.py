@@ -49,7 +49,7 @@ class HttpServerClient:
         # Simple concurrency control (like other Ocean integrations)
         self.semaphore = asyncio.Semaphore(max_concurrent_requests)
 
-    def _setup_auth(self):
+    def _setup_auth(self) -> None:
         """Setup authentication following Ocean patterns"""
         # Set User-Agent
         self.client.headers["User-Agent"] = "Port-Ocean-HTTP-Integration/1.0"
@@ -83,7 +83,7 @@ class HttpServerClient:
         """Fetch data with automatic caching and rate limiting"""
 
         # Use Ocean's semaphore for concurrency control
-        async def _fetch():
+        async def _fetch() -> AsyncGenerator[List[Dict[str, Any]], None]:
             async for batch in self._fetch_with_pagination(
                 endpoint, method, query_params, headers
             ):

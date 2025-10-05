@@ -5,13 +5,12 @@ Main entry point for the HTTP server integration with resync handlers.
 """
 
 import re
-from typing import Any, cast, List
+from typing import Any, cast, List, Dict
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
@@ -24,11 +23,11 @@ from http_server.overrides import (
 )
 
 
-async def extract_data_with_jq(data: dict[str, Any], jq_path: str) -> Any:
+async def extract_data_with_jq(data: Dict[str, Any], jq_path: str) -> Any:
     """Extract data from a dictionary using Ocean's JQ processor"""
     try:
         # Use Ocean's JQ entity processor with ocean context
-        processor = JQEntityProcessor(ocean.app)
+        processor = JQEntityProcessor(ocean.app)  # type: ignore[arg-type]
         result = await processor._search(data, jq_path)
         return result
 
@@ -211,119 +210,3 @@ async def query_api_for_parameters(param_config: ApiPathParameter) -> List[str]:
         )
 
     return []
-
-
-async def query_port_entities(param_config: ApiPathParameter) -> List[str]:
-    """Query Port entities using Ocean's existing Port client with validation"""
-
-    search_query = param_config.search
-    property_path = param_config.property
-
-    try:
-        # Convert our search query to the format expected by Ocean's Port client
-        query_dict = {
-            "combinator": search_query.combinator,
-            "rules": [
-                {
-                    "property": rule.property,
-                    "operator": rule.operator,
-                    "value": rule.value,
-                }
-                for rule in search_query.rules
-            ],
-        }
-
-        logger.info(f"Searching Port entities with query: {query_dict}")
-
-        # Use Ocean's built-in Port client
-        entities = await ocean.port_client.search_entities(
-            user_agent_type=UserAgentType.exporter, query=query_dict
-        )
-
-        logger.info(f"Found {len(entities)} entities matching search criteria")
-
-        # Extract property values from entities
-        values = []
-        invalid_values = 0
-
-        for entity in entities:
-            try:
-                # Convert entity to dict for property extraction
-                entity_dict = entity.dict() if hasattr(entity, "dict") else entity
-
-                # Extract property value using simple path navigation
-                property_value = extract_property_value(entity_dict, property_path)
-
-                # Validate that property value is extractable as string
-                if property_value is None:
-                    logger.warning(
-                        f"Property '{property_path}' returned null for entity "
-                        f"{entity_dict.get('identifier', 'unknown')}"
-                    )
-                    continue
-
-                if not isinstance(property_value, (str, int, float)):
-                    logger.warning(
-                        f"Property '{property_path}' returned non-string value "
-                        f"'{property_value}' (type: {type(property_value)}) for entity "
-                        f"{entity_dict.get('identifier', 'unknown')}"
-                    )
-                    invalid_values += 1
-                    continue
-
-                # Convert to string and add to values
-                string_value = str(property_value)
-                if string_value:  # Only add non-empty strings
-                    values.append(string_value)
-
-            except Exception as e:
-                logger.warning(
-                    f"Failed to extract property from entity {entity_dict.get('identifier', 'unknown')}: {e}"
-                )
-
-        # Log summary
-        logger.info(
-            f"Processed {len(entities)} entities: "
-            f"{len(values)} valid values, "
-            f"{invalid_values} invalid values"
-        )
-
-        if values:
-            logger.info(
-                f"Extracted parameter values: {values[:5]}{'...' if len(values) > 5 else ''}"
-            )
-        else:
-            logger.warning("No valid parameter values extracted from Port entities")
-
-        return values
-
-    except Exception as e:
-        logger.error(f"Failed to query Port entities: {e}")
-        return []
-
-
-def extract_property_value(entity_dict: dict, property_path: str) -> Any:
-    """Extract property value from entity using dot notation path"""
-    try:
-        # Handle simple property paths like "identifier", "properties.status", etc.
-        if "." not in property_path:
-            return entity_dict.get(property_path)
-
-        # Handle nested paths
-        parts = property_path.split(".")
-        current = entity_dict
-
-        for part in parts:
-            if isinstance(current, dict):
-                current = current.get(part)
-            else:
-                return None
-
-            if current is None:
-                return None
-
-        return current
-
-    except Exception as e:
-        logger.warning(f"Error extracting property '{property_path}': {e}")
-        return None

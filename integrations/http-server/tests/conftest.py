@@ -38,8 +38,8 @@ def mock_event_context() -> Generator[MagicMock, None, None]:
     mock_event.resource_config = MagicMock()
     mock_event.attributes = {}
 
-    token = event_context.set(mock_event)
+    token = event_context.set(mock_event)  # type: ignore[attr-defined]
     try:
         yield mock_event
     finally:
-        event_context.reset(token)
+        event_context.reset(token)  # type: ignore[attr-defined]

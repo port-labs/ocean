@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pydantic import Field, BaseModel
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -64,4 +64,4 @@ class HttpServerResourceConfig(ResourceConfig):
 class HttpServerPortAppConfig(PortAppConfig):
     """Port app configuration for HTTP server integration"""
 
-    resources: list[HttpServerResourceConfig] = Field(default_factory=list)
+    resources: List[ResourceConfig] = Field(default_factory=list)
