@@ -11,6 +11,6 @@ from http_server.overrides import HttpServerPortAppConfig
 
 class HttpServerIntegration(BaseIntegration):
     """HTTP Server integration with custom configuration"""
-    
+
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = HttpServerPortAppConfig
