@@ -1,7 +1,6 @@
 from enum import StrEnum
-from typing import Generator, cast
+from typing import cast
 
-from azure.mgmt.subscription.models._models_py3 import Subscription
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -29,9 +28,7 @@ async def on_resync_resource_container(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
     resource_confg = cast(AzureResourceContainerConfig, event.resource_config)
     container_tags = resource_confg.selector.tags
 
-    async with (
-        AzureClient() as azure_client,
-    ):
+    async with (AzureClient() as azure_client,):
         all_subscriptions = await azure_client.get_all_subscriptions()
         logger.info(f"Discovered {len(all_subscriptions)} subscriptions")
 
@@ -62,9 +59,7 @@ async def on_resync_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     resource_types = resource_confg.selector.resource_types
     container_tags = resource_confg.selector.tags
 
-    async with (
-        AzureClient() as azure_client,
-    ):
+    async with (AzureClient() as azure_client,):
         all_subscriptions = await azure_client.get_all_subscriptions()
         logger.info(f"Discovered {len(all_subscriptions)} subscriptions")
 
