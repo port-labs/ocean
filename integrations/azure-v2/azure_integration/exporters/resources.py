@@ -16,7 +16,6 @@ class ResourcesExporter(BaseExporter):
 
     def __init__(self, client: AzureClient, resource_config: ResourceConfig):
         super().__init__(client, resource_config)
-        self.resource_config = cast(AzureResourceConfig, self.resource_config)
 
     def _build_full_sync_query(
         self,

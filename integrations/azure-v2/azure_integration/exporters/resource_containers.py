@@ -15,7 +15,6 @@ class ResourceContainersExporter(BaseExporter):
 
     def __init__(self, client: AzureClient, resource_config: ResourceConfig):
         super().__init__(client, resource_config)
-        self.resource_config = cast(AzureResourceContainerConfig, self.resource_config)
 
     def _build_sync_query(
         self, tag_filters: Optional[ResourceGroupTagFilters] = None
