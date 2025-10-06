@@ -1,0 +1,50 @@
+{
+  "id": "ra1234567890abcdef",
+  "label": "User Administrator",
+  "type": "STANDARD",
+  "status": "ACTIVE",
+  "created": "2023-01-01T00:00:00.000Z",
+  "lastUpdated": "2023-01-01T00:00:00.000Z",
+  "description": "Allows management of users and groups within the organization",
+  "assignmentType": "USER",
+  "resource": {
+    "id": "ire106sQKoHoAAXBNX0g3",
+    "displayName": "Okta Admin Console",
+    "description": "Admin access to Okta console",
+    "resourceType": "APP"
+  },
+  "permissions": [
+    {
+      "id": "okta.users.manage",
+      "label": "Manage Users",
+      "type": "PERMISSION",
+      "conditions": {}
+    },
+    {
+      "id": "okta.groups.manage",
+      "label": "Manage Groups", 
+      "type": "PERMISSION",
+      "conditions": {}
+    },
+    {
+      "id": "okta.users.read",
+      "label": "View Users",
+      "type": "PERMISSION",
+      "conditions": {}
+    },
+    {
+      "id": "okta.groups.read",
+      "label": "View Groups",
+      "type": "PERMISSION", 
+      "conditions": {}
+    }
+  ],
+  "_links": {
+    "assignees": {
+      "href": "https://dev-123456.okta.com/api/v1/iam/roles/ra1234567890abcdef/assignees"
+    },
+    "resource": {
+      "href": "https://dev-123456.okta.com/api/v1/iam/resources/ire106sQKoHoAAXBNX0g3"
+    }
+  }
+}
