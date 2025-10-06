@@ -28,12 +28,21 @@ class Resources:
     def __init__(self, azure_client: AzureClient):
         self.azure_client = azure_client
 
-    # AI! add a simple docs to this method
     async def sync(
         self,
         subscriptions: list[str],
         resource_types: list[str] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Syncs resources from Azure for the given subscriptions.
+
+        Args:
+            subscriptions: A list of subscription IDs to sync resources from.
+            resource_types: An optional list of resource types to filter by.
+
+        Yields:
+            A list of resources.
+        """
         logger.info(
             "Running query for subscription batch with "
             f"{len(subscriptions)} subscriptions"
