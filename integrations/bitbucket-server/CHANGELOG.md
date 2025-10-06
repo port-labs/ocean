@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.57-beta (2025-10-06)
+
+
+### Bug Fixes
+
+- Fixed misconfigured config variable affecting webhook setup
+
+
 ## 0.1.56-beta (2025-09-30)
 
 
