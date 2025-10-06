@@ -5,11 +5,16 @@ from typing import Literal
 class ObjectKind(StrEnum):
     S3_BUCKET = "AWS::S3::Bucket"
     EC2_INSTANCE = "AWS::EC2::Instance"
+    ECS_CLUSTER = "AWS::ECS::Cluster"
     ORGANIZATIONS_ACCOUNT = "AWS::Organizations::Account"
     AccountInfo = "AWS::Account::Info"
-    ECS_CLUSTER = "AWS::ECS::Cluster"
+    RDS_DB_INSTANCE = "AWS::RDS::DBInstance"
     EKS_CLUSTER = "AWS::EKS::Cluster"
+    LAMBDA_FUNCTION = "AWS::Lambda::Function"
+    ECS_SERVICE = "AWS::ECS::Service"
     SQS_QUEUE = "AWS::SQS::Queue"
 
 
-SupportedServices = Literal["s3", "ecs", "ec2", "sqs", "organizations", "eks"]
+SupportedServices = Literal[
+    "s3", "ecs", "ec2", "sqs", "organizations", "eks", "rds", "lambda"
+]
