@@ -13,4 +13,6 @@ class ObjectKind(StrEnum):
     LAMBDA_FUNCTION = "AWS::Lambda::Function"
 
 
-SupportedServices = Literal["s3", "ecs", "ec2", "sqs", "organizations", "eks", "rds", "lambda"]
+SupportedServices = Literal[
+    "s3", "ecs", "ec2", "sqs", "organizations", "eks", "rds", "lambda"
+]
