@@ -130,10 +130,12 @@ async def test_run_query_throttling_handled() -> None:
     mock_success_response.data = [{"id": "resource-1"}]
     mock_success_response.skip_token = None
 
-    client.resource_g_client.resources.side_effect = [
-        throttled_exception,
-        mock_success_response,
-    ]
+    client.resource_g_client.resources = AsyncMock(
+        side_effect=[
+            throttled_exception,
+            mock_success_response,
+        ]
+    )
 
     query = "resources"
     subscriptions = ["sub-1"]
