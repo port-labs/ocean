@@ -117,3 +117,23 @@ resources:
             storageEncrypted: .Properties.StorageEncrypted
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::Lambda::Function
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.FunctionArn
+          title: .Properties.FunctionName
+          blueprint: '"lambdaFunction"'
+          properties:
+            FunctionName: .Properties.FunctionName
+            FunctionArn: .Properties.FunctionArn
+            Runtime: .Properties.Runtime
+            Handler: .Properties.Handler
+            MemorySize: .Properties.MemorySize
+            Timeout: .Properties.Timeout
+            State: .Properties.State
+            LastModified: .Properties.LastModified
+          relations:
+            account: .__ExtraContext.AccountId
