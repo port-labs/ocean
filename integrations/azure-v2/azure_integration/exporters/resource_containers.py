@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Optional, cast
+from typing import Any, AsyncGenerator, Optional
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 

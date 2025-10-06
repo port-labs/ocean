@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,9 +21,7 @@ async def test_sync_for_subscriptions() -> None:
     )
 
     mock_resource_config = MagicMock()
-    mock_resource_config.selector.resource_types = [
-        "Microsoft.Compute/virtualMachines"
-    ]
+    mock_resource_config.selector.resource_types = ["Microsoft.Compute/virtualMachines"]
     mock_resource_config.selector.tags = None
     exporter = ResourcesExporter(mock_client, mock_resource_config)
     subscriptions = ["sub-1", "sub-2"]

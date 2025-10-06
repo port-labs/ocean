@@ -84,8 +84,6 @@ async def test_handle_rate_limit() -> None:
     await AzureClient._handle_rate_limit(True)  # Should return immediately
 
 
-
-
 async def test_run_query_throttling_handled() -> None:
     """Test that AzureRequestThrottled exception is handled and sleep is called."""
     client = AzureClient()

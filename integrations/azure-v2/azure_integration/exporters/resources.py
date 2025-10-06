@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, List, Optional, cast
+from typing import Any, AsyncGenerator, List, Optional
 
 from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
