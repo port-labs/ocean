@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.4.1-beta (2025-10-06)
+
+
+### Features
+
+- Add support for AWS::ECS::Service Kind
+
+
 ## 1.4.0-beta (2025-10-06)
 
 
