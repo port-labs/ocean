@@ -28,7 +28,8 @@ class Resources:
     def __init__(self, azure_client: AzureClient):
         self.azure_client = azure_client
 
-    async def sync_full(
+    # AI! add a simple docs to this method
+    async def sync(
         self,
         subscriptions: list[str],
         resource_types: list[str] | None = None,
@@ -39,7 +40,6 @@ class Resources:
         )
 
         query = build_full_sync_query(resource_types)
-        print(query)
         async for items in self.azure_client.run_query(
             query,
             subscriptions,
