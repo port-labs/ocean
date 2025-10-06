@@ -33,11 +33,12 @@ async def test_sync_for_subscriptions():
     results = [
         result async for result in exporter._sync_for_subscriptions(subscriptions)
     ]
+    flat_results = [item for batch in results for item in batch]
 
     # Assert
-    assert len(results) == 2
-    assert results[0] == {"name": "vm-1", "type": "Microsoft.Compute/virtualMachines"}
-    assert results[1] == {"name": "vm-2", "type": "Microsoft.Compute/virtualMachines"}
+    assert len(flat_results) == 2
+    assert flat_results[0] == {"name": "vm-1", "type": "Microsoft.Compute/virtualMachines"}
+    assert flat_results[1] == {"name": "vm-2", "type": "Microsoft.Compute/virtualMachines"}
     # Using the default resource mapping from conftest.py
     assert mock_client.run_query.call_count == 1
     call_args = mock_client.run_query.call_args
@@ -64,10 +65,7 @@ def test_build_full_sync_query_with_filters():
         "| where type in~ ('microsoft.compute/virtualmachines', 'microsoft.network/virtualnetworks')"
         in query.lower()
     )
-    assert (
-        "| where resourceGroup in~ (ResourceContainers | where tags.env =~ 'prod' | project name)"
-        in query
-    )
+    assert "| where (tostring(rgTags['env']) =~ 'prod')" in query
     assert "resourceGroup !in~" not in query
 
 
@@ -79,7 +77,7 @@ def test_build_full_sync_query_no_filters():
 
     assert "resources" in query.lower()
     assert "| where type in~ ('microsoft.compute/virtualmachines')" in query.lower()
-    assert "resourceGroup" not in query
+    assert "tostring(rgTags" not in query
 
 
 def test_build_full_sync_query_no_resource_types():
@@ -87,4 +85,4 @@ def test_build_full_sync_query_no_resource_types():
 
     query = exporter._build_full_sync_query()
     assert "resources" in query.lower()
-    assert "| where type" not in query.lower()
+    assert "| where type in~" not in query.lower()
