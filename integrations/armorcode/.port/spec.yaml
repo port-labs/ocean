@@ -19,6 +19,7 @@ configurations:
     required: false
     description: The base URL for the Armorcode API.
     default: https://app.armorcode.com
+    example: "https://app.armorcode.com"
 saas:
   enabled: true
   liveEvents:
