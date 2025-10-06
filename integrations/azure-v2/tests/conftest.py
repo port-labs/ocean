@@ -55,7 +55,7 @@ def mock_ocean_context() -> None:
         mock_ocean_app.port_client = MagicMock()
 
         # We also need to mock the integration class on the app, so that the correct AppConfigHandlerClass is used
-        from azure_integration.integration import AzureIntegration
+        from integration import AzureIntegration
 
         mock_ocean_app.integration = AzureIntegration()
 
