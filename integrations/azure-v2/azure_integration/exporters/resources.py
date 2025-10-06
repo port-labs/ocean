@@ -23,10 +23,9 @@ class ResourcesExporter(BaseExporter):
     ) -> str:
         resource_filter_clause = ""
         if resource_types:
-            resource_types_filter = " or ".join(
-                [f"type == '{rt}'" for rt in resource_types]
-            )
-            resource_filter_clause = f"| where {resource_types_filter}"
+            lower_resource_types = [f"'{rt.lower()}'" for rt in resource_types]
+            resource_types_filter = ", ".join(lower_resource_types)
+            resource_filter_clause = f"| where type in~ ({resource_types_filter})"
 
         rg_tag_filter_clause = (
             build_rg_tag_filter_clause(tag_filters, tag_key_name="rgTags")

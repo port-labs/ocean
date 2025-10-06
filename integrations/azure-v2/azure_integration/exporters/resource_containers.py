@@ -23,6 +23,7 @@ class ResourceContainersExporter(BaseExporter):
         )
         query: str = f"""
         resourcecontainers
+        | where type =~ 'microsoft.resources/subscriptions/resourcegroups'
         {rg_tag_filter_clause}
         | project id, type, name, location, tags, subscriptionId, resourceGroup
         | extend resourceGroup=tolower(resourceGroup)

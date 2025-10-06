@@ -13,7 +13,7 @@ async def test_sync_for_subscriptions():
     # Setup
     mock_client = MagicMock()
     # Mock the async generator
-    mock_client.run_query = AsyncMock(
+    mock_client.run_query = MagicMock(
         return_value=aiter(
             [
                 [

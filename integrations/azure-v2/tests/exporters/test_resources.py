@@ -12,7 +12,7 @@ from tests.helpers import aiter
 async def test_sync_for_subscriptions():
     # Setup
     mock_client = MagicMock()
-    mock_client.run_query = AsyncMock(
+    mock_client.run_query = MagicMock(
         return_value=aiter(
             [
                 [{"name": "vm-1", "type": "Microsoft.Compute/virtualMachines"}],
@@ -86,4 +86,5 @@ def test_build_full_sync_query_no_resource_types():
     exporter = ResourcesExporter(MagicMock(), MagicMock())
 
     query = exporter._build_full_sync_query()
-    assert "resources" == query.lower()
+    assert "resources" in query.lower()
+    assert "| where type" not in query.lower()
