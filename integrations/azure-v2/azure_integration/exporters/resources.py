@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator, List, Optional, cast
 
 from loguru import logger
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 from azure_integration.clients.client import AzureClient
 from azure_integration.models import ResourceGroupTagFilters
@@ -11,8 +12,8 @@ from .base import BaseExporter
 
 
 class ResourcesExporter(BaseExporter):
-    def __init__(self, client: AzureClient):
-        super().__init__(client)
+    def __init__(self, client: AzureClient, resource_config: ResourceConfig):
+        super().__init__(client, resource_config)
         self.resource_config = cast(AzureResourceConfig, self.resource_config)
 
     def _build_full_sync_query(

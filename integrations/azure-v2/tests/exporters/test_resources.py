@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -20,7 +21,12 @@ async def test_sync_for_subscriptions():
         )
     )
 
-    exporter = ResourcesExporter(mock_client)
+    mock_resource_config = SimpleNamespace(
+        selector=SimpleNamespace(
+            resource_types=["Microsoft.Compute/virtualMachines"], tags=None
+        )
+    )
+    exporter = ResourcesExporter(mock_client, mock_resource_config)
     subscriptions = ["sub-1", "sub-2"]
 
     # Action
@@ -42,7 +48,7 @@ async def test_sync_for_subscriptions():
 
 
 def test_build_full_sync_query_with_filters():
-    exporter = ResourcesExporter(MagicMock())
+    exporter = ResourcesExporter(MagicMock(), MagicMock())
     resource_types = [
         "Microsoft.Compute/virtualMachines",
         "Microsoft.Network/virtualNetworks",
@@ -66,7 +72,7 @@ def test_build_full_sync_query_with_filters():
 
 
 def test_build_full_sync_query_no_filters():
-    exporter = ResourcesExporter(MagicMock())
+    exporter = ResourcesExporter(MagicMock(), MagicMock())
     resource_types = ["Microsoft.Compute/virtualMachines"]
 
     query = exporter._build_full_sync_query(resource_types)
@@ -77,7 +83,7 @@ def test_build_full_sync_query_no_filters():
 
 
 def test_build_full_sync_query_no_resource_types():
-    exporter = ResourcesExporter(MagicMock())
+    exporter = ResourcesExporter(MagicMock(), MagicMock())
 
     query = exporter._build_full_sync_query()
     assert "resources" == query.lower()

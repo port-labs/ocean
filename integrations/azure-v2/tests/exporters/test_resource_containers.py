@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -33,7 +34,8 @@ async def test_sync_for_subscriptions():
         )
     )
 
-    exporter = ResourceContainersExporter(mock_client)
+    mock_resource_config = SimpleNamespace(selector=SimpleNamespace(tags=None))
+    exporter = ResourceContainersExporter(mock_client, mock_resource_config)
     subscriptions = ["sub-1", "sub-2"]
 
     # Action
@@ -65,7 +67,7 @@ async def test_sync_for_subscriptions():
 
 
 def test_build_sync_query_with_filters():
-    exporter = ResourceContainersExporter(MagicMock())
+    exporter = ResourceContainersExporter(MagicMock(), MagicMock())
     tag_filters = ResourceGroupTagFilters(
         included={"env": "prod", "owner": "team-a"}, excluded={"legacy": "true"}
     )
@@ -78,7 +80,7 @@ def test_build_sync_query_with_filters():
 
 
 def test_build_sync_query_no_filters():
-    exporter = ResourceContainersExporter(MagicMock())
+    exporter = ResourceContainersExporter(MagicMock(), MagicMock())
     query = exporter._build_sync_query()
     assert "where type =~ 'microsoft.resources/subscriptions/resourcegroups'" in query.lower()
     assert "tags" not in query.lower()

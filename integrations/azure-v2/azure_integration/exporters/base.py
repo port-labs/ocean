@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Any, AsyncGenerator, List
 
 from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.clients.client import AzureClient
@@ -11,9 +11,9 @@ from azure_integration.utils import turn_sequence_to_chunks
 
 
 class BaseExporter(ABC):
-    def __init__(self, client: AzureClient):
+    def __init__(self, client: AzureClient, resource_config: ResourceConfig):
         self.client = client
-        self.resource_config = event.resource_config
+        self.resource_config = resource_config
 
     async def export_paginated_resources(self) -> ASYNC_GENERATOR_RESYNC_TYPE:
         subscription_batch_size = int(
