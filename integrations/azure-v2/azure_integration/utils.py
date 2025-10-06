@@ -21,7 +21,10 @@ def turn_sequence_to_chunks(
     return
 
 
-def build_rg_tag_filter_clause(filters: ResourceGroupTagFilters) -> str:
+# AI! improve this function's docs
+def build_rg_tag_filter_clause(
+    filters: ResourceGroupTagFilters, tag_key_name: str = "tags"
+) -> str:
     """Build KQL where clause for resource group tag filtering with include/exclude logic."""
     if not filters.has_filters():
         return ""
@@ -35,7 +38,7 @@ def build_rg_tag_filter_clause(filters: ResourceGroupTagFilters) -> str:
             escaped_key = key.replace("'", "''")
             escaped_value = value.replace("'", "''")
             include_conditions.append(
-                f"tostring(rgTags['{escaped_key}']) =~ '{escaped_value}'"
+                f"tostring({tag_key_name}['{escaped_key}']) =~ '{escaped_value}'"
             )
 
         if include_conditions:
@@ -49,7 +52,7 @@ def build_rg_tag_filter_clause(filters: ResourceGroupTagFilters) -> str:
             escaped_key = key.replace("'", "''")
             escaped_value = value.replace("'", "''")
             exclude_conditions.append(
-                f"tostring(rgTags['{escaped_key}']) =~ '{escaped_value}'"
+                f"tostring({tag_key_name}['{escaped_key}']) =~ '{escaped_value}'"
             )
 
         if exclude_conditions:
