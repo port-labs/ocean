@@ -259,6 +259,17 @@
       "python": "${workspaceFolder}/integrations/okta/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
-    }
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/armorcode",
+      "envFile": "${workspaceFolder}/integrations/armorcode/.env",
+      "justMyCode": true,
+      "name": "Run armorcode integration",
+      "program": "${workspaceFolder}/integrations/armorcode/debug.py",
+      "python": "${workspaceFolder}/integrations/armorcode/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
   ]
 }
