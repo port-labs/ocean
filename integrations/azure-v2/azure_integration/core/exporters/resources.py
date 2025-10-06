@@ -2,11 +2,11 @@ from typing import Any, AsyncGenerator, List, Optional, cast
 
 from loguru import logger
 
-from ....integration import AzureResourceConfig, AzureResourceContainerConfig
-from ...client import AzureClient
-from ...models import ResourceGroupTagFilters
-from ...utils import build_rg_tag_filter_clause
-from .base import BaseExporter
+from azure_integration.client import AzureClient
+from azure_integration.core.exporters.base import BaseExporter
+from azure_integration.models import ResourceGroupTagFilters
+from azure_integration.utils import build_rg_tag_filter_clause
+from integration import AzureResourceConfig, AzureResourceContainerConfig
 
 
 class ResourceContainersExporter(BaseExporter):

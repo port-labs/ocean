@@ -6,8 +6,8 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from ...client import AzureClient
-from ...utils import turn_sequence_to_chunks
+from azure_integration.client import AzureClient
+from azure_integration.utils import turn_sequence_to_chunks
 
 
 class BaseExporter(ABC):
