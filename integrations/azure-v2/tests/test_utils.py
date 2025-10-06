@@ -14,14 +14,14 @@ class TestResourceContainersFiltering:
     def test_build_rg_tag_filter_clause_include_only(self) -> None:
         """Test building filter clause with include filters only."""
         filters = ResourceGroupTagFilters(included={"Environment": "Production"})
-        result = build_rg_tag_filter_clause(filters)
+        result = build_rg_tag_filter_clause(filters, tag_key_name="rgTags")
         assert "| where " in result
         assert "tostring(rgTags['Environment']) =~ 'Production'" in result
 
     def test_build_rg_tag_filter_clause_exclude_only(self) -> None:
         """Test building filter clause with exclude filters only."""
         filters = ResourceGroupTagFilters(excluded={"Temporary": "true"})
-        result = build_rg_tag_filter_clause(filters)
+        result = build_rg_tag_filter_clause(filters, tag_key_name="rgTags")
         assert "| where " in result
         assert "not (" in result
         assert "tostring(rgTags['Temporary']) =~ 'true'" in result
@@ -31,13 +31,21 @@ class TestResourceContainersFiltering:
         filters = ResourceGroupTagFilters(
             included={"Environment": "Production"}, excluded={"Temporary": "true"}
         )
-        result = build_rg_tag_filter_clause(filters)
+        result = build_rg_tag_filter_clause(filters, tag_key_name="rgTags")
         assert "| where " in result
+        assert "tostring(rgTags['Environment']) =~ 'Production'" in result
+        assert "tostring(rgTags['Temporary']) =~ 'true'" in result
         assert " and " in result
         assert "not (" in result
 
     def test_build_rg_tag_filter_clause_escapes_quotes(self) -> None:
         """Test that quotes in tag values are properly escaped."""
         filters = ResourceGroupTagFilters(included={"Name": "O'Connor"})
+        result = build_rg_tag_filter_clause(filters, tag_key_name="rgTags")
+        assert "tostring(rgTags['Name']) =~ 'O''Connor'" in result
+
+    def test_build_rg_tag_filter_clause_default_tag_key(self) -> None:
+        """Test that the default tag key is 'tags'."""
+        filters = ResourceGroupTagFilters(included={"Environment": "Production"})
         result = build_rg_tag_filter_clause(filters)
-        assert "O''Connor" in result  # Single quote should be doubled
+        assert "tostring(tags['Environment']) =~ 'Production'" in result
