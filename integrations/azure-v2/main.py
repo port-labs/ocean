@@ -5,7 +5,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.client import AzureClient
-from azure_integration.exporters.resources import (
+from azure_integration.core.exporters.resources import (
     ResourceContainersExporter,
     ResourcesExporter,
 )

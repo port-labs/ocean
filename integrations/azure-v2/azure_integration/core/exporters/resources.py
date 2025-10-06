@@ -1,9 +1,13 @@
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, List, Optional, cast
+
 from loguru import logger
 
-from azure_integration.client import AzureClient
-from azure_integration.models import ResourceGroupTagFilters
-from azure_integration.utils import build_rg_tag_filter_clause
+from ....integration import AzureResourceConfig, AzureResourceContainerConfig
+from ...client import AzureClient
+from ...models import ResourceGroupTagFilters
+from ...services.resource_containers import ResourceContainers
+from ...utils import build_rg_tag_filter_clause
+from .base import BaseExporter
 
 
 def build_full_sync_query(
@@ -40,34 +44,43 @@ def build_full_sync_query(
     return query
 
 
-class Resources:
-    def __init__(self, azure_client: AzureClient):
-        self.azure_client = azure_client
+class ResourceContainersExporter(BaseExporter):
+    def __init__(self, client: AzureClient):
+        super().__init__(client)
+        self.resource_config = cast(
+            AzureResourceContainerConfig, self.resource_config
+        )
 
-    async def sync(
-        self,
-        subscriptions: list[str],
-        resource_types: list[str] | None = None,
-        tag_filters: Optional[ResourceGroupTagFilters] = None,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """
-        Syncs resources from Azure for the given subscriptions.
+    async def _sync_for_subscriptions(
+        self, subscriptions: List[str]
+    ) -> AsyncGenerator[List[dict[str, Any]], None]:
+        container_tags = self.resource_config.selector.tags
+        resource_containers_syncer = ResourceContainers(self.client)
+        async for resource_containers in resource_containers_syncer.sync(
+            subscriptions,
+            rg_tag_filter=container_tags,
+        ):
+            yield resource_containers
 
-        Args:
-            subscriptions: A list of subscription IDs to sync resources from.
-            resource_types: An optional list of resource types to filter by.
-            tag_filters: An optional filter to apply on resource group tags.
 
-        Yields:
-            A list of resources.
-        """
+class ResourcesExporter(BaseExporter):
+    def __init__(self, client: AzureClient):
+        super().__init__(client)
+        self.resource_config = cast(AzureResourceConfig, self.resource_config)
+
+    async def _sync_for_subscriptions(
+        self, subscriptions: List[str]
+    ) -> AsyncGenerator[List[dict[str, Any]], None]:
+        resource_types = self.resource_config.selector.resource_types
+        tag_filters = self.resource_config.selector.tags
+
         logger.info(
             "Running query for subscription batch with "
             f"{len(subscriptions)} subscriptions"
         )
 
         query = build_full_sync_query(resource_types, tag_filters)
-        async for items in self.azure_client.run_query(
+        async for items in self.client.run_query(
             query,
             subscriptions,
         ):
