@@ -114,6 +114,7 @@ def aiter(iterable: Iterable[Any]) -> AsyncGenerator[Any, Any]:
 async def test_run_query_throttling_handled() -> None:
     """Test that AzureRequestThrottled exception is handled and sleep is called."""
     client = AzureClient()
+    client.resource_g_client = MagicMock()
     # Mock response with throttling headers
     mock_http_response = MagicMock()
     mock_http_response.headers = {
@@ -157,6 +158,7 @@ async def test_run_query_subscription_limit_reached() -> None:
     """Test that SubscriptionLimitReacheached is raised when the header is present."""
     # Mock response with subscription limit header
     client = AzureClient()
+    client.resource_g_client = MagicMock()
     mock_http_response = MagicMock()
     mock_http_response.headers = {
         "x-ms-user-quota-remaining": "10",
