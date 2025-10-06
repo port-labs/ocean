@@ -79,3 +79,61 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::EKS::Cluster
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Arn
+          title: .Properties.Name
+          blueprint: '"eksCluster"'
+          properties:
+            arn: .Properties.Arn
+            name: .Properties.Name
+            version: .Properties.Version
+            status: .Properties.Status
+            endpoint: .Properties.Endpoint
+            roleArn: .Properties.RoleArn
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::RDS::DBInstance
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.DBInstanceArn
+          title: .Properties.DBInstanceIdentifier
+          blueprint: '"rdsDbInstance"'
+          properties:
+            dbInstanceIdentifier: .Properties.DBInstanceIdentifier
+            dbInstanceArn: .Properties.DBInstanceArn
+            engine: .Properties.Engine
+            dbInstanceClass: .Properties.DBInstanceClass
+            dbInstanceStatus: .Properties.DBInstanceStatus
+            multiAZ: .Properties.MultiAZ
+            storageEncrypted: .Properties.StorageEncrypted
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::Lambda::Function
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.FunctionArn
+          title: .Properties.FunctionName
+          blueprint: '"lambdaFunction"'
+          properties:
+            FunctionName: .Properties.FunctionName
+            FunctionArn: .Properties.FunctionArn
+            Runtime: .Properties.Runtime
+            Handler: .Properties.Handler
+            MemorySize: .Properties.MemorySize
+            Timeout: .Properties.Timeout
+            State: .Properties.State
+            LastModified: .Properties.LastModified
+          relations:
+            account: .__ExtraContext.AccountId
