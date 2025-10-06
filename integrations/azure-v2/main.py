@@ -18,7 +18,7 @@ class Kind(StrEnum):
 async def on_resync_resource_container(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting Azure to Port {kind} sync")
     async with AzureClient() as azure_client:
-        exporter = ResourceContainersExporter(azure_client)
+        exporter = ResourceContainersExporter(azure_client, ocean.resource_config)
         async for resources in exporter.export_paginated_resources():
             yield resources
 
@@ -27,7 +27,7 @@ async def on_resync_resource_container(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
 async def on_resync_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting Azure to Port {kind} sync")
     async with AzureClient() as azure_client:
-        exporter = ResourcesExporter(azure_client)
+        exporter = ResourcesExporter(azure_client, ocean.resource_config)
         async for resources in exporter.export_paginated_resources():
             yield resources
 
