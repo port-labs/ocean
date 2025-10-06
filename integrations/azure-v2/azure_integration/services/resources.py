@@ -44,7 +44,6 @@ class Resources:
     def __init__(self, azure_client: AzureClient):
         self.azure_client = azure_client
 
-    # AI! update this method docs
     async def sync(
         self,
         subscriptions: list[str],
@@ -57,6 +56,7 @@ class Resources:
         Args:
             subscriptions: A list of subscription IDs to sync resources from.
             resource_types: An optional list of resource types to filter by.
+            tag_filters: An optional filter to apply on resource group tags.
 
         Yields:
             A list of resources.
