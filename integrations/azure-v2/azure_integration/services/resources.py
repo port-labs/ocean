@@ -44,6 +44,7 @@ class Resources:
     def __init__(self, azure_client: AzureClient):
         self.azure_client = azure_client
 
+    # AI! update this method docs
     async def sync(
         self,
         subscriptions: list[str],
