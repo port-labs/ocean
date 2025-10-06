@@ -11,8 +11,7 @@ def build_rg_query(rg_tag_filter: Optional[ResourceGroupTagFilters] = None) -> s
     FULL_SYNC_QUERY: str = f"""
         resourcecontainers
         {filters}
-        | extend resourceId=tolower(id)
-        | project resourceId, type, name, location, tags, subscriptionId, resourceGroup
+        | project id, type, name, location, tags, subscriptionId, resourceGroup
         | extend resourceGroup=tolower(resourceGroup)
         | extend type=tolower(type)
         """
@@ -38,12 +37,12 @@ class ResourceContainers:
         Yields:
             A list of resource containers.
         """
+
         logger.info(
             "Running query for subscription batch with "
             f"{len(subscriptions)} subscriptions"
         )
         query = build_rg_query(rg_tag_filter)
-
         async for items in self.azure_client.run_query(query, subscriptions):
             logger.info(f"Received batch of {len(items)} resource containers")
             if not items:

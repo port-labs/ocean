@@ -1,5 +1,5 @@
 title: Azure Multi Subscription
-description: Azure Multi Subscription integration for Port Ocean
+description: Azure integration for Port Ocean based on ARG
 icon: Azure
 features:
   - type: exporter

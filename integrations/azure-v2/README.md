@@ -1,6 +1,6 @@
-# azure-ms
+# Azure v2
 
-An integration used to import azure-ms resources into Port.
+An integration used to import Azure Resource Graph resources into Port.
 
 #### Install & use the integration - [Integration documentation](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/) *Replace this link with a link to this integration's documentation*
 

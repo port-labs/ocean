@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "azure-v2"
 version = "0.1.0-dev"
-description = "Azure multi-subscription integration"
+description = "Azure integration for Port based on ARG"
 authors = ["Niv Meshorer <nivm@getport.io>", "Melody Anyaegbulam <melody.anyaegbulam@port.io>"]
 
 [tool.poetry.dependencies]

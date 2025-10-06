@@ -11,7 +11,7 @@ from azure_integration.client import AzureClient
 from azure_integration.services.resource_containers import ResourceContainers
 from azure_integration.services.resources import Resources
 from azure_integration.utils import turn_sequence_to_chunks
-from integration import AzureResourceConfig
+from integration import AzureResourceConfig, AzureResourceContainerConfig
 
 
 class Kind(StrEnum):
@@ -26,8 +26,12 @@ class Kind(StrEnum):
 async def on_resync_resource_container(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Starting Azure to Port resource container sync")
     subscription_batch_size = int(ocean.integration_config["subscription_batch_size"])
+    resource_confg = cast(AzureResourceContainerConfig, event.resource_config)
+    container_tags = resource_confg.selector.tags
 
-    async with (AzureClient() as azure_client,):
+    async with (
+        AzureClient() as azure_client,
+    ):
         all_subscriptions = await azure_client.get_all_subscriptions()
         logger.info(f"Discovered {len(all_subscriptions)} subscriptions")
 
@@ -35,19 +39,16 @@ async def on_resync_resource_container(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
             logger.error("No subscriptions found in Azure, exiting")
             return
 
-        subscriptions_batches: Generator[list[Subscription], None, None] = (
-            turn_sequence_to_chunks(
-                all_subscriptions,
-                subscription_batch_size,
-            )
-        )
-
         resource_containers_syncer = ResourceContainers(azure_client)
 
-        for subscriptions in subscriptions_batches:
+        for subscriptions in turn_sequence_to_chunks(
+            all_subscriptions,
+            subscription_batch_size,
+        ):
             logger.info("Running full resource container sync")
-            async for resource_containers in resource_containers_syncer.sync_full(
+            async for resource_containers in resource_containers_syncer.sync(
                 [str(s.subscription_id) for s in subscriptions],
+                rg_tag_filter=container_tags,
             ):
                 yield resource_containers
             logger.info("Completed full resource container sync")
@@ -59,8 +60,11 @@ async def on_resync_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     subscription_batch_size = int(ocean.integration_config["subscription_batch_size"])
     resource_confg = cast(AzureResourceConfig, event.resource_config)
     resource_types = resource_confg.selector.resource_types
+    container_tags = resource_confg.selector.tags
 
-    async with (AzureClient() as azure_client,):
+    async with (
+        AzureClient() as azure_client,
+    ):
         all_subscriptions = await azure_client.get_all_subscriptions()
         logger.info(f"Discovered {len(all_subscriptions)} subscriptions")
 
@@ -68,17 +72,16 @@ async def on_resync_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.error("No subscriptions found in Azure, exiting")
             return
 
-        subscriptions_batches: Generator[list[Subscription], None, None] = (
-            turn_sequence_to_chunks(all_subscriptions, subscription_batch_size)
-        )
-
         resources_syncer = Resources(azure_client)
 
-        for subscriptions in subscriptions_batches:
+        for subscriptions in turn_sequence_to_chunks(
+            all_subscriptions, subscription_batch_size
+        ):
             logger.info("Running full resource sync")
-            async for resources in resources_syncer.sync_full(
+            async for resources in resources_syncer.sync(
                 [str(s.subscription_id) for s in subscriptions],
                 resource_types=resource_types,
+                tag_filters=container_tags,
             ):
                 yield resources
 

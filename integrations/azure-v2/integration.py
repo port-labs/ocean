@@ -11,12 +11,16 @@ from port_ocean.core.integrations.base import BaseIntegration
 from azure_integration.models import ResourceGroupTagFilters
 
 
-class ResourceSelector(Selector):
+class TagSelector(Selector):
+    tags: Optional[ResourceGroupTagFilters] = None
+
+
+class ResourceSelector(TagSelector):
     resource_types: Optional[list[str]] = None
 
 
-class ResourceContainerSelector(Selector):
-    tags: Optional[ResourceGroupTagFilters] = None
+class ResourceContainerSelector(TagSelector):
+    pass
 
 
 class AzureResourceConfig(ResourceConfig):
@@ -24,8 +28,13 @@ class AzureResourceConfig(ResourceConfig):
     kind: Literal["resource"]
 
 
+class AzureResourceContainerConfig(ResourceConfig):
+    selector: ResourceContainerSelector
+    kind: Literal["resourceContainer"]
+
+
 class AzurePortAppConfig(PortAppConfig):
-    resources: list[AzureResourceConfig | ResourceConfig]
+    resources: list[AzureResourceConfig | AzureResourceContainerConfig | ResourceConfig]
 
 
 class AzureIntegration(BaseIntegration):
