@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -37,8 +37,14 @@ async def test_sync_for_subscriptions():
 
     # Assert
     assert len(flat_results) == 2
-    assert flat_results[0] == {"name": "vm-1", "type": "Microsoft.Compute/virtualMachines"}
-    assert flat_results[1] == {"name": "vm-2", "type": "Microsoft.Compute/virtualMachines"}
+    assert flat_results[0] == {
+        "name": "vm-1",
+        "type": "Microsoft.Compute/virtualMachines",
+    }
+    assert flat_results[1] == {
+        "name": "vm-2",
+        "type": "Microsoft.Compute/virtualMachines",
+    }
     # Using the default resource mapping from conftest.py
     assert mock_client.run_query.call_count == 1
     call_args = mock_client.run_query.call_args
