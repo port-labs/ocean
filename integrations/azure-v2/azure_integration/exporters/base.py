@@ -38,6 +38,6 @@ class BaseExporter(ABC):
             logger.info(f"Completed full sync for {self.__class__.__name__}")
 
     @abstractmethod
-    async def _sync_for_subscriptions(
+    def _sync_for_subscriptions(
         self, subscriptions: List[str]
     ) -> AsyncGenerator[List[dict[str, Any]], None]: ...

@@ -12,6 +12,8 @@ from .base import BaseExporter
 
 
 class ResourcesExporter(BaseExporter):
+    resource_config: AzureResourceConfig
+
     def __init__(self, client: AzureClient, resource_config: ResourceConfig):
         super().__init__(client, resource_config)
         self.resource_config = cast(AzureResourceConfig, self.resource_config)

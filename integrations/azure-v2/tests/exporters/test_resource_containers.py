@@ -9,7 +9,7 @@ from tests.helpers import aiter
 
 
 @pytest.mark.asyncio
-async def test_sync_for_subscriptions():
+async def test_sync_for_subscriptions() -> None:
     # Setup
     mock_client = MagicMock()
     # Mock the async generator
@@ -34,7 +34,8 @@ async def test_sync_for_subscriptions():
         )
     )
 
-    mock_resource_config = SimpleNamespace(selector=SimpleNamespace(tags=None))
+    mock_resource_config = MagicMock()
+    mock_resource_config.selector.tags = None
     exporter = ResourceContainersExporter(mock_client, mock_resource_config)
     subscriptions = ["sub-1", "sub-2"]
 
@@ -67,7 +68,7 @@ async def test_sync_for_subscriptions():
     assert call_args.args[1] == subscriptions
 
 
-def test_build_sync_query_with_filters():
+def test_build_sync_query_with_filters() -> None:
     exporter = ResourceContainersExporter(MagicMock(), MagicMock())
     tag_filters = ResourceGroupTagFilters(
         included={"env": "prod", "owner": "team-a"}, excluded={"legacy": "true"}
@@ -86,7 +87,7 @@ def test_build_sync_query_with_filters():
     assert "and not (tostring(tags['legacy']) =~ 'true')" in query
 
 
-def test_build_sync_query_no_filters():
+def test_build_sync_query_no_filters() -> None:
     exporter = ResourceContainersExporter(MagicMock(), MagicMock())
     query = exporter._build_sync_query()
     assert (

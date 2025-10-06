@@ -9,7 +9,7 @@ from tests.helpers import aiter
 
 
 @pytest.mark.asyncio
-async def test_sync_for_subscriptions():
+async def test_sync_for_subscriptions() -> None:
     # Setup
     mock_client = MagicMock()
     mock_client.run_query = MagicMock(
@@ -21,11 +21,11 @@ async def test_sync_for_subscriptions():
         )
     )
 
-    mock_resource_config = SimpleNamespace(
-        selector=SimpleNamespace(
-            resource_types=["Microsoft.Compute/virtualMachines"], tags=None
-        )
-    )
+    mock_resource_config = MagicMock()
+    mock_resource_config.selector.resource_types = [
+        "Microsoft.Compute/virtualMachines"
+    ]
+    mock_resource_config.selector.tags = None
     exporter = ResourcesExporter(mock_client, mock_resource_config)
     subscriptions = ["sub-1", "sub-2"]
 
@@ -54,7 +54,7 @@ async def test_sync_for_subscriptions():
     assert call_args.args[1] == subscriptions
 
 
-def test_build_full_sync_query_with_filters():
+def test_build_full_sync_query_with_filters() -> None:
     exporter = ResourcesExporter(MagicMock(), MagicMock())
     resource_types = [
         "Microsoft.Compute/virtualMachines",
@@ -75,7 +75,7 @@ def test_build_full_sync_query_with_filters():
     assert "resourceGroup !in~" not in query
 
 
-def test_build_full_sync_query_no_filters():
+def test_build_full_sync_query_no_filters() -> None:
     exporter = ResourcesExporter(MagicMock(), MagicMock())
     resource_types = ["Microsoft.Compute/virtualMachines"]
 
@@ -86,7 +86,7 @@ def test_build_full_sync_query_no_filters():
     assert "tostring(rgTags" not in query
 
 
-def test_build_full_sync_query_no_resource_types():
+def test_build_full_sync_query_no_resource_types() -> None:
     exporter = ResourcesExporter(MagicMock(), MagicMock())
 
     query = exporter._build_full_sync_query()
