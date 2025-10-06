@@ -23,12 +23,21 @@ class ResourceContainers:
     def __init__(self, azure_client: AzureClient):
         self.azure_client = azure_client
 
-    # AI! add short docs to this method
     async def sync(
         self,
         subscriptions: list[str],
         rg_tag_filter: Optional[ResourceGroupTagFilters] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Syncs resource containers from Azure for the given subscriptions.
+
+        Args:
+            subscriptions: A list of subscription IDs to sync resource containers from.
+            rg_tag_filter: An optional filter to apply on resource group tags.
+
+        Yields:
+            A list of resource containers.
+        """
         logger.info(
             "Running query for subscription batch with "
             f"{len(subscriptions)} subscriptions"
