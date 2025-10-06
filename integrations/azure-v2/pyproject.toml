@@ -6,7 +6,7 @@ authors = ["Niv Meshorer <nivm@getport.io>", "Melody Anyaegbulam <melody.anyaegb
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.24.8", extras = ["cli"]}
+port_ocean = {version = "^0.28.12", extras = ["cli"]}
 azure-identity = "^1.21.0"
 azure-mgmt-subscription = "^3.1.1"
 azure-mgmt-resource = "^23.3.0"
