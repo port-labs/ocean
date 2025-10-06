@@ -160,7 +160,7 @@ def _validate_jq_expression(expression: str) -> None:
         raise ValueError(f"Invalid jq expression: {e}") from e
     # Basic validation - reject expressions that could be dangerous
     # Check for dangerous patterns (include, import, module)
-    dangerous_patterns = ['include', 'import', 'module', 'env']
+    dangerous_patterns = ['include', 'import', 'module', 'env', 'debug']
     for pattern in dangerous_patterns:
         # Use word boundary regex to match only complete words, not substrings
         if re.search(rf'\b{re.escape(pattern)}\b', expression):
