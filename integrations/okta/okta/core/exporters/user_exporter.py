@@ -70,12 +70,13 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
         Returns:
             User data
         """
-        user = await self._fetch_user(options["user_id"])
-        enrichments = await self._fetch_enrichments(
+        user_task = self._fetch_user(options["user_id"])
+        enrich_task = self._fetch_enrichments(
             options["user_id"],
             bool(options.get("include_groups")),
             bool(options.get("include_applications")),
         )
+        user, enrichments = await asyncio.gather(user_task, enrich_task)
         if enrichments:
             user |= enrichments
 
