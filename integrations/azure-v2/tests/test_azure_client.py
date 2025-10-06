@@ -1,29 +1,11 @@
 from types import SimpleNamespace
-from typing import Any, AsyncGenerator, Iterable
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from port_ocean.context.ocean import initialize_port_ocean_context
-from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from azure_integration.clients.client import AzureClient
 from azure_integration.errors import AzureRequestThrottled, SubscriptionLimitReacheached
-
-
-@pytest.fixture(autouse=True)
-def mock_ocean_context() -> None:
-    try:
-        mock_ocean_app = MagicMock()
-        mock_ocean_app.config.integration.config = {
-            "azure_client_id": "123",
-            "azure_client_secret": "secret",
-            "azure_tenant_id": "123",
-        }
-        mock_ocean_app.integration_router = MagicMock()
-        mock_ocean_app.port_client = MagicMock()
-        initialize_port_ocean_context(mock_ocean_app)
-    except PortOceanContextAlreadyInitializedError:
-        pass
+from tests.helpers import aiter
 
 
 @pytest.mark.asyncio
@@ -102,13 +84,6 @@ async def test_handle_rate_limit() -> None:
     await AzureClient._handle_rate_limit(True)  # Should return immediately
 
 
-# Utility for mocking async generators
-def aiter(iterable: Iterable[Any]) -> AsyncGenerator[Any, Any]:
-    async def gen() -> AsyncGenerator[Any, Any]:
-        for item in iterable:
-            yield item
-
-    return gen()
 
 
 async def test_run_query_throttling_handled() -> None:
