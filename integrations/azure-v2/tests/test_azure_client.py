@@ -6,7 +6,7 @@ import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from azure_integration.client import AzureClient
+from azure_integration.clients.client import AzureClient
 from azure_integration.errors import AzureRequestThrottled, SubscriptionLimitReacheached
 
 
