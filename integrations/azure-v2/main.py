@@ -4,11 +4,9 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from azure_integration.client import AzureClient
-from azure_integration.core.exporters.resources import (
-    ResourceContainersExporter,
-    ResourcesExporter,
-)
+from azure_integration.clients.client import AzureClient
+from azure_integration.exporters.resource_containers import ResourceContainersExporter
+from azure_integration.exporters.resources import ResourcesExporter
 
 
 class Kind(StrEnum):
@@ -21,7 +19,7 @@ async def on_resync_resource_container(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
     logger.info(f"Starting Azure to Port {kind} sync")
     async with AzureClient() as azure_client:
         exporter = ResourceContainersExporter(azure_client)
-        async for resources in exporter.export():
+        async for resources in exporter.export_paginated_resources():
             yield resources
 
 
@@ -30,7 +28,7 @@ async def on_resync_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting Azure to Port {kind} sync")
     async with AzureClient() as azure_client:
         exporter = ResourcesExporter(azure_client)
-        async for resources in exporter.export():
+        async for resources in exporter.export_paginated_resources():
             yield resources
 
 
