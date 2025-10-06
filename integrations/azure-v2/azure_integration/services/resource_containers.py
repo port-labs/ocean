@@ -23,18 +23,19 @@ class ResourceContainers:
     def __init__(self, azure_client: AzureClient):
         self.azure_client = azure_client
 
-    async def sync_full(
-        self, subscriptions: list[str], rg_tag_filter: Optional[ResourceGroupTagFilters]
+    # AI! add short docs to this method
+    async def sync(
+        self,
+        subscriptions: list[str],
+        rg_tag_filter: Optional[ResourceGroupTagFilters] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(
             "Running query for subscription batch with "
             f"{len(subscriptions)} subscriptions"
         )
+        query = build_rg_query(rg_tag_filter)
 
-        async for items in self.azure_client.run_query(
-            build_rg_query(rg_tag_filter),
-            subscriptions,
-        ):
+        async for items in self.azure_client.run_query(query, subscriptions):
             logger.info(f"Received batch of {len(items)} resource containers")
             if not items:
                 logger.info("No resources found in this batch")
