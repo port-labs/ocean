@@ -21,11 +21,26 @@ def turn_sequence_to_chunks(
     return
 
 
-# AI! improve this function's docs
 def build_rg_tag_filter_clause(
     filters: ResourceGroupTagFilters, tag_key_name: str = "tags"
 ) -> str:
-    """Build KQL where clause for resource group tag filtering with include/exclude logic."""
+    """
+    Constructs a KQL `where` clause for filtering based on resource group tags.
+
+    This function builds a KQL filter clause that can be appended to a query.
+    It supports both inclusion and exclusion criteria for tags.
+
+    - Included tags are combined with AND logic (all must be present).
+    - Excluded tags are combined with OR logic inside a NOT clause (none should be present).
+    - If both included and excluded filters are provided, they are combined with AND.
+
+    Args:
+        filters: A ResourceGroupTagFilters object containing `included` and `excluded` tag dictionaries.
+        tag_key_name: The name of the tag column/field in the KQL query. Defaults to "tags".
+
+    Returns:
+        A string representing the KQL `| where ...` clause, or an empty string if no filters are provided.
+    """
     if not filters.has_filters():
         return ""
 
