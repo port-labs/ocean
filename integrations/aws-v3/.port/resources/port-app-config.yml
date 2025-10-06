@@ -117,3 +117,44 @@ resources:
             storageEncrypted: .Properties.StorageEncrypted
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::Lambda::Function
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.FunctionArn
+          title: .Properties.FunctionName
+          blueprint: '"lambdaFunction"'
+          properties:
+            FunctionName: .Properties.FunctionName
+            FunctionArn: .Properties.FunctionArn
+            Runtime: .Properties.Runtime
+            Handler: .Properties.Handler
+            MemorySize: .Properties.MemorySize
+            Timeout: .Properties.Timeout
+            State: .Properties.State
+            LastModified: .Properties.LastModified
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::ECS::Service
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ServiceArn
+          title: .Properties.ServiceName
+          blueprint: '"ecsService"'
+          properties:
+            serviceName: .Properties.ServiceName
+            serviceArn: .Properties.ServiceArn
+            clusterArn: .Properties.ClusterArn
+            taskDefinition: .Properties.TaskDefinition
+            desiredCount: .Properties.DesiredCount
+            runningCount: .Properties.RunningCount
+            launchType: .Properties.LaunchType
+            status: .Properties.Status
+          relations:
+            account: .__ExtraContext.AccountId
+            cluster: .Properties.ClusterArn

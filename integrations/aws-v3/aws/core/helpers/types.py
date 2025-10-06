@@ -10,6 +10,10 @@ class ObjectKind(StrEnum):
     AccountInfo = "AWS::Account::Info"
     RDS_DB_INSTANCE = "AWS::RDS::DBInstance"
     EKS_CLUSTER = "AWS::EKS::Cluster"
+    LAMBDA_FUNCTION = "AWS::Lambda::Function"
+    ECS_SERVICE = "AWS::ECS::Service"
 
 
-SupportedServices = Literal["s3", "ecs", "ec2", "sqs", "organizations", "eks", "rds"]
+SupportedServices = Literal[
+    "s3", "ecs", "ec2", "sqs", "organizations", "eks", "rds", "lambda"
+]
