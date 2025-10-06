@@ -57,7 +57,7 @@ def mock_ocean_context() -> None:
         # We also need to mock the integration class on the app, so that the correct AppConfigHandlerClass is used
         from integration import AzureIntegration
 
-        mock_ocean_app.integration = AzureIntegration()
+        mock_ocean_app.integration = AzureIntegration(mock_ocean_app)
 
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:
