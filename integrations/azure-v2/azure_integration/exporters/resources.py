@@ -21,11 +21,9 @@ class ResourcesExporter(BaseExporter):
         resource_types = self.resource_config.selector.resource_types
         tag_filters = self.resource_config.selector.tags
         query = self._build_full_sync_query(resource_types, tag_filters)
-        async for sub_batch in self.sub_manager.get_subscription_batches():
+        async for sub_batch in self.sub_manager.get_sub_id_in_batches():
             logger.info(f"Exporting resources for {len(sub_batch)} subscriptions")
-            async for resources in self.client.make_paginated_request(
-                query, [str(s.id) for s in sub_batch]
-            ):
+            async for resources in self.client.make_paginated_request(query, sub_batch):
                 if resources:
                     logger.info(f"Received batch of {len(resources)} resource")
                     yield resources

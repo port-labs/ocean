@@ -1,4 +1,6 @@
-from typing import AsyncGenerator
+from types import TracebackType
+from typing import AsyncContextManager, AsyncGenerator, override
+from azure.identity.aio import ClientSecretCredential
 from azure.mgmt.subscription.aio import SubscriptionClient
 from azure.mgmt.subscription.models import Subscription
 from loguru import logger
@@ -9,7 +11,7 @@ from azure_integration.helpers.rate_limiter import (
 from azure_integration.models import AuthCredentials
 
 
-class SubscriptionManager(RateLimitHandler):
+class SubscriptionManager(RateLimitHandler, AsyncContextManager):
     def __init__(
         self,
         auth_cred: AuthCredentials,
@@ -17,16 +19,18 @@ class SubscriptionManager(RateLimitHandler):
         batch_size: int = 1000,
     ) -> None:
         self._rate_limiter = rate_limiter
-        self.subs_client = SubscriptionClient(auth_cred.create_azure_credential())
-        self.batch_size = batch_size
+        self._subs_client: SubscriptionClient | None = None
+        self._azure_credentials: ClientSecretCredential | None = None
+        self._auth_cred = auth_cred
+        self._batch_size = batch_size
 
     async def get_all_subscriptions(self) -> list[Subscription]:
         logger.info("Getting all Azure subscriptions")
-        if not self.subs_client:
+        if not self._subs_client:
             raise ValueError("Azure subscription client not initialized")
 
         subscriptions: list[Subscription] = []
-        async for sub in self.subs_client.subscriptions.list():
+        async for sub in self._subs_client.subscriptions.list():
             await self.handle_rate_limit(self._rate_limiter.consume(1))
             subscriptions.append(sub)
 
@@ -36,13 +40,41 @@ class SubscriptionManager(RateLimitHandler):
     async def get_subscription_batches(
         self,
     ) -> AsyncGenerator[list[Subscription], None]:
+        if not self._subs_client:
+            raise ValueError("Azure subscription client not initialized")
         subscriptions: list[Subscription] = []
-        async for sub in self.subs_client.subscriptions.list():
+        async for sub in self._subs_client.subscriptions.list():
             await self.handle_rate_limit(self._rate_limiter.consume(1))
             subscriptions.append(sub)
-            if len(subscriptions) >= self.batch_size:
+            if len(subscriptions) >= self._batch_size:
                 yield subscriptions
                 subscriptions = []
 
         if subscriptions:
             yield subscriptions
+
+    async def get_sub_id_in_batches(self) -> AsyncGenerator[list[str], None]:
+        async for sub_batch in self.get_subscription_batches():
+            yield [
+                str(s.subscription_id)
+                for s in sub_batch
+                if s.subscription_id is not None
+            ]
+
+    async def __aenter__(self) -> "SubscriptionManager":
+        self._azure_credentials = self._auth_cred.create_azure_credential()
+        self._subs_client = SubscriptionClient(self._azure_credentials)
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+        /,
+    ) -> bool:
+        if self._subs_client is not None:
+            await self._subs_client.close()
+        if self._azure_credentials is not None:
+            await self._azure_credentials.close()
+        return False

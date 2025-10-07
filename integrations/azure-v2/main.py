@@ -22,9 +22,10 @@ async def on_resync_resource_container(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
     logger.info(f"Starting Azure to Port {kind} sync")
     resource_config = cast(AzureResourceContainerConfig, event.resource_config)
     client, subscription_manager = init_client_and_sub_manager()
-    exporter = ResourceContainersExporter(client, resource_config, subscription_manager)
-    async for resources in exporter.export_paginated_resources():
-        yield resources
+    async with client as c, subscription_manager as sub_manager:
+        exporter = ResourceContainersExporter(c, resource_config, sub_manager)
+        async for resources in exporter.export_paginated_resources():
+            yield resources
 
 
 @ocean.on_resync(Kind.RESOURCE)
@@ -32,9 +33,10 @@ async def on_resync_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting Azure to Port {kind} sync")
     resource_config = cast(AzureResourceConfig, event.resource_config)
     client, subscription_manager = init_client_and_sub_manager()
-    exporter = ResourcesExporter(client, resource_config, subscription_manager)
-    async for resources in exporter.export_paginated_resources():
-        yield resources
+    async with client as c, subscription_manager as sub_manager:
+        exporter = ResourcesExporter(c, resource_config, sub_manager)
+        async for resources in exporter.export_paginated_resources():
+            yield resources
 
 
 @ocean.on_start()

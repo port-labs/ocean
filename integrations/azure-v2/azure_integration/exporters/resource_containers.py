@@ -20,12 +20,13 @@ class ResourceContainersExporter(BaseExporter):
     async def export_paginated_resources(self) -> ASYNC_GENERATOR_RESYNC_TYPE:
         container_tags = self.resource_config.selector.tags
         query = self._build_sync_query(container_tags)
-        async for sub_batch in self.sub_manager.get_subscription_batches():
+        async for sub_batch in self.sub_manager.get_sub_id_in_batches():
             logger.info(
                 f"Exporting container resources for {len(sub_batch)} subscriptions"
             )
             async for resource_containers in self.client.make_paginated_request(
-                query, [str(s.id) for s in sub_batch]
+                query,
+                sub_batch,
             ):
                 if resource_containers:
                     logger.info(
