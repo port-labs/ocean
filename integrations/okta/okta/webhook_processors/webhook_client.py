@@ -55,7 +55,7 @@ class OktaWebhookClient(OktaClient):
         }
 
         body = {
-            "name": "Port Okta Event Hook",
+            "name": f"Port Okta Event Hook {webhook_url}",
             "events": {"type": "EVENT_TYPE", "items": subscribed_events},
             "channel": channel_config,
             "description": "Event hook for Port Okta integration",
