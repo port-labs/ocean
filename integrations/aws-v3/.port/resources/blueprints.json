@@ -466,5 +466,61 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "sqsQueue",
+    "title": "SQS Queue",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the SQS queue"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "The AWS region where the SQS queue is located"
+        },
+        "queueUrl": {
+          "type": "string",
+          "title": "Queue URL",
+          "description": "The URL of the SQS queue"
+        },
+        "approximateNumberOfMessages": {
+          "type": "number",
+          "title": "Approx Number of Messages",
+          "description": "The approximate number of messages available for retrieval from the queue"
+        },
+        "visibilityTimeout": {
+          "type": "number",
+          "title": "Visibility Timeout (seconds)",
+          "description": "The visibility timeout for the queue in seconds"
+        },
+        "messageRetentionPeriod": {
+          "type": "number",
+          "title": "Message Retention Period",
+          "description": "The length of time, in seconds, for which Amazon SQS retains a message"
+        },
+        "sqsManagedSseEnabled": {
+          "type": "boolean",
+          "title": "SQS Managed SSE Enabled",
+          "description": "Whether SQS managed server-side encryption is enabled"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
