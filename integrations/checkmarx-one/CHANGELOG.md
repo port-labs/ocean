@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.2 (2025-10-07)
+
+
+### Features
+
+- Added DAST scan environment exporter for fetching scan environments
+- Added DAST scan exporter for fetching scans within environments
+- Added DAST scan result exporter for fetching scan results with filtering capabilities
+
+
+## 0.1.1 (2025-10-03)
+
+
+### Improvements
+
+- Updated default mapping
+
+
 ## 0.1.0 (2025-09-30)
 
 
