@@ -187,28 +187,26 @@ class ResyncAWSService:
         semaphore = asyncio.Semaphore(self.max_concurrent_accounts)
         tasks: List[AsyncIterator[List[Dict[Any, Any]]]] = []
 
-        logger.info(f"[{self.kind}] Starting account discovery for resync")
+        logger.info(f"Starting account discovery for {self.kind}")
 
         async for account, session in get_all_account_sessions():
             account_id = account["Id"]
-            logger.info(f"[{self.kind}] Processing account {account_id}")
+            logger.info(f"Processing account {account_id}")
 
             try:
-                logger.debug(
-                    f"[{self.kind}] Retrieving allowed regions for account {account_id}"
-                )
+                logger.debug(f"Retrieving allowed regions for account {account_id}")
                 regions = await get_allowed_regions(
                     session, self.aws_resource_config.selector
                 )
 
                 if not regions:
                     logger.warning(
-                        f"[{self.kind}] Account {account_id} has no allowed regions, skipping"
+                        f"No regions discovered in account {account_id}, skipping"
                     )
                     continue
 
                 logger.info(
-                    f"[{self.kind}] Account {account_id} has {len(regions)} allowed regions: {regions}"
+                    f"Discovered {len(regions)} regions in account {account_id}"
                 )
 
                 tasks.append(
@@ -228,16 +226,16 @@ class ResyncAWSService:
                 )
             except Exception as e:
                 logger.error(
-                    f"[{self.kind}] Failed to get regions for account {account_id}: {e}, skipping"
+                    f"Failed to get regions for account {account_id}: {e}, skipping"
                 )
                 continue
 
         logger.info(
-            f"[{self.kind}] Account discovery complete: {len(tasks)} accounts queued for processing"
+            f"Account discovery complete: {len(tasks)} accounts queued for processing"
         )
 
         if not tasks:
-            logger.warning(f"[{self.kind}] No accounts available for processing")
+            logger.warning("No accounts available for processing")
             return
 
         async for batch in stream_async_iterators_tasks(*tasks):
