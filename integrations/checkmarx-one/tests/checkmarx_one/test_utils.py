@@ -32,9 +32,6 @@ class TestObjectKind:
             "API_SEC",
             "SAST",
             "KICS",
-            "DAST_SCAN_ENVIRONMENT",
-            "DAST_SCAN",
-            "DAST_SCAN_RESULT",
         }
         actual_members = set(ObjectKind.__members__.keys())
         assert actual_members == expected_members
@@ -47,9 +44,6 @@ class TestObjectKind:
             "api-security",
             "sast",
             "kics",
-            "dast-scan-environment",
-            "dast-scan",
-            "dast-scan-result",
         }
         actual_values = {member.value for member in ObjectKind}
         assert actual_values == expected_values
@@ -64,15 +58,12 @@ class TestObjectKind:
     def test_enum_iteration(self) -> None:
         """Test iterating over enum members."""
         members = list(ObjectKind)
-        assert len(members) == 8
+        assert len(members) == 5
         assert ObjectKind.PROJECT in members
         assert ObjectKind.SCAN in members
         assert ObjectKind.API_SEC in members
         assert ObjectKind.SAST in members
         assert ObjectKind.KICS in members
-        assert ObjectKind.DAST_SCAN_ENVIRONMENT in members
-        assert ObjectKind.DAST_SCAN in members
-        assert ObjectKind.DAST_SCAN_RESULT in members
 
     def test_enum_membership(self) -> None:
         """Test checking membership in enum."""
@@ -109,21 +100,6 @@ class TestObjectKind:
 
         with pytest.raises(ValueError):
             ObjectKind("SCAN")
-
-    def test_dast_scan_environment_kind_value(self) -> None:
-        """Test DAST_SCAN_ENVIRONMENT enum value."""
-        assert ObjectKind.DAST_SCAN_ENVIRONMENT == "dast-scan-environment"
-        assert str(ObjectKind.DAST_SCAN_ENVIRONMENT) == "dast-scan-environment"
-
-    def test_dast_scan_kind_value(self) -> None:
-        """Test DAST_SCAN enum value."""
-        assert ObjectKind.DAST_SCAN == "dast-scan"
-        assert str(ObjectKind.DAST_SCAN) == "dast-scan"
-
-    def test_dast_scan_result_kind_value(self) -> None:
-        """Test DAST_SCAN_RESULT enum value."""
-        assert ObjectKind.DAST_SCAN_RESULT == "dast-scan-result"
-        assert str(ObjectKind.DAST_SCAN_RESULT) == "dast-scan-result"
 
     def test_enum_uniqueness(self) -> None:
         """Test that enum values are unique."""

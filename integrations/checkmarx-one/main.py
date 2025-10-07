@@ -1,6 +1,5 @@
 from typing import cast
 from loguru import logger
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -12,11 +11,8 @@ from checkmarx_one.exporter_factory import (
     create_api_sec_exporter,
     create_kics_exporter,
     create_scan_result_exporter,
-    create_dast_scan_environment_exporter,
-    create_dast_scan_exporter,
 )
 from checkmarx_one.core.options import (
-    ListDastScanOptions,
     ListProjectOptions,
     ListSastOptions,
     ListScanOptions,
@@ -25,13 +21,11 @@ from checkmarx_one.core.options import (
     ListScanResultOptions,
 )
 from integration import (
-    CheckmarxOneDastScanResultResourcesConfig,
     CheckmarxOneSastResourcesConfig,
     CheckmarxOneScanResourcesConfig,
     CheckmarxOneKicsResourcesConfig,
     CheckmarxOneScanResultResourcesConfig,
     CheckmarxOneApiSecResourcesConfig,
-    CheckmarxOneDastScanResourcesConfig,
 )
 from checkmarx_one.utils import ObjectKind, ScanResultObjectKind
 from checkmarx_one.webhook.webhook_processors.scan_webhook_processor import (
@@ -55,7 +49,6 @@ from checkmarx_one.webhook.webhook_processors.sast_scan_result_webhook_processor
 from checkmarx_one.webhook.webhook_processors.project_webhook_processor import (
     ProjectWebhookProcessor,
 )
-from fetcher import fetch_dast_scan_results_for_environment
 
 # Webhook endpoint constant
 WEBHOOK_ENDPOINT = "/webhook"
@@ -242,60 +235,6 @@ async def on_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     f"Fetched {len(results_batch)} scan results {kind} for scan {scan_data['id']}"
                 )
                 yield results_batch
-
-
-@ocean.on_resync(ObjectKind.DAST_SCAN_ENVIRONMENT)
-async def on_dast_scan_environment_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync DAST scan environments from Checkmarx One."""
-
-    exporter = create_dast_scan_environment_exporter()
-
-    async for dast_scan_environments in exporter.get_paginated_resources():
-        logger.debug(
-            f"Received batch with {len(dast_scan_environments)} DAST scan environments"
-        )
-        yield dast_scan_environments
-
-
-@ocean.on_resync(ObjectKind.DAST_SCAN)
-async def on_dast_scan_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync DAST scans from Checkmarx One."""
-
-    dast_scan_environment_exporter = create_dast_scan_environment_exporter()
-    dast_scan_exporter = create_dast_scan_exporter()
-
-    selector = cast(CheckmarxOneDastScanResourcesConfig, event.resource_config).selector
-
-    async for (
-        dast_scans_environments_batch
-    ) in dast_scan_environment_exporter.get_paginated_resources():
-        tasks = [
-            dast_scan_exporter.get_paginated_resources(
-                ListDastScanOptions(
-                    environment_id=dast_scan_environment["environmentId"],
-                    groups=selector.groups,
-                )
-            )
-            for dast_scan_environment in dast_scans_environments_batch
-        ]
-        async for dast_scans_batch in stream_async_iterators_tasks(*tasks):
-            yield dast_scans_batch
-
-
-@ocean.on_resync(ObjectKind.DAST_SCAN_RESULT)
-async def on_dast_scan_result_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync DAST scan results from Checkmarx One."""
-
-    dast_scan_environment_exporter = create_dast_scan_environment_exporter()
-    selector = cast(
-        CheckmarxOneDastScanResultResourcesConfig, event.resource_config
-    ).selector
-
-    async for env_batch in dast_scan_environment_exporter.get_paginated_resources():
-        results = []
-        for env in env_batch:
-            results.extend(await fetch_dast_scan_results_for_environment(env, selector))
-        yield results
 
 
 # Register webhook processors for Checkmarx One events

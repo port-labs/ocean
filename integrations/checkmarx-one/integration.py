@@ -185,66 +185,8 @@ class CheckmarxOneKicsResourcesConfig(ResourceConfig):
 
 
 class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
-    kind: Literal["sca", "containers", "dast_scan_result"]
+    kind: Literal["sca", "containers"]
     selector: CheckmarxOneResultSelector
-
-
-class CheckmarxOneDastScanModel(BaseModel):
-    groups: Optional[List[str]] = Field(
-        default=None,
-        description="Filter DAST scans by group",
-    )
-
-
-class CheckmarxOneDastScanSelector(Selector, CheckmarxOneDastScanModel): ...
-
-
-class CheckmarxOneDastScanResourcesConfig(ResourceConfig):
-    kind: Literal["dast-scan"]
-    selector: CheckmarxOneDastScanSelector
-
-
-class CheckmarxOneDastScanResultFilter(BaseModel):
-    severity: Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]] = (
-        Field(
-            default=None,
-            description="Filter DAST scan results by severity",
-        )
-    )
-    status: Optional[List[Literal["NEW", "RECURRENT"]]] = Field(
-        default=None,
-        description="Filter DAST scan results by status",
-    )
-    state: Optional[
-        List[
-            Literal[
-                "TO_VERIFY",
-                "NOT_EXPLOITABLE",
-                "PROPOSED_NOT_EXPLOITABLE",
-                "CONFIRMED",
-                "URGENT",
-            ]
-        ]
-    ] = Field(
-        default=None,
-        description="Filter DAST scan results by state",
-    )
-
-
-class CheckmarxOneDastScanResultSelector(Selector):
-    dast_scan_filter: CheckmarxOneDastScanModel = Field(
-        default=CheckmarxOneDastScanModel(),
-        description="Filter scan results by DAST scan",
-    )
-    filter: CheckmarxOneDastScanResultFilter = Field(
-        default=CheckmarxOneDastScanResultFilter(),
-        description="Filter DAST scan results",
-    )
-
-
-class CheckmarxOneDastScanResultResourcesConfig(ResourceConfig):
-    kind: Literal["dast-scan-result"]
-    selector: CheckmarxOneDastScanResultSelector
 
 
 class CheckmarxOnePortAppConfig(PortAppConfig):
@@ -254,8 +196,6 @@ class CheckmarxOnePortAppConfig(PortAppConfig):
         | CheckmarxOneSastResourcesConfig
         | CheckmarxOneKicsResourcesConfig
         | CheckmarxOneScanResultResourcesConfig
-        | CheckmarxOneDastScanResourcesConfig
-        | CheckmarxOneDastScanResultResourcesConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

@@ -106,39 +106,3 @@ class ListSastOptions(TypedDict, total=False):
         ]
     ]
     visible_columns: NotRequired[Optional[List[str]]]
-
-
-class ListDastScanEnvironmentOptions(TypedDict):
-    """Options for listing DAST scan environments."""
-
-    search: NotRequired[Optional[str]]
-
-
-class ListDastScanOptions(TypedDict):
-    """Options for listing DAST scans."""
-
-    environment_id: Required[str]
-    groups: NotRequired[Optional[List[str]]]
-
-
-class ListDastScanResultOptions(TypedDict):
-    """Options for listing DAST results for a scan."""
-
-    dast_scan_id: Required[str]
-    severity: NotRequired[
-        Optional[List[Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]]]
-    ]
-    status: NotRequired[Optional[List[Literal["NEW", "RECURRENT"]]]]
-    state: NotRequired[
-        Optional[
-            List[
-                Literal[
-                    "TO_VERIFY",
-                    "NOT_EXPLOITABLE",
-                    "PROPOSED_NOT_EXPLOITABLE",
-                    "CONFIRMED",
-                    "URGENT",
-                ]
-            ]
-        ]
-    ]

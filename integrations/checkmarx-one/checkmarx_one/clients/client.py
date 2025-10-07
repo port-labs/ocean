@@ -114,12 +114,13 @@ class CheckmarxOneClient:
             status_code = e.response.status_code
             response_text = e.response.text
 
-            if self._should_ignore_error(e, url, ignored_errors):
-                return {}
-
             logger.error(
                 f"HTTP error {status_code} for {method} {url}: {response_text}"
             )
+
+            if self._should_ignore_error(e, url, ignored_errors):
+                return {}
+
             # Re-raise the original error for non-ignored errors
             raise
 
