@@ -158,3 +158,22 @@ resources:
           relations:
             account: .__ExtraContext.AccountId
             cluster: .Properties.ClusterArn
+  - kind: AWS::SQS::Queue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.QueueArn
+          title: .Properties.QueueUrl | split("/") | .[-1]
+          blueprint: '"sqsQueue"'
+          properties:
+            arn: .Properties.QueueArn
+            region: .__ExtraContext.Region
+            queueUrl: .Properties.QueueUrl
+            approximateNumberOfMessages: .Properties.ApproximateNumberOfMessages
+            visibilityTimeout: .Properties.VisibilityTimeout
+            messageRetentionPeriod: .Properties.MessageRetentionPeriod
+            sqsManagedSseEnabled: .Properties.SqsManagedSseEnabled
+          relations:
+            account: .__ExtraContext.AccountId
