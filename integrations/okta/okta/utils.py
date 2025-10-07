@@ -45,4 +45,3 @@ def default_event_subscriptions() -> list[str]:
         OktaEventType.USER_LIFECYCLE_SUSPEND.value,
         OktaEventType.USER_LIFECYCLE_UNSUSPEND.value,
     ]
-

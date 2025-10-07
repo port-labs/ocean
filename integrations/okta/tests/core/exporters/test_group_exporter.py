@@ -53,7 +53,6 @@ class TestOktaGroupExporter:
 
         mock_group = {"id": "group1", "profile": {"name": "Group 1"}}
 
-
         cast(Any, mock_client).send_api_request = AsyncMock(return_value=mock_group)
 
         group: Dict[str, Any] = await exporter.get_resource("group1")

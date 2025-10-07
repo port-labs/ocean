@@ -62,15 +62,17 @@ class OktaWebhookClient(OktaClient):
         }
 
         try:
-            resp = await self.make_request("/eventHooks", method="POST", json_data=body)
+            resp_json = await self.send_api_request(
+                "/eventHooks", method="POST", json_data=body
+            )
             logger.info("Successfully created Okta Event Hook")
 
             # Immediately verify using the verify link if provided
-            links = resp.json().get("_links", {})
+            links = resp_json.get("_links", {})
             verify = links.get("verify", {})
             if href := verify.get("href"):
                 try:
-                    await self.make_request(
+                    await self.send_api_request(
                         href.replace(self.base_url, ""), method="POST"
                     )
                     logger.info("Okta Event Hook verification triggered")

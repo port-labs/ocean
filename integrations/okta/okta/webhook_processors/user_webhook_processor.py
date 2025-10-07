@@ -10,7 +10,8 @@ from okta.webhook_processors.base_webhook_processor import OktaBaseWebhookProces
 from okta.clients.client_factory import OktaClientFactory
 from okta.utils import ObjectKind
 from okta.core.exporters.user_exporter import OktaUserExporter
-from okta.core.options import GetUserOptions, get_default_user_fields
+from okta.core.options import GetUserOptions
+from integration import get_default_user_fields
 from okta.utils import OktaEventType
 from integration import OktaUserConfig
 

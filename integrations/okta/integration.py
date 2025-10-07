@@ -22,7 +22,6 @@ from fastapi import Request
 from loguru import logger
 
 
-
 def get_default_user_fields() -> str:
     """Default list of fields to fetch for users.
 
@@ -115,4 +114,3 @@ class OktaIntegration(BaseIntegration, OktaHandlerMixin):
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = OktaAppConfig
-

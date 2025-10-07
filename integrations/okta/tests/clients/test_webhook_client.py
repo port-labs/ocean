@@ -34,7 +34,9 @@ async def test_ensure_event_hook_idempotent_and_verifies() -> None:
         return
 
     with patch.object(client, "send_paginated_request", return_value=empty_pages()):
-        with patch.object(client, "make_request", new_callable=AsyncMock) as mock_req:
+        with patch.object(
+            client, "send_api_request", new_callable=AsyncMock
+        ) as mock_req:
             created_resp: MagicMock = MagicMock()
             created_resp.json.return_value = {
                 "_links": {

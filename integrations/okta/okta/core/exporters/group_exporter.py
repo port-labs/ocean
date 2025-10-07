@@ -30,4 +30,3 @@ class OktaGroupExporter(AbstractOktaExporter[OktaClient]):
         """
         async for groups in self.client.send_paginated_request("groups"):
             yield groups
-
