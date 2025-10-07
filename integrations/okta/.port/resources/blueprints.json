@@ -1,0 +1,107 @@
+[
+    {
+        "identifier": "oktaGroup",
+        "title": "Okta Group",
+        "icon": "Group",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Name"
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "oktaUser",
+        "title": "Okta User",
+        "icon": "User",
+        "schema": {
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "title": "Email"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "ACTIVE",
+                        "DEPROVISIONED",
+                        "LOCKED_OUT",
+                        "PASSWORD_EXPIRED",
+                        "PROVISIONED",
+                        "RECOVERY",
+                        "STAGED",
+                        "SUSPENDED"
+                    ],
+                    "enumColors": {
+                        "ACTIVE": "green",
+                        "DEPROVISIONED": "red",
+                        "LOCKED_OUT": "red",
+                        "PASSWORD_EXPIRED": "orange",
+                        "PROVISIONED": "blue",
+                        "RECOVERY": "orange",
+                        "STAGED": "yellow",
+                        "SUSPENDED": "red"
+                    },
+                    "title": "Status"
+                },
+                "created": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created"
+                },
+                "department": {
+                    "type": "string",
+                    "title": "Department"
+                },
+                "displayName": {
+                    "type": "string",
+                    "title": "Display Name"
+                },
+                "login": {
+                    "type": "string",
+                    "title": "Login"
+                },
+                "type": {
+                    "type": "string",
+                    "title": "Type"
+                },
+                "activated": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Activated"
+                },
+                "firstName": {
+                    "type": "string",
+                    "title": "First Name"
+                },
+                "lastName": {
+                    "type": "string",
+                    "title": "Last Name"
+                }
+            },
+            "required": []
+        },
+        "relations": {
+            "groups": {
+                "target": "oktaGroup",
+                "many": true,
+                "required": false,
+                "title": "Groups"
+            },
+            "manager": {
+                "target": "oktaUser",
+                "many": false,
+                "required": false,
+                "title": "Manager"
+            }
+        }
+    }
+]

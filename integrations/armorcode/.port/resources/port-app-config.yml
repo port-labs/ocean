@@ -1,0 +1,68 @@
+resources:
+  - kind: product
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"armorcodeProduct"'
+          properties:
+            name: .name
+            description: .description
+            businessOwner: .businessOwner
+            securityOwner: .securityOwner
+
+  - kind: sub-product
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"armorcodeSubProduct"'
+          properties:
+            name: .name
+            repoLink: .repoLink
+            programmingLanguage: .programmingLanguage
+            technologies: .technologies
+          relations:
+            product: .parent | tostring
+
+  - kind: finding
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"armorcodeFinding"'
+          properties:
+            source: .source
+            description: .description
+            mitigation: .mitigation
+            severity: .severity
+            findingCategory: .findingCategory
+            status: .status
+            productStatus: .productStatus
+            subProductStatuses: .subProductStatuses
+            title: .title
+            toolSeverity: .toolSeverity
+            createdAt: (.createdAt? | tonumber / 1000 | tostring | strptime("%s") | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            lastUpdated: (.lastUpdated? | tonumber / 1000 | tostring | strptime("%s") | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            cwe: .cwe
+            cve: .cve
+            link: .link
+            riskScore: .riskScore
+            findingScore: .findingScore
+            slaBreached: .slaBreached
+            slaDueDate: (.slaDueDate? | tonumber / 1000 | tostring | strptime("%s") | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            resolutionSlaStatus: .resolutionSlaStatus
+            productId: .product.id
+            subProductId: .subProduct.id
+          relations:
+            product: .product.id | tostring
+            subProduct: .subProduct.id | tostring

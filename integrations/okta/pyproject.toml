@@ -1,14 +1,13 @@
 [tool.poetry]
-name = "gitlab-v2"
-version = "0.2.36"
-description = "Gitlab"
-authors = ["Shariff <mohammed.s@getport.io>"]
+name = "okta"
+version = "0.1.0-dev"
+description = "Integration to bring information from Okta into Port"
+authors = ["Iyanuoluwa Adebayo <ioluwadunsinadebayo@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.28.12", extras = ["cli"]}
-pyyaml = "^6.0.2"
-aiolimiter = "^1.2.1"
+port_ocean = {extras = ["cli"], version = "^0.28.12"}
+httpx = "^0.28.1"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
@@ -22,7 +21,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
-types-pyyaml = "^6.0.12.20241230"
+yamllint = "^1.35.1"
 
 [tool.towncrier]
 directory = "changelog"
@@ -87,7 +86,6 @@ disallow_untyped_defs = true
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
-target-version = "py312"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
