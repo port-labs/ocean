@@ -43,7 +43,8 @@ class TestOktaUserExporter:
 
         # Assign async generator function to mock attribute
         object.__setattr__(mock_client, "send_paginated_request", mock_get_users)
-        mock_client.get_list_resource = AsyncMock(return_value=mock_groups)
+
+        cast(Any, mock_client).send_api_request = AsyncMock(side_effect=[mock_groups])
 
         options: ListUserOptions = {"include_groups": True, "fields": "id,profile"}
         users: List[Dict[str, Any]] = []
@@ -73,7 +74,7 @@ class TestOktaUserExporter:
         async def raise_error(*args: Any, **kwargs: Any) -> Any:
             raise Exception("API Error")
 
-        mock_client.get_list_resource = AsyncMock(side_effect=raise_error)
+        cast(Any, mock_client).send_api_request = AsyncMock(side_effect=raise_error)
 
         options: ListUserOptions = {"include_groups": True, "fields": "id,profile"}
         users: List[Dict[str, Any]] = []
@@ -96,8 +97,9 @@ class TestOktaUserExporter:
         mock_groups = [{"id": "group1", "name": "Group 1"}]
 
         # Mock the client methods
-        cast(Any, mock_client).get_single_resource = AsyncMock(return_value=mock_user)
-        cast(Any, mock_client).get_list_resource = AsyncMock(return_value=mock_groups)
+        cast(Any, mock_client).send_api_request = AsyncMock(
+            side_effect=[mock_user, mock_groups]
+        )
 
         options: GetUserOptions = {"user_id": "user1", "include_groups": True}
 

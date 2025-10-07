@@ -22,6 +22,7 @@ from fastapi import Request
 from loguru import logger
 
 
+
 def get_default_user_fields() -> str:
     """Default list of fields to fetch for users.
 
@@ -61,7 +62,10 @@ class OktaUserConfig(ResourceConfig):
 class OktaAppConfig(PortAppConfig):
     """Port app configuration for Okta integration."""
 
-    resources: list[OktaUserConfig | ResourceConfig]
+    resources: list[OktaUserConfig | ResourceConfig] = Field(
+        default_factory=list,
+        description="Specify the resources to include in the sync",
+    )
 
 
 class OktaHandlerMixin(HandlerMixin):
@@ -111,3 +115,4 @@ class OktaIntegration(BaseIntegration, OktaHandlerMixin):
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = OktaAppConfig
+

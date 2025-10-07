@@ -1,12 +1,10 @@
 """User exporter for Okta integration."""
 
 import asyncio
-from typing import Any, Dict
+from typing import Any, Dict, List, cast
 from loguru import logger
 
 from okta.clients.http.client import OktaClient
-from okta.core.exporters.group_exporter import OktaGroupExporter
-from okta.core.exporters.user_apps_exporter import OktaUserAppsExporter
 from okta.core.exporters.abstract_exporter import AbstractOktaExporter
 from okta.core.options import ListUserOptions, GetUserOptions
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
@@ -18,16 +16,19 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
     ENRICH_CONCURRENCY: int = 10
 
     async def _fetch_user(self, user_id: str) -> RAW_ITEM:
-        return await self.client.get_single_resource(f"users/{user_id}")
+        return cast(RAW_ITEM, await self.client.send_api_request(f"users/{user_id}"))
 
     async def _fetch_user_groups(self, user_id: str) -> list[dict[str, Any]]:
-        group_exporter = OktaGroupExporter(self.client)
-        return await group_exporter.get_user_groups(user_id)
+        return cast(
+            List[RAW_ITEM],
+            await self.client.send_api_request(f"users/{user_id}/groups"),
+        )
 
-    async def _fetch_user_apps(self, user_id: str) -> list[dict[str, Any]]:
-        apps_exporter = OktaUserAppsExporter(self.client)
-        result = await apps_exporter.get_resource(user_id)
-        return result.get("applications", [])
+    async def _fetch_user_apps(self, user_id: str) -> list[RAW_ITEM]:
+        return cast(
+            List[RAW_ITEM],
+            await self.client.send_api_request(f"users/{user_id}/appLinks"),
+        )
 
     async def _fetch_enrichments(
         self, user_id: str, include_groups: bool, include_applications: bool
@@ -69,12 +70,13 @@ class OktaUserExporter(AbstractOktaExporter[OktaClient]):
         Returns:
             User data
         """
-        user = await self._fetch_user(options["user_id"])
-        enrichments = await self._fetch_enrichments(
+        user_task = self._fetch_user(options["user_id"])
+        enrich_task = self._fetch_enrichments(
             options["user_id"],
             bool(options.get("include_groups")),
             bool(options.get("include_applications")),
         )
+        user, enrichments = await asyncio.gather(user_task, enrich_task)
         if enrichments:
             user |= enrichments
 
