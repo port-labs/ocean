@@ -1,8 +1,9 @@
-from typing import Any, AsyncGenerator, Optional
+from typing import Optional
 
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from loguru import logger
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from azure_integration.clients.client import AzureClient
+from azure_integration.helpers.queries import RESOURCE_CONTAINERS_QUERY
 from azure_integration.models import ResourceGroupTagFilters
 from azure_integration.utils import build_rg_tag_filter_clause
 from integration import AzureResourceContainerConfig
@@ -13,8 +14,27 @@ from .base import BaseExporter
 class ResourceContainersExporter(BaseExporter):
     resource_config: AzureResourceContainerConfig
 
-    def __init__(self, client: AzureClient, resource_config: ResourceConfig):
-        super().__init__(client, resource_config)
+    async def export_single_resource(self) -> object:
+        raise NotImplementedError
+
+    async def export_paginated_resources(self) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        container_tags = self.resource_config.selector.tags
+        query = self._build_sync_query(container_tags)
+        async for sub_batch in self.sub_manager.get_subscription_batches():
+            logger.info(
+                f"Exporting container resources for {len(sub_batch)} subscriptions"
+            )
+            async for resource_containers in self.client.make_paginated_request(
+                query, [str(s.id) for s in sub_batch]
+            ):
+                if resource_containers:
+                    logger.info(
+                        f"Received batch of {len(resource_containers)} resource containers"
+                    )
+                    yield resource_containers
+                else:
+                    logger.info("No containers found in this batch")
+                    continue
 
     def _build_sync_query(
         self, tag_filters: Optional[ResourceGroupTagFilters] = None
@@ -22,20 +42,5 @@ class ResourceContainersExporter(BaseExporter):
         rg_tag_filter_clause = (
             build_rg_tag_filter_clause(tag_filters) if tag_filters else ""
         )
-        query: str = f"""
-        resourcecontainers
-        | where type =~ 'microsoft.resources/subscriptions/resourcegroups'
-        {rg_tag_filter_clause}
-        | project id, type, name, location, tags, subscriptionId, resourceGroup
-        | extend resourceGroup=tolower(resourceGroup)
-        | extend type=tolower(type)
-        """
+        query = RESOURCE_CONTAINERS_QUERY.format(rg_tag_filter_clause)
         return query
-
-    async def _sync_for_subscriptions(
-        self, subscriptions: list[str]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        container_tags = self.resource_config.selector.tags
-        query = self._build_sync_query(container_tags)
-        async for resource_containers in self.client.run_query(query, subscriptions):
-            yield resource_containers

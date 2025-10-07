@@ -1,12 +1,12 @@
-from typing import Generator, TypeVar
+from typing import Generator, Sequence, TypeVar
 from .models import ResourceGroupTagFilters
 
 T = TypeVar("T")
 
 
 def turn_sequence_to_chunks(
-    sequence: list[T], chunk_size: int
-) -> Generator[list[T], None, None]:
+    sequence: Sequence[T], chunk_size: int
+) -> Generator[Sequence[T], None, None]:
     if chunk_size >= len(sequence):
         yield sequence
         return

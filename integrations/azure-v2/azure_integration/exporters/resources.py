@@ -1,9 +1,9 @@
-from typing import Any, AsyncGenerator, List, Optional
+from typing import Optional
 
 from loguru import logger
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from azure_integration.clients.client import AzureClient
+from azure_integration.helpers.queries import RESOURCES_QUERY
 from azure_integration.models import ResourceGroupTagFilters
 from azure_integration.utils import build_rg_tag_filter_clause
 from integration import AzureResourceConfig
@@ -14,8 +14,24 @@ from .base import BaseExporter
 class ResourcesExporter(BaseExporter):
     resource_config: AzureResourceConfig
 
-    def __init__(self, client: AzureClient, resource_config: ResourceConfig):
-        super().__init__(client, resource_config)
+    async def export_single_resource(self) -> object:
+        raise NotImplementedError
+
+    async def export_paginated_resources(self) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        resource_types = self.resource_config.selector.resource_types
+        tag_filters = self.resource_config.selector.tags
+        query = self._build_full_sync_query(resource_types, tag_filters)
+        async for sub_batch in self.sub_manager.get_subscription_batches():
+            logger.info(f"Exporting resources for {len(sub_batch)} subscriptions")
+            async for resources in self.client.make_paginated_request(
+                query, [str(s.id) for s in sub_batch]
+            ):
+                if resources:
+                    logger.info(f"Received batch of {len(resources)} resource")
+                    yield resources
+                else:
+                    logger.info("No resources found in this batch")
+                    continue
 
     def _build_full_sync_query(
         self,
@@ -33,41 +49,6 @@ class ResourcesExporter(BaseExporter):
             if tag_filters
             else ""
         )
-        query = f"""
-    resources
-    | project id, type, name, location, tags, subscriptionId, resourceGroup
-    | extend resourceGroup=tolower(resourceGroup)
-    | extend type=tolower(type)
-    {resource_filter_clause}
-    | join kind=leftouter (
-        resourcecontainers
-        | where type =~ 'microsoft.resources/subscriptions/resourcegroups'
-        | project rgName=tolower(name), rgTags=tags, rgSubscriptionId=subscriptionId
-    ) on $left.subscriptionId == $right.rgSubscriptionId and $left.resourceGroup == $right.rgName
-    {rg_tag_filter_clause}
-    | project id, type, name, location, tags, subscriptionId, resourceGroup, rgTags
-    """
+        query = RESOURCES_QUERY.format(resource_filter_clause, rg_tag_filter_clause)
 
         return query
-
-    async def _sync_for_subscriptions(
-        self, subscriptions: List[str]
-    ) -> AsyncGenerator[List[dict[str, Any]], None]:
-        resource_types = self.resource_config.selector.resource_types
-        tag_filters = self.resource_config.selector.tags
-
-        logger.info(
-            "Running query for subscription batch with "
-            f"{len(subscriptions)} subscriptions"
-        )
-
-        query = self._build_full_sync_query(resource_types, tag_filters)
-        async for items in self.client.run_query(
-            query,
-            subscriptions,
-        ):
-            logger.info(f"Received batch of {len(items)} resources")
-            if not items:
-                logger.info("No resources found in this batch")
-                continue
-            yield items

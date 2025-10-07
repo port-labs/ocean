@@ -6,9 +6,9 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from azure_integration.clients.client import AzureClient
 from azure_integration.exporters.resource_containers import ResourceContainersExporter
 from azure_integration.exporters.resources import ResourcesExporter
+from azure_integration.factory import init_client_and_sub_manager
 from integration import AzureResourceConfig, AzureResourceContainerConfig
 
 
@@ -21,20 +21,20 @@ class Kind(StrEnum):
 async def on_resync_resource_container(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting Azure to Port {kind} sync")
     resource_config = cast(AzureResourceContainerConfig, event.resource_config)
-    async with AzureClient() as azure_client:
-        exporter = ResourceContainersExporter(azure_client, resource_config)
-        async for resources in exporter.export_paginated_resources():
-            yield resources
+    client, subscription_manager = init_client_and_sub_manager()
+    exporter = ResourceContainersExporter(client, resource_config, subscription_manager)
+    async for resources in exporter.export_paginated_resources():
+        yield resources
 
 
 @ocean.on_resync(Kind.RESOURCE)
 async def on_resync_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting Azure to Port {kind} sync")
     resource_config = cast(AzureResourceConfig, event.resource_config)
-    async with AzureClient() as azure_client:
-        exporter = ResourcesExporter(azure_client, resource_config)
-        async for resources in exporter.export_paginated_resources():
-            yield resources
+    client, subscription_manager = init_client_and_sub_manager()
+    exporter = ResourcesExporter(client, resource_config, subscription_manager)
+    async for resources in exporter.export_paginated_resources():
+        yield resources
 
 
 @ocean.on_start()

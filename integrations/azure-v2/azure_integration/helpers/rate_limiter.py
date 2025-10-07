@@ -1,4 +1,15 @@
+import asyncio
 import time
+
+from loguru import logger
+
+
+class RateLimitHandler:
+    @staticmethod
+    async def handle_rate_limit(success: bool, wait_time: int = 1) -> None:
+        if not success:
+            logger.info("Rate limit exceeded, waiting for 1 second")
+            await asyncio.sleep(wait_time)
 
 
 class TokenBucketRateLimiter:
