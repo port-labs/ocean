@@ -19,6 +19,7 @@ from github.clients.client_factory import (
     GitHubAuthenticatorFactory,
     create_github_client,
     create_client_for_organizations,
+    clear_github_clients,
 )
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
@@ -787,6 +788,13 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
 
         async for alerts in stream_async_iterators_tasks(*tasks):
             yield alerts
+
+
+@ocean.on_resync_complete()
+async def cleanup_github_clients() -> None:
+    """Clean up cached GitHub client instances after resync completion."""
+    logger.info("Cleaning up cached GitHub client instances")
+    clear_github_clients()
 
 
 # Register webhook processors

@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated all resync functions to iterate through multiple organizations
 - Modified webhook processors to include organization context
 - Updated client factory to support organization-specific clients
+- Added handler to clean up cached clients after resyncs
 
 
 ## 1.5.10-beta (2025-09-30)

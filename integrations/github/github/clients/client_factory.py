@@ -79,6 +79,7 @@ class GithubClientFactory:
                 logger.error(f"Invalid client type: {client_type}")
                 raise ValueError(f"Invalid client type: {client_type}")
 
+            logger.info(f"Creating new {client_type} client for organization: {github_organization}")
             authenticator = GitHubAuthenticatorFactory.create(
                 organization=github_organization,
                 github_host=ocean.integration_config["github_host"],
@@ -90,8 +91,16 @@ class GithubClientFactory:
             self._instances[client_type] = self._clients[client_type](
                 **integration_config(authenticator, github_organization),
             )
+            logger.info(f"Created and cached {client_type} client for {github_organization}")
+        else:
+            logger.debug(f"Using cached {client_type} client for organization: {github_organization}")
 
         return self._instances[client_type]
+
+    def clear_instances(self) -> None:
+        """Clear all cached client instances from memory."""
+        logger.info(f"Clearing {len(self._instances)} cached GitHub client instances")
+        self._instances.clear()
 
 
 @overload
@@ -133,3 +142,9 @@ def create_client_for_organizations() -> OrganizationGithubClient:
             private_key=ocean.integration_config.get("github_app_private_key"),
         ),
     )
+
+
+def clear_github_clients() -> None:
+    """Clear all cached GitHub client instances from memory."""
+    factory = GithubClientFactory()
+    factory.clear_instances()
