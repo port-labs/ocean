@@ -372,7 +372,7 @@ class TestJQEntityProcessor:
                 "status": ".item.status",  # SINGLE - contains pattern
                 "description": ".item.desc",  # SINGLE - contains pattern
                 "external_ref": ".external.ref",  # ALL - contains dots but not pattern
-                "static_value": "static",  # NONE - no pattern, no dots
+                "static_value": '"static"',  # NONE - no pattern, no dots
             },
             "relations": {
                 "owner": ".item.owner",  # SINGLE - contains pattern
@@ -419,7 +419,7 @@ class TestJQEntityProcessor:
         # NONE mappings should contain nullary expressions
         expected_none = {
             "properties": {
-                "static_value": "static",
+                "static_value": '"static"',
             },
             "relations": {
                 "null_value": "null",
@@ -482,9 +482,9 @@ class TestJQEntityProcessor:
             InputEvaluationResult.NONE: {},
         }
         mocked_processor.group_string_mapping_value(
-            ".item", mappings, "static_value", "static"
+            ".item", mappings, "static_value", '"static"'
         )
-        assert mappings[InputEvaluationResult.NONE]["static_value"] == "static"
+        assert mappings[InputEvaluationResult.NONE]["static_value"] == '"static"'
         assert (
             InputEvaluationResult.SINGLE not in mappings
             or not mappings[InputEvaluationResult.SINGLE]
@@ -513,7 +513,7 @@ class TestJQEntityProcessor:
             "name": ".item.name",  # SINGLE
             "description": ".item.desc",  # SINGLE
             "external_ref": ".external.ref",  # ALL
-            "static_value": "static",  # NONE
+            "static_value": '"static"',  # NONE
         }
 
         mocked_processor.group_complex_mapping_value(
@@ -528,7 +528,7 @@ class TestJQEntityProcessor:
             "external_ref": ".external.ref",
         }
         expected_none = {
-            "static_value": "static",
+            "static_value": '"static"',
         }
 
         assert mappings[InputEvaluationResult.SINGLE]["properties"] == expected_single
@@ -547,7 +547,7 @@ class TestJQEntityProcessor:
             "team": ".item",  # Just the pattern - SINGLE
             "properties": {
                 "multiple_patterns": ".item.field.item",  # Multiple occurrences - SINGLE
-                "pattern_at_end": "field.item",  # Pattern at end - ALL (doesn't start with .item)
+                "pattern_at_end": ".field.item",  # Pattern at end - ALL (doesn't start with .item)
                 "pattern_at_start": ".item.field",  # Pattern at start - SINGLE
                 "pattern_in_middle": ".body.somefield.item",  # Pattern in middle - ALL (doesn't start with .item)
                 "pattern_in_middle_with_dots": ".data.items.item.field",  # Pattern in middle with dots - ALL
@@ -751,7 +751,7 @@ class TestJQEntityProcessor:
                 "external_map": "map(.external.field)",  # Doesn't contain .item - ALL
                 "external_select": 'select(.external.status == "active")',  # Doesn't contain .item - ALL
                 "external_array": "[.external.id, .external.name]",  # Doesn't contain .item - ALL
-                "static_value": "static",  # Static value - NONE
+                "static_value": '"static"',  # Static value - NONE
                 "nullary_expression": "null",  # Nullary expression - NONE
                 "boolean_expression": "true",  # Boolean expression - NONE
                 "number_expression": "42",  # Number expression - NONE
@@ -763,7 +763,7 @@ class TestJQEntityProcessor:
                 "mapped_relation": "map(.item.relation)",  # Contains .item - SINGLE
                 "selected_relation": 'select(.item.relation == "active")',  # Contains .item - SINGLE
                 "external_relation": "map(.external.relation)",  # Doesn't contain .item - ALL
-                "static_relation": "static",  # Static value - NONE
+                "static_relation": '"static"',  # Static value - NONE
             },
         }
         items_to_parse_name = "item"
@@ -897,7 +897,7 @@ class TestJQEntityProcessor:
         # NONE mappings - nullary expressions and static values
         expected_none = {
             "properties": {
-                "static_value": "static",
+                "static_value": '"static"',
                 "nullary_expression": "null",
                 "boolean_expression": "true",
                 "number_expression": "42",
@@ -906,7 +906,7 @@ class TestJQEntityProcessor:
                 "object_expression": '{"key": "value"}',
             },
             "relations": {
-                "static_relation": "static",
+                "static_relation": '"static"',
             },
         }
         assert none == expected_none
@@ -948,7 +948,7 @@ class TestJQEntityProcessor:
                     }
                 ],
             },
-            "static_relation": "static",  # String - NONE
+            "static_relation": '"static"',  # String - NONE
         }
 
         mocked_processor.group_complex_mapping_value(
@@ -981,7 +981,7 @@ class TestJQEntityProcessor:
             }
         }
         expected_none = {
-            "static_relation": "static",
+            "static_relation": '"static"',
         }
 
         assert mappings[InputEvaluationResult.SINGLE]["relations"] == expected_single
@@ -1228,7 +1228,7 @@ class TestJQEntityProcessor:
         mixed_properties = {
             "string_single": ".item.name",  # String - SINGLE
             "string_all": ".external.ref",  # String - ALL
-            "string_none": "static",  # String - NONE
+            "string_none": '"static"',  # String - NONE
             "query_single": {  # IngestSearchQuery - SINGLE
                 "combinator": "and",
                 "rules": [
@@ -1274,7 +1274,7 @@ class TestJQEntityProcessor:
             },
         }
         expected_none = {
-            "string_none": "static",
+            "string_none": '"static"',
         }
 
         assert mappings[InputEvaluationResult.SINGLE]["properties"] == expected_single
