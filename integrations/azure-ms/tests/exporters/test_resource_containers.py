@@ -43,7 +43,7 @@ async def test_export_paginated_resources() -> None:
     )
 
     # Action
-    results = [result async for result in exporter.export_paginated_resources()]
+    results = [result async for result in exporter.get_paginated_resources()]
     flat_results = [item for batch in results for item in batch]
 
     # Assert

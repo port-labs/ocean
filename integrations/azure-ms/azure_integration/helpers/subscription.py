@@ -17,9 +17,6 @@ class SubscriptionManager(RateLimitHandler, AsyncContextManager["SubscriptionMan
     """
     Manages fetching of Azure subscriptions, handling authentication and rate limiting.
 
-    This class acts as an asynchronous context manager to properly handle the lifecycle
-    of Azure SDK clients. It provides methods to retrieve subscriptions in batches to
-    avoid overwhelming the API and to manage memory efficiently.
     """
 
     def __init__(

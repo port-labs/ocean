@@ -4,22 +4,20 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.helpers.queries import RESOURCE_CONTAINERS_QUERY
-from azure_integration.models import ResourceGroupTagFilters
+from azure_integration.models import (
+    ResourceContainerExporterOptions,
+    ResourceGroupTagFilters,
+)
 from azure_integration.utils import build_rg_tag_filter_clause
-from integration import AzureResourceContainerConfig
 
 from .base import BaseExporter
 
 
 class ResourceContainersExporter(BaseExporter):
-    resource_config: AzureResourceContainerConfig
-
-    async def export_single_resource(self) -> object:
-        raise NotImplementedError
-
-    async def export_paginated_resources(self) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        container_tags = self.resource_config.selector.tags
-        query = self._build_sync_query(container_tags)
+    async def get_paginated_resources(
+        self, options: ResourceContainerExporterOptions
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        query = self._build_sync_query(options.tag_filter)
         async for sub_batch in self.sub_manager.get_sub_id_in_batches():
             logger.info(
                 f"Exporting container resources for {len(sub_batch)} subscriptions"

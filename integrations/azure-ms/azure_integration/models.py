@@ -23,3 +23,12 @@ class AuthCredentials(BaseModel):
             client_secret=self.client_secret,
             tenant_id=self.tenant_id,
         )
+
+
+class ResourceExporterOptions(BaseModel):
+    tag_filter: Optional[ResourceGroupTagFilters] = None
+    resource_types: Optional[list[str]] = None
+
+
+class ResourceContainerExporterOptions(BaseModel):
+    tag_filter: Optional[ResourceGroupTagFilters] = None
