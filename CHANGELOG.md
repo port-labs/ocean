@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.28.13 (2025-10-08)
+
+### Bug fixes
+
+- Fix StreamConsumed error caused by response stream consumption in RetryTransport
+
+
 ## 0.28.12 (2025-09-30)
 
 ### Bug fixes
