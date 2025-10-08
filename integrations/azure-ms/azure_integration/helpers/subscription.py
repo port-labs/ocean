@@ -13,14 +13,13 @@ from azure_integration.helpers.rate_limiter import (
 from azure_integration.models import AuthCredentials
 
 
-# AI! I've updated the class to remove fetching all subscriptions, update the docsstring and relevant test cases
 class SubscriptionManager(RateLimitHandler, AsyncContextManager["SubscriptionManager"]):
     """
     Manages fetching of Azure subscriptions, handling authentication and rate limiting.
 
     This class acts as an asynchronous context manager to properly handle the lifecycle
-    of Azure SDK clients. It provides methods to retrieve all subscriptions at once
-    or in batches to avoid overwhelming the API and to manage memory efficiently.
+    of Azure SDK clients. It provides methods to retrieve subscriptions in batches to
+    avoid overwhelming the API and to manage memory efficiently.
     """
 
     def __init__(

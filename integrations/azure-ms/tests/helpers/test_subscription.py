@@ -7,33 +7,6 @@ from azure_integration.helpers.subscription import SubscriptionManager
 from tests.helpers import aiter
 
 
-@pytest.mark.asyncio
-async def test_get_all_subscriptions_success() -> None:
-    auth_cred = MagicMock()
-    auth_cred.create_azure_credential.return_value.close = AsyncMock()
-    manager = SubscriptionManager(auth_cred, MagicMock())
-    mock_sub = SimpleNamespace(subscription_id="123")
-
-    mock_subs_client = MagicMock()
-    mock_subs_client.subscriptions.list = MagicMock(return_value=aiter([mock_sub]))
-    mock_subs_client.close = AsyncMock()
-
-    with patch(
-        "azure_integration.helpers.subscription.SubscriptionClient",
-        return_value=mock_subs_client,
-    ):
-        async with manager:
-            subs = await manager.get_all_subscriptions()
-            assert len(subs) == 1
-            assert subs[0].subscription_id == "123"
-
-
-@pytest.mark.asyncio
-async def test_get_all_subscriptions_not_initialized() -> None:
-    manager = SubscriptionManager(MagicMock(), MagicMock())
-    with pytest.raises(ValueError, match="Azure subscription client not initialized"):
-        await manager.get_all_subscriptions()
-
 
 @pytest.mark.asyncio
 async def test_get_subscription_batches() -> None:
