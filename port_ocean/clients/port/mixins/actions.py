@@ -1,4 +1,3 @@
-import random
 from typing import Any
 import httpx
 from loguru import logger
@@ -6,12 +5,7 @@ from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
 from port_ocean.core.models import (
     ActionRun,
-    RunStatus,
-    Action,
-    IntegrationInvocationPayload,
-    InvocationType,
 )
-from port_ocean.context.ocean import ocean
 
 
 class ActionsClientMixin:
@@ -31,64 +25,51 @@ class ActionsClientMixin:
 
         handle_port_status_code(response, should_log=should_log)
 
-    async def get_action(self, action_id: str) -> Action:
+    async def get_run_by_external_id(self, external_id: str) -> ActionRun:
         response = await self.client.get(
-            f"{self.auth.api_url}/actions/{action_id}",
+            f"{self.auth.api_url}/actions/runs?external_run_id={external_id}",
             headers=await self.auth.headers(),
         )
         handle_port_status_code(response)
         return response.json()
 
-    async def get_run(self, run_id: str) -> ActionRun:
+    async def get_pending_runs(
+        self, limit: int = 20, visibility_timeout_seconds: int = 90
+    ) -> list[ActionRun]:
         response = await self.client.get(
-            f"{self.auth.api_url}/runs/{run_id}",
+            f"{self.auth.api_url}/actions/runs/pending",
             headers=await self.auth.headers(),
-        )
-        handle_port_status_code(response)
-        return response.json()
-
-    async def get_pending_runs(self, limit: int = 50) -> list[ActionRun]:
-        mock_actions = [
-            "dispatch_workflow",
-            "create_issue",
-            "create_pull_request",
-        ]
-        mock_actions_payloads = {
-            "dispatch_workflow": {
-                "repo": "test",
-                "workflow": "test.yml",
-                "reportWorkflowStatus": True,
-                "workflowInputs": {"param1": "value1", "param2": 1},
+            params={
+                "limit": limit,
+                "visibility_timeout_seconds": visibility_timeout_seconds,
             },
-            "create_issue": {"title": "test", "body": "test"},
-            "create_pull_request": {"title": "test", "body": "test"},
-        }
-        num_runs = random.randint(2, ocean.config.execution_agent.max_runs_per_poll)
-        return [
-            ActionRun(
-                id=str(i),
-                status=RunStatus.IN_PROGRESS,
-                action=Action(
-                    id=f"action_{i}",
-                    name=f"test_action_{i}",
-                    description=f"Test action {i}",
-                ),
-                payload=IntegrationInvocationPayload(
-                    type=InvocationType.OCEAN,
-                    installationId=ocean.config.integration.identifier,
-                    action=mock_actions[i % len(mock_actions)],
-                    oceanExecution=mock_actions_payloads[
-                        mock_actions[i % len(mock_actions)]
-                    ],
-                ),
-            )
-            for i in range(num_runs)
-        ]
+        )
+        handle_port_status_code(response)
+        return [ActionRun.parse_obj(run) for run in response.json().get("runs", [])]
 
-    async def patch_run(self, run_id: str, run: dict[str, Any]) -> None:
+    async def patch_run(
+        self,
+        run_id: str,
+        run: ActionRun,
+    ) -> None:
         response = await self.client.patch(
-            f"{self.auth.api_url}/runs/{run_id}",
+            f"{self.auth.api_url}/actions/runs/{run_id}",
             headers=await self.auth.headers(),
-            json=run,
+            json=run.dict(),
+        )
+        handle_port_status_code(response)
+
+    async def acknowledge_run(self, run_id: str) -> None:
+        response = await self.client.patch(
+            f"{self.auth.api_url}/actions/runs/{run_id}/ack",
+            headers=await self.auth.headers(),
+        )
+        handle_port_status_code(response)
+
+    async def post_run_log(self, run_id: str, message: str) -> None:
+        response = await self.client.post(
+            f"{self.auth.api_url}/actions/runs/{run_id}/logs",
+            headers=await self.auth.headers(),
+            json={"message": message},
         )
         handle_port_status_code(response)

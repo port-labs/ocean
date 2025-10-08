@@ -1,10 +1,14 @@
 from abc import ABC, abstractmethod
+from ast import Dict, TypeAlias
 from typing import Any, Optional, Type
 
 
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
+
+
+ActionPayload: TypeAlias = Dict[str, Any]
 
 
 class AbstractExecutor(ABC):
@@ -19,39 +23,19 @@ class AbstractExecutor(ABC):
       asynchronous action status updates via the live events processor manager.
     """
 
-    @classmethod
-    @abstractmethod
-    def action_name(cls) -> str:
-        """
-        Get the action name.
-        """
-        pass
+    ACTION_NAME: str
+    PARTITION_KEY: str
+    WEBHOOK_PROCESSOR_CLASS: Optional[Type[AbstractWebhookProcessor]]
+    WEBHOOK_PATH: str
 
-    @classmethod
-    def get_webhook_processor(
-        cls,
-    ) -> Optional[Type[AbstractWebhookProcessor]]:
+    async def is_close_to_rate_limit(self) -> bool:
         """
-        Optionally return a webhook processor class that will be registered under
-        `webhook_path` to handle action state updates.
+        Check if the action is close to the rate limit.
         """
-        return None
-
-    @classmethod
-    def partition_key(cls) -> str:
-        """
-        Get the partition key for the action.
-        """
-        return cls.action_name
-
-    async def can_execute(self, payload: dict[str, Any]) -> bool:
-        """
-        Check if the action can be executed.
-        """
-        return True
+        return False
 
     @abstractmethod
-    async def execute(self, payload: dict[str, Any]) -> None:
+    async def execute(self, payload: ActionPayload) -> None:
         """
         Execute the action.
         """

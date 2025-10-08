@@ -8,7 +8,7 @@ from loguru import logger
 
 from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.limiter import GitHubRateLimiter
-from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
+from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 
 
@@ -145,9 +145,9 @@ class AbstractGithubClient(ABC):
         )
         return response.json()
 
-    def get_rate_limit_status(self) -> Dict[str, Any]:
+    def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
         """Get current rate limit status for monitoring."""
-        return self.rate_limiter.get_rate_limit_status()
+        return self.rate_limiter.rate_limit_info
 
     def log_rate_limit_status(self) -> None:
         """Log current rate limit status for debugging."""
