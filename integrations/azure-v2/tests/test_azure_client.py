@@ -12,7 +12,9 @@ from tests.helpers import aiter
 
 @pytest.mark.asyncio
 async def test_run_query_single_page() -> None:
-    client = SDKClient(MagicMock(), MagicMock())
+    auth_cred = MagicMock()
+    auth_cred.create_azure_credential.return_value.close = AsyncMock()
+    client = SDKClient(auth_cred, MagicMock())
     mock_response = SimpleNamespace(data=[{"name": "resource1"}], skip_token=None)
 
     mock_resource_client = MagicMock()
@@ -33,7 +35,9 @@ async def test_run_query_single_page() -> None:
 
 @pytest.mark.asyncio
 async def test_run_query_with_pagination() -> None:
-    client = SDKClient(MagicMock(), MagicMock())
+    auth_cred = MagicMock()
+    auth_cred.create_azure_credential.return_value.close = AsyncMock()
+    client = SDKClient(auth_cred, MagicMock())
 
     first_response = SimpleNamespace(data=[{"name": "page1"}], skip_token="token123")
     second_response = SimpleNamespace(data=[{"name": "page2"}], skip_token=None)
@@ -79,7 +83,9 @@ async def test_handle_rate_limit() -> None:
 @pytest.mark.asyncio
 async def test_run_query_throttling_handled() -> None:
     """Test that AzureRequestThrottled exception is handled and sleep is called."""
-    client = SDKClient(MagicMock(), MagicMock())
+    auth_cred = MagicMock()
+    auth_cred.create_azure_credential.return_value.close = AsyncMock()
+    client = SDKClient(auth_cred, MagicMock())
     mock_resource_client = MagicMock()
     mock_resource_client.close = AsyncMock()
     # Mock response with throttling headers
@@ -130,7 +136,9 @@ async def test_run_query_throttling_handled() -> None:
 async def test_run_query_subscription_limit_reached() -> None:
     """Test that SubscriptionLimitReacheached is raised when the header is present."""
     # Mock response with subscription limit header
-    client = SDKClient(MagicMock(), MagicMock())
+    auth_cred = MagicMock()
+    auth_cred.create_azure_credential.return_value.close = AsyncMock()
+    client = SDKClient(auth_cred, MagicMock())
     mock_resource_client = MagicMock()
     mock_resource_client.close = AsyncMock()
     mock_http_response = MagicMock()
