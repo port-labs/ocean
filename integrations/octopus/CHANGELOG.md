@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.138 (2025-09-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+# Port_Ocean 0.1.137 (2025-09-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+# Port_Ocean 0.1.136 (2025-09-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+# Port_Ocean 0.1.135 (2025-09-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+# Port_Ocean 0.1.134 (2025-09-22)
+
+### Improvements
+
+- Added recommendedInstallationMethod: Saas to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
+
+
 # Port_Ocean 0.1.133 (2025-09-17)
 
 ### Improvements
@@ -26,7 +61,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.28.4
-
 
 # Port_Ocean 0.1.130 (2025-09-08)
 

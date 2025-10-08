@@ -1,0 +1,69 @@
+resources:
+  - kind: AWS::RDS::DBInstance
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.DBInstanceArn
+          title: .Properties.DBInstanceIdentifier
+          blueprint: '"rdsDbInstance"'
+          properties:
+            activityStreamStatus: .Properties.ActivityStreamStatus
+            allocatedStorage: .Properties.AllocatedStorage
+            associatedRoles: .Properties.AssociatedRoles
+            autoMinorVersionUpgrade: .Properties.AutoMinorVersionUpgrade
+            availabilityZone: .Properties.AvailabilityZone
+            backupRetentionPeriod: .Properties.BackupRetentionPeriod
+            backupTarget: .Properties.BackupTarget
+            caCertificateIdentifier: .Properties.CACertificateIdentifier
+            certificateDetails: .Properties.CertificateDetails
+            characterSetName: .Properties.CharacterSetName
+            copyTagsToSnapshot: .Properties.CopyTagsToSnapshot
+            customerOwnedIpEnabled: .Properties.CustomerOwnedIpEnabled
+            dbInstanceArn: .Properties.DBInstanceArn
+            dbInstanceClass: .Properties.DBInstanceClass
+            dbInstanceIdentifier: .Properties.DBInstanceIdentifier
+            dbInstanceStatus: .Properties.DBInstanceStatus
+            dbName: .Properties.DBName
+            dbParameterGroups: .Properties.DBParameterGroups
+            dbSecurityGroups: .Properties.DBSecurityGroups
+            dbSubnetGroup: .Properties.DBSubnetGroup
+            dbiResourceId: .Properties.DbiResourceId
+            databaseInsightsMode: .Properties.DatabaseInsightsMode
+            dedicatedLogVolume: .Properties.DedicatedLogVolume
+            deletionProtection: .Properties.DeletionProtection
+            domainMemberships: .Properties.DomainMemberships
+            enableIAMDatabaseAuthentication: .Properties.EnableIAMDatabaseAuthentication
+            enablePerformanceInsights: .Properties.EnablePerformanceInsights
+            endpoint: .Properties.Endpoint
+            engine: .Properties.Engine
+            engineLifecycleSupport: .Properties.EngineLifecycleSupport
+            engineVersion: .Properties.EngineVersion
+            enhancedMonitoringResourceArn: .Properties.EnhancedMonitoringResourceArn
+            instanceCreateTime: .Properties.InstanceCreateTime
+            iops: .Properties.Iops
+            isStorageConfigUpgradeAvailable: .Properties.IsStorageConfigUpgradeAvailable
+            kmsKeyId: .Properties.KmsKeyId
+            latestRestorableTime: .Properties.LatestRestorableTime
+            licenseModel: .Properties.LicenseModel
+            masterUsername: .Properties.MasterUsername
+            monitoringInterval: .Properties.MonitoringInterval
+            monitoringRoleArn: .Properties.MonitoringRoleArn
+            multiAZ: .Properties.MultiAZ
+            networkType: .Properties.NetworkType
+            optionGroupMemberships: .Properties.OptionGroupMemberships
+            pendingModifiedValues: .Properties.PendingModifiedValues
+            port: .Properties.Port
+            preferredBackupWindow: .Properties.PreferredBackupWindow
+            preferredMaintenanceWindow: .Properties.PreferredMaintenanceWindow
+            publiclyAccessible: .Properties.PubliclyAccessible
+            readReplicaDBInstanceIdentifiers: .Properties.ReadReplicaDBInstanceIdentifiers
+            secondaryAvailabilityZone: .Properties.SecondaryAvailabilityZone
+            storageEncrypted: .Properties.StorageEncrypted
+            storageThroughput: .Properties.StorageThroughput
+            storageType: .Properties.StorageType
+            tags: .Properties.Tags
+            vpcSecurityGroups: .Properties.VPCSecurityGroups
+          relations:
+            account: .__ExtraContext.AccountId

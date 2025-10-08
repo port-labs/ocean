@@ -17,7 +17,7 @@ resources:
       entity:
         mappings:
           identifier: .Properties.Id
-          title: .Properties.AccountName
+          title: .Properties.Name
           blueprint: '"awsOrganizationAccount"'
           properties:
             arn: .Properties.Arn
@@ -77,5 +77,103 @@ resources:
             capacityProviders: .Properties.CapacityProviders
             clusterArn: .Properties.ClusterArn
             tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::EKS::Cluster
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Arn
+          title: .Properties.Name
+          blueprint: '"eksCluster"'
+          properties:
+            arn: .Properties.Arn
+            name: .Properties.Name
+            version: .Properties.Version
+            status: .Properties.Status
+            endpoint: .Properties.Endpoint
+            roleArn: .Properties.RoleArn
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::RDS::DBInstance
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.DBInstanceArn
+          title: .Properties.DBInstanceIdentifier
+          blueprint: '"rdsDbInstance"'
+          properties:
+            dbInstanceIdentifier: .Properties.DBInstanceIdentifier
+            dbInstanceArn: .Properties.DBInstanceArn
+            engine: .Properties.Engine
+            dbInstanceClass: .Properties.DBInstanceClass
+            dbInstanceStatus: .Properties.DBInstanceStatus
+            multiAZ: .Properties.MultiAZ
+            storageEncrypted: .Properties.StorageEncrypted
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::Lambda::Function
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.FunctionArn
+          title: .Properties.FunctionName
+          blueprint: '"lambdaFunction"'
+          properties:
+            FunctionName: .Properties.FunctionName
+            FunctionArn: .Properties.FunctionArn
+            Runtime: .Properties.Runtime
+            Handler: .Properties.Handler
+            MemorySize: .Properties.MemorySize
+            Timeout: .Properties.Timeout
+            State: .Properties.State
+            LastModified: .Properties.LastModified
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::ECS::Service
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ServiceArn
+          title: .Properties.ServiceName
+          blueprint: '"ecsService"'
+          properties:
+            serviceName: .Properties.ServiceName
+            serviceArn: .Properties.ServiceArn
+            clusterArn: .Properties.ClusterArn
+            taskDefinition: .Properties.TaskDefinition
+            desiredCount: .Properties.DesiredCount
+            runningCount: .Properties.RunningCount
+            launchType: .Properties.LaunchType
+            status: .Properties.Status
+          relations:
+            account: .__ExtraContext.AccountId
+            cluster: .Properties.ClusterArn
+  - kind: AWS::SQS::Queue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.QueueArn
+          title: .Properties.QueueUrl | split("/") | .[-1]
+          blueprint: '"sqsQueue"'
+          properties:
+            arn: .Properties.QueueArn
+            region: .__ExtraContext.Region
+            queueUrl: .Properties.QueueUrl
+            approximateNumberOfMessages: .Properties.ApproximateNumberOfMessages
+            visibilityTimeout: .Properties.VisibilityTimeout
+            messageRetentionPeriod: .Properties.MessageRetentionPeriod
+            sqsManagedSseEnabled: .Properties.SqsManagedSseEnabled
           relations:
             account: .__ExtraContext.AccountId
