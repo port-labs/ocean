@@ -463,6 +463,17 @@ class JQEntityProcessor(BaseEntityProcessor):
                 key,
                 value,
             )
+            mapping_dicts[InputEvaluationResult.SINGLE] = (
+                mapping_dicts[InputEvaluationResult.SINGLE][key]
+                if mapping_dicts[InputEvaluationResult.SINGLE]
+                else {}
+            )
+            mapping_dicts[InputEvaluationResult.ALL] = (
+                mapping_dicts[InputEvaluationResult.ALL][key]
+                if mapping_dicts[InputEvaluationResult.ALL]
+                else {}
+            )
+
         if mapping_dicts[InputEvaluationResult.SINGLE]:
             mappings[InputEvaluationResult.SINGLE][key] = mapping_dicts[
                 InputEvaluationResult.SINGLE
