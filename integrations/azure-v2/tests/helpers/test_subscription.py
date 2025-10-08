@@ -47,6 +47,7 @@ async def test_get_subscription_batches() -> None:
     ]
 
     mock_subs_client = MagicMock()
+    mock_subs_client.subscriptions.list = MagicMock(return_value=aiter(subscriptions))
     mock_subs_client.close = AsyncMock()
 
     with patch(
@@ -54,7 +55,6 @@ async def test_get_subscription_batches() -> None:
         return_value=mock_subs_client,
     ):
         async with manager:
-            manager.get_all_subscriptions = AsyncMock(return_value=subscriptions)
             batches = [batch async for batch in manager.get_subscription_batches()]
 
     assert len(batches) == 2
