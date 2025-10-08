@@ -31,7 +31,7 @@ async def test_get_all_subscriptions_success() -> None:
 @pytest.mark.asyncio
 async def test_get_all_subscriptions_not_initialized() -> None:
     manager = SubscriptionManager(MagicMock(), MagicMock())
-    with pytest.raises(ValueError, match="Subscription client not initialized"):
+    with pytest.raises(ValueError, match="Azure subscription client not initialized"):
         await manager.get_all_subscriptions()
 
 
@@ -44,6 +44,7 @@ async def test_get_subscription_batches() -> None:
         SimpleNamespace(subscription_id="3"),
     ]
     manager.get_all_subscriptions = AsyncMock(return_value=subscriptions)
+    manager._subs_client = MagicMock()  # Simulate client initialization
 
     batches = [batch async for batch in manager.get_subscription_batches()]
     assert len(batches) == 2
