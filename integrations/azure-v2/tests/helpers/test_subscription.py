@@ -37,16 +37,26 @@ async def test_get_all_subscriptions_not_initialized() -> None:
 
 @pytest.mark.asyncio
 async def test_get_subscription_batches() -> None:
-    manager = SubscriptionManager(MagicMock(), MagicMock(), batch_size=2)
+    auth_cred = MagicMock()
+    auth_cred.create_azure_credential.return_value.close = AsyncMock()
+    manager = SubscriptionManager(auth_cred, MagicMock(), batch_size=2)
     subscriptions = [
         SimpleNamespace(subscription_id="1"),
         SimpleNamespace(subscription_id="2"),
         SimpleNamespace(subscription_id="3"),
     ]
-    manager.get_all_subscriptions = AsyncMock(return_value=subscriptions)
-    manager._subs_client = MagicMock()  # Simulate client initialization
 
-    batches = [batch async for batch in manager.get_subscription_batches()]
+    mock_subs_client = MagicMock()
+    mock_subs_client.close = AsyncMock()
+
+    with patch(
+        "azure_integration.helpers.subscription.SubscriptionClient",
+        return_value=mock_subs_client,
+    ):
+        async with manager:
+            manager.get_all_subscriptions = AsyncMock(return_value=subscriptions)
+            batches = [batch async for batch in manager.get_subscription_batches()]
+
     assert len(batches) == 2
     assert len(batches[0]) == 2
     assert len(batches[1]) == 1
