@@ -436,7 +436,7 @@ class TestJQEntityProcessor:
         )
 
         # Test with different input evaluation results
-        mappings = {
+        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
             InputEvaluationResult.NONE: {},
@@ -457,7 +457,7 @@ class TestJQEntityProcessor:
         )
 
         # Test ALL evaluation (contains dots but not pattern)
-        mappings = {
+        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
             InputEvaluationResult.NONE: {},
@@ -476,7 +476,7 @@ class TestJQEntityProcessor:
         )
 
         # Test NONE evaluation (nullary expression)
-        mappings = {
+        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
             InputEvaluationResult.NONE: {},
@@ -502,7 +502,7 @@ class TestJQEntityProcessor:
             InputEvaluationResult,
         )
 
-        mappings = {
+        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
             InputEvaluationResult.NONE: {},
@@ -539,7 +539,7 @@ class TestJQEntityProcessor:
         self, mocked_processor: JQEntityProcessor
     ) -> None:
         """Test _build_raw_entity_mappings with edge cases including patterns in the middle of expressions"""
-        raw_entity_mappings = {
+        raw_entity_mappings: dict[str, Any] = {
             "identifier": ".item.id",  # Normal case - SINGLE
             "title": "",  # Empty string - NONE
             "blueprint": "   ",  # Whitespace only - NONE
@@ -646,7 +646,7 @@ class TestJQEntityProcessor:
         self, mocked_processor: JQEntityProcessor
     ) -> None:
         """Test _build_raw_entity_mappings with complex JQ expressions that contain the pattern but don't start with it"""
-        raw_entity_mappings = {
+        raw_entity_mappings: dict[str, Any] = {
             "identifier": ".item.id",  # Simple case - SINGLE
             "title": ".item.name",  # Simple case - SINGLE
             "blueprint": ".item.type",  # Simple case - SINGLE
@@ -919,7 +919,7 @@ class TestJQEntityProcessor:
             InputEvaluationResult,
         )
 
-        mappings = {
+        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
             InputEvaluationResult.NONE: {},
@@ -996,7 +996,7 @@ class TestJQEntityProcessor:
             InputEvaluationResult,
         )
 
-        mappings = {
+        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
             InputEvaluationResult.NONE: {},
@@ -1035,7 +1035,7 @@ class TestJQEntityProcessor:
             InputEvaluationResult,
         )
 
-        mappings = {
+        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
             InputEvaluationResult.NONE: {},
@@ -1078,7 +1078,7 @@ class TestJQEntityProcessor:
             InputEvaluationResult,
         )
 
-        mappings = {
+        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
             InputEvaluationResult.NONE: {},
@@ -1146,7 +1146,7 @@ class TestJQEntityProcessor:
             InputEvaluationResult,
         )
 
-        mappings = {
+        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
             InputEvaluationResult.NONE: {},
@@ -1183,7 +1183,7 @@ class TestJQEntityProcessor:
             InputEvaluationResult,
         )
 
-        mappings = {
+        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
             InputEvaluationResult.NONE: {},
@@ -1218,7 +1218,7 @@ class TestJQEntityProcessor:
             InputEvaluationResult,
         )
 
-        mappings = {
+        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
             InputEvaluationResult.NONE: {},
