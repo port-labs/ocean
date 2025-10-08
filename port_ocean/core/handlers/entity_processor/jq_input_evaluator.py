@@ -42,7 +42,7 @@ _STRING_ONLY_RE = re.compile(r'^\s*"(?:\\.|[^"\\])*"\s*$')
 
 def _mask_strings(expr: str) -> str:
     """Replace string literals with empty strings so '.' inside quotes don’t count."""
-    return _STRING_LITERAL_RE.sub("", expr)
+    return _STRING_LITERAL_RE.sub("S", expr)
 
 
 def should_shortcut_no_input(selector_query: str) -> bool:
@@ -64,7 +64,7 @@ def should_shortcut_no_input(selector_query: str) -> bool:
     if _STRING_ONLY_RE.match(s):
         return True
 
-    masked = _mask_strings(s)
+    masked = _mask_strings(s).strip()
 
     # If it contains any known input-dependent functions, don't shortcut
     if _INPUT_DEPENDENT_RE.search(masked):
@@ -73,6 +73,12 @@ def should_shortcut_no_input(selector_query: str) -> bool:
     # Any '.' outside of strings means it references input
     if "." in masked:
         return False
+
+    if re.fullmatch(
+        r"(?:S|[-+]?\d+(?:\.\d+)?)(?:\s*[+\-*/]\s*(?:S|[-+]?\d+(?:\.\d+)?))*",
+        masked,
+    ):
+        return True
 
     # Allow basic nullary forms
     for pat in _ALLOWLIST_PATTERNS:

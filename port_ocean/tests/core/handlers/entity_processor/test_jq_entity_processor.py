@@ -556,6 +556,7 @@ class TestJQEntityProcessor:
                 "quoted_pattern": '".item.field"',  # Quoted pattern - NONE
                 "field_with_null_name": ".is_null",  # Field with null name - ALL
                 "empty_string": "",  # Empty string - NONE
+                "item_in_string": 'select(.data.string == ".item")',  # Item referenced in string only - ALL
                 "function_with_pattern": "map(.item.field)",  # Function with pattern - SINGLE
                 "function_with_middle_pattern": "map(.body.item.field)",  # Function with middle pattern - ALL
                 "select_with_pattern": 'select(.item.status == "active")',  # Select with pattern - SINGLE
@@ -570,6 +571,8 @@ class TestJQEntityProcessor:
                 "nested_with_middle_pattern": ".data.items[] | .body.item.field",  # Nested with middle pattern - ALL
                 "conditional_with_pattern": "if .item.exists then .item.value else null end",  # Conditional with pattern - SINGLE
                 "conditional_with_middle_pattern": "if .data.item.exists then .body.item.value else null end",  # Conditional with middle pattern - ALL
+                "string_plus_string": '"abc" + "def"',  # String plus string - NONE
+                "number_plus_number": "42 + 10",  # Number plus number - NONE
             },
             "relations": {
                 "normal_relation": ".item.owner",  # Normal case - SINGLE
@@ -616,6 +619,7 @@ class TestJQEntityProcessor:
                 "case_sensitive": ".ITEM.field",
                 "function_with_middle_pattern": "map(.body.item.field)",
                 "select_with_middle_pattern": 'select(.data.item.status == "active")',
+                "item_in_string": 'select(.data.string == ".item")',
                 "pipe_with_middle_pattern": ".[] | .body.item.field",
                 "array_with_middle_pattern": "[.data.item.id, .body.item.name]",
                 "object_with_middle_pattern": "{id: .data.item.id, name: .body.item.name}",
@@ -637,6 +641,8 @@ class TestJQEntityProcessor:
             "properties": {
                 "quoted_pattern": '".item.field"',
                 "empty_string": "",
+                "string_plus_string": '"abc" + "def"',
+                "number_plus_number": "42 + 10",
             },
             "relations": {
                 "nullary_relation": "null",
