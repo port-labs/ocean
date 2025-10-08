@@ -15,6 +15,7 @@ features:
       - kind: AWS::Lambda::Function
       - kind: AWS::ECS::Service
       - kind: AWS::Organizations::Account
+      - kind: AWS::SQS::Queue
 configurations:
   - name: accountRoleArn
     required: false
