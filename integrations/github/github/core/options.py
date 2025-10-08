@@ -7,16 +7,26 @@ class ListOrganizationOptions(TypedDict):
     organizations: NotRequired[Optional[List[str]]]
 
 
+class SingleOrganizationOptions(TypedDict):
+    organization: Required[str]
+
+
 class SingleRepositoryOptions(TypedDict):
     name: str
     included_relationships: NotRequired[Optional[list[str]]]
 
 
-class ListRepositoryOptions(TypedDict):
+class ListRepositoryOptions(SingleOrganizationOptions):
     """Options for listing repositories."""
 
     type: str
     included_relationships: NotRequired[Optional[list[str]]]
+
+
+class RepositoryIdentifier(SingleOrganizationOptions):
+    """Options for identifying a repository."""
+
+    repo_name: Required[str]
 
 
 class SingleFolderOptions(TypedDict):
@@ -24,14 +34,8 @@ class SingleFolderOptions(TypedDict):
     path: str
 
 
-class ListFolderOptions(TypedDict):
+class ListFolderOptions(RepositoryIdentifier):
     repo_mapping: Required[dict[str, dict[str, list[str]]]]
-
-
-class RepositoryIdentifier(TypedDict):
-    """Options for identifying a repository."""
-
-    repo_name: Required[str]
 
 
 class SinglePullRequestOptions(RepositoryIdentifier):
@@ -60,12 +64,16 @@ class ListIssueOptions(RepositoryIdentifier):
     state: Required[str]
 
 
-class SingleUserOptions(TypedDict):
+class SingleUserOptions(SingleOrganizationOptions):
     login: Required[str]
 
 
-class SingleTeamOptions(TypedDict):
+class SingleTeamOptions(SingleOrganizationOptions):
     slug: Required[str]
+
+
+class ListTeamOptions(SingleOrganizationOptions):
+    """Options for listing teams."""
 
 
 class ListWorkflowOptions(RepositoryIdentifier):
@@ -165,10 +173,9 @@ class ListCodeScanningAlertOptions(RepositoryIdentifier):
     state: Required[str]
 
 
-class FileContentOptions(TypedDict):
+class FileContentOptions(RepositoryIdentifier):
     """Options for fetching file content."""
 
-    repo_name: Required[str]
     file_path: Required[str]
     branch: NotRequired[Optional[str]]
 

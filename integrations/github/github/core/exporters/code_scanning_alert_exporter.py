@@ -18,7 +18,7 @@ class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, params = extract_repo_params(dict(options))
         alert_number = params["alert_number"]
 
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/code-scanning/alerts/{alert_number}"
+        endpoint = f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/code-scanning/alerts/{alert_number}"
         response = await self.client.send_api_request(endpoint)
 
         logger.info(
@@ -35,7 +35,7 @@ class RestCodeScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, params = extract_repo_params(dict(options))
 
         async for alerts in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/code-scanning/alerts",
+            f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/code-scanning/alerts",
             params,
         ):
             logger.info(

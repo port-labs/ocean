@@ -1,21 +1,19 @@
-from typing import Any, AsyncGenerator, Dict, List
 from loguru import logger
 
 from github.core.options import ListOrganizationOptions
-from github.clients.http.organization_client import OrganizationGithubClient
 from port_ocean.utils.cache import cache_iterator_result
+from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from github.clients.http.rest_client import GithubRestClient
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
 
-class RestOrganizationExporter:
+class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
     """Exporter for GitHub organizations using REST API."""
-
-    def __init__(self, client: OrganizationGithubClient) -> None:
-        self.client = client
 
     @cache_iterator_result()
     async def get_paginated_resources(
         self, options: ListOrganizationOptions
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info("Fetching organizations")
 
         organizations = options.get("organizations")
@@ -34,3 +32,6 @@ class RestOrganizationExporter:
                 yield filtered_orgs
             else:
                 yield orgs
+
+    async def get_resource[ExporterOptionsT: None](self, options: None) -> RAW_ITEM:
+        raise NotImplementedError

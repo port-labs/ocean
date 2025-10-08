@@ -18,7 +18,7 @@ class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, params = extract_repo_params(dict(options))
         alert_number = params.pop("alert_number")
 
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/secret-scanning/alerts/{alert_number}"
+        endpoint = f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/secret-scanning/alerts/{alert_number}"
         response = await self.client.send_api_request(endpoint, params)
 
         logger.info(
@@ -37,7 +37,7 @@ class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
             params.pop("state")
 
         async for alerts in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/secret-scanning/alerts",
+            f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/secret-scanning/alerts",
             params,
         ):
             logger.info(

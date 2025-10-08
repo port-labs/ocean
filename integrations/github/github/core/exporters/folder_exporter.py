@@ -57,7 +57,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repo_mapping = options["repo_mapping"]
         repos = repo_mapping.keys()
-
+        organization = options["organization"]
         async for search_result in search_for_repositories(self.client, repos):
             for repository in search_result:
                 repo_name = repository["name"]
@@ -72,7 +72,7 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
                             if branch != _DEFAULT_BRANCH
                             else repository["default_branch"]
                         )
-                        url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
+                        url = f"{self.client.base_url}/repos/{organization}/{repo_name}/git/trees/{branch_ref}"
 
                         is_recursive_api_call = self._needs_recursive_search(path)
                         tree = await self._get_tree(

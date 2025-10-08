@@ -11,7 +11,8 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[
         ExporterOptionsT: SingleWorkflowRunOptions
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{options['repo_name']}/actions/runs/{options['run_id']}"
+        organization = options["organization"]
+        endpoint = f"{self.client.base_url}/repos/{organization}/{options['repo_name']}/actions/runs/{options['run_id']}"
         response = await self.client.send_api_request(endpoint)
 
         logger.info(
@@ -24,8 +25,8 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
         ExporterOptionsT: ListWorkflowRunOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
-
-        url = f"{self.client.base_url}/repos/{self.client.organization}/{options['repo_name']}/actions/workflows/{options['workflow_id']}/runs"
+        organization = options["organization"]
+        url = f"{self.client.base_url}/repos/{organization}/{options['repo_name']}/actions/workflows/{options['workflow_id']}/runs"
         fetched_batch = 0
 
         async for workflows in self.client.send_paginated_request(url):

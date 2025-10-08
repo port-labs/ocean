@@ -100,7 +100,7 @@ class GraphQLTeamMembersAndReposExporter(AbstractGithubExporter[GithubGraphQLCli
             state.repo_after = None
 
         variables = {
-            "organization": self.client.organization,
+            "organization": options["organization"],
             "slug": state.team_slug,
             "memberFirst": self.PAGE_SIZE,
             "memberAfter": state.member_after,

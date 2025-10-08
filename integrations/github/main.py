@@ -18,7 +18,6 @@ from github.core.exporters.file_exporter.utils import (
 from github.clients.client_factory import (
     GitHubAuthenticatorFactory,
     create_github_client,
-    create_client_for_organizations,
     clear_github_clients,
 )
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -100,7 +99,7 @@ async def on_start() -> None:
     if not base_url:
         return
 
-    org_exporter = RestOrganizationExporter(create_client_for_organizations())
+    org_exporter = RestOrganizationExporter(create_github_client())
     port_app_config = cast(
         GithubPortAppConfig,
         await ocean.integration.port_app_config_handler.get_port_app_config(),
@@ -124,7 +123,8 @@ async def on_start() -> None:
             )
 
             client = GithubWebhookClient(
-                **integration_config(authenticator, org_name),
+                **integration_config(authenticator),
+                organization=org_name,
                 webhook_secret=ocean.integration_config["webhook_secret"],
             )
 
@@ -137,7 +137,7 @@ async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all organizations the Personal Access Token user is a member of."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    rest_client = create_client_for_organizations()
+    rest_client = create_github_client()
     exporter = RestOrganizationExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
@@ -155,7 +155,8 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories across organizations."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    org_exporter = RestOrganizationExporter(create_client_for_organizations())
+    rest_client = create_github_client()
+    org_exporter = RestOrganizationExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     org_options = ListOrganizationOptions(
         organizations=port_app_config.organizations,
@@ -185,7 +186,7 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all users across organizations."""
     logger.info(f"Starting resync for kind: {kind}")
 
-    org_exporter = RestOrganizationExporter(create_client_for_organizations())
+    org_exporter = RestOrganizationExporter(create_github_client())
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     org_options = ListOrganizationOptions(
         organizations=port_app_config.organizations,

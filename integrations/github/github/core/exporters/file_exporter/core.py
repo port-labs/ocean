@@ -55,7 +55,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         file_path = options["file_path"]
         branch = options.get("branch")
 
-        resource = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/contents/{quote(file_path)}"
+        resource = f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/contents/{quote(file_path)}"
         logger.info(f"Fetching file: {file_path} from {repo_name}@{branch}")
 
         response = await self.client.send_api_request(resource, params={"ref": branch})
@@ -318,7 +318,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         Fetch the commit comparison data from GitHub API.
         """
 
-        resource = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/compare/{before_sha}...{after_sha}"
+        resource = f"{self.client.base_url}/repos/{self.client. organization}/{repo_name}/compare/{before_sha}...{after_sha}"
         response = await self.client.send_api_request(resource)
 
         logger.info(f"Found {len(response['files'])} files in commit diff")

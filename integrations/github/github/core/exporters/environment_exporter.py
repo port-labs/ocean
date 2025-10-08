@@ -16,7 +16,7 @@ class RestEnvironmentExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, params = extract_repo_params(dict(options))
         name = params["name"]
 
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/environments/{name}"
+        endpoint = f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/environments/{name}"
         response = await self.client.send_api_request(endpoint)
 
         logger.info(
@@ -33,7 +33,7 @@ class RestEnvironmentExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, params = extract_repo_params(dict(options))
 
         async for response in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/environments",
+            f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/environments",
             params,
         ):
             typed_response = cast(dict[str, Any], response)

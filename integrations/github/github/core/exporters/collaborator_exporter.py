@@ -13,7 +13,7 @@ class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, params = extract_repo_params(dict(options))
         username = params["username"]
 
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/collaborators/{username}/permission"
+        endpoint = f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/collaborators/{username}/permission"
         response = await self.client.send_api_request(endpoint)
         if not response:
             logger.warning(
@@ -36,7 +36,7 @@ class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, params = extract_repo_params(dict(options))
 
         async for collaborators in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/collaborators",
+            f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/collaborators",
             params,
         ):
             logger.info(

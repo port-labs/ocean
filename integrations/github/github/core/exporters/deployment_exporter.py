@@ -15,7 +15,7 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, params = extract_repo_params(dict(options))
         id = params["id"]
 
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/deployments/{id}"
+        endpoint = f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/deployments/{id}"
         response = await self.client.send_api_request(endpoint)
 
         logger.info(
@@ -32,7 +32,7 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, params = extract_repo_params(dict(options))
 
         async for deployments in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/deployments",
+            f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/deployments",
             params,
         ):
             logger.info(

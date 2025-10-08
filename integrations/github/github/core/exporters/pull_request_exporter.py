@@ -16,7 +16,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, params = extract_repo_params(dict(options))
         pr_number = params["pr_number"]
 
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/pulls/{pr_number}"
+        endpoint = f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/pulls/{pr_number}"
         response = await self.client.send_api_request(endpoint)
 
         logger.debug(f"Fetched pull request with identifier: {repo_name}/{pr_number}")
@@ -32,30 +32,31 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         states = extras["states"]
         max_results = extras["max_results"]
         since = extras["since"]
+        organization = options["organization"]
 
         logger.info(f"Starting pull request export for repository {repo_name}")
 
         if "open" in states:
             async for open_batch in self._fetch_open_pull_requests(
-                repo_name, {"state": "open"}
+                repo_name, organization, {"state": "open"}
             ):
                 yield open_batch
 
         if "closed" in states:
             async for closed_batch in self._fetch_closed_pull_requests(
-                repo_name, max_results, since
+                repo_name, organization, max_results, since
             ):
                 yield closed_batch
 
-    def _build_pull_request_paginated_endpoint(self, repo_name: str) -> str:
-        return (
-            f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/pulls"
-        )
+    def _build_pull_request_paginated_endpoint(
+        self, repo_name: str, organization: str
+    ) -> str:
+        return f"{self.client.base_url}/repos/{organization}/{repo_name}/pulls"
 
     async def _fetch_open_pull_requests(
-        self, repo_name: str, params: dict[str, Any]
+        self, repo_name: str, organization: str, params: dict[str, Any]
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        endpoint = self._build_pull_request_paginated_endpoint(repo_name)
+        endpoint = self._build_pull_request_paginated_endpoint(repo_name, organization)
 
         async for pull_requests in self.client.send_paginated_request(endpoint, params):
             logger.info(
@@ -65,9 +66,9 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             yield batch
 
     async def _fetch_closed_pull_requests(
-        self, repo_name: str, max_results: int, since: int
+        self, repo_name: str, organization: str, max_results: int, since: int
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        endpoint = self._build_pull_request_paginated_endpoint(repo_name)
+        endpoint = self._build_pull_request_paginated_endpoint(repo_name, organization)
         params = {
             "state": "closed",
             "sort": "updated",

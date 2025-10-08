@@ -20,7 +20,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
     ](self, options: ExporterOptionT) -> RAW_ITEM:
         variables = {
             "slug": options["slug"],
-            "organization": self.client.organization,
+            "organization": options["organization"],
             "memberFirst": self.MEMBER_PAGE_SIZE,
         }
 
@@ -42,6 +42,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
         if member_page_info.get("hasNextPage"):
             all_member_nodes_for_team = await self.get_paginated_members(
+                options=options,
                 team_slug=team["slug"],
                 initial_members_page_info=member_page_info,
                 initial_member_nodes=member_nodes,
@@ -54,10 +55,10 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
         return team
 
     async def get_paginated_resources(
-        self, options: None = None
+        self, options: SingleTeamOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         variables = {
-            "organization": self.client.organization,
+            "organization": options["organization"],
             "__path": "organization.teams",
             "memberFirst": self.MEMBER_PAGE_SIZE,
         }
@@ -73,6 +74,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
                 if member_page_info.get("hasNextPage"):
                     all_member_nodes_for_team = await self.get_paginated_members(
+                        options=options,
                         team_slug=team["slug"],
                         initial_members_page_info=member_page_info,
                         initial_member_nodes=member_nodes,
@@ -93,6 +95,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
     async def get_paginated_members(
         self,
+        options: SingleTeamOptions,
         team_slug: str,
         initial_members_page_info: dict[str, Any],
         initial_member_nodes: list[dict[str, Any]],
@@ -117,7 +120,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
         while current_page_info.get("hasNextPage"):
             variables = {
-                "organization": self.client.organization,
+                "organization": options["organization"],
                 "slug": team_slug,
                 "memberFirst": member_page_size,
                 "memberAfter": current_page_info.get("endCursor"),

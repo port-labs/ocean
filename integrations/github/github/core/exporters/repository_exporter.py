@@ -47,10 +47,10 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         included_relationships = options.get("included_relationships")
 
         async for repos in self.client.send_paginated_request(
-            f"{self.client.base_url}/orgs/{self.client.organization}/repos", params
+            f"{self.client.base_url}/orgs/{options['organization']}/repos", params
         ):
             logger.info(
-                f"Fetched batch of {len(repos)} repositories from organization {self.client.organization}"
+                f"Fetched batch of {len(repos)} repositories from organization {options['organization']}"
             )
             if not included_relationships:
                 yield repos
@@ -86,14 +86,14 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         return repository
 
     async def _enrich_repository_with_collaborators(
-        self, repository: Dict[str, Any]
+        self, repository: Dict[str, Any], organization: str
     ) -> RAW_ITEM:
         """Enrich repository with collaborators."""
         repo_name = repository["name"]
         all_collaborators = []
 
         async for collaborators in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/collaborators",
+            f"{self.client.base_url}/repos/{organization}/{repo_name}/collaborators",
             {},
         ):
             logger.info(
@@ -105,14 +105,14 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         return repository
 
     async def _enrich_repository_with_teams(
-        self, repository: Dict[str, Any]
+        self, repository: Dict[str, Any], organization: str
     ) -> RAW_ITEM:
         """Enrich repository with teams."""
         repo_name = repository["name"]
         all_teams = []
 
         async for teams in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/teams",
+            f"{self.client.base_url}/repos/{organization}/{repo_name}/teams",
             {},
         ):
             logger.info(

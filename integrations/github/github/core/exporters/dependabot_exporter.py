@@ -12,10 +12,11 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
         ExporterOptionsT: SingleDependabotAlertOptions
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
 
+        organization = options["organization"]
         repo_name, params = extract_repo_params(dict(options))
         alert_number = params["alert_number"]
 
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/dependabot/alerts/{alert_number}"
+        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/dependabot/alerts/{alert_number}"
         response = await self.client.send_api_request(endpoint)
 
         logger.info(
@@ -33,7 +34,7 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
         params["state"] = ",".join(params["state"])
 
         async for alerts in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/dependabot/alerts",
+            f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/dependabot/alerts",
             params,
         ):
             logger.info(

@@ -7,7 +7,6 @@ from httpx import Response
 from loguru import logger
 
 from github.helpers.utils import IgnoredError
-from github.helpers.exceptions import OrganizationRequiredException
 from github.clients.rate_limiter.limiter import GitHubRateLimiter
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
@@ -19,17 +18,13 @@ if TYPE_CHECKING:
     )
 
 
-class BaseGithubClient(ABC):
-    """Base GitHub client where organization may be optional."""
-
+class AbstractGithubClient(ABC):
     def __init__(
         self,
         github_host: str,
         authenticator: "AbstractGitHubAuthenticator",
-        organization: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-        self.organization = organization
         self.github_host = github_host
         self.authenticator = authenticator
         self.kwargs = kwargs
@@ -175,24 +170,3 @@ class BaseGithubClient(ABC):
             Lists of items from paginated responses
         """
         pass
-
-
-class AbstractGithubClient(BaseGithubClient):
-    """Abstract GitHub client that *requires* an organization."""
-
-    organization: str
-
-    def __init__(
-        self,
-        github_host: str,
-        authenticator: "AbstractGitHubAuthenticator",
-        organization: Optional[str],
-        **kwargs: Any,
-    ) -> None:
-        if organization is None:
-            raise OrganizationRequiredException(
-                "organization must not be None for AbstractGithubClient"
-            )
-
-        super().__init__(github_host, authenticator, organization, **kwargs)
-        self.organization = organization

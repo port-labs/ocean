@@ -14,7 +14,7 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
         repo_name, params = extract_repo_params(dict(options))
         issue_number = params["issue_number"]
 
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/issues/{issue_number}"
+        endpoint = f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/issues/{issue_number}"
         response = await self.client.send_api_request(endpoint)
 
         logger.info(f"Fetched issue {issue_number} from {repo_name}")
@@ -28,7 +28,7 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
         repo_name, params = extract_repo_params(dict(options))
 
         async for issues in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/issues",
+            f"{self.client.base_url}/repos/{options['organization']}/{repo_name}/issues",
             params,
         ):
             logger.info(
