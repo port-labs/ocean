@@ -41,7 +41,9 @@ async def test_export_paginated_resources() -> None:
     exporter = ResourceContainersExporter(mock_client, mock_sub_manager)
 
     # Action
-    results = [result async for result in exporter.get_paginated_resources(mock_options)]
+    results = [
+        result async for result in exporter.get_paginated_resources(mock_options)
+    ]
     flat_results = [item for batch in results for item in batch]
 
     # Assert

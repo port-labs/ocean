@@ -7,7 +7,6 @@ from azure_integration.helpers.subscription import SubscriptionManager
 from tests.helpers import aiter
 
 
-
 @pytest.mark.asyncio
 async def test_get_subscription_batches() -> None:
     auth_cred = MagicMock()
