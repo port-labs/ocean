@@ -30,7 +30,7 @@ class SDKClient(AzureClient, RateLimitHandler):
         self._error_map = {429: AzureRequestThrottled}
 
     async def make_request(
-        self, query: str, subscriptions: Sequence[str], **kwargs
+        self, query: str, subscriptions: Sequence[str], **kwargs: Any
     ) -> ResponseObject:
         if not self._resource_g_client:
             raise ValueError(

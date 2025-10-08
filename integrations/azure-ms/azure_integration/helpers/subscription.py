@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from types import TracebackType
 from typing import AsyncContextManager, AsyncGenerator
 from azure.identity.aio import ClientSecretCredential
@@ -11,7 +13,7 @@ from azure_integration.helpers.rate_limiter import (
 from azure_integration.models import AuthCredentials
 
 
-class SubscriptionManager(RateLimitHandler, AsyncContextManager):
+class SubscriptionManager(RateLimitHandler, AsyncContextManager["SubscriptionManager"]):
     def __init__(
         self,
         auth_cred: AuthCredentials,

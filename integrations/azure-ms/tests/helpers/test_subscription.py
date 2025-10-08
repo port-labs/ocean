@@ -74,7 +74,7 @@ async def test_get_sub_id_in_batches() -> None:
         ],
         [SimpleNamespace(subscription_id="3")],
     ]
-    manager.get_subscription_batches = MagicMock(return_value=aiter(subscriptions))
+    manager.get_subscription_batches = MagicMock(return_value=aiter(subscriptions))  # type: ignore[method-assign]
 
     batches = [batch async for batch in manager.get_sub_id_in_batches()]
     assert len(batches) == 2

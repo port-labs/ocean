@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import abstractmethod
 from typing import Any, AsyncContextManager, AsyncGenerator, Protocol, Sequence
 
@@ -6,13 +8,13 @@ class ResponseObject(Protocol):
     data: Any
 
 
-class AzureClient(AsyncContextManager):
+class AzureClient(AsyncContextManager["AzureClient"]):
     @abstractmethod
     async def make_request(
-        self, query: str, subscriptions: Sequence[str], **kwargs
+        self, query: str, subscriptions: Sequence[str], **kwargs: Any
     ) -> ResponseObject: ...
 
     @abstractmethod
-    async def make_paginated_request(
+    def make_paginated_request(
         self, query: str, subscriptions: Sequence[str]
     ) -> AsyncGenerator[list[dict[str, Any]], None]: ...
