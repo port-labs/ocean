@@ -13,6 +13,7 @@ from azure_integration.helpers.rate_limiter import (
 from azure_integration.models import AuthCredentials
 
 
+# AI! I've updated the class to remove fetching all subscriptions, update the docsstring and relevant test cases
 class SubscriptionManager(RateLimitHandler, AsyncContextManager["SubscriptionManager"]):
     """
     Manages fetching of Azure subscriptions, handling authentication and rate limiting.
@@ -21,6 +22,7 @@ class SubscriptionManager(RateLimitHandler, AsyncContextManager["SubscriptionMan
     of Azure SDK clients. It provides methods to retrieve all subscriptions at once
     or in batches to avoid overwhelming the API and to manage memory efficiently.
     """
+
     def __init__(
         self,
         auth_cred: AuthCredentials,
@@ -33,19 +35,6 @@ class SubscriptionManager(RateLimitHandler, AsyncContextManager["SubscriptionMan
         self._auth_cred = auth_cred
         self._batch_size = batch_size
         logger.info(f"Subscription manager initialized with a batch of {batch_size}")
-
-    async def get_all_subscriptions(self) -> list[Subscription]:
-        logger.info("Getting all Azure subscriptions")
-        if not self._subs_client:
-            raise ValueError("Azure subscription client not initialized")
-
-        subscriptions: list[Subscription] = []
-        async for sub in self._subs_client.subscriptions.list():
-            await self.handle_rate_limit(self._rate_limiter.consume(1))
-            subscriptions.append(sub)
-
-        logger.info(f"Found {len(subscriptions)} subscriptions in Azure")
-        return subscriptions
 
     async def get_subscription_batches(
         self,
