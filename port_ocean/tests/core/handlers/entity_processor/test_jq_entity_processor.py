@@ -457,7 +457,7 @@ class TestJQEntityProcessor:
         )
 
         # Test ALL evaluation (contains dots but not pattern)
-        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
+        mappings = {
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
             InputEvaluationResult.NONE: {},
@@ -476,7 +476,7 @@ class TestJQEntityProcessor:
         )
 
         # Test NONE evaluation (nullary expression)
-        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
+        mappings = {
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
             InputEvaluationResult.NONE: {},
@@ -1190,7 +1190,7 @@ class TestJQEntityProcessor:
         }
 
         # Test empty properties dictionary
-        empty_properties = {}
+        empty_properties: dict[str, Any] = {}
 
         mocked_processor.group_complex_mapping_value(
             ".item", mappings, "properties", empty_properties
