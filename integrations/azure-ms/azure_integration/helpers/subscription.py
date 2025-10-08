@@ -13,6 +13,7 @@ from azure_integration.helpers.rate_limiter import (
 from azure_integration.models import AuthCredentials
 
 
+# AI! add a docstring for this subscription manager class
 class SubscriptionManager(RateLimitHandler, AsyncContextManager["SubscriptionManager"]):
     def __init__(
         self,
@@ -25,6 +26,7 @@ class SubscriptionManager(RateLimitHandler, AsyncContextManager["SubscriptionMan
         self._azure_credentials: ClientSecretCredential | None = None
         self._auth_cred = auth_cred
         self._batch_size = batch_size
+        logger.info(f"Subscription manager initialized with a batch of {batch_size}")
 
     async def get_all_subscriptions(self) -> list[Subscription]:
         logger.info("Getting all Azure subscriptions")
