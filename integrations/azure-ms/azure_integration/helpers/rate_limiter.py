@@ -12,9 +12,18 @@ class RateLimitHandler:
             await asyncio.sleep(wait_time)
 
 
-# AI! create docstring for this class, move the link below to the new docstring
-# https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/request-limits-and-throttling#migrating-to-regional-throttling-and-token-bucket-algorithm
 class TokenBucketRateLimiter:
+    """
+    Implements a token bucket algorithm for rate limiting.
+
+    This class is used to manage API request throttling based on a token bucket
+    algorithm. The bucket has a certain capacity of tokens, and it refills at a
+    constant rate. Each request consumes one or more tokens. If the bucket is
+    empty, requests are denied until new tokens are added.
+
+    For more details on Azure's use of this algorithm, see:
+    https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/request-limits-and-throttling#migrating-to-regional-throttling-and-token-bucket-algorithm
+    """
     def __init__(self, capacity: int, refill_rate: float) -> None:
         self.capacity: int = capacity
         self.refill_rate: float = refill_rate
