@@ -6,6 +6,7 @@ from typing import Any
 from loguru import logger
 from integrations.github.github.actions.utils import build_external_id
 from integrations.github.github.clients.client_factory import create_github_client
+from integrations.github.github.context.auth import authenticated_user
 from integrations.github.github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )
@@ -30,6 +31,8 @@ from port_ocean.core.models import ActionRun, RunStatus
 
 
 MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW = 20
+MAX_WORKFLOW_POLL_ATTEMPTS = 10
+WORKFLOW_POLL_DELAY = 1
 
 
 class DispatchWorkflowWebhookProcessor(
@@ -40,7 +43,7 @@ class DispatchWorkflowWebhookProcessor(
         return (
             await super()._should_process_event(event)
             and workflow_run["status"] == "completed"
-            and workflow_run["actor"]["login"].endswith("[bot]")
+            and workflow_run["actor"]["login"] == authenticated_user.login
         )
 
     async def handle_event(
@@ -110,12 +113,12 @@ class DispatchWorkflowExecutor(AbstractExecutor, ActionsClientMixin):
 
             # Get the workflow run id
             workflow_runs = []
-            while len(workflow_runs) == 0:
-                await asyncio.sleep(1)
+            attempts_made = 0
+            while len(workflow_runs) == 0 and attempts_made < MAX_WORKFLOW_POLL_ATTEMPTS:
                 response = await self.rest_client.send_api_request(
                     f"{self.rest_client.base_url}/repos/{self.rest_client.organization}/{repo}/actions/runs",
                     params={
-                        "actor": self.rest_client.organization,
+                        "actor": authenticated_user.login,
                         "event": "workflow_dispatch",
                         "created": f">{isoDate}",
                         "exclude_pull_requests": True,
@@ -123,6 +126,9 @@ class DispatchWorkflowExecutor(AbstractExecutor, ActionsClientMixin):
                     method="GET",
                 )
                 workflow_runs = response.get("workflow_runs", [])
+                if len(workflow_runs) == 0:
+                    await asyncio.sleep(WORKFLOW_POLL_DELAY)
+                    attempts_made += 1
 
             external_id = build_external_id(workflow_runs[0])
             await self.patch_run(run.id, {"external_run_id": external_id})
