@@ -33,17 +33,15 @@ async def test_export_paginated_resources() -> None:
         )
     )
 
-    mock_resource_config = MagicMock()
-    mock_resource_config.selector.tags = None
+    mock_options = MagicMock()
+    mock_options.tag_filter = None
     subscriptions = ["sub-1", "sub-2"]
     mock_sub_manager = MagicMock()
     mock_sub_manager.get_sub_id_in_batches.return_value = aiter([subscriptions])
-    exporter = ResourceContainersExporter(
-        mock_client, mock_resource_config, mock_sub_manager
-    )
+    exporter = ResourceContainersExporter(mock_client, mock_sub_manager)
 
     # Action
-    results = [result async for result in exporter.get_paginated_resources()]
+    results = [result async for result in exporter.get_paginated_resources(mock_options)]
     flat_results = [item for batch in results for item in batch]
 
     # Assert
@@ -65,7 +63,7 @@ async def test_export_paginated_resources() -> None:
 
 
 def test_build_sync_query_with_filters() -> None:
-    exporter = ResourceContainersExporter(MagicMock(), MagicMock(), MagicMock())
+    exporter = ResourceContainersExporter(MagicMock(), MagicMock())
     tag_filters = ResourceGroupTagFilters(
         included={"env": "prod", "owner": "team-a"}, excluded={"legacy": "true"}
     )
@@ -80,6 +78,6 @@ def test_build_sync_query_with_filters() -> None:
 
 
 def test_build_sync_query_no_filters() -> None:
-    exporter = ResourceContainersExporter(MagicMock(), MagicMock(), MagicMock())
+    exporter = ResourceContainersExporter(MagicMock(), MagicMock())
     query = exporter._build_sync_query()
     assert "tostring(tags" not in query.lower()

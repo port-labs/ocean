@@ -20,16 +20,16 @@ async def test_export_paginated_resources() -> None:
         )
     )
 
-    mock_resource_config = MagicMock()
-    mock_resource_config.selector.resource_types = ["Microsoft.Compute/virtualMachines"]
-    mock_resource_config.selector.tags = None
+    mock_options = MagicMock()
+    mock_options.resource_types = ["Microsoft.Compute/virtualMachines"]
+    mock_options.tag_filter = None
     subscriptions = ["sub-1", "sub-2"]
     mock_sub_manager = MagicMock()
     mock_sub_manager.get_sub_id_in_batches.return_value = aiter([subscriptions])
-    exporter = ResourcesExporter(mock_client, mock_resource_config, mock_sub_manager)
+    exporter = ResourcesExporter(mock_client, mock_sub_manager)
 
     # Action
-    results = [result async for result in exporter.get_paginated_resources()]
+    results = [result async for result in exporter.get_paginated_resources(mock_options)]
     flat_results = [item for batch in results for item in batch]
 
     # Assert
@@ -52,7 +52,7 @@ async def test_export_paginated_resources() -> None:
 
 
 def test_build_full_sync_query_with_filters() -> None:
-    exporter = ResourcesExporter(MagicMock(), MagicMock(), MagicMock())
+    exporter = ResourcesExporter(MagicMock(), MagicMock())
     resource_types = [
         "Microsoft.Compute/virtualMachines",
         "Microsoft.Network/virtualNetworks",
@@ -73,7 +73,7 @@ def test_build_full_sync_query_with_filters() -> None:
 
 
 def test_build_full_sync_query_no_filters() -> None:
-    exporter = ResourcesExporter(MagicMock(), MagicMock(), MagicMock())
+    exporter = ResourcesExporter(MagicMock(), MagicMock())
     resource_types = ["Microsoft.Compute/virtualMachines"]
 
     query = exporter._build_full_sync_query(resource_types)
@@ -84,7 +84,7 @@ def test_build_full_sync_query_no_filters() -> None:
 
 
 def test_build_full_sync_query_no_resource_types() -> None:
-    exporter = ResourcesExporter(MagicMock(), MagicMock(), MagicMock())
+    exporter = ResourcesExporter(MagicMock(), MagicMock())
 
     query = exporter._build_full_sync_query()
     assert "resources" in query.lower()
