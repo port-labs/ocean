@@ -12,6 +12,7 @@ class RateLimitHandler:
             await asyncio.sleep(wait_time)
 
 
+# AI! create docstring for this class, move the link below to the new docstring
 # https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/request-limits-and-throttling#migrating-to-regional-throttling-and-token-bucket-algorithm
 class TokenBucketRateLimiter:
     def __init__(self, capacity: int, refill_rate: float) -> None:
