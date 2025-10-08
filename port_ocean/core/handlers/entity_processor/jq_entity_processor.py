@@ -399,12 +399,11 @@ class JQEntityProcessor(BaseEntityProcessor):
             InputEvaluationResult.SINGLE: {},
             InputEvaluationResult.ALL: {},
         }
-        pattern = f".{items_to_parse_name}"
         for key, value in raw_entity_mappings.items():
             if isinstance(value, str):
                 # Direct string values (identifier, title, icon, blueprint, team)
                 self.group_string_mapping_value(
-                    pattern,
+                    items_to_parse_name,
                     mappings,
                     key,
                     value,
@@ -412,7 +411,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             elif isinstance(value, dict):
                 # Complex objects (IngestSearchQuery for identifier/team, properties, relations)
                 self.group_complex_mapping_value(
-                    pattern,
+                    items_to_parse_name,
                     mappings,
                     key,
                     value,
@@ -521,16 +520,26 @@ class JQEntityProcessor(BaseEntityProcessor):
         if not isinstance(rules, list):
             return False
 
-        # Check if any rule contains a value starting with the pattern
+        # Check if any rule contains a value that includes the pattern
         for rule in rules:
-            if isinstance(rule, dict):
-                if "value" in rule and isinstance(rule["value"], str):
-                    if pattern in rule["value"]:
-                        return True
-                # Recursively check nested IngestSearchQuery objects
-                elif "rules" in rule:
-                    if self._should_keep_ingest_search_query(rule, pattern):
-                        return True
+            if isinstance(rule, dict) and self._is_rule_or_query_contains_pattern(
+                rule, pattern
+            ):
+                return True
+        return False
+
+    def _is_rule_or_query_contains_pattern(
+        self, rule: dict[str, Any], pattern: str
+    ) -> bool:
+        if "value" in rule and isinstance(rule["value"], str):
+            # Use evaluate_input to check if the pattern is relevant for this value
+            input_evaluation_result = evaluate_input(rule["value"], pattern)
+            if input_evaluation_result == InputEvaluationResult.SINGLE:
+                return True
+        # Recursively check nested IngestSearchQuery objects
+        elif "rules" in rule:
+            if self._should_keep_ingest_search_query(rule, pattern):
+                return True
         return False
 
     def _filter_mappings_by_keys(

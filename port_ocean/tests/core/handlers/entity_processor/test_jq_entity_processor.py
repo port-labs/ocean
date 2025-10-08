@@ -444,7 +444,7 @@ class TestJQEntityProcessor:
 
         # Test SINGLE evaluation (contains pattern)
         mocked_processor.group_string_mapping_value(
-            ".item", mappings, "identifier", ".item.id"
+            "item", mappings, "identifier", ".item.id"
         )
         assert mappings[InputEvaluationResult.SINGLE]["identifier"] == ".item.id"
         assert (
@@ -463,7 +463,7 @@ class TestJQEntityProcessor:
             InputEvaluationResult.NONE: {},
         }
         mocked_processor.group_string_mapping_value(
-            ".item", mappings, "external_ref", ".external.ref"
+            "item", mappings, "external_ref", ".external.ref"
         )
         assert mappings[InputEvaluationResult.ALL]["external_ref"] == ".external.ref"
         assert (
@@ -482,7 +482,7 @@ class TestJQEntityProcessor:
             InputEvaluationResult.NONE: {},
         }
         mocked_processor.group_string_mapping_value(
-            ".item", mappings, "static_value", '"static"'
+            "item", mappings, "static_value", '"static"'
         )
         assert mappings[InputEvaluationResult.NONE]["static_value"] == '"static"'
         assert (
@@ -517,7 +517,7 @@ class TestJQEntityProcessor:
         }
 
         mocked_processor.group_complex_mapping_value(
-            ".item", mappings, "properties", properties
+            "item", mappings, "properties", properties
         )
 
         expected_single = {
@@ -609,7 +609,7 @@ class TestJQEntityProcessor:
         expected_all = {
             "icon": ".",
             "properties": {
-                "pattern_at_end": "field.item",
+                "pattern_at_end": ".field.item",
                 "pattern_in_middle": ".body.somefield.item",
                 "pattern_in_middle_with_dots": ".data.items.item.field",
                 "case_sensitive": ".ITEM.field",
@@ -952,7 +952,7 @@ class TestJQEntityProcessor:
         }
 
         mocked_processor.group_complex_mapping_value(
-            ".item", mappings, "relations", relations
+            "item", mappings, "relations", relations
         )
 
         expected_single = {
@@ -1009,7 +1009,7 @@ class TestJQEntityProcessor:
         }
 
         mocked_processor.group_complex_mapping_value(
-            ".item", mappings, "identifier", identifier_query
+            "item", mappings, "identifier", identifier_query
         )
 
         expected_single = {
@@ -1050,7 +1050,7 @@ class TestJQEntityProcessor:
         }
 
         mocked_processor.group_complex_mapping_value(
-            ".item", mappings, "team", team_query
+            "item", mappings, "team", team_query
         )
 
         expected_all = {
@@ -1107,7 +1107,7 @@ class TestJQEntityProcessor:
         }
 
         mocked_processor.group_complex_mapping_value(
-            ".item", mappings, "identifier", nested_query
+            "item", mappings, "identifier", nested_query
         )
 
         # Should go to SINGLE because it contains at least one rule with the pattern
@@ -1248,7 +1248,7 @@ class TestJQEntityProcessor:
         }
 
         mocked_processor.group_complex_mapping_value(
-            ".item", mappings, "properties", mixed_properties
+            "item", mappings, "properties", mixed_properties
         )
 
         expected_single = {

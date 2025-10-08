@@ -14,9 +14,9 @@ _ALLOWLIST_PATTERNS = [
     r"^\s*true\s*$",  # true
     r"^\s*false\s*$",  # false
     r"^\s*-?\d+(\.\d+)?\s*$",  # number literal
-    r'^\s*".*"\s*$',  # string literal (simple heuristic)
-    r"^\s*\[.*\]\s*$",  # array literal (includes [])
-    r"^\s*\{.*\}\s*$",  # object literal (includes {})
+    # NOTE: we'll special-case pure string literals before other checks
+    r"^\s*\[.*\]\s*$",  # array literal (we'll ensure no '.' after masking strings)
+    r"^\s*\{.*\}\s*$",  # object literal (same)
     r"^\s*range\s*\(.*\)\s*$",  # range(...)
     r"^\s*empty\s*$",  # empty
 ]
@@ -35,24 +35,65 @@ _INPUT_DEPENDENT_FUNCS = r"""
 _INPUT_DEPENDENT_RE = re.compile(_INPUT_DEPENDENT_FUNCS, re.VERBOSE)
 
 
+# String literal handling (jq uses double quotes for strings)
+_STRING_LITERAL_RE = re.compile(r'"(?:\\.|[^"\\])*"')
+_STRING_ONLY_RE = re.compile(r'^\s*"(?:\\.|[^"\\])*"\s*$')
+
+
+def _mask_strings(expr: str) -> str:
+    """Replace string literals with empty strings so '.' inside quotes don’t count."""
+    return _STRING_LITERAL_RE.sub("", expr)
+
+
 def should_shortcut_no_input(selector_query: str) -> bool:
     """
     Returns True if the jq expression can be executed without providing any JSON input.
-    Conservative: requires NO '.' and must match a known nullary-safe pattern.
+    Rules:
+      - Whitespace-only => NONE
+      - A pure string literal => NONE (even if it contains '.')
+      - After masking strings, if it contains '.' => needs input
+      - Disallow known input-dependent functions
+      - Allow null/true/false/number/range/empty, and array/object literals that
+        don’t reference input (no '.' after masking strings)
     """
-    if "." in selector_query:
-        return False  # explicit JSON reference -> needs input
+    s = selector_query.strip()
+    if s == "":
+        return True  # whitespace-only
+
+    # Pure string literal is nullary
+    if _STRING_ONLY_RE.match(s):
+        return True
+
+    masked = _mask_strings(s)
 
     # If it contains any known input-dependent functions, don't shortcut
-    if _INPUT_DEPENDENT_RE.search(selector_query):
+    if _INPUT_DEPENDENT_RE.search(masked):
         return False
 
-    # Allow only if it matches one of the nullary-safe patterns
+    # Any '.' outside of strings means it references input
+    if "." in masked:
+        return False
+
+    # Allow basic nullary forms
     for pat in _ALLOWLIST_PATTERNS:
-        if re.match(pat, selector_query):
+        if re.match(pat, masked):
             return True
 
     return False
+
+
+def _has_rootish_single_selector(expr: str, key: str) -> bool:
+    """
+    Detect `.key` outside of quotes, as a standalone path segment beginning
+    after a non-word boundary (start, space, |, (, [, {, , or :) and not part
+    of `.something.key`.
+    """
+    if not key:
+        return False
+
+    masked = _mask_strings(expr)
+    pattern = re.compile(rf"(?<![A-Za-z0-9_])\.{re.escape(key)}(?![A-Za-z0-9_])")
+    return bool(pattern.search(masked))
 
 
 def evaluate_input(
@@ -64,6 +105,8 @@ def evaluate_input(
     """
     if should_shortcut_no_input(selector_query):
         return InputEvaluationResult.NONE
-    if single_item_key and single_item_key in selector_query:
+    if single_item_key and _has_rootish_single_selector(
+        selector_query, single_item_key
+    ):
         return InputEvaluationResult.SINGLE
     return InputEvaluationResult.ALL
