@@ -1,5 +1,5 @@
 from types import TracebackType
-from typing import AsyncContextManager, AsyncGenerator, override
+from typing import AsyncContextManager, AsyncGenerator
 from azure.identity.aio import ClientSecretCredential
 from azure.mgmt.subscription.aio import SubscriptionClient
 from azure.mgmt.subscription.models import Subscription
