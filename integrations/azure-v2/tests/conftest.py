@@ -18,7 +18,7 @@ def mock_ocean_context() -> None:
             {
                 "kind": "resourceContainer",
                 "selector": {
-                    "query": "resources | where type =~ 'Microsoft.Resources/subscriptions/resourceGroups'",
+                    "types": ["Microsoft.Resources/subscriptions/resourceGroups"],
                     "tags": {},
                 },
                 "port": {
@@ -35,7 +35,6 @@ def mock_ocean_context() -> None:
             {
                 "kind": "resource",
                 "selector": {
-                    "query": "resources",
                     "types": ["Microsoft.Compute/virtualMachines"],
                     "tags": {},
                 },

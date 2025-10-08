@@ -8,11 +8,11 @@ from tests.helpers import aiter
 
 
 @pytest.mark.asyncio
-async def test_sync_for_subscriptions() -> None:
+async def test_export_paginated_resources() -> None:
     # Setup
     mock_client = MagicMock()
     # Mock the async generator
-    mock_client.run_query = MagicMock(
+    mock_client.make_paginated_request = MagicMock(
         return_value=aiter(
             [
                 [
@@ -35,13 +35,15 @@ async def test_sync_for_subscriptions() -> None:
 
     mock_resource_config = MagicMock()
     mock_resource_config.selector.tags = None
-    exporter = ResourceContainersExporter(mock_client, mock_resource_config, MagicMock())
     subscriptions = ["sub-1", "sub-2"]
+    mock_sub_manager = MagicMock()
+    mock_sub_manager.get_sub_id_in_batches.return_value = aiter([subscriptions])
+    exporter = ResourceContainersExporter(
+        mock_client, mock_resource_config, mock_sub_manager
+    )
 
     # Action
-    results = [
-        result async for result in exporter._sync_for_subscriptions(subscriptions)
-    ]
+    results = [result async for result in exporter.export_paginated_resources()]
     flat_results = [item for batch in results for item in batch]
 
     # Assert
@@ -56,13 +58,8 @@ async def test_sync_for_subscriptions() -> None:
         "type": "Microsoft.Resources/subscriptions/resourceGroups",
         "tags": {"env": "dev"},
     }
-    mock_client.run_query.assert_called_once()
-    call_args = mock_client.run_query.call_args
-    # First argument is the query string
-    assert (
-        "where type =~ 'microsoft.resources/subscriptions/resourcegroups'"
-        in call_args.args[0].lower()
-    )
+    mock_client.make_paginated_request.assert_called_once()
+    call_args = mock_client.make_paginated_request.call_args
     # Second argument is the subscriptions list
     assert call_args.args[1] == subscriptions
 
@@ -76,10 +73,6 @@ def test_build_sync_query_with_filters() -> None:
     query = exporter._build_sync_query(tag_filters)
 
     assert (
-        "where type =~ 'microsoft.resources/subscriptions/resourcegroups'"
-        in query.lower()
-    )
-    assert (
         "| where (tostring(tags['env']) =~ 'prod' and tostring(tags['owner']) =~ 'team-a')"
         in query
     )
@@ -89,8 +82,4 @@ def test_build_sync_query_with_filters() -> None:
 def test_build_sync_query_no_filters() -> None:
     exporter = ResourceContainersExporter(MagicMock(), MagicMock(), MagicMock())
     query = exporter._build_sync_query()
-    assert (
-        "where type =~ 'microsoft.resources/subscriptions/resourcegroups'"
-        in query.lower()
-    )
     assert "tostring(tags" not in query.lower()

@@ -8,10 +8,10 @@ from tests.helpers import aiter
 
 
 @pytest.mark.asyncio
-async def test_sync_for_subscriptions() -> None:
+async def test_export_paginated_resources() -> None:
     # Setup
     mock_client = MagicMock()
-    mock_client.run_query = MagicMock(
+    mock_client.make_paginated_request = MagicMock(
         return_value=aiter(
             [
                 [{"name": "vm-1", "type": "Microsoft.Compute/virtualMachines"}],
@@ -23,13 +23,13 @@ async def test_sync_for_subscriptions() -> None:
     mock_resource_config = MagicMock()
     mock_resource_config.selector.resource_types = ["Microsoft.Compute/virtualMachines"]
     mock_resource_config.selector.tags = None
-    exporter = ResourcesExporter(mock_client, mock_resource_config, MagicMock())
     subscriptions = ["sub-1", "sub-2"]
+    mock_sub_manager = MagicMock()
+    mock_sub_manager.get_sub_id_in_batches.return_value = aiter([subscriptions])
+    exporter = ResourcesExporter(mock_client, mock_resource_config, mock_sub_manager)
 
     # Action
-    results = [
-        result async for result in exporter._sync_for_subscriptions(subscriptions)
-    ]
+    results = [result async for result in exporter.export_paginated_resources()]
     flat_results = [item for batch in results for item in batch]
 
     # Assert
@@ -43,8 +43,8 @@ async def test_sync_for_subscriptions() -> None:
         "type": "Microsoft.Compute/virtualMachines",
     }
     # Using the default resource mapping from conftest.py
-    assert mock_client.run_query.call_count == 1
-    call_args = mock_client.run_query.call_args
+    assert mock_client.make_paginated_request.call_count == 1
+    call_args = mock_client.make_paginated_request.call_args
     query = call_args.args[0]
     assert "resources" in query.lower()
     assert "| where type in~ ('microsoft.compute/virtualmachines')" in query.lower()
