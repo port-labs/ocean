@@ -282,5 +282,16 @@
       "request": "launch",
       "type": "debugpy"
     },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/bitbucket-server",
+      "envFile": "${workspaceFolder}/integrations/bitbucket-server/.env",
+      "justMyCode": true,
+      "name": "Run bitbucket-server integration",
+      "program": "${workspaceFolder}/integrations/bitbucket-server/debug.py",
+      "python": "${workspaceFolder}/integrations/bitbucket-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
   ]
 }
