@@ -35,7 +35,7 @@ async def test_sync_for_subscriptions() -> None:
 
     mock_resource_config = MagicMock()
     mock_resource_config.selector.tags = None
-    exporter = ResourceContainersExporter(mock_client, mock_resource_config)
+    exporter = ResourceContainersExporter(mock_client, mock_resource_config, MagicMock())
     subscriptions = ["sub-1", "sub-2"]
 
     # Action
@@ -68,7 +68,7 @@ async def test_sync_for_subscriptions() -> None:
 
 
 def test_build_sync_query_with_filters() -> None:
-    exporter = ResourceContainersExporter(MagicMock(), MagicMock())
+    exporter = ResourceContainersExporter(MagicMock(), MagicMock(), MagicMock())
     tag_filters = ResourceGroupTagFilters(
         included={"env": "prod", "owner": "team-a"}, excluded={"legacy": "true"}
     )
@@ -87,7 +87,7 @@ def test_build_sync_query_with_filters() -> None:
 
 
 def test_build_sync_query_no_filters() -> None:
-    exporter = ResourceContainersExporter(MagicMock(), MagicMock())
+    exporter = ResourceContainersExporter(MagicMock(), MagicMock(), MagicMock())
     query = exporter._build_sync_query()
     assert (
         "where type =~ 'microsoft.resources/subscriptions/resourcegroups'"

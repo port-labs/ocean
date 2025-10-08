@@ -10,7 +10,7 @@ from tests.helpers import aiter
 
 @pytest.mark.asyncio
 async def test_get_all_subscriptions_success() -> None:
-    client = SDKClient()
+    client = SDKClient(MagicMock(), MagicMock())
     mock_sub = SimpleNamespace(subscription_id="123")
 
     mock_subs_client = MagicMock()
@@ -24,7 +24,7 @@ async def test_get_all_subscriptions_success() -> None:
 
 @pytest.mark.asyncio
 async def test_get_all_subscriptions_not_initialized() -> None:
-    client = SDKClient()
+    client = SDKClient(MagicMock(), MagicMock())
     client.subs_client = None
 
     with pytest.raises(ValueError, match="Azure client not initialized"):
@@ -33,7 +33,7 @@ async def test_get_all_subscriptions_not_initialized() -> None:
 
 @pytest.mark.asyncio
 async def test_run_query_single_page() -> None:
-    client = SDKClient()
+    client = SDKClient(MagicMock(), MagicMock())
     mock_response = SimpleNamespace(data=[{"name": "resource1"}], skip_token=None)
 
     mock_resource_client = MagicMock()
@@ -49,7 +49,7 @@ async def test_run_query_single_page() -> None:
 
 @pytest.mark.asyncio
 async def test_run_query_with_pagination() -> None:
-    client = SDKClient()
+    client = SDKClient(MagicMock(), MagicMock())
 
     first_response = SimpleNamespace(data=[{"name": "page1"}], skip_token="token123")
     second_response = SimpleNamespace(data=[{"name": "page2"}], skip_token=None)
@@ -70,7 +70,7 @@ async def test_run_query_with_pagination() -> None:
 
 @pytest.mark.asyncio
 async def test_run_query_not_initialized() -> None:
-    client = SDKClient()
+    client = SDKClient(MagicMock(), MagicMock())
     client.resource_g_client = None
 
     with pytest.raises(ValueError, match="Azure client not initialized"):
@@ -80,13 +80,13 @@ async def test_run_query_not_initialized() -> None:
 
 @pytest.mark.asyncio
 async def test_handle_rate_limit() -> None:
-    await SDKClient._handle_rate_limit(False)
-    await SDKClient._handle_rate_limit(True)  # Should return immediately
+    await SDKClient.handle_rate_limit(False)
+    await SDKClient.handle_rate_limit(True)  # Should return immediately
 
 
 async def test_run_query_throttling_handled() -> None:
     """Test that AzureRequestThrottled exception is handled and sleep is called."""
-    client = SDKClient()
+    client = SDKClient(MagicMock(), MagicMock())
     client.resource_g_client = MagicMock()
     # Mock response with throttling headers
     mock_http_response = MagicMock()
@@ -132,7 +132,7 @@ async def test_run_query_throttling_handled() -> None:
 async def test_run_query_subscription_limit_reached() -> None:
     """Test that SubscriptionLimitReacheached is raised when the header is present."""
     # Mock response with subscription limit header
-    client = SDKClient()
+    client = SDKClient(MagicMock(), MagicMock())
     client.resource_g_client = MagicMock()
     mock_http_response = MagicMock()
     mock_http_response.headers = {

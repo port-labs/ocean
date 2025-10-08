@@ -23,7 +23,7 @@ async def test_sync_for_subscriptions() -> None:
     mock_resource_config = MagicMock()
     mock_resource_config.selector.resource_types = ["Microsoft.Compute/virtualMachines"]
     mock_resource_config.selector.tags = None
-    exporter = ResourcesExporter(mock_client, mock_resource_config)
+    exporter = ResourcesExporter(mock_client, mock_resource_config, MagicMock())
     subscriptions = ["sub-1", "sub-2"]
 
     # Action
@@ -52,7 +52,7 @@ async def test_sync_for_subscriptions() -> None:
 
 
 def test_build_full_sync_query_with_filters() -> None:
-    exporter = ResourcesExporter(MagicMock(), MagicMock())
+    exporter = ResourcesExporter(MagicMock(), MagicMock(), MagicMock())
     resource_types = [
         "Microsoft.Compute/virtualMachines",
         "Microsoft.Network/virtualNetworks",
@@ -73,7 +73,7 @@ def test_build_full_sync_query_with_filters() -> None:
 
 
 def test_build_full_sync_query_no_filters() -> None:
-    exporter = ResourcesExporter(MagicMock(), MagicMock())
+    exporter = ResourcesExporter(MagicMock(), MagicMock(), MagicMock())
     resource_types = ["Microsoft.Compute/virtualMachines"]
 
     query = exporter._build_full_sync_query(resource_types)
@@ -84,7 +84,7 @@ def test_build_full_sync_query_no_filters() -> None:
 
 
 def test_build_full_sync_query_no_resource_types() -> None:
-    exporter = ResourcesExporter(MagicMock(), MagicMock())
+    exporter = ResourcesExporter(MagicMock(), MagicMock(), MagicMock())
 
     query = exporter._build_full_sync_query()
     assert "resources" in query.lower()
