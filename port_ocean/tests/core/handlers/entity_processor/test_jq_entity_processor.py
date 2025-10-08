@@ -554,6 +554,7 @@ class TestJQEntityProcessor:
                 "case_sensitive": ".ITEM.field",  # Case sensitive (should not match) - ALL
                 "special_chars": ".item.field[0]",  # Special characters - SINGLE
                 "quoted_pattern": '".item.field"',  # Quoted pattern - NONE
+                "field_with_null_name": ".is_null",  # Field with null name - ALL
                 "empty_string": "",  # Empty string - NONE
                 "function_with_pattern": "map(.item.field)",  # Function with pattern - SINGLE
                 "function_with_middle_pattern": "map(.body.item.field)",  # Function with middle pattern - ALL
@@ -620,6 +621,7 @@ class TestJQEntityProcessor:
                 "object_with_middle_pattern": "{id: .data.item.id, name: .body.item.name}",
                 "nested_with_middle_pattern": ".data.items[] | .body.item.field",
                 "conditional_with_middle_pattern": "if .data.item.exists then .body.item.value else null end",
+                "field_with_null_name": ".is_null",
             },
             "relations": {
                 "middle_pattern_relation": ".data.item.owner",
