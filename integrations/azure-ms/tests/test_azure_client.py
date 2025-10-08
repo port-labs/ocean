@@ -5,9 +5,6 @@ import pytest
 
 from azure_integration.clients.client import SDKClient
 from azure_integration.errors import AzureRequestThrottled, SubscriptionLimitReacheached
-from tests.helpers import aiter
-
-
 
 
 @pytest.mark.asyncio
@@ -113,10 +110,13 @@ async def test_run_query_throttling_handled() -> None:
     query = "resources"
     subscriptions = ["sub-1"]
 
-    with patch(
-        "azure_integration.clients.client.ResourceGraphClient",
-        return_value=mock_resource_client,
-    ), patch("azure_integration.errors.asyncio.sleep") as mock_sleep:
+    with (
+        patch(
+            "azure_integration.clients.client.ResourceGraphClient",
+            return_value=mock_resource_client,
+        ),
+        patch("azure_integration.errors.asyncio.sleep") as mock_sleep,
+    ):
         async with client:
             results = []
             async for batch in client.make_paginated_request(query, subscriptions):
@@ -155,10 +155,13 @@ async def test_run_query_subscription_limit_reached() -> None:
     query = "resources"
     subscriptions = ["sub-1"]
 
-    with patch(
-        "azure_integration.clients.client.ResourceGraphClient",
-        return_value=mock_resource_client,
-    ), pytest.raises(SubscriptionLimitReacheached):
+    with (
+        patch(
+            "azure_integration.clients.client.ResourceGraphClient",
+            return_value=mock_resource_client,
+        ),
+        pytest.raises(SubscriptionLimitReacheached),
+    ):
         async with client:
             async for _ in client.make_paginated_request(query, subscriptions):
                 pass
