@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.4.3-beta (2025-10-08)
+
+
+### Improvements
+
+- Improved resync resilience and observability for multi-account scenarios.
+
+
 ## 1.4.2-beta (2025-10-06)
 
 
