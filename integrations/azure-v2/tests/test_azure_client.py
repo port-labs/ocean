@@ -17,6 +17,7 @@ async def test_run_query_single_page() -> None:
 
     mock_resource_client = MagicMock()
     mock_resource_client.resources = AsyncMock(return_value=mock_response)
+    mock_resource_client.close = AsyncMock()
 
     with patch(
         "azure_integration.clients.client.ResourceGraphClient",
@@ -41,6 +42,7 @@ async def test_run_query_with_pagination() -> None:
     mock_resource_client.resources = AsyncMock(
         side_effect=[first_response, second_response]
     )
+    mock_resource_client.close = AsyncMock()
 
     with patch(
         "azure_integration.clients.client.ResourceGraphClient",
@@ -74,10 +76,12 @@ async def test_handle_rate_limit() -> None:
     await SDKClient.handle_rate_limit(True)  # Should return immediately
 
 
+@pytest.mark.asyncio
 async def test_run_query_throttling_handled() -> None:
     """Test that AzureRequestThrottled exception is handled and sleep is called."""
     client = SDKClient(MagicMock(), MagicMock())
     mock_resource_client = MagicMock()
+    mock_resource_client.close = AsyncMock()
     # Mock response with throttling headers
     mock_http_response = MagicMock()
     mock_http_response.headers = {
@@ -128,6 +132,7 @@ async def test_run_query_subscription_limit_reached() -> None:
     # Mock response with subscription limit header
     client = SDKClient(MagicMock(), MagicMock())
     mock_resource_client = MagicMock()
+    mock_resource_client.close = AsyncMock()
     mock_http_response = MagicMock()
     mock_http_response.headers = {
         "x-ms-user-quota-remaining": "10",
