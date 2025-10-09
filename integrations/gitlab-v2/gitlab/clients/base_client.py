@@ -57,15 +57,15 @@ class HTTPBaseClient:
             return response.json()
 
         except httpx.HTTPStatusError as e:
-            result = self._handle_status_code_error(method, path, url, e)
+            result = await self._handle_status_code_error(method, path, url, params, data, e)
             if result is not None:
                 return result
-             raise
+            raise
         except httpx.HTTPError as e:
             logger.error(f"HTTP error for {method} request to {path}: {e}")
             raise
 
-    def _handle_status_code_error(
+    async def _handle_status_code_error(
         self, method: str, path: str, url: str, params: dict[str, Any] | None, data: dict[str, Any] | None, e: httpx.HTTPStatusError
     ) -> dict[str, Any] | None:
         status_code = e.response.status_code
@@ -127,7 +127,7 @@ class HTTPBaseClient:
                         os.unlink(out_path)
                     raise
         except httpx.HTTPStatusError as e:
-            result = self._handle_status_code_error("GET", path, url, e)
+            result = await self._handle_status_code_error("GET", path, url, None, None, e)
             if result is not None:
                 return result
             raise
