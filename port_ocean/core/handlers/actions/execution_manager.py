@@ -68,7 +68,9 @@ class ExecutionManager(ActionsClientMixin):
         """
         action_name = executor_cls.ACTION_NAME
         if action_name in self._actions_executors:
-            raise ValueError(f"Executor for action '{action_name}' already registered")
+            raise ValueError(
+                f"Executor for action '{action_name}' is already registered"
+            )
 
         webhook_processor_cls = executor_cls.WEBHOOK_PROCESSOR_CLASS
         if webhook_processor_cls:
