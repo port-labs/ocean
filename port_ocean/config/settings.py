@@ -83,9 +83,11 @@ class StreamingSettings(BaseOceanModel, extra=Extra.allow):
 
 class ExecutionAgentSettings(BaseOceanModel, extra=Extra.allow):
     enabled: bool = Field(default=False)
-    max_runs_per_poll: int = Field(default=50)
-    workers_count: int = Field(default=4)
-    lock_timeout_seconds: float = Field(default=60)
+    runs_buffer_high_watermark: int = Field(default=100)
+    runs_buffer_low_watermark: int = Field(default=50)
+    visibility_timeout_seconds: int = Field(default=90)
+    workers_count: int = Field(default=5)
+    sync_queue_lock_timeout_seconds: float = Field(default=60)
 
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import threading
+from datetime import datetime, timedelta
 from typing import Dict, Type, Set, Optional, List
 from loguru import logger
+from pydantic import BaseModel
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     WebhookProcessorType,
 )
@@ -20,10 +21,14 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationFeatureFlag
 from port_ocean.utils.signal import SignalHandler
-from port_ocean.utils.repeat import repeat_every
 
 
 GLOBAL_SOURCE = "__global__"
+
+
+class ActionRunTask(BaseModel):
+    visibility_expiration_timestamp: datetime
+    run: ActionRun
 
 
 class ExecutionManager(ActionsClientMixin):
@@ -33,12 +38,16 @@ class ExecutionManager(ActionsClientMixin):
         self,
         webhook_manager: LiveEventsProcessorManager,
         signal_handler: SignalHandler,
+        runs_buffer_high_watermark: int,
+        runs_buffer_low_watermark: int,
+        sync_queue_lock_timeout_seconds: float,
     ):
         self._polling_task: asyncio.Task[None] | None = None
         self._workers_pool: set[asyncio.Task[None]] = set()
         self._actions_executors: Dict[str, Type[AbstractExecutor]] = {}
-        self._global_queue = LocalQueue[ActionRun]()
-        self._partition_queues: Dict[str, AbstractQueue[ActionRun]] = {}
+        self._global_queue = LocalQueue[ActionRunTask]()
+        self._partition_queues: Dict[str, AbstractQueue[ActionRunTask]] = {}
+        self._queues_size: int = 0
         self._locked: Set[str] = set()
         self._lock_timestamps: Dict[str, float] = {}
         self._webhook_manager = webhook_manager
@@ -83,16 +92,7 @@ class ExecutionManager(ActionsClientMixin):
             )
             return
 
-        repeated_polling_task = repeat_every(
-            seconds=ocean.config.execution_agent.polling_interval_seconds
-        )(
-            lambda: threading.Thread(
-                target=lambda: asyncio.run_coroutine_threadsafe(
-                    self._poll_action_runs(), asyncio.get_event_loop()
-                )
-            ).start()
-        )
-        self._polling_task = asyncio.create_task(repeated_polling_task)
+        self._polling_task = asyncio.create_task(self._poll_action_runs())
         self._timeout_task = asyncio.create_task(self._background_timeout_check())
 
         workers_count = max(1, ocean.config.execution_agent.workers_count)
@@ -114,13 +114,22 @@ class ExecutionManager(ActionsClientMixin):
         )
 
     async def _add_run_to_queue(
-        self, run: ActionRun, queue: AbstractQueue[ActionRun], queue_name: str
+        self,
+        run: ActionRun,
+        queue: AbstractQueue[ActionRunTask],
+        queue_name: str,
+        visibility_expiration_timestamp: datetime,
     ) -> None:
         """
         Add a run to the queue.
         """
         was_empty = await queue.size() == 0
-        await queue.put(run)
+        self._queues_size += 1
+        await queue.put(
+            ActionRunTask(
+                visibility_expiration_timestamp=visibility_expiration_timestamp, run=run
+            )
+        )
         if was_empty:
             async with self._queue_state_lock:
                 await self._active_sources.put(queue_name)
@@ -130,33 +139,44 @@ class ExecutionManager(ActionsClientMixin):
         Poll action runs for all registered actions.
         """
         try:
-            runs = await self.get_pending_runs(
-                limit=ocean.config.execution_agent.max_runs_per_poll
-            )
-
-            for run in runs:
-                action_name = run.action.name
-                if action_name not in self._actions_executors:
-                    logger.warning(
-                        "No Executors registered to handle this action, skipping run...",
-                        action=action_name,
-                        run=run.id,
-                    )
-                    continue
-
-                partition_key = self._actions_executors[action_name].PARTITION_KEY
-                if not partition_key:
-                    await self._add_run_to_queue(run, self._global_queue, GLOBAL_SOURCE)
-                    continue
-
-                partition_name = self._extract_partition_key(run, partition_key)
-                if partition_name not in self._partition_queues:
-                    self._partition_queues[partition_name] = LocalQueue()
-                await self._add_run_to_queue(
-                    run,
-                    self._partition_queues[partition_name],
-                    partition_name,
+            while True:
+                runs = await self.get_pending_runs(
+                    limit=10,
+                    visibility_timeout=ocean.config.execution_agent.visibility_timeout_seconds,
                 )
+
+                visibility_expiration_timestamp = datetime.now() + timedelta(
+                    seconds=ocean.config.execution_agent.visibility_timeout_seconds
+                )
+                for run in runs:
+                    action_name = run.action.name
+                    if action_name not in self._actions_executors:
+                        logger.warning(
+                            "No Executors registered to handle this action, skipping run...",
+                            action=action_name,
+                            run=run.id,
+                        )
+                        continue
+
+                    partition_key = self._actions_executors[action_name].PARTITION_KEY
+                    if not partition_key:
+                        await self._add_run_to_queue(
+                            run,
+                            self._global_queue,
+                            GLOBAL_SOURCE,
+                            visibility_expiration_timestamp,
+                        )
+                        continue
+
+                    partition_name = self._extract_partition_key(run, partition_key)
+                    if partition_name not in self._partition_queues:
+                        self._partition_queues[partition_name] = LocalQueue()
+                    await self._add_run_to_queue(
+                        run,
+                        self._partition_queues[partition_name],
+                        partition_name,
+                        visibility_expiration_timestamp,
+                    )
         except asyncio.CancelledError:
             pass
 
@@ -197,8 +217,9 @@ class ExecutionManager(ActionsClientMixin):
             await self._active_sources.put(GLOBAL_SOURCE)
 
         try:
-            run = await self._global_queue.get()
-            await self._execute_run(run)
+            run_task = await self._global_queue.get()
+            self._queues_size -= 1
+            await self._execute_run(run_task.run)
         finally:
             await self._global_queue.commit()
 
@@ -218,6 +239,7 @@ class ExecutionManager(ActionsClientMixin):
 
         try:
             run = await queue.get()
+            self._queues_size -= 1
             await self._execute_run(run)
         finally:
             await queue.commit()
@@ -242,12 +264,19 @@ class ExecutionManager(ActionsClientMixin):
         except asyncio.CancelledError:
             pass
 
-    async def _execute_run(self, run: ActionRun) -> None:
+    async def _execute_run(self, run_task: ActionRunTask) -> None:
         """
         Execute a run using its registered executor.
         """
         try:
-            executor_cls = self._actions_executors.get(run.action.name)
+            if run_task.visibility_expiration_timestamp < datetime.now():
+                logger.debug(
+                    "Run visibility has already expired, skipping execution",
+                    run=run_task.run.id,
+                )
+                return
+
+            executor_cls = self._actions_executors.get(run_task.run.action.name)
             if executor_cls is None:
                 raise Exception("No executor registered for action")
 
@@ -255,16 +284,20 @@ class ExecutionManager(ActionsClientMixin):
             # TODO: check if close to rate limit
             # TODO: if close to rate limit, de-ack the run and sleep for the remaining time,
             # after that, put the run back in the queue
-            await executor.execute(run.payload)
+            await executor.execute(run_task.run.payload)
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429:
                 # TODO: de-ack the run and sleep for the remaining time,
                 # after that, put the run back in the queue
                 pass
         except Exception as e:
-            logger.exception("Error executing run", run=run.id, action=run.action.name)
+            logger.exception(
+                "Error executing run",
+                run=run_task.run.id,
+                action=run_task.run.action.name,
+            )
             await self.patch_run(
-                run.id, {"summary": str(e), "status": RunStatus.FAILURE}
+                run_task.run.id, {"summary": str(e), "status": RunStatus.FAILURE}
             )
             raise e
 

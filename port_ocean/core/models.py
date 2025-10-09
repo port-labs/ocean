@@ -152,11 +152,11 @@ class RunStatus(StrEnum):
 
 
 class InvocationType(StrEnum):
-    OCEAN = "ocean"
+    INTEGRATION_ACTION = "INTEGRATION_ACTION"
 
 
 class IntegrationInvocationPayload(BaseModel):
-    type: Literal[InvocationType.OCEAN]
+    type: Literal[InvocationType.INTEGRATION_ACTION]
     installationId: int
     action: str
     oceanExecution: Any = Field(default_factory=dict)
