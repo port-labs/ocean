@@ -1,0 +1,2 @@
+class RunAlreadyAcknowledgedError(Exception):
+    pass

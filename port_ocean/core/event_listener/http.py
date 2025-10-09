@@ -1,4 +1,4 @@
-from typing import Literal, Any
+from typing import Any
 
 from fastapi import APIRouter
 from loguru import logger
@@ -11,6 +11,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
+from port_ocean.core.models import EventListenerType
 
 
 class HttpEventListenerSettings(EventListenerSettings):
@@ -19,12 +20,12 @@ class HttpEventListenerSettings(EventListenerSettings):
     The `HttpEventListenerSettings` specifically includes settings related to the HTTP event listener (Webhook).
 
     Attributes:
-        type (Literal["WEBHOOK"]): A literal indicating the type of the event listener, which is set to "WEBHOOK" for this class.
+        type (EventListenerType): A literal indicating the type of the event listener, which is set to "WEBHOOK" for this class.
         app_host (AnyHttpUrl): The base URL of the application hosting the webhook.
                                The "AnyHttpUrl" type indicates that the value must be a valid HTTP/HTTPS URL.
     """
 
-    type: Literal["WEBHOOK"]
+    type: EventListenerType = EventListenerType.WEBHOOK
     app_host: AnyHttpUrl = Field(..., sensitive=True)
 
     def get_changelog_destination_details(self) -> dict[str, Any]:

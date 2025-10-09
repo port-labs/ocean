@@ -24,7 +24,7 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity, ProcessExecutionMode
+from port_ocean.core.models import Entity, IntegrationFeatureFlag, ProcessExecutionMode
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -478,7 +478,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             bool: True if lakehouse data is enabled, False otherwise
         """
         flags = await ocean.port_client.get_organization_feature_flags()
-        if "LAKEHOUSE_ELIGIBLE" in flags and ocean.config.lakehouse_enabled:
+        if IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags and ocean.config.lakehouse_enabled:
             return True
         return False
 
