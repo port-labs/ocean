@@ -41,10 +41,12 @@ class ExecutionManager(ActionsClientMixin):
         runs_buffer_high_watermark: int,
         poll_check_interval_seconds: int,
         sync_queue_lock_timeout_seconds: float,
+        max_wait_seconds_before_shutdown: float,
     ):
         self._polling_task: asyncio.Task[None] | None = None
         self._workers_pool: set[asyncio.Task[None]] = set()
         self._actions_executors: Dict[str, Type[AbstractExecutor]] = {}
+        self._is_shutting_down = asyncio.Event()
         self._global_queue = LocalQueue[ActionRunTask]()
         self._partition_queues: Dict[str, AbstractQueue[ActionRunTask]] = {}
         self._locked: Set[str] = set()
@@ -56,6 +58,7 @@ class ExecutionManager(ActionsClientMixin):
         self._high_watermark = runs_buffer_high_watermark
         self._poll_check_interval_seconds = poll_check_interval_seconds
         self._lock_timeout_seconds = sync_queue_lock_timeout_seconds
+        self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
 
         signal_handler.register(self.shutdown)
 
@@ -272,9 +275,14 @@ class ExecutionManager(ActionsClientMixin):
         """
         Round-robin worker across global queue and partition queues.
         """
-        try:
-            while True:
+        while not self._is_shutting_down.is_set():
+            try:
                 source = await self._active_sources.get()
+                if self._is_shutting_down.is_set():
+                    # Put the source back if we're shutting down
+                    await self._active_sources.put(source)
+                    break
+
                 try:
                     if source == GLOBAL_SOURCE:
                         await self._handle_global_queue_once()
@@ -282,8 +290,9 @@ class ExecutionManager(ActionsClientMixin):
                         await self._handle_partition_queue_once(source)
                 except Exception:
                     logger.exception("Worker processing error", source=source)
-        except asyncio.CancelledError:
-            pass
+            except Exception:
+                if not self._is_shutting_down.is_set():
+                    logger.exception("Unexpected error in worker loop")
 
     async def _execute_run(self, run_task: ActionRunTask) -> None:
         """
@@ -326,31 +335,35 @@ class ExecutionManager(ActionsClientMixin):
             )
             raise e
 
+    async def _gracefully_cancel_task(self, task: asyncio.Task[None]) -> None:
+        """
+        Gracefully cancel a task.
+        """
+        if task and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
     async def shutdown(self) -> None:
         """
         Gracefully shutdown poller and all action queue workers.
         """
         logger.warning("Shutting down execution manager")
-        if self._polling_task and not self._polling_task.done():
-            self._polling_task.cancel()
-            try:
-                await self._polling_task
-            except asyncio.CancelledError:
-                pass
 
-        if self._timeout_task and not self._timeout_task.done():
-            self._timeout_task.cancel()
-            try:
-                await self._timeout_task
-            except asyncio.CancelledError:
-                pass
+        self._is_shutting_down.set()
+        logger.info("Waiting for workers to complete their current tasks...")
 
-        for task in list(self._workers_pool):
-            if task and not task.done():
-                task.cancel()
-        for task in list(self._workers_pool):
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-        # TODO: Should we wait for the in flight tasks to complete
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(
+                    self._gracefully_cancel_task(self._polling_task),
+                    self._gracefully_cancel_task(self._timeout_task),
+                    *(worker for worker in self._workers_pool),
+                ),
+                timeout=self._max_wait_seconds_before_shutdown,
+            )
+            logger.info("All workers completed gracefully")
+        except asyncio.TimeoutError:
+            logger.warning("Shutdown timed out waiting for workers to complete")
