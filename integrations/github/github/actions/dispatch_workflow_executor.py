@@ -12,9 +12,6 @@ from integrations.github.github.core.exporters.repository_exporter import (
 )
 from integrations.github.github.core.options import SingleRepositoryOptions
 from port_ocean.clients.port.mixins.actions import ActionsClientMixin
-from port_ocean.core.handlers.actions.abstract_executor import (
-    AbstractExecutor,
-)
 from integrations.github.github.webhook.registry import (
     WEBHOOK_PATH as DISPATCH_WEBHOOK_PATH,
 )
@@ -28,9 +25,9 @@ from integrations.github.github.webhook.webhook_processors.base_workflow_run_web
     BaseWorkflowRunWebhookProcessor,
 )
 from port_ocean.core.models import ActionRun, RunStatus
+from integrations.github.github.actions.abstract_github_executor import AbstractGithubExecutor
 
 
-MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW = 20
 MAX_WORKFLOW_POLL_ATTEMPTS = 10
 WORKFLOW_POLL_DELAY = 1
 
@@ -68,10 +65,7 @@ class DispatchWorkflowWebhookProcessor(
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
 
-class DispatchWorkflowExecutor(AbstractExecutor, ActionsClientMixin):
-    def __init__(self):
-        self.rest_client = create_github_client()
-
+class DispatchWorkflowExecutor(AbstractGithubExecutor, ActionsClientMixin):
     ACTION_NAME = "dispatch_workflow"
     PARTITION_KEY = "workflow"
     WEBHOOK_PROCESSOR_CLASS = DispatchWorkflowWebhookProcessor
@@ -83,13 +77,6 @@ class DispatchWorkflowExecutor(AbstractExecutor, ActionsClientMixin):
         repo = await repoExporter.get_resource(SingleRepositoryOptions(name=repo))
         return repo.get("default_branch", "main")
 
-    async def is_close_to_rate_limit(self) -> bool:
-        info = self.rest_client.get_rate_limit_status()
-        if not info:
-            return False
-
-        return info.remaining < MIN_REMAINING_RATE_LIMIT_FOR_EXECUTE_WORKFLOW
-
     async def execute(self, run: ActionRun) -> None:
         repo = run.payload.get("repo")
         workflow = run.payload.get("workflow")
@@ -99,7 +86,6 @@ class DispatchWorkflowExecutor(AbstractExecutor, ActionsClientMixin):
             raise ValueError("repo and workflow are required")
 
         ref = await self._get_default_ref(repo)
-        self.rest_client.get_rate_limit_status()
         try:
             isoDate = datetime.now(timezone.utc).isoformat()
             await self.rest_client.send_api_request(

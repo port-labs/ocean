@@ -4,10 +4,10 @@ from datetime import datetime, timedelta
 from typing import Dict, Type, Set, Optional, List
 from loguru import logger
 from pydantic import BaseModel
+from port_ocean.core.handlers.actions.errors import RunAlreadyAcknowledgedError
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     WebhookProcessorType,
 )
-import httpx
 from port_ocean.core.models import ActionRun, RunStatus
 import asyncio
 import time
@@ -39,7 +39,7 @@ class ExecutionManager(ActionsClientMixin):
         webhook_manager: LiveEventsProcessorManager,
         signal_handler: SignalHandler,
         runs_buffer_high_watermark: int,
-        runs_buffer_low_watermark: int,
+        poll_check_interval_seconds: int,
         sync_queue_lock_timeout_seconds: float,
     ):
         self._polling_task: asyncio.Task[None] | None = None
@@ -47,13 +47,15 @@ class ExecutionManager(ActionsClientMixin):
         self._actions_executors: Dict[str, Type[AbstractExecutor]] = {}
         self._global_queue = LocalQueue[ActionRunTask]()
         self._partition_queues: Dict[str, AbstractQueue[ActionRunTask]] = {}
-        self._queues_size: int = 0
         self._locked: Set[str] = set()
         self._lock_timestamps: Dict[str, float] = {}
         self._webhook_manager = webhook_manager
         self._timeout_task: Optional[asyncio.Task[None]] = None
         self._active_sources = LocalQueue()
         self._queue_state_lock = asyncio.Lock()
+        self._high_watermark = runs_buffer_high_watermark
+        self._poll_check_interval_seconds = poll_check_interval_seconds
+        self._lock_timeout_seconds = sync_queue_lock_timeout_seconds
 
         signal_handler.register(self.shutdown)
 
@@ -124,7 +126,6 @@ class ExecutionManager(ActionsClientMixin):
         Add a run to the queue.
         """
         was_empty = await queue.size() == 0
-        self._queues_size += 1
         await queue.put(
             ActionRunTask(
                 visibility_expiration_timestamp=visibility_expiration_timestamp, run=run
@@ -134,20 +135,42 @@ class ExecutionManager(ActionsClientMixin):
             async with self._queue_state_lock:
                 await self._active_sources.put(queue_name)
 
+    async def _get_queues_size(self) -> int:
+        return await self._global_queue.size() + sum(
+            await queue.size() for queue in self._partition_queues.values()
+        )
+
     async def _poll_action_runs(self):
         """
         Poll action runs for all registered actions.
+        Respects high watermark for queue size management.
         """
         try:
             while True:
+                queues_size = await self._get_queues_size()
+                if queues_size >= self._high_watermark:
+                    logger.warning(
+                        "Queue size at high watermark, waiting for processing to catch up",
+                        current_size=queues_size,
+                        high_watermark=self._high_watermark,
+                    )
+                    await asyncio.sleep(self._poll_check_interval_seconds)
+                    continue
+
+                poll_limit = self._high_watermark - queues_size
                 runs = await self.get_pending_runs(
-                    limit=10,
+                    limit=poll_limit,
                     visibility_timeout=ocean.config.execution_agent.visibility_timeout_seconds,
                 )
+
+                if not runs:
+                    await asyncio.sleep(self._poll_check_interval_seconds)
+                    continue
 
                 visibility_expiration_timestamp = datetime.now() + timedelta(
                     seconds=ocean.config.execution_agent.visibility_timeout_seconds
                 )
+
                 for run in runs:
                     action_name = run.action.name
                     if action_name not in self._actions_executors:
@@ -186,11 +209,11 @@ class ExecutionManager(ActionsClientMixin):
         """
         while True:
             try:
-                await asyncio.sleep(self.lock_timeout_seconds / 4)
+                await asyncio.sleep(self._lock_timeout_seconds / 4)
                 now = time.time()
                 expired: List[str] = []
                 for key, ts in list(self._lock_timestamps.items()):
-                    if now - ts > self.lock_timeout_seconds:
+                    if now - ts > self._lock_timeout_seconds:
                         expired.append(key)
                         self._unlock(key)
                 if expired:
@@ -218,7 +241,6 @@ class ExecutionManager(ActionsClientMixin):
 
         try:
             run_task = await self._global_queue.get()
-            self._queues_size -= 1
             await self._execute_run(run_task.run)
         finally:
             await self._global_queue.commit()
@@ -239,7 +261,6 @@ class ExecutionManager(ActionsClientMixin):
 
         try:
             run = await queue.get()
-            self._queues_size -= 1
             await self._execute_run(run)
         finally:
             await queue.commit()
@@ -281,15 +302,19 @@ class ExecutionManager(ActionsClientMixin):
                 raise Exception("No executor registered for action")
 
             executor = executor_cls()
-            # TODO: check if close to rate limit
-            # TODO: if close to rate limit, de-ack the run and sleep for the remaining time,
-            # after that, put the run back in the queue
+            while executor.is_close_to_rate_limit():
+                await self.post_run_log(
+                    run_task.run.id,
+                    f"Delayed due to low remaining rate limit. Will attempt to re-run in {executor.get_remaining_time_until_rate_limit()} seconds",
+                )
+                await asyncio.sleep(executor.get_remaining_seconds_until_rate_limit())
+
+            await self.acknowledge_run(run_task.run.id)
+            logger.debug("Run acknowledged successfully", run=run_task.run.id)
             await executor.execute(run_task.run.payload)
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
-                # TODO: de-ack the run and sleep for the remaining time,
-                # after that, put the run back in the queue
-                pass
+        except RunAlreadyAcknowledgedError:
+            logger.debug("Run already acknowledged", run=run_task.run.id)
+            return
         except Exception as e:
             logger.exception(
                 "Error executing run",
@@ -328,3 +353,4 @@ class ExecutionManager(ActionsClientMixin):
                 await task
             except asyncio.CancelledError:
                 pass
+        # TODO: Should we wait for the in flight tasks to complete

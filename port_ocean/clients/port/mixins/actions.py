@@ -3,6 +3,7 @@ import httpx
 from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
+from port_ocean.core.handlers.actions.errors import RunAlreadyAcknowledgedError
 from port_ocean.core.models import (
     ActionRun,
 )
@@ -60,11 +61,16 @@ class ActionsClientMixin:
         handle_port_status_code(response)
 
     async def acknowledge_run(self, run_id: str) -> None:
-        response = await self.client.patch(
-            f"{self.auth.api_url}/actions/runs/{run_id}/ack",
-            headers=await self.auth.headers(),
-        )
-        handle_port_status_code(response)
+        try:
+            response = await self.client.patch(
+                f"{self.auth.api_url}/actions/runs/{run_id}/ack",
+                headers=await self.auth.headers(),
+            )
+            handle_port_status_code(response)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 409:
+                raise RunAlreadyAcknowledgedError
+            raise
 
     async def post_run_log(self, run_id: str, message: str) -> None:
         response = await self.client.post(

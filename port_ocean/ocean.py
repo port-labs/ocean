@@ -93,7 +93,7 @@ class Ocean:
             webhook_manager=self.webhook_manager,
             signal_handler=signal_handler,
             runs_buffer_high_watermark=self.config.execution_agent.runs_buffer_high_watermark,
-            runs_buffer_low_watermark=self.config.execution_agent.runs_buffer_low_watermark,
+            poll_check_interval_seconds=self.config.execution_agent.poll_check_interval_seconds,
             sync_queue_lock_timeout_seconds=self.config.execution_agent.sync_queue_lock_timeout_seconds,
         )
 

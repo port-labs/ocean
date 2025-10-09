@@ -28,11 +28,19 @@ class AbstractExecutor(ABC):
     WEBHOOK_PROCESSOR_CLASS: Optional[Type[AbstractWebhookProcessor]]
     WEBHOOK_PATH: str
 
+    @abstractmethod
     async def is_close_to_rate_limit(self) -> bool:
         """
         Check if the action is close to the rate limit.
         """
-        return False
+        pass
+
+    @abstractmethod
+    async def get_remaining_seconds_until_rate_limit(self) -> float:
+        """
+        Get the remaining seconds until the rate limit is reached.
+        """
+        pass
 
     @abstractmethod
     async def execute(self, payload: ActionPayload) -> None:
