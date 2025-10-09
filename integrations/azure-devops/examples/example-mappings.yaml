@@ -191,3 +191,77 @@ resources:
             defaultBranch: .__repository.defaultBranch
           relations:
             project: .__repository.project.id | gsub(" "; "")
+  - kind: build
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.id | tostring) | gsub(" "; "")
+          title: .buildNumber
+          blueprint: '"build"'
+          properties:
+            status: .status
+            result: .result
+            queueTime: .queueTime
+            startTime: .startTime
+            finishTime: .finishTime
+            definitionName: .definition.name
+            requestedFor: .requestedFor.displayName
+          relations:
+            project: .__project.id | gsub(" "; "")
+  - kind: pipeline-stage
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            .__project.id + "-" + (.__build.id | tostring) + "-" + (.id |
+            tostring) | gsub(" "; "")
+          title: .name
+          blueprint: '"pipeline-stage"'
+          properties:
+            state: .state
+            result: .result
+            startTime: .startTime
+            finishTime: .finishTime
+            stageType: .type
+          relations:
+            project: .__project.id | gsub(" "; "")
+            build: (.__build.id | tostring) | gsub(" "; "")
+  - kind: pipeline-run
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            .__project.id + "-" + (.__pipeline.id | tostring) + "-" + (.id |
+            tostring) | gsub(" "; "")
+          title: .name // .runNumber // (.id | tostring)
+          blueprint: '"pipeline-run"'
+          properties:
+            state: .state
+            result: .result
+            createdDate: .createdDate
+            finishedDate: .finishedDate
+            pipelineName: .pipeline.name
+          relations:
+            project: .__project.id | gsub(" "; "")
+  - kind: iteration
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | gsub(" "; "")
+          title: .name
+          blueprint: '"iteration"'
+          properties:
+            name: .name
+            path: .path
+            iterationKind: .__iterationKind
+            timeFrame: .attributes.timeFrame
+          relations:
+            project: .__project.id | gsub(" "; "")

@@ -12,6 +12,9 @@ class Kind(StrEnum):
     REPOSITORY_POLICY = "repository-policy"
     PULL_REQUEST = "pull-request"
     PIPELINE = "pipeline"
+    BUILD = "build"
+    PIPELINE_STAGE = "pipeline-stage"
+    PIPELINE_RUN = "pipeline-run"
     MEMBER = "member"
     TEAM = "team"
     PROJECT = "project"
@@ -26,6 +29,7 @@ class Kind(StrEnum):
     FILE = "file"
     USER = "user"
     FOLDER = "folder"
+    ITERATION = "iteration"
 
 
 PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [

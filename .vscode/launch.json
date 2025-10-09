@@ -248,6 +248,39 @@
       "python": "${workspaceFolder}/integrations/aikido/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
-    }
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/okta",
+      "envFile": "${workspaceFolder}/integrations/okta/.env",
+      "justMyCode": true,
+      "name": "Run okta integration",
+      "program": "${workspaceFolder}/integrations/okta/debug.py",
+      "python": "${workspaceFolder}/integrations/okta/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/armorcode",
+      "envFile": "${workspaceFolder}/integrations/armorcode/.env",
+      "justMyCode": true,
+      "name": "Run armorcode integration",
+      "program": "${workspaceFolder}/integrations/armorcode/debug.py",
+      "python": "${workspaceFolder}/integrations/armorcode/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/bitbucket-server",
+      "envFile": "${workspaceFolder}/integrations/bitbucket-server/.env",
+      "justMyCode": true,
+      "name": "Run bitbucket-server integration",
+      "program": "${workspaceFolder}/integrations/bitbucket-server/debug.py",
+      "python": "${workspaceFolder}/integrations/bitbucket-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
   ]
 }

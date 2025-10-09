@@ -2,6 +2,7 @@ title: New Relic
 description: New Relic integration for Port Ocean
 icon: NewRelic
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/apm-alerting/newrelic
+recommendedInstallationMethod: Saas
 features:
   - type: exporter
     section: APM & Alerting
