@@ -23,7 +23,7 @@ class AzureRequestThrottled(HttpResponseError):
         self._check_for_subscription_limit(response)
 
         remaining_quota = response.headers[_THROTTLING_REMAINING_QUOTA]
-        resets_after = response.headers[_THROTTLING_REMAINING_QUOTA]
+        resets_after = response.headers[_THROTTLING_RESETS_AFTER]
 
         if int(remaining_quota) < 1:
             time_obj = datetime.strptime(resets_after, "%H:%M:%S").time()
