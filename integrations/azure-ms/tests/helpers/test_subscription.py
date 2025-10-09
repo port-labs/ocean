@@ -22,15 +22,20 @@ async def test_get_subscription_batches() -> None:
     mock_subs_client.subscriptions.list = MagicMock(return_value=aiter(subscriptions))
     mock_subs_client.close = AsyncMock()
 
-    with patch(
-        "azure_integration.helpers.subscription.SubscriptionClient",
-        return_value=mock_subs_client,
-    ), patch(
-        "port_ocean.utils.cache.ocean.app.cache_provider.get",
-        new_callable=AsyncMock,
-        return_value=None,
-    ), patch(
-        "port_ocean.utils.cache.ocean.app.cache_provider.set", new_callable=AsyncMock
+    with (
+        patch(
+            "azure_integration.helpers.subscription.SubscriptionClient",
+            return_value=mock_subs_client,
+        ),
+        patch(
+            "port_ocean.utils.cache.ocean.app.cache_provider.get",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch(
+            "port_ocean.utils.cache.ocean.app.cache_provider.set",
+            new_callable=AsyncMock,
+        ),
     ):
         async with manager:
             batches = [batch async for batch in manager.get_subscription_batches()]

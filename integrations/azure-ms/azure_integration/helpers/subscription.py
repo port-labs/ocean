@@ -6,6 +6,7 @@ from azure.identity.aio import ClientSecretCredential
 from azure.mgmt.subscription.aio import SubscriptionClient
 from azure.mgmt.subscription.models import Subscription
 from loguru import logger
+from port_ocean.utils.cache import cache_iterator_result
 from azure_integration.helpers.rate_limiter import (
     RateLimitHandler,
     TokenBucketRateLimiter,
@@ -32,6 +33,7 @@ class SubscriptionManager(RateLimitHandler, AsyncContextManager["SubscriptionMan
         self._batch_size = batch_size
         logger.info(f"Subscription manager initialized with a batch of {batch_size}")
 
+    @cache_iterator_result()
     async def get_subscription_batches(
         self,
     ) -> AsyncGenerator[list[Subscription], None]:
