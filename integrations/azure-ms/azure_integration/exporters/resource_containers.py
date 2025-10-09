@@ -3,14 +3,13 @@ from typing import Optional
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
+from azure_integration.exporters.base import BaseExporter
 from azure_integration.helpers.queries import RESOURCE_CONTAINERS_QUERY
 from azure_integration.models import (
     ResourceContainerExporterOptions,
     ResourceGroupTagFilters,
 )
 from azure_integration.utils import build_rg_tag_filter_clause
-
-from .base import BaseExporter
 
 
 class ResourceContainersExporter(BaseExporter):

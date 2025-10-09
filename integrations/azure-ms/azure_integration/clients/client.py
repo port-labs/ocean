@@ -49,8 +49,7 @@ class SDKClient(AzureClient, RateLimitHandler):
     async def make_paginated_request(
         self, query: str, subscriptions: Sequence[str]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info("Running query")
-        logger.debug(f"{query}")
+        logger.info(f"Running query \n {query}")
 
         skip_token: str | None = None
 
