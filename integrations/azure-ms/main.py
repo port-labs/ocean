@@ -45,8 +45,3 @@ async def on_resync_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         exporter = ResourcesExporter(client, sub_manager)
         async for resources in exporter.get_paginated_resources(exporter_options):
             yield resources
-
-
-@ocean.on_start()
-async def on_start() -> None:
-    logger.info("Starting azure multi subscription integration")

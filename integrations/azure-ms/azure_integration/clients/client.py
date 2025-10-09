@@ -24,7 +24,7 @@ class SDKClient(AzureClient, RateLimitHandler):
     ) -> None:
         self._auth_cred = auth_cred
         self._azure_credentials: ClientSecretCredential | None = None
-        self._resource_g_client: ResourceGraphClient | None = None
+        self._resource_graph_client: ResourceGraphClient | None = None
 
         self._rate_limiter = rate_limiter
         self._error_map = {429: AzureRequestThrottled}
@@ -32,7 +32,7 @@ class SDKClient(AzureClient, RateLimitHandler):
     async def make_request(
         self, query: str, subscriptions: Sequence[str], **kwargs: Any
     ) -> ResponseObject:
-        if not self._resource_g_client:
+        if not self._resource_graph_client:
             raise ValueError(
                 "Azure Resource Graph Client not initialized, ensure SDKClient is run in a context manager"
             )
@@ -41,7 +41,7 @@ class SDKClient(AzureClient, RateLimitHandler):
             subscriptions=list(subscriptions), query=query, **kwargs
         )
         await self.handle_rate_limit(self._rate_limiter.consume(1))
-        response: QueryResponse = await self._resource_g_client.resources(
+        response: QueryResponse = await self._resource_graph_client.resources(
             query_request, error_map=self._error_map
         )
         return response
@@ -74,7 +74,7 @@ class SDKClient(AzureClient, RateLimitHandler):
 
     async def __aenter__(self) -> "SDKClient":
         self._azure_credentials = self._auth_cred.create_azure_credential()
-        self._resource_g_client = ResourceGraphClient(self._azure_credentials)
+        self._resource_graph_client = ResourceGraphClient(self._azure_credentials)
         return self
 
     async def __aexit__(
@@ -84,8 +84,8 @@ class SDKClient(AzureClient, RateLimitHandler):
         traceback: TracebackType | None,
         /,
     ) -> bool:
-        if self._resource_g_client is not None:
-            await self._resource_g_client.close()
+        if self._resource_graph_client is not None:
+            await self._resource_graph_client.close()
         if self._azure_credentials is not None:
             await self._azure_credentials.close()
         return False

@@ -61,7 +61,7 @@ async def test_run_query_with_pagination() -> None:
 @pytest.mark.asyncio
 async def test_run_query_not_initialized() -> None:
     client = SDKClient(MagicMock(), MagicMock())
-    client._resource_g_client = None
+    client._resource_graph_client = None
 
     with pytest.raises(
         ValueError,

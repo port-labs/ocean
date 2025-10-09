@@ -7,6 +7,9 @@ from azure.core.exceptions import HttpResponseError
 from azure.core.rest import AsyncHttpResponse
 from loguru import logger
 
+_THROTTLING_REMAINING_QUOTA = "x-ms-user-quota-remaining"
+_THROTTLING_RESETS_AFTER = "x-ms-user-quota-resets-after"
+
 
 class SubscriptionLimitReacheached(Exception):
     pass
@@ -19,8 +22,8 @@ class AzureRequestThrottled(HttpResponseError):
         response = cast(AsyncHttpResponse, self.response)
         self._check_for_subscription_limit(response)
 
-        remaining_quota = response.headers["x-ms-user-quota-remaining"]
-        resets_after = response.headers["x-ms-user-quota-resets-after"]
+        remaining_quota = response.headers[_THROTTLING_REMAINING_QUOTA]
+        resets_after = response.headers[_THROTTLING_REMAINING_QUOTA]
 
         if int(remaining_quota) < 1:
             time_obj = datetime.strptime(resets_after, "%H:%M:%S").time()
