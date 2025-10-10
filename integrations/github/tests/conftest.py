@@ -23,9 +23,9 @@ from github.clients.client_factory import create_github_client
 from github.helpers.utils import GithubClientType
 from github.clients.http.base_client import AbstractGithubClient
 
-TEST_INTEGRATION_CONFIG: Dict[str, str] = {
+TEST_INTEGRATION_CONFIG: Dict[str, Any] = {
     "github_token": "mock-github-token",
-    "github_organization": "test-org",
+    "github_organizations": ["test-org"],
     "github_app_id": "appid",
     "github_app_private_key": "private key",
     "github_host": "https://api.github.com",
@@ -41,7 +41,7 @@ def mock_ocean_context() -> None:
         mock_ocean_app = MagicMock()
         mock_ocean_app.config.integration.config = {
             "github_token": TEST_INTEGRATION_CONFIG["github_token"],
-            "github_organization": TEST_INTEGRATION_CONFIG["github_organization"],
+            "github_organizations": TEST_INTEGRATION_CONFIG["github_organizations"],
             "github_app_id": TEST_INTEGRATION_CONFIG["github_app_id"],
             "github_app_private_key": TEST_INTEGRATION_CONFIG["github_app_private_key"],
             "github_host": TEST_INTEGRATION_CONFIG["github_host"],

@@ -73,6 +73,7 @@ class TestEnvironmentWebhookProcessor:
                 "production_environment": True,
             },
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         expected_data = {
@@ -98,7 +99,9 @@ class TestEnvironmentWebhookProcessor:
 
         # Verify exporter was called with correct options
         mock_exporter.get_resource.assert_called_once_with(
-            SingleEnvironmentOptions(repo_name="test-repo", name="production")
+            SingleEnvironmentOptions(
+                organization="test-org", repo_name="test-repo", name="production"
+            )
         )
 
         assert isinstance(result, WebhookEventRawResults)

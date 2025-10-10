@@ -1,7 +1,8 @@
 from collections import defaultdict
-from typing import Any
+from typing import Any, DefaultDict
 
 from loguru import logger
+from github.core.exporters.file_exporter.utils import deep_dict
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_coroutine_result
 from wcmatch import glob
@@ -18,19 +19,25 @@ _DEFAULT_BRANCH = "hard_to_replicate_name"
 
 def create_path_mapping(
     folder_patterns: list[FolderSelector],
-) -> dict[str, dict[str, list[str]]]:
+) -> dict[str, dict[str, dict[str, list[str]]]]:
     """
     Create a mapping of repository names to branch names to folder paths.
     """
-    pattern_by_repo_branch: dict[str, dict[str, list[str]]] = defaultdict(
-        lambda: defaultdict(list)
-    )
+    pattern_by_org_repo_branch: DefaultDict[
+        str, DefaultDict[str, DefaultDict[str, list[str]]]
+    ] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
     for pattern in folder_patterns:
-        p = pattern.path
+        organization = pattern.organization
+        path = pattern.path
         for repo in pattern.repos:
-            pattern_by_repo_branch[repo.name][repo.branch or _DEFAULT_BRANCH].append(p)
-    return {repo: dict(branches) for repo, branches in pattern_by_repo_branch.items()}
+            repo_name = repo.name
+            repo_branch = repo.branch or _DEFAULT_BRANCH
+            pattern_by_org_repo_branch[organization][repo_name][repo_branch].append(
+                path
+            )
+
+    return deep_dict(pattern_by_org_repo_branch)
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
@@ -56,52 +63,66 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
         ExporterOptionsT: ListFolderOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repo_mapping = options["repo_mapping"]
-        repos = repo_mapping.keys()
 
-        async for search_result in search_for_repositories(self.client, repos):
-            for repository in search_result:
-                repo_name = repository["name"]
-                repo_map = repo_mapping.get(repo_name)
-                if not repo_map:
-                    continue
+        for organization, repos_by_org in repo_mapping.items():
+            repos = repos_by_org.keys()
 
-                for branch, paths in repo_map.items():
-                    for path in paths:
-                        branch_ref = (
-                            branch
-                            if branch != _DEFAULT_BRANCH
-                            else repository["default_branch"]
-                        )
-                        url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/git/trees/{branch_ref}"
+            async for search_result in search_for_repositories(
+                self.client, organization, repos
+            ):
+                for repository in search_result:
+                    repo_name = repository["name"]
+                    repo_map = repos_by_org.get(repo_name)
+                    if not repo_map:
+                        continue
 
-                        is_recursive_api_call = self._needs_recursive_search(path)
-                        tree = await self._get_tree(
-                            url, recursive=is_recursive_api_call
-                        )
-                        folders = self._retrieve_relevant_tree(
-                            tree, path=path, repo=repository
-                        )
-                        if folders:
-                            yield folders
+                    for branch, paths in repo_map.items():
+                        for path in paths:
+                            branch_ref = (
+                                branch
+                                if branch != _DEFAULT_BRANCH
+                                else repository["default_branch"]
+                            )
+                            url = f"{self.client.base_url}/repos/{organization}/{repo_name}/git/trees/{branch_ref}"
+
+                            is_recursive_api_call = self._needs_recursive_search(path)
+                            tree = await self._get_tree(
+                                url, recursive=is_recursive_api_call
+                            )
+                            folders = self._retrieve_relevant_tree(
+                                organization, tree, path=path, repo=repository
+                            )
+                            if folders:
+                                yield folders
 
     def _retrieve_relevant_tree(
-        self, tree: list[dict[str, Any]], path: str, repo: dict[str, Any]
+        self,
+        organization: str,
+        tree: list[dict[str, Any]],
+        path: str,
+        repo: dict[str, Any],
     ) -> list[dict[str, Any]]:
         folders = self._filter_folder_contents(tree, path)
         logger.info(f"fetched {len(folders)} folders from {repo['name']}")
         if folders:
-            formatted = self._enrich_folder_with_repository(folders, repo=repo)
+            formatted = self._enrich_folder_with_repository(
+                organization, folders, repo=repo
+            )
             return formatted
         else:
             return []
 
     def _enrich_folder_with_repository(
-        self, folders: list[dict[str, Any]], repo: dict[str, Any] | None = None
+        self,
+        organization: str,
+        folders: list[dict[str, Any]],
+        repo: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         formatted_folders = [
             {
                 "folder": folder,
                 "__repository": repo,
+                "__organization": organization,
             }
             for folder in folders
         ]

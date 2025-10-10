@@ -8,7 +8,9 @@ PAGE_SIZE = 100
 
 
 class GithubWebhookClient(GithubRestClient):
-    def __init__(self, *, webhook_secret: str | None = None, **kwargs: Any):
+    def __init__(
+        self, *, organization: str, webhook_secret: str | None = None, **kwargs: Any
+    ):
         """
         Initialize the GitHub Webhook Client.
 
@@ -16,6 +18,7 @@ class GithubWebhookClient(GithubRestClient):
         :param kwargs: Additional keyword arguments passed to the parent GitHub Rest Client.
         """
         GithubRestClient.__init__(self, **kwargs)
+        self.organization = organization
         self.webhook_secret = webhook_secret
         if self.webhook_secret:
             logger.info(

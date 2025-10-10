@@ -7,12 +7,14 @@ import re
 from typing import (
     Any,
     AsyncGenerator,
+    DefaultDict,
     Dict,
     List,
     Optional,
     Tuple,
     TypedDict,
     TYPE_CHECKING,
+    Union,
 )
 
 import yaml
@@ -40,6 +42,7 @@ FIELD_NAME_PATTERN = re.compile(r"^file_(\d+)$")
 class FileObject(TypedDict):
     """Structure for processed file data."""
 
+    organization: str
     content: Any
     repository: Dict[str, Any]
     branch: str
@@ -126,45 +129,56 @@ async def group_file_patterns_by_repositories_in_selector(
     Takes a list of file patterns with repository mappings and organizes them
     by repository name for efficient batch file fetching. If no repo is specified, fetch the relevant file for every repository
     """
-    logger.info("Grouping file patterns by repository for batch processing.")
+    logger.info(
+        f"Grouping file patterns by repository and organization for batch processing from {len(files)} file patterns."
+    )
 
     repo_map: Dict[str, List[FileSearchOptions]] = defaultdict(list)
 
     async def _get_repos_and_branches_for_selector(
         selector: "GithubFilePattern", path: str
     ) -> AsyncGenerator[Tuple[str, Optional[str]], None]:
+        organization = selector.organization
         if selector.repos is None:
             logger.info(
-                f"No repositories specified for file pattern '{path}'. Fetching from '{repo_type}' repositories."
+                f"No repositories specified for file pattern '{path}'. Fetching from '{repo_type}' repositories from {organization}."
             )
-            repo_option = ListRepositoryOptions(type=repo_type)
+            repo_option = ListRepositoryOptions(
+                organization=organization, type=repo_type
+            )
             async for repo_batch in repo_exporter.get_paginated_resources(repo_option):
                 for repository in repo_batch:
                     yield repository["name"], repository["default_branch"]
         else:
-            logger.info(f"Fetching file pattern '{path}' from specified repositories.")
+            logger.info(
+                f"Fetching file pattern '{path}' from specified repositories from {organization}."
+            )
             for repo_branch_mapping in selector.repos:
                 yield repo_branch_mapping.name, repo_branch_mapping.branch
 
     for file_selector in files:
         path = file_selector.path
         skip_parsing = file_selector.skip_parsing
+        organization = file_selector.organization
 
         async for repo, branch in _get_repos_and_branches_for_selector(
             file_selector, path
         ):
             repo_map[repo].append(
                 {
+                    "organization": organization,
                     "path": path,
                     "skip_parsing": skip_parsing,
                     "branch": branch,
                 }
             )
 
-    logger.info(f"Repository path map built for {len(repo_map)} repositories.")
+    logger.info(
+        f"Repository path map built for {len(repo_map)} repositories from {len(files)} file patterns."
+    )
 
     return [
-        ListFileSearchOptions(repo_name=repo, files=files)
+        ListFileSearchOptions(organization=organization, repo_name=repo, files=files)
         for repo, files in repo_map.items()
     ]
 
@@ -294,3 +308,9 @@ def extract_file_paths_and_metadata(
         file_metadata[file_path] = file["skip_parsing"]
 
     return file_paths, file_metadata
+
+
+def deep_dict(d: Union[DefaultDict[str, Any], Dict[str, Any], list[Any], Any]) -> Any:
+    if isinstance(d, defaultdict):
+        return {k: deep_dict(v) for k, v in d.items()}
+    return d

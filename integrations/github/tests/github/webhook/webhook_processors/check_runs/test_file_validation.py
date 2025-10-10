@@ -45,11 +45,13 @@ def file_resource_config() -> GithubFileResourceConfig:
             query="true",
             files=[
                 GithubFilePattern(
+                    organization="test-org",
                     path="*.yaml",
                     repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
                     validationCheck=True,
                 ),
                 GithubFilePattern(
+                    organization="test-org",
                     path="*.json",
                     repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
                     validationCheck=False,
@@ -91,6 +93,7 @@ def mock_payload() -> dict[str, Any]:
             "base": {"sha": "base-sha-123"},
             "head": {"sha": "head-sha-456"},
         },
+        "organization": {"login": "test-org"},
     }
 
 
@@ -109,9 +112,7 @@ class TestFileValidation:
             resources=[],
         )
 
-        mappings = get_file_validation_mappings(
-            port_app_config_no_validation, "any-repo"
-        )
+        mappings = get_file_validation_mappings(port_app_config_no_validation)
         assert mappings == []
 
     async def test_get_file_validation_mappings_with_validation_mappings(
@@ -119,7 +120,7 @@ class TestFileValidation:
         mock_port_app_config: GithubPortAppConfig,
     ) -> None:
         """Test get_file_validation_mappings when validation mappings exist."""
-        mappings = get_file_validation_mappings(mock_port_app_config, "any-repo")
+        mappings = get_file_validation_mappings(mock_port_app_config)
         assert len(mappings) == 1
         assert isinstance(mappings[0], ResourceConfigToPatternMapping)
         assert len(mappings[0].patterns) == 1
@@ -130,9 +131,10 @@ class TestFileValidation:
         file_resource_config: GithubFileResourceConfig,
     ) -> None:
         """Test FileValidationService.validate_pull_request_files method."""
-        validation_service = FileValidationService()
+        validation_service = FileValidationService("test-org")
 
         file_object = FileObject(
+            organization="test-org",
             content="",
             path="config.yaml",
             repository={"name": "test-repo"},
@@ -164,7 +166,7 @@ class TestFileValidation:
             )
 
             mock_create_check.assert_called_once_with(
-                repo_name="test-repo", head_sha="head-sha-456"
+                organization="test-org", repo_name="test-repo", head_sha="head-sha-456"
             )
             mock_update_check.assert_called_once()
 
@@ -173,9 +175,10 @@ class TestFileValidation:
         file_resource_config: GithubFileResourceConfig,
     ) -> None:
         """Test FileValidationService.validate_pull_request_files method with validation errors."""
-        validation_service = FileValidationService()
+        validation_service = FileValidationService("test-org")
 
         file_object = FileObject(
+            organization="test-org",
             content="",
             path="config.yaml",
             repository={"name": "test-repo"},
@@ -207,7 +210,7 @@ class TestFileValidation:
             )
 
             mock_create_check.assert_called_once_with(
-                repo_name="test-repo", head_sha="head-sha-456"
+                organization="test-org", repo_name="test-repo", head_sha="head-sha-456"
             )
             mock_update_check.assert_called_once()
 
@@ -216,9 +219,10 @@ class TestFileValidation:
         file_resource_config: GithubFileResourceConfig,
     ) -> None:
         """Test FileValidationService.validate_pull_request_files method handles exceptions."""
-        validation_service = FileValidationService()
+        validation_service = FileValidationService("test-org")
 
         file_object = FileObject(
+            organization="test-org",
             content="",
             path="config.yaml",
             repository={"name": "test-repo"},

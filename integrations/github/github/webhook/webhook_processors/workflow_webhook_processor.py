@@ -50,15 +50,16 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
         """
         repo = payload["repository"]
         repo_name = repo["name"]
+        organization = payload["organization"]["login"]
 
         rest_client = create_github_client()
         commit_diff = await fetch_commit_diff(
-            rest_client, repo_name, payload["before"], payload["after"]
+            rest_client, organization, repo_name, payload["before"], payload["after"]
         )
         _, changed_workflow_files = extract_changed_files(commit_diff["files"])
 
         logger.info(
-            f"Processing workflow changes in repository {repo_name}. "
+            f"Processing workflow changes in repository {repo_name} of organization: {organization}. "
             f"Changed workflow files: {list(changed_workflow_files)}"
         )
 
@@ -68,14 +69,16 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
         for changed_file in changed_workflow_files:
             workflow_name = self._extract_file_name(changed_file)
             options = SingleWorkflowOptions(
-                repo_name=repo_name, workflow_id=workflow_name
+                organization=organization,
+                repo_name=repo_name,
+                workflow_id=workflow_name,
             )
 
             workflow = await exporter.get_resource(options)
             workflows_to_upsert.append(workflow)
 
         logger.info(
-            f"Fetched {len(workflows_to_upsert)} workflows from {repo_name} "
+            f"Fetched {len(workflows_to_upsert)} workflows from {repo_name} of organization: {organization} "
             f"due to workflow file changes"
         )
 

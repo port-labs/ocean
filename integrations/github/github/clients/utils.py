@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 from port_ocean.context.ocean import ocean
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
@@ -7,6 +7,10 @@ from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticat
 def integration_config(authenticator: AbstractGitHubAuthenticator) -> Dict[str, Any]:
     return {
         "authenticator": authenticator,
-        "organization": ocean.integration_config["github_organization"],
         "github_host": ocean.integration_config["github_host"],
     }
+
+
+def get_github_organizations() -> List[str]:
+    """Get the organizations from the integration config."""
+    return ocean.integration_config["github_organizations"]

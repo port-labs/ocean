@@ -68,14 +68,18 @@ class TestGitHubAbstractWebhookProcessor:
         mock_request = MagicMock(spec=Request)
         mock_request.headers = {"x-hub-signature-256": "test-signature"}
 
-        result: bool = await gh_processor._verify_webhook_signature(mock_request)
+        result: bool = await gh_processor._verify_webhook_signature(
+            organization="test-org", request=mock_request
+        )
         assert result is True
 
     async def test_verify_webhook_signature_invalid_headers(
         self, gh_processor: MockGithubAbstractProcessor, mock_ocean_context: Any
     ) -> None:
         mock_request: Request = create_gh_mock_request(b"{}", {})
-        result: bool = await gh_processor._verify_webhook_signature(mock_request)
+        result: bool = await gh_processor._verify_webhook_signature(
+            organization="test-org", request=mock_request
+        )
         assert result is False
 
     async def test_verify_webhook_signature_valid(
@@ -88,7 +92,9 @@ class TestGitHubAbstractWebhookProcessor:
         )
         headers: Dict[str, str] = {"x-hub-signature-256": valid_signature}
         mock_request: Request = create_gh_mock_request(payload_bytes, headers)
-        result: bool = await gh_processor._verify_webhook_signature(mock_request)
+        result: bool = await gh_processor._verify_webhook_signature(
+            organization="test-org", request=mock_request
+        )
         assert result is True
 
     async def test_verify_webhook_signature_invalid(
@@ -99,7 +105,9 @@ class TestGitHubAbstractWebhookProcessor:
         invalid_signature: str = "sha256=invalidsignature"
         headers: Dict[str, str] = {"x-hub-signature-256": invalid_signature}
         mock_request: Request = create_gh_mock_request(payload_bytes, headers)
-        result: bool = await gh_processor._verify_webhook_signature(mock_request)
+        result: bool = await gh_processor._verify_webhook_signature(
+            organization="test-org", request=mock_request
+        )
         assert result is False
 
     async def test_should_process_event_no_request(

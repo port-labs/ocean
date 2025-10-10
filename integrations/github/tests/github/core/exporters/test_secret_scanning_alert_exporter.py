@@ -96,7 +96,10 @@ class TestRestSecretScanningAlertExporter:
             mock_request.return_value = TEST_SECRET_SCANNING_ALERTS[0].copy()
             alert = await exporter.get_resource(
                 SingleSecretScanningAlertOptions(
-                    repo_name="test-repo", alert_number="42", hide_secret=True
+                    organization="test-org",
+                    repo_name="test-repo",
+                    alert_number="42",
+                    hide_secret=True,
                 )
             )
 
@@ -108,7 +111,7 @@ class TestRestSecretScanningAlertExporter:
             assert alert == expected_alert
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/secret-scanning/alerts/42",
+                f"{rest_client.base_url}/repos/test-org/test-repo/secret-scanning/alerts/42",
                 {"hide_secret": True},  # hide_secret parameter
             )
 
@@ -127,7 +130,10 @@ class TestRestSecretScanningAlertExporter:
             alerts = []
             async for batch in exporter.get_paginated_resources(
                 ListSecretScanningAlertOptions(
-                    repo_name="test-repo", state="open", hide_secret=True
+                    organization="test-org",
+                    repo_name="test-repo",
+                    state="open",
+                    hide_secret=True,
                 )
             ):
                 alerts.extend(batch)
@@ -136,7 +142,7 @@ class TestRestSecretScanningAlertExporter:
             assert all(alert["__repository"] == "test-repo" for alert in alerts)
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/secret-scanning/alerts",
+                f"{rest_client.base_url}/repos/test-org/test-repo/secret-scanning/alerts",
                 {"state": "open", "hide_secret": True},
             )
 
@@ -157,7 +163,10 @@ class TestRestSecretScanningAlertExporter:
             alerts = []
             async for batch in exporter.get_paginated_resources(
                 ListSecretScanningAlertOptions(
-                    repo_name="test-repo", state="all", hide_secret=True
+                    organization="test-org",
+                    repo_name="test-repo",
+                    state="all",
+                    hide_secret=True,
                 )
             ):
                 alerts.extend(batch)
@@ -168,6 +177,6 @@ class TestRestSecretScanningAlertExporter:
             assert all(alert["__repository"] == "test-repo" for alert in alerts)
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/secret-scanning/alerts",
+                f"{rest_client.base_url}/repos/test-org/test-repo/secret-scanning/alerts",
                 expected_params,
             )
