@@ -1,0 +1,66 @@
+# Example: Slack API integration mapping
+# This example demonstrates the new endpoint-as-kind feature and data_path extraction
+
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+
+resources:
+  # Slack Users - endpoint path is the kind
+  - kind: /api/users.list
+    selector:
+      query: 'true'
+      method: GET
+      query_params:
+        limit: '100'
+      data_path: '.members'  # Extract users array from response
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .real_name
+          blueprint: '"slack_user"'
+          properties:
+            email: .profile.email
+            display_name: .profile.display_name
+            is_admin: .is_admin
+            is_bot: .is_bot
+            timezone: .tz
+
+  # Slack Channels - endpoint path is the kind
+  - kind: /api/conversations.list
+    selector:
+      query: 'true'
+      method: GET
+      query_params:
+        limit: '100'
+        types: 'public_channel,private_channel'
+      data_path: '.channels'  # Extract channels array from response
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"slack_channel"'
+          properties:
+            topic: .topic.value
+            purpose: .purpose.value
+            is_private: .is_private
+            member_count: .num_members
+            created: .created
+
+  # Slack Workspace Info - single object endpoint
+  - kind: /api/team.info
+    selector:
+      query: 'true'
+      method: GET
+      data_path: '.team'  # Extract team object from response
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"slack_workspace"'
+          properties:
+            domain: .domain
+            email_domain: .email_domain
+            icon: .icon.image_132
