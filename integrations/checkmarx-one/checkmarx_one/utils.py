@@ -10,6 +10,9 @@ class ObjectKind(StrEnum):
     API_SEC = "api-security"
     SAST = "sast"
     KICS = "kics"
+    DAST_SCAN_ENVIRONMENT = "dast-scan-environment"
+    DAST_SCAN = "dast-scan"
+    DAST_SCAN_RESULT = "dast-scan-result"
 
 
 class ScanResultObjectKind(StrEnum):
