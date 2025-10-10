@@ -13,7 +13,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from initialize_client import init_client
 from http_server.overrides import HttpServerResourceConfig
-from http_server.endpoint_resolver import resolve_dynamic_endpoints
+from http_server.helpers.endpoint_resolver import resolve_dynamic_endpoints
 
 
 @ocean.on_resync()
