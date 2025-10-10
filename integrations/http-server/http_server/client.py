@@ -365,4 +365,3 @@ class HttpServerClient:
         # Stream results as they become available
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
-

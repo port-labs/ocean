@@ -5,7 +5,7 @@ Handles dynamic endpoint resolution for path parameters.
 """
 
 import re
-from typing import List
+from typing import List, Dict, Any
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -15,10 +15,10 @@ from initialize_client import init_client
 
 def extract_path_parameters(endpoint: str) -> List[str]:
     """Extract parameter names from endpoint template
-    
+
     Args:
         endpoint: Endpoint template (e.g., "/api/v1/teams/{team_id}/members")
-    
+
     Returns:
         List of parameter names found (e.g., ["team_id"])
     """
@@ -26,14 +26,14 @@ def extract_path_parameters(endpoint: str) -> List[str]:
 
 
 def validate_endpoint_parameters(
-    param_names: List[str], path_parameters: dict
+    param_names: List[str], path_parameters: Dict[str, Any]
 ) -> List[str]:
     """Validate that all required parameters are configured
-    
+
     Args:
         param_names: List of parameter names from endpoint template
         path_parameters: Configuration dict for path parameters
-    
+
     Returns:
         List of missing parameter names (empty list if all valid)
     """
@@ -44,12 +44,12 @@ def generate_resolved_endpoints(
     endpoint_template: str, param_name: str, param_values: List[str]
 ) -> List[str]:
     """Generate resolved endpoints by replacing parameter placeholders
-    
+
     Args:
         endpoint_template: Template with parameter placeholder (e.g., "/api/teams/{team_id}")
         param_name: Name of parameter to replace (e.g., "team_id")
         param_values: List of values to substitute (e.g., ["team1", "team2"])
-    
+
     Returns:
         List of resolved endpoint URLs
     """
@@ -62,10 +62,10 @@ def generate_resolved_endpoints(
 
 async def query_api_for_parameters(param_config: ApiPathParameter) -> List[str]:
     """Query an API to get values for a path parameter
-    
+
     Args:
         param_config: Configuration for fetching parameter values
-    
+
     Returns:
         List of parameter values extracted from API response
     """
@@ -115,11 +115,11 @@ async def resolve_dynamic_endpoints(
     selector: HttpServerSelector, kind: str
 ) -> List[str]:
     """Resolve dynamic endpoints using Ocean's Port client with validation
-    
+
     Args:
         selector: The resource selector configuration
         kind: The endpoint path (e.g., "/api/v1/users" or "/api/v1/teams/{team_id}")
-    
+
     Returns:
         List of resolved endpoint URLs
     """
@@ -166,4 +166,3 @@ async def resolve_dynamic_endpoints(
         f"Resolved {len(resolved_endpoints)} endpoints from parameter '{param_name}'"
     )
     return resolved_endpoints
-
