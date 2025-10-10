@@ -47,4 +47,3 @@ resources:
             team_id: .team_id
           relations:
             team: .team_id
-
