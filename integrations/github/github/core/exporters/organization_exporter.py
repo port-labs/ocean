@@ -19,10 +19,17 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         organizations = options.get("organizations")
         organizations_set = set(organizations) if organizations else None
 
-        async for orgs in self.client.send_paginated_request(
-            f"{self.client.base_url}/user/orgs", {}
-        ):
-            if organizations_set:
+        if not organizations_set:
+            async for orgs in self.client.send_paginated_request(
+                f"{self.client.base_url}/user/orgs", {}
+            ):
+                yield orgs
+            return
+
+        if len(organizations_set) > 1:
+            async for orgs in self.client.send_paginated_request(
+                f"{self.client.base_url}/user/orgs", {}
+            ):
                 filtered_orgs = [
                     org for org in orgs if org.get("login") in organizations_set
                 ]
@@ -30,8 +37,14 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
                     f"Filtered to {len(filtered_orgs)} organizations from {len(orgs)} total"
                 )
                 yield filtered_orgs
-            else:
-                yield orgs
+
+        else:
+            org = next(iter(organizations_set))
+            logger.info(f"Fetching organization {org}")
+            org_data = await self.client.send_api_request(
+                f"{self.client.base_url}/orgs/{org}"
+            )
+            yield [org_data]
 
     async def get_resource[ExporterOptionsT: None](self, options: None) -> RAW_ITEM:
         raise NotImplementedError

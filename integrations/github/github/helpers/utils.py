@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
 
+
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
 

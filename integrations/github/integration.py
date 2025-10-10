@@ -160,9 +160,7 @@ class GithubSecretScanningAlertConfig(ResourceConfig):
 
 
 class GithubFilePattern(BaseModel):
-    organization: str = Field(
-        description="Specify the organization name",
-    )
+    organization: str = Field(description="Specify the organization name")
     path: str = Field(
         alias="path",
         description="Specify the path to match files from",
@@ -224,10 +222,6 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubSecretScanningAlertConfig
         | ResourceConfig
     ]
-    organizations: Optional[List[str]] = Field(
-        default=None,
-        description="List of specific organization names to sync (optional - if not provided, syncs all organizations)",
-    )
 
 
 class GitManipulationHandler(JQEntityProcessor):

@@ -29,3 +29,9 @@ class GraphQLErrorGroup(Exception):
 
 class CheckRunsException(Exception):
     """Exception for check runs errors."""
+
+
+class IncompatibleOrganizationsException(Exception):
+    """Exception for incompatible organizations."""
+
+    pass

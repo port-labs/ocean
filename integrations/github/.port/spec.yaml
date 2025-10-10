@@ -44,10 +44,10 @@ configurations:
     type: string
     sensitive: true
     description: If App ID is passed, then app private key is required.
-  - name: githubOrganization
+  - name: githubOrganizations
     required: false
-    type: string
-    description: GitHub organization name (optional - if not provided, will sync all organizations the personal access token user is a member of)
+    type: array
+    description: List of GitHub organization names (optional - if not provided, will sync all organizations the personal access token user is a member of)
   - name: webhookSecret
     type: string
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from GitHub are accepted.
