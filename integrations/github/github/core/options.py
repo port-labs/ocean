@@ -1,16 +1,32 @@
 from typing import List, NotRequired, Optional, Required, TypedDict
 
 
-class SingleRepositoryOptions(TypedDict):
+class ListOrganizationOptions(TypedDict):
+    """Options for listing organizations."""
+
+    organizations: NotRequired[Optional[List[str]]]
+
+
+class SingleOrganizationOptions(TypedDict):
+    organization: Required[str]
+
+
+class SingleRepositoryOptions(SingleOrganizationOptions):
     name: str
     included_relationships: NotRequired[Optional[list[str]]]
 
 
-class ListRepositoryOptions(TypedDict):
+class ListRepositoryOptions(SingleOrganizationOptions):
     """Options for listing repositories."""
 
     type: str
     included_relationships: NotRequired[Optional[list[str]]]
+
+
+class RepositoryIdentifier(SingleOrganizationOptions):
+    """Options for identifying a repository."""
+
+    repo_name: Required[str]
 
 
 class SingleFolderOptions(TypedDict):
@@ -19,13 +35,7 @@ class SingleFolderOptions(TypedDict):
 
 
 class ListFolderOptions(TypedDict):
-    repo_mapping: Required[dict[str, dict[str, list[str]]]]
-
-
-class RepositoryIdentifier(TypedDict):
-    """Options for identifying a repository."""
-
-    repo_name: Required[str]
+    repo_mapping: Required[dict[str, dict[str, dict[str, list[str]]]]]
 
 
 class SinglePullRequestOptions(RepositoryIdentifier):
@@ -54,12 +64,20 @@ class ListIssueOptions(RepositoryIdentifier):
     state: Required[str]
 
 
-class SingleUserOptions(TypedDict):
+class SingleUserOptions(SingleOrganizationOptions):
     login: Required[str]
 
 
-class SingleTeamOptions(TypedDict):
+class ListUserOptions(SingleOrganizationOptions):
+    """Options for listing users."""
+
+
+class SingleTeamOptions(SingleOrganizationOptions):
     slug: Required[str]
+
+
+class ListTeamOptions(SingleOrganizationOptions):
+    """Options for listing teams."""
 
 
 class ListWorkflowOptions(RepositoryIdentifier):
@@ -159,15 +177,14 @@ class ListCodeScanningAlertOptions(RepositoryIdentifier):
     state: Required[str]
 
 
-class FileContentOptions(TypedDict):
+class FileContentOptions(RepositoryIdentifier):
     """Options for fetching file content."""
 
-    repo_name: Required[str]
     file_path: Required[str]
     branch: NotRequired[Optional[str]]
 
 
-class FileSearchOptions(TypedDict):
+class FileSearchOptions(SingleOrganizationOptions):
     """Options for searching files in repositories."""
 
     path: Required[str]
@@ -175,7 +192,7 @@ class FileSearchOptions(TypedDict):
     branch: NotRequired[Optional[str]]
 
 
-class ListFileSearchOptions(TypedDict):
+class ListFileSearchOptions(SingleOrganizationOptions):
     """Map of repository names to file search options."""
 
     repo_name: Required[str]

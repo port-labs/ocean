@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.5.11-beta (2025-10-10)
+
+
+### Features
+
+- Added multi-organization support for GitHub integration
+- Updated all resync functions to iterate through multiple organizations
+- Modified webhook processors to include organization context
+- Updated exporters to support organization parameters
+
+
 ## 1.5.10-beta (2025-09-30)
 
 
