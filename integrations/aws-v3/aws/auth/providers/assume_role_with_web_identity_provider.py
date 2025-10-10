@@ -107,9 +107,11 @@ class AssumeRoleWithWebIdentityProvider(CredentialProvider):
                         "expiry_time": credentials["Expiration"].isoformat(),
                     }
             except Exception as e:
-                logger.error(f"Failed to refresh web identity credentials: {e}")
+                logger.error(
+                    f"Failed to refresh web identity credentials for role {role_arn}: {e}"
+                )
                 raise CredentialsProviderError(
-                    f"Failed to refresh web identity credentials: {e}"
+                    f"Failed to refresh web identity credentials for role {role_arn}: {e}"
                 ) from e
 
         return refresher

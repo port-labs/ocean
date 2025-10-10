@@ -13,7 +13,6 @@ import httpx
 from loguru import logger
 
 from port_ocean.utils.async_http import http_async_client
-from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
@@ -72,7 +71,6 @@ class HttpServerClient:
             if username and password:
                 self.client.auth = httpx.BasicAuth(username, password)
 
-    @cache_iterator_result()  # Ocean handles caching automatically!
     async def fetch_paginated_data(
         self,
         endpoint: str,
@@ -80,7 +78,7 @@ class HttpServerClient:
         query_params: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Fetch data with automatic caching and rate limiting"""
+        """Fetch data with automatic rate limiting and concurrency control"""
 
         # Use Ocean's semaphore for concurrency control
         async def _fetch() -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -368,5 +366,3 @@ class HttpServerClient:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
-    # Note: No need to close Ocean's singleton HTTP client
-    # It's managed by Ocean and shared across all events

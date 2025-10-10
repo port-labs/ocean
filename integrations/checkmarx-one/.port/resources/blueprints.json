@@ -603,7 +603,7 @@
           "title": "Issue Type",
           "description": "The type or category of the KICS issue"
         },
-        "expected_value": {
+        "expectedValue": {
           "type": "string",
           "title": "Expected Value",
           "description": "The value that was expected in the configuration"
