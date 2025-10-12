@@ -2,6 +2,7 @@ title: HTTP Server
 description: Universal HTTP REST API integration with dynamic path parameters and flexible authentication
 icon: Api
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/api/http-server
+recommendedInstallationMethod: Saas
 features:
   - type: exporter
     section: API
@@ -69,3 +70,7 @@ configurations:
     type: integer
     default: 10
     description: "Maximum concurrent API requests (uses Ocean's built-in rate limiting and caching)"
+saas:
+  enabled: true
+  liveEvents:
+    enabled: false

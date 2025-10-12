@@ -39,21 +39,26 @@ class HttpServerClient:
         self.timeout = timeout
         self.verify_ssl = verify_ssl
 
-        # Use Ocean's built-in HTTP client (has retry/rate limiting built-in)
+        # Use Ocean's built-in HTTP client with retry and rate limiting
         self.client = http_async_client
 
         # Configure authentication
         self._setup_auth()
 
-        # Simple concurrency control (like other Ocean integrations)
+        # Concurrency control
         self.semaphore = asyncio.Semaphore(max_concurrent_requests)
+
+        # Pagination strategy dispatch (OOP-friendly, no switch case)
+        self._pagination_handlers = {
+            "page": self._fetch_page_paginated,
+            "offset": self._fetch_offset_paginated,
+            "cursor": self._fetch_cursor_paginated,
+            "none": self._fetch_single_page,
+        }
 
     def _setup_auth(self) -> None:
         """Setup authentication following Ocean patterns"""
-        # Set User-Agent
         self.client.headers["User-Agent"] = "Port-Ocean-HTTP-Integration/1.0"
-
-        # Configure authentication
         if self.auth_type == "bearer_token":
             token = self.auth_config.get("api_token")
             if token:
@@ -80,14 +85,12 @@ class HttpServerClient:
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch data with automatic rate limiting and concurrency control"""
 
-        # Use Ocean's semaphore for concurrency control
         async def _fetch() -> AsyncGenerator[List[Dict[str, Any]], None]:
             async for batch in self._fetch_with_pagination(
                 endpoint, method, query_params, headers
             ):
                 yield batch
 
-        # Ocean's semaphore controls concurrency
         async for batch in semaphore_async_iterator(self.semaphore, _fetch):
             yield batch
 
@@ -98,7 +101,7 @@ class HttpServerClient:
         query_params: Optional[Dict[str, Any]],
         headers: Optional[Dict[str, str]],
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Fetch data with pagination handling"""
+        """Fetch data with pagination handling - yields raw responses for data_path processing"""
 
         url = urljoin(self.base_url, endpoint.lstrip("/"))
         params = query_params or {}
@@ -110,39 +113,12 @@ class HttpServerClient:
             f"Fetching data from {method} {url} with pagination: {pagination_type}"
         )
 
-        if pagination_type == "none":
-            # Single request, no pagination
-            async for batch in self._fetch_single_page(
-                url, method, params, request_headers
-            ):
-                yield batch
-
-        elif pagination_type == "offset":
-            async for batch in self._fetch_offset_paginated(
-                url, method, params, request_headers
-            ):
-                yield batch
-
-        elif pagination_type == "page":
-            async for batch in self._fetch_page_paginated(
-                url, method, params, request_headers
-            ):
-                yield batch
-
-        elif pagination_type == "cursor":
-            async for batch in self._fetch_cursor_paginated(
-                url, method, params, request_headers
-            ):
-                yield batch
-
-        else:
-            logger.warning(
-                f"Unknown pagination type: {pagination_type}, falling back to single request"
-            )
-            async for batch in self._fetch_single_page(
-                url, method, params, request_headers
-            ):
-                yield batch
+        # Use dictionary dispatch for clean OOP pattern without switch case
+        handler = self._pagination_handlers.get(
+            pagination_type, self._fetch_single_page
+        )
+        async for batch in handler(url, method, params, request_headers):
+            yield batch
 
     async def _fetch_single_page(
         self,
@@ -157,47 +133,6 @@ class HttpServerClient:
         if items:
             yield items
 
-    async def _fetch_offset_paginated(
-        self,
-        url: str,
-        method: str,
-        params: Dict[str, Any],
-        headers: Dict[str, str],
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Fetch data using offset/limit pagination"""
-        page_size = self.pagination_config.get("page_size", 100)
-        offset_param = self.pagination_config.get("offset_param", "offset")
-        limit_param = self.pagination_config.get("limit_param", "limit")
-
-        offset = 0
-
-        while True:
-            current_params = {
-                **params,
-                offset_param: offset,
-                limit_param: page_size,
-            }
-
-            response = await self._make_request(url, method, current_params, headers)
-            response_data = response.json()
-            items = self._extract_items_from_response(response_data)
-
-            if not items:
-                break
-
-            yield items
-
-            # Check if we have more data
-            if len(items) < page_size:
-                break
-
-            # Check pagination metadata if available
-            pagination_info = self._extract_pagination_info(response_data)
-            if pagination_info and not pagination_info.get("has_more", True):
-                break
-
-            offset += page_size
-
     async def _fetch_page_paginated(
         self,
         url: str,
@@ -210,7 +145,6 @@ class HttpServerClient:
         page_param = self.pagination_config.get("page_param", "page")
         size_param = self.pagination_config.get("size_param", "size")
         start_page = self.pagination_config.get("start_page", 1)
-
         page = start_page
 
         while True:
@@ -229,21 +163,58 @@ class HttpServerClient:
 
             yield items
 
-            # Check if we have more data
-            if len(items) < page_size:
-                break
-
-            # Check pagination metadata if available
-            pagination_info = self._extract_pagination_info(response_data)
-            if pagination_info:
-                if not pagination_info.get("has_next", True):
+            # Check for next page indicators
+            if isinstance(response_data, dict):
+                has_next = (
+                    response_data.get("next_page") is not None
+                    or response_data.get("next") is not None
+                    or response_data.get("hasMore", False)
+                )
+                if not has_next:
                     break
-                # Some APIs provide total_pages
-                total_pages = pagination_info.get("total_pages")
-                if total_pages and page >= total_pages:
+            else:
+                if len(items) < page_size:
                     break
 
             page += 1
+
+    async def _fetch_offset_paginated(
+        self,
+        url: str,
+        method: str,
+        params: Dict[str, Any],
+        headers: Dict[str, str],
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch data using offset/limit pagination"""
+        page_size = self.pagination_config.get("page_size", 100)
+        offset_param = self.pagination_config.get("offset_param", "offset")
+        limit_param = self.pagination_config.get("limit_param", "limit")
+        offset = 0
+
+        while True:
+            current_params = {
+                **params,
+                offset_param: offset,
+                limit_param: page_size,
+            }
+
+            response = await self._make_request(url, method, current_params, headers)
+            response_data = response.json()
+            items = self._extract_items_from_response(response_data)
+
+            if not items:
+                break
+
+            yield items
+
+            if isinstance(response_data, dict):
+                has_more = response_data.get(
+                    "has_more", response_data.get("hasMore", True)
+                )
+                if not has_more:
+                    break
+
+            offset += page_size
 
     async def _fetch_cursor_paginated(
         self,
@@ -256,7 +227,6 @@ class HttpServerClient:
         page_size = self.pagination_config.get("page_size", 100)
         cursor_param = self.pagination_config.get("cursor_param", "cursor")
         limit_param = self.pagination_config.get("limit_param", "limit")
-
         cursor = None
 
         while True:
@@ -274,18 +244,16 @@ class HttpServerClient:
 
             yield items
 
-            # Get next cursor from response
-            pagination_info = self._extract_pagination_info(response_data)
-            if not pagination_info:
+            if isinstance(response_data, dict):
+                cursor = response_data.get("next_cursor") or response_data.get("cursor")
+                has_more = response_data.get(
+                    "has_more", response_data.get("hasMore", False)
+                )
+
+                if not cursor or not has_more:
+                    break
+            else:
                 break
-
-            next_cursor = pagination_info.get("next_cursor")
-            has_more = pagination_info.get("has_more", False)
-
-            if not next_cursor or not has_more:
-                break
-
-            cursor = next_cursor
 
     async def _make_request(
         self,
@@ -294,9 +262,8 @@ class HttpServerClient:
         params: Dict[str, Any],
         headers: Dict[str, str],
     ) -> httpx.Response:
-        """Make HTTP request using Ocean's built-in client (has retry/rate limiting)"""
+        """Make HTTP request using Ocean's built-in client with retry and rate limiting"""
         try:
-            # Use Ocean's HTTP client - it already handles retry and rate limiting!
             response = await self.client.request(
                 method=method,
                 url=url,
@@ -321,26 +288,12 @@ class HttpServerClient:
             raise
 
     def _extract_items_from_response(self, data: Any) -> List[Dict[str, Any]]:
-        """Extract items from API response - returns raw response for Ocean to process"""
-        # Ocean framework will handle items_to_parse, so just return the raw response
-        # Ocean expects the raw response and will apply items_to_parse JQ expression
+        """Extract items from API response for processing"""
         if isinstance(data, list):
             return data
         elif isinstance(data, dict):
-            return [data]  # Return as single item, Ocean will handle extraction
+            return [data]
         return []
-
-    def _extract_pagination_info(self, data: Any) -> Optional[Dict[str, Any]]:
-        """Extract pagination information from response"""
-        if not isinstance(data, dict):
-            return None
-
-        # Try common pagination keys
-        for key in ["pagination", "meta", "paging", "page_info"]:
-            if key in data:
-                return data[key]
-
-        return None
 
     async def fetch_multiple_endpoints(
         self,
@@ -349,9 +302,8 @@ class HttpServerClient:
         query_params: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Fetch multiple endpoints in parallel following Ocean patterns (like AWS integration)"""
+        """Fetch multiple endpoints in parallel with concurrency control"""
 
-        # Create tasks for each endpoint
         tasks = [
             semaphore_async_iterator(
                 self.semaphore,
@@ -362,6 +314,5 @@ class HttpServerClient:
             for endpoint in endpoints
         ]
 
-        # Stream results as they become available
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
