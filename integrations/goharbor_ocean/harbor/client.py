@@ -28,7 +28,7 @@ from harbor.exceptions import (
     RateLimitError,
     ServerError,
 )
-from harbor.utils.auth import create_basic_auth_header, generate_basic_auth_header
+from harbor.utils.auth import generate_basic_auth_header
 from harbor.utils.constants import (
     API_VERSION,
     DEFAULT_PAGE_SIZE,
