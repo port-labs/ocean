@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration
     from port_ocean.ocean import Ocean
     from port_ocean.clients.port.client import PortClient
+    from port_ocean.core.handlers.actions.execution_manager import AbstractExecutor
 
 from loguru import logger
 
@@ -211,7 +212,7 @@ class PortOceanContext:
         """
         self.app.webhook_manager.register_processor(path, processor)
 
-    def register_action_executor(self, executor: type) -> None:
+    def register_action_executor(self, executor: "AbstractExecutor") -> None:
         self.app.execution_manager.register_executor(executor)
 
 

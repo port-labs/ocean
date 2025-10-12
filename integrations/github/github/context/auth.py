@@ -1,10 +1,8 @@
-from typing import Dict, Any, Optional
-
+import asyncio
+from typing import Optional
 from pydantic import BaseModel
-from werkzeug.local import LocalProxy
 
 from integrations.github.github.clients.client_factory import create_github_client
-from integrations.github.github.clients.http.rest_client import GithubRestClient
 
 
 class AuthContext(BaseModel):
@@ -15,23 +13,19 @@ class AuthContext(BaseModel):
 
     login: str
     id: int
-    name: str
-    email: str
 
 
-_context: AuthContext | None = None
+_auth_context: Optional[AuthContext] = None
+_auth_lock = asyncio.Lock()
 
 
-async def _get_context() -> AuthContext:
-    global _context
-    if _context is not None:
-        return _context
+async def get_authenticated_user() -> AuthContext:
+    global _auth_context
+    if _auth_context is not None:
+        return _auth_context
 
-    client = create_github_client()
-    response = await client.send_api_request(f"{client.base_url}/user")
-    _context = AuthContext.parse_obj(response)
-
-    return _context
-
-
-authenticated_user: AuthContext = LocalProxy(lambda: _get_context())  # type: ignore
+    async with _auth_lock:
+        client = create_github_client()
+        response = await client.send_api_request(f"{client.base_url}/user")
+        _auth_context = AuthContext.parse_obj(response)
+        return _auth_context

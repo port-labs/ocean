@@ -1,21 +1,18 @@
 import asyncio
 from datetime import datetime, timezone
-from functools import lru_cache
-from typing import Any
 
 from loguru import logger
 from integrations.github.github.actions.utils import build_external_id
-from integrations.github.github.clients.client_factory import create_github_client
-from integrations.github.github.context.auth import authenticated_user
+from integrations.github.github.context.auth import (
+    get_authenticated_user,
+)
 from integrations.github.github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )
 from integrations.github.github.core.options import SingleRepositoryOptions
-from port_ocean.clients.port.mixins.actions import ActionsClientMixin
 from integrations.github.github.webhook.registry import (
     WEBHOOK_PATH as DISPATCH_WEBHOOK_PATH,
 )
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -24,58 +21,70 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from integrations.github.github.webhook.webhook_processors.base_workflow_run_webhook_processor import (
     BaseWorkflowRunWebhookProcessor,
 )
-from port_ocean.core.models import ActionRun, IntegrationActionInvocationPayload, RunStatus
-from integrations.github.github.actions.abstract_github_executor import AbstractGithubExecutor
+from port_ocean.core.models import (
+    ActionRun,
+    IntegrationActionInvocationPayload,
+    RunStatus,
+)
+from integrations.github.github.actions.abstract_github_executor import (
+    AbstractGithubExecutor,
+)
 
 
 MAX_WORKFLOW_POLL_ATTEMPTS = 10
 WORKFLOW_POLL_DELAY = 1
 
 
-class DispatchWorkflowWebhookProcessor(
-    BaseWorkflowRunWebhookProcessor, ActionsClientMixin
-):
-    async def _should_process_event(self, event: WebhookEvent) -> bool:
-        workflow_run = event.payload["workflow_run"]
-        return (
-            await super()._should_process_event(event)
-            and workflow_run["status"] == "completed"
-            and workflow_run["actor"]["login"] == authenticated_user.login
-        )
-
-    async def handle_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
-        workflow_run = payload["workflow_run"]
-
-        external_id = build_external_id(workflow_run)
-        action_run = await self.get_run_by_external_id(external_id)
-
-        if (
-            action_run.status == RunStatus.IN_PROGRESS
-            and action_run.payload.oceanExecution.get("reportWorkflowStatus", False)
-        ):
-            status = (
-                RunStatus.SUCCESS
-                if workflow_run["conclusion"] in ["success", "skipped", "neutral"]
-                else RunStatus.FAILURE
-            )
-            await self.patch_run(action_run.id, {"status": status})
-
-        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
-
-
-class DispatchWorkflowExecutor(AbstractGithubExecutor, ActionsClientMixin):
+class DispatchWorkflowExecutor(AbstractGithubExecutor):
     ACTION_NAME = "dispatch_workflow"
     PARTITION_KEY = "workflow"
+
+    class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
+        async def _should_process_event(self, event: WebhookEvent) -> bool:
+            workflow_run = event.payload["workflow_run"]
+            return (
+                await super()._should_process_event(event)
+                and workflow_run["status"] == "completed"
+                and workflow_run["actor"]["login"] == authenticated_user.login
+            )
+
+        async def handle_event(self, payload: EventPayload) -> WebhookEventRawResults:
+            workflow_run = payload["workflow_run"]
+
+            external_id = build_external_id(workflow_run)
+            action_run = await self._port_client.get_run_by_external_id(external_id)
+
+            if (
+                action_run.status == RunStatus.IN_PROGRESS
+                and action_run.payload.oceanExecution.get("reportWorkflowStatus", False)
+            ):
+                status = (
+                    RunStatus.SUCCESS
+                    if workflow_run["conclusion"] in ["success", "skipped", "neutral"]
+                    else RunStatus.FAILURE
+                )
+                await self._port_client.patch_run(action_run.id, {"status": status})
+
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
     WEBHOOK_PROCESSOR_CLASS = DispatchWorkflowWebhookProcessor
     WEBHOOK_PATH = DISPATCH_WEBHOOK_PATH
+    _default_ref_cache: dict[str, str] = {}
 
-    @lru_cache
     async def _get_default_ref(self, repo: str) -> str:
+        if repo in self._default_ref_cache:
+            return self._default_ref_cache[repo]
+
         repoExporter = RestRepositoryExporter(self.rest_client)
         repo = await repoExporter.get_resource(SingleRepositoryOptions(name=repo))
-        return repo.get("default_branch", "main")
+        if not (repo.get("id") and repo.get("default_branch")):
+            raise Exception("Failed to get repository data")
+
+        repo_id = repo["id"]
+        self._default_ref_cache[repo_id] = repo["default_branch"]
+        return self._default_ref_cache[repo_id]
 
     async def execute(self, run: ActionRun[IntegrationActionInvocationPayload]) -> None:
         repo = run.payload.oceanExecution.get("repo")
@@ -88,19 +97,25 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor, ActionsClientMixin):
         ref = await self._get_default_ref(repo)
         try:
             isoDate = datetime.now(timezone.utc).isoformat()
-            await self.rest_client.send_api_request(
+            res = await self.rest_client.make_request(
                 f"{self.rest_client.base_url}/repos/{self.rest_client.organization}/{repo}/actions/workflows/{workflow}/dispatches",
                 method="POST",
-                json={
+                json_data={
                     "ref": ref,
                     "inputs": inputs,
                 },
             )
 
+            if res.status_code != 204:
+                raise Exception("Failed to dispatch workflow")
+
             # Get the workflow run id
             workflow_runs = []
             attempts_made = 0
-            while len(workflow_runs) == 0 and attempts_made < MAX_WORKFLOW_POLL_ATTEMPTS:
+            while (
+                len(workflow_runs) == 0 and attempts_made < MAX_WORKFLOW_POLL_ATTEMPTS
+            ):
+                authenticated_user = await get_authenticated_user()
                 response = await self.rest_client.send_api_request(
                     f"{self.rest_client.base_url}/repos/{self.rest_client.organization}/{repo}/actions/runs",
                     params={
@@ -116,8 +131,11 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor, ActionsClientMixin):
                     await asyncio.sleep(WORKFLOW_POLL_DELAY)
                     attempts_made += 1
 
+            if len(workflow_runs) == 0:
+                raise Exception("No workflow runs found")
+
             external_id = build_external_id(workflow_runs[0])
-            await self.patch_run(run.id, {"external_run_id": external_id})
+            await self._port_client.patch_run(run.id, {"external_run_id": external_id})
         except Exception as e:
             logger.error(f"Error dispatching workflow: {e}")
             raise

@@ -1,3 +1,4 @@
+import random
 from typing import Any
 import httpx
 from loguru import logger
@@ -5,6 +6,7 @@ from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
 from port_ocean.core.models import (
     ActionRun,
+    RunStatus,
 )
 
 
@@ -30,12 +32,31 @@ class ActionsClientMixin:
         handle_port_status_code(response, should_log=should_log)
 
     async def get_run_by_external_id(self, external_id: str) -> ActionRun:
-        response = await self.client.get(
-            f"{self.auth.api_url}/actions/runs?external_run_id={external_id}",
-            headers=await self.auth.headers(),
+        # response = await self.client.get(
+        #     f"{self.auth.api_url}/actions/runs?external_run_id={external_id}",
+        #     headers=await self.auth.headers(),
+        # )
+        # handle_port_status_code(response)
+        # return response.json()
+        from port_ocean.core.models import IntegrationActionInvocationPayload
+        from port_ocean.core.models import InvocationType
+        from port_ocean.context.ocean import ocean
+
+        return ActionRun(
+            id="test-run-id",
+            payload=IntegrationActionInvocationPayload(
+                type=InvocationType.INTEGRATION_ACTION,
+                installationId=ocean.config.integration.identifier,
+                actionType="dispatch_workflow",
+                oceanExecution={
+                    "repo": "test-repo",
+                    "workflow": "hello-world.yml",
+                    "workflowInputs": {},
+                    "reportWorkflowStatus": True,
+                },
+            ),
+            status=RunStatus.IN_PROGRESS,
         )
-        handle_port_status_code(response)
-        return response.json()
 
     async def get_pending_runs(
         self, limit: int = 20, visibility_timeout_seconds: int = 90
@@ -50,36 +71,63 @@ class ActionsClientMixin:
         # )
         # handle_port_status_code(response)
         # return [ActionRun.parse_obj(run) for run in response.json().get("runs", [])]
-        return []
+        from port_ocean.core.models import IntegrationActionInvocationPayload
+        from port_ocean.core.models import InvocationType
+        from port_ocean.context.ocean import ocean
+
+        return (
+            []
+            if random.random() < 0.5
+            else [
+                ActionRun(
+                    id="test-run-id",
+                    payload=IntegrationActionInvocationPayload(
+                        type=InvocationType.INTEGRATION_ACTION,
+                        installationId=ocean.config.integration.identifier,
+                        actionType="dispatch_workflow",
+                        oceanExecution={
+                            "repo": "test-repo",
+                            "workflow": "hello-world.yml",
+                            "workflowInputs": {},
+                            "reportWorkflowStatus": True,
+                        },
+                    ),
+                    status=RunStatus.IN_PROGRESS,
+                )
+            ]
+        )
 
     async def patch_run(
         self,
         run_id: str,
         run: ActionRun,
     ) -> None:
-        response = await self.client.patch(
-            f"{self.auth.api_url}/actions/runs/{run_id}",
-            headers=await self.auth.headers(),
-            json=run.dict(),
-        )
-        handle_port_status_code(response)
+        # response = await self.client.patch(
+        #     f"{self.auth.api_url}/actions/runs/{run_id}",
+        #     headers=await self.auth.headers(),
+        #     json=run.dict(),
+        # )
+        # handle_port_status_code(response)
+        pass
 
     async def acknowledge_run(self, run_id: str) -> None:
-        try:
-            response = await self.client.patch(
-                f"{self.auth.api_url}/actions/runs/{run_id}/ack",
-                headers=await self.auth.headers(),
-            )
-            handle_port_status_code(response)
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 409:
-                raise RunAlreadyAcknowledgedError()
-            raise
+        # try:
+        #     response = await self.client.patch(
+        #         f"{self.auth.api_url}/actions/runs/{run_id}/ack",
+        #         headers=await self.auth.headers(),
+        #     )
+        #     handle_port_status_code(response)
+        # except httpx.HTTPStatusError as e:
+        #     if e.response.status_code == 409:
+        #         raise RunAlreadyAcknowledgedError()
+        #     raise
+        pass
 
     async def post_run_log(self, run_id: str, message: str) -> None:
-        response = await self.client.post(
-            f"{self.auth.api_url}/actions/runs/{run_id}/logs",
-            headers=await self.auth.headers(),
-            json={"message": message},
-        )
-        handle_port_status_code(response)
+        # response = await self.client.post(
+        #     f"{self.auth.api_url}/actions/runs/{run_id}/logs",
+        #     headers=await self.auth.headers(),
+        #     json={"message": message},
+        # )
+        # handle_port_status_code(response)
+        pass

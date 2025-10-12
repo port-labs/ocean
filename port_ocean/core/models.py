@@ -138,12 +138,6 @@ class IntegrationFeatureFlag(StrEnum):
     OCEAN_EXECUTION_AGENT_ELIGIBLE = "OCEAN_EXECUTION_AGENT_ELIGIBLE"
 
 
-class Action(BaseModel):
-    id: str
-    name: str
-    description: str
-
-
 class RunStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     SUCCESS = "SUCCESS"
@@ -160,13 +154,12 @@ class InvocationPayload(BaseModel):
 
 class IntegrationActionInvocationPayload(InvocationPayload):
     type: Literal[InvocationType.INTEGRATION_ACTION]
-    installationId: int
-    action: str
+    installationId: str
+    actionType: str
     oceanExecution: dict[str, Any] = Field(default_factory=dict)
 
 
 class ActionRun[T](BaseModel):
     id: str
     status: RunStatus
-    action: Action
     payload: T

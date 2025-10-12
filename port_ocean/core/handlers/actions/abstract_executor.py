@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Type
 
 
+from port_ocean.clients.port.client import PortClient
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -19,6 +20,9 @@ class AbstractExecutor(ABC):
     - Optionally expose a `webhook_path` and `get_webhook_processor()` to handle
       asynchronous action status updates via the live events processor manager.
     """
+
+    def __init__(self, port_client: PortClient):
+        self._port_client = port_client
 
     ACTION_NAME: str
     PARTITION_KEY: str

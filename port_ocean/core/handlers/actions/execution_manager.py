@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Dict, Type, Set, Optional, List
+from typing import Dict, Set, Optional, List
 from loguru import logger
 from pydantic import BaseModel
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     WebhookProcessorType,
 )
-from port_ocean.core.models import ActionRun, RunStatus
+from port_ocean.core.models import (
+    ActionRun,
+    IntegrationActionInvocationPayload,
+    RunStatus,
+)
 import asyncio
 import time
 from port_ocean.clients.port.mixins.actions import (
@@ -30,7 +34,7 @@ GLOBAL_SOURCE = "__global__"
 
 class ActionRunTask(BaseModel):
     visibility_expiration_timestamp: datetime
-    run: ActionRun
+    run: ActionRun[IntegrationActionInvocationPayload]
 
 
 class ExecutionManager:
@@ -49,7 +53,7 @@ class ExecutionManager:
         self._port_client = port_client
         self._polling_task: asyncio.Task[None] | None = None
         self._workers_pool: set[asyncio.Task[None]] = set()
-        self._actions_executors: Dict[str, Type[AbstractExecutor]] = {}
+        self._actions_executors: Dict[str, AbstractExecutor] = {}
         self._is_shutting_down = asyncio.Event()
         self._global_queue = LocalQueue[ActionRunTask]()
         self._partition_queues: Dict[str, AbstractQueue[ActionRunTask]] = {}
@@ -66,30 +70,30 @@ class ExecutionManager:
 
         signal_handler.register(self.shutdown)
 
-    def register_executor(self, executor_cls: Type[AbstractExecutor]) -> None:
+    def register_executor(self, executor: AbstractExecutor) -> None:
         """
         Register an executor implementation.
         """
-        action_name = executor_cls.ACTION_NAME
+        action_name = executor.ACTION_NAME
         if action_name in self._actions_executors:
             raise ValueError(
                 f"Executor for action '{action_name}' is already registered"
             )
 
-        webhook_processor_cls = executor_cls.WEBHOOK_PROCESSOR_CLASS
+        webhook_processor_cls = executor.WEBHOOK_PROCESSOR_CLASS
         if webhook_processor_cls:
             self._webhook_manager.register_processor(
-                executor_cls.WEBHOOK_PATH,
+                executor.WEBHOOK_PATH,
                 webhook_processor_cls,
                 WebhookProcessorType.ACTION,
             )
             logger.info(
                 "Registered executor webhook processor",
                 action=action_name,
-                webhook_path=executor_cls.WEBHOOK_PATH,
+                webhook_path=executor.WEBHOOK_PATH,
             )
 
-        self._actions_executors[action_name] = executor_cls
+        self._actions_executors[action_name] = executor
         logger.info("Registered action executor", action=action_name)
 
     async def start_processing_action_runs(self):
@@ -112,13 +116,15 @@ class ExecutionManager:
             self._workers_pool.add(task)
             task.add_done_callback(self._workers_pool.discard)
 
-    def _extract_partition_key(self, run: ActionRun, partition_key: str) -> str:
+    def _extract_partition_key(
+        self, run: ActionRun[IntegrationActionInvocationPayload], partition_key: str
+    ) -> str:
         """
         Extract the partition key from a run's payload.
         """
-        invocation_payload = run.payload.oceanExecution
-        if hasattr(invocation_payload, partition_key):
-            return getattr(invocation_payload, partition_key)
+        value = run.payload.oceanExecution.get(partition_key)
+        if value:
+            return value
 
         raise ValueError(
             f"Partition key '{partition_key}' not found in invocation payload"
@@ -126,7 +132,7 @@ class ExecutionManager:
 
     async def _add_run_to_queue(
         self,
-        run: ActionRun,
+        run: ActionRun[IntegrationActionInvocationPayload],
         queue: AbstractQueue[ActionRunTask],
         queue_name: str,
         visibility_expiration_timestamp: datetime,
@@ -145,18 +151,22 @@ class ExecutionManager:
                 await self._active_sources.put(queue_name)
 
     async def _get_queues_size(self) -> int:
+        """
+        Get the total size of all queues (global and partition queues).
+        """
         global_size = await self._global_queue.size()
-        return global_size + sum(
-            [await queue.size() for queue in self._partition_queues.values()]
-        )
+        partition_sizes = []
+        for queue in self._partition_queues.values():
+            partition_sizes.append(await queue.size())
+        return global_size + sum(partition_sizes)
 
     async def _poll_action_runs(self):
         """
         Poll action runs for all registered actions.
         Respects high watermark for queue size management.
         """
-        try:
-            while True:
+        while True:
+            try:
                 queues_size = await self._get_queues_size()
                 if queues_size >= self._high_watermark:
                     logger.warning(
@@ -168,9 +178,11 @@ class ExecutionManager:
                     continue
 
                 poll_limit = self._high_watermark - queues_size
-                runs = await self._port_client.get_pending_runs(
-                    limit=poll_limit,
-                    visibility_timeout_seconds=ocean.config.execution_agent.visibility_timeout_seconds,
+                runs: list[ActionRun[IntegrationActionInvocationPayload]] = (
+                    await self._port_client.get_pending_runs(
+                        limit=poll_limit,
+                        visibility_timeout_seconds=ocean.config.execution_agent.visibility_timeout_seconds,
+                    )
                 )
 
                 if not runs:
@@ -187,16 +199,16 @@ class ExecutionManager:
                 )
 
                 for run in runs:
-                    action_name = run.action.name
-                    if action_name not in self._actions_executors:
+                    action_type = run.payload.actionType
+                    if action_type not in self._actions_executors:
                         logger.warning(
                             "No Executors registered to handle this action, skipping run...",
-                            action=action_name,
+                            action_type=action_type,
                             run=run.id,
                         )
                         continue
 
-                    partition_key = self._actions_executors[action_name].PARTITION_KEY
+                    partition_key = self._actions_executors[action_type].PARTITION_KEY
                     if not partition_key:
                         await self._add_run_to_queue(
                             run,
@@ -215,10 +227,10 @@ class ExecutionManager:
                         partition_name,
                         visibility_expiration_timestamp,
                     )
-        except asyncio.CancelledError:
-            pass
-        except Exception as e:
-            logger.exception("Unexpected error in poll action runs", error=e)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.exception("Unexpected error in poll action runs", error=e)
 
     async def _background_timeout_check(self) -> None:
         """
@@ -302,8 +314,8 @@ class ExecutionManager:
                         await self._handle_global_queue_once()
                     else:
                         await self._handle_partition_queue_once(source)
-                except Exception:
-                    logger.exception("Worker processing error", source=source)
+                except Exception as e:
+                    logger.exception("Worker processing error", source=source, error=e)
             except Exception:
                 if not self._is_shutting_down.is_set():
                     logger.exception("Unexpected error in worker loop")
@@ -320,21 +332,22 @@ class ExecutionManager:
                 )
                 return
 
-            executor_cls = self._actions_executors.get(run_task.run.action.name)
-            if executor_cls is None:
+            executor = self._actions_executors.get(run_task.run.payload.actionType)
+            if executor is None:
                 raise Exception("No executor registered for action")
 
-            executor = executor_cls()
-            while executor.is_close_to_rate_limit():
+            while await executor.is_close_to_rate_limit():
                 await self._port_client.post_run_log(
                     run_task.run.id,
-                    f"Delayed due to low remaining rate limit. Will attempt to re-run in {executor.get_remaining_time_until_rate_limit()} seconds",
+                    f"Delayed due to low remaining rate limit. Will attempt to re-run in {executor.get_remaining_seconds_until_rate_limit()} seconds",
                 )
-                await asyncio.sleep(executor.get_remaining_seconds_until_rate_limit())
+                await asyncio.sleep(
+                    await executor.get_remaining_seconds_until_rate_limit()
+                )
 
             await self._port_client.acknowledge_run(run_task.run.id)
             logger.debug("Run acknowledged successfully", run=run_task.run.id)
-            await executor.execute(run_task.run.payload)
+            await executor.execute(run_task.run)
         except RunAlreadyAcknowledgedError:
             logger.debug("Run already acknowledged", run=run_task.run.id)
             return
@@ -342,7 +355,7 @@ class ExecutionManager:
             logger.exception(
                 "Error executing run",
                 run=run_task.run.id,
-                action=run_task.run.action.name,
+                action=run_task.run.payload.actionType,
             )
             await self._port_client.patch_run(
                 run_task.run.id, {"summary": str(e), "status": RunStatus.FAILURE}
