@@ -16,7 +16,7 @@ from urllib.parse import quote
 from loguru import logger
 from httpx import HTTPStatusError, Timeout
 
-from port_ocean.utils.http_async_client import http_async_client
+from port_ocean.utils import http_async_client
 
 from harbor.exceptions import (
     HarborAPIError,
