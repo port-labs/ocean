@@ -8,6 +8,8 @@ from harbor.client import HarborClient
 from harbor.utils.constants import HarborKind
 
 def setup_harbor_client() -> HarborClient:
+    logger.info(f"Available config keys: {list(ocean.integration_config.keys())}")
+
     return HarborClient(
         base_url=ocean.integration_config["harborUrl"],
         username=ocean.integration_config["harborUsername"],
@@ -20,13 +22,23 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Handles data synchronization for Harbor container registry resources
     """
-    client = setup_harbor_client()
+
+    try:
+        client = setup_harbor_client()
+        logger.info(f"Starting resync for Harbor {kind}")
+    except Exception as e:
+        logger.error(f"Failed to set up Harbor client: {e}")
+        return
 
     match kind:
         case HarborKind.PROJECT | HarborKind.USER:
-            async for batch in client.get_paginated_resources(HarborKind(kind)):
-                logger.info(f"Yielding {len(batch)} {kind}(s)")
-                yield batch
+            try:
+                async for batch in client.get_paginated_resources(HarborKind(kind)):
+                    logger.info(f"Yielding {len(batch)} {kind}(s)")
+                    yield batch
+            except Exception as e:
+                logger.error(f"Error fetching {kind}: {e}", exc_info=True)
+                return
 
         case HarborKind.REPOSITORY:
             # we have to fetch repositories per project - so we first get all projects, then fetch repos for each

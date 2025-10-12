@@ -286,7 +286,7 @@ class HarborClient:
         )
 
         while True:
-            query_params['page_size'] = page
+            query_params['page'] = page
 
             try:
                 response_data = await self._send_api_request(
