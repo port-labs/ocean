@@ -69,23 +69,25 @@ class HarborClient:
         """
 
         if not base_url or not base_url.strip():
-            raise InvalidConfigurationError('base_url cannot be empty')
+            raise InvalidConfigurationError("base_url cannot be empty")
 
         if not username or username is None:
-            raise MissingCredentialsError('username is required')
+            raise MissingCredentialsError("username is required")
 
         if not password or password is None:
-            raise MissingCredentialsError('password is required')
+            raise MissingCredentialsError("password is required")
 
         self.base_url = f"{base_url.rstrip('/')}/api/{API_VERSION}"
         self.username = username
         self.password = password
-        self.verify_ssl = verify_ssl
+        self.verify_ssl = verify_ssl  # do we really need SSL, let's just have it
 
         self.client, self.client.timeout = http_async_client, Timeout(DEFAULT_TIMEOUT)
 
-        auth_header_name, auth_header_value = generate_basic_auth_header(username, password)
-        if not hasattr(self.client, 'headers'):
+        auth_header_name, auth_header_value = generate_basic_auth_header(
+            username, password
+        )
+        if not hasattr(self.client, "headers"):
             self.client.headers = {}
         self.client.headers[auth_header_name] = auth_header_value
 
@@ -94,6 +96,283 @@ class HarborClient:
 
         # ideally we would want to use structured logging, but it is what it is
         logger.info(
-            f'[Ocean][Harbor] Initialized client for {self.base_url} '
-            f'(verify_ssl={self.verify_ssl})'
+            f"[Ocean][Harbor] Initialized client for {self.base_url} "
+            f"(verify_ssl={self.verify_ssl})"
         )
+
+    async def _send_api_request(
+        self,
+        method: str,
+        endpoint: str,
+        params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
+    ) -> Any:
+        """
+        Send HTTP request to Harbor API
+
+        Args:
+            method: HTTP method
+            endpoint: API endpoint path
+            params: Query parameters
+            json_data: JSON request body
+
+        Returns:
+            Parsed JSON response
+
+        Raises:
+            UnauthorizedError: 401 authentication failed
+            ForbiddenError: 403 permission denied
+            NotFoundError: 404 resource not found
+            RateLimitError: 429 rate limit exceeded
+            ServerError: 5xx server error
+        """
+        url = (
+            f"{self.base_url}{endpoint}"
+            if endpoint.startswith("/")
+            else f"{self.base_url}/{endpoint}"
+        )
+
+        try:
+            async with self._semaphore:
+                logger.debug(f"{method} {url} with params={params}")
+
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json_data,
+                )
+
+                response.raise_for_status()
+                return response.json()
+
+        except HTTPStatusError as e:
+            status_code = e.response.status_code
+
+            match status_code:
+                case 401:
+                    logger.error(f"Authentication failed for {url}")
+                    raise UnauthorizedError(
+                        "Authentication failed. Check your Harbor credentials"
+                    )
+
+                case 403:
+                    logger.error(f"Permission denied for {url}")
+                    raise ForbiddenError(
+                        "Permission denied. Check your Harbor user permissions"
+                    )
+
+                case 404:
+                    resource = endpoint.split("/")[-1] if "/" in endpoint else endpoint
+                    logger.warning(f"Resource not found: {url}")
+                    raise NotFoundError(resource)
+
+                case 429:
+                    # we're been throttled - retry after specified time
+                    retry_after = int(e.response.headers.get("Retry-After", "60"))
+                    logger.warning(
+                        f"Rate limited. Retrying after {retry_after} seconds"
+                    )
+
+                    await asyncio.sleep(retry_after)
+                    return await self._send_api_request(
+                        method, endpoint, params, json_data
+                    )
+
+                case _ if status_code >= 500:
+                    logger.error(f"Harbor server error ({status_code}) for {url}")
+                    raise ServerError(
+                        f"Harbor server error: {status_code}", status_code
+                    )
+
+                case _:
+                    logger.error(f"Harbor API error ({status_code}) for {url}")
+                    raise HarborAPIError(f"API error: {status_code}", status_code)
+
+    def _build_endpoint_url(
+        self,
+        kind: HarborKind,
+        project_name: Optional[str] = None,
+        repository_name: Optional[str] = None,
+    ):
+        # pretty much self-explanatory no? :eyes:
+        #
+        # Raises:
+        #   InvalidConfigurationError: If required parameters are missing
+        match kind:
+            case HarborKind.PROJECT:
+                return ENDPOINTS["projects"]
+
+            case HarborKind.USER:
+                return ENDPOINTS["users"]
+
+            case HarborKind.REPOSITORY:
+                if not project_name:
+                    raise InvalidConfigurationError(
+                        "project_name is required when fetching repositories"
+                    )
+
+                encoded_project = quote(project_name, safe="")
+                return ENDPOINTS["repositories"].format(project_name=encoded_project)
+
+            case HarborKind.ARTIFACT:
+                if not project_name or not repository_name:
+                    raise InvalidConfigurationError(
+                        "Both project_name and repository_name are required when fetching artifacts"
+                    )
+                # double-encode repository name - don't blame me, see Harbor requirement for slashes
+                # First encoding: library/nginx -> library%2Fnginx
+                # Second encoding: library%2Fnginx -> library%252Fnginx
+                encoded_project = quote(project_name, safe="")
+                encoded_repo = quote(quote(repository_name, safe=""), safe="")
+
+                return ENDPOINTS["artifacts"].format(
+                    project_name=encoded_project, repository_name=encoded_repo
+                )
+            case _:
+                raise InvalidConfigurationError(f"Unknown resource kind: {kind}")
+
+    async def get_paginated_resources(
+        self,
+        kind: HarborKind,
+        project_name: Optional[str] = None,
+        repository_name: Optional[str] = None,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Pagination router that fetches paginated resources from GoHarbor API
+
+        Usage:
+            async for projects in client.get_paginated_resources(HarborKind.PROJECT):
+                for project in projects:
+                    print(project['name'])
+
+        Args:
+            kind: Resource type to fetch
+            project_name: Project name (required for repositories and artifacts)
+            repository_name: Repository name (required for artifacts)
+            params: Additional query parameters (filters, enrichment flags, etc.)
+
+        Yields:
+            Batches of resources as lists of dictionaries
+        """
+        endpoint = self._build_endpoint_url(kind, project_name, repository_name)
+
+        query_params = params.copy() if params else {}
+        if 'page_size' not in query_params:
+            query_params['page_size'] = DEFAULT_PAGE_SIZE
+
+        if kind == HarborKind.ARTIFACT:
+            for key, val in ARTIFACT_QUERY_PARAMS.items():
+                if key not in query_params:
+                    query_params[key] = val
+
+        page = 1
+        total_fetched = 0
+
+        logger.info(
+            f'[Ocean][Harbor] Starting paginated fetch for {kind} '
+                f'(project={project_name}, repo={repository_name})'
+        )
+
+        while True:
+            query_params['page_size'] = page
+
+            try:
+                response_data = await self._send_api_request(
+                    "GET",
+                    endpoint,
+                    params=query_params
+                )
+
+                items = response_data if isinstance(response_data, list) else []
+
+                if not items:
+                    logger.info(
+                        f"[Ocean][Harbor] Completed pagination for {kind}. "
+                        f"Total fetched: {total_fetched}"
+                    )
+                    break
+
+                total_fetched += len(items)
+                logger.debug(
+                    f"[Ocean][Harbor] Fetched page {page} for {kind}: {len(items)} items "
+                    f"(total so far: {total_fetched})"
+                )
+
+                yield items
+                page += 1
+
+            except Exception as e:
+                logger.error(f"Error fetching {kind} page {page}: {e}")
+                raise
+
+
+    async def get_paginated_projects(
+        self, params: Optional[dict[str, Any]] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        # Convenience method to fetch projects
+        #
+        # Args:
+        #     params: Optional filters (public, private, name, etc.)
+        #
+        # Yields:
+        #     Batches of projects
+        async for batch in self.get_paginated_resources(
+            HarborKind.PROJECT, params=params
+        ):
+            yield batch
+
+    async def get_paginated_users(
+        self, params: Optional[dict[str, Any]] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        # Method to fetch users
+        #
+        # Args:
+        #     params: Optional filters
+        #
+        # Yields:
+        #     Batches of users
+        async for batch in self.get_paginated_resources(HarborKind.USER, params=params):
+            yield batch
+
+    async def get_paginated_repositories(
+        self,
+        project_name: str,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        # Method to fetch repositories for a project
+        #
+        # Args:
+        #     project_name: Project name
+        #     params: Optional filters
+        #
+        # Yields:
+        #     Batches of repositories
+        async for batch in self.get_paginated_resources(
+            HarborKind.REPOSITORY, project_name=project_name, params=params
+        ):
+            yield batch
+
+    async def get_paginated_artifacts(
+        self,
+        project_name: str,
+        repository_name: str,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        # Method to fetch artifacts for a repository
+        #
+        # Args:
+        #     project_name: Project name
+        #     repository_name: Repository name
+        #     params: Optional filters (with_tag, with_scan_overview, etc.)
+        #
+        # Yields:
+        #     Batches of artifacts
+        async for batch in self.get_paginated_resources(
+            HarborKind.ARTIFACT,
+            project_name=project_name,
+            repository_name=repository_name,
+            params=params,
+        ):
+            yield batch
