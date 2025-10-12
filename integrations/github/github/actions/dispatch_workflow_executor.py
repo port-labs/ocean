@@ -24,7 +24,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from integrations.github.github.webhook.webhook_processors.base_workflow_run_webhook_processor import (
     BaseWorkflowRunWebhookProcessor,
 )
-from port_ocean.core.models import ActionRun, RunStatus
+from port_ocean.core.models import ActionRun, IntegrationActionInvocationPayload, RunStatus
 from integrations.github.github.actions.abstract_github_executor import AbstractGithubExecutor
 
 
@@ -77,9 +77,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor, ActionsClientMixin):
         repo = await repoExporter.get_resource(SingleRepositoryOptions(name=repo))
         return repo.get("default_branch", "main")
 
-    async def execute(self, run: ActionRun) -> None:
-        repo = run.payload.get("repo")
-        workflow = run.payload.get("workflow")
+    async def execute(self, run: ActionRun[IntegrationActionInvocationPayload]) -> None:
+        repo = run.payload.oceanExecution.get("repo")
+        workflow = run.payload.oceanExecution.get("workflow")
         inputs = run.payload.oceanExecution.get("workflowInputs", {})
 
         if not (repo and workflow):

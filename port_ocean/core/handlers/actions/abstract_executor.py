@@ -1,14 +1,11 @@
 from abc import ABC, abstractmethod
-from ast import Dict, TypeAlias
-from typing import Any, Optional, Type
+from typing import Optional, Type
 
 
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-
-
-ActionPayload: TypeAlias = Dict[str, Any]
+from port_ocean.core.models import ActionRun, IntegrationActionInvocationPayload
 
 
 class AbstractExecutor(ABC):
@@ -43,7 +40,7 @@ class AbstractExecutor(ABC):
         pass
 
     @abstractmethod
-    async def execute(self, payload: ActionPayload) -> None:
+    async def execute(self, run: ActionRun[IntegrationActionInvocationPayload]) -> None:
         """
         Execute the action.
         """

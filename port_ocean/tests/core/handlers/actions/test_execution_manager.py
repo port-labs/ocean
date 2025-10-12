@@ -2,8 +2,8 @@ import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 import pytest
+from port_ocean.clients.port.mixins.actions import RunAlreadyAcknowledgedError
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
-from port_ocean.core.handlers.actions.errors import RunAlreadyAcknowledgedError
 from port_ocean.core.handlers.actions.execution_manager import (
     ExecutionManager,
     ActionRunTask,

@@ -77,9 +77,7 @@ async def _initialize_required_integration_settings(
                 integration_config.integration.type,
                 integration_config.event_listener.get_changelog_destination_details(),
                 port_app_config=default_mapping,
-                extra_json={
-                    "isExecutionAgent": integration_config.execution_agent.enabled,
-                },
+                is_execution_agent=integration_config.execution_agent.enabled,
                 create_port_resources_origin_in_port=integration_config.create_port_resources_origin
                 == CreatePortResourcesOrigin.Port,
             )

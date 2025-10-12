@@ -1,4 +1,3 @@
-from ctypes import Union
 from dataclasses import dataclass, field
 from enum import Enum, StrEnum
 from typing import Any, Literal, TypedDict
@@ -155,15 +154,19 @@ class InvocationType(StrEnum):
     INTEGRATION_ACTION = "INTEGRATION_ACTION"
 
 
-class IntegrationInvocationPayload(BaseModel):
+class InvocationPayload(BaseModel):
+    type: Literal[InvocationType]
+
+
+class IntegrationActionInvocationPayload(InvocationPayload):
     type: Literal[InvocationType.INTEGRATION_ACTION]
     installationId: int
     action: str
-    oceanExecution: Any = Field(default_factory=dict)
+    oceanExecution: dict[str, Any] = Field(default_factory=dict)
 
 
-class ActionRun(BaseModel):
+class ActionRun[T](BaseModel):
     id: str
     status: RunStatus
     action: Action
-    payload: Union[IntegrationInvocationPayload]
+    payload: T
