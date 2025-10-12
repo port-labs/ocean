@@ -1,50 +1,110 @@
-from typing import Any
+from typing import Any, AsyncGenerator
+from loguru import logger
 
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
 
+from harbor.client import HarborClient
+from harbor.utils.constants import HarborKind
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
+def setup_harbor_client() -> HarborClient:
+    return HarborClient(
+        base_url=ocean.integration_config["harborUrl"],
+        username=ocean.integration_config["harborUsername"],
+        password=ocean.integration_config["harborPassword"],
+        verify_ssl=ocean.integration_config.get("verifySsl", True),
+    )
+
 @ocean.on_resync()
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
-    # Example:
-    # if kind == "project":
-    #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == "issues":
-    #     return [{"some_issue_key": "someIssueValue", ...}]
+async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Handles data synchronization for Harbor container registry resources
+    """
+    client = setup_harbor_client()
 
-    # Initial stub to show complete flow, replace this with your own logic
-    if kind == "goharbor_ocean-example-kind":
-        return [
-            {
-                "my_custom_id": f"id_{x}",
-                "my_custom_text": f"very long text with {x} in it",
-                "my_special_score": x * 32 % 3,
-                "my_component": f"component-{x}",
-                "my_service": f"service-{x %2}",
-                "my_enum": "VALID" if x % 2 == 0 else "FAILED",
-            }
-            for x in range(25)
-        ]
+    match kind:
+        case HarborKind.PROJECT | HarborKind.USER:
+            async for batch in client.get_paginated_resources(HarborKind(kind)):
+                logger.info(f"Yielding {len(batch)} {kind}(s)")
+                yield batch
 
-    return []
+        case HarborKind.REPOSITORY:
+            # we have to fetch repositories per project - so we first get all projects, then fetch repos for each
+            projects = []
+            async for project_batch in client.get_paginated_resources(HarborKind.PROJECT):
+                projects.extend(project_batch)
+
+            logger.info(f"Fetching repositories across {len(projects)} projects")
+
+            for project in projects:
+                project_name = project["name"]
+                try:
+                    async for repo_batch in client.get_paginated_resources(
+                        HarborKind.REPOSITORY,
+                        project_name=project_name
+                    ):
+                        if repo_batch:
+                            logger.info(
+                                f"Yielding {len(repo_batch)} repositories from project '{project_name}'"
+                            )
+                            yield repo_batch
+                except Exception as e:
+                    logger.error(f"Error fetching repositories for project '{project_name}': {e}")
+                    continue
+
+        # same for artifacts - we have to go project -> repo -> artifacts
+        case HarborKind.ARTIFACT:
+            projects = []
+            async for project_batch in client.get_paginated_resources(HarborKind.PROJECT):
+                projects.extend(project_batch)
+
+            logger.info(f"Fetching artifacts across {len(projects)} projects")
+
+            for project in projects:
+                project_name = project["name"]
+
+                try:
+                    async for repo_batch in client.get_paginated_resources(
+                        HarborKind.REPOSITORY,
+                        project_name=project_name
+                    ):
+                        for repo in repo_batch:
+                            # repository name (format: "project/repo")
+                            repo_full_name = repo["name"]
+                            # GoHarbor repo name includes project prefix, we would extract just the repo part
+                            repo_name = repo_full_name.split("/", 1)[-1] if "/" in repo_full_name else repo_full_name
+
+                            try:
+                                async for artifact_batch in client.get_paginated_resources(
+                                    HarborKind.ARTIFACT,
+                                    project_name=project_name,
+                                    repository_name=repo_full_name, # Use full name for API call
+                                ):
+                                    if artifact_batch:
+                                        logger.info(
+                                            f"Yielding {len(artifact_batch)} artifacts from "
+                                                f"'{project_name}/{repo_name}'"
+                                        )
+                                    yield artifact_batch
+                            except Exception as e:
+                                logger.error(
+                                    f"Error fetching artifacts for '{project_name}/{repo_name}': {e}"
+                                )
+                            continue
+                except Exception as e:
+                    logger.error(f"Error processing project '{project_name}' for artifacts: {e}")
+                    continue
+
+        case _:
+            logger.warning(f"Unknown resource kind: {kind}")
 
 
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
+@ocean.app.fast_api_app.get("/health", tags=["Health"], summary="Health Check for GoHarbor Integration")
+async def health_check() -> dict[str, Any]:
+    """
+    Simple health check endpoint to verify the integration is running
+    """
+    return {'status': 'healthy'}
 
 
 # Optional
