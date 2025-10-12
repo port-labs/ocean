@@ -7,6 +7,134 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.4.3-beta (2025-10-08)
+
+
+### Improvements
+
+- Improved resync resilience and observability for multi-account scenarios.
+
+
+## 1.4.2-beta (2025-10-06)
+
+
+### Features
+
+- Add support for AWS::SQS::Queue Kind
+
+
+## 1.4.1-beta (2025-10-06)
+
+
+### Features
+
+- Add support for AWS::ECS::Service Kind
+
+
+## 1.4.0-beta (2025-10-06)
+
+
+### Features
+
+- Added support for Lambda Function.
+
+
+## 1.3.9-beta (2025-10-01)
+
+
+### Features
+
+- Added support for RDS DB Instance.
+
+
+## 1.3.8-beta (2025-10-01)
+
+
+### Features
+
+- Added support for EKS Cluster.
+
+
+## 1.3.7-beta (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 1.3.6-beta (2025-09-28)
+
+
+### Bug Fixes
+
+- Fixed a bug in the AWS Organization Account kind where the title property was incorrectly set to use "AccountName" instead of the correct "Name" property.
+
+
+## 1.3.5-beta (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 1.3.4-beta (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 1.3.3-beta (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 1.3.2-beta (2025-09-18)
+
+
+### Improvements
+
+- Add docs and installation docs to the integration
+
+
+## 1.3.1-beta (2025-09-17)
+
+
+### Improvements
+
+- Improve runtime complexity by processing accessible accounts concurrently
+
+
+## 1.3.0-beta (2025-09-17)
+
+
+### Features
+
+- Add support for AWS::Organizations::Account Kind
+
+
+## 1.2.2-beta (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 1.2.1-beta (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
 ## 1.2.0-beta (2025-09-09)
 
 

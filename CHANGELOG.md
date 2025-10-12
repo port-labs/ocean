@@ -6,6 +6,57 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.28.12 (2025-09-30)
+
+### Bug fixes
+
+- Change raw data timestamp from to int with miliseconds
+
+## 0.28.11 (2025-09-28)
+
+### Bug fixes
+
+- Change raw data timestamp from sting to int
+
+## 0.28.10 (2025-09-26)
+
+### Bug fixes
+
+- Convert Entity dictionary identifiers to consistent json representation
+- Fix buggy check in EntityMapping that always resolves to False
+
+
+## 0.28.9 (2025-09-21)
+
+### Bug Fixes
+
+- revert memory optimization commit
+
+
+## 0.28.8 (2025-09-21)
+
+### Improvements
+
+- added extractionTimestamp to post_integration_raw_data
+
+
+## 0.28.7 (2025-09-16)
+
+### Improvements
+
+- Support for events which their payload offloaded to the fs
+- Memory optimizations of itemstoparse feature
+
+## 0.28.6 (2025-09-16)
+
+### Improvements
+- Add secrets to github ocean secrets
+
+## 0.28.5 (2025-09-16)
+
+### Bug Fixes
+- Fix user ocean permissions on `/etc/ssl/certs`
+
 ## 0.28.4 (2025-09-10)
 
 ### Bug Fixes
