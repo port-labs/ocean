@@ -66,7 +66,7 @@ resources:
             type: .type
             digest: .digest
             size: .size
-            tags: .tags | map(.name)
+            tags: (.tags // []) | map(.name)
             pushTime: .push_time
             pullTime: .pull_time
             vulnerabilities: .scan_overview
