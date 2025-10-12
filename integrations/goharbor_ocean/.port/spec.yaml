@@ -1,0 +1,28 @@
+type: harbor
+description: goharbor_ocean container registry integration for Port Ocean
+icon: Cookiecutter
+docs: https://goharbor.io/docs/
+features:
+  - type: exporter
+    section: CI/CD
+    resources:
+      - kind: project
+      - kind: repository
+      - kind: artifact
+      - kind: user
+configurations:
+  - name: harborUrl
+    required: true
+    type: url
+    description: "Base URL of your Harbor instance (e.g., https://harbor.example.com or http://localhost:8081)"
+    sensitive: false
+  - name: harborUsername
+    required: true
+    type: string
+    description: "Harbor robot account username (e.g., robot$project+robotname or user-defined)"
+    sensitive: true
+  - name: harborPassword
+    required: true
+    type: string
+    description: "Harbor robot account token or password"
+    sensitive: true

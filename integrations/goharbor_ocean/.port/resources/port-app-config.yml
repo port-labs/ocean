@@ -1,0 +1,75 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+
+resources:
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .project_id | tostring
+          title: .name
+          blueprint: '"harborProject"'
+          properties:
+            ownerName: .owner_name
+            public: .metadata.public == "true"
+            repoCount: .repo_count
+            creationTime: .creation_time
+            updateTime: .update_time
+
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .user_id | tostring
+          title: .username
+          blueprint: '"harborUser"'
+          properties:
+            email: .email
+            realname: .realname
+            sysadminFlag: .sysadmin_flag
+            adminRoleInAuth: .admin_role_in_auth
+            creationTime: .creation_time
+            updateTime: .update_time
+
+  - kind: repository
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"harborRepository"'
+          properties:
+            description: .description // ""
+            artifactCount: .artifact_count
+            pullCount: .pull_count
+            creationTime: .creation_time
+            updateTime: .update_time
+          relations:
+            project: .project_id | tostring
+
+  - kind: artifact
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: (.tags[0].name // "untagged") + "@" + (.digest | split(":")[1][:12])
+          blueprint: '"harborArtifact"'
+          properties:
+            type: .type
+            digest: .digest
+            size: .size
+            tags: .tags | map(.name)
+            pushTime: .push_time
+            pullTime: .pull_time
+            vulnerabilities: .scan_overview
+          relations:
+            repository: .repository_id | tostring
+            project: .project_id | tostring
