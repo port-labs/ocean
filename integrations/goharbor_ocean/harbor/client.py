@@ -77,7 +77,12 @@ class HarborClient:
         if not password or password is None:
             raise MissingCredentialsError("password is required")
 
-        self.base_url = f"{base_url.rstrip('/')}/api/{API_VERSION}"
+        base_url_clean = base_url.rstrip('/')
+        api_suffix = f"/api/{API_VERSION}"
+        if base_url_clean.endswith(api_suffix):
+            self.base_url = base_url_clean
+        else:
+            self.base_url = f"{base_url_clean}{api_suffix}"
         self.username = username
         self.password = password
         self.verify_ssl = verify_ssl  # do we really need SSL, let's just have it
