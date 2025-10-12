@@ -282,5 +282,16 @@
       "request": "launch",
       "type": "debugpy"
     },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/harbor-server",
+      "envFile": "${workspaceFolder}/integrations/harbor-server/.env",
+      "justMyCode": true,
+      "name": "Run harbor-server integration",
+      "program": "${workspaceFolder}/integrations/harbor-server/debug.py",
+      "python": "${workspaceFolder}/integrations/harbor-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    }
   ]
 }

@@ -1,0 +1,97 @@
+description: harbor-server integration for Port Ocean
+icon: Star
+title: Harbor
+features:
+  - type: exporter
+    section: Infrastructure as Code  # Should be one of the available sections in Port
+    resources:
+      - kind: projects
+      - kind: users
+      - kind: repositories
+      - kind: artifacts
+configurations:
+  - name: harborUrl
+    required: true
+    type: string
+    description: Harbor instance URL (e.g., http://localhost:8081 or https://harbor.example.com)
+    default: ""
+
+  - name: harborUsername
+    required: true
+    type: string
+    sensitive: false
+    description: >
+      Harbor username or robot account name.
+      For robot accounts, use format: robot$account-name
+    default: ""
+
+  - name: harborPassword
+    required: true
+    type: string
+    sensitive: true
+    description: Harbor password or robot account token
+    default: ""
+
+  - name: pageSize
+    required: false
+    type: integer
+    description: Number of items to fetch per page
+    default: 100
+
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: Shared secret for webhook signature verification (HMAC-SHA256)
+    default: ""
+
+  - name: projectFilters
+    required: false
+    type: object
+    description: Filters for project synchronization
+    default: {}
+    properties:
+      public:
+        type: boolean
+        description: Filter by public/private projects (true=public, false=private)
+      name:
+        type: string
+        description: Filter projects by name (partial match)
+
+  - name: repositoryFilters
+    required: false
+    type: object
+    description: Filters for repository synchronization
+    default: {}
+    properties:
+      projectName:
+        type: string
+        description: Only sync repositories from this project
+      nameContains:
+        type: string
+        description: Filter repositories by name substring
+
+  - name: artifactFilters
+    required: false
+    type: object
+    description: Filters for artifact synchronization
+    default: {}
+    properties:
+      projectName:
+        type: string
+        description: Only sync artifacts from this project
+      minSeverity:
+        type: string
+        enum:
+          - Critical
+          - High
+          - Medium
+          - Low
+          - None
+        description: Minimum vulnerability severity to include
+      tagFilter:
+        type: string
+        description: Filter artifacts by tag name (substring match)
+      createdSince:
+        type: string
+        description: ISO timestamp - only sync artifacts created after this time (e.g., 2024-01-01T00:00:00Z)
