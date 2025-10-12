@@ -1,6 +1,6 @@
 import pytest
 from httpx import HTTPStatusError, Request
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 from harbor.client import HarborClient
 
 @pytest.fixture
@@ -13,12 +13,15 @@ def harbor_config():
 
 @pytest.fixture
 def harbor_client(harbor_config):
+    """ for init """
     return HarborClient(
         base_url=harbor_config['base_url'],
         username=harbor_config['username'],
         password=harbor_config['password'],
         verify_ssl=False  # For testing purposes; in production, this should be True
     )
+
+
 @pytest.fixture
 def mock_project_response():
     return [
@@ -143,3 +146,18 @@ def mock_async_client():
     client.auth = None
     client.headers = {}
     return client
+
+
+
+@pytest.fixture
+def harbor_client_mocked(harbor_config, mock_async_client):
+    """ client with mocked Ocean HTTP client - for api method testing"""
+
+    with patch('harbor.client.http_async_client', mock_async_client):
+        client = HarborClient(
+            base_url=harbor_config['base_url'],
+            username=harbor_config['username'],
+            password=harbor_config['password'],
+            verify_ssl=False  # For testing purposes; in production, this should be True
+        )
+        return client
