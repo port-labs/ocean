@@ -190,9 +190,7 @@
       "python": "${workspaceFolder}/.venv/bin/python",
       "request": "launch",
       "type": "debugpy",
-      "args": [
-        "new"
-      ]
+      "args": ["new"]
     },
     {
       "console": "integratedTerminal",
@@ -246,6 +244,17 @@
       "name": "Run aikido integration",
       "program": "${workspaceFolder}/integrations/aikido/debug.py",
       "python": "${workspaceFolder}/integrations/aikido/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/goharbor_ocean",
+      "envFile": "${workspaceFolder}/integrations/goharbor_ocean/.env",
+      "justMyCode": true,
+      "name": "Run goharbor_ocean integration",
+      "program": "${workspaceFolder}/integrations/goharbor_ocean/debug.py",
+      "python": "${workspaceFolder}/integrations/goharbor_ocean/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     }
