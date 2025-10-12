@@ -35,10 +35,6 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     try:
         client = setup_harbor_client()
-
-        import pdb
-        pdb.set_trace()
-
         logger.info(f"Starting resync for Harbor {kind}")
     except Exception as e:
         logger.error(f"Failed to set up Harbor client: {e}")
