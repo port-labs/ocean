@@ -7,15 +7,25 @@ from port_ocean.context.ocean import ocean
 from harbor.client import HarborClient
 from harbor.utils.constants import HarborKind
 
+_harbor_client: HarborClient | None = None
+
 def setup_harbor_client() -> HarborClient:
+    global _harbor_client
+
     logger.info(f"Available config keys: {list(ocean.integration_config.keys())}")
 
-    return HarborClient(
-        base_url=ocean.integration_config["harborUrl"],
-        username=ocean.integration_config["harborUsername"],
-        password=ocean.integration_config["harborPassword"],
-        verify_ssl=ocean.integration_config.get("verifySsl", True),
-    )
+    if _harbor_client is None:
+        logger.info("Setting up Harbor client")
+
+        _harbor_client =  HarborClient(
+            base_url=ocean.integration_config["harborUrl"],
+            username=ocean.integration_config["harborUsername"],
+            password=ocean.integration_config["harborPassword"],
+            verify_ssl=ocean.integration_config.get("verifySsl", True),
+        )
+        logger.info(f"Harbor client initialized for {_harbor_client.base_url}")
+
+    return _harbor_client
 
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -25,6 +35,10 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     try:
         client = setup_harbor_client()
+
+        import pdb
+        pdb.set_trace()
+
         logger.info(f"Starting resync for Harbor {kind}")
     except Exception as e:
         logger.error(f"Failed to set up Harbor client: {e}")
