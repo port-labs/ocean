@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional, List, Sequence
+from typing import Dict, Any, Optional
 from pydantic import Field, BaseModel
 
 from port_ocean.core.handlers.port_app_config.models import (
