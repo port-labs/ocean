@@ -18,10 +18,10 @@ def setup_harbor_client() -> HarborClient:
         logger.info("Setting up Harbor client")
 
         _harbor_client =  HarborClient(
-            base_url=ocean.integration_config["harborUrl"],
-            username=ocean.integration_config["harborUsername"],
-            password=ocean.integration_config["harborPassword"],
-            verify_ssl=ocean.integration_config.get("verifySsl", True),
+            base_url=str(ocean.integration_config["harbor_url"]),
+            username=ocean.integration_config["harbor_username"],
+            password=ocean.integration_config["harbor_password"],
+            verify_ssl=ocean.integration_config.get("verify_ssl", True),
         )
         logger.info(f"Harbor client initialized for {_harbor_client.base_url}")
 
@@ -136,3 +136,12 @@ async def on_start() -> None:
     # Something to do when the integration starts
     # For example create a client to query 3rd party services - GitHub, Jira, etc...
     print("Starting goharbor_ocean integration")
+
+    try:
+        logger.info("=" * 60)
+        logger.info("DEBUG: Ocean integration config keys:")
+        logger.info(f"All keys: {list(ocean.integration_config.keys())}")
+        logger.info(f"Full config: {dict(ocean.integration_config)}")
+        logger.info("=" * 60)
+    except Exception as e:
+        logger.error(f"Can't access integration config: {e}")
