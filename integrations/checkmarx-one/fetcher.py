@@ -50,7 +50,9 @@ async def fetch_dast_scan_results_for_environment(
 
     dast_scan_options = ListDastScanOptions(
         environment_id=env_id,
-        groups=selector.dast_scan_filter.groups,
+        scan_type=selector.dast_scan_filter.scan_type,
+        updated_from_date=selector.dast_scan_filter.updated_from_date,
+        max_results=selector.dast_scan_filter.max_results,
     )
 
     tasks = []

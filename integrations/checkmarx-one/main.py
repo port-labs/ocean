@@ -273,7 +273,9 @@ async def on_dast_scan_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             dast_scan_exporter.get_paginated_resources(
                 ListDastScanOptions(
                     environment_id=dast_scan_environment["environmentId"],
-                    groups=selector.groups,
+                    scan_type=selector.scan_type,
+                    updated_from_date=selector.updated_from_date,
+                    max_results=selector.max_results,
                 )
             )
             for dast_scan_environment in dast_scans_environments_batch

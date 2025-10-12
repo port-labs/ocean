@@ -230,3 +230,84 @@ class CheckmarxOneClient:
             except Exception as e:
                 logger.error(f"Error in paginated request to {endpoint}: {str(e)}")
                 raise
+
+
+    async def send_paginated_request_offset_based(
+        self,
+        endpoint: str,
+        object_key: str,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[List[dict[str, Any]], None]:
+        """
+        Get paginated resources from Checkmarx One API (using `from` and `to` pagination).
+
+        Args:
+            endpoint: API endpoint path (e.g., "/dast/scans/scans")
+            object_key: Key in response containing the items (e.g., "data" or "scans")
+            params: Additional query parameters (must include environmentID)
+
+        Yields:
+            Batches of resources (lists of dicts)
+        """
+
+        params = params or {}
+        start_index = 0
+
+        while True:
+            page_params = {
+                **params,
+                "from": start_index,
+                "to": start_index + PAGE_SIZE,
+            }
+
+            response = await self.send_api_request(endpoint, params=page_params)
+            if not response or not (items := response[object_key]):
+                break
+
+            yield items
+
+            if len(items) < PAGE_SIZE:
+                break
+
+            start_index += PAGE_SIZE
+
+
+    async def send_paginated_request_page_based(
+        self,
+        endpoint: str,
+        object_key: str,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[List[dict[str, Any]], None]:
+        """
+        Get paginated resources from Checkmarx One API (using `page` and `per_page` pagination).
+
+        Args:
+            endpoint: API endpoint path (e.g., "/dast/scans/results")
+            object_key: Key in response containing the items (e.g., "data" or "results")
+            params: Additional query parameters (must include environmentID, scanID, etc.)
+
+        Yields:
+            Batches of scan result objects (lists of dicts).
+        """
+
+        params = params or {}
+        page_number = 1
+
+        while True:
+            page_params = {
+                **params,
+                "page": page_number,
+                "per_page": PAGE_SIZE,
+            }
+
+            response = await self.send_api_request(endpoint, params=page_params)
+            if not response or not (items := response[object_key]):
+                break
+            
+            yield items
+
+            total_pages = response["pages_number"]
+            if page_number >= total_pages:
+                break
+
+            page_number += 1

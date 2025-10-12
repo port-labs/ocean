@@ -39,7 +39,7 @@ class CheckmarxDastScanResultExporter(AbstractCheckmarxExporter):
         params: dict[str, Any] = self._build_params(options)
         dast_scan_id = options["dast_scan_id"]
         endpoint = f"/dast/mfe-results/results/{dast_scan_id}"
-        async for results in self.client.send_paginated_request(
+        async for results in self.client.send_paginated_request_page_based(
             endpoint, "results", params
         ):
             logger.info(

@@ -25,7 +25,9 @@ class TestFetcher:
         mock_selector.filter.severity = ["critical", "high"]
         mock_selector.filter.status = ["new", "recurrent"]
         mock_selector.filter.state = ["to_verify", "confirmed"]
-        mock_selector.dast_scan_filter.groups = ["group1", "group2"]
+        mock_selector.dast_scan_filter.scan_type = "DAST"
+        mock_selector.dast_scan_filter.updated_from_date = "2021-06-02T12:14:18.028555Z"
+        mock_selector.dast_scan_filter.max_results = 3000
         return mock_selector
 
     @pytest.fixture

@@ -1,5 +1,6 @@
 from enum import StrEnum
 from typing import NamedTuple, Optional, List
+from datetime import datetime, timedelta, timezone
 
 
 class ObjectKind(StrEnum):
@@ -50,3 +51,19 @@ def sast_visible_columns() -> List[str]:
         "state",
         "nodes",
     ]
+
+
+def days_ago_to_rfc3339(days: int) -> str:
+    """
+    Convert days ago to RFC3339 format.
+    
+    Args:
+        days: Number of days ago from current time
+        
+    Returns:
+        RFC3339 formatted datetime string (e.g., 2021-06-02T12:14:18.028555Z)
+    """
+    dt = datetime.now(timezone.utc) - timedelta(days=days)
+    # Format to RFC3339 with microseconds and Zulu time
+    # RFC3339 Date (Extend) format (e.g. 2021-06-02T12:14:18.028555Z)
+    return dt.isoformat(timespec="microseconds").replace("+00:00", "Z")

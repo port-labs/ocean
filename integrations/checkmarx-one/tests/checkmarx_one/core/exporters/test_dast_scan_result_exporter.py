@@ -36,14 +36,14 @@ class TestCheckmarxDastScanResultExporter:
     def mock_client(self) -> AsyncMock:
         mock_client = AsyncMock()
 
-        # Create an async generator placeholder for send_paginated_request
+        # Create an async generator placeholder for send_paginated_request_page_based
         async def mock_paginated_resources(
             *args: Any, **kwargs: Any
         ) -> AsyncIterator[List[dict[str, Any]]]:
             if False:  # ensure async generator type
                 yield []
 
-        mock_client.send_paginated_request = mock_paginated_resources
+        mock_client.send_paginated_request_page_based = mock_paginated_resources
         return mock_client
 
     @pytest.fixture
@@ -76,7 +76,7 @@ class TestCheckmarxDastScanResultExporter:
             yield [{"resultId": "result-1", "severity": "high"}]
             yield [{"resultId": "result-2", "severity": "medium"}]
 
-        mock_client.send_paginated_request = gen
+        mock_client.send_paginated_request_page_based = gen
 
         batches: list[list[dict[str, Any]]] = []
         async for batch in exporter.get_paginated_resources(basic_options):
@@ -100,7 +100,7 @@ class TestCheckmarxDastScanResultExporter:
         async def gen(*args: Any, **kwargs: Any) -> AsyncIterator[List[dict[str, Any]]]:
             yield [{"resultId": "result-1", "severity": "critical"}]
 
-        mock_client.send_paginated_request = gen
+        mock_client.send_paginated_request_page_based = gen
 
         batches: list[list[dict[str, Any]]] = []
         async for batch in exporter.get_paginated_resources(options_with_filters):
@@ -122,7 +122,7 @@ class TestCheckmarxDastScanResultExporter:
         async def gen(*args: Any, **kwargs: Any) -> AsyncIterator[List[dict[str, Any]]]:
             yield []
 
-        mock_client.send_paginated_request = gen
+        mock_client.send_paginated_request_page_based = gen
 
         batches: list[list[dict[str, Any]]] = []
         async for batch in exporter.get_paginated_resources(basic_options):
@@ -159,7 +159,7 @@ class TestCheckmarxDastScanResultExporter:
             call_args["params"] = params
             yield [{"resultId": "result-1"}]
 
-        mock_client.send_paginated_request = gen
+        mock_client.send_paginated_request_page_based = gen
 
         async for _ in exporter.get_paginated_resources(options_with_filters):
             break
@@ -192,7 +192,7 @@ class TestCheckmarxDastScanResultExporter:
             call_args["params"] = params
             yield [{"resultId": "result-1"}]
 
-        mock_client.send_paginated_request = gen
+        mock_client.send_paginated_request_page_based = gen
 
         async for _ in exporter.get_paginated_resources(basic_options):
             break
@@ -301,7 +301,7 @@ class TestCheckmarxDastScanResultExporter:
             yield [{"resultId": f"result-{i}"} for i in range(3, 5)]
             yield []
 
-        mock_client.send_paginated_request = gen
+        mock_client.send_paginated_request_page_based = gen
 
         batches: list[list[dict[str, Any]]] = []
         async for batch in exporter.get_paginated_resources(basic_options):

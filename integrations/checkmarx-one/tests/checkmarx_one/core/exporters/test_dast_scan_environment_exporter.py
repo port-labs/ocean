@@ -35,14 +35,14 @@ class TestCheckmarxDastScanEnvironmentExporter:
     def mock_client(self) -> AsyncMock:
         mock_client = AsyncMock()
 
-        # Create an async generator placeholder for send_paginated_request
+        # Create an async generator placeholder for send_paginated_request_offset_based
         async def mock_paginated_resources(
             *args: Any, **kwargs: Any
         ) -> AsyncIterator[List[dict[str, Any]]]:
             if False:  # ensure async generator type
                 yield []
 
-        mock_client.send_paginated_request = mock_paginated_resources
+        mock_client.send_paginated_request_offset_based = mock_paginated_resources
         return mock_client
 
     @pytest.fixture
@@ -59,7 +59,7 @@ class TestCheckmarxDastScanEnvironmentExporter:
             yield [{"environmentId": "env-1", "name": "Environment 1"}]
             yield [{"environmentId": "env-2", "name": "Environment 2"}]
 
-        mock_client.send_paginated_request = gen
+        mock_client.send_paginated_request_offset_based = gen
 
         batches: list[list[dict[str, Any]]] = []
         async for batch in exporter.get_paginated_resources():
@@ -80,7 +80,7 @@ class TestCheckmarxDastScanEnvironmentExporter:
         async def gen(*args: Any, **kwargs: Any) -> AsyncIterator[List[dict[str, Any]]]:
             yield []
 
-        mock_client.send_paginated_request = gen
+        mock_client.send_paginated_request_offset_based = gen
 
         batches: list[list[dict[str, Any]]] = []
         async for batch in exporter.get_paginated_resources():
@@ -98,7 +98,7 @@ class TestCheckmarxDastScanEnvironmentExporter:
         async def gen(*args: Any, **kwargs: Any) -> AsyncIterator[List[dict[str, Any]]]:
             yield [{"environmentId": "env-1", "name": "Environment 1"}]
 
-        mock_client.send_paginated_request = gen
+        mock_client.send_paginated_request_offset_based = gen
 
         batches: list[list[dict[str, Any]]] = []
         async for batch in exporter.get_paginated_resources(options=None):
@@ -134,7 +134,7 @@ class TestCheckmarxDastScanEnvironmentExporter:
             call_args["params"] = params
             yield [{"environmentId": "env-1"}]
 
-        mock_client.send_paginated_request = gen
+        mock_client.send_paginated_request_offset_based = gen
 
         async for _ in exporter.get_paginated_resources():
             break
@@ -153,7 +153,7 @@ class TestCheckmarxDastScanEnvironmentExporter:
             yield [{"environmentId": f"env-{i}"} for i in range(3, 5)]
             yield []
 
-        mock_client.send_paginated_request = gen
+        mock_client.send_paginated_request_offset_based = gen
 
         batches: list[list[dict[str, Any]]] = []
         async for batch in exporter.get_paginated_resources():

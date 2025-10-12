@@ -350,6 +350,318 @@ class TestCheckmarxOneClient:
         assert PAGE_SIZE == 100
 
     @pytest.mark.asyncio
+    async def test_send_paginated_request_offset_based_single_page(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting offset-based paginated resources with single page."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"environments": [{"id": 1}, {"id": 2}]}
+        mock_response.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results = []
+            async for batch in client.send_paginated_request_offset_based(
+                "/dast/scans/environments", "environments"
+            ):
+                results.append(batch)
+
+            # Should have one batch
+            assert len(results) == 1
+            assert results[0] == [{"id": 1}, {"id": 2}]
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_offset_based_multiple_pages(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting offset-based paginated resources with multiple pages."""
+        # First page: full page (100 items)
+        mock_response1 = MagicMock()
+        mock_response1.json.return_value = {"scans": [{"id": i} for i in range(100)]}
+        mock_response1.raise_for_status.return_value = None
+
+        # Second page: full page (100 items)
+        mock_response2 = MagicMock()
+        mock_response2.json.return_value = {
+            "scans": [{"id": i} for i in range(100, 200)]
+        }
+        mock_response2.raise_for_status.return_value = None
+
+        # Third page: partial page (less than page size, indicates last page)
+        mock_response3 = MagicMock()
+        mock_response3.json.return_value = {"scans": [{"id": i} for i in range(200, 250)]}
+        mock_response3.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(
+                side_effect=[mock_response1, mock_response2, mock_response3]
+            )
+            results = []
+            async for batch in client.send_paginated_request_offset_based(
+                "/dast/scans/scans", "scans"
+            ):
+                results.append(batch)
+
+            assert len(results) == 3
+            assert len(results[0]) == 100
+            assert len(results[1]) == 100
+            assert len(results[2]) == 50  # Less than PAGE_SIZE, so pagination stops
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_offset_based_empty_response(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting offset-based paginated resources with empty response."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"environments": []}
+        mock_response.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results = []
+            async for batch in client.send_paginated_request_offset_based(
+                "/dast/scans/environments", "environments"
+            ):
+                results.append(batch)
+
+            assert len(results) == 0
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_offset_based_with_params(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting offset-based paginated resources with parameters."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"scans": [{"id": 1}]}
+        mock_response.raise_for_status.return_value = None
+
+        params = {"environmentId": "env-1", "sort": "updatetime:desc"}
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results = []
+            async for batch in client.send_paginated_request_offset_based(
+                "/dast/scans/scans", "scans", params
+            ):
+                results.append(batch)
+
+            assert len(results) == 1
+            assert results[0] == [{"id": 1}]
+
+            # Verify that the request was called with correct pagination parameters
+            call_args = mock_client.request.call_args
+            assert call_args is not None
+            actual_params = call_args.kwargs.get("params", {})
+            assert actual_params.get("from") == 0
+            assert actual_params.get("to") == 100  # PAGE_SIZE is 100
+            assert actual_params.get("environmentId") == "env-1"
+            assert actual_params.get("sort") == "updatetime:desc"
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_offset_based_pagination_parameters(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test that offset-based pagination uses correct parameters."""
+        # First page
+        mock_response1 = MagicMock()
+        mock_response1.json.return_value = {"scans": [{"id": i} for i in range(100)]}
+        mock_response1.raise_for_status.return_value = None
+
+        # Second page
+        mock_response2 = MagicMock()
+        mock_response2.json.return_value = {"scans": [{"id": i} for i in range(100, 150)]}
+        mock_response2.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(
+                side_effect=[mock_response1, mock_response2]
+            )
+            results = []
+            async for batch in client.send_paginated_request_offset_based(
+                "/dast/scans/scans", "scans"
+            ):
+                results.append(batch)
+
+            # Verify pagination parameters for both requests
+            calls = mock_client.request.call_args_list
+            assert len(calls) == 2
+
+            # First call: from=0, to=100
+            first_params = calls[0].kwargs.get("params", {})
+            assert first_params.get("from") == 0
+            assert first_params.get("to") == 100
+
+            # Second call: from=100, to=200
+            second_params = calls[1].kwargs.get("params", {})
+            assert second_params.get("from") == 100
+            assert second_params.get("to") == 200
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_page_based_single_page(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting page-based paginated resources with single page."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "results": [{"id": 1}, {"id": 2}],
+            "pages_number": 1,
+        }
+        mock_response.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results = []
+            async for batch in client.send_paginated_request_page_based(
+                "/dast/mfe-results/results/scan-1", "results"
+            ):
+                results.append(batch)
+
+            assert len(results) == 1
+            assert results[0] == [{"id": 1}, {"id": 2}]
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_page_based_multiple_pages(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting page-based paginated resources with multiple pages."""
+        # First page
+        mock_response1 = MagicMock()
+        mock_response1.json.return_value = {
+            "results": [{"id": i} for i in range(100)],
+            "pages_number": 3,
+        }
+        mock_response1.raise_for_status.return_value = None
+
+        # Second page
+        mock_response2 = MagicMock()
+        mock_response2.json.return_value = {
+            "results": [{"id": i} for i in range(100, 200)],
+            "pages_number": 3,
+        }
+        mock_response2.raise_for_status.return_value = None
+
+        # Third page
+        mock_response3 = MagicMock()
+        mock_response3.json.return_value = {
+            "results": [{"id": i} for i in range(200, 250)],
+            "pages_number": 3,
+        }
+        mock_response3.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(
+                side_effect=[mock_response1, mock_response2, mock_response3]
+            )
+            results = []
+            async for batch in client.send_paginated_request_page_based(
+                "/dast/mfe-results/results/scan-1", "results"
+            ):
+                results.append(batch)
+
+            assert len(results) == 3
+            assert len(results[0]) == 100
+            assert len(results[1]) == 100
+            assert len(results[2]) == 50
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_page_based_empty_response(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting page-based paginated resources with empty response."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"results": [], "pages_number": 0}
+        mock_response.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results = []
+            async for batch in client.send_paginated_request_page_based(
+                "/dast/mfe-results/results/scan-1", "results"
+            ):
+                results.append(batch)
+
+            assert len(results) == 0
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_page_based_with_params(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test getting page-based paginated resources with parameters."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "results": [{"id": 1}],
+            "pages_number": 1,
+        }
+        mock_response.raise_for_status.return_value = None
+
+        params = {"severity": ["CRITICAL"], "status": ["NEW"]}
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(return_value=mock_response)
+            results = []
+            async for batch in client.send_paginated_request_page_based(
+                "/dast/mfe-results/results/scan-1", "results", params
+            ):
+                results.append(batch)
+
+            assert len(results) == 1
+            assert results[0] == [{"id": 1}]
+
+            # Verify that the request was called with correct pagination parameters
+            call_args = mock_client.request.call_args
+            assert call_args is not None
+            actual_params = call_args.kwargs.get("params", {})
+            assert actual_params.get("page") == 1
+            assert actual_params.get("per_page") == 100  # PAGE_SIZE is 100
+            assert actual_params.get("severity") == ["CRITICAL"]
+            assert actual_params.get("status") == ["NEW"]
+
+    @pytest.mark.asyncio
+    async def test_send_paginated_request_page_based_pagination_parameters(
+        self, client: CheckmarxOneClient
+    ) -> None:
+        """Test that page-based pagination uses correct parameters."""
+        # First page
+        mock_response1 = MagicMock()
+        mock_response1.json.return_value = {
+            "results": [{"id": i} for i in range(100)],
+            "pages_number": 2,
+        }
+        mock_response1.raise_for_status.return_value = None
+
+        # Second page
+        mock_response2 = MagicMock()
+        mock_response2.json.return_value = {
+            "results": [{"id": i} for i in range(100, 150)],
+            "pages_number": 2,
+        }
+        mock_response2.raise_for_status.return_value = None
+
+        with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
+            mock_client.request = AsyncMock(
+                side_effect=[mock_response1, mock_response2]
+            )
+            results = []
+            async for batch in client.send_paginated_request_page_based(
+                "/dast/mfe-results/results/scan-1", "results"
+            ):
+                results.append(batch)
+
+            # Verify pagination parameters for both requests
+            calls = mock_client.request.call_args_list
+            assert len(calls) == 2
+
+            # First call: page=1, per_page=100
+            first_params = calls[0].kwargs.get("params", {})
+            assert first_params.get("page") == 1
+            assert first_params.get("per_page") == 100
+
+            # Second call: page=2, per_page=100
+            second_params = calls[1].kwargs.get("params", {})
+            assert second_params.get("page") == 2
+            assert second_params.get("per_page") == 100
+
+    @pytest.mark.asyncio
     async def test_send_paginated_request_api_sec_single_page(
         self, client: CheckmarxOneClient
     ) -> None:

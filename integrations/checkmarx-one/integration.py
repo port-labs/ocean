@@ -10,7 +10,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.integrations.base import BaseIntegration
 from pydantic import Field
 
-from datetime import datetime, timedelta, timezone
+from checkmarx_one.utils import days_ago_to_rfc3339
 
 
 class CheckmarxOneScanModel(BaseModel):
@@ -30,20 +30,15 @@ class CheckmarxOneScanModel(BaseModel):
         description="Filter results by the execution status of the scans. (Case insensitive, OR operator for multiple statuses.)",
     )
     since: Optional[int] = Field(
-        min_value=1,
+        ge=1,
+        le=90,
         default=90,
         description="Filter results by the date and time when the scan was created. (UNIX timestamp in seconds)",
     )
 
     @property
     def from_date(self) -> Optional[str]:
-        return self._days_ago_to_rfc3339(self.since) if self.since else None
-
-    def _days_ago_to_rfc3339(self, days: int) -> str:
-        dt = datetime.now(timezone.utc) - timedelta(days=days)
-        # Format to RFC3339 with microseconds and Zulu time
-        # RFC3339 Date (Extend) format (e.g. 2021-06-02T12:14:18.028555Z)
-        return dt.isoformat(timespec="microseconds").replace("+00:00", "Z")
+        return days_ago_to_rfc3339(self.since) if self.since else None
 
 
 class CheckmarxOneResultSelector(Selector):
@@ -190,10 +185,29 @@ class CheckmarxOneScanResultResourcesConfig(ResourceConfig):
 
 
 class CheckmarxOneDastScanModel(BaseModel):
-    groups: Optional[List[str]] = Field(
+    scan_type: Optional[Literal["DAST", "DASTAPI"]] = Field(
+        alias="scanType",
         default=None,
-        description="Filter DAST scans by group",
+        description="Filter DAST scans by scan type",
     )
+    since: Optional[int] = Field(
+        ge=1,
+        le=90,
+        default=90,
+        description="Filter results by number of days when they were last updated. (1-90 days)",
+    )
+    max_results: int = Field(
+        alias="maxResults",
+        ge=1,
+        le=3000,
+        default=3000,
+        description="Limit the number of DAST scans returned",
+    )
+
+
+    @property
+    def updated_from_date(self) -> Optional[str]:
+        return days_ago_to_rfc3339(self.since) if self.since else None
 
 
 class CheckmarxOneDastScanSelector(Selector, CheckmarxOneDastScanModel): ...

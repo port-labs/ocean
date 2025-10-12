@@ -118,7 +118,9 @@ class ListDastScanOptions(TypedDict):
     """Options for listing DAST scans."""
 
     environment_id: Required[str]
-    groups: NotRequired[Optional[List[str]]]
+    scan_type: NotRequired[Optional[Literal["DAST", "DASTAPI"]]]
+    updated_from_date: Required[str]
+    max_results: Required[int]
 
 
 class ListDastScanResultOptions(TypedDict):
@@ -142,3 +144,5 @@ class ListDastScanResultOptions(TypedDict):
             ]
         ]
     ]
+    updated_from_date: Required[str]
+    max_results: Required[int]
