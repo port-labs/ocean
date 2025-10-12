@@ -87,9 +87,11 @@ class HarborClient:
         auth_header_name, auth_header_value = generate_basic_auth_header(
             username, password
         )
-        if not hasattr(self.client, "headers"):
-            self.client.headers = {}
-        self.client.headers[auth_header_name] = auth_header_value
+
+        # if not hasattr(self.client, "headers"):
+        #     self.client.headers = {}
+        # self.client.headers[auth_header_name] = auth_header_value
+        self.auth_headers = {auth_header_name: auth_header_value}
 
         # to help us control batch requests
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
@@ -136,11 +138,14 @@ class HarborClient:
             async with self._semaphore:
                 logger.debug(f"{method} {url} with params={params}")
 
+                request_headers = self.auth_headers.copy()
+
                 response = await self.client.request(
                     method=method,
                     url=url,
                     params=params,
                     json=json_data,
+                    headers=request_headers,
                 )
 
                 response.raise_for_status()
