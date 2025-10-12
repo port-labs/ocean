@@ -1,5 +1,5 @@
 import platform
-from typing import Any, Literal, Optional, Type, cast
+from typing import Any, Literal, Optional, Type
 
 from pydantic import AnyHttpUrl, Extra, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
@@ -8,11 +8,13 @@ from pydantic.fields import Field
 from pydantic.main import BaseModel
 
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
-from port_ocean.core.event_listener import EventListenerSettingsType
+from port_ocean.core.event_listener import (
+    EventListenerSettingsType,
+    PollingEventListenerSettings,
+)
 from port_ocean.core.models import (
     CachingStorageMode,
     CreatePortResourcesOrigin,
-    EventListenerType,
     ProcessExecutionMode,
     Runtime,
 )
@@ -85,7 +87,7 @@ class ExecutionAgentSettings(BaseOceanModel, extra=Extra.allow):
     enabled: bool = Field(default=False)
     runs_buffer_high_watermark: int = Field(default=100)
     visibility_timeout_seconds: int = Field(default=90)
-    poll_check_interval_seconds: int = Field(default=20)
+    poll_check_interval_seconds: int = Field(default=10)
     workers_count: int = Field(default=5)
     sync_queue_lock_timeout_seconds: float = Field(default=60)
 
@@ -104,7 +106,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     base_url: str | None = None
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(
-        default=cast(EventListenerSettingsType, {"type": EventListenerType.POLLING})
+        default_factory=lambda: PollingEventListenerSettings()
     )
     event_workers_count: int = 1
     # If an identifier or type is not provided, it will be generated based on the integration name

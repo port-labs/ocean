@@ -1,3 +1,4 @@
+from typing import Literal
 from loguru import logger
 
 from port_ocean.core.event_listener.base import (
@@ -13,7 +14,7 @@ class WebhooksOnlyEventListenerSettings(EventListenerSettings):
     This class inherits from `EventListenerSettings`, which provides a foundation for creating event listener settings.
     """
 
-    type: EventListenerType = EventListenerType.WEBHOOKS_ONLY
+    type: Literal[EventListenerType.WEBHOOKS_ONLY]
     should_resync: bool = False
     should_run_execution_agent_if_enabled: bool = False
 

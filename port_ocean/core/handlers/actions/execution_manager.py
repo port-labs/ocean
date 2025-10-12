@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Type, Set, Optional, List
 from loguru import logger
 from pydantic import BaseModel
+from port_ocean.clients.port.client import PortClient
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     WebhookProcessorType,
 )
@@ -11,7 +12,6 @@ from port_ocean.core.models import ActionRun, RunStatus
 import asyncio
 import time
 from port_ocean.clients.port.mixins.actions import (
-    ActionsClientMixin,
     RunAlreadyAcknowledgedError,
 )
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
@@ -33,11 +33,12 @@ class ActionRunTask(BaseModel):
     run: ActionRun
 
 
-class ExecutionManager(ActionsClientMixin):
+class ExecutionManager:
     """Orchestrates action executors, polling and their webhook handlers"""
 
     def __init__(
         self,
+        port_client: PortClient,
         webhook_manager: LiveEventsProcessorManager,
         signal_handler: SignalHandler,
         runs_buffer_high_watermark: int,
@@ -45,6 +46,7 @@ class ExecutionManager(ActionsClientMixin):
         sync_queue_lock_timeout_seconds: float,
         max_wait_seconds_before_shutdown: float,
     ):
+        self._port_client = port_client
         self._polling_task: asyncio.Task[None] | None = None
         self._workers_pool: set[asyncio.Task[None]] = set()
         self._actions_executors: Dict[str, Type[AbstractExecutor]] = {}
@@ -105,8 +107,8 @@ class ExecutionManager(ActionsClientMixin):
         self._timeout_task = asyncio.create_task(self._background_timeout_check())
 
         workers_count = max(1, ocean.config.execution_agent.workers_count)
-        for worker_index in range(workers_count):
-            task = asyncio.create_task(self._process_actions_runs(worker_index))
+        for _ in range(workers_count):
+            task = asyncio.create_task(self._process_actions_runs())
             self._workers_pool.add(task)
             task.add_done_callback(self._workers_pool.discard)
 
@@ -143,8 +145,9 @@ class ExecutionManager(ActionsClientMixin):
                 await self._active_sources.put(queue_name)
 
     async def _get_queues_size(self) -> int:
-        return await self._global_queue.size() + sum(
-            await queue.size() for queue in self._partition_queues.values()
+        global_size = await self._global_queue.size()
+        return global_size + sum(
+            [await queue.size() for queue in self._partition_queues.values()]
         )
 
     async def _poll_action_runs(self):
@@ -165,12 +168,17 @@ class ExecutionManager(ActionsClientMixin):
                     continue
 
                 poll_limit = self._high_watermark - queues_size
-                runs = await self.get_pending_runs(
+                runs = await self._port_client.get_pending_runs(
                     limit=poll_limit,
-                    visibility_timeout=ocean.config.execution_agent.visibility_timeout_seconds,
+                    visibility_timeout_seconds=ocean.config.execution_agent.visibility_timeout_seconds,
                 )
 
                 if not runs:
+                    logger.info(
+                        "No runs to process, waiting for next poll",
+                        current_size=queues_size,
+                        high_watermark=self._high_watermark,
+                    )
                     await asyncio.sleep(self._poll_check_interval_seconds)
                     continue
 
@@ -209,6 +217,8 @@ class ExecutionManager(ActionsClientMixin):
                     )
         except asyncio.CancelledError:
             pass
+        except Exception as e:
+            logger.exception("Unexpected error in poll action runs", error=e)
 
     async def _background_timeout_check(self) -> None:
         """
@@ -316,13 +326,13 @@ class ExecutionManager(ActionsClientMixin):
 
             executor = executor_cls()
             while executor.is_close_to_rate_limit():
-                await self.post_run_log(
+                await self._port_client.post_run_log(
                     run_task.run.id,
                     f"Delayed due to low remaining rate limit. Will attempt to re-run in {executor.get_remaining_time_until_rate_limit()} seconds",
                 )
                 await asyncio.sleep(executor.get_remaining_seconds_until_rate_limit())
 
-            await self.acknowledge_run(run_task.run.id)
+            await self._port_client.acknowledge_run(run_task.run.id)
             logger.debug("Run acknowledged successfully", run=run_task.run.id)
             await executor.execute(run_task.run.payload)
         except RunAlreadyAcknowledgedError:
@@ -334,7 +344,7 @@ class ExecutionManager(ActionsClientMixin):
                 run=run_task.run.id,
                 action=run_task.run.action.name,
             )
-            await self.patch_run(
+            await self._port_client.patch_run(
                 run_task.run.id, {"summary": str(e), "status": RunStatus.FAILURE}
             )
             raise e

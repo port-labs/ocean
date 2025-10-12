@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 from httpx import HTTPStatusError
 from loguru import logger
 from github.clients.http.rest_client import GithubRestClient
-from integrations.github.github.webhook.registry import WEBHOOK_PATH
+from github.webhook.registry import WEBHOOK_PATH
 
 PAGE_SIZE = 100
 

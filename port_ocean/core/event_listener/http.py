@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter
 from loguru import logger
@@ -25,7 +25,7 @@ class HttpEventListenerSettings(EventListenerSettings):
                                The "AnyHttpUrl" type indicates that the value must be a valid HTTP/HTTPS URL.
     """
 
-    type: EventListenerType = EventListenerType.WEBHOOK
+    type: Literal[EventListenerType.WEBHOOK]
     app_host: AnyHttpUrl = Field(..., sensitive=True)
 
     def get_changelog_destination_details(self) -> dict[str, Any]:

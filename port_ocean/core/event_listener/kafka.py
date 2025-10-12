@@ -2,7 +2,7 @@ import asyncio
 import json
 import sys
 from asyncio import ensure_future, Task
-from typing import Any
+from typing import Any, Literal
 
 from confluent_kafka import Message  # type: ignore
 from loguru import logger
@@ -39,7 +39,7 @@ class KafkaEventListenerSettings(EventListenerSettings):
                                      The default value is 1 second.
     """
 
-    type: EventListenerType = EventListenerType.KAFKA
+    type: Literal[EventListenerType.KAFKA]
     brokers: str = (
         "b-1-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196,b-2-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196,b-3-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196"
     )

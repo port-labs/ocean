@@ -1,6 +1,6 @@
 import datetime
 import signal
-from typing import Any
+from typing import Any, Literal
 
 from loguru import logger
 
@@ -22,7 +22,7 @@ class OnceEventListenerSettings(EventListenerSettings):
     This class inherits from `EventListenerSettings`, which provides a foundation for creating event listener settings.
     """
 
-    type: EventListenerType = EventListenerType.ONCE
+    type: Literal[EventListenerType.ONCE]
     should_create_webhooks_if_enabled: bool = False
     should_run_execution_agent_if_enabled: bool = False
 

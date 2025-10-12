@@ -90,6 +90,7 @@ class Ocean:
         )
 
         self.execution_manager = ExecutionManager(
+            port_client=self.port_client,
             webhook_manager=self.webhook_manager,
             signal_handler=signal_handler,
             runs_buffer_high_watermark=self.config.execution_agent.runs_buffer_high_watermark,

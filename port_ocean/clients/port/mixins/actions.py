@@ -40,16 +40,17 @@ class ActionsClientMixin:
     async def get_pending_runs(
         self, limit: int = 20, visibility_timeout_seconds: int = 90
     ) -> list[ActionRun]:
-        response = await self.client.get(
-            f"{self.auth.api_url}/actions/runs/pending",
-            headers=await self.auth.headers(),
-            params={
-                "limit": limit,
-                "visibility_timeout_seconds": visibility_timeout_seconds,
-            },
-        )
-        handle_port_status_code(response)
-        return [ActionRun.parse_obj(run) for run in response.json().get("runs", [])]
+        # response = await self.client.get(
+        #     f"{self.auth.api_url}/actions/runs/pending",
+        #     headers=await self.auth.headers(),
+        #     params={
+        #         "limit": limit,
+        #         "visibility_timeout_seconds": visibility_timeout_seconds,
+        #     },
+        # )
+        # handle_port_status_code(response)
+        # return [ActionRun.parse_obj(run) for run in response.json().get("runs", [])]
+        return []
 
     async def patch_run(
         self,

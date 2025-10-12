@@ -1,5 +1,5 @@
 from asyncio import Task, get_event_loop
-from typing import Any
+from typing import Any, Literal
 
 from loguru import logger
 
@@ -24,7 +24,7 @@ class PollingEventListenerSettings(EventListenerSettings):
                         The default interval is set to 60 seconds.
     """
 
-    type: EventListenerType = EventListenerType.POLLING
+    type: Literal[EventListenerType.POLLING]
     resync_on_start: bool = True
     interval: int = 60
 

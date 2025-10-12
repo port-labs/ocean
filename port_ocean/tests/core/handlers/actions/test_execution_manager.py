@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 import pytest
+from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.mixins.actions import RunAlreadyAcknowledgedError
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.actions.execution_manager import (
@@ -64,6 +65,7 @@ def mock_signal_handler():
 @pytest.fixture
 def execution_manager(mock_webhook_manager, mock_signal_handler):
     return ExecutionManager(
+        port_client=MagicMock(spec=PortClient),
         webhook_manager=mock_webhook_manager,
         signal_handler=mock_signal_handler,
         runs_buffer_high_watermark=100,
