@@ -26,8 +26,8 @@ def harbor_client(mock_ocean_context):
     """Create a Harbor client instance"""
     return HarborClient(
         harbor_url="https://harbor.example.com",
-        harbor_username="admin",
-        harbor_password="password",
+        username="admin",
+        password="password",
         verify_ssl=True
     )
 
@@ -149,8 +149,8 @@ class TestHarborClient:
         """Test handling authentication failures"""
         client = HarborClient(
             harbor_url="https://harbor.example.com",
-            harbor_username="wrong",
-            harbor_password="credentials",
+            username="wrong",
+            password="credentials",
             verify_ssl=True
         )
 
@@ -167,15 +167,15 @@ class TestHarborClient:
         """Test SSL verification setting"""
         client_with_ssl = HarborClient(
             harbor_url="https://harbor.example.com",
-            harbor_username="admin",
-            harbor_password="password",
+            username="admin",
+            password="password",
             verify_ssl=True
         )
 
         client_without_ssl = HarborClient(
             harbor_url="https://harbor.example.com",
-            harbor_username="admin",
-            harbor_password="password",
+            username="admin",
+            password="password",
             verify_ssl=False
         )
 

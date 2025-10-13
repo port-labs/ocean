@@ -16,8 +16,8 @@ class TestHarborClientAuthentication:
         """Test basic authentication with username and password"""
         client = HarborClient(
             harbor_url=mock_harbor_config["harbor_url"],
-            harbor_username=mock_harbor_config["harbor_username"],
-            harbor_password=mock_harbor_config["harbor_password"]
+            username=mock_harbor_config["harbor_username"],
+            password=mock_harbor_config["harbor_password"]
         )
 
         assert client.harbor_username == "test_user"
@@ -29,8 +29,8 @@ class TestHarborClientAuthentication:
         """Test SSL verification is enabled by default"""
         client = HarborClient(
             harbor_url=mock_harbor_config["harbor_url"],
-            harbor_username=mock_harbor_config["harbor_username"],
-            harbor_password=mock_harbor_config["harbor_password"],
+            username=mock_harbor_config["harbor_username"],
+            password=mock_harbor_config["harbor_password"],
             verify_ssl=True
         )
 
@@ -41,8 +41,8 @@ class TestHarborClientAuthentication:
         """Test SSL verification can be disabled"""
         client = HarborClient(
             harbor_url=mock_harbor_config["harbor_url"],
-            harbor_username=mock_harbor_config["harbor_username"],
-            harbor_password=mock_harbor_config["harbor_password"],
+            username=mock_harbor_config["harbor_username"],
+            password=mock_harbor_config["harbor_password"],
             verify_ssl=False
         )
 
@@ -53,8 +53,8 @@ class TestHarborClientAuthentication:
         """Test handling of invalid credentials"""
         client = HarborClient(
             harbor_url=mock_harbor_config["harbor_url"],
-            harbor_username="invalid",
-            harbor_password="wrong"
+            username="invalid",
+            password="wrong"
         )
 
         with patch.object(client, '_make_request', new_callable=AsyncMock) as mock_request:
