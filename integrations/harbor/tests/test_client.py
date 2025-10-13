@@ -15,20 +15,20 @@ class TestHarborClientAuthentication:
     async def test_basic_auth_credentials(self, mock_harbor_config):
         """Test basic authentication with username and password"""
         client = HarborClient(
-            harbor_host=mock_harbor_config["harbor_host"],
+            harbor_url=mock_harbor_config["harbor_url"],
             harbor_username=mock_harbor_config["harbor_username"],
             harbor_password=mock_harbor_config["harbor_password"]
         )
 
         assert client.harbor_username == "test_user"
         assert client.harbor_password == "test_password"
-        assert client.harbor_host == "https://harbor.test.com"
+        assert client.harbor_url == "https://harbor.test.com"
 
     @pytest.mark.asyncio
     async def test_ssl_verification_enabled(self, mock_harbor_config):
         """Test SSL verification is enabled by default"""
         client = HarborClient(
-            harbor_host=mock_harbor_config["harbor_host"],
+            harbor_url=mock_harbor_config["harbor_url"],
             harbor_username=mock_harbor_config["harbor_username"],
             harbor_password=mock_harbor_config["harbor_password"],
             verify_ssl=True
@@ -40,7 +40,7 @@ class TestHarborClientAuthentication:
     async def test_ssl_verification_disabled(self, mock_harbor_config):
         """Test SSL verification can be disabled"""
         client = HarborClient(
-            harbor_host=mock_harbor_config["harbor_host"],
+            harbor_url=mock_harbor_config["harbor_url"],
             harbor_username=mock_harbor_config["harbor_username"],
             harbor_password=mock_harbor_config["harbor_password"],
             verify_ssl=False
@@ -52,7 +52,7 @@ class TestHarborClientAuthentication:
     async def test_invalid_credentials(self, mock_harbor_config):
         """Test handling of invalid credentials"""
         client = HarborClient(
-            harbor_host=mock_harbor_config["harbor_host"],
+            harbor_url=mock_harbor_config["harbor_url"],
             harbor_username="invalid",
             harbor_password="wrong"
         )
@@ -373,7 +373,7 @@ class TestHarborClientRequestBuilding:
 
     def test_build_url(self, harbor_client):
         """Test URL building for API endpoints"""
-        base_url = harbor_client.harbor_host
+        base_url = harbor_client.harbor_url
         endpoint = "/api/v2.0/projects"
 
         expected_url = f"{base_url}{endpoint}"

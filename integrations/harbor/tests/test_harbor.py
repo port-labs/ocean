@@ -13,7 +13,7 @@ def mock_ocean_context():
     """Mock the Ocean context"""
     with patch("port_ocean.context.ocean.ocean") as mock:
         mock.integration_config = {
-            "harbor_host": "https://harbor.example.com",
+            "harbor_url": "https://harbor.example.com",
             "harbor_username": "admin",
             "harbor_password": "password",
             "verify_ssl": True
@@ -25,7 +25,7 @@ def mock_ocean_context():
 def harbor_client(mock_ocean_context):
     """Create a Harbor client instance"""
     return HarborClient(
-        harbor_host="https://harbor.example.com",
+        harbor_url="https://harbor.example.com",
         harbor_username="admin",
         harbor_password="password",
         verify_ssl=True
@@ -148,7 +148,7 @@ class TestHarborClient:
     async def test_authentication_failure(self, mock_ocean_context):
         """Test handling authentication failures"""
         client = HarborClient(
-            harbor_host="https://harbor.example.com",
+            harbor_url="https://harbor.example.com",
             harbor_username="wrong",
             harbor_password="credentials",
             verify_ssl=True
@@ -166,14 +166,14 @@ class TestHarborClient:
     async def test_ssl_verification(self, mock_ocean_context):
         """Test SSL verification setting"""
         client_with_ssl = HarborClient(
-            harbor_host="https://harbor.example.com",
+            harbor_url="https://harbor.example.com",
             harbor_username="admin",
             harbor_password="password",
             verify_ssl=True
         )
 
         client_without_ssl = HarborClient(
-            harbor_host="https://harbor.example.com",
+            harbor_url="https://harbor.example.com",
             harbor_username="admin",
             harbor_password="password",
             verify_ssl=False
@@ -431,21 +431,21 @@ class TestIntegrationConfig:
     def test_config_validation(self):
         """Test configuration validation"""
         valid_config = {
-            "harbor_host": "https://harbor.example.com",
+            "harbor_url": "https://harbor.example.com",
             "harbor_username": "admin",
             "harbor_password": "password",
             "verify_ssl": True
         }
 
-        assert "harbor_host" in valid_config
-        assert valid_config["harbor_host"].startswith("https://")
+        assert "harbor_url" in valid_config
+        assert valid_config["harbor_url"].startswith("https://")
         assert "harbor_username" in valid_config
         assert "harbor_password" in valid_config
 
     def test_missing_required_config(self):
         """Test handling missing required configuration"""
         incomplete_config = {
-            "harbor_host": "https://harbor.example.com"
+            "harbor_url": "https://harbor.example.com"
         }
 
         assert "harbor_username" not in incomplete_config
@@ -454,7 +454,7 @@ class TestIntegrationConfig:
     def test_optional_config_defaults(self):
         """Test optional configuration defaults"""
         config = {
-            "harbor_host": "https://harbor.example.com",
+            "harbor_url": "https://harbor.example.com",
             "harbor_username": "admin",
             "harbor_password": "password"
         }

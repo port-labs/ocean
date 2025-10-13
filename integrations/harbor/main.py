@@ -207,12 +207,14 @@ async def on_start() -> None:
         logger.info("✓ Harbor connection validated successfully")
 
         # Setup webhooks if app_host is available
-        if ocean.app.app_host:
+        app_host = ocean.integration_config.get("app_host")
+
+        if app_host:
             logger.info("Setting up Harbor webhooks for real-time events...")
 
             orchestrator = HarborWebhookOrchestrator(client)
             results = await orchestrator.setup_webhooks_for_integration(
-                app_host=ocean.app.app_host,
+                app_host=app_host,
                 integration_identifier=ocean.config.integration.identifier
             )
 

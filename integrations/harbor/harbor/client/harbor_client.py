@@ -477,27 +477,43 @@ class HarborClient:
         # Get all repositories first
         async for repos in self.get_all_repositories({"page_size": 100}):
             for repo in repos:
-                project_name = repo.get("project_id")
-                repo_name = repo.get("name")
+                full_repo_name = repo.get("name", "")
+
+                if "/" not in full_repo_name:
+                    logger.warning(
+                        f"Invalid repository name format: {full_repo_name}"
+                    )
+                    continue
+
+                parts = full_repo_name.split("/", 1)
+                project_name = parts[0]
+                repository_name = parts[1]
 
                 logger.debug(
-                    f"Fetching artifacts for {project_name}/{repo_name}")
+                    f"Fetching artifacts for {project_name}/{repository_name}"
+                )
 
                 try:
                     async for artifacts in self._paginate(
-                        f"/projects/{project_name}/repositories/{repo_name}/artifacts",
+                        f"/projects/{project_name}/repositories/{repository_name}/artifacts",
                         params,
                         params.get("page_size", 50)
                     ):
                         # Enrich artifacts with repository context
                         for artifact in artifacts:
-                            artifact["repository_name"] = repo_name
-                            artifact["project_id"] = project_name
+                            artifact["repository_name"] = repository_name
+                            artifact["project_name"] = project_name
+                            artifact["full_repository_name"] = full_repo_name
+                            # Add project_id if available in the repo object
+                            if "project_id" in repo:
+                                artifact["project_id"] = repo["project_id"]
                         yield artifacts
                 except Exception as e:
                     logger.error(
-                        f"Error fetching artifacts for {repo_name}: {e}")
+                        f"Error fetching artifacts for {full_repo_name}: {e}"
+                    )
                     continue
+
 
     async def get_artifact(
         self,

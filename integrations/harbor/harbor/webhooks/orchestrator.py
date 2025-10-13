@@ -302,36 +302,3 @@ class HarborWebhookOrchestrator:
         )
 
         return results
-
-
-# ============================================================================
-# Convenience function for integration startup
-# ============================================================================
-
-async def setup_harbor_webhooks(
-    harbor_url: str,
-    username: str,
-    password: str,
-    app_host: str,
-    integration_identifier: str
-) -> dict[str, Any]:
-    """
-    Convenience function to setup webhooks during integration startup.
-
-    Args:
-        harbor_url: Harbor base URL
-        username: Harbor username
-        password: Harbor password
-        app_host: Port Ocean app host URL
-        integration_identifier: Integration identifier
-
-    Returns:
-        Setup results dictionary
-    """
-    client = HarborClient(harbor_url, username, password)
-    orchestrator = HarborWebhookOrchestrator(client)
-
-    return await orchestrator.setup_webhooks_for_integration(
-        app_host,
-        integration_identifier
-    )

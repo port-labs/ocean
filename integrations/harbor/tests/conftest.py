@@ -19,7 +19,7 @@ def event_loop() -> Generator:
 def mock_harbor_config():
     """Provide mock Harbor configuration"""
     return {
-        "harbor_host": "https://harbor.test.com",
+        "harbor_url": "https://harbor.test.com",
         "harbor_username": "test_user",
         "harbor_password": "test_password",
         "verify_ssl": True,
@@ -228,7 +228,7 @@ def mock_integration_runtime():
     """Mock integration runtime context"""
     with patch("port_ocean.context.ocean.ocean") as mock_ocean:
         mock_ocean.integration_config = {
-            "harbor_host": "https://harbor.test.com",
+            "harbor_url": "https://harbor.test.com",
             "harbor_username": "admin",
             "harbor_password": "password",
             "verify_ssl": True
