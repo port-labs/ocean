@@ -87,7 +87,7 @@ class TestGenerateResolvedEndpoints:
         param_name = "team_id"
         values = ["team-123"]
         result = generate_resolved_endpoints(template, param_name, values)
-        assert result == ["/api/v1/teams/team-123/members"]
+        assert result == [("/api/v1/teams/team-123/members", {"team_id": "team-123"})]
 
     def test_generate_multiple_endpoints(self) -> None:
         """Test generating multiple resolved endpoints"""
@@ -96,9 +96,9 @@ class TestGenerateResolvedEndpoints:
         values = ["team-1", "team-2", "team-3"]
         result = generate_resolved_endpoints(template, param_name, values)
         assert result == [
-            "/api/v1/teams/team-1/members",
-            "/api/v1/teams/team-2/members",
-            "/api/v1/teams/team-3/members",
+            ("/api/v1/teams/team-1/members", {"team_id": "team-1"}),
+            ("/api/v1/teams/team-2/members", {"team_id": "team-2"}),
+            ("/api/v1/teams/team-3/members", {"team_id": "team-3"}),
         ]
 
     def test_generate_with_numeric_values(self) -> None:
@@ -107,7 +107,10 @@ class TestGenerateResolvedEndpoints:
         param_name = "user_id"
         values = ["123", "456"]
         result = generate_resolved_endpoints(template, param_name, values)
-        assert result == ["/api/v1/users/123", "/api/v1/users/456"]
+        assert result == [
+            ("/api/v1/users/123", {"user_id": "123"}),
+            ("/api/v1/users/456", {"user_id": "456"}),
+        ]
 
     def test_generate_empty_values(self) -> None:
         """Test generating with empty values list"""
@@ -257,7 +260,7 @@ class TestResolveDynamicEndpoints:
 
         result = await resolve_dynamic_endpoints(selector, kind)
 
-        assert result == ["/api/v1/users"]
+        assert result == [("/api/v1/users", {})]
 
     async def test_empty_kind(self) -> None:
         """Test handling empty kind"""
@@ -276,7 +279,7 @@ class TestResolveDynamicEndpoints:
         result = await resolve_dynamic_endpoints(selector, kind)
 
         # Returns the template as-is when config is missing
-        assert result == ["/api/v1/teams/{team_id}/members"]
+        assert result == [("/api/v1/teams/{team_id}/members", {})]
 
     @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
     async def test_resolve_with_single_parameter(self, mock_query: AsyncMock) -> None:
@@ -303,8 +306,8 @@ class TestResolveDynamicEndpoints:
 
         # Assert
         assert result == [
-            "/api/v1/teams/team-1/members",
-            "/api/v1/teams/team-2/members",
+            ("/api/v1/teams/team-1/members", {"team_id": "team-1"}),
+            ("/api/v1/teams/team-2/members", {"team_id": "team-2"}),
         ]
         mock_query.assert_called_once_with(param_config)
 
@@ -368,5 +371,7 @@ class TestResolveDynamicEndpoints:
         result = await resolve_dynamic_endpoints(selector, kind)
 
         # Assert - only first parameter is resolved (current limitation)
-        assert result == ["/api/v1/orgs/org-1/teams/{team_id}/members"]
+        assert result == [
+            ("/api/v1/orgs/org-1/teams/{team_id}/members", {"org_id": "org-1"})
+        ]
         mock_query.assert_called_once()
