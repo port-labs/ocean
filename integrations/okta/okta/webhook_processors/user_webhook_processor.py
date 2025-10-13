@@ -7,6 +7,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from okta.webhook_processors.base_webhook_processor import OktaBaseWebhookProcessor
+from okta.webhook_processors.utils import iter_event_targets, any_target_of_type
 from okta.clients.client_factory import OktaClientFactory
 from okta.utils import ObjectKind
 from okta.core.exporters.user_exporter import OktaUserExporter
@@ -21,15 +22,7 @@ class OktaUserWebhookProcessor(OktaBaseWebhookProcessor):
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Check if the event contains user-related events."""
-        payload = event.payload
-        events = payload["data"]["events"]
-
-        for event_object in events:
-            targets = event_object["target"]
-            for target in targets:
-                if target["type"] == "User" and target["id"]:
-                    return True
-        return False
+        return any_target_of_type(event.payload, "User")
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -46,32 +39,27 @@ class OktaUserWebhookProcessor(OktaBaseWebhookProcessor):
         updated_results: list[dict[str, Any]] = []
         deleted_results: list[dict[str, Any]] = []
 
-        events = payload["data"]["events"]
-        for event_object in events:
-            event_type = event_object["eventType"]
-            targets = event_object["target"]
-            for target in targets:
-                is_user_target = target["type"] == "User" and target["id"]
-                if not is_user_target:
-                    continue
+        for event_type, target in iter_event_targets(payload):
+            if not (target["type"] == "User" and target["id"]):
+                continue
 
-                user_id = target["id"]
-                is_delete_event = (
-                    event_type == OktaEventType.USER_LIFECYCLE_DELETE_INITIATED.value
-                )
+            user_id = target["id"]
+            is_delete_event = (
+                event_type == OktaEventType.USER_LIFECYCLE_DELETE_INITIATED.value
+            )
 
-                if is_delete_event:
-                    deleted_results.append({"id": user_id})
-                else:
-                    user = await exporter.get_resource(
-                        GetUserOptions(
-                            user_id=user_id,
-                            include_groups=include_groups,
-                            include_applications=include_applications,
-                            fields=fields,
-                        )
+            if is_delete_event:
+                deleted_results.append({"id": user_id})
+            else:
+                user = await exporter.get_resource(
+                    GetUserOptions(
+                        user_id=user_id,
+                        include_groups=include_groups,
+                        include_applications=include_applications,
+                        fields=fields,
                     )
-                    updated_results.append(user)
+                )
+                updated_results.append(user)
 
         return WebhookEventRawResults(
             updated_raw_results=updated_results, deleted_raw_results=deleted_results

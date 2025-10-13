@@ -51,4 +51,33 @@ class OktaBaseWebhookProcessor(AbstractWebhookProcessor):
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         """Basic validation: ensure payload has data.events list."""
-        return isinstance(payload, dict) and isinstance(payload["data"]["events"], list)
+        if not isinstance(payload, dict):
+            return False
+
+        events = payload["data"]["events"]
+        if not isinstance(events, list):
+            return False
+
+        for event_object in events:
+            if not isinstance(event_object, dict):
+                return False
+
+            event_type = event_object["eventType"]
+            targets = event_object["target"]
+
+            if not isinstance(event_type, str) or not event_type:
+                return False
+            if not isinstance(targets, list):
+                return False
+
+            for target in targets:
+                if not isinstance(target, dict):
+                    return False
+                _type = target["type"]
+                _id = target["id"]
+                if not isinstance(_type, str) or not _type:
+                    return False
+                if _id is None:
+                    return False
+
+        return True
