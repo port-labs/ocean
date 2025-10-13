@@ -84,4 +84,3 @@ resources:
             audit_id: .audit_id | tostring
           relations:
             author: .author_id | tostring
-
