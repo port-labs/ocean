@@ -1,8 +1,4 @@
-"""Harbor Ocean Integration - Main Resync Implementation.
-
-This module implements the core resync functionality for the Harbor integration,
-handling data synchronization for projects, users, repositories, and artifacts.
-"""
+"""Harbor Ocean Integration - Main Resync Implementation."""
 
 from typing import Any
 from loguru import logger
@@ -18,21 +14,12 @@ from harbor.webhooks.orchestrator import HarborWebhookOrchestrator
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync Harbor projects.
-
-    Fetches all projects from Harbor based on the configured selector filters
-    and yields them in batches to Port.
-
-    Args:
-        kind: The resource kind being resynced ("project")
-
-    Yields:
-        List of project dictionaries containing project data
-    """
+    """Resync Harbor projects."""
     client = init_harbor_client()
 
     # Access selector from the event context
-    selector = event.resource_config.selector
+    resource_config = event.resource_config
+    selector = resource_config.selector if resource_config else None
 
     # Build API parameters from selector configuration
     params: dict[str, Any] = {
@@ -40,7 +27,7 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     }
 
     # Add query if it exists in selector and is not "true" (Port's default selector)
-    if hasattr(selector, 'query') and selector.query and selector.query != "true":
+    if selector and hasattr(selector, 'query') and selector.query and selector.query != "true":
         params["q"] = selector.query
 
     logger.info(f"Starting project resync with params: {params}")
@@ -56,29 +43,17 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.USER)
 async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync Harbor users.
-
-    Fetches all users from Harbor based on the configured selector filters
-    and yields them in batches to Port.
-
-    Args:
-        kind: The resource kind being resynced ("user")
-
-    Yields:
-        List of user dictionaries containing user data
-    """
+    """Resync Harbor users."""
     client = init_harbor_client()
 
-    # Access selector from the event context
-    selector = event.resource_config.selector
+    resource_config = event.resource_config
+    selector = resource_config.selector if resource_config else None
 
-    # Build API parameters from selector configuration
     params: dict[str, Any] = {
         "page_size": DEFAULT_PAGE_SIZE,
     }
 
-    # Add query if it exists in selector and is not "true" (Port's default selector)
-    if hasattr(selector, 'query') and selector.query and selector.query != "true":
+    if selector and hasattr(selector, 'query') and selector.query and selector.query != "true":
         params["q"] = selector.query
 
     logger.info(f"Starting user resync with params: {params}")
@@ -94,34 +69,22 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync Harbor repositories.
-
-    Fetches all repositories from Harbor based on the configured selector filters.
-
-    Args:
-        kind: The resource kind being resynced ("repository")
-
-    Yields:
-        List of repository dictionaries containing repository data
-    """
+    """Resync Harbor repositories."""
     client = init_harbor_client()
 
-    # Access selector from the event context
-    selector = event.resource_config.selector
+    resource_config = event.resource_config
+    selector = resource_config.selector if resource_config else None
 
-    # Build API parameters from selector configuration
     params: dict[str, Any] = {
         "page_size": DEFAULT_PAGE_SIZE,
     }
 
-    # Add query if it exists in selector and is not "true" (Port's default selector)
-    if hasattr(selector, 'query') and selector.query and selector.query != "true":
+    if selector and hasattr(selector, 'query') and selector.query and selector.query != "true":
         params["q"] = selector.query
 
     logger.info(f"Starting repository resync with params: {params}")
 
     try:
-        # Fetch repositories from all projects
         logger.info("Fetching repositories from all projects")
         async for repositories in client.get_all_repositories(params):
             logger.info(
@@ -134,36 +97,24 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ARTIFACT)
 async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync Harbor artifacts.
-
-    Fetches all artifacts from Harbor based on the configured selector filters.
-
-    Args:
-        kind: The resource kind being resynced ("artifact")
-
-    Yields:
-        List of artifact dictionaries containing artifact data
-    """
+    """Resync Harbor artifacts."""
     client = init_harbor_client()
 
-    # Access selector from the event context
-    selector = event.resource_config.selector
+    resource_config = event.resource_config
+    selector = resource_config.selector if resource_config else None
 
-    # Build API parameters from selector configuration
     params: dict[str, Any] = {
         "page_size": DEFAULT_PAGE_SIZE,
         "with_tag": True,
         "with_scan_overview": True,
     }
 
-    # Add query if it exists in selector and is not "true" (Port's default selector)
-    if hasattr(selector, 'query') and selector.query and selector.query != "true":
+    if selector and hasattr(selector, 'query') and selector.query and selector.query != "true":
         params["q"] = selector.query
 
     logger.info(f"Starting artifact resync with params: {params}")
 
     try:
-        # Fetch artifacts from all projects and repositories
         logger.info("Fetching artifacts from all projects")
         async for artifacts in client.get_all_artifacts(params):
             logger.info(f"Received batch with {len(artifacts)} artifacts")
@@ -173,21 +124,9 @@ async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         raise
 
 
-# ============================================================================
-# Integration Initialization
-# ============================================================================
-
-
 @ocean.on_start()
 async def on_start() -> None:
-    """
-    Initialize the Harbor integration on startup.
-
-    This function:
-    1. Validates Harbor connection
-    2. Sets up webhooks for real-time events (if app_host available)
-    3. Logs startup banner
-    """
+    """Initialize the Harbor integration on startup."""
     logger.info('''
 ════════════════════════════════════════════════════════════════════════════
 
@@ -198,15 +137,12 @@ async def on_start() -> None:
     ''')
 
     try:
-        # Initialize client
         client = init_harbor_client()
 
-        # Validate connection
         logger.info("Validating Harbor connection...")
         await client.validate_connection()
         logger.info("✓ Harbor connection validated successfully")
 
-        # Setup webhooks if app_host is available
         app_host = ocean.integration_config.get("app_host")
 
         if app_host:
@@ -214,11 +150,10 @@ async def on_start() -> None:
 
             orchestrator = HarborWebhookOrchestrator(client)
             results = await orchestrator.setup_webhooks_for_integration(
-                app_host=app_host,
+                app_host=str(app_host),
                 integration_identifier=ocean.config.integration.identifier
             )
 
-            # Log webhook setup results
             logger.info(
                 f"✓ Webhook setup completed: "
                 f"{results['successful']} successful, "

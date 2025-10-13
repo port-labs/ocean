@@ -1,6 +1,6 @@
 from loguru import logger
-from core import initialize_client
-from constants import Kinds
+from harbor.client.client_initializer import init_harbor_client
+from harbor.constants import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -39,7 +39,7 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
         ]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [Kinds.ARTIFACT]
+        return [ObjectKind.ARTIFACT]
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
@@ -75,7 +75,7 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
             }
         }
         """
-        client = initialize_client()
+        client = init_harbor_client()
         event_type = payload.get("type", "")
         event_data = payload.get("event_data", {})
 

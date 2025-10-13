@@ -1,13 +1,9 @@
 
 from port_ocean.core.handlers.port_app_config.models import (
-    PortAppConfig,
-    ResourceConfig,
-    Selector,
+    Selector
 )
-from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
-from port_ocean.core.integrations.base import BaseIntegration
+
 from pydantic import Field
-from typing import Literal
 
 """Harbor Integration Configuration for Ocean.
 

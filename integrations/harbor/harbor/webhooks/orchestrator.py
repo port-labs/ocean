@@ -5,7 +5,6 @@ It handles business logic like creating webhooks for all projects, permissions c
 """
 from typing import Any
 from loguru import logger
-from port_ocean.context.ocean import ocean
 
 from ..client.harbor_client import HarborClient
 from ..constants import WEBHOOK_EVENTS, WEBHOOK_NAME

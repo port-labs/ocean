@@ -1,16 +1,16 @@
 define run_checks
 	exit_code=0; \
-	cd $(1); \
+	cd $1; \
 	echo "Running poetry check"; \
 	poetry check || exit_code=$$?; \
 	echo "Running mypy"; \
-	mypy . --exclude '/\.venv/' || exit_code=$$?; \
+	poetry run mypy . --exclude '/\.venv/' || exit_code=$$?; \
 	echo "Running ruff"; \
-	ruff check . || exit_code=$$?; \
+	poetry run ruff check . || exit_code=$$?; \
 	echo "Running black"; \
-	black --check . || exit_code=$$?; \
+	poetry run black --check . || exit_code=$$?; \
 	echo "Running yamllint"; \
-	yamllint . || exit_code=$$?; \
+	poetry run yamllint . || exit_code=$$?; \
 	if [ $$exit_code -ne 0 ]; then \
 		echo "\033[0;31mOne or more checks failed...\033[0m"; \
 	else \
@@ -19,7 +19,6 @@ define run_checks
 	exit $$exit_code
 endef
 
-# Macro to install Poetry if it is not found
 define install_poetry
 	if ! command -v poetry &> /dev/null; then \
 		pip install --upgrade pip; \
@@ -29,76 +28,55 @@ define install_poetry
 	fi
 endef
 
-# Macro to manually deactivate a virtual environment
 define deactivate_virtualenv
 	if [ -n "$$VIRTUAL_ENV" ]; then \
-		echo "Deactivating the virtual environment..."; \
-		PATH=$$(echo "$$PATH" | perl -pe "s/:?$$VIRTUAL_ENV\/bin//"); \
-		export PATH; \
 		unset VIRTUAL_ENV; \
 		unset PYTHONHOME; \
 		unset -f pydoc >/dev/null 2>&1; \
+		OLD_PATH="$$PATH"; \
+		PATH=$$(echo -n "$$PATH" | awk -v RS=: -v ORS=: '/\/virtualenv\/bin$$/ {next} {print}'); \
+		export PATH; \
 		hash -r; \
+		echo "Deactivated the virtual environment."; \
 	fi
 endef
 
-# ==============================================================================
-# PHONY TARGETS (Prevent Make from confusing targets with similarly named files)
-# ==============================================================================
-
-.PHONY: install install/prod install/local-core lint lint/fix run test clean seed
-
-# Prevents the shell commands from being printed before execution (cleaner output)
 .SILENT: install install/prod install/local-core lint lint/fix run test clean seed
 
-# ==============================================================================
-# TARGETS
-# ==============================================================================
-
-# Installs development dependencies using poetry
 install:
-	$(call deactivate_virtualenv)
-	$(call install_poetry)
+	$(call deactivate_virtualenv) && \
+	$(call install_poetry) && \
 	poetry install --with dev --no-root
 
-# Installs the local-core project from two directories up (e.g., ../../)
 install/local-core: install
-	# NOTE: This is a temporary change that shouldn't be committed
 	poetry run pip install -e ../../
 
-# Installs production dependencies only
 install/prod:
 	$(call install_poetry)
 	poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
 
-# Runs all linting and static analysis checks
 lint:
-	poetry run $(call run_checks,.)
+	$(call run_checks,.)
 
-# Runs auto-formatting and fixing for linters
 lint/fix:
-	python -m black .
+	poetry run black .
 	poetry run ruff check --fix .
 
-# Runs the application (assuming the "ocean" CLI is set up)
 run:
 	mkdir -p /tmp/ocean-metrics && \
 	PROMETHEUS_MULTIPROC_DIR=/tmp/ocean-metrics poetry run ocean sail .
 
-# Runs tests using pytest
 test:
 	poetry run pytest -n auto
 
-# Removes temporary and build files
 clean:
-	find . -name '.venv' -type d -exec rm -rf {} \;
-	find . -name '*.pyc' -exec rm -rf {} \;
-	find . -name '__pycache__' -exec rm -rf {} \;
-	find . -name 'Thumbs.db' -exec rm -rf {} \;
-	find . -name '*~' -exec rm -rf {} \;
+	@find . -name '.venv' -type d -exec rm -rf {} \;
+	@find . -name '*.pyc' -exec rm -rf {} \;
+	@find . -name '__pycache__' -exec rm -rf {} \;
+	@find . -name 'Thumbs.db' -exec rm -rf {} \;
+	@find . -name '*~' -exec rm -rf {} \;
 	rm -rf .cache build dist *.egg-info htmlcov .tox/ docs/_build
 
-# Runs a seeding script if it exists
 seed:
 	@if [ -f "tests/seed_data.py" ]; then \
 		poetry run python tests/seed_data.py; \

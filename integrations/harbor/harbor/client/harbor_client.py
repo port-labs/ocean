@@ -10,8 +10,7 @@ from loguru import logger
 from httpx import BasicAuth, HTTPStatusError, Timeout
 
 from port_ocean.utils import http_async_client
-from port_ocean.context.ocean import ocean
-from ..constants import DEFAULT_PAGE_SIZE, WEBHOOK_EVENTS, CLIENT_TIMEOUT, MAX_CONCURRENT_REQUESTS
+from ..constants import CLIENT_TIMEOUT, MAX_CONCURRENT_REQUESTS
 
 
 class HarborClient:
@@ -173,25 +172,24 @@ class HarborClient:
             )
             raise
 
-    async def _get(self, endpoint: str, **kwargs) -> Any:
+    async def _get(self, endpoint: str, **kwargs: Any) -> Any:
         """Make GET request"""
         return await self._send_api_request("GET", endpoint, **kwargs)
 
-    async def _post(self, endpoint: str, **kwargs) -> Any:
+    async def _post(self, endpoint: str, **kwargs: Any) -> Any:
         """POST request wrapper."""
         return await self._send_api_request("POST", endpoint, **kwargs)
 
-    async def _put(self, endpoint: str, **kwargs) -> Any:
+    async def _put(self, endpoint: str, **kwargs: Any) -> Any:
         """PUT request wrapper."""
         return await self._send_api_request("PUT", endpoint, **kwargs)
 
-    async def _delete(self, endpoint: str, **kwargs) -> Any:
+    async def _delete(self, endpoint: str, **kwargs: Any) -> Any:
         """DELETE request wrapper."""
         return await self._send_api_request("DELETE", endpoint, **kwargs)
 
-
     # ========================================================================
-    # Pagination Helper - DRY for all paginated endpoints
+    # Pagination Helper
     # ========================================================================
 
     async def _paginate(
@@ -245,25 +243,6 @@ class HarborClient:
     # ========================================================================
     # Connection & Authentication
     # ========================================================================
-
-    async def validate_connection(self) -> bool:
-        """
-        Validate Harbor connection and credentials.
-
-        Returns:
-            True if connection is valid
-
-        Raises:
-            Exception: If connection fails
-        """
-        try:
-            logger.info("Validating Harbor connection")
-            await self._get("/api/v2.0/systeminfo")
-            logger.info("Harbor connection validated successfully")
-            return True
-        except Exception as e:
-            logger.error(f"Harbor connection validation failed: {e}")
-            raise
 
     async def get_current_user(self) -> dict[str, Any]:
         """Get current authenticated user information."""

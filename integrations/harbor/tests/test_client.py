@@ -2,10 +2,7 @@
 Tests for Harbor Client API interactions
 """
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, Mock
-from harbor.client.harbor_client import HarborClient
-from typing import Dict, List
-
+from unittest.mock import AsyncMock, patch, Mock
 
 @pytest.mark.client
 class TestHarborClientAuthentication:

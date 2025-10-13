@@ -2,10 +2,7 @@
 Tests for Harbor Server Integration with Port Ocean
 """
 import pytest
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
-from port_ocean.context.ocean import ocean
-from typing import Any, Dict, List
-
+from unittest.mock import AsyncMock, Mock, patch
 
 @pytest.fixture
 def mock_harbor_api_response():
