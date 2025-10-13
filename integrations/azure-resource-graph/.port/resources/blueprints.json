@@ -55,7 +55,7 @@
     "identifier": "azureCloudResources",
     "description": "This blueprint represents an AzureCloud Resource in our software catalog",
     "title": "Azure Cloud Resources",
-    "icon": "Git",
+    "icon": "Azure",
     "schema": {
       "properties": {
         "tags": {
@@ -77,7 +77,7 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
-      "resourceGroup": {
+      "resource_group": {
         "title": "Resource Group",
         "target": "azureResourceGroup",
         "required": false,
