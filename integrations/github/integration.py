@@ -56,9 +56,7 @@ class RepositoryBranchMapping(BaseModel):
 
 
 class FolderSelector(BaseModel):
-    organization: str = Field(
-        description="Specify the organization name",
-    )
+    organization: str
     path: str = Field(default="*")
     repos: list[RepositoryBranchMapping]
 
@@ -160,7 +158,7 @@ class GithubSecretScanningAlertConfig(ResourceConfig):
 
 
 class GithubFilePattern(BaseModel):
-    organization: str = Field(description="Specify the organization name")
+    organization: str
     path: str = Field(
         alias="path",
         description="Specify the path to match files from",
