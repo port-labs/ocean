@@ -271,10 +271,8 @@ async def process_repository_files(
     project_key = repo["project"]["key"]
 
     try:
-        all_items: List[Dict[str, Any]] = []
-        await list_files_recursively(client, project_key, repo_slug, "", all_items)
-
-        for item in all_items:
+        # Process items as a stream instead of collecting them all in memory first
+        async for item in list_files_recursively_stream(client, project_key, repo_slug, ""):
             # We only consider FILE items as candidates to match the filename patterns
             if item.get("type") != "FILE":
                 continue
@@ -296,6 +294,41 @@ async def process_repository_files(
 
     except Exception as e:
         logger.error(f"Failed to list files in repository {repo_slug}: {e}")
+
+
+async def list_files_recursively_stream(
+    client: "BitbucketClient",
+    project_key: str,
+    repo_slug: str,
+    path: str,
+) -> AsyncGenerator[Dict[str, Any], None]:
+    """Recursively list all items under the given path using /files API as a stream."""
+    try:
+        path_to_use = "" if path in ("", "*") else path
+
+        async for contents in client.get_directory_contents(project_key, repo_slug, path_to_use):
+            for item in contents:
+                # Yield the item first
+                if isinstance(item, dict) and "path" in item:
+                    yield item
+                    if item.get("type") == "DIRECTORY":
+                        async for sub_item in list_files_recursively_stream(client, project_key, repo_slug, item["path"]):
+                            yield sub_item
+                elif isinstance(item, str):
+                    is_dir = item.endswith("/")
+                    file_obj = {
+                        "path": item.rstrip("/") if is_dir else item,
+                        "type": "DIRECTORY" if is_dir else "FILE",
+                    }
+                    yield file_obj
+                    if is_dir:
+                        async for sub_item in list_files_recursively_stream(client, project_key, repo_slug, file_obj["path"]):
+                            yield sub_item
+                else:
+                    logger.debug(f"Unknown item shape from directory listing: {item!r}")
+
+    except Exception as e:
+        logger.error(f"Error listing directory '{path}' in {repo_slug}: {e}")
 
 
 async def process_file_patterns(
