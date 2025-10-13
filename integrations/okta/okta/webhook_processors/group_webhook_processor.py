@@ -16,6 +16,18 @@ class OktaGroupWebhookProcessor(OktaBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.GROUP]
 
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        """Check if the event contains group-related events."""
+        payload = event.payload
+        events = payload["data"]["events"]
+
+        for event_object in events:
+            targets = event_object["target"]
+            for target in targets:
+                if target["type"] == "UserGroup" and target["id"]:
+                    return True
+        return False
+
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
@@ -25,10 +37,10 @@ class OktaGroupWebhookProcessor(OktaBaseWebhookProcessor):
         updated: list[dict[str, Any]] = []
         deleted: list[dict[str, Any]] = []
 
-        for event_object in payload.get("data", {}).get("events", []):
-            event_type = event_object.get("eventType", "")
-            for target in event_object.get("target", []):
-                if target.get("type") == "UserGroup" and target.get("id"):
+        for event_object in payload["data"]["events"]:
+            event_type = event_object["eventType"]
+            for target in event_object["target"]:
+                if target["type"] == "UserGroup" and target["id"]:
                     group_id = target["id"]
                     if event_type == OktaEventType.GROUP_LIFECYCLE_DELETE.value:
                         deleted.append({"id": group_id})

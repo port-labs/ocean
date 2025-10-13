@@ -11,7 +11,6 @@ from okta.clients.client_factory import OktaClientFactory
 from okta.utils import ObjectKind
 from okta.core.exporters.user_exporter import OktaUserExporter
 from okta.core.options import GetUserOptions
-from integration import get_default_user_fields
 from okta.utils import OktaEventType
 from integration import OktaUserConfig
 
@@ -19,6 +18,18 @@ from integration import OktaUserConfig
 class OktaUserWebhookProcessor(OktaBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.USER]
+
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        """Check if the event contains user-related events."""
+        payload = event.payload
+        events = payload["data"]["events"]
+
+        for event_object in events:
+            targets = event_object["target"]
+            for target in targets:
+                if target["type"] == "User" and target["id"]:
+                    return True
+        return False
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -30,17 +41,17 @@ class OktaUserWebhookProcessor(OktaBaseWebhookProcessor):
         selector = okta_config.selector
         include_groups = selector.include_groups
         include_applications = selector.include_applications
-        fields = selector.fields or get_default_user_fields()
+        fields = selector.fields
 
         updated_results: list[dict[str, Any]] = []
         deleted_results: list[dict[str, Any]] = []
 
-        events = payload.get("data", {}).get("events", [])
+        events = payload["data"]["events"]
         for event_object in events:
-            event_type = event_object.get("eventType", "")
-            targets = event_object.get("target", [])
+            event_type = event_object["eventType"]
+            targets = event_object["target"]
             for target in targets:
-                is_user_target = target.get("type") == "User" and target.get("id")
+                is_user_target = target["type"] == "User" and target["id"]
                 if not is_user_target:
                     continue
 
