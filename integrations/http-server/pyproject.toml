@@ -1,15 +1,14 @@
 [tool.poetry]
-name = "bitbucket-server"
-
-version = "0.1.57-beta"
-
-description = "Bitbucket Server integration for Port"
-authors = ["Ayodeji Adeoti <ayodeji.adeoti@getport.io>"]
+name = "http-server"
+version = "0.1.0-dev"
+description = "Generic HTTP Server Integration for Ocean"
+authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
 port_ocean = {version = "^0.28.12", extras = ["cli"]}
-aiolimiter = "^1.2.1"
+httpx = "^0.28.1"
+pydantic = "^1.10.8"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
@@ -23,6 +22,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
+yamllint = "^1.37.1"
 
 [tool.towncrier]
 directory = "changelog"
@@ -83,10 +83,10 @@ no_implicit_reexport = true
 # for strict mypy: (this is the tricky one :-))
 disallow_untyped_defs = true
 
-
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
+target-version = "py312"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
@@ -96,7 +96,7 @@ warn_untyped_fields = true
 
 [tool.black]
 line-length = 88
-target-version = ['py311']
+target-version = ['py312']
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -114,3 +114,5 @@ exclude = '''
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-vv -n auto ./tests"
+
+
