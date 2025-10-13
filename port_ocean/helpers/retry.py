@@ -352,20 +352,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         if not self._should_log_response_size(request):
             return
 
-        # Try to get content length from headers first
         content_length = self._get_content_length(response)
-        if content_length is not None:
-            size_info = content_length
-        else:
-            # If no Content-Length header, try to get actual content size
-            try:
-                actual_size = len(await response.aread())
-                size_info = actual_size
-            except Exception as e:
-                cast(logging.Logger, self._logger).error(
-                    f"Error getting response size: {e}"
-                )
-                return
+        if content_length is None:
+            # If Content-Length is missing, skip logging size to avoid reading the body
+            return
+        size_info = content_length
 
         cast(logging.Logger, self._logger).info(
             f"Response for {request.method} {request.url} - Size: {size_info} bytes"
@@ -378,18 +369,10 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             return
 
         content_length = self._get_content_length(response)
-        if content_length is not None:
-            size_info = content_length
-        else:
-            # If no Content-Length header, try to get actual content size
-            try:
-                actual_size = len(response.read())
-                size_info = actual_size
-            except Exception as e:
-                cast(logging.Logger, self._logger).error(
-                    f"Error getting response size: {e}"
-                )
-                return
+        if content_length is None:
+            # If Content-Length is missing, skip logging size to avoid reading the body
+            return
+        size_info = content_length
 
         cast(logging.Logger, self._logger).info(
             f"Response for {request.method} {request.url} - Size: {size_info} bytes"
