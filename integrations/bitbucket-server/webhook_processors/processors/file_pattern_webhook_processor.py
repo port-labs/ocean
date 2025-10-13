@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple, Dict, List
+from typing import Optional, Tuple, Dict, List, Any
 
 from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig

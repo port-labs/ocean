@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import fnmatch
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from loguru import logger
 from integration import BitbucketServerFolderPattern
