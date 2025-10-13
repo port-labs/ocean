@@ -42,12 +42,15 @@ class BitbucketServerFilePattern(BaseModel):
         description="Specify list of filenames to search and return",
     )
 
+
 class BitbucketServerFileSelector(Selector):
     files: BitbucketServerFilePattern
+
 
 class BitbucketServerFileResourceConfig(ResourceConfig):
     kind: Literal["file"]
     selector: BitbucketServerFileSelector
+
 
 class BitbucketServerFolderPattern(BaseModel):
     path: str = Field(
@@ -63,15 +66,18 @@ class BitbucketServerFolderPattern(BaseModel):
         description="Project key containing the repositories",
     )
 
+
 class BitbucketServerFolderSelector(Selector):
     folders: list[BitbucketServerFolderPattern] = Field(
         default_factory=list,
         description="Folder patterns to match",
     )
 
+
 class BitbucketServerFolderResourceConfig(ResourceConfig):
     kind: Literal["folder"]
     selector: BitbucketServerFolderSelector
+
 
 class BitbucketGenericSelector(Selector):
     projects: set[str] | None = Field(

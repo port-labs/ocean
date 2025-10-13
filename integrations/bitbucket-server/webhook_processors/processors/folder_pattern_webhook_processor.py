@@ -45,16 +45,22 @@ class FolderPatternWebhookProcessor(BaseWebhookProcessorMixin):
 
     # ---- helpers ----
 
-    def _extract_repo_locator(self, payload: EventPayload) -> Tuple[Optional[str], Optional[str]]:
+    def _extract_repo_locator(
+        self, payload: EventPayload
+    ) -> Tuple[Optional[str], Optional[str]]:
         repo = payload.get("repository") or payload.get("new") or {}
         project = repo.get("project") or {}
         project_key = project.get("key") or payload.get("project", {}).get("key")
         repo_slug = repo.get("slug") or payload.get("slug")
         if not project_key or not repo_slug:
-            logger.warning(f"[FolderPatternWebhook] Could not extract repo locator from payload: {payload}")
+            logger.warning(
+                f"[FolderPatternWebhook] Could not extract repo locator from payload: {payload}"
+            )
         return project_key, repo_slug
 
-    def _iter_folder_patterns_from_resource(self, resource: ResourceConfig) -> Iterable[BitbucketServerFolderPattern]:
+    def _iter_folder_patterns_from_resource(
+        self, resource: ResourceConfig
+    ) -> Iterable[BitbucketServerFolderPattern]:
         """
         Returns an iterator over BitbucketServerFolderPattern objects from resource.selector.folders.
         Handles single-or-list cases safely.
@@ -66,7 +72,9 @@ class FolderPatternWebhookProcessor(BaseWebhookProcessorMixin):
 
         folders_attr = getattr(selector, "folders", None)
         if not folders_attr:
-            logger.warning("[FolderPatternWebhook] selector.folders is empty or missing")
+            logger.warning(
+                "[FolderPatternWebhook] selector.folders is empty or missing"
+            )
             return []
 
         # Could be a single pattern or a list
@@ -74,10 +82,16 @@ class FolderPatternWebhookProcessor(BaseWebhookProcessorMixin):
             return [p for p in folders_attr if p]
         return [folders_attr]
 
-    def _pattern_matches_repo(self, pattern: BitbucketServerFolderPattern, project_key: str, repo_slug: str) -> bool:
+    def _pattern_matches_repo(
+        self, pattern: BitbucketServerFolderPattern, project_key: str, repo_slug: str
+    ) -> bool:
         if pattern.project_key not in (project_key, "*"):
             return False
-        if pattern.repos and repo_slug not in pattern.repos and "*" not in pattern.repos:
+        if (
+            pattern.repos
+            and repo_slug not in pattern.repos
+            and "*" not in pattern.repos
+        ):
             return False
         return True
 
@@ -88,11 +102,15 @@ class FolderPatternWebhookProcessor(BaseWebhookProcessorMixin):
     ) -> WebhookEventRawResults:
         project_key, repo_slug = self._extract_repo_locator(payload)
         if not project_key or not repo_slug:
-            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         patterns = list(self._iter_folder_patterns_from_resource(resource))
         if not patterns:
-            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         # Fetch repo once; reused for all patterns
         repo_obj = await self._client.get_single_repository(project_key, repo_slug) or {
@@ -102,14 +120,18 @@ class FolderPatternWebhookProcessor(BaseWebhookProcessorMixin):
         repo_info = (repo_obj, project_key)
 
         updated: List[Dict[str, Any]] = []
-        seen_keys: set[tuple[str, str, str]] = set()  # (project_key, repo_slug, folder_path)
+        seen_keys: set[tuple[str, str, str]] = (
+            set()
+        )  # (project_key, repo_slug, folder_path)
 
         for pattern in patterns:
             if not self._pattern_matches_repo(pattern, project_key, repo_slug):
                 continue
 
             try:
-                matches = await process_repository_folders(self._client, repo_info, pattern)
+                matches = await process_repository_folders(
+                    self._client, repo_info, pattern
+                )
             except Exception as e:
                 logger.error(
                     f"[FolderPatternWebhook] Failed processing repo {project_key}/{repo_slug} for pattern {getattr(pattern, 'path', '')}: {e}"

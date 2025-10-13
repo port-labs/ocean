@@ -14,13 +14,16 @@ if TYPE_CHECKING:
 def _normalize_posix(path: str) -> str:
     return Path(path).as_posix()
 
+
 def _has_glob_chars(pattern: str) -> bool:
     # detect any globbing: *, ?, [], or **
     return any(ch in pattern for ch in ["*", "?", "["])
 
+
 def _dir_like(path: str) -> str:
     # normalize path for directory-style comparisons (no trailing slash)
     return _normalize_posix(path).rstrip("/")
+
 
 def _matches_dir_pattern(dir_path: str, pattern_path: str) -> bool:
     """
@@ -46,8 +49,7 @@ def _matches_dir_pattern(dir_path: str, pattern_path: str) -> bool:
 
 
 async def get_repositories_for_pattern(
-    pattern: BitbucketServerFolderPattern,
-    client: "BitbucketClient"
+    pattern: BitbucketServerFolderPattern, client: "BitbucketClient"
 ) -> List[Tuple[Dict[str, Any], str]]:
     """Get repositories (and their project_key) matching the given folder pattern."""
     repos_to_process: List[Tuple[Dict[str, Any], str]] = []
@@ -60,7 +62,9 @@ async def get_repositories_for_pattern(
     if project_key == "*":
         await collect_repos_for_all_projects(client, pattern, repos_to_process)
     else:
-        await collect_repos_for_project(client, project_key, pattern.repos, repos_to_process)
+        await collect_repos_for_project(
+            client, project_key, pattern.repos, repos_to_process
+        )
 
     return repos_to_process
 
@@ -68,20 +72,22 @@ async def get_repositories_for_pattern(
 async def collect_repos_for_all_projects(
     client: "BitbucketClient",
     pattern: BitbucketServerFolderPattern,
-    repos_list: List[Tuple[Dict[str, Any], str]]
+    repos_list: List[Tuple[Dict[str, Any], str]],
 ) -> None:
     async for project_batch in client.get_projects():
         for project in project_batch:
             actual_project_key = project["key"]
             logger.info(f"[folders] Scanning project: {actual_project_key}")
-            await collect_repos_for_project(client, actual_project_key, pattern.repos, repos_list)
+            await collect_repos_for_project(
+                client, actual_project_key, pattern.repos, repos_list
+            )
 
 
 async def collect_repos_for_project(
     client: "BitbucketClient",
     project_key: str,
     repo_filter: List[str],
-    repos_list: List[Tuple[Dict[str, Any], str]]
+    repos_list: List[Tuple[Dict[str, Any], str]],
 ) -> None:
     async for repo_batch in client.get_repositories_for_project(project_key):
         for repo in repo_batch:
@@ -102,11 +108,17 @@ async def _list_dirs_recursively(
     """
     try:
         base = "" if path in ("", "*") else path
-        async for contents in client.get_directory_contents(project_key, repo_slug, base):
+        async for contents in client.get_directory_contents(
+            project_key, repo_slug, base
+        ):
             for item in contents:
-                await _process_directory_item(client, project_key, repo_slug, item, result_list)
+                await _process_directory_item(
+                    client, project_key, repo_slug, item, result_list
+                )
     except Exception as e:
-        logger.error(f"[folders] Error listing '{path}' in {project_key}/{repo_slug}: {e}")
+        logger.error(
+            f"[folders] Error listing '{path}' in {project_key}/{repo_slug}: {e}"
+        )
 
 
 async def _process_directory_item(
@@ -141,7 +153,9 @@ async def _process_typed_item(
     result_list.append(item)  # record everything; consumers can filter
 
     if item_type == "DIRECTORY":
-        await _list_dirs_recursively(client, project_key, repo_slug, item["path"], result_list)
+        await _list_dirs_recursively(
+            client, project_key, repo_slug, item["path"], result_list
+        )
 
 
 async def _process_string_item(
@@ -158,7 +172,9 @@ async def _process_string_item(
     }
     result_list.append(obj)
     if is_dir:
-        await _list_dirs_recursively(client, project_key, repo_slug, obj["path"], result_list)
+        await _list_dirs_recursively(
+            client, project_key, repo_slug, obj["path"], result_list
+        )
 
 
 def _folder_hit(item: Dict[str, Any], pattern_path: str) -> bool:
@@ -195,14 +211,16 @@ async def _fast_check_exact_folder(
                 path_str = str(path_obj or "")
             return {"path": path_str, "type": "DIRECTORY"}
     except Exception as e:
-        logger.debug(f"[folders] Fast check failed for {project_key}/{repo_slug}:{path} -> {e}")
+        logger.debug(
+            f"[folders] Fast check failed for {project_key}/{repo_slug}:{path} -> {e}"
+        )
     return None
 
 
 async def process_repository_folders(
     client: "BitbucketClient",
     repo_info: Tuple[Dict[str, Any], str],
-    pattern: BitbucketServerFolderPattern
+    pattern: BitbucketServerFolderPattern,
 ) -> List[Dict[str, Any]]:
     """
     Process folders in a repository that match the given pattern.
@@ -218,7 +236,9 @@ async def process_repository_folders(
     try:
         # Fast path: exact folder check (no glob chars and not empty/'*')
         if pattern_path and pattern_path != "*" and not _has_glob_chars(pattern_path):
-            hit = await _fast_check_exact_folder(client, project_key, repo_slug, pattern_path)
+            hit = await _fast_check_exact_folder(
+                client, project_key, repo_slug, pattern_path
+            )
             if hit:
                 return [{"folder": hit, "repo": repo, "project": {"key": project_key}}]
             return []
@@ -230,7 +250,9 @@ async def process_repository_folders(
         matches: List[Dict[str, Any]] = []
         for item in items:
             if _folder_hit(item, pattern_path):
-                matches.append({"folder": item, "repo": repo, "project": {"key": project_key}})
+                matches.append(
+                    {"folder": item, "repo": repo, "project": {"key": project_key}}
+                )
 
         return matches
 
@@ -240,8 +262,7 @@ async def process_repository_folders(
 
 
 async def process_folder_patterns(
-    folder_patterns: list[BitbucketServerFolderPattern],
-    client: "BitbucketClient"
+    folder_patterns: list[BitbucketServerFolderPattern], client: "BitbucketClient"
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     """
     Process a list of folder patterns. Yields lists of matches per repository.

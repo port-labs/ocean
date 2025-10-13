@@ -48,17 +48,21 @@ class FilePatternWebhookProcessor(BaseWebhookProcessorMixin):
 
     # ---- helpers ----
 
-    def _extract_repo_locator(self, payload: EventPayload) -> Tuple[Optional[str], Optional[str]]:
+    def _extract_repo_locator(
+        self, payload: EventPayload
+    ) -> Tuple[Optional[str], Optional[str]]:
         repo = payload.get("repository") or payload.get("new") or {}
         project = repo.get("project") or {}
         project_key = project.get("key") or payload.get("project", {}).get("key")
         repo_slug = repo.get("slug") or payload.get("slug")
         if not project_key or not repo_slug:
-            logger.warning(f"[FilePatternWebhook] Could not extract repo locator from payload: {payload}")
+            logger.warning(
+                f"[FilePatternWebhook] Could not extract repo locator from payload: {payload}"
+            )
         return project_key, repo_slug
 
     def _build_file_pattern_from_resource(
-    self, resource: ResourceConfig
+        self, resource: ResourceConfig
     ) -> Optional[BitbucketServerFilePattern]:
         """
         Build a BitbucketServerFilePattern from the resource's selector.
@@ -73,7 +77,9 @@ class FilePatternWebhookProcessor(BaseWebhookProcessorMixin):
 
             files_attr = getattr(selector, "files", None)
             if not files_attr:
-                logger.warning("[FilePatternWebhook] selector.files is empty or missing")
+                logger.warning(
+                    "[FilePatternWebhook] selector.files is empty or missing"
+                )
                 return None
 
             # selector.files may be a single BitbucketServerFilePattern or a list of them.
@@ -84,7 +90,9 @@ class FilePatternWebhookProcessor(BaseWebhookProcessorMixin):
                 pattern = files_attr
 
             if pattern is None:
-                logger.warning("[FilePatternWebhook] No usable file pattern found in selector.files")
+                logger.warning(
+                    "[FilePatternWebhook] No usable file pattern found in selector.files"
+                )
                 return None
 
             # Optional: quick sanity checks to avoid surprises at runtime
@@ -108,20 +116,34 @@ class FilePatternWebhookProcessor(BaseWebhookProcessorMixin):
     ) -> WebhookEventRawResults:
         project_key, repo_slug = self._extract_repo_locator(payload)
         if not project_key or not repo_slug:
-            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         pattern = self._build_file_pattern_from_resource(resource)
         if not pattern:
-            logger.warning("[FilePatternWebhook] No usable file pattern in resource; skipping.")
-            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+            logger.warning(
+                "[FilePatternWebhook] No usable file pattern in resource; skipping."
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         # Respect repo filter if present
-        if pattern.repos and repo_slug not in pattern.repos and "*" not in pattern.repos:
-            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+        if (
+            pattern.repos
+            and repo_slug not in pattern.repos
+            and "*" not in pattern.repos
+        ):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         # Respect project filter if present
         if pattern.project_key not in (project_key, "*"):
-            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         # Hydrate the repo object (optional, used by helper result)
         repo_obj = await self._client.get_single_repository(project_key, repo_slug) or {

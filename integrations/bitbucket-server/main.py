@@ -65,6 +65,7 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received {len(user_batch)} users")
         yield user_batch
 
+
 @ocean.on_resync(ObjectKind.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(BitbucketServerFolderResourceConfig, event.resource_config)
@@ -76,6 +77,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received {len(matching_folders)} folders")
         yield matching_folders
 
+
 @ocean.on_resync(ObjectKind.FILE)
 async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(BitbucketServerFileResourceConfig, event.resource_config)
@@ -86,6 +88,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for file_result in client.get_files_by_patterns(selector.files):
         logger.info(f"Received {len(file_result)} files")
         yield file_result
+
 
 @ocean.on_start()
 async def on_start() -> None:

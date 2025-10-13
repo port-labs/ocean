@@ -21,7 +21,9 @@ def _matches_any(patterns: List[str], value: str) -> bool:
     return any(fnmatch.fnmatch(value, p) for p in patterns)
 
 
-def matches_file_pattern(file_path: str, pattern_path: str, filenames: List[str]) -> bool:
+def matches_file_pattern(
+    file_path: str, pattern_path: str, filenames: List[str]
+) -> bool:
     """
     Check if a file path matches the provided directory/path constraint and filename patterns.
     - If pattern_path is empty or '*', match by filename only.
@@ -93,15 +95,17 @@ def _create_file_metadata_from_browse(browse_json: Dict[str, Any]) -> Dict[str, 
     meta = {
         "path": path_str,
         "size": browse_json.get("size"),
-        "type": browse_json.get("type"),        # FILE / DIRECTORY / SYMLINK / SUBMODULE
+        "type": browse_json.get("type"),  # FILE / DIRECTORY / SYMLINK / SUBMODULE
         "mimeType": browse_json.get("mimeType"),
-        "lastModified": None,                   # could be populated via commits call
-        "sha": None,                            # could be populated via commits call
+        "lastModified": None,  # could be populated via commits call
+        "sha": None,  # could be populated via commits call
     }
     return meta
 
 
-def _finalize_metadata_fallbacks(meta: Dict[str, Any], content_type_header: Optional[str]) -> Dict[str, Any]:
+def _finalize_metadata_fallbacks(
+    meta: Dict[str, Any], content_type_header: Optional[str]
+) -> Dict[str, Any]:
     """
     Prefer Bitbucket-provided mimeType, otherwise use the HTTP header; if still missing, fall back to mimetypes.
     Default 'type' to FILE if not present.
@@ -142,7 +146,9 @@ async def process_matching_file(
         # 1) Lightweight metadata call
         info = await client.get_file_info(project_key, repo_slug, file_path, at=at)
         if not info:
-            logger.warning(f"No metadata returned for {project_key}/{repo_slug}:{file_path}")
+            logger.warning(
+                f"No metadata returned for {project_key}/{repo_slug}:{file_path}"
+            )
             return None
 
         file_obj = _create_file_metadata_from_browse(info)
@@ -154,9 +160,13 @@ async def process_matching_file(
             file_size = int(file_obj.get("size") or 0)
             if file_size == 0:
                 # Zero-byte files are safe to fetch, but raw still returns cleanly
-                content, content_type_header = await client.get_file_raw(project_key, repo_slug, file_path, at=at)
+                content, content_type_header = await client.get_file_raw(
+                    project_key, repo_slug, file_path, at=at
+                )
             elif file_size <= size_limit_bytes:
-                content, content_type_header = await client.get_file_raw(project_key, repo_slug, file_path, at=at)
+                content, content_type_header = await client.get_file_raw(
+                    project_key, repo_slug, file_path, at=at
+                )
             else:
                 logger.info(
                     f"Skipping content download for large file ({file_size} bytes): {file_path}"
@@ -171,12 +181,16 @@ async def process_matching_file(
             "file": file_obj,
             "path": file_path,
             "filename": Path(file_path).name,
-            "truncated": (content is None) and (file_obj.get("size") or 0) > size_limit_bytes and not skip_parsing,
+            "truncated": (content is None)
+            and (file_obj.get("size") or 0) > size_limit_bytes
+            and not skip_parsing,
         }
         return result
 
     except Exception as e:
-        logger.error(f"Failed to retrieve file content for {file_path} from {repo_slug}: {e}")
+        logger.error(
+            f"Failed to retrieve file content for {file_path} from {repo_slug}: {e}"
+        )
         return None
 
 
@@ -192,9 +206,13 @@ async def list_files_recursively(
         # Treat '*' as repo root
         path_to_use = "" if path in ("", "*") else path
 
-        async for contents in client.get_directory_contents(project_key, repo_slug, path_to_use):
+        async for contents in client.get_directory_contents(
+            project_key, repo_slug, path_to_use
+        ):
             for item in contents:
-                await process_directory_item(client, project_key, repo_slug, item, result_list)
+                await process_directory_item(
+                    client, project_key, repo_slug, item, result_list
+                )
     except Exception as e:
         logger.error(f"Error listing directory '{path}' in {repo_slug}: {e}")
 
@@ -237,7 +255,9 @@ async def process_typed_item(
     result_list.append(item)
 
     if item_type == "DIRECTORY":
-        await list_files_recursively(client, project_key, repo_slug, item_path, result_list)
+        await list_files_recursively(
+            client, project_key, repo_slug, item_path, result_list
+        )
 
 
 async def process_string_item(
@@ -255,7 +275,9 @@ async def process_string_item(
     }
     result_list.append(file_obj)
     if is_dir:
-        await list_files_recursively(client, project_key, repo_slug, file_obj["path"], result_list)
+        await list_files_recursively(
+            client, project_key, repo_slug, file_obj["path"], result_list
+        )
 
 
 async def process_repository_files(
@@ -272,13 +294,17 @@ async def process_repository_files(
 
     try:
         # Process items as a stream instead of collecting them all in memory first
-        async for item in list_files_recursively_stream(client, project_key, repo_slug, ""):
+        async for item in list_files_recursively_stream(
+            client, project_key, repo_slug, ""
+        ):
             # We only consider FILE items as candidates to match the filename patterns
             if item.get("type") != "FILE":
                 continue
 
             file_path = item.get("path", "")
-            if matches_file_pattern(file_path, file_pattern.path, file_pattern.filenames):
+            if matches_file_pattern(
+                file_path, file_pattern.path, file_pattern.filenames
+            ):
                 result = await process_matching_file(
                     client,
                     project_key,
@@ -306,13 +332,17 @@ async def list_files_recursively_stream(
     try:
         path_to_use = "" if path in ("", "*") else path
 
-        async for contents in client.get_directory_contents(project_key, repo_slug, path_to_use):
+        async for contents in client.get_directory_contents(
+            project_key, repo_slug, path_to_use
+        ):
             for item in contents:
                 # Yield the item first
                 if isinstance(item, dict) and "path" in item:
                     yield item
                     if item.get("type") == "DIRECTORY":
-                        async for sub_item in list_files_recursively_stream(client, project_key, repo_slug, item["path"]):
+                        async for sub_item in list_files_recursively_stream(
+                            client, project_key, repo_slug, item["path"]
+                        ):
                             yield sub_item
                 elif isinstance(item, str):
                     is_dir = item.endswith("/")
@@ -322,7 +352,9 @@ async def list_files_recursively_stream(
                     }
                     yield file_obj
                     if is_dir:
-                        async for sub_item in list_files_recursively_stream(client, project_key, repo_slug, file_obj["path"]):
+                        async for sub_item in list_files_recursively_stream(
+                            client, project_key, repo_slug, file_obj["path"]
+                        ):
                             yield sub_item
                 else:
                     logger.debug(f"Unknown item shape from directory listing: {item!r}")

@@ -99,7 +99,7 @@ class BitbucketClient:
             except httpx.HTTPError as e:
                 logger.error(f"Failed to send {method} request to url {url}: {str(e)}")
                 raise
-    
+
     async def get_file_info(
         self,
         project_key: str,
@@ -157,7 +157,7 @@ class BitbucketClient:
             resp = await self.client.request("GET", url, params=params)
             resp.raise_for_status()
             return resp.content, resp.headers.get("Content-Type")
-    
+
     async def get_paginated_resource(
         self,
         path: str,
