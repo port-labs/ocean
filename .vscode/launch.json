@@ -207,6 +207,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/azure-resource-graph",
+      "envFile": "${workspaceFolder}/integrations/azure-resource-graph/.env",
+      "justMyCode": true,
+      "name": "Run azure-rg integration",
+      "program": "${workspaceFolder}/integrations/azure-resource-graph/debug.py",
+      "python": "${workspaceFolder}/integrations/azure-resource-graph/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/jira-server",
       "envFile": "${workspaceFolder}/integrations/jira-server/.env",
       "justMyCode": true,
