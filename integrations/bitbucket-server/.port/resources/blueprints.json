@@ -241,5 +241,127 @@
         "calculationProperties": {},
         "aggregationProperties": {},
         "relations": {}
+    },
+    {
+        "identifier": "bitbucketFile",
+        "description": "A software catalog to represent Bitbucket files",
+        "title": "Bitbucket File",
+        "icon": "BitBucket",
+        "schema": {
+            "properties": {
+                "projectKey": {
+                    "title": "Project Key",
+                    "type": "string",
+                    "icon": "DefaultProperty"
+                },
+                "repositorySlug": {
+                    "title": "Repository Slug",
+                    "type": "string",
+                    "icon": "DefaultProperty"
+                },
+                "path": {
+                    "title": "Path",
+                    "type": "string",
+                    "icon": "DefaultProperty"
+                },
+                "size": {
+                    "title": "Size",
+                    "type": "number",
+                    "icon": "DefaultProperty"
+                },
+                "extension": {
+                    "title": "Extension",
+                    "type": "string",
+                    "icon": "DefaultProperty"
+                },
+                "content_type": {
+                    "title": "Content Type",
+                    "type": "string",
+                    "icon": "DefaultProperty"
+                },
+                "last_modified": {
+                    "title": "Last Modified",
+                    "type": "string",
+                    "format": "date-time",
+                    "icon": "DefaultProperty"
+                }
+            },
+            "required": [
+                "path"
+            ]
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {
+            "project": {
+                "title": "Project",
+                "target": "bitbucketProject",
+                "required": false,
+                "many": false
+            },
+            "repository": {
+                "title": "Repository",
+                "target": "bitbucketRepository",
+                "required": false,
+                "many": false
+            },
+            "parent_folder": {
+                "title": "Parent Folder",
+                "target": "bitbucketFolder",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "bitbucketFolder",
+        "description": "A software catalog to represent Bitbucket folders",
+        "title": "Bitbucket Folder",
+        "icon": "BitBucket",
+        "schema": {
+          "properties": {
+            "projectKey": {
+              "title": "Project Key",
+              "type": "string",
+              "icon": "DefaultProperty"
+            },
+            "repositorySlug": {
+              "title": "Repository Slug",
+              "type": "string",
+              "icon": "DefaultProperty"
+            },
+            "path": {
+              "title": "Path",
+              "type": "string",
+              "icon": "DefaultProperty"
+            },
+            "type": {
+              "title": "Type",
+              "type": "string",
+              "icon": "DefaultProperty"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {
+          "project": {
+            "title": "Project",
+            "target": "bitbucketProject",
+            "required": false,
+            "many": false
+          },
+          "repository": {
+            "title": "Repository",
+            "target": "bitbucketRepository",
+            "required": false,
+            "many": false
+          }
+        }
     }
 ]
