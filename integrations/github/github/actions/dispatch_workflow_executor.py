@@ -1,6 +1,8 @@
 import asyncio
 from datetime import datetime, timezone
+import json
 
+import httpx
 from loguru import logger
 from integrations.github.github.actions.utils import build_external_id
 from integrations.github.github.context.auth import (
@@ -13,6 +15,7 @@ from integrations.github.github.core.options import SingleRepositoryOptions
 from integrations.github.github.webhook.registry import (
     WEBHOOK_PATH as DISPATCH_WEBHOOK_PATH,
 )
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -42,6 +45,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
         async def _should_process_event(self, event: WebhookEvent) -> bool:
             workflow_run = event.payload["workflow_run"]
+            authenticated_user = await get_authenticated_user()
             return (
                 await super()._should_process_event(event)
                 and workflow_run["status"] == "completed"
@@ -52,7 +56,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             workflow_run = payload["workflow_run"]
 
             external_id = build_external_id(workflow_run)
-            action_run = await self._port_client.get_run_by_external_id(external_id)
+            action_run = await ocean.port_client.get_run_by_external_id(external_id)
 
             if (
                 action_run.status == RunStatus.IN_PROGRESS
@@ -63,7 +67,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                     if workflow_run["conclusion"] in ["success", "skipped", "neutral"]
                     else RunStatus.FAILURE
                 )
-                await self._port_client.patch_run(action_run.id, {"status": status})
+                await ocean.port_client.patch_run(action_run.id, {"status": status})
 
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
@@ -87,9 +91,11 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         return self._default_ref_cache[repo_id]
 
     async def execute(self, run: ActionRun[IntegrationActionInvocationPayload]) -> None:
-        repo = run.payload.oceanExecution.get("repo")
-        workflow = run.payload.oceanExecution.get("workflow")
-        inputs = run.payload.oceanExecution.get("workflowInputs", {})
+        repo = run.payload.integrationActionExecutionProperties.get("repo")
+        workflow = run.payload.integrationActionExecutionProperties.get("workflow")
+        inputs = run.payload.integrationActionExecutionProperties.get(
+            "workflowInputs", {}
+        )
 
         if not (repo and workflow):
             raise ValueError("repo and workflow are required")
@@ -97,17 +103,15 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         ref = await self._get_default_ref(repo)
         try:
             isoDate = datetime.now(timezone.utc).isoformat()
-            res = await self.rest_client.make_request(
+            await self.rest_client.make_request(
                 f"{self.rest_client.base_url}/repos/{self.rest_client.organization}/{repo}/actions/workflows/{workflow}/dispatches",
                 method="POST",
                 json_data={
                     "ref": ref,
                     "inputs": inputs,
                 },
+                ignore_default_errors=False,
             )
-
-            if res.status_code != 204:
-                raise Exception("Failed to dispatch workflow")
 
             # Get the workflow run id
             workflow_runs = []
@@ -125,6 +129,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                         "exclude_pull_requests": True,
                     },
                     method="GET",
+                    ignore_default_errors=False,
                 )
                 workflow_runs = response.get("workflow_runs", [])
                 if len(workflow_runs) == 0:
@@ -137,5 +142,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             external_id = build_external_id(workflow_runs[0])
             await self._port_client.patch_run(run.id, {"external_run_id": external_id})
         except Exception as e:
-            logger.error(f"Error dispatching workflow: {e}")
-            raise
+            error_message = str(e)
+            if isinstance(e, httpx.HTTPStatusError):
+                error_message = json.loads(e.response.text).get("message", str(e))
+            raise Exception(f"Error dispatching workflow: {error_message}")

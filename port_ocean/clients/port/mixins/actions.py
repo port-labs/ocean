@@ -48,9 +48,9 @@ class ActionsClientMixin:
                 type=InvocationType.INTEGRATION_ACTION,
                 installationId=ocean.config.integration.identifier,
                 actionType="dispatch_workflow",
-                oceanExecution={
+                integrationActionExecutionProperties={
                     "repo": "test-repo",
-                    "workflow": "hello-world.yml",
+                    "workflow": "hello-worldss.yml",
                     "workflowInputs": {},
                     "reportWorkflowStatus": True,
                 },
@@ -85,9 +85,9 @@ class ActionsClientMixin:
                         type=InvocationType.INTEGRATION_ACTION,
                         installationId=ocean.config.integration.identifier,
                         actionType="dispatch_workflow",
-                        oceanExecution={
+                        integrationActionExecutionProperties={
                             "repo": "test-repo",
-                            "workflow": "hello-world.yml",
+                            "workflow": "hello-worldss.yml",
                             "workflowInputs": {},
                             "reportWorkflowStatus": True,
                         },

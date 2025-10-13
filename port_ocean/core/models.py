@@ -156,7 +156,7 @@ class IntegrationActionInvocationPayload(InvocationPayload):
     type: Literal[InvocationType.INTEGRATION_ACTION]
     installationId: str
     actionType: str
-    oceanExecution: dict[str, Any] = Field(default_factory=dict)
+    integrationActionExecutionProperties: dict[str, Any] = Field(default_factory=dict)
 
 
 class ActionRun[T](BaseModel):

@@ -122,7 +122,7 @@ class ExecutionManager:
         """
         Extract the partition key from a run's payload.
         """
-        value = run.payload.oceanExecution.get(partition_key)
+        value = run.payload.integrationActionExecutionProperties.get(partition_key)
         if value:
             return value
 
@@ -352,15 +352,15 @@ class ExecutionManager:
             logger.debug("Run already acknowledged", run=run_task.run.id)
             return
         except Exception as e:
-            logger.exception(
+            logger.error(
                 "Error executing run",
+                error=e,
                 run=run_task.run.id,
                 action=run_task.run.payload.actionType,
             )
             await self._port_client.patch_run(
                 run_task.run.id, {"summary": str(e), "status": RunStatus.FAILURE}
             )
-            raise e
 
     async def _gracefully_cancel_task(self, task: asyncio.Task[None]) -> None:
         """
