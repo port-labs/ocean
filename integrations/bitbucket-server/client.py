@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Dict, Optional, cast
+from typing import Any, AsyncGenerator, Dict, Optional, cast, Tuple
 
 import httpx
 from aiolimiter import AsyncLimiter
