@@ -212,7 +212,7 @@ class Ocean:
         return None
 
     async def _register_addons(self) -> None:
-        if self.base_url:
+        if not self.base_url:
             logger.warning(
                 "No base URL provided, skipping webhook processing and execution agent setup"
             )
@@ -223,6 +223,7 @@ class Ocean:
             logger.warning(
                 "Execution agent is not enabled, skipping execution agent setup"
             )
+            return
 
         if self.config.event_listener.should_run_execution_agent_if_enabled:
             await self.execution_manager.start_processing_action_runs()

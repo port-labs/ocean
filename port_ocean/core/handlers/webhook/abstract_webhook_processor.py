@@ -59,6 +59,10 @@ class AbstractWebhookProcessor(ABC):
         self.event = event
         self.retry_count = 0
 
+    @classmethod
+    def get_processor_type(cls) -> WebhookProcessorType:
+        return WebhookProcessorType.WEBHOOK
+
     async def on_error(self, error: Exception) -> None:
         """Hook to handle errors during processing. Override if needed"""
         delay = self.calculate_retry_delay()

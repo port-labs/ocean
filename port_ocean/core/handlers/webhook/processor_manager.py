@@ -159,6 +159,10 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             processor = processor_class(webhook_event.clone())
             if await processor.should_process_event(webhook_event):
                 event_processor_names.append(processor.__class__.__name__)
+                if processor.get_processor_type() == WebhookProcessorType.ACTION:
+                    created_processors.append((None, processor))
+                    continue
+
                 kinds = await processor.get_matching_kinds(webhook_event)
                 for kind in kinds:
                     for resource in event.port_app_config.resources:
@@ -277,7 +281,6 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         self,
         path: str,
         processor: Type[AbstractWebhookProcessor],
-        processor_type: WebhookProcessorType = WebhookProcessorType.WEBHOOK,
     ) -> None:
         """Register a webhook processor for a specific path with optional filter
 
@@ -290,13 +293,16 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         if not issubclass(processor, AbstractWebhookProcessor):
             raise ValueError("Processor must extend AbstractWebhookProcessor")
 
-        if processor_type not in PROCESSOR_TO_EVENT_LISTENER_TYPES_COMPATIBILITY.get(
-            ocean.event_listener_type,
-            [WebhookProcessorType.WEBHOOK, WebhookProcessorType.ACTION],
+        if (
+            processor.get_processor_type()
+            not in PROCESSOR_TO_EVENT_LISTENER_TYPES_COMPATIBILITY.get(
+                ocean.event_listener_type,
+                [WebhookProcessorType.WEBHOOK, WebhookProcessorType.ACTION],
+            )
         ):
             logger.warning(
                 "Processor type is not compatible with event listener type, skipping registration",
-                processor_type=processor_type,
+                processor_type=processor.get_processor_type(),
                 event_listener_type=ocean.event_listener_type,
             )
             return

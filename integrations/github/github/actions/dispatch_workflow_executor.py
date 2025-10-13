@@ -16,6 +16,10 @@ from integrations.github.github.webhook.registry import (
     WEBHOOK_PATH as DISPATCH_WEBHOOK_PATH,
 )
 from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
+    WebhookProcessorType,
+)
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -43,24 +47,35 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     PARTITION_KEY = "workflow"
 
     class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
+        @classmethod
+        def get_processor_type(cls) -> WebhookProcessorType:
+            return WebhookProcessorType.ACTION
+
         async def _should_process_event(self, event: WebhookEvent) -> bool:
             workflow_run = event.payload["workflow_run"]
             authenticated_user = await get_authenticated_user()
-            return (
+            should_process = (
                 await super()._should_process_event(event)
                 and workflow_run["status"] == "completed"
                 and workflow_run["actor"]["login"] == authenticated_user.login
             )
+            return should_process
 
-        async def handle_event(self, payload: EventPayload) -> WebhookEventRawResults:
+        async def handle_event(
+            self, payload: EventPayload, resource_config: ResourceConfig
+        ) -> WebhookEventRawResults:
             workflow_run = payload["workflow_run"]
 
             external_id = build_external_id(workflow_run)
-            action_run = await ocean.port_client.get_run_by_external_id(external_id)
+            action_run: ActionRun[IntegrationActionInvocationPayload] = (
+                await ocean.port_client.get_run_by_external_id(external_id)
+            )
 
             if (
                 action_run.status == RunStatus.IN_PROGRESS
-                and action_run.payload.oceanExecution.get("reportWorkflowStatus", False)
+                and action_run.payload.integrationActionExecutionProperties.get(
+                    "reportWorkflowStatus", False
+                )
             ):
                 status = (
                     RunStatus.SUCCESS
@@ -140,7 +155,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 raise Exception("No workflow runs found")
 
             external_id = build_external_id(workflow_runs[0])
-            await self._port_client.patch_run(run.id, {"external_run_id": external_id})
+            await ocean.port_client.patch_run(run.id, {"external_run_id": external_id})
         except Exception as e:
             error_message = str(e)
             if isinstance(e, httpx.HTTPStatusError):

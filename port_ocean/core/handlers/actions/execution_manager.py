@@ -5,9 +5,6 @@ from typing import Dict, Set, Optional, List
 from loguru import logger
 from pydantic import BaseModel
 from port_ocean.clients.port.client import PortClient
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
-    WebhookProcessorType,
-)
 from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
@@ -85,7 +82,6 @@ class ExecutionManager:
             self._webhook_manager.register_processor(
                 executor.WEBHOOK_PATH,
                 webhook_processor_cls,
-                WebhookProcessorType.ACTION,
             )
             logger.info(
                 "Registered executor webhook processor",

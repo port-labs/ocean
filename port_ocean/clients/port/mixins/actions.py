@@ -50,7 +50,7 @@ class ActionsClientMixin:
                 actionType="dispatch_workflow",
                 integrationActionExecutionProperties={
                     "repo": "test-repo",
-                    "workflow": "hello-worldss.yml",
+                    "workflow": "hello-world.yml",
                     "workflowInputs": {},
                     "reportWorkflowStatus": True,
                 },
@@ -87,7 +87,7 @@ class ActionsClientMixin:
                         actionType="dispatch_workflow",
                         integrationActionExecutionProperties={
                             "repo": "test-repo",
-                            "workflow": "hello-worldss.yml",
+                            "workflow": "hello-world.yml",
                             "workflowInputs": {},
                             "reportWorkflowStatus": True,
                         },
