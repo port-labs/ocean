@@ -3,7 +3,7 @@ Tests for Harbor Client API interactions
 """
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from client import HarborClient
+from harbor.client.harbor_client import HarborClient
 from typing import Dict, List
 
 
