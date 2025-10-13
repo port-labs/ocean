@@ -13,3 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Created Armorcode Ocean integration with support for Product, Sub Product and Findings
+
+
+## 0.1.0-beta (2025-10-09)
+
+### Features
+
+- Beta release for Armorcode integration
