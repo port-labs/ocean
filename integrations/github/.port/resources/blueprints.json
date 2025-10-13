@@ -1,5 +1,80 @@
 [
     {
+        "identifier": "githubOrganization",
+        "description": "This blueprint represents a service in our software catalog",
+        "title": "Organization",
+        "icon": "Github",
+        "schema": {
+        "properties": {
+            "login": {
+            "type": "string",
+            "title": "Organization Login",
+            "description": "The GitHub organization login name"
+            },
+            "id": {
+            "type": "number",
+            "title": "Organization ID",
+            "description": "GitHub organization ID"
+            },
+            "nodeId": {
+            "type": "string",
+            "title": "Node ID",
+            "description": "GitHub GraphQL node ID"
+            },
+            "url": {
+            "type": "string",
+            "title": "API URL",
+            "description": "GitHub API URL for the organization"
+            },
+            "reposUrl": {
+            "type": "string",
+            "title": "Repositories URL",
+            "description": "URL to organization's repositories"
+            },
+            "eventsUrl": {
+            "type": "string",
+            "title": "Events URL",
+            "description": "URL to organization's events"
+            },
+            "hooksUrl": {
+            "type": "string",
+            "title": "Webhooks URL",
+            "description": "URL to organization's webhooks"
+            },
+            "issuesUrl": {
+            "type": "string",
+            "title": "Issues URL",
+            "description": "URL to organization's issues"
+            },
+            "membersUrl": {
+            "type": "string",
+            "title": "Members URL",
+            "description": "URL to organization's members"
+            },
+            "publicMembersUrl": {
+            "type": "string",
+            "title": "Public Members URL",
+            "description": "URL to organization's public members"
+            },
+            "avatarUrl": {
+            "type": "string",
+            "title": "Avatar URL",
+            "description": "Organization avatar image URL"
+            },
+            "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Organization description"
+            }
+        },
+        "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {}
+    },
+    {
         "identifier": "githubRepository",
         "title": "Repository",
         "icon": "Github",
@@ -39,6 +114,17 @@
                 }
             },
             "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {
+            "organization": {
+                "title": "Organization",
+                "target": "githubOrganization",
+                "required": false,
+                "many": false
+            }
         }
     },
     {
