@@ -81,7 +81,5 @@ class TestOktaBaseWebhookProcessor:
     async def test_validate_payload(self) -> None:
         proc = DummyProcessor(WebhookEvent(trace_id="t5", payload={}, headers={}))
         assert await proc.validate_payload({"data": {"events": []}}) is True
-
-        # Test that invalid payload raises KeyError (fail loud)
-        with pytest.raises(KeyError):
-            await proc.validate_payload({})
+        # Invalid payload should be rejected (no exception expected)
+        assert await proc.validate_payload({}) is False

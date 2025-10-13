@@ -54,7 +54,11 @@ class OktaBaseWebhookProcessor(AbstractWebhookProcessor):
         if not isinstance(payload, dict):
             return False
 
-        events = payload["data"]["events"]
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            return False
+
+        events = data.get("events")
         if not isinstance(events, list):
             return False
 
@@ -62,8 +66,8 @@ class OktaBaseWebhookProcessor(AbstractWebhookProcessor):
             if not isinstance(event_object, dict):
                 return False
 
-            event_type = event_object["eventType"]
-            targets = event_object["target"]
+            event_type = event_object.get("eventType")
+            targets = event_object.get("target")
 
             if not isinstance(event_type, str) or not event_type:
                 return False
@@ -73,8 +77,8 @@ class OktaBaseWebhookProcessor(AbstractWebhookProcessor):
             for target in targets:
                 if not isinstance(target, dict):
                     return False
-                _type = target["type"]
-                _id = target["id"]
+                _type = target.get("type")
+                _id = target.get("id")
                 if not isinstance(_type, str) or not _type:
                     return False
                 if _id is None:
