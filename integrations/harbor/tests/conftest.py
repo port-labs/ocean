@@ -4,7 +4,7 @@ Pytest configuration and shared fixtures for Harbor integration tests
 import pytest
 import asyncio
 from typing import AsyncGenerator, Generator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, Mock
 
 
 @pytest.fixture(scope="session")
@@ -20,11 +20,60 @@ def mock_harbor_config():
     """Provide mock Harbor configuration"""
     return {
         "harbor_url": "https://harbor.test.com",
-        "harbor_username": "test_user",
-        "harbor_password": "test_password",
+        "username": "test_user",
+        "password": "test_password",
         "verify_ssl": True,
         "api_version": "v2.0"
     }
+
+
+@pytest.fixture
+def mock_http_client():
+    """Mock HTTP client that mimics httpx.AsyncClient"""
+    client = AsyncMock()
+    client.request = AsyncMock()
+    client.get = AsyncMock()
+    client.post = AsyncMock()
+    client.put = AsyncMock()
+    client.delete = AsyncMock()
+    client.close = AsyncMock()
+
+    # Mock response
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json = Mock(return_value={})
+    mock_response.content = b'{}'
+    mock_response.text = '{}'
+    mock_response.headers = {}
+    mock_response.raise_for_status = Mock()
+
+    client.request.return_value = mock_response
+    client.get.return_value = mock_response
+    client.post.return_value = mock_response
+    client.put.return_value = mock_response
+    client.delete.return_value = mock_response
+
+    return client
+
+
+@pytest.fixture
+def harbor_client(mock_http_client):
+    """Create a Harbor client instance with mocked HTTP client"""
+    # Patch the http_async_client before importing HarborClient
+    with patch('harbor.client.harbor_client.http_async_client', mock_http_client):
+        from harbor.client.harbor_client import HarborClient
+
+        client = HarborClient(
+            harbor_url="https://harbor.test.com",
+            username="test_user",
+            password="test_password",
+            verify_ssl=True
+        )
+
+        # Override the client attribute with our mock
+        client.client = mock_http_client
+
+        yield client
 
 
 @pytest.fixture
@@ -200,27 +249,30 @@ def sample_webhook_payload():
 
 
 @pytest.fixture
-async def mock_http_client():
-    """Mock HTTP client for API calls"""
+def mock_port_client():
+    """Mock Port client"""
     client = AsyncMock()
-    client.get = AsyncMock()
-    client.post = AsyncMock()
-    client.put = AsyncMock()
-    client.delete = AsyncMock()
-    client.close = AsyncMock()
+    client.upsert_entity = AsyncMock()
+    client.delete_entity = AsyncMock()
+    client.search_entities = AsyncMock(return_value=[])
     return client
 
 
 @pytest.fixture
-def mock_port_client():
-    """Mock Port client"""
-    with patch("port_ocean.clients.port.PortClient") as mock:
-        client = MagicMock()
-        client.upsert_entity = AsyncMock()
-        client.delete_entity = AsyncMock()
-        client.search_entities = AsyncMock(return_value=[])
-        mock.return_value = client
-        yield client
+def mock_ocean_context():
+    """Mock Ocean context for testing"""
+    with patch('port_ocean.context.ocean.ocean') as mock:
+        mock.integration_config = {
+            "harbor_url": "https://harbor.example.com",
+            "username": "admin",
+            "password": "password",
+            "verify_ssl": True
+        }
+        mock.config = MagicMock()
+        mock.config.integration = MagicMock()
+        mock.config.integration.identifier = "harbor-test"
+        mock.port_client = AsyncMock()
+        yield mock
 
 
 @pytest.fixture
@@ -229,8 +281,8 @@ def mock_integration_runtime():
     with patch("port_ocean.context.ocean.ocean") as mock_ocean:
         mock_ocean.integration_config = {
             "harbor_url": "https://harbor.test.com",
-            "harbor_username": "admin",
-            "harbor_password": "password",
+            "username": "admin",
+            "password": "password",
             "verify_ssl": True
         }
         mock_ocean.port_client = MagicMock()
@@ -240,7 +292,7 @@ def mock_integration_runtime():
 @pytest.fixture
 def mock_logger():
     """Mock logger"""
-    with patch("port_ocean.core.ocean_types.logger") as mock:
+    with patch("loguru.logger") as mock:
         yield mock
 
 

@@ -2,7 +2,7 @@
 Tests for Harbor Client API interactions
 """
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, Mock
 from harbor.client.harbor_client import HarborClient
 from typing import Dict, List
 
@@ -12,58 +12,67 @@ class TestHarborClientAuthentication:
     """Test Harbor client authentication"""
 
     @pytest.mark.asyncio
-    async def test_basic_auth_credentials(self, mock_harbor_config):
+    async def test_basic_auth_credentials(self, harbor_client):
         """Test basic authentication with username and password"""
-        client = HarborClient(
-            harbor_url=mock_harbor_config["harbor_url"],
-            username=mock_harbor_config["harbor_username"],
-            password=mock_harbor_config["harbor_password"]
-        )
-
-        assert client.harbor_username == "test_user"
-        assert client.harbor_password == "test_password"
-        assert client.harbor_url == "https://harbor.test.com"
+        # The harbor_client fixture already creates a client with proper mocking
+        assert harbor_client.username == "test_user"
+        assert harbor_client.password == "test_password"
+        assert harbor_client.harbor_url == "https://harbor.test.com"
 
     @pytest.mark.asyncio
-    async def test_ssl_verification_enabled(self, mock_harbor_config):
+    async def test_ssl_verification_enabled(self, mock_harbor_config, mock_http_client):
         """Test SSL verification is enabled by default"""
-        client = HarborClient(
-            harbor_url=mock_harbor_config["harbor_url"],
-            username=mock_harbor_config["harbor_username"],
-            password=mock_harbor_config["harbor_password"],
-            verify_ssl=True
-        )
+        with patch('harbor.client.harbor_client.http_async_client', mock_http_client):
+            from harbor.client.harbor_client import HarborClient
 
-        assert client.verify_ssl is True
+            client = HarborClient(
+                harbor_url=mock_harbor_config["harbor_url"],
+                username=mock_harbor_config["username"],
+                password=mock_harbor_config["password"],
+                verify_ssl=True
+            )
+
+            assert client.verify_ssl is True
 
     @pytest.mark.asyncio
-    async def test_ssl_verification_disabled(self, mock_harbor_config):
+    async def test_ssl_verification_disabled(self, mock_harbor_config, mock_http_client):
         """Test SSL verification can be disabled"""
-        client = HarborClient(
-            harbor_url=mock_harbor_config["harbor_url"],
-            username=mock_harbor_config["harbor_username"],
-            password=mock_harbor_config["harbor_password"],
-            verify_ssl=False
-        )
+        with patch('harbor.client.harbor_client.http_async_client', mock_http_client):
+            from harbor.client.harbor_client import HarborClient
 
-        assert client.verify_ssl is False
+            client = HarborClient(
+                harbor_url=mock_harbor_config["harbor_url"],
+                username=mock_harbor_config["username"],
+                password=mock_harbor_config["password"],
+                verify_ssl=False
+            )
+
+            assert client.verify_ssl is False
 
     @pytest.mark.asyncio
-    async def test_invalid_credentials(self, mock_harbor_config):
+    async def test_invalid_credentials(self, harbor_client):
         """Test handling of invalid credentials"""
-        client = HarborClient(
-            harbor_url=mock_harbor_config["harbor_url"],
-            username="invalid",
-            password="wrong"
+        from httpx import HTTPStatusError, Response, Request
+
+        mock_request = Mock(spec=Request)
+        mock_request.url = "https://harbor.test.com/api/v2.0/projects"
+
+        mock_response = Mock(spec=Response)
+        mock_response.status_code = 401
+        mock_response.text = "Unauthorized"
+        mock_response.headers = {}
+        mock_response.request = mock_request
+
+        mock_response.raise_for_status.side_effect = HTTPStatusError(
+            "401 Unauthorized",
+            request=mock_request,
+            response=mock_response
         )
 
-        with patch.object(client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.side_effect = Exception("401 Unauthorized")
+        harbor_client.client.request.return_value = mock_response
 
-            with pytest.raises(Exception) as exc_info:
-                await client.get_projects()
-
-            assert "401" in str(exc_info.value)
+        with pytest.raises(HTTPStatusError):
+            await harbor_client._send_api_request("GET", "/api/v2.0/projects")
 
 
 @pytest.mark.client
@@ -73,26 +82,37 @@ class TestHarborClientProjects:
     @pytest.mark.asyncio
     async def test_get_all_projects(self, harbor_client, sample_project_data):
         """Test fetching all projects"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = [sample_project_data]
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json = Mock(return_value=[sample_project_data])
+        mock_response.content = b'[{}]'
+        mock_response.raise_for_status = Mock()
 
-            projects = await harbor_client.get_projects()
+        harbor_client.client.request.return_value = mock_response
 
-            assert isinstance(projects, list)
-            assert len(projects) == 1
-            assert projects[0]["name"] == "test-project"
-            mock_request.assert_called_once()
+        projects = []
+        async for batch in harbor_client.get_paginated_projects({"page_size": 100}):
+            projects.extend(batch)
+
+        assert isinstance(projects, list)
+        assert len(projects) == 1
+        assert projects[0]["name"] == "test-project"
 
     @pytest.mark.asyncio
     async def test_get_project_by_name(self, harbor_client, sample_project_data):
         """Test fetching a specific project by name"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = sample_project_data
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json = Mock(return_value=sample_project_data)
+        mock_response.content = b'{}'
+        mock_response.raise_for_status = Mock()
 
-            project = await harbor_client.get_project("test-project")
+        harbor_client.client.request.return_value = mock_response
 
-            assert project["name"] == "test-project"
-            assert project["project_id"] == 1
+        project = await harbor_client.get_project("test-project")
+
+        assert project["name"] == "test-project"
+        assert project["project_id"] == 1
 
     @pytest.mark.asyncio
     async def test_get_public_projects_only(self, harbor_client):
@@ -108,25 +128,48 @@ class TestHarborClientProjects:
             "public": False
         }
 
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = [public_project, private_project]
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json = Mock(
+            return_value=[public_project, private_project])
+        mock_response.content = b'[{}]'
+        mock_response.raise_for_status = Mock()
 
-            projects = await harbor_client.get_projects()
-            public_only = [p for p in projects if p["public"]]
+        harbor_client.client.request.return_value = mock_response
 
-            assert len(public_only) == 1
-            assert public_only[0]["name"] == "public-project"
+        projects = []
+        async for batch in harbor_client.get_paginated_projects({"page_size": 100}):
+            projects.extend(batch)
+
+        public_only = [p for p in projects if p["public"]]
+
+        assert len(public_only) == 1
+        assert public_only[0]["name"] == "public-project"
 
     @pytest.mark.asyncio
     async def test_project_not_found(self, harbor_client):
         """Test handling of non-existent project"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.side_effect = Exception("404 Not Found")
+        from httpx import HTTPStatusError, Response, Request
 
-            with pytest.raises(Exception) as exc_info:
-                await harbor_client.get_project("non-existent")
+        mock_request = Mock(spec=Request)
+        mock_request.url = "https://harbor.test.com/api/v2.0/projects/non-existent"
 
-            assert "404" in str(exc_info.value)
+        mock_response = Mock(spec=Response)
+        mock_response.status_code = 404
+        mock_response.text = "Not Found"
+        mock_response.headers = {}
+        mock_response.request = mock_request
+
+        mock_response.raise_for_status.side_effect = HTTPStatusError(
+            "404 Not Found",
+            request=mock_request,
+            response=mock_response
+        )
+
+        harbor_client.client.request.return_value = mock_response
+
+        project = await harbor_client.get_project("non-existent")
+        assert project is None
 
 
 @pytest.mark.client
@@ -136,59 +179,113 @@ class TestHarborClientRepositories:
     @pytest.mark.asyncio
     async def test_get_repositories_for_project(self, harbor_client, sample_repository_data):
         """Test fetching repositories for a project"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = [sample_repository_data]
+        # Mock projects response
+        projects_response = Mock()
+        projects_response.status_code = 200
+        projects_response.json = Mock(
+            return_value=[{"name": "test-project", "project_id": 1}])
+        projects_response.content = b'[{}]'
+        projects_response.raise_for_status = Mock()
 
-            repos = await harbor_client.get_repositories("test-project")
+        # Mock repositories response
+        repos_response = Mock()
+        repos_response.status_code = 200
+        repos_response.json = Mock(return_value=[sample_repository_data])
+        repos_response.content = b'[{}]'
+        repos_response.raise_for_status = Mock()
 
-            assert isinstance(repos, list)
-            assert len(repos) == 1
-            assert repos[0]["name"] == "test-project/test-repo"
+        # Set up sequential responses
+        harbor_client.client.request.side_effect = [
+            projects_response, repos_response]
+
+        repos = []
+        async for batch in harbor_client.get_all_repositories({"page_size": 100}):
+            repos.extend(batch)
+
+        assert isinstance(repos, list)
+        assert len(repos) == 1
+        assert repos[0]["name"] == "test-project/test-repo"
 
     @pytest.mark.asyncio
     async def test_get_repository_details(self, harbor_client, sample_repository_data):
         """Test fetching specific repository details"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = sample_repository_data
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json = Mock(return_value=sample_repository_data)
+        mock_response.content = b'{}'
+        mock_response.raise_for_status = Mock()
 
-            repo = await harbor_client.get_repository("test-project", "test-repo")
+        harbor_client.client.request.return_value = mock_response
 
-            assert repo["name"] == "test-project/test-repo"
-            assert repo["artifact_count"] == 5
-            assert repo["pull_count"] == 100
+        repo = await harbor_client.get_repository("test-project", "test-repo")
+
+        assert repo["name"] == "test-project/test-repo"
+        assert repo["artifact_count"] == 5
+        assert repo["pull_count"] == 100
 
     @pytest.mark.asyncio
     async def test_empty_repository_list(self, harbor_client):
         """Test handling of project with no repositories"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = []
+        # Mock projects response
+        projects_response = Mock()
+        projects_response.status_code = 200
+        projects_response.json = Mock(
+            return_value=[{"name": "empty-project", "project_id": 1}])
+        projects_response.content = b'[{}]'
+        projects_response.raise_for_status = Mock()
 
-            repos = await harbor_client.get_repositories("empty-project")
+        # Mock empty repositories response
+        repos_response = Mock()
+        repos_response.status_code = 200
+        repos_response.json = Mock(return_value=[])
+        repos_response.content = b'[]'
+        repos_response.raise_for_status = Mock()
 
-            assert isinstance(repos, list)
-            assert len(repos) == 0
+        harbor_client.client.request.side_effect = [
+            projects_response, repos_response]
+
+        repos = []
+        async for batch in harbor_client.get_all_repositories({"page_size": 100}):
+            repos.extend(batch)
+
+        assert isinstance(repos, list)
+        assert len(repos) == 0
 
     @pytest.mark.asyncio
     async def test_repository_pagination(self, harbor_client):
         """Test handling of paginated repository results"""
-        # First page
-        page1 = [{"name": f"test-project/repo{i}"} for i in range(10)]
-        # Second page
-        page2 = [{"name": f"test-project/repo{i}"} for i in range(10, 15)]
+        # Mock projects
+        projects_response = Mock()
+        projects_response.status_code = 200
+        projects_response.json = Mock(
+            return_value=[{"name": "test-project", "project_id": 1}])
+        projects_response.content = b'[{}]'
+        projects_response.raise_for_status = Mock()
 
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.side_effect = [page1, page2]
+        # First page - 10 repos
+        page1_response = Mock()
+        page1_response.status_code = 200
+        page1_response.json = Mock(
+            return_value=[{"name": f"test-project/repo{i}"} for i in range(10)])
+        page1_response.content = b'[{}]'
+        page1_response.raise_for_status = Mock()
 
-            all_repos = []
-            page = 1
-            while True:
-                repos = await harbor_client.get_repositories("test-project", page=page)
-                if not repos:
-                    break
-                all_repos.extend(repos)
-                page += 1
+        # Second page - 5 repos (last page)
+        page2_response = Mock()
+        page2_response.status_code = 200
+        page2_response.json = Mock(
+            return_value=[{"name": f"test-project/repo{i}"} for i in range(10, 15)])
+        page2_response.content = b'[{}]'
+        page2_response.raise_for_status = Mock()
 
-            assert len(all_repos) == 15
+        harbor_client.client.request.side_effect = [
+            projects_response, page1_response, page2_response]
+
+        all_repos = []
+        async for batch in harbor_client.get_all_repositories({"page_size": 10}):
+            all_repos.extend(batch)
+
+        assert len(all_repos) == 15
 
 
 @pytest.mark.client
@@ -198,55 +295,136 @@ class TestHarborClientArtifacts:
     @pytest.mark.asyncio
     async def test_get_artifacts_for_repository(self, harbor_client, sample_artifact_data):
         """Test fetching artifacts for a repository"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = [sample_artifact_data]
+        # Mock projects
+        projects_response = Mock()
+        projects_response.status_code = 200
+        projects_response.json = Mock(
+            return_value=[{"name": "test-project", "project_id": 1}])
+        projects_response.content = b'[{}]'
+        projects_response.raise_for_status = Mock()
 
-            artifacts = await harbor_client.get_artifacts("test-project", "test-repo")
+        # Mock repositories
+        repos_response = Mock()
+        repos_response.status_code = 200
+        repos_response.json = Mock(
+            return_value=[{"name": "test-project/test-repo", "project_id": 1}])
+        repos_response.content = b'[{}]'
+        repos_response.raise_for_status = Mock()
 
-            assert isinstance(artifacts, list)
-            assert len(artifacts) == 1
-            assert artifacts[0]["digest"].startswith("sha256:")
+        # Mock artifacts
+        artifacts_response = Mock()
+        artifacts_response.status_code = 200
+        artifacts_response.json = Mock(return_value=[sample_artifact_data])
+        artifacts_response.content = b'[{}]'
+        artifacts_response.raise_for_status = Mock()
+
+        harbor_client.client.request.side_effect = [
+            projects_response, repos_response, artifacts_response]
+
+        artifacts = []
+        async for batch in harbor_client.get_all_artifacts({"page_size": 50}):
+            artifacts.extend(batch)
+
+        assert isinstance(artifacts, list)
+        assert len(artifacts) == 1
+        assert artifacts[0]["digest"].startswith("sha256:")
 
     @pytest.mark.asyncio
     async def test_get_artifact_by_digest(self, harbor_client, sample_artifact_data):
         """Test fetching specific artifact by digest"""
         digest = sample_artifact_data["digest"]
 
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = sample_artifact_data
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json = Mock(return_value=sample_artifact_data)
+        mock_response.content = b'{}'
+        mock_response.raise_for_status = Mock()
 
-            artifact = await harbor_client.get_artifact("test-project", "test-repo", digest)
+        harbor_client.client.request.return_value = mock_response
 
-            assert artifact["digest"] == digest
-            assert len(artifact["tags"]) == 2
+        artifact = await harbor_client.get_artifact("test-project", "test-repo", digest)
+
+        assert artifact["digest"] == digest
+        assert len(artifact["tags"]) == 2
 
     @pytest.mark.asyncio
     async def test_get_artifact_tags(self, harbor_client, sample_artifact_data):
         """Test extracting tags from artifact"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = [sample_artifact_data]
+        # Mock projects
+        projects_response = Mock()
+        projects_response.status_code = 200
+        projects_response.json = Mock(
+            return_value=[{"name": "test-project", "project_id": 1}])
+        projects_response.content = b'[{}]'
+        projects_response.raise_for_status = Mock()
 
-            artifacts = await harbor_client.get_artifacts("test-project", "test-repo")
-            tags = [tag["name"] for tag in artifacts[0]["tags"]]
+        # Mock repositories
+        repos_response = Mock()
+        repos_response.status_code = 200
+        repos_response.json = Mock(
+            return_value=[{"name": "test-project/test-repo", "project_id": 1}])
+        repos_response.content = b'[{}]'
+        repos_response.raise_for_status = Mock()
 
-            assert "latest" in tags
-            assert "v1.0.0" in tags
+        # Mock artifacts
+        artifacts_response = Mock()
+        artifacts_response.status_code = 200
+        artifacts_response.json = Mock(return_value=[sample_artifact_data])
+        artifacts_response.content = b'[{}]'
+        artifacts_response.raise_for_status = Mock()
+
+        harbor_client.client.request.side_effect = [
+            projects_response, repos_response, artifacts_response]
+
+        artifacts = []
+        async for batch in harbor_client.get_all_artifacts({"page_size": 50}):
+            artifacts.extend(batch)
+
+        tags = [tag["name"] for tag in artifacts[0]["tags"]]
+
+        assert "latest" in tags
+        assert "v1.0.0" in tags
 
     @pytest.mark.asyncio
     async def test_get_artifact_vulnerabilities(self, harbor_client, sample_artifact_data):
         """Test extracting vulnerability data from artifact"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = [sample_artifact_data]
+        # Mock projects
+        projects_response = Mock()
+        projects_response.status_code = 200
+        projects_response.json = Mock(
+            return_value=[{"name": "test-project", "project_id": 1}])
+        projects_response.content = b'[{}]'
+        projects_response.raise_for_status = Mock()
 
-            artifacts = await harbor_client.get_artifacts("test-project", "test-repo")
-            scan = artifacts[0]["scan_overview"]
+        # Mock repositories
+        repos_response = Mock()
+        repos_response.status_code = 200
+        repos_response.json = Mock(
+            return_value=[{"name": "test-project/test-repo", "project_id": 1}])
+        repos_response.content = b'[{}]'
+        repos_response.raise_for_status = Mock()
 
-            vuln_key = next(iter(scan.keys()))
-            summary = scan[vuln_key]["summary"]["summary"]
+        # Mock artifacts
+        artifacts_response = Mock()
+        artifacts_response.status_code = 200
+        artifacts_response.json = Mock(return_value=[sample_artifact_data])
+        artifacts_response.content = b'[{}]'
+        artifacts_response.raise_for_status = Mock()
 
-            assert summary["Critical"] == 3
-            assert summary["High"] == 7
-            assert scan[vuln_key]["scan_status"] == "Success"
+        harbor_client.client.request.side_effect = [
+            projects_response, repos_response, artifacts_response]
+
+        artifacts = []
+        async for batch in harbor_client.get_all_artifacts({"page_size": 50}):
+            artifacts.extend(batch)
+
+        scan = artifacts[0]["scan_overview"]
+        vuln_key = next(iter(scan.keys()))
+        summary = scan[vuln_key]["summary"]["summary"]
+
+        assert summary["Critical"] == 3
+        assert summary["High"] == 7
+        assert scan[vuln_key]["scan_status"] == "Success"
 
 
 @pytest.mark.client
@@ -256,25 +434,37 @@ class TestHarborClientUsers:
     @pytest.mark.asyncio
     async def test_get_all_users(self, harbor_client, sample_user_data):
         """Test fetching all users"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = [sample_user_data]
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json = Mock(return_value=[sample_user_data])
+        mock_response.content = b'[{}]'
+        mock_response.raise_for_status = Mock()
 
-            users = await harbor_client.get_users()
+        harbor_client.client.request.return_value = mock_response
 
-            assert isinstance(users, list)
-            assert len(users) == 1
-            assert users[0]["username"] == "testuser"
+        users = []
+        async for batch in harbor_client.get_paginated_users({"page_size": 100}):
+            users.extend(batch)
+
+        assert isinstance(users, list)
+        assert len(users) == 1
+        assert users[0]["username"] == "testuser"
 
     @pytest.mark.asyncio
     async def test_get_user_by_id(self, harbor_client, sample_user_data):
         """Test fetching specific user by ID"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = sample_user_data
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json = Mock(return_value=sample_user_data)
+        mock_response.content = b'{}'
+        mock_response.raise_for_status = Mock()
 
-            user = await harbor_client.get_user(1)
+        harbor_client.client.request.return_value = mock_response
 
-            assert user["user_id"] == 1
-            assert user["username"] == "testuser"
+        user = await harbor_client._get("/users/1")
+
+        assert user["user_id"] == 1
+        assert user["username"] == "testuser"
 
     @pytest.mark.asyncio
     async def test_search_users(self, harbor_client):
@@ -285,12 +475,19 @@ class TestHarborClientUsers:
             {"username": "user2", "email": "user2@example.com"}
         ]
 
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = users
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json = Mock(return_value=users)
+        mock_response.content = b'[{}]'
+        mock_response.raise_for_status = Mock()
 
-            results = await harbor_client.search_users("user")
+        harbor_client.client.request.return_value = mock_response
 
-            assert len(results) >= 2
+        results = []
+        async for batch in harbor_client.get_paginated_users({"page_size": 100, "q": "user"}):
+            results.extend(batch)
+
+        assert len(results) >= 2
 
 
 @pytest.mark.client
@@ -300,71 +497,122 @@ class TestHarborClientErrorHandling:
     @pytest.mark.asyncio
     async def test_network_timeout(self, harbor_client):
         """Test handling of network timeouts"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.side_effect = TimeoutError("Connection timeout")
+        harbor_client.client.request.side_effect = TimeoutError(
+            "Connection timeout")
 
-            with pytest.raises(TimeoutError):
-                await harbor_client.get_projects()
+        with pytest.raises(TimeoutError):
+            await harbor_client._send_api_request("GET", "/api/v2.0/projects")
 
     @pytest.mark.asyncio
     async def test_connection_error(self, harbor_client):
         """Test handling of connection errors"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.side_effect = ConnectionError("Failed to connect")
+        harbor_client.client.request.side_effect = ConnectionError(
+            "Failed to connect")
 
-            with pytest.raises(ConnectionError):
-                await harbor_client.get_projects()
+        with pytest.raises(ConnectionError):
+            await harbor_client._send_api_request("GET", "/api/v2.0/projects")
 
     @pytest.mark.asyncio
     async def test_rate_limiting(self, harbor_client):
         """Test handling of rate limit errors"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.side_effect = Exception("429 Too Many Requests")
+        from httpx import HTTPStatusError, Response, Request
 
-            with pytest.raises(Exception) as exc_info:
-                await harbor_client.get_projects()
+        mock_request = Mock(spec=Request)
+        mock_request.url = "https://harbor.test.com/api/v2.0/projects"
 
-            assert "429" in str(exc_info.value)
+        mock_response = Mock(spec=Response)
+        mock_response.status_code = 429
+        mock_response.text = "Too Many Requests"
+        mock_response.headers = {"Retry-After": "2"}
+        mock_response.request = mock_request
+
+        mock_response.raise_for_status.side_effect = HTTPStatusError(
+            "429 Too Many Requests",
+            request=mock_request,
+            response=mock_response
+        )
+
+        # First call raises 429, second call succeeds
+        success_response = Mock()
+        success_response.status_code = 200
+        success_response.json = Mock(return_value=[])
+        success_response.content = b'[]'
+        success_response.raise_for_status = Mock()
+
+        harbor_client.client.request.side_effect = [
+            mock_response, success_response]
+
+        with patch('asyncio.sleep', new_callable=AsyncMock):
+            result = await harbor_client._send_api_request("GET", "/api/v2.0/projects")
+            assert result == []
 
     @pytest.mark.asyncio
     async def test_invalid_json_response(self, harbor_client):
         """Test handling of invalid JSON responses"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.side_effect = ValueError("Invalid JSON")
+        harbor_client.client.request.side_effect = ValueError("Invalid JSON")
 
-            with pytest.raises(ValueError):
-                await harbor_client.get_projects()
+        with pytest.raises(ValueError):
+            await harbor_client._send_api_request("GET", "/api/v2.0/projects")
 
     @pytest.mark.asyncio
     async def test_server_error(self, harbor_client):
         """Test handling of 500 server errors"""
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.side_effect = Exception("500 Internal Server Error")
+        from httpx import HTTPStatusError, Response, Request
 
-            with pytest.raises(Exception) as exc_info:
-                await harbor_client.get_projects()
+        mock_request = Mock(spec=Request)
+        mock_request.url = "https://harbor.test.com/api/v2.0/projects"
 
-            assert "500" in str(exc_info.value)
+        mock_response = Mock(spec=Response)
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        mock_response.headers = {}
+        mock_response.request = mock_request
+
+        mock_response.raise_for_status.side_effect = HTTPStatusError(
+            "500 Internal Server Error",
+            request=mock_request,
+            response=mock_response
+        )
+
+        harbor_client.client.request.return_value = mock_response
+
+        with pytest.raises(HTTPStatusError):
+            await harbor_client._send_api_request("GET", "/api/v2.0/projects")
 
     @pytest.mark.asyncio
     async def test_retry_logic(self, harbor_client):
-        """Test retry logic for transient failures"""
-        call_count = 0
+        """Test retry logic for rate limiting"""
+        from httpx import HTTPStatusError, Response, Request
 
-        async def mock_request_with_retry(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            if call_count < 3:
-                raise ConnectionError("Temporary failure")
-            return [{"name": "test-project"}]
+        mock_request = Mock(spec=Request)
+        mock_request.url = "https://harbor.test.com/api/v2.0/projects"
 
-        with patch.object(harbor_client, '_make_request', new_callable=AsyncMock) as mock_request:
-            mock_request.side_effect = mock_request_with_retry
+        # First response: 429 rate limit
+        rate_limit_response = Mock(spec=Response)
+        rate_limit_response.status_code = 429
+        rate_limit_response.text = "Too Many Requests"
+        rate_limit_response.headers = {"Retry-After": "1"}
+        rate_limit_response.request = mock_request
+        rate_limit_response.raise_for_status.side_effect = HTTPStatusError(
+            "429 Too Many Requests",
+            request=mock_request,
+            response=rate_limit_response
+        )
 
-            # If retry logic is implemented
-            # result = await harbor_client.get_projects()
-            # assert len(result) == 1
-            # assert call_count == 3
+        # Second response: success
+        success_response = Mock()
+        success_response.status_code = 200
+        success_response.json = Mock(return_value=[{"name": "test-project"}])
+        success_response.content = b'[{}]'
+        success_response.raise_for_status = Mock()
+
+        harbor_client.client.request.side_effect = [
+            rate_limit_response, success_response]
+
+        with patch('asyncio.sleep', new_callable=AsyncMock) as mock_sleep:
+            result = await harbor_client._send_api_request("GET", "/api/v2.0/projects")
+            assert result == [{"name": "test-project"}]
+            mock_sleep.assert_called_once_with(1)
 
 
 @pytest.mark.client
@@ -377,12 +625,10 @@ class TestHarborClientRequestBuilding:
         endpoint = "/api/v2.0/projects"
 
         expected_url = f"{base_url}{endpoint}"
-        # This would test your actual URL building logic
         assert expected_url == "https://harbor.test.com/api/v2.0/projects"
 
     def test_build_headers(self, harbor_client):
         """Test building request headers"""
-        # This would test your actual header building logic
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json"
