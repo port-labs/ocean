@@ -293,5 +293,49 @@
       "request": "launch",
       "type": "debugpy"
     },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/examples/config-no-auth.env",
+      "justMyCode": true,
+      "name": "HTTP Server - No Auth",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/examples/config-bearer-token.env",
+      "justMyCode": true,
+      "name": "HTTP Server - Bearer Token",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/examples/config-basic-auth.env",
+      "justMyCode": true,
+      "name": "HTTP Server - Basic Auth",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/examples/config-api-key.env",
+      "justMyCode": true,
+      "name": "HTTP Server - API Key",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    }
   ]
 }
