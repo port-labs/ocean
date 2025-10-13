@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple, Dict, Any, List
+from typing import Optional, Tuple, Dict, List
 
 from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -130,7 +130,7 @@ class FilePatternWebhookProcessor(BaseWebhookProcessorMixin):
         }
 
         # Run your existing per-repo file pipeline (no commits, just current state)
-        updated: List[Dict[str, any]] = []
+        updated: List[Dict[str, Any]] = []
         async for batch in process_repository_files(self._client, repo_obj, pattern):
             # process_repository_files yields lists (batches) of file results; we flatten for WebhookEventRawResults
             updated.extend(batch)

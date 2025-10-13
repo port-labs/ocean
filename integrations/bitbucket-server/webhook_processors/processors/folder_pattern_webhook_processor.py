@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Tuple, Dict, List, Iterable
+from typing import Optional, Tuple, Dict, List, Iterable, Any
 
 from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -101,7 +101,7 @@ class FolderPatternWebhookProcessor(BaseWebhookProcessorMixin):
         }
         repo_info = (repo_obj, project_key)
 
-        updated: List[Dict[str, any]] = []
+        updated: List[Dict[str, Any]] = []
         seen_keys: set[tuple[str, str, str]] = set()  # (project_key, repo_slug, folder_path)
 
         for pattern in patterns:
