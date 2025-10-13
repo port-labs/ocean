@@ -57,12 +57,48 @@ class FilePatternWebhookProcessor(BaseWebhookProcessorMixin):
             logger.warning(f"[FilePatternWebhook] Could not extract repo locator from payload: {payload}")
         return project_key, repo_slug
 
-    def _build_file_pattern_from_resource(self, resource: ResourceConfig) -> Optional[BitbucketServerFilePattern]:
+    def _build_file_pattern_from_resource(
+    self, resource: ResourceConfig
+    ) -> Optional[BitbucketServerFilePattern]:
+        """
+        Build a BitbucketServerFilePattern from the resource's selector.
+        resource.selector is a BitbucketServerFileSelector; the actual pattern
+        is found on its `files` attribute.
+        """
         try:
-            cfg = resource.config or {}
-            return BitbucketServerFilePattern(**cfg)
+            selector = getattr(resource, "selector", None)
+            if not selector:
+                logger.warning("[FilePatternWebhook] Resource has no selector")
+                return None
+
+            files_attr = getattr(selector, "files", None)
+            if not files_attr:
+                logger.warning("[FilePatternWebhook] selector.files is empty or missing")
+                return None
+
+            # selector.files may be a single BitbucketServerFilePattern or a list of them.
+            if isinstance(files_attr, list):
+                # If multiple are configured, pick the first (or extend the processor to iterate them).
+                pattern = files_attr[0] if files_attr else None
+            else:
+                pattern = files_attr
+
+            if pattern is None:
+                logger.warning("[FilePatternWebhook] No usable file pattern found in selector.files")
+                return None
+
+            # Optional: quick sanity checks to avoid surprises at runtime
+            if not getattr(pattern, "project_key", None):
+                logger.warning("[FilePatternWebhook] Pattern missing project_key")
+            if not getattr(pattern, "filenames", None):
+                logger.warning("[FilePatternWebhook] Pattern has no filenames")
+
+            return pattern
+
         except Exception as e:
-            logger.error(f"[FilePatternWebhook] Failed to build BitbucketServerFilePattern from resource config: {e}")
+            logger.error(
+                f"[FilePatternWebhook] Failed to build BitbucketServerFilePattern from resource.selector.files: {e}"
+            )
             return None
 
     # ---- main ----
