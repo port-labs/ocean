@@ -3,7 +3,6 @@ from loguru import logger
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from checkmarx_one.core.exporters.abstract_exporter import AbstractCheckmarxExporter
-from port_ocean.utils.cache import cache_iterator_result
 from checkmarx_one.core.options import ListDastScanOptions
 
 

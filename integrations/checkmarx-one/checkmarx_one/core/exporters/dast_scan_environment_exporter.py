@@ -19,7 +19,9 @@ class CheckmarxDastScanEnvironmentExporter(AbstractCheckmarxExporter):
         self,
         options: None = None,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        async for dast_scan_environments in self.client.send_paginated_request_offset_based(
+        async for (
+            dast_scan_environments
+        ) in self.client.send_paginated_request_offset_based(
             "/dast/scans/environments", "environments"
         ):
             logger.info(

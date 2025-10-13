@@ -144,5 +144,3 @@ class ListDastScanResultOptions(TypedDict):
             ]
         ]
     ]
-    updated_from_date: Required[str]
-    max_results: Required[int]

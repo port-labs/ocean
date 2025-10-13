@@ -231,7 +231,6 @@ class CheckmarxOneClient:
                 logger.error(f"Error in paginated request to {endpoint}: {str(e)}")
                 raise
 
-
     async def send_paginated_request_offset_based(
         self,
         endpoint: str,
@@ -271,7 +270,6 @@ class CheckmarxOneClient:
 
             start_index += PAGE_SIZE
 
-
     async def send_paginated_request_page_based(
         self,
         endpoint: str,
@@ -303,7 +301,7 @@ class CheckmarxOneClient:
             response = await self.send_api_request(endpoint, params=page_params)
             if not response or not (items := response[object_key]):
                 break
-            
+
             yield items
 
             total_pages = response["pages_number"]

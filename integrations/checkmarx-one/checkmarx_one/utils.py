@@ -56,10 +56,10 @@ def sast_visible_columns() -> List[str]:
 def days_ago_to_rfc3339(days: int) -> str:
     """
     Convert days ago to RFC3339 format.
-    
+
     Args:
         days: Number of days ago from current time
-        
+
     Returns:
         RFC3339 formatted datetime string (e.g., 2021-06-02T12:14:18.028555Z)
     """

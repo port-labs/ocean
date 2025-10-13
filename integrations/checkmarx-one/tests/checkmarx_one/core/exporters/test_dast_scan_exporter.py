@@ -77,8 +77,20 @@ class TestCheckmarxDastScanExporter:
         """Test basic paginated resource fetching."""
 
         async def gen(*args: Any, **kwargs: Any) -> AsyncIterator[List[dict[str, Any]]]:
-            yield [{"scanId": "scan-1", "name": "Scan 1", "updateTime": "2021-06-10T12:14:18.028555Z"}]
-            yield [{"scanId": "scan-2", "name": "Scan 2", "updateTime": "2021-06-11T12:14:18.028555Z"}]
+            yield [
+                {
+                    "scanId": "scan-1",
+                    "name": "Scan 1",
+                    "updateTime": "2021-06-10T12:14:18.028555Z",
+                }
+            ]
+            yield [
+                {
+                    "scanId": "scan-2",
+                    "name": "Scan 2",
+                    "updateTime": "2021-06-11T12:14:18.028555Z",
+                }
+            ]
 
         mock_client.send_paginated_request_offset_based = gen
 
@@ -102,7 +114,13 @@ class TestCheckmarxDastScanExporter:
         """Test paginated resource fetching with scan_type filter."""
 
         async def gen(*args: Any, **kwargs: Any) -> AsyncIterator[List[dict[str, Any]]]:
-            yield [{"scanId": "scan-1", "name": "Scan 1", "updateTime": "2021-06-10T12:14:18.028555Z"}]
+            yield [
+                {
+                    "scanId": "scan-1",
+                    "name": "Scan 1",
+                    "updateTime": "2021-06-10T12:14:18.028555Z",
+                }
+            ]
 
         mock_client.send_paginated_request_offset_based = gen
 
@@ -254,8 +272,14 @@ class TestCheckmarxDastScanExporter:
         """Test handling of multiple batches with different sizes."""
 
         async def gen(*args: Any, **kwargs: Any) -> AsyncIterator[List[dict[str, Any]]]:
-            yield [{"scanId": f"scan-{i}", "updateTime": "2021-06-10T12:14:18.028555Z"} for i in range(3)]
-            yield [{"scanId": f"scan-{i}", "updateTime": "2021-06-11T12:14:18.028555Z"} for i in range(3, 5)]
+            yield [
+                {"scanId": f"scan-{i}", "updateTime": "2021-06-10T12:14:18.028555Z"}
+                for i in range(3)
+            ]
+            yield [
+                {"scanId": f"scan-{i}", "updateTime": "2021-06-11T12:14:18.028555Z"}
+                for i in range(3, 5)
+            ]
 
         mock_client.send_paginated_request_offset_based = gen
 
@@ -322,9 +346,18 @@ class TestCheckmarxDastScanExporter:
         async def gen(*args: Any, **kwargs: Any) -> AsyncIterator[List[dict[str, Any]]]:
             # Yield scans with different updateTime values
             yield [
-                {"scanId": "scan-1", "updateTime": "2021-06-10T12:14:18.028555Z"},  # After cutoff
-                {"scanId": "scan-2", "updateTime": "2021-06-01T12:14:18.028555Z"},  # Before cutoff
-                {"scanId": "scan-3", "updateTime": "2021-06-15T12:14:18.028555Z"},  # After cutoff
+                {
+                    "scanId": "scan-1",
+                    "updateTime": "2021-06-10T12:14:18.028555Z",
+                },  # After cutoff
+                {
+                    "scanId": "scan-2",
+                    "updateTime": "2021-06-01T12:14:18.028555Z",
+                },  # Before cutoff
+                {
+                    "scanId": "scan-3",
+                    "updateTime": "2021-06-15T12:14:18.028555Z",
+                },  # After cutoff
             ]
 
         mock_client.send_paginated_request_offset_based = gen
@@ -354,8 +387,14 @@ class TestCheckmarxDastScanExporter:
 
         async def gen(*args: Any, **kwargs: Any) -> AsyncIterator[List[dict[str, Any]]]:
             # Yield more scans than max_results
-            yield [{"scanId": f"scan-{i}", "updateTime": "2021-06-10T12:14:18.028555Z"} for i in range(3)]
-            yield [{"scanId": f"scan-{i}", "updateTime": "2021-06-11T12:14:18.028555Z"} for i in range(3, 8)]
+            yield [
+                {"scanId": f"scan-{i}", "updateTime": "2021-06-10T12:14:18.028555Z"}
+                for i in range(3)
+            ]
+            yield [
+                {"scanId": f"scan-{i}", "updateTime": "2021-06-11T12:14:18.028555Z"}
+                for i in range(3, 8)
+            ]
 
         mock_client.send_paginated_request_offset_based = gen
 
@@ -382,11 +421,17 @@ class TestCheckmarxDastScanExporter:
         batches_yielded = []
 
         async def gen(*args: Any, **kwargs: Any) -> AsyncIterator[List[dict[str, Any]]]:
-            batch1 = [{"scanId": f"scan-{i}", "updateTime": "2021-06-10T12:14:18.028555Z"} for i in range(3)]
+            batch1 = [
+                {"scanId": f"scan-{i}", "updateTime": "2021-06-10T12:14:18.028555Z"}
+                for i in range(3)
+            ]
             batches_yielded.append(1)
             yield batch1
-            
-            batch2 = [{"scanId": f"scan-{i}", "updateTime": "2021-06-11T12:14:18.028555Z"} for i in range(3, 6)]
+
+            batch2 = [
+                {"scanId": f"scan-{i}", "updateTime": "2021-06-11T12:14:18.028555Z"}
+                for i in range(3, 6)
+            ]
             batches_yielded.append(2)
             yield batch2
 

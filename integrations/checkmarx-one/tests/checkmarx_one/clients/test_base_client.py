@@ -389,7 +389,9 @@ class TestCheckmarxOneClient:
 
         # Third page: partial page (less than page size, indicates last page)
         mock_response3 = MagicMock()
-        mock_response3.json.return_value = {"scans": [{"id": i} for i in range(200, 250)]}
+        mock_response3.json.return_value = {
+            "scans": [{"id": i} for i in range(200, 250)]
+        }
         mock_response3.raise_for_status.return_value = None
 
         with patch("checkmarx_one.clients.client.http_async_client") as mock_client:
@@ -469,7 +471,9 @@ class TestCheckmarxOneClient:
 
         # Second page
         mock_response2 = MagicMock()
-        mock_response2.json.return_value = {"scans": [{"id": i} for i in range(100, 150)]}
+        mock_response2.json.return_value = {
+            "scans": [{"id": i} for i in range(100, 150)]
+        }
         mock_response2.raise_for_status.return_value = None
 
         with patch("checkmarx_one.clients.client.http_async_client") as mock_client:

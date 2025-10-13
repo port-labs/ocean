@@ -203,10 +203,14 @@ class CheckmarxOneDastScanModel(BaseModel):
         description="Limit the number of DAST scans returned",
     )
 
-
     @property
-    def updated_from_date(self) -> Optional[str]:
-        return days_ago_to_rfc3339(self.since) if self.since else None
+    def updated_from_date(self) -> str:
+        """
+        Returns the RFC 3339 date string for filtering by 'updated from' date, based on 'since' value.
+        If 'since' is not provided, defaults to 90 days ago.
+        """
+        days = self.since if self.since is not None else 90
+        return days_ago_to_rfc3339(days)
 
 
 class CheckmarxOneDastScanSelector(Selector, CheckmarxOneDastScanModel): ...
