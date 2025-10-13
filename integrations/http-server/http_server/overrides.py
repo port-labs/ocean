@@ -19,6 +19,10 @@ class ApiPathParameter(BaseModel):
     headers: Optional[Dict[str, str]] = Field(
         default=None, description="Headers for discovery endpoint"
     )
+    data_path: Optional[str] = Field(
+        default=None,
+        description="JQ path to extract data array from response (e.g., '.tickets', '.data')",
+    )
     field: str = Field(
         description="JQ expression to extract parameter value from each record"
     )

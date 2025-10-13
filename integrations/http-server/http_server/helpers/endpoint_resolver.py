@@ -72,6 +72,8 @@ async def query_api_for_parameters(param_config: ApiPathParameter) -> List[str]:
     http_client = init_client()
     logger.info(f"Querying API for parameter values from {param_config.endpoint}")
 
+    all_values = []
+
     try:
         async for batch in http_client.fetch_paginated_data(
             endpoint=param_config.endpoint,
@@ -79,29 +81,53 @@ async def query_api_for_parameters(param_config: ApiPathParameter) -> List[str]:
             query_params=param_config.query_params,
             headers=param_config.headers,
         ):
-            values = []
-            for item in batch:
-                try:
-                    # Use Ocean's built-in JQ processor
-                    extracted_value = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
-                        item, param_config.field
-                    )
-                    if extracted_value is not None:
-                        # Apply optional filter
-                        if param_config.filter:
-                            filter_result = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
-                                item, param_config.filter
-                            )
-                            if filter_result is True:
-                                values.append(str(extracted_value))
-                        else:
-                            values.append(str(extracted_value))
-                except Exception as e:
-                    logger.warning(f"Error extracting value from item: {e}")
-                    continue
+            # Process each raw response in the batch
+            for response_item in batch:
+                # If data_path is specified, extract the array first
+                items_to_process = []
+                if param_config.data_path:
+                    try:
+                        extracted_data = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
+                            response_item, param_config.data_path
+                        )
+                        if isinstance(extracted_data, list):
+                            items_to_process = extracted_data
+                        elif extracted_data is not None:
+                            items_to_process = [extracted_data]
+                    except Exception as e:
+                        logger.error(
+                            f"Error extracting data with path '{param_config.data_path}': {e}"
+                        )
+                        continue
+                else:
+                    # No data_path, process the response directly
+                    items_to_process = [response_item]
 
-            if values:
-                return values
+                # Extract field values from each item
+                for item in items_to_process:
+                    try:
+                        # Use Ocean's built-in JQ processor
+                        extracted_value = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
+                            item, param_config.field
+                        )
+                        if extracted_value is not None:
+                            # Apply optional filter
+                            if param_config.filter:
+                                filter_result = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
+                                    item, param_config.filter
+                                )
+                                if filter_result is True:
+                                    all_values.append(str(extracted_value))
+                            else:
+                                all_values.append(str(extracted_value))
+                    except Exception as e:
+                        logger.warning(f"Error extracting value from item: {e}")
+                        continue
+
+        logger.info(
+            f"Collected {len(all_values)} parameter values from {param_config.endpoint}"
+        )
+        return all_values
 
     except Exception as e:
         logger.error(
