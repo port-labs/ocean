@@ -192,7 +192,6 @@ class CheckmarxOneDastScanModel(BaseModel):
     )
     since: Optional[int] = Field(
         ge=1,
-        le=90,
         default=90,
         description="Filter results by number of days when they were last updated. (1-90 days)",
     )
