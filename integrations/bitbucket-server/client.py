@@ -10,6 +10,7 @@ from port_ocean.utils.cache import cache_iterator_result
 
 from helpers.folder import process_folder_patterns
 from helpers.file import process_file_patterns
+from integration import BitbucketServerFolderPattern, BitbucketServerFilePattern
 
 # Rate limit docs: https://support.atlassian.com/bitbucket-cloud/docs/api-request-limits/
 BITBUCKET_RATE_LIMIT = 1000  # requests per hour
@@ -479,14 +480,14 @@ class BitbucketClient:
 
     async def get_folders_by_patterns(
         self,
-        folder_patterns: list["BitbucketServerFolderPattern"],
+        folder_patterns: list[BitbucketServerFolderPattern],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for result in process_folder_patterns(folder_patterns, self):
             yield result
 
     async def get_files_by_patterns(
         self,
-        file_pattern: "BitbucketServerFilePattern",
+        file_pattern: BitbucketServerFilePattern,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for result in process_file_patterns(file_pattern, self):
             yield result

@@ -71,7 +71,7 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(BitbucketServerFolderResourceConfig, event.resource_config)
-    selector = cast(BitbucketServerFolderSelector, config.selector)
+    selector = config.selector
     logger.info(f"Resyncing folders with filter: {selector.folders}")
     client = initialize_client()
 
@@ -82,7 +82,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.FILE)
 async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(BitbucketServerFileResourceConfig, event.resource_config)
-    selector = cast(BitbucketServerFileSelector, config.selector)
+    selector = config.selector
     logger.info(f"Resyncing files with filter: {selector.files}")
     client = initialize_client()
 

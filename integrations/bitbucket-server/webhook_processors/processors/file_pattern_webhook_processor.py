@@ -130,7 +130,7 @@ class FilePatternWebhookProcessor(BaseWebhookProcessorMixin):
         }
 
         # Run your existing per-repo file pipeline (no commits, just current state)
-        updated: List[dict] = []
+        updated: List[Dict[str, any]] = []
         async for batch in process_repository_files(self._client, repo_obj, pattern):
             # process_repository_files yields lists (batches) of file results; we flatten for WebhookEventRawResults
             updated.extend(batch)
