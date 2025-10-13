@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "http-server"
-version = "0.1.0"
+version = "0.1.0-dev"
 description = "Generic HTTP Server Integration for Ocean"
 authors = ["Port Team <support@getport.io>"]
 
