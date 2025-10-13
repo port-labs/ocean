@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.4.3-beta (2025-10-08)
+
+
+### Improvements
+
+- Improved resync resilience and observability for multi-account scenarios.
+
+
+## 1.4.2-beta (2025-10-06)
+
+
+### Features
+
+- Add support for AWS::SQS::Queue Kind
+
+
+## 1.4.1-beta (2025-10-06)
+
+
+### Features
+
+- Add support for AWS::ECS::Service Kind
+
+
+## 1.4.0-beta (2025-10-06)
+
+
+### Features
+
+- Added support for Lambda Function.
+
+
+## 1.3.9-beta (2025-10-01)
+
+
+### Features
+
+- Added support for RDS DB Instance.
+
+
+## 1.3.8-beta (2025-10-01)
+
+
+### Features
+
+- Added support for EKS Cluster.
+
+
 ## 1.3.7-beta (2025-09-30)
 
 
