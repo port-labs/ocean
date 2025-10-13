@@ -1,0 +1,21 @@
+title: Okta
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/identity-access-management/okta
+description: okta integration for Port Ocean
+icon: Okta
+features:
+  - type: exporter
+    section: Other
+    resources:
+      - kind: okta-user
+      - kind: okta-group
+configurations:
+  - name: oktaDomain
+    required: true
+    type: string
+    description: Your Okta domain (e.g., dev-123456.okta.com)
+    sensitive: false
+  - name: oktaApiToken
+    required: true
+    type: string
+    description: Your Okta API token with appropriate permissions
+    sensitive: true

@@ -1,0 +1,96 @@
+title: HTTP Server
+description: Universal HTTP REST API integration with dynamic path parameters and flexible authentication
+icon: Api
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/api/http-server
+recommendedInstallationMethod: Saas
+features:
+  - type: exporter
+    section: API
+    resources:
+      - kind: dynamic
+        description: HTTP API resources - kind is the endpoint path (e.g., /api/v1/users)
+configurations:
+  - name: baseUrl
+    required: true
+    type: string
+    description: "The base URL of your HTTP API, for example: https://api.example.com"
+  - name: authType
+    required: false
+    type: string
+    default: "none"
+    description: "Authentication method: none, bearer_token, basic, or api_key"
+    enum: ["none", "bearer_token", "basic", "api_key"]
+  - name: apiToken
+    required: false
+    type: string
+    description: "Bearer token for authentication (required if authType is bearer_token)"
+    sensitive: true
+  - name: username
+    required: false
+    type: string
+    description: "Username for basic authentication (required if authType is basic)"
+  - name: password
+    required: false
+    type: string
+    description: "Password for basic authentication (required if authType is basic)"
+    sensitive: true
+  - name: apiKey
+    required: false
+    type: string
+    description: "API key for authentication (required if authType is api_key)"
+    sensitive: true
+  - name: apiKeyHeader
+    required: false
+    type: string
+    default: "X-API-Key"
+    description: "Header name for API key authentication"
+  - name: paginationType
+    required: false
+    type: string
+    default: "none"
+    description: "Pagination method: none, offset, page, or cursor"
+    enum: ["none", "offset", "page", "cursor"]
+  - name: pageSize
+    required: false
+    type: integer
+    default: 100
+    description: "Number of items per page for pagination"
+  - name: paginationParam
+    required: false
+    type: string
+    description: "Query parameter name for the main pagination value. For cursor: 'cursor', 'page[after]', 'after'. For page: 'page', 'pageNumber'. For offset: 'offset', 'skip'. Defaults vary by paginationType."
+  - name: sizeParam
+    required: false
+    type: string
+    description: "Query parameter name for page size/limit. Examples: 'limit', 'size', 'page[size]', 'per_page'. Defaults vary by paginationType."
+  - name: startPage
+    required: false
+    type: integer
+    description: "Starting page number for page-based pagination (e.g., 0 or 1). Defaults to 1."
+  - name: cursorPath
+    required: false
+    type: string
+    description: "Dot-notation path to extract cursor from response for cursor pagination (e.g., 'meta.after_cursor', 'links.next'). Defaults to common patterns if not specified."
+  - name: hasMorePath
+    required: false
+    type: string
+    description: "Dot-notation path to check if more pages exist (e.g., 'meta.has_more', 'pagination.hasMore'). Works with all pagination types. Defaults to common patterns if not specified."
+  - name: timeout
+    required: false
+    type: integer
+    default: 30
+    description: "Request timeout in seconds"
+  - name: verifySsl
+    required: false
+    type: boolean
+    default: true
+    description: "Whether to verify SSL certificates"
+  - name: maxConcurrentRequests
+    required: false
+    type: integer
+    default: 10
+    description: "Maximum concurrent API requests (uses Ocean's built-in rate limiting and caching)"
+saas:
+  enabled: true
+  liveEvents:
+    enabled: false

@@ -325,8 +325,11 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
                 },
             )
 
+            logger.debug(
+                f"Yielding session for account {account_id} with role {role_arn}"
+            )
             yield account_info, session
 
-        logger.debug(
+        logger.info(
             f"Session provision complete: {len(self.valid_arns)} sessions yielded"
         )

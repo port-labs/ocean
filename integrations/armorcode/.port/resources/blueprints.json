@@ -1,0 +1,253 @@
+[
+  {
+    "identifier": "armorcodeProduct",
+    "title": "Armorcode Product",
+    "icon": "Package",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "businessOwner": {
+          "type": "string",
+          "title": "Business Owner"
+        },
+        "securityOwner": {
+          "type": "string",
+          "title": "Security Owner"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "armorcodeSubProduct",
+    "title": "Armorcode Sub-Product",
+    "icon": "Git",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "repoLink": {
+          "type": "string",
+          "title": "Repository Link",
+          "format": "url"
+        },
+        "programmingLanguage": {
+          "type": "string",
+          "title": "Language"
+        },
+        "technologies": {
+          "type": "array",
+          "title": "Technologies",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "product": {
+        "title": "Product",
+        "target": "armorcodeProduct",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "armorcodeFinding",
+    "title": "ArmorCode Finding",
+    "icon": "Bug",
+    "schema": {
+      "properties": {
+        "source": {
+          "title": "Source",
+          "type": "string",
+          "description": "The security tool that generated this finding"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "Detailed description of the security finding"
+        },
+        "mitigation": {
+          "title": "Mitigation",
+          "type": "string",
+          "description": "Recommended mitigation steps for this finding"
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": [
+            "CRITICAL",
+            "HIGH",
+            "MEDIUM",
+            "LOW",
+            "INFORMATIONAL",
+            "UNKNOWN"
+          ],
+          "enumColors": {
+            "CRITICAL": "red",
+            "HIGH": "orange",
+            "MEDIUM": "yellow",
+            "LOW": "darkGray",
+            "INFORMATIONAL": "silver",
+            "UNKNOWN": "lightGray"
+          }
+        },
+        "findingCategory": {
+          "title": "Finding Category",
+          "type": "string",
+          "description": "Category classification of the finding"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "OPEN",
+            "CLOSED",
+            "ACTIVE",
+            "IN_PROGRESS",
+            "RESOLVED",
+            "TRIAGE",
+            "CONTROLLED",
+            "SUPPRESS",
+            "MITIGATED"
+          ],
+          "enumColors": {
+            "OPEN": "paleBlue",
+            "ACTIVE": "olive",
+            "CLOSED": "lightGray",
+            "RESOLVED": "green",
+            "IN_PROGRESS": "orange",
+            "TRIAGE": "yellow",
+            "CONTROLLED": "purple",
+            "SUPPRESS": "darkGray",
+            "MITIGATED": "lime"
+          }
+        },
+        "productStatus": {
+          "title": "Product Status",
+          "type": "string",
+          "description": "Status of the product containing this finding"
+        },
+        "subProductStatuses": {
+          "title": "Sub-Product Status",
+          "type": "string",
+          "description": "Status of the sub-product containing this finding"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string",
+          "description": "Brief title describing the finding"
+        },
+        "toolSeverity": {
+          "title": "Tool Severity",
+          "type": "string",
+          "description": "Original severity as reported by the security tool"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "description": "When the finding was first created"
+        },
+        "lastUpdated": {
+          "title": "Last Updated",
+          "type": "string",
+          "format": "date-time",
+          "description": "When the finding was last updated"
+        },
+        "cwe": {
+          "title": "CWE",
+          "type": "array",
+          "description": "Common Weakness Enumeration identifiers",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cve": {
+          "title": "CVE",
+          "type": "array",
+          "description": "Common Vulnerabilities and Exposures identifiers",
+          "items": {
+            "type": "string"
+          }
+        },
+        "link": {
+          "title": "Link to Finding",
+          "type": "string",
+          "format": "url",
+          "description": "Direct link to the finding in ArmorCode"
+        },
+        "riskScore": {
+          "title": "Risk Score",
+          "type": "number",
+          "description": "Calculated risk score for the finding"
+        },
+        "findingScore": {
+          "title": "Finding Score",
+          "type": "number",
+          "description": "ArmorCode finding score"
+        },
+        "slaBreached": {
+          "title": "SLA Breached",
+          "type": "boolean",
+          "description": "Whether the SLA for this finding has been breached"
+        },
+        "slaDueDate": {
+          "title": "SLA Due Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "SLA due date as a Unix timestamp in milliseconds"
+        },
+        "resolutionSlaStatus": {
+          "title": "Resolution SLA Status",
+          "type": "string",
+          "description": "Resolution SLA status for this finding (e.g., FAIL)"
+        }
+      },
+      "required": [
+        "title",
+        "status",
+        "severity",
+        "source",
+        "findingCategory"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "product": {
+        "title": "Product",
+        "target": "armorcodeProduct",
+        "required": true,
+        "many": false
+      },
+      "subProduct": {
+        "title": "Sub-Product",
+        "target": "armorcodeSubProduct",
+        "required": true,
+        "many": false
+      }
+    }
+  }
+]
