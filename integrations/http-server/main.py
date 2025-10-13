@@ -27,6 +27,7 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     # The kind IS the endpoint path (e.g., "/api/v1/users")
     # Check if endpoint has path parameters that need resolution
+    # Returns list of tuples: (endpoint_url, {param_name: param_value})
     endpoints = await resolve_dynamic_endpoints(selector, kind)
 
     logger.info(f"Resolved {len(endpoints)} endpoints to call for kind: {kind}")
@@ -38,7 +39,7 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     data_path = getattr(selector, "data_path", None)
 
     # Call each resolved endpoint
-    for endpoint in endpoints:
+    for endpoint, path_params in endpoints:
         logger.info(f"Fetching data from: {method} {endpoint}")
 
         try:
@@ -60,8 +61,20 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 item, data_path
                             )
                             if isinstance(extracted_data, list):
+                                # Inject path parameters into each extracted item
+                                for entity in extracted_data:
+                                    if isinstance(entity, dict) and path_params:
+                                        for (
+                                            param_name,
+                                            param_value,
+                                        ) in path_params.items():
+                                            entity[f"__{param_name}"] = param_value
                                 processed_batch.extend(extracted_data)
                             elif extracted_data is not None:
+                                # Inject path parameters for single item
+                                if isinstance(extracted_data, dict) and path_params:
+                                    for param_name, param_value in path_params.items():
+                                        extracted_data[f"__{param_name}"] = param_value
                                 processed_batch.append(extracted_data)
                         except Exception as e:
                             logger.error(

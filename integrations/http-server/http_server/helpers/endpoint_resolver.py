@@ -42,8 +42,8 @@ def validate_endpoint_parameters(
 
 def generate_resolved_endpoints(
     endpoint_template: str, param_name: str, param_values: List[str]
-) -> List[str]:
-    """Generate resolved endpoints by replacing parameter placeholders
+) -> List[tuple[str, Dict[str, str]]]:
+    """Generate resolved endpoints with parameter values
 
     Args:
         endpoint_template: Template with parameter placeholder (e.g., "/api/teams/{team_id}")
@@ -51,12 +51,12 @@ def generate_resolved_endpoints(
         param_values: List of values to substitute (e.g., ["team1", "team2"])
 
     Returns:
-        List of resolved endpoint URLs
+        List of tuples: (resolved_url, {param_name: param_value})
     """
     resolved_endpoints = []
     for value in param_values:
         resolved_endpoint = endpoint_template.replace(f"{{{param_name}}}", str(value))
-        resolved_endpoints.append(resolved_endpoint)
+        resolved_endpoints.append((resolved_endpoint, {param_name: str(value)}))
     return resolved_endpoints
 
 
@@ -113,15 +113,16 @@ async def query_api_for_parameters(param_config: ApiPathParameter) -> List[str]:
 
 async def resolve_dynamic_endpoints(
     selector: HttpServerSelector, kind: str
-) -> List[str]:
-    """Resolve dynamic endpoints using Ocean's Port client with validation
+) -> List[tuple[str, Dict[str, str]]]:
+    """Resolve dynamic endpoints with path parameter values
 
     Args:
         selector: The resource selector configuration
         kind: The endpoint path (e.g., "/api/v1/users" or "/api/v1/teams/{team_id}")
 
     Returns:
-        List of resolved endpoint URLs
+        List of tuples: (resolved_url, {param_name: param_value})
+        For static endpoints, returns [(kind, {})]
     """
     if not kind:
         logger.error("Kind (endpoint) is empty")
@@ -134,13 +135,14 @@ async def resolve_dynamic_endpoints(
     param_names = extract_path_parameters(kind)
 
     if not param_names:
-        return [kind]
+        # No path parameters - return static endpoint with empty params
+        return [(kind, {})]
 
     # Validate that all parameters are configured
     missing_params = validate_endpoint_parameters(param_names, path_parameters)
     if missing_params:
         logger.error(f"Missing configuration for path parameters: {missing_params}")
-        return [kind]
+        return [(kind, {})]
 
     # For now, handle single parameter (can extend for multiple later)
     if len(param_names) > 1:
@@ -159,7 +161,7 @@ async def resolve_dynamic_endpoints(
         logger.error(f"No valid values found for path parameter '{param_name}'")
         return []
 
-    # Generate resolved endpoints
+    # Generate resolved endpoints with parameter values
     resolved_endpoints = generate_resolved_endpoints(kind, param_name, parameter_values)
 
     logger.info(

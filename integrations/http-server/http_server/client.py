@@ -18,6 +18,8 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 
+from http_server.handlers import get_auth_handler, get_pagination_handler
+
 
 class HttpServerClient:
     """HTTP client with configurable authentication and pagination using Ocean's built-in mechanisms"""
@@ -41,40 +43,14 @@ class HttpServerClient:
 
         # Use Ocean's built-in HTTP client with retry and rate limiting
         self.client = http_async_client
+        self.client.headers["User-Agent"] = "Port-Ocean-HTTP-Integration/1.0"
 
-        # Configure authentication
-        self._setup_auth()
+        # Configure authentication using handler pattern
+        auth_handler = get_auth_handler(self.auth_type, self.client, self.auth_config)
+        auth_handler.setup()
 
         # Concurrency control
         self.semaphore = asyncio.Semaphore(max_concurrent_requests)
-
-        # Pagination strategy dispatch (OOP-friendly, no switch case)
-        self._pagination_handlers = {
-            "page": self._fetch_page_paginated,
-            "offset": self._fetch_offset_paginated,
-            "cursor": self._fetch_cursor_paginated,
-            "none": self._fetch_single_page,
-        }
-
-    def _setup_auth(self) -> None:
-        """Setup authentication following Ocean patterns"""
-        self.client.headers["User-Agent"] = "Port-Ocean-HTTP-Integration/1.0"
-        if self.auth_type == "bearer_token":
-            token = self.auth_config.get("api_token")
-            if token:
-                self.client.headers["Authorization"] = f"Bearer {token}"
-
-        elif self.auth_type == "api_key":
-            api_key = self.auth_config.get("api_key")
-            key_header = self.auth_config.get("api_key_header", "X-API-Key")
-            if api_key and key_header:
-                self.client.headers[key_header] = api_key
-
-        elif self.auth_type == "basic":
-            username = self.auth_config.get("username")
-            password = self.auth_config.get("password")
-            if username and password:
-                self.client.auth = httpx.BasicAuth(username, password)
 
     async def fetch_paginated_data(
         self,
@@ -101,7 +77,7 @@ class HttpServerClient:
         query_params: Optional[Dict[str, Any]],
         headers: Optional[Dict[str, str]],
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Fetch data with pagination handling - yields raw responses for data_path processing"""
+        """Fetch data with pagination handling using handler pattern"""
 
         url = urljoin(self.base_url, endpoint.lstrip("/"))
         params = query_params or {}
@@ -113,147 +89,29 @@ class HttpServerClient:
             f"Fetching data from {method} {url} with pagination: {pagination_type}"
         )
 
-        # Use dictionary dispatch for clean OOP pattern without switch case
-        handler = self._pagination_handlers.get(
-            pagination_type, self._fetch_single_page
+        # Get pagination handler (leverages Ocean's HTTP client)
+        handler = get_pagination_handler(
+            pagination_type=pagination_type,
+            client=self.client,
+            config=self.pagination_config,
+            extract_items_fn=self._extract_items_from_response,
+            make_request_fn=self._make_request,
+            get_nested_value_fn=self._get_nested_value,
         )
-        async for batch in handler(url, method, params, request_headers):
+
+        async for batch in handler.fetch_all(url, method, params, request_headers):
             yield batch
 
-    async def _fetch_single_page(
-        self,
-        url: str,
-        method: str,
-        params: Dict[str, Any],
-        headers: Dict[str, str],
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Fetch single page without pagination"""
-        response = await self._make_request(url, method, params, headers)
-        items = self._extract_items_from_response(response.json())
-        if items:
-            yield items
-
-    async def _fetch_page_paginated(
-        self,
-        url: str,
-        method: str,
-        params: Dict[str, Any],
-        headers: Dict[str, str],
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Fetch data using page/size pagination"""
-        page_size = self.pagination_config.get("page_size", 100)
-        page_param = self.pagination_config.get("page_param", "page")
-        size_param = self.pagination_config.get("size_param", "size")
-        start_page = self.pagination_config.get("start_page", 1)
-        page = start_page
-
-        while True:
-            current_params = {
-                **params,
-                page_param: page,
-                size_param: page_size,
-            }
-
-            response = await self._make_request(url, method, current_params, headers)
-            response_data = response.json()
-            items = self._extract_items_from_response(response_data)
-
-            if not items:
-                break
-
-            yield items
-
-            # Check for next page indicators
-            if isinstance(response_data, dict):
-                has_next = (
-                    response_data.get("next_page") is not None
-                    or response_data.get("next") is not None
-                    or response_data.get("hasMore", False)
-                )
-                if not has_next:
-                    break
+    def _get_nested_value(self, data: Dict[str, Any], path: str) -> Any:
+        """Extract value from nested dict using dot notation (e.g., 'meta.after_cursor')"""
+        keys = path.split(".")
+        value: Any = data
+        for key in keys:
+            if isinstance(value, dict):
+                value = value.get(key)
             else:
-                if len(items) < page_size:
-                    break
-
-            page += 1
-
-    async def _fetch_offset_paginated(
-        self,
-        url: str,
-        method: str,
-        params: Dict[str, Any],
-        headers: Dict[str, str],
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Fetch data using offset/limit pagination"""
-        page_size = self.pagination_config.get("page_size", 100)
-        offset_param = self.pagination_config.get("offset_param", "offset")
-        limit_param = self.pagination_config.get("limit_param", "limit")
-        offset = 0
-
-        while True:
-            current_params = {
-                **params,
-                offset_param: offset,
-                limit_param: page_size,
-            }
-
-            response = await self._make_request(url, method, current_params, headers)
-            response_data = response.json()
-            items = self._extract_items_from_response(response_data)
-
-            if not items:
-                break
-
-            yield items
-
-            if isinstance(response_data, dict):
-                has_more = response_data.get(
-                    "has_more", response_data.get("hasMore", True)
-                )
-                if not has_more:
-                    break
-
-            offset += page_size
-
-    async def _fetch_cursor_paginated(
-        self,
-        url: str,
-        method: str,
-        params: Dict[str, Any],
-        headers: Dict[str, str],
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Fetch data using cursor-based pagination"""
-        page_size = self.pagination_config.get("page_size", 100)
-        cursor_param = self.pagination_config.get("cursor_param", "cursor")
-        limit_param = self.pagination_config.get("limit_param", "limit")
-        cursor = None
-
-        while True:
-            current_params = {**params, limit_param: page_size}
-
-            if cursor:
-                current_params[cursor_param] = cursor
-
-            response = await self._make_request(url, method, current_params, headers)
-            response_data = response.json()
-            items = self._extract_items_from_response(response_data)
-
-            if not items:
-                break
-
-            yield items
-
-            if isinstance(response_data, dict):
-                cursor = response_data.get("next_cursor") or response_data.get("cursor")
-                has_more = response_data.get(
-                    "has_more", response_data.get("hasMore", False)
-                )
-
-                if not cursor or not has_more:
-                    break
-            else:
-                break
+                return None
+        return value
 
     async def _make_request(
         self,

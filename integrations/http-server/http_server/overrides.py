@@ -65,4 +65,4 @@ class HttpServerResourceConfig(ResourceConfig):
 class HttpServerPortAppConfig(PortAppConfig):
     """Port app configuration for HTTP server integration"""
 
-    pass
+    resources: list[HttpServerResourceConfig] = Field(default_factory=list)  # type: ignore[assignment]

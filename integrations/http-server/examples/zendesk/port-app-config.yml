@@ -1,0 +1,91 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: /api/v2/tickets.json
+    selector:
+      query: 'true'
+      method: GET
+      data_path: .tickets
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .subject
+          blueprint: '"zendesk_ticket"'
+          properties:
+            status: .status
+            priority: .priority
+            requester_id: .requester_id | tostring
+            url: .url
+            created_at: .created_at
+            updated_at: .updated_at
+            description: .description
+          relations: {}
+  - kind: /api/v2/organizations.json
+    selector:
+      query: 'true'
+      method: GET
+      data_path: .organizations
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"zendesk_organization"'
+          properties:
+            url: .url
+            created_at: .created_at
+            updated_at: .updated_at
+          relations: {}
+  - kind: /api/v2/users.json
+    selector:
+      query: 'true'
+      method: GET
+      data_path: .users
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"zendesk_user"'
+          properties:
+            email: .email
+            role: .role
+            organization_id: .organization_id | tostring
+            profile_url: .photo.content_url // ""
+            active: .active
+            verified: .verified
+          relations: {}
+  - kind: /api/v2/tickets/{ticket_id}/comments.json
+    selector:
+      query: 'true'
+      method: GET
+      path_parameters:
+        ticket_id:
+          endpoint: /api/v2/tickets.json
+          method: GET
+          field: .id | tostring
+          filter: 'true'
+      data_path: .comments
+    port:
+      entity:
+        mappings:
+          identifier: .__ticket_id + "_comment_" + (.id | tostring)
+          title: .body | split("\n") | first | .[0:100]
+          blueprint: '"zendesk_comment"'
+          properties:
+            comment_id: .id | tostring
+            ticket_id: .__ticket_id
+            body: .body
+            html_body: .html_body
+            plain_body: .plain_body
+            public: .public
+            author_id: .author_id | tostring
+            created_at: .created_at
+            type: .type
+            via_channel: .via.channel
+            audit_id: .audit_id | tostring
+          relations:
+            ticket: .__ticket_id
+            author: .author_id | tostring
+
