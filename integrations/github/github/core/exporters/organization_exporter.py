@@ -37,17 +37,16 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
                 "Organization is required for non-classic PAT tokens"
             )
 
+        list_organizations_url = f"{self.client.base_url}/user/orgs"
         if not multi_organizations:
             logger.info("Fetching all organizations for non-classic PAT tokens")
             async for orgs in self.client.send_paginated_request(
-                f"{self.client.base_url}/user/orgs", {}
+                list_organizations_url
             ):
                 yield orgs
             return
 
-        async for orgs in self.client.send_paginated_request(
-            f"{self.client.base_url}/user/orgs", {}
-        ):
+        async for orgs in self.client.send_paginated_request(list_organizations_url):
             filtered_orgs = [
                 org for org in orgs if org.get("login") in multi_organizations
             ]
