@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 2.0.0-beta (2025-10-13)
+## 3.0.0-beta (2025-10-13)
 
 
 ### Features
@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Syncing multiple organizations increases API calls and may slow down resync operations. See [performance considerations](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/github-ocean#multi-organization-support).
 
 
-## 1.5.10-beta (2025-09-30)
+## 2.0.0-beta (2025-09-30)
 
 
 ### Improvements

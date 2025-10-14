@@ -93,3 +93,19 @@ resources:
             timeframe: .__timeframe
           relations:
             slo: .slo.id
+
+  - kind: serviceDependency
+    selector:
+      query: 'true'
+      environment: prod
+      startTime: 1
+    port:
+      entity:
+        mappings:
+          identifier: .name | tostring
+          title: .name
+          blueprint: '"datadogServiceDependency"'
+          properties:
+            sourceService: .name
+          relations:
+            dependencies: if .calls then .calls[] else [] end
