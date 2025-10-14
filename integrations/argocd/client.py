@@ -49,7 +49,6 @@ class ArgocdClient:
         else:
             self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
-        self._available_clusters: list[dict[str, Any]] = []
 
     async def _send_api_request(
         self,
@@ -88,26 +87,19 @@ class ArgocdClient:
         url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s"
         try:
             response_data = await self._send_api_request(url=url)
+            available_clusters: list[dict[str, Any]] = []
             for cluster in response_data.get("items", []):
                 if (
                     cluster.get("connectionState", {}).get("status")
                     == ClusterState.AVAILABLE.value
                 ):
-                    self._available_clusters.append(cluster)
-                if len(self._available_clusters) >= PAGE_SIZE:
-                    yield self._available_clusters
-                    self._available_clusters = []
+                    available_clusters.append(cluster)
+                if len(available_clusters) >= PAGE_SIZE:
+                    yield available_clusters
+                    available_clusters = []
 
-            if self._available_clusters:
-                yield self._available_clusters
-                self._available_clusters = []
-        except httpx.TimeoutException as e:
-            logger.error(f"Request timed out while fetching clusters: {e}")
-            if self.ignore_server_error:
-                yield []
-            else:
-                yield self._available_clusters
-                self._available_clusters = []
+            if available_clusters:
+                yield available_clusters
         except Exception as e:
             logger.error(f"Failed to fetch clusters: {e}")
             if self.ignore_server_error:
