@@ -114,16 +114,34 @@ class ArgocdClient:
                 yield []
             raise e
 
-    async def get_resources(self, resource_kind: ObjectKind) -> list[dict[str, Any]]:
+    async def get_available_clusters(self) -> list[dict[str, Any]]:
+        available_clusters: list[dict[str, Any]] = []
+        async for clusters in self.get_clusters():
+            available_clusters.extend(clusters)
+        return available_clusters
+
+    async def get_resources_for_available_clusters(
+        self, resource_kind: ObjectKind
+    ) -> list[dict[str, Any]]:
+        available_clusters = await self.get_available_clusters()
+        cluster_names = [cluster["name"] for cluster in available_clusters]
         url = f"{self.api_url}/{resource_kind}s"
-        try:
-            response_data = await self._send_api_request(url=url)
-            return response_data.get("items", [])
-        except Exception as e:
-            logger.error(f"Failed to fetch resources of kind {resource_kind}: {e}")
-            if self.ignore_server_error:
-                return []
-            raise e
+
+        all_resources = []
+        for cluster_name in cluster_names:
+            try:
+                response_data = await self._send_api_request(
+                    url=url, query_params={"cluster": cluster_name}
+                )
+                all_resources.extend(response_data.get("items", []))
+            except Exception as e:
+                logger.error(
+                    f"Failed to fetch resources of kind {resource_kind} for cluster {cluster_name}: {e}"
+                )
+                if self.ignore_server_error:
+                    continue
+                raise e
+        return all_resources
 
     async def get_application_by_name(self, name: str) -> dict[str, Any]:
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{name}"
@@ -137,7 +155,9 @@ class ArgocdClient:
         logger.warning(
             f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
-        applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
+        applications = await self.get_resources_for_available_clusters(
+            resource_kind=ObjectKind.APPLICATION
+        )
         if not applications:
             logger.error(
                 "No applications were found. Skipping deployment history ingestion"
@@ -163,7 +183,9 @@ class ArgocdClient:
         logger.warning(
             f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
-        applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
+        applications = await self.get_resources_for_available_clusters(
+            resource_kind=ObjectKind.APPLICATION
+        )
         if not applications:
             logger.error(
                 "No applications were found. Skipping managed resources ingestion"

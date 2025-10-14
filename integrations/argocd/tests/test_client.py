@@ -20,7 +20,9 @@ def mock_argocd_client() -> ArgocdClient:
 
 
 @pytest.mark.asyncio
-async def test_get_resources(mock_argocd_client: ArgocdClient) -> None:
+async def test_get_resources_for_available_clusters(
+    mock_argocd_client: ArgocdClient,
+) -> None:
     kinds = [ObjectKind.PROJECT, ObjectKind.APPLICATION]
 
     for kind in kinds:
@@ -51,13 +53,31 @@ async def test_get_resources(mock_argocd_client: ArgocdClient) -> None:
                     }
                 ]
             }
+
         with patch.object(
-            mock_argocd_client, "_send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            mock_request.return_value = response_data
-            resources = await mock_argocd_client.get_resources(resource_kind=kind)
-            assert resources == response_data["items"]
-            mock_request.assert_called_with(url=f"{mock_argocd_client.api_url}/{kind}s")
+            mock_argocd_client, "get_available_clusters", new_callable=AsyncMock
+        ) as mock_clusters:
+            mock_clusters.return_value = [
+                {
+                    "name": "test-cluster",
+                    "connectionState": {"status": ClusterState.AVAILABLE.value},
+                }
+            ]
+            with patch.object(
+                mock_argocd_client, "_send_api_request", new_callable=AsyncMock
+            ) as mock_request:
+                mock_request.return_value = response_data
+                resources = (
+                    await mock_argocd_client.get_resources_for_available_clusters(
+                        resource_kind=kind
+                    )
+                )
+                assert resources == response_data["items"]
+                mock_request.assert_called_with(
+                    url=f"{mock_argocd_client.api_url}/{kind}s",
+                    query_params={"cluster": "test-cluster"},
+                )
+            mock_clusters.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -119,7 +139,9 @@ async def test_get_deployment_history(mock_argocd_client: ArgocdClient) -> None:
         ]
     }
     with patch.object(
-        mock_argocd_client, "get_resources", new_callable=AsyncMock
+        mock_argocd_client,
+        "get_resources_for_available_clusters",
+        new_callable=AsyncMock,
     ) as mock_request:
         mock_request.return_value = response_data["items"]
         kind = ObjectKind.APPLICATION
@@ -150,7 +172,9 @@ async def test_get_deployment_history_without_history_data(
         ]
     }
     with patch.object(
-        mock_argocd_client, "get_resources", new_callable=AsyncMock
+        mock_argocd_client,
+        "get_resources_for_available_clusters",
+        new_callable=AsyncMock,
     ) as mock_request:
         mock_request.return_value = response_data["items"]
         kind = ObjectKind.APPLICATION
@@ -190,7 +214,9 @@ async def test_get_kubernetes_resource(mock_argocd_client: ArgocdClient) -> None
         ]
     }
     with patch.object(
-        mock_argocd_client, "get_resources", new_callable=AsyncMock
+        mock_argocd_client,
+        "get_resources_for_available_clusters",
+        new_callable=AsyncMock,
     ) as mock_request:
         mock_request.return_value = response_data["items"]
         kind = ObjectKind.APPLICATION
@@ -221,7 +247,9 @@ async def test_get_kubernetes_resource_without_resource_data(
         ]
     }
     with patch.object(
-        mock_argocd_client, "get_resources", new_callable=AsyncMock
+        mock_argocd_client,
+        "get_resources_for_available_clusters",
+        new_callable=AsyncMock,
     ) as mock_request:
         mock_request.return_value = response_data["items"]
         async for resources in mock_argocd_client.get_kubernetes_resource():
