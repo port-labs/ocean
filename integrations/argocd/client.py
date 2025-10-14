@@ -83,23 +83,29 @@ class ArgocdClient:
                 return {}
             raise e
 
-    async def get_clusters(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_clusters(
+        self, skip_unavailable_clusters: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s"
         try:
             response_data = await self._send_api_request(url=url)
-            available_clusters: list[dict[str, Any]] = []
-            for cluster in response_data.get("items", []):
-                if (
-                    cluster.get("connectionState", {}).get("status")
-                    == ClusterState.AVAILABLE.value
-                ):
-                    available_clusters.append(cluster)
-                if len(available_clusters) >= PAGE_SIZE:
-                    yield available_clusters
-                    available_clusters = []
+            clusters: list[dict[str, Any]] = []
+            if skip_unavailable_clusters:
+                for cluster in response_data.get("items", []):
+                    if (
+                        cluster.get("connectionState", {}).get("status")
+                        == ClusterState.AVAILABLE.value
+                    ):
+                        clusters.append(cluster)
+            else:
+                clusters = response_data.get("items", [])
 
-            if available_clusters:
-                yield available_clusters
+            if len(clusters) >= PAGE_SIZE:
+                yield clusters
+                clusters = []
+
+            if clusters:
+                yield clusters
         except Exception as e:
             logger.error(f"Failed to fetch clusters: {e}")
             if self.ignore_server_error:
@@ -108,7 +114,7 @@ class ArgocdClient:
 
     async def get_available_clusters(self) -> list[dict[str, Any]]:
         available_clusters: list[dict[str, Any]] = []
-        async for clusters in self.get_clusters():
+        async for clusters in self.get_clusters(skip_unavailable_clusters=True):
             available_clusters.extend(clusters)
         return available_clusters
 

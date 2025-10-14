@@ -374,7 +374,9 @@ async def test_get_clusters_filters_unavailable_clusters(
         mock_request.return_value = response_data
 
         all_clusters = []
-        async for cluster_batch in mock_argocd_client.get_clusters():
+        async for cluster_batch in mock_argocd_client.get_clusters(
+            skip_unavailable_clusters=True
+        ):
             all_clusters.extend(cluster_batch)
 
         # Only 3 out of 5 clusters have "Successful" status
