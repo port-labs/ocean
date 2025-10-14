@@ -39,7 +39,7 @@ from integrations.github.github.actions.abstract_github_executor import (
 
 
 MAX_WORKFLOW_POLL_ATTEMPTS = 10
-WORKFLOW_POLL_DELAY = 1
+WORKFLOW_POLL_DELAY_SECONDS = 2
 
 
 class DispatchWorkflowExecutor(AbstractGithubExecutor):
@@ -148,7 +148,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 )
                 workflow_runs = response.get("workflow_runs", [])
                 if len(workflow_runs) == 0:
-                    await asyncio.sleep(WORKFLOW_POLL_DELAY)
+                    await asyncio.sleep(WORKFLOW_POLL_DELAY_SECONDS)
                     attempts_made += 1
 
             if len(workflow_runs) == 0:

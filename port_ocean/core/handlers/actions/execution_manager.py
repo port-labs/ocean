@@ -298,23 +298,15 @@ class ExecutionManager:
         Round-robin worker across global queue and partition queues.
         """
         while not self._is_shutting_down.is_set():
-            try:
-                source = await self._active_sources.get()
-                if self._is_shutting_down.is_set():
-                    # Put the source back if we're shutting down
-                    await self._active_sources.put(source)
-                    break
+            source = await self._active_sources.get()
 
-                try:
-                    if source == GLOBAL_SOURCE:
-                        await self._handle_global_queue_once()
-                    else:
-                        await self._handle_partition_queue_once(source)
-                except Exception as e:
-                    logger.exception("Worker processing error", source=source, error=e)
-            except Exception:
-                if not self._is_shutting_down.is_set():
-                    logger.exception("Unexpected error in worker loop")
+            try:
+                if source == GLOBAL_SOURCE:
+                    await self._handle_global_queue_once()
+                else:
+                    await self._handle_partition_queue_once(source)
+            except Exception as e:
+                logger.exception("Worker processing error", source=source, error=e)
 
     async def _execute_run(self, run_task: ActionRunTask) -> None:
         """
