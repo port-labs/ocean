@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 3.0.0-beta (2025-10-13)
+## 3.0.0-beta (2025-10-14)
 
 
 ### Features
@@ -17,10 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modified webhook processors to include organization context
 - Updated exporters to support organization parameters
 - Added `organization` as a new resource kind
+- Introduced `githubMultiOrganizations` in spec file
 
 ### Breaking Changes
 
-- **Configuration parameter renamed**: `githubOrganization` (string) changed to `githubOrganizations` (array). See [installation guide](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation) for migration details.
 - **File kind requires organization field**: All file kind patterns must now include an `organization` field. File objects provide direct access to properties: `.organization`, `.repository`, `.content`, `.path`, `.name`, `.branch`, `.metadata`. See [file ingestion documentation](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/github-ocean#ingest-files-from-your-repositories) and [migration guide](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/migration-guide#files--gitops).
 - **Folder kind requires organization field**: All folder kind patterns must now include an `organization` field. Folder objects use enriched properties `.__repository` and `.__organization` for accessing organization and repository context. See [folder ingestion documentation](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/github-ocean#ingest-folders-from-your-repositories) and [migration guide](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/migration-guide#folders).
 - **Authentication limitations**: Only classic Personal Access Tokens (PAT) support multi-organization. Fine-grained PATs and GitHub Apps are limited to single organization. See [authentication requirements](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/github-ocean#multi-organization-support).

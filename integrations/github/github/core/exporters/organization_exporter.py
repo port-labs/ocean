@@ -25,7 +25,7 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         multi_organizations = set(options.get("multi_organizations") or [])
 
         if organization:
-            logger.info(f"Fetching organization {organization}")
+            logger.info(f"Fetching single organization {organization}")
             org_data = await self.client.send_api_request(
                 f"{self.client.base_url}/orgs/{organization}"
             )
@@ -38,6 +38,7 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
             )
 
         if not multi_organizations:
+            logger.info("Fetching all organizations for non-classic PAT tokens")
             async for orgs in self.client.send_paginated_request(
                 f"{self.client.base_url}/user/orgs", {}
             ):
