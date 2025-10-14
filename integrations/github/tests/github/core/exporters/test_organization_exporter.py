@@ -142,7 +142,7 @@ class TestRestOrganizationExporter:
 
                 mock_is_classic.assert_called_once()
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/user/orgs", {}
+                    f"{rest_client.base_url}/user/orgs"
                 )
 
     async def test_get_paginated_resources_with_fine_grained_pat_raises_error(
@@ -206,7 +206,7 @@ class TestRestOrganizationExporter:
 
                 mock_is_classic.assert_called_once()
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/user/orgs", {}
+                    f"{rest_client.base_url}/user/orgs"
                 )
 
     async def test_get_paginated_resources_with_multi_organizations_no_matches(
@@ -247,7 +247,7 @@ class TestRestOrganizationExporter:
 
                 mock_is_classic.assert_called_once()
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/user/orgs", {}
+                    f"{rest_client.base_url}/user/orgs"
                 )
 
     async def test_get_paginated_resources_with_multi_organizations_partial_match(
@@ -289,7 +289,7 @@ class TestRestOrganizationExporter:
 
                 mock_is_classic.assert_called_once()
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/user/orgs", {}
+                    f"{rest_client.base_url}/user/orgs"
                 )
 
     async def test_get_paginated_resources_with_empty_multi_organizations(
@@ -330,7 +330,7 @@ class TestRestOrganizationExporter:
 
                 mock_is_classic.assert_called_once()
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/user/orgs", {}
+                    f"{rest_client.base_url}/user/orgs"
                 )
 
     async def test_get_paginated_resources_multiple_pages(
@@ -372,7 +372,7 @@ class TestRestOrganizationExporter:
 
                 mock_is_classic.assert_called_once()
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/user/orgs", {}
+                    f"{rest_client.base_url}/user/orgs"
                 )
 
     async def test_get_resource_raises_not_implemented(
