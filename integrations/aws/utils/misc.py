@@ -67,7 +67,21 @@ def is_access_denied_exception(e: Exception) -> bool:
 
     if hasattr(e, "response") and e.response is not None:
         error_code = e.response.get("Error", {}).get("Code")
-        return error_code in access_denied_error_codes
+
+        if error_code in access_denied_error_codes:
+            return True
+
+        if error_code == "GeneralServiceException":
+            error_message = e.response.get("Error", {}).get("Message", "").lower()
+            access_denied_patterns = [
+                "access denied",
+                "accessdenied",
+                "unauthorized",
+                "forbidden",
+                "permission denied",
+            ]
+            if any(pattern in error_message for pattern in access_denied_patterns):
+                return True
 
     return False
 
@@ -89,7 +103,20 @@ def is_resource_not_found_exception(e: Exception) -> bool:
 
     if hasattr(e, "response") and e.response is not None:
         error_code = e.response.get("Error", {}).get("Code")
-        return error_code in resource_not_found_error_codes
+
+        if error_code in resource_not_found_error_codes:
+            return True
+
+        if error_code == "GeneralServiceException":
+            error_message = e.response.get("Error", {}).get("Message", "").lower()
+            not_found_patterns = [
+                "not found",
+                "notfound",
+                "does not exist",
+                "resourcenotfound",
+            ]
+            if any(pattern in error_message for pattern in not_found_patterns):
+                return True
 
     return False
 
