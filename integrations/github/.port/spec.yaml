@@ -44,10 +44,14 @@ configurations:
     type: string
     sensitive: true
     description: If App ID is passed, then app private key is required.
-  - name: githubOrganizations
+  - name: githubOrganization
+    required: false
+    type: string
+    description: Optional GitHub organization name for GitHub App or Fine-grained PAT authentication.
+  - name: githubMultiOrganizations
     required: false
     type: array
-    description: List of GitHub organization names (optional - if not provided, will sync all organizations the personal access token user is a member of)
+    description: List of GitHub organization names (optional - if not provided, will sync all organizations the personal access token user is a member of) for Classic PAT authentication.
   - name: webhookSecret
     type: string
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from GitHub are accepted.

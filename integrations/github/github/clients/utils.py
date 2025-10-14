@@ -1,4 +1,5 @@
-from typing import Any, Dict, List
+from typing import Any, Dict
+from github.core.options import ListOrganizationOptions
 from port_ocean.context.ocean import ocean
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
@@ -11,6 +12,11 @@ def integration_config(authenticator: AbstractGitHubAuthenticator) -> Dict[str, 
     }
 
 
-def get_github_organizations() -> List[str]:
+def get_github_organizations() -> ListOrganizationOptions:
     """Get the organizations from the integration config."""
-    return ocean.integration_config["github_organizations"]
+    organization = ocean.integration_config["github_organization"]
+    multi_organizations = ocean.integration_config["github_multi_organizations"]
+    return {
+        "organization": organization,
+        "multi_organizations": multi_organizations,
+    }

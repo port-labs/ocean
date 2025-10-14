@@ -1,4 +1,4 @@
-from typing import Dict, List, Type, overload, Literal, Optional
+from typing import Dict, Type, overload, Literal, Optional
 
 from port_ocean.context.ocean import ocean
 from github.clients.http.rest_client import GithubRestClient
@@ -13,17 +13,14 @@ from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
 from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
-from github.helpers.exceptions import (
-    IncompatibleOrganizationsException,
-    MissingCredentials,
-)
+from github.helpers.exceptions import MissingCredentials
 
 
 class GitHubAuthenticatorFactory:
     @staticmethod
     def create(
         github_host: str,
-        organizations: Optional[List[str]] = None,
+        organization: Optional[str] = None,
         token: Optional[str] = None,
         app_id: Optional[str] = None,
         private_key: Optional[str] = None,
@@ -34,20 +31,15 @@ class GitHubAuthenticatorFactory:
             )
             return PersonalTokenAuthenticator(token)
 
-        if organizations and app_id and private_key:
-            if len(organizations) == 1:
-                organization = organizations[0]
-                logger.debug(
-                    f"Creating GitHub App Authenticator for {organization} on {github_host}"
-                )
-                return GitHubAppAuthenticator(
-                    app_id=app_id,
-                    private_key=private_key,
-                    organization=organization,
-                    github_host=github_host,
-                )
-            raise IncompatibleOrganizationsException(
-                "Multiple organizations are not supported for GitHub App authentication."
+        if organization and app_id and private_key:
+            logger.debug(
+                f"Creating GitHub App Authenticator for {organization} on {github_host}"
+            )
+            return GitHubAppAuthenticator(
+                app_id=app_id,
+                private_key=private_key,
+                organization=organization,
+                github_host=github_host,
             )
 
         raise MissingCredentials("No valid GitHub credentials provided.")
@@ -84,10 +76,9 @@ class GithubClientFactory:
                 logger.error(f"Invalid client type: {client_type}")
                 raise ValueError(f"Invalid client type: {client_type}")
 
-            # org = next(iter(ocean.integration_config["github_organizations"]), None)
             authenticator = GitHubAuthenticatorFactory.create(
                 github_host=ocean.integration_config["github_host"],
-                organizations=ocean.integration_config["github_organizations"],
+                organization=ocean.integration_config["github_organization"],
                 token=ocean.integration_config.get("github_token"),
                 app_id=ocean.integration_config.get("github_app_id"),
                 private_key=ocean.integration_config.get("github_app_private_key"),
