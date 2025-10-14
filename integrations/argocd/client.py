@@ -100,6 +100,7 @@ class ArgocdClient:
 
             if self._available_clusters:
                 yield self._available_clusters
+                self._available_clusters = []
         except httpx.TimeoutException as e:
             logger.error(f"Request timed out while fetching clusters: {e}")
             if self.ignore_server_error:
