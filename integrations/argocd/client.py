@@ -9,18 +9,22 @@ from port_ocean.utils import http_async_client
 class ObjectKind(StrEnum):
     PROJECT = "project"
     APPLICATION = "application"
-    CLUSTER = "cluster"
 
 
 class ResourceKindsWithSpecialHandling(StrEnum):
     DEPLOYMENT_HISTORY = "deployment-history"
     KUBERNETES_RESOURCE = "kubernetes-resource"
     MANAGED_RESOURCE = "managed-resource"
+    CLUSTER = "cluster"
 
 
 DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
 
 PAGE_SIZE = 100
+
+
+class ClusterState(StrEnum):
+    AVAILABLE = "Successful"
 
 
 class ArgocdClient:
@@ -45,6 +49,7 @@ class ArgocdClient:
         else:
             self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
+        self._available_clusters: list[dict[str, Any]] = []
 
     async def _send_api_request(
         self,
@@ -79,11 +84,40 @@ class ArgocdClient:
                 return {}
             raise e
 
+    async def get_clusters(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s"
+        try:
+            response_data = await self._send_api_request(url=url)
+            for cluster in response_data.get("items", []):
+                if (
+                    cluster.get("connectionState", {}).get("status")
+                    == ClusterState.AVAILABLE.value
+                ):
+                    self._available_clusters.append(cluster)
+                if len(self._available_clusters) >= PAGE_SIZE:
+                    yield self._available_clusters
+                    self._available_clusters = []
+
+            if self._available_clusters:
+                yield self._available_clusters
+        except httpx.TimeoutException as e:
+            logger.error(f"Request timed out while fetching clusters: {e}")
+            if self.ignore_server_error:
+                yield []
+            else:
+                yield self._available_clusters
+                self._available_clusters = []
+        except Exception as e:
+            logger.error(f"Failed to fetch clusters: {e}")
+            if self.ignore_server_error:
+                yield []
+            raise e
+
     async def get_resources(self, resource_kind: ObjectKind) -> list[dict[str, Any]]:
         url = f"{self.api_url}/{resource_kind}s"
         try:
             response_data = await self._send_api_request(url=url)
-            return response_data["items"] or []
+            return response_data.get("items", [])
         except Exception as e:
             logger.error(f"Failed to fetch resources of kind {resource_kind}: {e}")
             if self.ignore_server_error:

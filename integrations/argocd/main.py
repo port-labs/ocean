@@ -25,6 +25,13 @@ async def on_resources_resync(kind: str) -> RAW_RESULT:
         return await argocd_client.get_resources(resource_kind=ObjectKind(kind))
 
 
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLUSTER)
+async def on_clusters_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    argocd_client = init_client()
+    async for cluster in argocd_client.get_clusters():
+        yield cluster
+
+
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.DEPLOYMENT_HISTORY)
 async def on_history_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     argocd_client = init_client()
