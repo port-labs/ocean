@@ -1,0 +1,30 @@
+title: Azure Resource Graph
+description: Azure integration for Port Ocean based on ARG
+icon: Azure
+features:
+  - type: exporter
+    section: Cloud Providers
+    resources:
+      - kind: resourceContainer
+      - kind: resource
+configurations:
+  - name: subscriptionBatchSize
+    type: string
+    required: false
+    default: 100
+    description: "The number of subscriptions to fetch in each batch. The default is 100."
+  - name: azureClientId
+    type: string
+    required: true
+    sensitive: true
+    description: "The client ID of your Azure service principal."
+  - name: azureClientSecret
+    type: string
+    required: true
+    sensitive: true
+    description: "The client secret of your Azure service principal."
+  - name: azureTenantId
+    type: string
+    required: true
+    sensitive: true
+    description: "The tenant ID of your Azure service principal."
