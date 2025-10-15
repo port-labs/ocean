@@ -1,24 +1,27 @@
-import typing
 from typing import cast
 
-from initialize_client import init_client
-from integration import ObjectKind
-from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
 from loguru import logger
+from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from utils import (
     get_start_of_the_day_in_seconds_x_day_back,
     get_start_of_the_month_in_seconds_x_months_back,
 )
+from initialize_client import init_client
+from integration import ObjectKind
 from overrides import (
     SLOHistoryResourceConfig,
     DatadogResourceConfig,
     DatadogSelector,
     TeamResourceConfig,
+    ServiceDependencyResourceConfig,
 )
-from port_ocean.context.event import event
-from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from webhook_processors.monitor_webhook_processor import MonitorWebhookProcessor
+from webhook_processors.service_dependency_webhook_processor import (
+    ServiceDependencyWebhookProcessor,
+)
 
 
 @ocean.on_resync(ObjectKind.TEAM)
@@ -121,7 +124,7 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
 
-    params: DatadogSelector = typing.cast(
+    params: DatadogSelector = cast(
         DatadogResourceConfig, event.resource_config
     ).selector.datadog_selector
 
@@ -135,6 +138,18 @@ async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         logger.info(f"Received batch with {len(metrics)} metrics")
         yield metrics
+
+
+@ocean.on_resync(ObjectKind.SERVICE_DEPENDENCY)
+async def on_resync_service_dependencies(_: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dd_client = init_client()
+
+    selector = cast(ServiceDependencyResourceConfig, event.resource_config).selector
+    async for dependencies in dd_client.get_service_dependencies(
+        env=selector.environment, start_time=selector.start_time
+    ):
+        logger.info(f"Received batch with {len(dependencies)} dependencies")
+        yield dependencies
 
 
 @ocean.on_start()
@@ -151,3 +166,4 @@ async def on_start() -> None:
 
 
 ocean.add_webhook_processor("/webhook", MonitorWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ServiceDependencyWebhookProcessor)

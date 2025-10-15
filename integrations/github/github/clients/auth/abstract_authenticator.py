@@ -1,21 +1,27 @@
 from typing import Dict, Optional
+from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, PrivateAttr, Field
-from datetime import datetime, timezone, timedelta
-from port_ocean.utils import http_async_client
+from dateutil.parser import parse
+
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.retry import RetryConfig
+from port_ocean.helpers.async_client import OceanAsyncClient
 import httpx
 
 
 class GitHubToken(BaseModel):
     token: str
-    expires_at: Optional[datetime] = None
+    expires_at: Optional[str] = None
     _time_buffer: timedelta = PrivateAttr(default_factory=lambda: timedelta(minutes=5))
 
     @property
     def is_expired(self) -> bool:
         if not self.expires_at:
             return False
-        return datetime.now(timezone.utc) >= (self.expires_at - self._time_buffer)
+
+        expires_at_dt = parse(self.expires_at)
+        return datetime.now(timezone.utc) >= (expires_at_dt - self._time_buffer)
 
 
 class GitHubHeaders(BaseModel):
@@ -42,4 +48,14 @@ class AbstractGitHubAuthenticator(ABC):
 
     @property
     def client(self) -> httpx.AsyncClient:
-        return http_async_client
+        retry_config = RetryConfig(
+            retry_after_headers=[
+                "Retry-After",
+                "X-RateLimit-Reset",
+            ]
+        )
+
+        return OceanAsyncClient(
+            retry_config=retry_config,
+            timeout=ocean.config.client_timeout,
+        )

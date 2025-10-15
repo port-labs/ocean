@@ -37,3 +37,7 @@ class IntegrationNotStartedException(BaseOceanException):
 
 class IntegrationRuntimeException(BaseOceanException):
     pass
+
+
+class IntegrationSubProcessFailedException(BaseOceanException):
+    pass

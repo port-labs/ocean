@@ -9,7 +9,7 @@ description: Use Ocean to validate integration inputs before startup
 
 The Ocean framework provides a convenient way to validate the configuration of an integration.
 
-By providing a validation specification (provided in the [`spec.yml`](../../develop-an-integration/integration-spec-and-default-resources.md#specyaml-file) file), the Ocean framework can verify that the configuration provided to the integration contains all required parameters in the expected format, ensuring it can start and perform its logic.
+By providing a validation specification (provided in the [`spec.yml`](../../developing-an-integration/defining-configuration-files.md#the-specyaml-file) file), the Ocean framework can verify that the configuration provided to the integration contains all required parameters in the expected format, ensuring it can start and perform its logic.
 
 Ocean performs configuration validation based on the specification provided in the `.port/spec.yml` file.
 

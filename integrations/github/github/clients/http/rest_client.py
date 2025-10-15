@@ -1,9 +1,10 @@
+import re
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from github.clients.http.base_client import AbstractGithubClient
+from github.helpers.utils import IgnoredError
+from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 from loguru import logger
-import re
-from urllib.parse import urlparse, urlunparse
 
 
 PAGE_SIZE = 100
@@ -12,38 +13,32 @@ PAGE_SIZE = 100
 class GithubRestClient(AbstractGithubClient):
     """REST API implementation of GitHub client."""
 
+    NEXT_PATTERN = re.compile(r'<([^>]+)>; rel="next"')
+
     @property
     def base_url(self) -> str:
         return self.github_host.rstrip("/")
 
+    @property
+    def rate_limiter_config(self) -> GitHubRateLimiterConfig:
+        return GitHubRateLimiterConfig(
+            api_type="rest",
+            max_concurrent=10,
+        )
+
     def _get_next_link(self, link_header: str) -> Optional[str]:
         """
-        Extracts the path and query from the 'next' link in a GitHub Link header,
-        removing the leading slash.
+        Extracts the URL from the 'next' link in a GitHub Link header.
         """
-
-        match = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
-        if not match:
-            return None
-
-        parsed_url = urlparse(match.group(1))
-        path_and_query = urlunparse(
-            (
-                parsed_url.scheme,
-                parsed_url.netloc,
-                parsed_url.path,
-                parsed_url.params,
-                parsed_url.query,
-                "",
-            )
-        )
-        return path_and_query
+        match = self.NEXT_PATTERN.search(link_header)
+        return match.group(1) if match else None
 
     async def send_paginated_request(
         self,
         resource: str,
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
+        ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Handle GitHub's pagination for API requests."""
         if params is None:
@@ -54,12 +49,15 @@ class GithubRestClient(AbstractGithubClient):
         logger.info(f"Starting pagination for {method} {resource}")
 
         while True:
-            response = await self.send_api_request(
-                resource, method=method, params=params, return_full_response=True
+            response = await self.make_request(
+                resource,
+                method=method,
+                params=params,
+                ignored_errors=ignored_errors,
             )
 
             if not response or not (items := response.json()):
-                return
+                break
 
             yield items
 
@@ -68,4 +66,5 @@ class GithubRestClient(AbstractGithubClient):
             ):
                 break
 
+            params = None
             resource = next_resource

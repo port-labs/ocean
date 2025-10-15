@@ -97,8 +97,15 @@ async def test_get_paginated_resources(
     async def mock_send_api_request(*args: Any, **kwargs: Any) -> Dict[str, Any]:
         url = kwargs.get("url")
         if url and url.endswith("/page1"):
-            return {"data": [{"id": "item1"}], "links": {"next": "/rest/page2"}}
-        elif url and url.endswith("/page2"):
+            return {
+                "data": [{"id": "item1"}],
+                "links": {
+                    "next": "/rest/page2?version=2024-06-21&meta.latest_issue_counts=true&expand=target&limit=50&starting_after=v1.eyJpZCI6ODI3MzI3NjR9"
+                },
+            }
+        elif url and url.endswith(
+            "/rest/page2?version=2024-06-21&meta.latest_issue_counts=true&expand=target&limit=50&starting_after=v1.eyJpZCI6ODI3MzI3NjR9"
+        ):
             return {"data": [{"id": "item2"}], "links": {"next": ""}}
         return {}
 

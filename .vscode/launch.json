@@ -128,6 +128,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/aws-v3",
+      "envFile": "${workspaceFolder}/integrations/aws-v3/.env",
+      "justMyCode": false,
+      "name": "Run AWS-v3 integration",
+      "program": "${workspaceFolder}/integrations/aws-v3/debug.py",
+      "python": "${workspaceFolder}/integrations/aws-v3/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/test-integration",
       "envFile": "${workspaceFolder}/integrations/test-integration/.env",
       "justMyCode": true,
@@ -196,6 +207,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/azure-resource-graph",
+      "envFile": "${workspaceFolder}/integrations/azure-resource-graph/.env",
+      "justMyCode": true,
+      "name": "Run azure-rg integration",
+      "program": "${workspaceFolder}/integrations/azure-resource-graph/debug.py",
+      "python": "${workspaceFolder}/integrations/azure-resource-graph/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/jira-server",
       "envFile": "${workspaceFolder}/integrations/jira-server/.env",
       "justMyCode": true,
@@ -213,6 +235,105 @@
       "name": "Run komodor integration",
       "program": "${workspaceFolder}/integrations/komodor/debug.py",
       "python": "${workspaceFolder}/integrations/komodor/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/checkmarx-one",
+      "envFile": "${workspaceFolder}/integrations/checkmarx-one/.env",
+      "justMyCode": true,
+      "name": "Run checkmarx_one integration",
+      "program": "${workspaceFolder}/integrations/checkmarx-one/debug.py",
+      "python": "${workspaceFolder}/integrations/checkmarx-one/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/aikido",
+      "envFile": "${workspaceFolder}/integrations/aikido/.env",
+      "justMyCode": true,
+      "name": "Run aikido integration",
+      "program": "${workspaceFolder}/integrations/aikido/debug.py",
+      "python": "${workspaceFolder}/integrations/aikido/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/okta",
+      "envFile": "${workspaceFolder}/integrations/okta/.env",
+      "justMyCode": true,
+      "name": "Run okta integration",
+      "program": "${workspaceFolder}/integrations/okta/debug.py",
+      "python": "${workspaceFolder}/integrations/okta/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/armorcode",
+      "envFile": "${workspaceFolder}/integrations/armorcode/.env",
+      "justMyCode": true,
+      "name": "Run armorcode integration",
+      "program": "${workspaceFolder}/integrations/armorcode/debug.py",
+      "python": "${workspaceFolder}/integrations/armorcode/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/bitbucket-server",
+      "envFile": "${workspaceFolder}/integrations/bitbucket-server/.env",
+      "justMyCode": true,
+      "name": "Run bitbucket-server integration",
+      "program": "${workspaceFolder}/integrations/bitbucket-server/debug.py",
+      "python": "${workspaceFolder}/integrations/bitbucket-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/examples/config-no-auth.env",
+      "justMyCode": true,
+      "name": "HTTP Server - No Auth",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/examples/config-bearer-token.env",
+      "justMyCode": true,
+      "name": "HTTP Server - Bearer Token",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/examples/config-basic-auth.env",
+      "justMyCode": true,
+      "name": "HTTP Server - Basic Auth",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/http-server",
+      "envFile": "${workspaceFolder}/integrations/http-server/examples/config-api-key.env",
+      "justMyCode": true,
+      "name": "HTTP Server - API Key",
+      "program": "${workspaceFolder}/integrations/http-server/debug.py",
+      "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     }

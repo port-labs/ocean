@@ -71,8 +71,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             response = await self.client.post(url, headers=headers)
             response.raise_for_status()
             data = response.json()
-            expires_at = datetime.strptime(data["expires_at"], "%Y-%m-%dT%H:%M:%SZ")
-            return GitHubToken(token=data["token"], expires_at=expires_at)
+            return GitHubToken(token=data["token"], expires_at=data["expires_at"])
         except Exception as e:
             raise AuthenticationException(
                 f"Failed to fetch installation token: {e}"
@@ -85,5 +84,8 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             "iat": now,
             "exp": now + timedelta(minutes=self.JWT_EXPIRY_MINUTES),
         }
-        decoded_private_key = base64.b64decode(self.private_key)
+        if self.private_key.startswith("-----BEGIN"):
+            decoded_private_key = self.private_key
+        else:
+            decoded_private_key = base64.b64decode(self.private_key).decode()
         return jwt.encode(payload, decoded_private_key, algorithm="RS256")

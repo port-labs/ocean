@@ -72,13 +72,21 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
 
         self.started = True
 
-        async with event_context(
-            EventType.START,
-            trigger_type="machine",
-        ):
-            await asyncio.gather(
-                *(listener() for listener in self.event_strategy["start"])
-            )
+        if self.event_strategy["start"]:
+            async def run_on_start_tasks() -> None:
+                try:
+                    async with event_context(
+                        EventType.START,
+                        trigger_type="machine",
+                    ):
+                        await asyncio.gather(
+                            *(listener() for listener in self.event_strategy["start"])
+                        )
+                except Exception as e:
+                    logger.exception("Error in start event listeners: %s", str(e))
+
+            # This task will run the `on_start`s in the background and will not block the server startup
+            asyncio.create_task(run_on_start_tasks())
 
         logger.info("Initializing event listener")
         event_listener = await self.event_listener_factory.create_event_listener()

@@ -37,22 +37,41 @@ for FOLDER in "${ROOT_DIR}"/integrations/*; do
     echo "Current version: ${CURRENT_VERSION}, updating patch version"
     IFS='.' read -ra VERSION_COMPONENTS <<< "${CURRENT_VERSION}"
 
-    NON_NUMBER_ONLY='^[0-9]{1,}(.+)$'
-    NUMBER_ONLY='^[0-9]{1,}$'
+    # Regex patterns
+    NUMBER_ONLY='^[0-9]+$'
+    NUMERIC_SUFFIX_REGEX='^([a-zA-Z]+)([0-9]+)$'   # e.g., post1, dev2
+    PATCH_WITH_SUFFIX='^([0-9]+)([^0-9].*)$'       # e.g., 1a, 2-beta, 3.post1
 
     MAJOR_VERSION="${VERSION_COMPONENTS[0]}"
     MINOR_VERSION="${VERSION_COMPONENTS[1]}"
     PATCH_VERSION="${VERSION_COMPONENTS[2]}"
+    SUFFIX=""
+    if [[ ${#VERSION_COMPONENTS[@]} -gt 3 ]]; then
+        SUFFIX="${VERSION_COMPONENTS[3]}"
+    fi
 
-    if [[ ! ${PATCH_VERSION} =~ ${NUMBER_ONLY} && ${PATCH_VERSION} =~ ${NON_NUMBER_ONLY} ]]; then
-        echo "Found non release version ${CURRENT_VERSION}"
-        NON_NUMERIC=${BASH_REMATCH[1]}
-        ((PATCH_VERSION++))
-        PATCH_VERSION="${PATCH_VERSION}${NON_NUMERIC}"
+    # Case 1: suffix exists and is in format like post1, dev2 — bump the numeric part of the suffix
+    if [[ -n "${SUFFIX}" && "${SUFFIX}" =~ ${NUMERIC_SUFFIX_REGEX} ]]; then
+        SUFFIX_PREFIX=${BASH_REMATCH[1]}   # e.g., post
+        SUFFIX_NUMBER=${BASH_REMATCH[2]}   # e.g., 1
+        ((SUFFIX_NUMBER++))
+        SUFFIX="${SUFFIX_PREFIX}${SUFFIX_NUMBER}"
+        NEW_VERSION="${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}.${SUFFIX}"
+
+    # Case 2: PATCH_VERSION contains something like 1a, 2-beta, etc. — bump the numeric part, preserve suffix
+    elif [[ ! ${PATCH_VERSION} =~ ${NUMBER_ONLY} && ${PATCH_VERSION} =~ ${PATCH_WITH_SUFFIX} ]]; then
+        NUMERIC_PART=${BASH_REMATCH[1]}
+        NON_NUMERIC=${BASH_REMATCH[2]}
+        ((NUMERIC_PART++))
+        PATCH_VERSION="${NUMERIC_PART}${NON_NUMERIC}"
+        NEW_VERSION="${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}"
+
+    # Case 3: regular version, just bump patch
     else
         ((PATCH_VERSION++))
+        NEW_VERSION="${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}"
     fi
-    NEW_VERSION="${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}"
+
 
     poetry version "${NEW_VERSION}"
     echo "New version: ${NEW_VERSION}"

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum, StrEnum
-from typing import Any
+from typing import Any, TypedDict
 
 from pydantic import BaseModel
 from pydantic.fields import Field
@@ -48,6 +48,7 @@ class PortAPIErrorMessage(Enum):
 
 class Entity(BaseModel):
     identifier: Any
+    icon: str | None
     blueprint: Any
     title: Any
     team: str | None | list[Any] | dict[str, Any] = []
@@ -65,6 +66,25 @@ class Entity(BaseModel):
         ) or (
             self.team is not None and any(isinstance(team, dict) for team in self.team)
         )
+
+
+class EntityBulkResult(TypedDict):
+    identifier: str
+    index: int
+    created: bool
+
+
+class EntityBulkError(TypedDict):
+    identifier: str
+    index: int
+    statusCode: int
+    error: str
+    message: str
+
+
+class BulkUpsertResponse(TypedDict):
+    entities: list[EntityBulkResult]
+    errors: list[EntityBulkError]
 
 
 class BlueprintRelation(BaseModel):

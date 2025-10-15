@@ -1,3 +1,4 @@
+import platform
 from typing import Any, Literal, Optional, Type, cast
 
 from pydantic import AnyHttpUrl, Extra, parse_obj_as, parse_raw_as
@@ -11,8 +12,8 @@ from port_ocean.core.event_listener import EventListenerSettingsType
 from port_ocean.core.models import (
     CachingStorageMode,
     CreatePortResourcesOrigin,
-    Runtime,
     ProcessExecutionMode,
+    Runtime,
 )
 from port_ocean.utils.misc import get_integration_name, get_spec_file
 
@@ -45,6 +46,7 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     client_secret: str = Field(..., sensitive=True)
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
     port_app_config_cache_ttl: int = 60
+    ingest_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://ingest.getport.io")
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
@@ -71,6 +73,13 @@ class MetricsSettings(BaseOceanModel, extra=Extra.allow):
     webhook_url: str | None = Field(default=None)
 
 
+class StreamingSettings(BaseOceanModel, extra=Extra.allow):
+    enabled: bool = Field(default=False)
+    max_buffer_size_mb: int = Field(default=1024 * 1024 * 20)  # 20 mb
+    chunk_size: int = Field(default=1024 * 64)  # 64 kb
+    location: str = Field(default="/tmp/ocean/streaming")
+
+
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     _integration_config_model: BaseModel | None = None
 
@@ -87,6 +96,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     event_listener: EventListenerSettingsType = Field(
         default=cast(EventListenerSettingsType, {"type": "POLLING"})
     )
+    event_workers_count: int = 1
     # If an identifier or type is not provided, it will be generated based on the integration name
     integration: IntegrationSettings = Field(
         default_factory=lambda: IntegrationSettings(type="", identifier="")
@@ -98,8 +108,30 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     )
     max_event_processing_seconds: float = 90.0
     max_wait_seconds_before_shutdown: float = 5.0
-    caching_storage_mode: Optional[CachingStorageMode] = Field(default=None)
-    process_execution_mode: Optional[ProcessExecutionMode] = Field(default=None)
+    caching_storage_mode: Optional[CachingStorageMode] = Field(
+        default=CachingStorageMode.disk
+    )
+    process_execution_mode: Optional[ProcessExecutionMode] = Field(
+        default=ProcessExecutionMode.multi_process
+    )
+
+    upsert_entities_batch_max_length: int = 20
+    upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
+    lakehouse_enabled: bool = False
+    yield_items_to_parse: bool = False
+    yield_items_to_parse_batch_size: int = 10
+
+    streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
+
+    @validator("process_execution_mode")
+    def validate_process_execution_mode(
+        cls, process_execution_mode: ProcessExecutionMode
+    ) -> ProcessExecutionMode:
+        # Check if the system is macos, if so, set the process execution mode to single process since multiprocessing behavior is different on macos and some asyncio error pop up
+        is_macos = platform.system() == "Darwin"
+        if is_macos:
+            return ProcessExecutionMode.single_process
+        return process_execution_mode
 
     @validator("metrics", pre=True)
     def validate_metrics(cls, v: Any) -> MetricsSettings | dict[str, Any] | None:

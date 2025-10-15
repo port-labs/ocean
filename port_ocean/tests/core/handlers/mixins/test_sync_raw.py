@@ -96,6 +96,9 @@ async def test_sync_raw_mixin_self_dependency(
     mock_sync_raw_mixin: SyncRawMixin,
     mock_ocean: Ocean,
 ) -> None:
+    mock_ocean.config.upsert_entities_batch_max_length = 20
+    mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1024 * 1024
+
     entities_params = [
         ("entity_1", "service", {"service": "entity_1"}, True),
         ("entity_2", "service", {"service": "entity_2"}, False),
@@ -110,7 +113,7 @@ async def test_sync_raw_mixin_self_dependency(
     calc_result_mock.number_of_transformed_entities = len(
         entities
     )  # Add this to match real behavior
-    calc_result_mock.misonfigured_entity_keys = {}  # Add this to match real behavior
+    calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
 
@@ -136,9 +139,10 @@ async def test_sync_raw_mixin_self_dependency(
                 mock_order_by_entities_dependencies,
             ):
 
-                await mock_sync_raw_mixin.sync_raw_all(
+                res = await mock_sync_raw_mixin.sync_raw_all(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
+                assert res is True
 
                 assert (
                     len(event.entity_topological_sorter.entities) == 1
@@ -148,9 +152,13 @@ async def test_sync_raw_mixin_self_dependency(
 
                 assert mock_order_by_entities_dependencies.call_count == 1
                 assert [
-                    call[0][0][0]
+                    call[0][0][0].identifier
                     for call in mock_order_by_entities_dependencies.call_args_list
-                ] == [entity for entity in entities if entity.identifier == "entity_1"]
+                ] == [
+                    entity.identifier
+                    for entity in entities
+                    if entity.identifier == "entity_1"
+                ]
 
                 # Add assertions for actual metrics
                 metrics = mock_ocean.metrics.generate_metrics()
@@ -209,6 +217,9 @@ async def test_sync_raw_mixin_self_dependency(
 async def test_sync_raw_mixin_circular_dependency(
     mock_sync_raw_mixin: SyncRawMixin, mock_ocean: Ocean
 ) -> None:
+    mock_ocean.config.upsert_entities_batch_max_length = 20
+    mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1024 * 1024
+
     entities_params = [
         ("entity_1", "service", {"service": "entity_2"}, True),
         ("entity_2", "service", {"service": "entity_1"}, True),
@@ -223,7 +234,7 @@ async def test_sync_raw_mixin_circular_dependency(
     calc_result_mock.number_of_transformed_entities = len(
         entities
     )  # Add this to match real behavior
-    calc_result_mock.misonfigured_entity_keys = {}  # Add this to match real behavior
+    calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
 
@@ -266,9 +277,10 @@ async def test_sync_raw_mixin_circular_dependency(
                 mock_order_by_entities_dependencies,
             ):
 
-                await mock_sync_raw_mixin.sync_raw_all(
+                res = await mock_sync_raw_mixin.sync_raw_all(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
+                assert res is True
 
                 assert (
                     len(event.entity_topological_sorter.entities) == 2
@@ -284,8 +296,8 @@ async def test_sync_raw_mixin_circular_dependency(
                 assert isinstance(raiesed_error_handle_failed[0].__cause__, CycleError)
                 assert (
                     len(mock_ocean.port_client.client.post.call_args_list)  # type: ignore
-                    / len(entities)
-                    == 2
+                    - len(entities)
+                    == 1
                 )
 
                 # Add assertions for actual metrics
@@ -345,7 +357,9 @@ async def test_sync_raw_mixin_circular_dependency(
 async def test_sync_raw_mixin_dependency(
     mock_sync_raw_mixin: SyncRawMixin, mock_ocean: Ocean
 ) -> None:
-    # Create entities with more realistic data
+    mock_ocean.config.upsert_entities_batch_max_length = 20
+    mock_ocean.config.upsert_entities_batch_max_size_in_bytes = 1024 * 1024
+
     entities_params = [
         ("entity_1", "service", {"service": "entity_3"}, True),
         ("entity_2", "service", {"service": "entity_4"}, True),
@@ -364,7 +378,7 @@ async def test_sync_raw_mixin_dependency(
     calc_result_mock.number_of_transformed_entities = len(
         entities
     )  # Add this to match real behavior
-    calc_result_mock.misonfigured_entity_keys = {}  # Add this to match real behavior
+    calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
     # Mock the parse_items method to return our realistic mock
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
@@ -408,9 +422,10 @@ async def test_sync_raw_mixin_dependency(
                 mock_order_by_entities_dependencies,
             ):
 
-                await mock_sync_raw_mixin.sync_raw_all(
+                res = await mock_sync_raw_mixin.sync_raw_all(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
+                assert res is True
 
                 assert event.entity_topological_sorter.register_entity.call_count == 5
                 assert (
@@ -418,17 +433,20 @@ async def test_sync_raw_mixin_dependency(
                 ), "Expected one failed entity callback due to retry logic"
                 assert event.entity_topological_sorter.get_entities.call_count == 1
                 assert len(raiesed_error_handle_failed) == 0
-                assert mock_ocean.port_client.client.post.call_count == 10  # type: ignore
+                assert mock_ocean.port_client.client.post.call_count == 6  # type: ignore
                 assert mock_order_by_entities_dependencies.call_count == 1
 
-                first = mock_ocean.port_client.client.post.call_args_list[0:5]  # type: ignore
-                second = mock_ocean.port_client.client.post.call_args_list[5:10]  # type: ignore
+                result_bulk = mock_ocean.port_client.client.post.call_args_list[0]  # type: ignore
+                result_non_bulk = mock_ocean.port_client.client.post.call_args_list[1:6]  # type: ignore
 
                 assert "-".join(
-                    [call[1].get("json").get("identifier") for call in first]
+                    [
+                        entity.get("identifier")
+                        for entity in result_bulk[1].get("json").get("entities")
+                    ]
                 ) == "-".join([entity.identifier for entity in entities])
                 assert "-".join(
-                    [call[1].get("json").get("identifier") for call in second]
+                    [call[1].get("json").get("identifier") for call in result_non_bulk]
                 ) in (
                     "entity_3-entity_4-entity_1-entity_2-entity_5",
                     "entity_3-entity_4-entity_1-entity_5-entity_2",
@@ -755,7 +773,7 @@ class CalculationResult:
     entity_selector_diff: EntitySelectorDiff
     errors: List[Any]
     misconfigurations: List[Any]
-    misonfigured_entity_keys: Optional[List[Any]] = None
+    misconfigured_entity_keys: Optional[List[Any]] = None
 
 
 @pytest.mark.asyncio
@@ -764,7 +782,7 @@ async def test_register_resource_raw_no_changes_upsert_not_called_entitiy_is_ret
     mock_port_app_config: PortAppConfig,
 ) -> None:
     entity = Entity(identifier="1", blueprint="service")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misconfigured_entity_keys=[])])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
@@ -791,7 +809,7 @@ async def test_register_resource_raw_with_changes_upsert_called_and_entities_are
     mock_port_app_config: PortAppConfig,
 ) -> None:
     entity = Entity(identifier="1", blueprint="service")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misconfigured_entity_keys=[])])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([entity]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
 
@@ -818,7 +836,7 @@ async def test_register_resource_raw_with_errors(
 ) -> None:
     failed_entity = Entity(identifier="1", blueprint="service")
     error = Exception("Test error")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[], failed=[failed_entity]), errors=[error], misconfigurations=[], misonfigured_entity_keys=[])])  # type: ignore
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[], failed=[failed_entity]), errors=[error], misconfigurations=[], misconfigured_entity_keys=[])])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
@@ -855,7 +873,7 @@ async def test_register_resource_raw_skip_event_type_http_request_upsert_called_
         entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
         errors=[],
         misconfigurations=[],
-        misonfigured_entity_keys=[],
+        misconfigured_entity_keys=[],
     )
     mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[calculation_result])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock()  # type: ignore
@@ -892,6 +910,8 @@ async def test_on_resync_start_hooks_are_called(
         resync_start_called = True
 
     mock_sync_raw_mixin.on_resync_start(on_resync_start)
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
+
     mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
@@ -922,6 +942,7 @@ async def test_on_resync_complete_hooks_are_called_on_success(
 
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete)
     mock_ocean.port_client.search_entities.return_value = []  # type: ignore
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
     mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.send_metrics_to_webhook = AsyncMock(return_value=None)  # type: ignore
@@ -994,6 +1015,7 @@ async def test_multiple_on_resync_start_on_resync_complete_hooks_called_in_order
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete1)
     mock_sync_raw_mixin.on_resync_complete(on_resync_complete2)
     mock_ocean.port_client.search_entities.return_value = []  # type: ignore
+    mock_sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([], []))  # type: ignore
 
     mock_ocean.metrics.report_sync_metrics = AsyncMock(return_value=None)  # type: ignore
     mock_ocean.metrics.report_kind_sync_metrics = AsyncMock(return_value=None)  # type: ignore

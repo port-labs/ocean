@@ -91,7 +91,7 @@ async def register_webhook():
     await register_webhook_in_3rd_party_service()
 ```
 
-As for the application host each integration can set the [config parameter](../../develop-an-integration/integration-configuration.md) `appHost` which contains the integration
+As for the application host each integration can set the [config parameter](../../developing-an-integration/testing-the-integration.md) `baseUrl` which contains the integration
 host url.
 
 This parameter is optional and therefore the integration should handle the case where it is not set and the client does

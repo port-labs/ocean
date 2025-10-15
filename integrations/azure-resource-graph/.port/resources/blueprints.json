@@ -1,0 +1,88 @@
+[
+  {
+    "identifier": "azureSubscription",
+    "title": "Azure Subscription",
+    "icon": "Azure",
+    "schema": {
+      "properties": {
+        "subscriptionId": {
+          "title": "Subscription ID",
+          "type": "string"
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "azureResourceGroup",
+    "description": "This blueprint represents an Azure Resource Group in our software catalog",
+    "title": "Azure Resource Group",
+    "icon": "Azure",
+    "schema": {
+      "properties": {
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "subscription": {
+        "title": "Subscription",
+        "target": "azureSubscription",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "azureCloudResources",
+    "description": "This blueprint represents an AzureCloud Resource in our software catalog",
+    "title": "Azure Cloud Resources",
+    "icon": "Azure",
+    "schema": {
+      "properties": {
+        "tags": {
+          "title": "Tags",
+          "type": "object"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "location": {
+          "title": "Location",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "resource_group": {
+        "title": "Resource Group",
+        "target": "azureResourceGroup",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

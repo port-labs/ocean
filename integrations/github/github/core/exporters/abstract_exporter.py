@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 from github.clients.http.base_client import AbstractGithubClient
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
@@ -14,4 +14,4 @@ class AbstractGithubExporter[T: AbstractGithubClient](ABC):
     @abstractmethod
     def get_paginated_resources[
         AnyOption: Any
-    ](self, options: Optional[AnyOption] = None) -> ASYNC_GENERATOR_RESYNC_TYPE: ...
+    ](self, options: AnyOption) -> ASYNC_GENERATOR_RESYNC_TYPE: ...

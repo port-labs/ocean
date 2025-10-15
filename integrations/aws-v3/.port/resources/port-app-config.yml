@@ -1,0 +1,179 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: AWS::Account::Info
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Id
+          title: .Properties.Name
+          blueprint: '"awsAccount"'
+  - kind: AWS::Organizations::Account
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Id
+          title: .Properties.Name
+          blueprint: '"awsOrganizationAccount"'
+          properties:
+            arn: .Properties.Arn
+            email: .Properties.Email
+            status: .Properties.Status
+            joinedTimestamp: .Properties.JoinedTimestamp
+            joinedMethod: .Properties.JoinedMethod
+  - kind: AWS::S3::Bucket
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Arn
+          title: .Properties.BucketName
+          blueprint: '"s3Bucket"'
+          properties:
+            arn: .Properties.Arn
+            region: .Properties.LocationConstraint
+            creationDate: .Properties.CreationDate
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::EC2::Instance
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.InstanceId
+          title: .Properties.InstanceId
+          blueprint: '"ec2Instance"'
+          properties:
+            instanceType: .Properties.InstanceType
+            state: .Properties.State.Name
+            publicIpAddress: .Properties.PublicIpAddress
+            privateIpAddress: .Properties.PrivateIpAddress
+            tags: .Properties.Tags
+            arn: '"arn:aws:ec2:" + .__Region + ":" + .__AccountId + ":instance/" + .Properties.InstanceId'
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::ECS::Cluster
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ClusterArn
+          title: .Properties.ClusterName
+          blueprint: '"ecsCluster"'
+          properties:
+            status: .Properties.Status
+            runningTasksCount: .Properties.RunningTasksCount
+            activeServicesCount: .Properties.ActiveServicesCount
+            pendingTasksCount: .Properties.PendingTasksCount
+            registeredContainerInstancesCount: .Properties.RegisteredContainerInstancesCount
+            capacityProviders: .Properties.CapacityProviders
+            clusterArn: .Properties.ClusterArn
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::EKS::Cluster
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Arn
+          title: .Properties.Name
+          blueprint: '"eksCluster"'
+          properties:
+            arn: .Properties.Arn
+            name: .Properties.Name
+            version: .Properties.Version
+            status: .Properties.Status
+            endpoint: .Properties.Endpoint
+            roleArn: .Properties.RoleArn
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::RDS::DBInstance
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.DBInstanceArn
+          title: .Properties.DBInstanceIdentifier
+          blueprint: '"rdsDbInstance"'
+          properties:
+            dbInstanceIdentifier: .Properties.DBInstanceIdentifier
+            dbInstanceArn: .Properties.DBInstanceArn
+            engine: .Properties.Engine
+            dbInstanceClass: .Properties.DBInstanceClass
+            dbInstanceStatus: .Properties.DBInstanceStatus
+            multiAZ: .Properties.MultiAZ
+            storageEncrypted: .Properties.StorageEncrypted
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::Lambda::Function
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.FunctionArn
+          title: .Properties.FunctionName
+          blueprint: '"lambdaFunction"'
+          properties:
+            FunctionName: .Properties.FunctionName
+            FunctionArn: .Properties.FunctionArn
+            Runtime: .Properties.Runtime
+            Handler: .Properties.Handler
+            MemorySize: .Properties.MemorySize
+            Timeout: .Properties.Timeout
+            State: .Properties.State
+            LastModified: .Properties.LastModified
+          relations:
+            account: .__ExtraContext.AccountId
+  - kind: AWS::ECS::Service
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.ServiceArn
+          title: .Properties.ServiceName
+          blueprint: '"ecsService"'
+          properties:
+            serviceName: .Properties.ServiceName
+            serviceArn: .Properties.ServiceArn
+            clusterArn: .Properties.ClusterArn
+            taskDefinition: .Properties.TaskDefinition
+            desiredCount: .Properties.DesiredCount
+            runningCount: .Properties.RunningCount
+            launchType: .Properties.LaunchType
+            status: .Properties.Status
+          relations:
+            account: .__ExtraContext.AccountId
+            cluster: .Properties.ClusterArn
+  - kind: AWS::SQS::Queue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.QueueArn
+          title: .Properties.QueueUrl | split("/") | .[-1]
+          blueprint: '"sqsQueue"'
+          properties:
+            arn: .Properties.QueueArn
+            region: .__ExtraContext.Region
+            queueUrl: .Properties.QueueUrl
+            approximateNumberOfMessages: .Properties.ApproximateNumberOfMessages
+            visibilityTimeout: .Properties.VisibilityTimeout
+            messageRetentionPeriod: .Properties.MessageRetentionPeriod
+            sqsManagedSseEnabled: .Properties.SqsManagedSseEnabled
+          relations:
+            account: .__ExtraContext.AccountId

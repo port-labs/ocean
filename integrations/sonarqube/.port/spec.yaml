@@ -18,7 +18,7 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: The SonarQube API token used to authenticate with the SonarQube API. SonarQube has 3 types of tokens namely user, project analysis, and global analysis token. We recommend using the user token. To create a user token, see the <a href="https://docs.sonarsource.com/sonarqube/latest/user-guide/user-account/generating-and-using-tokens/" target="_blank">SonarQube documentation</a>
+    description: The SonarQube API token used to authenticate with the SonarQube API. SonarQube has 3 types of tokens namely user, project analysis, and global analysis token. We recommend using the user token. To create a user token, see the <a href="https://docs.sonarsource.com/sonarqube-server/latest/user-guide/managing-tokens" target="_blank">SonarQube documentation</a>
   - name: sonarOrganizationId
     type: string
     required: false

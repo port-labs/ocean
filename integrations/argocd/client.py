@@ -1,9 +1,8 @@
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any, Optional, AsyncGenerator
 
 import httpx
 from loguru import logger
-
 from port_ocean.utils import http_async_client
 
 
@@ -20,6 +19,8 @@ class ResourceKindsWithSpecialHandling(StrEnum):
 
 
 DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
+
+PAGE_SIZE = 100
 
 
 class ArgocdClient:
@@ -94,36 +95,107 @@ class ArgocdClient:
         application = await self._send_api_request(url=url)
         return application
 
-    async def get_deployment_history(self) -> list[dict[str, Any]]:
+    async def get_deployment_history(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """The ArgoCD application route returns a history of all deployments. This function reuses the output of the application endpoint"""
         logger.warning(
             f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
-        all_history = [
-            {**history_item, "__applicationId": application["metadata"]["uid"]}
-            for application in applications
-            for history_item in application["status"].get("history", [])
-        ]
-        return all_history
+        if not applications:
+            logger.error(
+                "No applications were found. Skipping deployment history ingestion"
+            )
+        else:
+            batch: list[dict[str, Any]] = []
+            for application in applications:
+                history = application.get("status", {}).get("history", [])
+                if history:
+                    for item in history:
+                        batch.append(item)
+                        if len(batch) >= PAGE_SIZE:
+                            yield batch
+                            batch = []
 
-    async def get_kubernetes_resource(self) -> list[dict[str, Any]]:
+            if batch:
+                yield batch
+
+    async def get_kubernetes_resource(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """The ArgoCD application returns a list of managed kubernetes resources. This function reuses the output of the application endpoint"""
         logger.warning(
             f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
-        all_k8s_resources = [
-            {**resource, "__applicationId": application["metadata"]["uid"]}
-            for application in applications
-            for resource in application["status"].get("resources", [])
-        ]
-        return all_k8s_resources
+        if not applications:
+            logger.error(
+                "No applications were found. Skipping managed resources ingestion"
+            )
+            return
+
+        batch: list[dict[str, Any]] = []
+        for app in applications:
+            if not app["metadata"]["uid"]:
+                logger.warning(
+                    f"Skipping application without UID: {app.get('metadata', {}).get('name', 'unknown')}"
+                )
+                continue
+
+            resources = [
+                {
+                    **resource,
+                    "__application": app,
+                }
+                for resource in app.get("status", {}).get("resources", [])
+                if resource
+            ]
+
+            for resource in resources:
+                batch.append(resource)
+                if len(batch) >= PAGE_SIZE:
+                    yield batch
+                    batch = []
+
+        if batch:
+            yield batch
 
     async def get_managed_resources(
-        self, application_name: str
-    ) -> list[dict[str, Any]]:
-        logger.info(f"Fetching managed resources for application: {application_name}")
-        url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
-        managed_resources = (await self._send_api_request(url=url)).get("items", [])
-        return managed_resources
+        self, application: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        errors = []
+        try:
+            application_name = application["metadata"]["name"]
+            logger.info(
+                f"Fetching managed resources for application: {application_name}"
+            )
+            url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
+            managed_resources = (await self._send_api_request(url=url)).get("items", [])
+
+            batch: list[dict[str, Any]] = []
+            for managed_resource in managed_resources:
+                if managed_resource:
+                    resource = {
+                        **managed_resource,
+                        "__application": application,
+                    }
+                    batch.append(resource)
+
+                    if len(batch) >= PAGE_SIZE:
+                        yield batch
+                        batch = []
+
+            if batch:
+                yield batch
+
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch managed resources for application {application['metadata']['name']}: {e}"
+            )
+            errors.append(e)
+
+        if errors and not self.ignore_server_error:
+            raise ExceptionGroup(
+                "Errors occurred during managed resource ingestion", errors
+            )

@@ -67,6 +67,14 @@
     "icon": "Servicenow",
     "schema": {
       "properties": {
+        "number": {
+          "title": "Incident Number",
+          "type": "string"
+        },
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
         "category": {
           "title": "Category",
           "type": "string"

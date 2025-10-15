@@ -1,4 +1,5 @@
 # Gitlab
+## This integration is deprecated. Use the [new gitlab integration](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab-v2/) instead.
 
 An integration used to import Gitlab resources into Port.
 

@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import Response
 
+from port_ocean.cache.memory import InMemoryCacheProvider
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import IntegrationSettings, MetricsSettings
 from port_ocean.context.event import EventContext
@@ -26,7 +27,6 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.models import Entity, ProcessExecutionMode
 from port_ocean.helpers.metric.metric import Metrics
 from port_ocean.ocean import Ocean
-from port_ocean.cache.memory import InMemoryCacheProvider
 
 
 @pytest.fixture
@@ -35,24 +35,59 @@ def mock_http_client() -> MagicMock:
     mock_upserted_entities = []
 
     async def post(url: str, *args: Any, **kwargs: Any) -> Response:
-        entity = kwargs.get("json", {})
-        if entity.get("properties", {}).get("mock_is_to_fail", {}):
-            return Response(
-                404, headers=MagicMock(), json={"ok": False, "error": "not_found"}
-            )
+        if "/bulk" in url:
+            success_entities = []
+            failed_entities = []
+            entities_body = kwargs.get("json", {})
+            entities = entities_body.get("entities", [])
+            for index, entity in enumerate(entities):
+                if entity.get("properties", {}).get("mock_is_to_fail", False):
+                    failed_entities.append(
+                        {
+                            "identifier": entity.get("identifier"),
+                            "index": index,
+                            "statusCode": 404,
+                            "error": "not_found",
+                            "message": "Entity not found",
+                        }
+                    )
+                else:
+                    mock_upserted_entities.append(
+                        f"{entity.get('identifier')}-{entity.get('blueprint')}"
+                    )
+                    success_entities.append(
+                        (
+                            {
+                                "identifier": entity.get("identifier"),
+                                "index": index,
+                                "created": True,
+                            }
+                        )
+                    )
 
-        mock_upserted_entities.append(
-            f"{entity.get('identifier')}-{entity.get('blueprint')}"
-        )
-        return Response(
-            200,
-            json={
-                "entity": {
-                    "identifier": entity.get("identifier"),
-                    "blueprint": entity.get("blueprint"),
-                }
-            },
-        )
+            return Response(
+                207,
+                json={"entities": success_entities, "errors": failed_entities},
+            )
+        else:
+            entity = kwargs.get("json", {})
+            if entity.get("properties", {}).get("mock_is_to_fail", False):
+                return Response(
+                    404, headers=MagicMock(), json={"ok": False, "error": "not_found"}
+                )
+
+            mock_upserted_entities.append(
+                f"{entity.get('identifier')}-{entity.get('blueprint')}"
+            )
+            return Response(
+                200,
+                json={
+                    "entity": {
+                        "identifier": entity.get("identifier"),
+                        "blueprint": entity.get("blueprint"),
+                    }
+                },
+            )
 
     mock_http_client.post = AsyncMock(side_effect=post)
     return mock_http_client
@@ -61,7 +96,13 @@ def mock_http_client() -> MagicMock:
 @pytest.fixture
 def mock_port_client(mock_http_client: MagicMock) -> PortClient:
     mock_port_client = PortClient(
-        MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
     )
     mock_port_client.auth = AsyncMock()
     mock_port_client.auth.headers = AsyncMock(
@@ -72,6 +113,7 @@ def mock_port_client(mock_http_client: MagicMock) -> PortClient:
     )
 
     mock_port_client.search_entities = AsyncMock(return_value=[])  # type: ignore
+    mock_port_client.get_organization_feature_flags = AsyncMock(return_value=[])  # type: ignore
     mock_port_client.client = mock_http_client
     return mock_port_client
 

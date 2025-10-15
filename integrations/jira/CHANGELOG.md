@@ -7,6 +7,486 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.11 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.5.10 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.5.9 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.5.8 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 0.5.7 (2025-09-25)
+
+
+### Bug Fix
+
+- Fix bug Jira cannot ingest issues when the jql selector is empty
+
+
+## 0.5.6 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.5.5 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.5.4 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
+## 0.5.3 (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
+## 0.5.2 (2025-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.2
+
+
+## 0.5.1 (2025-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.1
+
+
+## 0.5.0 (2025-08-27)
+
+## Improvements
+
+- Added new optional `expand` selector flag for enriching Issues
+
+## 0.4.61 (2025-08-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.0
+
+
+## 0.4.60 (2025-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.10
+
+
+## 0.4.59 (2025-08-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.9
+
+
+## 0.4.58 (2025-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.8
+
+
+## 0.4.57 (2025-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.7
+
+
+## 0.4.56 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 0.4.55 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 0.4.54 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+## 0.4.53 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
+
+
+## 0.4.52 (2025-08-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.1
+
+
+## 0.4.51 (2025-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.0
+
+
+## 0.4.50 (2025-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.3
+
+
+## 0.4.49 (2025-08-03)
+
+### Improvements
+
+- Added explicit query params for tabs selection on intallationDocs
+
+
+
+## 0.4.48 (2025-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.2
+
+
+## 0.4.47 (2025-08-03)
+### Improvements
+
+- Aligned installationDocs param with convensions
+
+
+## 0.4.46 (2025-07-27)
+
+### Fix
+
+- Restructured changed specs installationDocs param
+
+
+## 0.4.45 (2025-07-27)
+
+
+### Improvements
+
+- Added support for installationDocs param for feature embed docs in installation
+
+
+## 0.4.44 (2025-07-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.1
+
+
+## 0.4.43 (2025-07-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.25.5
+
+
+## 0.4.42 (2025-07-10)
+
+
+### Bug Fixes
+
+-  Fixes JQL bug in Jira integration by properly wrapping user filters in parentheses before appending the issue key, ensuring correct issue fetching during live events.
+
+
+## 0.4.41 (2025-07-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.25.0
+
+
+## 0.4.40 (2025-07-02)
+
+
+### Bug Fixes
+
+-  Fix `JIRA_HOST` from str type to url
+## 0.4.39 (2025-07-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.22
+
+
+## 0.4.38 (2025-06-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.21
+
+
+## 0.4.37 (2025-06-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.20
+
+
+## 0.4.36 (2025-06-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.19
+
+
+## 0.4.35 (2025-06-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.18
+
+
+## 0.4.34 (2025-06-23)
+
+
+### Bug Fixes
+
+- Fixed pagination for teams list and team members API
+
+
+## 0.4.33 (2025-06-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.17
+
+
+## 0.4.32 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.16
+
+
+## 0.4.31 (2025-06-22)
+
+
+### Improvements
+
+- Upgraded integration requests dependency (#1)
+
+
+## 0.4.30 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.15
+
+
+## 0.4.29 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.12
+
+
+## 0.4.28 (2025-06-19)
+
+
+### Improvements
+
+- If webhook destination already exsits added warning message and suggestion to contact support if customer needs to change the destination.
+
+## 0.4.28 (2025-06-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.12
+
+
+## 0.4.27 (2025-06-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.11
+
+
+## 0.4.26 (2025-06-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.10
+
+
+## 0.4.25 (2025-06-09)
+
+
+### Bug Fixes
+
+- Removed webhook permission check from OAuth enabled integrations to prevent unnecessary webhook permission validation for OAuth-based connections, as OAuth already handles appropriate permission scopes during authentication
+
+
+## 0.4.24 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.8
+
+
+## 0.4.23 (2025-06-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.7
+
+
+## 0.4.22 (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.6
+
+
+## 0.4.21 (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.5
+
+
+## 0.4.20 (2025-06-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.4
+
+
+## 0.4.19 (2025-06-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.3
+
+
+## 0.4.18 (2025-06-05)
+
+
+### Bug Fixes
+
+- Fixed bug where OAuth mode was incorrectly determined based on URL instead of actual OAuth configuration
+
+
+## 0.4.17 (2025-06-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.2
+
+
+## 0.4.16 (2025-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.1
+
+
+## 0.4.15 (2025-06-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.24.0
+
+
+## 0.4.14 (2025-06-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.23.5
+
+
 ## 0.4.13 (2025-05-29)
 
 

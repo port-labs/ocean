@@ -1,3 +1,4 @@
+from collections import defaultdict
 from loguru import logger
 
 from port_ocean.clients.port.types import UserAgentType
@@ -86,6 +87,15 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         diff = get_port_diff(entities["before"], entities["after"])
 
         if not diff.deleted:
+            ocean.metrics.inc_metric(
+                name=MetricType.OBJECT_COUNT_NAME,
+                labels=[
+                    ocean.metrics.current_resource_kind(),
+                    MetricPhase.DELETE,
+                    MetricPhase.DeletionResult.DELETED,
+                ],
+                value=0,
+            )
             return
 
         kept_entities = diff.created + diff.modified
@@ -125,20 +135,27 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
     ) -> list[Entity]:
         logger.info(f"Upserting {len(entities)} entities")
         modified_entities: list[Entity] = []
-        upserted_entities: list[tuple[bool, Entity]] = []
 
-        upserted_entities = await self.context.port_client.batch_upsert_entities(
-            entities,
-            event.port_app_config.get_port_request_options(),
-            user_agent_type,
-            should_raise=False,
-        )
+        blueprint_groups: dict[str, list[Entity]] = defaultdict(list)
+        for entity in entities:
+            blueprint_groups[entity.blueprint].append(entity)
 
-        for is_upserted, entity in upserted_entities:
-            if is_upserted:
-                modified_entities.append(entity)
-            else:
-                event.entity_topological_sorter.register_entity(entity)
+        for blueprint_entities in blueprint_groups.values():
+            upserted_entities = (
+                await self.context.port_client.upsert_entities_in_batches(
+                    blueprint_entities,
+                    event.port_app_config.get_port_request_options(),
+                    user_agent_type,
+                    should_raise=False,
+                )
+            )
+
+            for is_upserted, entity in upserted_entities:
+                if is_upserted:
+                    modified_entities.append(entity)
+                else:
+                    event.entity_topological_sorter.register_entity(entity)
+
         return modified_entities
 
     async def delete(

@@ -21,6 +21,7 @@ class IngestSearchQuery(BaseModel):
 class EntityMapping(BaseModel):
     identifier: str | IngestSearchQuery
     title: str | None
+    icon: str | None
     blueprint: str
     team: str | IngestSearchQuery | None
     properties: dict[str, str] = Field(default_factory=dict)
@@ -28,7 +29,9 @@ class EntityMapping(BaseModel):
 
     @property
     def is_using_search_identifier(self) -> bool:
-        return isinstance(self.identifier, dict)
+        return isinstance(self.identifier, dict) or isinstance(
+            self.identifier, IngestSearchQuery
+        )
 
 
 class MappingsConfig(BaseModel):
@@ -38,6 +41,7 @@ class MappingsConfig(BaseModel):
 class PortResourceConfig(BaseModel):
     entity: MappingsConfig
     items_to_parse: str | None = Field(alias="itemsToParse")
+    items_to_parse_name: str | None = Field(alias="itemsToParseName", default="item")
 
 
 class Selector(BaseModel):
