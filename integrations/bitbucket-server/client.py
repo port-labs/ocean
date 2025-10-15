@@ -150,7 +150,7 @@ class BitbucketClient:
         if at:
             params["at"] = at
 
-        endpoint = f"projects/{project_key}/repos/{repo_slug}/browse/{path.lstrip('/')}"
+        endpoint = f"projects/{project_key}/repos/{repo_slug}/raw/{path.lstrip('/')}"
         url = f"{self.base_url}/rest/api/latest/{endpoint}"
 
         async with self.rate_limiter:

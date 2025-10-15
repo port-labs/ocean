@@ -1,6 +1,7 @@
 # helpers/file.py
 from __future__ import annotations
 
+import base64
 import fnmatch
 import mimetypes
 from pathlib import Path
@@ -122,6 +123,46 @@ def _finalize_metadata_fallbacks(
 
     return meta
 
+def _encode_content_for_json(
+    raw: Optional[bytes],
+    mime: Optional[str],
+    path: str,
+) -> tuple[Optional[str], Optional[str]]:
+    """
+    Convert bytes to a JSON-serializable string.
+    - If it's a text-ish file (by mime or extension), try UTF-8.
+    - Otherwise, Base64 encode.
+    Returns (encoded_string, encoding_hint) where encoding_hint is 'utf-8' or 'base64'.
+    """
+    if raw is None:
+        return None, None
+
+    # Heuristics for text
+    textual_mimes = {
+        "application/json", "application/xml",
+        "application/javascript", "application/x-javascript",
+        "application/x-sh", "application/sql",
+    }
+    text_exts = {
+        ".txt",".md",".py",".json",".yaml",".yml",".xml",".toml",".ini",
+        ".cfg",".conf",".csv",".tsv",".js",".ts",".jsx",".tsx",".css",".html",
+        ".sh",".env",".pyi",".sql",
+    }
+    ext = Path(path).suffix.lower()
+    is_text = (
+        (mime or "").startswith("text/")
+        or (mime or "") in textual_mimes
+        or ext in text_exts
+    )
+
+    if is_text:
+        try:
+            return raw.decode("utf-8"), "utf-8"
+        except UnicodeDecodeError:
+            # Fallback to base64 if it isn't valid UTF-8
+            pass
+    b64 = base64.b64encode(raw).decode("ascii")
+    return b64, "base64"
 
 async def process_matching_file(
     client: "BitbucketClient",
@@ -174,13 +215,18 @@ async def process_matching_file(
 
         file_obj = _finalize_metadata_fallbacks(file_obj, content_type_header)
 
+        encoded_content, content_encoding = _encode_content_for_json(
+            content, file_obj.get("mimeType"), file_path
+        )
+
         result = {
-            "content": content,  # bytes or None
+            "content": encoded_content,
+            "contentEncoding": content_encoding,
             "repo": repo,
             "project": {"key": project_key},
             "file": file_obj,
             "path": file_path,
-            "filename": Path(file_path).name,
+            "filename": str(Path(file_path).name),
             "truncated": (content is None)
             and (file_obj.get("size") or 0) > size_limit_bytes
             and not skip_parsing,
