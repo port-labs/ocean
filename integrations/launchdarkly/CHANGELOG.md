@@ -7,6 +7,214 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.8 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.2.7 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.2.6 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.2.5 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 0.2.4 (2025-09-22)
+
+
+### Improvements
+
+- Added recommendedInstallationMethod: Saas to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
+
+
+## 0.2.3 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.2.2 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.2.1 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
+## 0.2.0 (2025-09-09)
+
+
+### Improvements
+
+- Added rate limiting to the LaunchDarkly client
+
+
+## 0.1.173 (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
+## 0.1.172 (2025-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.2
+
+
+## 0.1.171 (2025-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.1
+
+
+## 0.1.170 (2025-08-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.0
+
+
+## 0.1.169 (2025-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.10
+
+
+## 0.1.168 (2025-08-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.9
+
+
+## 0.1.167 (2025-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.8
+
+
+## 0.1.166 (2025-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.7
+
+
+## 0.1.165 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 0.1.164 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 0.1.163 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+## 0.1.162 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
+
+
+## 0.1.161 (2025-08-08)
+
+
+### Fix
+
+- Reset query parameters after each paginated request to avoid pagination issues
+
+
+## 0.1.160 (2025-08-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.1
+
+
+## 0.1.159 (2025-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.0
+
+
+## 0.1.158 (2025-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.3
+
+
+## 0.1.157 (2025-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.2
+
+
 ## 0.1.156 (2025-07-20)
 
 

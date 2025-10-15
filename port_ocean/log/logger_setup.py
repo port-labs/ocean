@@ -1,9 +1,9 @@
-import sys
 import os
+import sys
+import uuid
 from logging import LogRecord
 from logging.handlers import QueueHandler, QueueListener
 from queue import Queue
-import uuid
 
 import loguru
 from loguru import logger
@@ -60,8 +60,10 @@ def _http_loguru_handler(level: LogLevelType) -> None:
     logger.configure(patcher=exception_deserializer)
 
     http_memory_handler = HTTPMemoryHandler()
-    signal_handler.register(http_memory_handler.wait_for_lingering_threads)
-    signal_handler.register(http_memory_handler.flush)
+    signal_handler.register(
+        http_memory_handler.wait_for_lingering_threads, priority=-200
+    )
+    signal_handler.register(http_memory_handler.flush, priority=-200)
 
     queue_listener = QueueListener(queue, http_memory_handler)
     queue_listener.start()

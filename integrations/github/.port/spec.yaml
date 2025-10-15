@@ -21,10 +21,11 @@ features:
       - kind: dependabot-alert
       - kind: code-scanning-alerts
       - kind: file
+      - kind: collaborator
 configurations:
   - name: githubHost
     required: false
-    default: "https://api.github.com"
+    default: https://api.github.com
     type: url
     description: For Github Enterprise users, if Github url is not passed, the default Github API "api.github.com" will be used.
   - name: githubToken
@@ -55,3 +56,12 @@ saas:
   enabled: true
   liveEvents:
     enabled: true
+  oauthConfiguration:
+    requiredSecrets:
+      - name: githubAppPrivateKey
+        value: .oauthData.additionalData.pem
+        description: '"Private key in PEM format for GitHub App authentication and API access"'
+    valuesOverride:
+      integrationSpec:
+        githubAppId: .oauthData.additionalData.appId
+        githubOrganization: .oauthData.additionalData.githubOrganization

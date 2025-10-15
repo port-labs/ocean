@@ -18,10 +18,8 @@ PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
 
 class GitLabClient:
-    DEFAULT_MIN_ACCESS_LEVEL = 30
     DEFAULT_PARAMS: dict[str, Any] = {
-        "min_access_level": DEFAULT_MIN_ACCESS_LEVEL,  # Minimum access level to fetch groups
-        "all_available": True,  # Fetch all groups accessible to the user
+        "all_available": True,  # Fetch all resources accessible to the user
     }
 
     def __init__(self, base_url: str, token: str) -> None:
@@ -56,9 +54,12 @@ class GitLabClient:
             "GET", f"projects/{project_id}/jobs/{job_id}"
         )
 
-    async def get_group_member(self, group_id: int, member_id: int) -> dict[str, Any]:
+    async def get_group_member(
+        self, group_id: int, member_id: int, include_inherited_members: bool = False
+    ) -> dict[str, Any]:
+        members_api = "members/all" if include_inherited_members else "members"
         return await self.rest.send_api_request(
-            "GET", f"groups/{group_id}/members/{member_id}"
+            "GET", f"groups/{group_id}/{members_api}/{member_id}"
         )
 
     async def get_projects(
@@ -67,8 +68,17 @@ class GitLabClient:
         max_concurrent: int = 10,
         include_languages: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch projects and optionally enrich with languages and/or labels."""
-        request_params = self.DEFAULT_PARAMS | (params or {})
+        """Fetch all projects accessible to the user.
+
+        Args:
+            params: Optional parameters to pass to the GitLab API (e.g., min_access_level)
+            max_concurrent: Maximum number of concurrent requests
+            include_languages: Whether to enrich projects with language information
+        """
+        request_params = {**self.DEFAULT_PARAMS}
+        if params:
+            request_params.update(params)
+
         async for projects_batch in self.rest.get_paginated_resource(
             "projects", params=request_params
         ):
@@ -83,16 +93,23 @@ class GitLabClient:
             yield enriched_batch
 
     async def get_groups(
-        self, owned: bool = False
+        self,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user.
 
         Args:
-            owned: If True, only fetch groups owned by the authenticated user
+            params: Optional parameters to pass to the GitLab API (e.g., min_access_level)
         """
-        params = {**self.DEFAULT_PARAMS, "owned": owned}
-        async for batch in self.rest.get_paginated_resource("groups", params=params):
-            yield batch
+        request_params = {**self.DEFAULT_PARAMS}
+        if params:
+            request_params.update(params)
+
+        async for groups_batch in self.rest.get_paginated_resource(
+            "groups", params=request_params
+        ):
+            logger.info(f"Received batch with {len(groups_batch)} groups")
+            yield groups_batch
 
     async def get_projects_resource(
         self,
@@ -191,12 +208,15 @@ class GitLabClient:
         return bool(response)
 
     async def get_parent_groups(
-        self, owned: bool = False
+        self,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         all_group_ids = set()
         top_level_groups = []
 
-        async for group_batch in self.get_groups(owned=owned):
+        async for group_batch in self.get_groups(
+            params=params,
+        ):
             group_ids_in_batch = {group["id"] for group in group_batch}
             for group in group_batch:
                 parent_id = group.get("parent_id")
@@ -217,6 +237,7 @@ class GitLabClient:
         path: str,
         repositories: list[str] | None = None,
         skip_parsing: bool = False,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         search_query = f"path:{path}"
         logger.info(f"Starting file search with path pattern: '{path}'")
@@ -231,7 +252,9 @@ class GitLabClient:
                     yield batch
         else:
             logger.info("Searching across groups")
-            async for top_level_groups in self.get_parent_groups():
+            async for top_level_groups in self.get_parent_groups(
+                params=params,
+            ):
                 logger.info(
                     f"Found {len(top_level_groups)} top-level searchable groups"
                 )
@@ -322,9 +345,13 @@ class GitLabClient:
         return project
 
     async def get_group_members(
-        self, group_id: str, include_bot_members: bool
+        self, group_id: str, include_bot_members: bool, include_inherited_members: bool
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        async for batch in self.rest.get_paginated_group_resource(group_id, "members"):
+        members_api = "members/all" if include_inherited_members else "members"
+        logger.info(f"Fetching members for group {group_id} with {members_api} API")
+        async for batch in self.rest.get_paginated_group_resource(
+            group_id, members_api
+        ):
             if batch:
                 filtered_batch = batch
                 if not include_bot_members:
@@ -334,17 +361,20 @@ class GitLabClient:
                         if "bot" not in member["username"].lower()
                     ]
                 logger.info(
-                    f"Received batch of {len(filtered_batch)} members for group {group_id}"
+                    f"Fetched {len(filtered_batch)} member(s) from '{members_api}' for group '{group_id}' after bot filtering"
                 )
                 yield filtered_batch
 
     async def enrich_group_with_members(
-        self, group: dict[str, Any], include_bot_members: bool
+        self,
+        group: dict[str, Any],
+        include_bot_members: bool,
+        include_inherited_members: bool,
     ) -> dict[str, Any]:
         logger.info(f"Enriching group {group['id']} with members")
         members = []
         async for members_batch in self.get_group_members(
-            group["id"], include_bot_members
+            group["id"], include_bot_members, include_inherited_members
         ):
             for member in members_batch:
                 members.append(

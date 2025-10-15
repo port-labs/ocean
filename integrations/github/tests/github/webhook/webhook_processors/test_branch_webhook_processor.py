@@ -1,4 +1,5 @@
 from typing import Dict
+from integration import GithubBranchConfig, GithubBranchSelector
 import pytest
 from unittest.mock import AsyncMock, patch
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -11,8 +12,6 @@ from github.webhook.webhook_processors.branch_webhook_processor import (
 from github.core.options import SingleBranchOptions
 
 from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
@@ -21,10 +20,12 @@ from github.helpers.utils import ObjectKind
 
 
 @pytest.fixture
-def resource_config() -> ResourceConfig:
-    return ResourceConfig(
-        kind=ObjectKind.BRANCH,
-        selector=Selector(query="true"),
+def resource_config() -> GithubBranchConfig:
+    return GithubBranchConfig(
+        kind="branch",
+        selector=GithubBranchSelector(
+            query="true", detailed=False, protectionRules=False
+        ),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -90,21 +91,23 @@ class TestBranchWebhookProcessor:
         assert ObjectKind.BRANCH in kinds
 
     @pytest.mark.parametrize(
-        "event_type,is_deletion,expected_updated,expected_deleted",
+        "event_type,is_deletion,expected_updated,expected_deleted,protection_rules",
         [
-            ("create", False, True, False),
-            ("delete", True, False, True),
-            ("push", False, True, False),
+            ("create", False, True, False, False),
+            ("delete", True, False, True, False),
+            ("push", False, True, False, False),
+            ("push", False, True, False, True),
         ],
     )
     async def test_handle_event_create_and_delete(
         self,
         branch_webhook_processor: BranchWebhookProcessor,
-        resource_config: ResourceConfig,
+        resource_config: GithubBranchConfig,
         event_type: str,
         is_deletion: bool,
         expected_updated: bool,
         expected_deleted: bool,
+        protection_rules: bool,
     ) -> None:
         branch_ref = "refs/heads/main"
         branch_name = "main"
@@ -134,6 +137,8 @@ class TestBranchWebhookProcessor:
             mock_exporter = AsyncMock()
             mock_exporter.get_resource.return_value = branch_data
 
+            resource_config.selector.protection_rules = protection_rules
+
             with patch(
                 "github.webhook.webhook_processors.branch_webhook_processor.RestBranchExporter",
                 return_value=mock_exporter,
@@ -144,7 +149,11 @@ class TestBranchWebhookProcessor:
 
             # Verify exporter was called with correct options
             mock_exporter.get_resource.assert_called_once_with(
-                SingleBranchOptions(repo_name="test-repo", branch_name=branch_name)
+                SingleBranchOptions(
+                    repo_name="test-repo",
+                    branch_name=branch_name,
+                    protection_rules=protection_rules,
+                )
             )
 
         assert isinstance(result, WebhookEventRawResults)

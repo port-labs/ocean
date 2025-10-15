@@ -94,6 +94,24 @@ CODE_SCANNING_ALERT_ACTION_TO_STATE = {
 CODE_SCANNING_ALERT_EVENTS = list(CODE_SCANNING_ALERT_ACTION_TO_STATE.keys())
 
 
+SECRET_SCANNING_ALERT_ACTION_TO_STATE = {
+    "created": ["open"],
+    "publicly_leaked": ["open"],
+    "reopened": ["open"],
+    "validated": ["open"],
+    "resolved": ["resolved"],
+}
+
+SECRET_SCANNING_ALERT_EVENTS = list(SECRET_SCANNING_ALERT_ACTION_TO_STATE.keys())
+
+
+# Collaborator events
+COLLABORATOR_UPSERT_EVENTS = ["added", "created", "edited"]
+COLLABORATOR_DELETE_EVENTS = ["removed", "deleted"]
+TEAM_COLLABORATOR_EVENTS = ["added_to_repository"]
+COLLABORATOR_EVENTS = COLLABORATOR_UPSERT_EVENTS + COLLABORATOR_DELETE_EVENTS
+
+
 ALL_EVENTS = (
     REPOSITORY_UPSERT_EVENTS
     + REPOSITORY_DELETE_EVENTS
@@ -105,6 +123,9 @@ ALL_EVENTS = (
     + WORKFLOW_RUN_EVENTS
     + DEPENDABOT_ALERT_EVENTS
     + CODE_SCANNING_ALERT_EVENTS
+    + COLLABORATOR_EVENTS
+    + TEAM_COLLABORATOR_EVENTS
+    + SECRET_SCANNING_ALERT_EVENTS
 )
 
 
@@ -124,4 +145,6 @@ WEBHOOK_CREATE_EVENTS = [
     "organization",
     "team",
     "membership",
+    "member",
+    "secret_scanning_alert",
 ]

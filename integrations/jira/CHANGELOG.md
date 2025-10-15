@@ -7,6 +7,233 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.11 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.5.10 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.5.9 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.5.8 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 0.5.7 (2025-09-25)
+
+
+### Bug Fix
+
+- Fix bug Jira cannot ingest issues when the jql selector is empty
+
+
+## 0.5.6 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.5.5 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.5.4 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
+## 0.5.3 (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
+## 0.5.2 (2025-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.2
+
+
+## 0.5.1 (2025-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.1
+
+
+## 0.5.0 (2025-08-27)
+
+## Improvements
+
+- Added new optional `expand` selector flag for enriching Issues
+
+## 0.4.61 (2025-08-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.0
+
+
+## 0.4.60 (2025-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.10
+
+
+## 0.4.59 (2025-08-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.9
+
+
+## 0.4.58 (2025-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.8
+
+
+## 0.4.57 (2025-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.7
+
+
+## 0.4.56 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 0.4.55 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 0.4.54 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+## 0.4.53 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
+
+
+## 0.4.52 (2025-08-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.1
+
+
+## 0.4.51 (2025-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.0
+
+
+## 0.4.50 (2025-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.3
+
+
+## 0.4.49 (2025-08-03)
+
+### Improvements
+
+- Added explicit query params for tabs selection on intallationDocs
+
+
+
+## 0.4.48 (2025-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.2
+
+
+## 0.4.47 (2025-08-03)
+### Improvements
+
+- Aligned installationDocs param with convensions
+
+
+## 0.4.46 (2025-07-27)
+
+### Fix
+
+- Restructured changed specs installationDocs param
+
+
+## 0.4.45 (2025-07-27)
+
+
+### Improvements
+
+- Added support for installationDocs param for feature embed docs in installation
+
+
 ## 0.4.44 (2025-07-20)
 
 

@@ -7,6 +7,203 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.8 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.2.7 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.2.6 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.2.5 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 0.2.4 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.2.3 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.2.2 (2025-09-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.4
+
+
+## 0.2.1 (2025-09-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.3
+
+
+## 0.2.0 (2025-09-01)
+
+
+### Bug Fixes
+
+- Fixed integration sync not completing due to unhandled 404 errors
+
+### Improvements
+
+- Added centralized API request handling with configurable error management
+- Implemented comprehensive test suite for client
+
+
+## 0.1.196 (2025-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.2
+
+
+## 0.1.195 (2025-08-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.1
+
+
+## 0.1.194 (2025-08-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.0
+
+
+## 0.1.193 (2025-08-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.10
+
+
+## 0.1.192 (2025-08-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.9
+
+
+## 0.1.191 (2025-08-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.8
+
+
+## 0.1.190 (2025-08-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.7
+
+
+## 0.1.189 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.6
+
+
+## 0.1.188 (2025-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.5
+
+
+## 0.1.187 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.3
+
+
+## 0.1.186 (2025-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.2
+
+
+## 0.1.185 (2025-08-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.1
+
+
+## 0.1.184 (2025-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.27.0
+
+
+## 0.1.183 (2025-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.3
+
+
+## 0.1.182 (2025-08-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.26.2
+
+
 ## 0.1.181 (2025-07-20)
 
 
