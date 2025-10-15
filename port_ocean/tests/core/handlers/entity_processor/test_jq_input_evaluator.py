@@ -914,7 +914,7 @@ class TestIntegration:
         assert classify_input(expr, "field") == InputClassifyingResult.ALL
         assert classify_input(expr, "other") == InputClassifyingResult.ALL
 
-    def test_error_handling_scenarios(self):
+    def test_error_handling_scenarios(self) -> None:
         """Test error handling scenarios"""
         # Invalid expressions should still be classified
         assert classify_input(".invalid.field", "item") == InputClassifyingResult.ALL
