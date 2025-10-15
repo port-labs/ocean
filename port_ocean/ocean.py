@@ -94,7 +94,6 @@ class Ocean:
             signal_handler=signal_handler,
             runs_buffer_high_watermark=self.config.execution_agent.runs_buffer_high_watermark,
             poll_check_interval_seconds=self.config.execution_agent.poll_check_interval_seconds,
-            max_action_execution_seconds=self.config.execution_agent.max_action_execution_seconds,
             max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
         )
 

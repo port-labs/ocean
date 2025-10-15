@@ -71,9 +71,10 @@ class ActionsClientMixin:
         from port_ocean.core.models import InvocationType
         from port_ocean.context.ocean import ocean
 
+        num = random.random()
         return (
             []
-            if random.random() < 0.5
+            if num < 0.5
             else [
                 ActionRun(
                     id="test-run-id",

@@ -1,9 +1,11 @@
 from dataclasses import dataclass, field
 from enum import Enum, StrEnum
-from typing import Any, Literal, TypedDict
+from typing import Any, Generic, Literal, TypeVar, TypedDict
 
 from pydantic import BaseModel
 from pydantic.fields import Field
+
+T = TypeVar("T")
 
 
 class EventListenerType(StrEnum):
@@ -159,7 +161,7 @@ class IntegrationActionInvocationPayload(InvocationPayload):
     integrationActionExecutionProperties: dict[str, Any] = Field(default_factory=dict)
 
 
-class ActionRun[T](BaseModel):
+class ActionRun(BaseModel, Generic[T]):
     id: str
     status: RunStatus
     payload: T

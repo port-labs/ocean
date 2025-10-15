@@ -1,7 +1,10 @@
 import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+from fastapi import APIRouter, FastAPI
 import pytest
+from port_ocean.clients.port.client import PortClient
+from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.actions.execution_manager import (
     ExecutionManager,
@@ -24,6 +27,7 @@ from port_ocean.exceptions.execution_manager import (
     DuplicateActionExecutorError,
     RunAlreadyAcknowledgedError,
 )
+from port_ocean.ocean import Ocean
 from port_ocean.utils.signal import SignalHandler
 
 
@@ -59,6 +63,31 @@ class MockPartitionedExecutor(MockExecutor):
 
 
 @pytest.fixture
+def mock_port_client() -> MagicMock:
+    return MagicMock(spec=PortClient)
+
+
+@pytest.fixture
+def mock_ocean(mock_port_client: PortClient) -> Ocean:
+    ocean_mock = MagicMock(spec=Ocean)
+    ocean_mock.config = MagicMock()
+    ocean_mock.port_client = mock_port_client
+    ocean_mock.integration_router = APIRouter()
+    ocean_mock.fast_api_app = FastAPI()
+    return ocean_mock
+
+
+@pytest.fixture(autouse=True)
+def mock_ocean_context(monkeypatch: pytest.MonkeyPatch, mock_ocean: Ocean) -> MagicMock:
+    mock_ocean_context = PortOceanContext(mock_ocean)
+    mock_ocean_context._app = mock_ocean
+    monkeypatch.setattr(
+        "port_ocean.core.handlers.actions.execution_manager.ocean", mock_ocean_context
+    )
+    return mock_ocean_context
+
+
+@pytest.fixture
 def mock_webhook_manager() -> MagicMock:
     return MagicMock(spec=LiveEventsProcessorManager)
 
@@ -76,8 +105,7 @@ def execution_manager(
         webhook_manager=mock_webhook_manager,
         signal_handler=mock_signal_handler,
         runs_buffer_high_watermark=100,
-        poll_check_interval_seconds=1,
-        max_action_execution_seconds=60,
+        poll_check_interval_seconds=5,
         max_wait_seconds_before_shutdown=30,
     )
 
@@ -120,6 +148,7 @@ def mock_test_action_run_task(
 ) -> ActionRunTask:
     return ActionRunTask(
         visibility_expiration_timestamp=datetime.now() + timedelta(minutes=5),
+        queue_name="test_action",
         run=mock_test_action_run,
     )
 
@@ -130,6 +159,7 @@ def mock_test_partitioned_action_run_task(
 ) -> ActionRunTask:
     return ActionRunTask(
         visibility_expiration_timestamp=datetime.now() + timedelta(minutes=5),
+        queue_name="partitioned_action:A",
         run=mock_partitioned_action_run,
     )
 
@@ -168,39 +198,42 @@ class TestExecutionManager:
         self,
         execution_manager: ExecutionManager,
         mock_test_action_run_task: ActionRunTask,
+        mock_port_client: MagicMock,
     ):
         # Arrange
         execution_manager.register_executor(MockExecutor)
+        mock_port_client.acknowledge_run = AsyncMock()
 
-        # Act & Assert
-        with patch.object(
-            execution_manager.ocean.port_client, "acknowledge_run"
-        ) as mock_acknowledge:
-            await execution_manager._execute_run(mock_test_action_run_task)
-            mock_acknowledge.assert_called_once_with(mock_test_action_run_task.run.id)
+        # Act
+        await execution_manager._execute_run(mock_test_action_run_task)
+
+        # Assert
+        mock_port_client.acknowledge_run.assert_called_once_with(
+            mock_test_action_run_task.run.id
+        )
 
     @pytest.mark.asyncio
     async def test_execute_run_acknowledge_conflict(
         self,
         execution_manager: ExecutionManager,
         mock_test_action_run_task: ActionRunTask,
+        mock_port_client: MagicMock,
     ):
         # Arrange
         execution_manager.register_executor(MockExecutor)
+        mock_port_client.acknowledge_run.side_effect = RunAlreadyAcknowledgedError()
 
-        # Act & Assert
+        # Act
         with patch.object(
-            execution_manager.ocean.port_client, "acknowledge_run"
-        ) as mock_acknowledge:
-            mock_acknowledge.side_effect = RunAlreadyAcknowledgedError()
-            with patch.object(
-                execution_manager._actions_executors["test_action"], "execute"
-            ) as mock_execute:
-                await execution_manager._execute_run(mock_test_action_run_task)
-                mock_acknowledge.assert_called_once_with(
-                    mock_test_action_run_task.run.id
-                )
-                mock_execute.assert_not_called()
+            execution_manager._actions_executors["test_action"], "execute"
+        ) as mock_execute:
+            await execution_manager._execute_run(mock_test_action_run_task)
+
+            # Assert
+            mock_port_client.acknowledge_run.assert_called_once_with(
+                mock_test_action_run_task.run.id
+            )
+            mock_execute.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_execute_run_expired_visibility(
@@ -211,6 +244,7 @@ class TestExecutionManager:
         # Arrange
         expired_task = ActionRunTask(
             visibility_expiration_timestamp=datetime.now() - timedelta(minutes=5),
+            queue_name="test_action",
             run=mock_action_run,
         )
         execution_manager.register_executor(MockExecutor)
@@ -382,9 +416,6 @@ class TestExecutionManager:
 
     @pytest.mark.asyncio
     async def test_lock_timeout(self, execution_manager: ExecutionManager):
-        # Set a short lock timeout
-        execution_manager._max_action_execution_seconds = 0.1
-
         # Lock a queue
         queue_name = "test_queue"
         assert execution_manager._try_lock(queue_name) is True

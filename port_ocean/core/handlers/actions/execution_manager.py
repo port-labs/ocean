@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Dict, Set, Optional, List
+from typing import Dict, Set
 from loguru import logger
 from pydantic import BaseModel
 from port_ocean.core.models import (
@@ -8,7 +8,6 @@ from port_ocean.core.models import (
     RunStatus,
 )
 import asyncio
-import time
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.queue.abstract_queue import AbstractQueue
 from port_ocean.core.handlers.queue.local_queue import LocalQueue
@@ -30,6 +29,7 @@ GLOBAL_SOURCE = "__global__"
 
 class ActionRunTask(BaseModel):
     visibility_expiration_timestamp: datetime
+    queue_name: str
     run: ActionRun[IntegrationActionInvocationPayload]
 
 
@@ -42,7 +42,6 @@ class ExecutionManager:
         signal_handler: SignalHandler,
         runs_buffer_high_watermark: int,
         poll_check_interval_seconds: int,
-        max_action_execution_seconds: int,
         max_wait_seconds_before_shutdown: float,
     ):
         self._webhook_manager = webhook_manager
@@ -52,15 +51,12 @@ class ExecutionManager:
         self._is_shutting_down = asyncio.Event()
         self._global_queue = LocalQueue[ActionRunTask]()
         self._partition_queues: Dict[str, AbstractQueue[ActionRunTask]] = {}
-        self._locked: Set[str] = set()
-        self._lock_timestamps: Dict[str, float] = {}
-        self._release_expired_locks_task: Optional[asyncio.Task[None]] = None
-        self._active_sources = LocalQueue()
-        self._queue_state_lock = asyncio.Lock()
-        self._high_watermark = runs_buffer_high_watermark
-        self._poll_check_interval_seconds = poll_check_interval_seconds
-        self._max_action_execution_seconds = max_action_execution_seconds
-        self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
+        self._deduplication_set: Set[str] = set()
+        self._queues_locks: Dict[str, asyncio.Lock] = {GLOBAL_SOURCE: asyncio.Lock()}
+        self._active_sources: AbstractQueue[str] = LocalQueue[str]()
+        self._high_watermark: int = runs_buffer_high_watermark
+        self._poll_check_interval_seconds: int = poll_check_interval_seconds
+        self._max_wait_seconds_before_shutdown: float = max_wait_seconds_before_shutdown
 
         signal_handler.register(self.shutdown)
 
@@ -101,9 +97,6 @@ class ExecutionManager:
             return
 
         self._polling_task = asyncio.create_task(self._poll_action_runs())
-        self._release_expired_locks_task = asyncio.create_task(
-            self._release_expired_locks()
-        )
 
         workers_count = max(1, ocean.config.execution_agent.workers_count)
         for _ in range(workers_count):
@@ -169,9 +162,11 @@ class ExecutionManager:
                         )
                         continue
 
-                    partition_name = self._extract_partition_key(run, partition_key)
+                    partition_key = self._extract_partition_key(run, partition_key)
+                    partition_name = f"{action_type}:{partition_key}"
                     if partition_name not in self._partition_queues:
                         self._partition_queues[partition_name] = LocalQueue()
+                        self._queues_locks[partition_name] = asyncio.Lock()
                     await self._add_run_to_queue(
                         run,
                         self._partition_queues[partition_name],
@@ -206,15 +201,29 @@ class ExecutionManager:
         """
         Add a run to the queue.
         """
-        was_empty = await queue.size() == 0
-        await queue.put(
-            ActionRunTask(
-                visibility_expiration_timestamp=visibility_expiration_timestamp, run=run
+        async with self._queues_locks[queue_name]:
+            self._deduplication_set.add(run.id)
+            await queue.put(
+                ActionRunTask(
+                    visibility_expiration_timestamp=visibility_expiration_timestamp,
+                    queue_name=queue_name,
+                    run=run,
+                )
             )
-        )
-        if was_empty:
-            async with self._queue_state_lock:
-                await self._active_sources.put(queue_name)
+        await self._add_source_if_not_empty(queue_name)
+
+    async def _add_source_if_not_empty(self, source_name: str) -> None:
+        """
+        Add a source to the active sources if the queue is not empty.
+        """
+        async with self._queues_locks[source_name]:
+            queue = (
+                self._global_queue
+                if source_name == GLOBAL_SOURCE
+                else self._partition_queues[source_name]
+            )
+            if await queue.size() > 0:
+                await self._active_sources.put(source_name)
 
     def _extract_partition_key(
         self, run: ActionRun[IntegrationActionInvocationPayload], partition_key: str
@@ -230,36 +239,14 @@ class ExecutionManager:
             f"Partition key '{partition_key}' not found in invocation payload"
         )
 
-    async def _release_expired_locks(self) -> None:
-        """
-        Periodically release locks that have timed out for fairness.
-        """
-        while True:
-            try:
-                await asyncio.sleep(self._max_action_execution_seconds / 4)
-                now = time.time()
-                expired: List[str] = []
-                for key, ts in list(self._lock_timestamps.items()):
-                    if now - ts > self._max_action_execution_seconds:
-                        expired.append(key)
-                        self._unlock(key)
-                if expired:
-                    logger.warning("Released expired locks", keys=expired)
-            except asyncio.CancelledError:
-                break
-
-    def _unlock(self, key: str) -> None:
-        self._locked.discard(key)
-        self._lock_timestamps.pop(key, None)
-
     async def _process_actions_runs(self) -> None:
         """
         Round-robin worker across global and partitions queues.
         """
         while not self._is_shutting_down.is_set():
-            source = await self._active_sources.get()
-
             try:
+                source = await self._active_sources.get()
+
                 if source == GLOBAL_SOURCE:
                     await self._handle_global_queue_once()
                 else:
@@ -268,14 +255,13 @@ class ExecutionManager:
                 logger.exception("Worker processing error", source=source, error=e)
 
     async def _handle_global_queue_once(self):
-        if await self._global_queue.size() == 0:
-            return
-
-        async with self._queue_state_lock:
-            await self._active_sources.put(GLOBAL_SOURCE)
-
         try:
-            run_task = await self._global_queue.get()
+            async with self._queues_locks[GLOBAL_SOURCE]:
+                run_task = await self._global_queue.get()
+                if run_task.run.id in self._deduplication_set:
+                    self._deduplication_set.remove(run_task.run.id)
+
+            await self._add_source_if_not_empty(GLOBAL_SOURCE)
             await self._execute_run(run_task.run)
         finally:
             await self._global_queue.commit()
@@ -286,38 +272,29 @@ class ExecutionManager:
         Returns True if work was done, False otherwise.
         """
         queue = self._partition_queues[partition_name]
-        if await queue.size() == 0:
-            return
-
-        queue_lock_key = f"queue:{partition_name}"
-        successfully_locked = self._try_lock(queue_lock_key)
-        if not successfully_locked:
-            return
-
         try:
-            run = await queue.get()
-            await self._execute_run(run)
+            async with self._queues_locks[partition_name]:
+                run_task = await queue.get()
+                if run_task.run.id in self._deduplication_set:
+                    self._deduplication_set.remove(run_task.run.id)
+            await self._execute_run(run_task)
         finally:
             await queue.commit()
-            self._unlock(queue_lock_key)
-            async with self._queue_state_lock:
-                await self._active_sources.put(partition_name)
-
-    def _try_lock(self, key: str) -> bool:
-        if key in self._locked:
-            return False
-        self._locked.add(key)
-        self._lock_timestamps[key] = time.time()
-        return True
+            await self._add_source_if_not_empty(partition_name)
 
     async def _execute_run(self, run_task: ActionRunTask) -> None:
         """
         Execute a run using its registered executor.
         """
         try:
-            if run_task.visibility_expiration_timestamp < datetime.now():
-                logger.debug(
-                    "Run visibility has already expired, skipping execution",
+            async with self._queues_locks[run_task.queue_name]:
+                should_skip_execution = (
+                    run_task.visibility_expiration_timestamp < datetime.now()
+                    and run_task.run.id in self._deduplication_set
+                )
+            if should_skip_execution:
+                logger.info(
+                    "Run visibility has already expired and is being deduplicated, skipping execution",
                     run=run_task.run.id,
                 )
                 return
@@ -376,7 +353,6 @@ class ExecutionManager:
             await asyncio.wait_for(
                 asyncio.gather(
                     self._gracefully_cancel_task(self._polling_task),
-                    self._gracefully_cancel_task(self._release_expired_locks_task),
                     *(worker for worker in self._workers_pool),
                 ),
                 timeout=self._max_wait_seconds_before_shutdown,
