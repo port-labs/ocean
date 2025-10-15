@@ -70,4 +70,4 @@ resources:
               100) end)
             reviewers: .reviewers | map(.name)
           relations:
-            service: .references.full | gsub("!.+"; "")
+            project: .references.full | gsub("!.+"; "")
