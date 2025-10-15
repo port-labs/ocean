@@ -11,49 +11,49 @@ from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
 class TestMaskStrings:
     """Test the _mask_strings function"""
 
-    def test_mask_simple_string(self):
+    def test_mask_simple_string(self) -> None:
         """Test masking a simple string literal"""
         expr = '"hello world"'
         result = _mask_strings(expr)
         assert result == "S"
 
-    def test_mask_string_with_escaped_quotes(self):
+    def test_mask_string_with_escaped_quotes(self) -> None:
         """Test masking a string with escaped quotes"""
         expr = '"hello \\"world\\""'
         result = _mask_strings(expr)
         assert result == "S"
 
-    def test_mask_string_with_backslash(self):
+    def test_mask_string_with_backslash(self) -> None:
         """Test masking a string with backslash"""
         expr = '"hello\\\\world"'
         result = _mask_strings(expr)
         assert result == "S"
 
-    def test_mask_multiple_strings(self):
+    def test_mask_multiple_strings(self) -> None:
         """Test masking multiple string literals"""
         expr = '"hello" + "world"'
         result = _mask_strings(expr)
         assert result == "S + S"
 
-    def test_mask_string_with_dots_inside(self):
+    def test_mask_string_with_dots_inside(self) -> None:
         """Test masking a string that contains dots (should not affect dot detection)"""
         expr = '"this.is.a.string" + .field'
         result = _mask_strings(expr)
         assert result == "S + .field"
 
-    def test_mask_empty_string(self):
+    def test_mask_empty_string(self) -> None:
         """Test masking an empty string"""
         expr = '""'
         result = _mask_strings(expr)
         assert result == "S"
 
-    def test_no_strings_to_mask(self):
+    def test_no_strings_to_mask(self) -> None:
         """Test expression with no strings"""
         expr = ".field + .other"
         result = _mask_strings(expr)
         assert result == ".field + .other"
 
-    def test_mixed_content(self):
+    def test_mixed_content(self) -> None:
         """Test masking with mixed content"""
         expr = '"hello" + .field + "world"'
         result = _mask_strings(expr)
@@ -63,67 +63,67 @@ class TestMaskStrings:
 class TestMaskNumbers:
     """Test the _mask_numbers function"""
 
-    def test_mask_simple_number(self):
+    def test_mask_simple_number(self) -> None:
         """Test masking a simple number"""
         expr = "42"
         result = _mask_numbers(expr)
         assert result == "N"
 
-    def test_mask_decimal_number(self):
+    def test_mask_decimal_number(self) -> None:
         """Test masking a decimal number"""
         expr = "3.14"
         result = _mask_numbers(expr)
         assert result == "N"
 
-    def test_mask_negative_number(self):
+    def test_mask_negative_number(self) -> None:
         """Test masking a negative number"""
         expr = "-42"
         result = _mask_numbers(expr)
         assert result == "N"
 
-    def test_mask_negative_decimal(self):
+    def test_mask_negative_decimal(self) -> None:
         """Test masking a negative decimal"""
         expr = "-3.14"
         result = _mask_numbers(expr)
         assert result == "N"
 
-    def test_mask_positive_number_with_sign(self):
+    def test_mask_positive_number_with_sign(self) -> None:
         """Test masking a positive number with explicit sign"""
         expr = "+42"
         result = _mask_numbers(expr)
         assert result == "N"
 
-    def test_mask_multiple_numbers(self):
+    def test_mask_multiple_numbers(self) -> None:
         """Test masking multiple numbers"""
         expr = "3.14 + 2.5"
         result = _mask_numbers(expr)
         assert result == "N + N"
 
-    def test_mask_numbers_with_operators(self):
+    def test_mask_numbers_with_operators(self) -> None:
         """Test masking numbers with various operators"""
         expr = "3.14 * 2.5 - 1.5 / 2"
         result = _mask_numbers(expr)
         assert result == "N * N - N / N"
 
-    def test_mask_numbers_with_strings(self):
+    def test_mask_numbers_with_strings(self) -> None:
         """Test masking numbers mixed with strings (should not affect strings)"""
         expr = '"hello" + 3.14 + "world"'
         result = _mask_numbers(expr)
         assert result == '"hello" + N + "world"'
 
-    def test_mask_numbers_with_field_references(self):
+    def test_mask_numbers_with_field_references(self) -> None:
         """Test masking numbers with field references (should not affect field references)"""
         expr = "3.14 + .field"
         result = _mask_numbers(expr)
         assert result == "N + .field"
 
-    def test_no_numbers_to_mask(self):
+    def test_no_numbers_to_mask(self) -> None:
         """Test expression with no numbers"""
         expr = ".field + .other"
         result = _mask_numbers(expr)
         assert result == ".field + .other"
 
-    def test_mixed_content_with_numbers(self):
+    def test_mixed_content_with_numbers(self) -> None:
         """Test masking with mixed content including numbers"""
         expr = '"hello" + 3.14 + .field + 42'
         result = _mask_numbers(expr)
@@ -133,30 +133,30 @@ class TestMaskNumbers:
 class TestCanExpressionRunWithNoInput:
     """Test the can_expression_run_with_no_input function"""
 
-    def test_empty_string(self):
+    def test_empty_string(self) -> None:
         """Test empty string returns True"""
         assert can_expression_run_with_no_input("") is True
         assert can_expression_run_with_no_input("   ") is True
 
-    def test_pure_string_literal(self):
+    def test_pure_string_literal(self) -> None:
         """Test pure string literals return True"""
         assert can_expression_run_with_no_input('"hello"') is True
         assert can_expression_run_with_no_input('"hello world"') is True
         assert can_expression_run_with_no_input('"hello\\"world"') is True
         assert can_expression_run_with_no_input('"this.is.a.string"') is True
 
-    def test_string_with_dots_inside(self):
+    def test_string_with_dots_inside(self) -> None:
         """Test string literals with dots inside return True"""
         assert can_expression_run_with_no_input('"this.is.a.string"') is True
         assert can_expression_run_with_no_input('"path/to/file"') is True
 
-    def test_contains_dots_outside_strings(self):
+    def test_contains_dots_outside_strings(self) -> None:
         """Test expressions with dots outside strings return False"""
         assert can_expression_run_with_no_input(".field") is False
         assert can_expression_run_with_no_input('"hello" + .field') is False
         assert can_expression_run_with_no_input('.field + "world"') is False
 
-    def test_input_dependent_functions(self):
+    def test_input_dependent_functions(self) -> None:
         """Test expressions with input-dependent functions return False"""
         assert can_expression_run_with_no_input("map(.field)") is False
         assert can_expression_run_with_no_input("select(.field)") is False
@@ -192,7 +192,7 @@ class TestCanExpressionRunWithNoInput:
         assert can_expression_run_with_no_input("combinations(.field)") is False
         assert can_expression_run_with_no_input("permutations(.field)") is False
 
-    def test_nullary_expressions(self):
+    def test_nullary_expressions(self) -> None:
         """Test nullary expressions return True"""
         assert can_expression_run_with_no_input("null") is True
         assert can_expression_run_with_no_input("true") is True
@@ -205,42 +205,42 @@ class TestCanExpressionRunWithNoInput:
         assert can_expression_run_with_no_input("range(10)") is True
         assert can_expression_run_with_no_input("range(1; 10)") is True
 
-    def test_array_literals(self):
+    def test_array_literals(self) -> None:
         """Test array literals without dots return True"""
         assert can_expression_run_with_no_input("[1, 2, 3]") is True
         assert can_expression_run_with_no_input('["a", "b", "c"]') is True
         assert can_expression_run_with_no_input("[true, false]") is True
         assert can_expression_run_with_no_input("[null, empty]") is True
 
-    def test_object_literals(self):
+    def test_object_literals(self) -> None:
         """Test object literals without dots return True"""
         assert can_expression_run_with_no_input('{"key": "value"}') is True
         assert can_expression_run_with_no_input('{"a": 1, "b": 2}') is True
         assert can_expression_run_with_no_input('{"flag": true}') is True
 
-    def test_array_literals_with_dots(self):
+    def test_array_literals_with_dots(self) -> None:
         """Test array literals with dots return False"""
         assert can_expression_run_with_no_input("[.field, .other]") is False
         assert can_expression_run_with_no_input('["a", .field]') is False
 
-    def test_object_literals_with_dots(self):
+    def test_object_literals_with_dots(self) -> None:
         """Test object literals with dots return False"""
         assert can_expression_run_with_no_input('{"key": .field}') is False
         assert can_expression_run_with_no_input('{"a": .field, "b": .other}') is False
 
-    def test_string_operations(self):
+    def test_string_operations(self) -> None:
         """Test string operations without dots return True"""
         assert can_expression_run_with_no_input('"hello" + "world"') is True
         assert can_expression_run_with_no_input('"a" + "b" + "c"') is True
 
-    def test_number_operations(self):
+    def test_number_operations(self) -> None:
         """Test number operations return True"""
         assert can_expression_run_with_no_input("1 + 2") is True
         assert can_expression_run_with_no_input("3 * 4") is True
         assert can_expression_run_with_no_input("10 / 2") is True
         assert can_expression_run_with_no_input("5 - 3") is True
 
-    def test_decimal_number_operations(self):
+    def test_decimal_number_operations(self) -> None:
         """Test decimal number operations return True (ensures decimal points in numbers don't require input)"""
         assert can_expression_run_with_no_input("3.14 + 2.5") is True
         assert can_expression_run_with_no_input("3.14 * 2.5") is True
@@ -251,18 +251,18 @@ class TestCanExpressionRunWithNoInput:
         assert can_expression_run_with_no_input("-3.14") is True
         assert can_expression_run_with_no_input("+3.14") is True
 
-    def test_mixed_operations(self):
+    def test_mixed_operations(self) -> None:
         """Test mixed operations without dots return True"""
         assert can_expression_run_with_no_input('"hello" + 42') is True
         assert can_expression_run_with_no_input('42 + "world"') is True
 
-    def test_operations_with_dots(self):
+    def test_operations_with_dots(self) -> None:
         """Test operations with dots return False"""
         assert can_expression_run_with_no_input(".field + .other") is False
         assert can_expression_run_with_no_input('"hello" + .field') is False
         assert can_expression_run_with_no_input('.field + "world"') is False
 
-    def test_whitespace_handling(self):
+    def test_whitespace_handling(self) -> None:
         """Test whitespace handling"""
         assert can_expression_run_with_no_input("  null  ") is True
         assert can_expression_run_with_no_input("  true  ") is True
@@ -270,12 +270,12 @@ class TestCanExpressionRunWithNoInput:
         assert can_expression_run_with_no_input("  42  ") is True
         assert can_expression_run_with_no_input('  "hello"  ') is True
 
-    def test_complex_nullary_expressions(self):
+    def test_complex_nullary_expressions(self) -> None:
         """Test complex nullary expressions"""
         assert can_expression_run_with_no_input("range(1; 10; 2)") is True
         assert can_expression_run_with_no_input("range(0; 100)") is True
 
-    def test_edge_cases(self):
+    def test_edge_cases(self) -> None:
         """Test edge cases"""
         # Empty array
         assert can_expression_run_with_no_input("[]") is True
@@ -290,40 +290,40 @@ class TestCanExpressionRunWithNoInput:
 class TestCanExpressionRunOnSingleItem:
     """Test the _can_expression_run_on_single_item function"""
 
-    def test_empty_key(self):
+    def test_empty_key(self) -> None:
         """Test empty key returns False"""
         assert _can_expression_run_on_single_item(".field", "") is False
         assert _can_expression_run_on_single_item("map(.field)", "") is False
 
-    def test_key_at_start(self):
+    def test_key_at_start(self) -> None:
         """Test key at start of expression"""
         assert _can_expression_run_on_single_item(".item.field", "item") is True
         assert _can_expression_run_on_single_item(".item", "item") is True
 
-    def test_key_in_middle(self):
+    def test_key_in_middle(self) -> None:
         """Test key in middle of expression"""
         assert _can_expression_run_on_single_item(".data.item.field", "item") is False
         assert _can_expression_run_on_single_item(".body.item.yaeli", "item") is False
 
-    def test_key_at_end(self):
+    def test_key_at_end(self) -> None:
         """Test key at end of expression"""
         assert _can_expression_run_on_single_item(".field.item", "item") is False
 
-    def test_key_in_function(self):
+    def test_key_in_function(self) -> None:
         """Test key in function calls"""
         assert _can_expression_run_on_single_item("map(.item.field)", "item") is True
         assert (
             _can_expression_run_on_single_item("select(.item.status)", "item") is True
         )
 
-    def test_key_in_pipe(self):
+    def test_key_in_pipe(self) -> None:
         """Test key in pipe operations"""
         assert _can_expression_run_on_single_item(".[] | .item.field", "item") is True
         assert (
             _can_expression_run_on_single_item(".data[] | .item.field", "item") is True
         )
 
-    def test_key_in_array(self):
+    def test_key_in_array(self) -> None:
         """Test key in array literals"""
         assert (
             _can_expression_run_on_single_item("[.item.id, .item.name]", "item") is True
@@ -335,7 +335,7 @@ class TestCanExpressionRunOnSingleItem:
             is False
         )
 
-    def test_key_in_object(self):
+    def test_key_in_object(self) -> None:
         """Test key in object literals"""
         assert (
             _can_expression_run_on_single_item(
@@ -350,7 +350,7 @@ class TestCanExpressionRunOnSingleItem:
             is False
         )
 
-    def test_key_in_conditional(self):
+    def test_key_in_conditional(self) -> None:
         """Test key in conditional expressions"""
         assert (
             _can_expression_run_on_single_item(
@@ -365,7 +365,7 @@ class TestCanExpressionRunOnSingleItem:
             is False
         )
 
-    def test_key_in_string_ignored(self):
+    def test_key_in_string_ignored(self) -> None:
         """Test key in string literals is ignored"""
         assert (
             _can_expression_run_on_single_item('"this is .item in string"', "item")
@@ -378,7 +378,7 @@ class TestCanExpressionRunOnSingleItem:
             is False
         )
 
-    def test_key_with_word_boundaries(self):
+    def test_key_with_word_boundaries(self) -> None:
         """Test key with proper word boundaries"""
         assert _can_expression_run_on_single_item(".item.field", "item") is True
         assert _can_expression_run_on_single_item(".item", "item") is True
@@ -387,25 +387,25 @@ class TestCanExpressionRunOnSingleItem:
         assert _can_expression_run_on_single_item(".items.field", "item") is False
         assert _can_expression_run_on_single_item(".myitem.field", "item") is False
 
-    def test_key_case_sensitive(self):
+    def test_key_case_sensitive(self) -> None:
         """Test key matching is case sensitive"""
         assert _can_expression_run_on_single_item(".ITEM.field", "item") is False
         assert _can_expression_run_on_single_item(".Item.field", "item") is False
         assert _can_expression_run_on_single_item(".ITEM.field", "ITEM") is True
 
-    def test_key_with_special_characters(self):
+    def test_key_with_special_characters(self) -> None:
         """Test key with special characters"""
         assert _can_expression_run_on_single_item(".item[0].field", "item") is True
         assert _can_expression_run_on_single_item(".item.field[0]", "item") is True
 
-    def test_key_not_present(self):
+    def test_key_not_present(self) -> None:
         """Test key not present in expression"""
         assert _can_expression_run_on_single_item(".field.other", "item") is False
         assert _can_expression_run_on_single_item(".data.field", "item") is False
         assert _can_expression_run_on_single_item("null", "item") is False
         assert _can_expression_run_on_single_item('"hello"', "item") is False
 
-    def test_key_in_complex_expressions(self):
+    def test_key_in_complex_expressions(self) -> None:
         """Test key in complex expressions"""
         assert (
             _can_expression_run_on_single_item(".data.items[] | .item.field", "item")
@@ -427,7 +427,7 @@ class TestCanExpressionRunOnSingleItem:
         )
         assert _can_expression_run_on_single_item("unique_by(.item.id)", "item") is True
 
-    def test_key_with_escaped_strings(self):
+    def test_key_with_escaped_strings(self) -> None:
         """Test key detection with escaped strings"""
         assert (
             _can_expression_run_on_single_item(
@@ -446,7 +446,7 @@ class TestCanExpressionRunOnSingleItem:
 class TestClassifyInput:
     """Test the classify_input function"""
 
-    def test_none_input(self):
+    def test_none_input(self) -> None:
         """Test expressions that require no input"""
         assert classify_input("null") == InputClassifyingResult.NONE
         assert classify_input("true") == InputClassifyingResult.NONE
@@ -462,7 +462,7 @@ class TestClassifyInput:
         assert classify_input("") == InputClassifyingResult.NONE
         assert classify_input("   ") == InputClassifyingResult.NONE
 
-    def test_single_input(self):
+    def test_single_input(self) -> None:
         """Test expressions that can run on single item"""
         assert classify_input(".item.field", "item") == InputClassifyingResult.SINGLE
         assert classify_input(".item", "item") == InputClassifyingResult.SINGLE
@@ -489,7 +489,7 @@ class TestClassifyInput:
             == InputClassifyingResult.SINGLE
         )
 
-    def test_all_input(self):
+    def test_all_input(self) -> None:
         """Test expressions that require all input"""
         assert classify_input(".field") == InputClassifyingResult.ALL
         assert classify_input(".data.field") == InputClassifyingResult.ALL
@@ -505,19 +505,19 @@ class TestClassifyInput:
             == InputClassifyingResult.ALL
         )
 
-    def test_single_input_without_key(self):
+    def test_single_input_without_key(self) -> None:
         """Test single input expressions without key parameter"""
         assert classify_input(".item.field") == InputClassifyingResult.ALL
         assert classify_input("map(.item.field)") == InputClassifyingResult.ALL
         assert classify_input("select(.item.status)") == InputClassifyingResult.ALL
 
-    def test_single_input_with_different_key(self):
+    def test_single_input_with_different_key(self) -> None:
         """Test single input expressions with different key"""
         assert classify_input(".item.field", "other") == InputClassifyingResult.ALL
         assert classify_input(".data.item.field", "other") == InputClassifyingResult.ALL
         assert classify_input("map(.item.field)", "other") == InputClassifyingResult.ALL
 
-    def test_edge_cases(self):
+    def test_edge_cases(self) -> None:
         """Test edge cases"""
         # Empty key
         assert classify_input(".item.field", "") == InputClassifyingResult.ALL
@@ -533,7 +533,7 @@ class TestClassifyInput:
         assert classify_input(".items.field", "item") == InputClassifyingResult.ALL
         assert classify_input(".myitem.field", "item") == InputClassifyingResult.ALL
 
-    def test_complex_expressions(self):
+    def test_complex_expressions(self) -> None:
         """Test complex expressions"""
         # Complex single input expressions
         assert (
@@ -578,7 +578,7 @@ class TestClassifyInput:
             classify_input("unique_by(.data.id)", "item") == InputClassifyingResult.ALL
         )
 
-    def test_input_dependent_functions(self):
+    def test_input_dependent_functions(self) -> None:
         """Test input-dependent functions"""
         # These should all require ALL input regardless of key
         assert classify_input("map(.field)", "item") == InputClassifyingResult.ALL
@@ -629,7 +629,7 @@ class TestClassifyInput:
             classify_input("permutations(.field)", "item") == InputClassifyingResult.ALL
         )
 
-    def test_whitespace_handling(self):
+    def test_whitespace_handling(self) -> None:
         """Test whitespace handling"""
         assert classify_input("  null  ") == InputClassifyingResult.NONE
         assert classify_input("  true  ") == InputClassifyingResult.NONE
@@ -641,7 +641,7 @@ class TestClassifyInput:
         )
         assert classify_input("  .field  ") == InputClassifyingResult.ALL
 
-    def test_string_operations(self):
+    def test_string_operations(self) -> None:
         """Test string operations"""
         assert classify_input('"hello" + "world"') == InputClassifyingResult.NONE
         assert classify_input('"hello" + .field') == InputClassifyingResult.ALL
@@ -651,7 +651,7 @@ class TestClassifyInput:
             == InputClassifyingResult.SINGLE
         )
 
-    def test_number_operations(self):
+    def test_number_operations(self) -> None:
         """Test number operations"""
         assert classify_input("1 + 2") == InputClassifyingResult.NONE
         assert classify_input("3 * 4") == InputClassifyingResult.NONE
@@ -662,7 +662,7 @@ class TestClassifyInput:
             classify_input(".item.field + 2", "item") == InputClassifyingResult.SINGLE
         )
 
-    def test_array_operations(self):
+    def test_array_operations(self) -> None:
         """Test array operations"""
         assert classify_input("[1, 2, 3]") == InputClassifyingResult.NONE
         assert classify_input("[.field, .other]") == InputClassifyingResult.ALL
@@ -675,7 +675,7 @@ class TestClassifyInput:
             == InputClassifyingResult.ALL
         )
 
-    def test_object_operations(self):
+    def test_object_operations(self) -> None:
         """Test object operations"""
         assert classify_input('{"key": "value"}') == InputClassifyingResult.NONE
         assert classify_input('{"key": .field}') == InputClassifyingResult.ALL
@@ -688,7 +688,7 @@ class TestClassifyInput:
             == InputClassifyingResult.ALL
         )
 
-    def test_conditional_operations(self):
+    def test_conditional_operations(self) -> None:
         """Test conditional operations"""
         assert (
             classify_input("if true then 1 else 0 end") == InputClassifyingResult.NONE
@@ -705,7 +705,7 @@ class TestClassifyInput:
             == InputClassifyingResult.ALL
         )
 
-    def test_range_operations(self):
+    def test_range_operations(self) -> None:
         """Test range operations"""
         assert classify_input("range(10)") == InputClassifyingResult.NONE
         assert classify_input("range(1; 10)") == InputClassifyingResult.NONE
@@ -716,7 +716,7 @@ class TestClassifyInput:
             == InputClassifyingResult.SINGLE
         )
 
-    def test_complex_mixed_expressions(self):
+    def test_complex_mixed_expressions(self) -> None:
         """Test complex mixed expressions"""
         # Mixed nullary expressions
         assert classify_input('"hello" + 42') == InputClassifyingResult.NONE
@@ -746,19 +746,19 @@ class TestClassifyInput:
 class TestInputClassifyingResult:
     """Test the InputClassifyingResult enum"""
 
-    def test_enum_values(self):
+    def test_enum_values(self) -> None:
         """Test enum values"""
         assert InputClassifyingResult.NONE.value == 1
         assert InputClassifyingResult.SINGLE.value == 2
         assert InputClassifyingResult.ALL.value == 3
 
-    def test_enum_names(self):
+    def test_enum_names(self) -> None:
         """Test enum names"""
         assert InputClassifyingResult.NONE.name == "NONE"
         assert InputClassifyingResult.SINGLE.name == "SINGLE"
         assert InputClassifyingResult.ALL.name == "ALL"
 
-    def test_enum_comparison(self):
+    def test_enum_comparison(self) -> None:
         """Test enum comparison"""
         assert InputClassifyingResult.NONE != InputClassifyingResult.SINGLE
         assert InputClassifyingResult.SINGLE != InputClassifyingResult.ALL
@@ -767,13 +767,13 @@ class TestInputClassifyingResult:
         assert InputClassifyingResult.SINGLE == InputClassifyingResult.SINGLE
         assert InputClassifyingResult.ALL == InputClassifyingResult.ALL
 
-    def test_enum_string_representation(self):
+    def test_enum_string_representation(self) -> None:
         """Test enum string representation"""
         assert str(InputClassifyingResult.NONE) == "InputClassifyingResult.NONE"
         assert str(InputClassifyingResult.SINGLE) == "InputClassifyingResult.SINGLE"
         assert str(InputClassifyingResult.ALL) == "InputClassifyingResult.ALL"
 
-    def test_enum_repr(self):
+    def test_enum_repr(self) -> None:
         """Test enum repr"""
         assert repr(InputClassifyingResult.NONE) == "<InputClassifyingResult.NONE: 1>"
         assert (
@@ -785,7 +785,7 @@ class TestInputClassifyingResult:
 class TestIntegration:
     """Integration tests for the jq_input_evaluator module"""
 
-    def test_real_world_scenarios(self):
+    def test_real_world_scenarios(self) -> None:
         """Test real-world scenarios"""
         # Blueprint mapping scenarios
         assert (
@@ -854,7 +854,7 @@ class TestIntegration:
         assert classify_input("false", "item") == InputClassifyingResult.NONE
         assert classify_input("42", "item") == InputClassifyingResult.NONE
 
-    def test_performance_scenarios(self):
+    def test_performance_scenarios(self) -> None:
         """Test performance-related scenarios"""
         # Large expressions
         large_expr = " + ".join([f'"{i}"' for i in range(100)])
@@ -868,7 +868,7 @@ class TestIntegration:
         multi_func_expr = "map(.item.field) | select(.item.status) | .item.value"
         assert classify_input(multi_func_expr, "item") == InputClassifyingResult.SINGLE
 
-    def test_edge_case_scenarios(self):
+    def test_edge_case_scenarios(self) -> None:
         """Test edge case scenarios"""
         # Empty expressions
         assert classify_input("", "item") == InputClassifyingResult.NONE
@@ -894,7 +894,7 @@ class TestIntegration:
             == InputClassifyingResult.SINGLE
         )
 
-    def test_consistency_scenarios(self):
+    def test_consistency_scenarios(self) -> None:
         """Test consistency scenarios"""
         # Same expression with different keys should be consistent
         expr = ".field.other"
