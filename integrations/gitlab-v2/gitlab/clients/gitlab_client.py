@@ -145,6 +145,19 @@ class GitLabClient:
             logger.info(f"Received batch with {len(releases_batch)} releases")
             yield releases_batch
 
+    async def _enrich_project_resources(
+        self,
+        project: dict[str, Any],
+        resource_iterator: AsyncIterator[list[dict[str, Any]]],
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Enrich resources with project information as they are fetched."""
+        project_info = {
+            "path_with_namespace": project["path_with_namespace"],
+        }
+        async for batch in resource_iterator:
+            if batch:
+                yield [{**resource, "__project": project_info} for resource in batch]
+
     async def get_projects_resource_with_enrichment(
         self,
         projects_batch: list[dict[str, Any]],
@@ -153,25 +166,11 @@ class GitLabClient:
     ) -> AsyncIterator[list[dict[str, Any]]]:
         semaphore = asyncio.Semaphore(max_concurrent)
 
-        async def enrich_project_resources(
-            project: dict[str, Any],
-            resource_iterator: AsyncIterator[list[dict[str, Any]]],
-        ) -> AsyncIterator[list[dict[str, Any]]]:
-            """Enrich resources with project information as they are fetched."""
-            project_info = {
-                "path_with_namespace": project["path_with_namespace"],
-            }
-            async for batch in resource_iterator:
-                if batch:
-                    yield [
-                        {**resource, "__project": project_info} for resource in batch
-                    ]
-
         tasks = [
             semaphore_async_iterator(
                 semaphore,
                 partial(
-                    enrich_project_resources,
+                    self._enrich_project_resources,
                     project,
                     self.rest.get_paginated_project_resource(
                         str(project["id"]),
