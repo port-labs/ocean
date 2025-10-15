@@ -8,7 +8,7 @@ authors = ["Ayodeji Adeoti <ayodeji.adeoti@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.28.12", extras = ["cli"]}
+port_ocean = {version = "^0.28.14", extras = ["cli"]}
 aiolimiter = "^1.2.1"
 
 [tool.poetry.group.dev.dependencies]
