@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import fnmatch
 import mimetypes
+import posixpath
 from pathlib import Path
 from typing import Dict, List, Any, AsyncGenerator, Optional, TYPE_CHECKING
 
@@ -228,6 +229,7 @@ async def process_matching_file(
             "file": file_obj,
             "path": file_path,
             "filename": str(Path(file_path).name),
+            "parentPath": posixpath.dirname(_normalize_posix(file_path)),
             "truncated": (content is None)
             and (file_obj.get("size") or 0) > size_limit_bytes
             and not skip_parsing,
@@ -296,9 +298,8 @@ async def process_typed_item(
 ) -> None:
     """Process an item with explicit type information."""
     item_path = item["path"]
-    item_type = item.get("type", "FILE")  # FILE | DIRECTORY | SYMLINK | SUBMODULE
+    item_type = item.get("type", "FILE")
 
-    # Always record the item for consumers
     result_list.append(item)
 
     if item_type == "DIRECTORY":
