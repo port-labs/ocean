@@ -35,7 +35,49 @@ class ActionRunTask(BaseModel):
 
 
 class ExecutionManager:
-    """Orchestrates action executors, polling and their webhook handlers"""
+    """
+    Orchestrates action executors, polling, and webhook handlers for integration actions.
+
+    The manager uses a queue-based system with support for:
+    - Global queue for non-partitioned actions
+    - Partition-specific queues for actions requiring sequential execution
+    - Round-robin worker distribution
+    - Deduplication of runs
+    - High watermark-based flow control
+
+    Attributes:
+        _webhook_manager (LiveEventsProcessorManager): Manages webhook processors for async updates
+        _polling_task (asyncio.Task[None] | None): Task that polls for new action runs
+        _workers_pool (set[asyncio.Task[None]]): Pool of worker tasks processing runs
+        _actions_executors (Dict[str, AbstractExecutor]): Registered action executors
+        _is_shutting_down (asyncio.Event): Event flag for graceful shutdown
+        _global_queue (LocalQueue[ActionRunTask]): Queue for non-partitioned actions
+        _partition_queues (Dict[str, AbstractQueue[ActionRunTask]]): Queues for partitioned actions
+        _deduplication_set (Set[str]): Set of run IDs for deduplication
+        _queues_locks (Dict[str, asyncio.Lock]): Locks for queue access synchronization
+        _active_sources (AbstractQueue[str]): Queue of active sources (global or partition-specific) used for round-robin distribution of work among workers
+        _high_watermark (int): Maximum total runs in all queues
+        _poll_check_interval_seconds (int): Seconds between polling attempts
+        _max_wait_seconds_before_shutdown (float): Maximum wait time during shutdown
+
+    Example:
+        ```python
+        # Create and configure execution manager
+        manager = ExecutionManager(
+            webhook_manager=webhook_mgr,
+            signal_handler=signal_handler,
+            runs_buffer_high_watermark=1000,
+            poll_check_interval_seconds=5,
+            max_wait_seconds_before_shutdown=30.0
+        )
+
+        # Register action executors
+        manager.register_executor(MyActionExecutor())
+
+        # Start processing
+        await manager.start_processing_action_runs()
+        ```
+    """
 
     def __init__(
         self,
@@ -63,7 +105,7 @@ class ExecutionManager:
 
     def register_executor(self, executor: AbstractExecutor) -> None:
         """
-        Register an executor implementation.
+        Register an action executor with the execution manager.
         """
         action_name = executor.ACTION_NAME
         if action_name in self._actions_executors:

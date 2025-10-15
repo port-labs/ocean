@@ -42,7 +42,62 @@ WORKFLOW_POLL_DELAY_SECONDS = 2
 
 
 class DispatchWorkflowExecutor(AbstractGithubExecutor):
-    """Executor for dispatching a workflow run"""
+    """
+    Executor for dispatching GitHub workflow runs and tracking their execution.
+
+    This executor implements the Port action for triggering GitHub Actions workflows.
+    It supports:
+    - Dispatching workflows with custom inputs
+    - Tracking workflow execution status
+    - Reporting workflow completion back to Port
+    - Rate limit handling for GitHub API
+    - Webhook processing for async status updates
+
+    The executor uses workflow names as partition keys to ensure sequential
+    execution of the same workflow, which is necessary for proper run tracking.
+    It identifies workflow runs by finding the one closest to the trigger time
+    and recording its ID.
+
+    Attributes:
+        ACTION_NAME (str): The name of this action in Port's spec ("dispatch_workflow")
+        PARTITION_KEY (str): The key for partitioning runs ("workflow")
+        WEBHOOK_PROCESSOR_CLASS (Type[AbstractWebhookProcessor]): Processor for workflow_run events
+        WEBHOOK_PATH (str): Path for receiving GitHub webhook events
+        _default_ref_cache (dict[str, str]): Cache of repository default branch names
+
+    Example Usage in Port:
+        ```yaml
+        actions:
+          dispatch_workflow:
+            displayName: Trigger Workflow
+            trigger: PORT
+            inputs:
+              repo:
+                type: string
+                description: Repository name
+              workflow:
+                type: string
+                description: Workflow file name or ID
+              workflowInputs:
+                type: object
+                description: Optional workflow inputs
+        ```
+
+    Example API Usage:
+        ```python
+        executor = DispatchWorkflowExecutor()
+        await executor.execute(ActionRun(
+            payload=IntegrationActionInvocationPayload(
+                actionType="dispatch_workflow",
+                integrationActionExecutionProperties={
+                    "repo": "my-repo",
+                    "workflow": "deploy.yml",
+                    "workflowInputs": {"environment": "prod"}
+                }
+            )
+        ))
+        ```
+    """
 
     ACTION_NAME = "dispatch_workflow"
 
@@ -54,11 +109,33 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     PARTITION_KEY = "workflow"
 
     class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
+        """
+        Webhook processor for handling GitHub workflow run completion events.
+
+        This processor is responsible for:
+        1. Filtering workflow_run events to only process completed runs
+        2. Verifying that the run was triggered by the authenticated user
+        3. Updating the Port action run status based on the workflow conclusion
+        4. Handling the mapping between GitHub run IDs and Port run IDs
+
+        The processor only handles events where:
+        - The event type is workflow_run
+        - The workflow run status is "completed"
+        - The actor matches the authenticated GitHub user
+        - The run has a matching Port action run ID
+
+        Attributes:
+            Inherits all attributes from BaseWorkflowRunWebhookProcessor
+        """
+
         @classmethod
         def get_processor_type(cls) -> WebhookProcessorType:
             return WebhookProcessorType.ACTION
 
         async def _should_process_event(self, event: WebhookEvent) -> bool:
+            """
+            Determine if this webhook event should be processed.
+            """
             workflow_run = event.payload["workflow_run"]
             authenticated_user = await get_authenticated_user()
             should_process = (
@@ -71,15 +148,19 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         async def handle_event(
             self, payload: EventPayload, resource_config: ResourceConfig
         ) -> WebhookEventRawResults:
+            """
+            Handle a workflow run completion webhook event.
+            """
             workflow_run = payload["workflow_run"]
 
             external_id = build_external_id(workflow_run)
-            action_run: ActionRun[IntegrationActionInvocationPayload] = (
+            action_run: ActionRun[IntegrationActionInvocationPayload] | None = (
                 await ocean.port_client.get_run_by_external_id(external_id)
             )
 
             if (
-                action_run.status == RunStatus.IN_PROGRESS
+                action_run
+                and action_run.status == RunStatus.IN_PROGRESS
                 and action_run.payload.integrationActionExecutionProperties.get(
                     "reportWorkflowStatus", False
                 )
@@ -100,6 +181,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     _default_ref_cache: dict[str, str] = {}
 
     async def _get_default_ref(self, repo: str) -> str:
+        """
+        Get the default branch name for a repository, using cache when available.
+        """
         if repo in self._default_ref_cache:
             return self._default_ref_cache[repo]
 
@@ -113,6 +197,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         return self._default_ref_cache[repo_id]
 
     async def execute(self, run: ActionRun[IntegrationActionInvocationPayload]) -> None:
+        """
+        Execute a workflow dispatch action by triggering a GitHub Actions workflow.
+        """
         repo = run.payload.integrationActionExecutionProperties.get("repo")
         workflow = run.payload.integrationActionExecutionProperties.get("workflow")
         inputs = run.payload.integrationActionExecutionProperties.get(

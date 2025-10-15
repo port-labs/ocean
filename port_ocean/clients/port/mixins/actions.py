@@ -27,13 +27,14 @@ class ActionsClientMixin:
 
         handle_port_status_code(response, should_log=should_log)
 
-    async def get_run_by_external_id(self, external_id: str) -> ActionRun:
+    async def get_run_by_external_id(self, external_id: str) -> ActionRun | None:
         # response = await self.client.get(
         #     f"{self.auth.api_url}/actions/runs?external_run_id={external_id}",
         #     headers=await self.auth.headers(),
         # )
         # handle_port_status_code(response)
-        # return response.json()
+        # runs = response.json().get("runs", [])
+        # return None if not len(runs) else runs[0]
         from port_ocean.core.models import IntegrationActionInvocationPayload
         from port_ocean.core.models import InvocationType
         from port_ocean.context.ocean import ocean
