@@ -203,5 +203,109 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "gitlabTag",
+    "title": "GitLab Tag",
+    "icon": "GitVersion",
+    "schema": {
+      "properties": {
+        "tagName": {
+          "title": "Tag Name",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "protected": {
+          "title": "Protected",
+          "type": "boolean"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "commitSha": {
+          "title": "Commit SHA",
+          "type": "string"
+        },
+        "commitTitle": {
+          "title": "Commit Title",
+          "type": "string"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "service": {
+        "title": "Service",
+        "target": "service",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "gitlabRelease",
+    "title": "GitLab Release",
+    "icon": "GitVersion",
+    "schema": {
+      "properties": {
+        "tagName": {
+          "title": "Tag Name",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "format": "markdown"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "releasedAt": {
+          "title": "Released At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "author": {
+          "title": "Author",
+          "type": "string"
+        },
+        "commitSha": {
+          "title": "Commit SHA",
+          "type": "string"
+        },
+        "upcomingRelease": {
+          "title": "Upcoming Release",
+          "type": "boolean"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "service": {
+        "title": "Service",
+        "target": "service",
+        "required": false,
+        "many": false
+      },
+      "gitlabMember": {
+        "title": "Author",
+        "target": "gitlabMember",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

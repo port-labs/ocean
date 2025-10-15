@@ -200,6 +200,36 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield merge_requests_batch
 
 
+@ocean.on_resync(ObjectKind.TAG)
+async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+
+    async for projects_batch in client.get_projects(
+        params=_build_visibility_params(),
+        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        include_languages=False,
+    ):
+        logger.info(f"Processing batch of {len(projects_batch)} projects for tags")
+
+        async for tags_batch in client.get_tags(projects_batch):
+            yield tags_batch
+
+
+@ocean.on_resync(ObjectKind.RELEASE)
+async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+
+    async for projects_batch in client.get_projects(
+        params=_build_visibility_params(),
+        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        include_languages=False,
+    ):
+        logger.info(f"Processing batch of {len(projects_batch)} projects for releases")
+
+        async for releases_batch in client.get_releases(projects_batch):
+            yield releases_batch
+
+
 @ocean.on_resync(ObjectKind.GROUP_WITH_MEMBERS)
 async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -303,3 +333,5 @@ ocean.add_webhook_processor("/hook/{group_id}", GroupWithMemberWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ProjectWebhookProcessor)
+#!todo - add tag webhook processor
+#!todo - add release webhook processor

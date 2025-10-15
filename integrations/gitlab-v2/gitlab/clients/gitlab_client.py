@@ -111,6 +111,81 @@ class GitLabClient:
             logger.info(f"Received batch with {len(groups_batch)} groups")
             yield groups_batch
 
+    async def get_tags(
+        self,
+        projects_batch: list[dict[str, Any]],
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch tags for each project in the batch.
+
+        Args:
+            projects_batch: List of projects to fetch tags for
+            max_concurrent: Maximum number of concurrent requests
+        """
+        async for tags_batch in self.get_projects_resource_with_enrichment(
+            projects_batch, "repository/tags", max_concurrent
+        ):
+            logger.info(f"Received batch with {len(tags_batch)} tags")
+            yield tags_batch
+
+    async def get_releases(
+        self,
+        projects_batch: list[dict[str, Any]],
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch releases for each project in the batch.
+
+        Args:
+            projects_batch: List of projects to fetch releases for
+            max_concurrent: Maximum number of concurrent requests
+        """
+        async for releases_batch in self.get_projects_resource_with_enrichment(
+            projects_batch, "releases", max_concurrent
+        ):
+            logger.info(f"Received batch with {len(releases_batch)} releases")
+            yield releases_batch
+
+    async def get_projects_resource_with_enrichment(
+        self,
+        projects_batch: list[dict[str, Any]],
+        resource_type: str,
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def enrich_project_resources(
+            project: dict[str, Any],
+            resource_iterator: AsyncIterator[list[dict[str, Any]]],
+        ) -> AsyncIterator[list[dict[str, Any]]]:
+            """Enrich resources with project information as they are fetched."""
+            project_info = {
+                "path_with_namespace": project["path_with_namespace"],
+            }
+            async for batch in resource_iterator:
+                if batch:
+                    yield [
+                        {**resource, "__project": project_info} for resource in batch
+                    ]
+
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                partial(
+                    enrich_project_resources,
+                    project,
+                    self.rest.get_paginated_project_resource(
+                        str(project["id"]),
+                        resource_type,
+                    ),
+                ),
+            )
+            for project in projects_batch
+        ]
+
+        async for batch in stream_async_iterators_tasks(*tasks):
+            if batch:
+                yield batch
+
     async def get_projects_resource(
         self,
         projects_batch: list[dict[str, Any]],
