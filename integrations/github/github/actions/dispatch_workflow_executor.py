@@ -42,7 +42,15 @@ WORKFLOW_POLL_DELAY_SECONDS = 2
 
 
 class DispatchWorkflowExecutor(AbstractGithubExecutor):
+    """Executor for dispatching a workflow run"""
+
     ACTION_NAME = "dispatch_workflow"
+
+    """
+    We use the workflow name as the partition key because we track workflow executions
+    by locating the workflow run closest to the trigger time and record its ID.
+    Triggering the same workflow concurrently would prevent us from uniquely tracking each instance.
+    """
     PARTITION_KEY = "workflow"
 
     class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):

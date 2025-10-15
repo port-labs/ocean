@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import time
 from typing import Dict, Set
 from loguru import logger
 from pydantic import BaseModel
@@ -23,7 +24,7 @@ from port_ocean.exceptions.execution_manager import (
 )
 from port_ocean.utils.signal import SignalHandler
 
-
+RATE_LIMIT_MAX_BACKOFF_SECONDS = 10
 GLOBAL_SOURCE = "__global__"
 
 
@@ -286,48 +287,62 @@ class ExecutionManager:
         """
         Execute a run using its registered executor.
         """
-        try:
-            async with self._queues_locks[run_task.queue_name]:
-                should_skip_execution = (
-                    run_task.visibility_expiration_timestamp < datetime.now()
-                    and run_task.run.id in self._deduplication_set
-                )
-            if should_skip_execution:
+        with logger.contextualize(
+            run=run_task.run.id, action=run_task.run.payload.actionType
+        ):
+            try:
+                async with self._queues_locks[run_task.queue_name]:
+                    if (
+                        run_task.visibility_expiration_timestamp < datetime.now()
+                        and run_task.run.id in self._deduplication_set
+                    ):
+                        logger.info(
+                            "Run visibility has already expired and is being deduplicated, skipping execution"
+                        )
+                        return
+
+                executor = self._actions_executors[run_task.run.payload.actionType]
+                while (
+                    await executor.is_close_to_rate_limit()
+                    and not self._is_shutting_down.is_set()
+                ):
+                    backoff_seconds = min(
+                        RATE_LIMIT_MAX_BACKOFF_SECONDS,
+                        await executor.get_remaining_seconds_until_rate_limit(),
+                    )
+                    await ocean.port_client.post_run_log(
+                        run_task.run.id,
+                        f"Delayed due to low remaining rate limit. Will attempt to re-run in {backoff_seconds} seconds",
+                    )
+                    await asyncio.sleep(backoff_seconds)
+
+                if self._is_shutting_down.is_set():
+                    logger.warning(
+                        "Shutting down execution manager, skipping execution"
+                    )
+                    return
+
+                await ocean.port_client.acknowledge_run(run_task.run.id)
+                logger.debug("Run acknowledged successfully")
+                start_time = time.monotonic()
+                await executor.execute(run_task.run)
                 logger.info(
-                    "Run visibility has already expired and is being deduplicated, skipping execution",
-                    run=run_task.run.id,
+                    "Run executed successfully",
+                    elapsed_ms=(time.monotonic() - start_time) * 1000,
+                )
+            except RunAlreadyAcknowledgedError:
+                logger.warning(
+                    "Run already being processed by another worker, skipping execution",
                 )
                 return
-
-            executor = self._actions_executors[run_task.run.payload.actionType]
-            while await executor.is_close_to_rate_limit():
-                await ocean.port_client.post_run_log(
-                    run_task.run.id,
-                    f"Delayed due to low remaining rate limit. Will attempt to re-run in {executor.get_remaining_seconds_until_rate_limit()} seconds",
+            except Exception as e:
+                logger.error(
+                    "Error executing run",
+                    error=e,
                 )
-                await asyncio.sleep(
-                    await executor.get_remaining_seconds_until_rate_limit()
+                await ocean.port_client.patch_run(
+                    run_task.run.id, {"summary": str(e), "status": RunStatus.FAILURE}
                 )
-
-            await ocean.port_client.acknowledge_run(run_task.run.id)
-            logger.debug("Run acknowledged successfully", run=run_task.run.id)
-            await executor.execute(run_task.run)
-        except RunAlreadyAcknowledgedError:
-            logger.warning(
-                "Run already being processed by another worker, skipping execution",
-                run=run_task.run.id,
-            )
-            return
-        except Exception as e:
-            logger.error(
-                "Error executing run",
-                error=e,
-                run=run_task.run.id,
-                action=run_task.run.payload.actionType,
-            )
-            await ocean.port_client.patch_run(
-                run_task.run.id, {"summary": str(e), "status": RunStatus.FAILURE}
-            )
 
     async def _gracefully_cancel_task(self, task: asyncio.Task[None]) -> None:
         """
