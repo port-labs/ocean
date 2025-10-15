@@ -1,0 +1,54 @@
+identifier: harborRepository
+title: Harbor Repository
+icon: Repository
+schema:
+  properties:
+    project_name:
+      type: string
+      title: Project Name
+      description: Harbor project that owns the repository
+    repository_name:
+      type: string
+      title: Repository Name
+      description: Short repository name as shown in Harbor
+    repository_path:
+      type: string
+      title: Repository Path
+      description: Full Harbor repository path including project prefix
+    artifact_count:
+      type: integer
+      title: Artifact Count
+      description: Number of artifacts stored in the repository
+    pull_count:
+      type: integer
+      title: Pull Count
+      description: Total pull count reported by Harbor
+    creation_time:
+      type: string
+      format: date-time
+      title: Creation Time
+      description: Timestamp of repository creation
+    update_time:
+      type: string
+      format: date-time
+      title: Update Time
+      description: Timestamp of the latest repository update
+  required:
+    - project_name
+    - repository_path
+mirrorProperties: {}
+calculationProperties: {}
+aggregationProperties: {}
+relations:
+  project:
+    target: harborProject
+    title: Project
+    description: Harbor project that contains this repository
+    many: false
+    required: true
+  artifacts:
+    target: harborArtifact
+    title: Artifacts
+    description: Artifacts stored in this repository
+    many: true
+    required: false
