@@ -1,0 +1,166 @@
+title: Harbor
+description: Harbor integration for Port Ocean
+icon: Harbor
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/container-registries/harbor
+features:
+  - type: exporter
+    section: Container Registries
+    resources:
+      - kind: harbor-project
+        description: Harbor projects discovered via the API
+      - kind: harbor-user
+        description: Harbor users and robot accounts with project memberships
+      - kind: harbor-artifact
+        description: Container images, Helm charts, and other artifacts within a project
+      - kind: harbor-vulnerability
+        description: Vulnerability scan findings emitted by Harbor scanners
+      - kind: harbor-repository
+        description: Harbor repositories containing collections of artifacts
+configurations:
+  - name: baseUrl
+    required: true
+    type: url
+    description: Base URL of your Harbor API (for example, https://harbor.example.com/api/v2.0).
+  - name: authMode
+    required: true
+    type: string
+    default: robot_token
+    description: Authentication method used for Harbor API access. Supported values are robot_token, basic, or oidc.
+    enum: ["robot_token", "basic", "oidc"]
+  - name: robotAccount
+    required: false
+    type: string
+    description: Harbor robot account name. Required when authMode is robot_token.
+  - name: robotToken
+    required: false
+    type: string
+    sensitive: true
+    description: Harbor robot account token. Required when authMode is robot_token.
+  - name: username
+    required: false
+    type: string
+    description: Harbor username for basic authentication. Required when authMode is basic.
+  - name: password
+    required: false
+    type: string
+    sensitive: true
+    description: Harbor password for basic authentication. Required when authMode is basic.
+  - name: oidcClientId
+    required: false
+    type: string
+    description: OIDC client identifier used when authMode is oidc.
+  - name: oidcClientSecret
+    required: false
+    type: string
+    sensitive: true
+    description: OIDC client secret used when authMode is oidc.
+  - name: projects
+    required: false
+    type: string
+    description: Comma-separated list of Harbor project names to ingest. Leave empty to sync every accessible project.
+  - name: projectVisibilityFilter
+    required: false
+    type: string
+    description: Comma-separated list of visibilities to include (public, private). Defaults to all visibilities.
+  - name: projectNamePrefix
+    required: false
+    type: string
+    description: Only ingest projects whose name begins with this prefix.
+  - name: repositoryProjectFilter
+    required: false
+    type: string
+    description: Comma-separated list of project names whose repositories should be ingested. Defaults to all projects.
+  - name: repositoryNamePrefix
+    required: false
+    type: string
+    description: Only ingest repositories whose name starts with this prefix.
+  - name: repositoryNameContains
+    required: false
+    type: string
+    description: Only ingest repositories whose name contains this substring.
+  - name: artifactTagFilter
+    required: false
+    type: string
+    description: Comma-separated list of tags to include when ingesting artifacts.
+  - name: artifactDigestFilter
+    required: false
+    type: string
+    description: Comma-separated list of artifact digests to include.
+  - name: artifactLabelFilter
+    required: false
+    type: string
+    description: Comma-separated list of labels that artifacts must include.
+  - name: artifactMediaTypeFilter
+    required: false
+    type: string
+    description: Comma-separated list of media types to include (for example, application/vnd.oci.image.manifest.v1+json).
+  - name: artifactCreatedSince
+    required: false
+    type: string
+    description: Only ingest artifacts created on or after this ISO-8601 timestamp.
+  - name: artifactVulnSeverityAtLeast
+    required: false
+    type: string
+    description: Minimum vulnerability severity an artifact must have to be ingested (one of Critical, High, Medium, Low, Negligible).
+  - name: logLevel
+    required: false
+    type: string
+    description: Override logging verbosity (DEBUG, INFO, WARN, ERROR).
+  - name: eventListenerType
+    required: false
+    type: string
+    default: polling
+    description: Controls whether Harbor changes are ingested by polling or via webhooks.
+    enum: ["polling", "webhook"]
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: Shared secret used to validate incoming webhook payloads when eventListenerType is webhook.
+  - name: webhookEndpoint
+    required: false
+    type: string
+    description: Public HTTPS endpoint configured in Harbor to deliver webhook events when eventListenerType is webhook.
+  - name: paginationStrategy
+    required: false
+    type: string
+    default: page
+    description: Pagination approach for Harbor API requests. Supported values are page or cursor.
+    enum: ["page", "cursor"]
+  - name: pageSize
+    required: false
+    type: integer
+    default: 100
+    description: Number of records requested per page when paginating Harbor APIs.
+  - name: maxPages
+    required: false
+    type: integer
+    description: Optional limit on the number of pages fetched during each sync. Leave empty to fetch every page.
+  - name: maxConcurrentRequests
+    required: false
+    type: integer
+    default: 5
+    description: Maximum number of concurrent Harbor API calls executed during sync operations.
+  - name: maxRetries
+    required: false
+    type: integer
+    default: 5
+    description: Maximum number of retry attempts for Harbor API requests when throttled or failing.
+  - name: webhookWorkerConcurrency
+    required: false
+    type: integer
+    default: 2
+    description: Maximum number of webhook payloads processed in parallel when eventListenerType is webhook.
+  - name: vulnerabilityScanners
+    required: false
+    type: string
+    description: Comma-separated list of Harbor scanner names to include. Defaults to every enabled scanner.
+  - name: vulnSeverityFilter
+    required: false
+    type: string
+    description: Comma-separated list of vulnerability severities to ingest (for example, Critical,High,Medium). Leave empty to ingest all severities.
+  - name: includeFixableOnly
+    required: false
+    type: boolean
+    default: false
+    description: When true, only ingest vulnerabilities that have available fixes.
