@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from typing import Dict, Set, Optional, List
 from loguru import logger
 from pydantic import BaseModel
-from port_ocean.clients.port.client import PortClient
 from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
@@ -39,15 +38,14 @@ class ExecutionManager:
 
     def __init__(
         self,
-        port_client: PortClient,
         webhook_manager: LiveEventsProcessorManager,
         signal_handler: SignalHandler,
         runs_buffer_high_watermark: int,
         poll_check_interval_seconds: int,
-        sync_queue_lock_timeout_seconds: float,
+        max_action_execution_seconds: int,
         max_wait_seconds_before_shutdown: float,
     ):
-        self._port_client = port_client
+        self._webhook_manager = webhook_manager
         self._polling_task: asyncio.Task[None] | None = None
         self._workers_pool: set[asyncio.Task[None]] = set()
         self._actions_executors: Dict[str, AbstractExecutor] = {}
@@ -56,13 +54,12 @@ class ExecutionManager:
         self._partition_queues: Dict[str, AbstractQueue[ActionRunTask]] = {}
         self._locked: Set[str] = set()
         self._lock_timestamps: Dict[str, float] = {}
-        self._webhook_manager = webhook_manager
-        self._timeout_task: Optional[asyncio.Task[None]] = None
+        self._release_expired_locks_task: Optional[asyncio.Task[None]] = None
         self._active_sources = LocalQueue()
         self._queue_state_lock = asyncio.Lock()
         self._high_watermark = runs_buffer_high_watermark
         self._poll_check_interval_seconds = poll_check_interval_seconds
-        self._lock_timeout_seconds = sync_queue_lock_timeout_seconds
+        self._max_action_execution_seconds = max_action_execution_seconds
         self._max_wait_seconds_before_shutdown = max_wait_seconds_before_shutdown
 
         signal_handler.register(self.shutdown)
@@ -104,7 +101,9 @@ class ExecutionManager:
             return
 
         self._polling_task = asyncio.create_task(self._poll_action_runs())
-        self._timeout_task = asyncio.create_task(self._background_timeout_check())
+        self._release_expired_locks_task = asyncio.create_task(
+            self._release_expired_locks()
+        )
 
         workers_count = max(1, ocean.config.execution_agent.workers_count)
         for _ in range(workers_count):
@@ -175,7 +174,7 @@ class ExecutionManager:
 
                 poll_limit = self._high_watermark - queues_size
                 runs: list[ActionRun[IntegrationActionInvocationPayload]] = (
-                    await self._port_client.get_pending_runs(
+                    await ocean.port_client.get_pending_runs(
                         limit=poll_limit,
                         visibility_timeout_seconds=ocean.config.execution_agent.visibility_timeout_seconds,
                     )
@@ -228,17 +227,17 @@ class ExecutionManager:
             except Exception as e:
                 logger.exception("Unexpected error in poll action runs", error=e)
 
-    async def _background_timeout_check(self) -> None:
+    async def _release_expired_locks(self) -> None:
         """
         Periodically release locks that have timed out for fairness.
         """
         while True:
             try:
-                await asyncio.sleep(self._lock_timeout_seconds / 4)
+                await asyncio.sleep(self._max_action_execution_seconds / 4)
                 now = time.time()
                 expired: List[str] = []
                 for key, ts in list(self._lock_timestamps.items()):
-                    if now - ts > self._lock_timeout_seconds:
+                    if now - ts > self._max_action_execution_seconds:
                         expired.append(key)
                         self._unlock(key)
                 if expired:
@@ -246,16 +245,66 @@ class ExecutionManager:
             except asyncio.CancelledError:
                 break
 
-    def _try_lock(self, key: str) -> bool:
-        if key in self._locked:
-            return False
-        self._locked.add(key)
-        self._lock_timestamps[key] = time.time()
-        return True
-
     def _unlock(self, key: str) -> None:
         self._locked.discard(key)
         self._lock_timestamps.pop(key, None)
+
+    async def _process_actions_runs(self) -> None:
+        """
+        Round-robin worker across global and partitions queues.
+        """
+        while not self._is_shutting_down.is_set():
+            source = await self._active_sources.get()
+
+            try:
+                if source == GLOBAL_SOURCE:
+                    await self._handle_global_queue_once()
+                else:
+                    await self._handle_partition_queue_once(source)
+            except Exception as e:
+                logger.exception("Worker processing error", source=source, error=e)
+
+    async def _execute_run(self, run_task: ActionRunTask) -> None:
+        """
+        Execute a run using its registered executor.
+        """
+        try:
+            if run_task.visibility_expiration_timestamp < datetime.now():
+                logger.debug(
+                    "Run visibility has already expired, skipping execution",
+                    run=run_task.run.id,
+                )
+                return
+
+            executor = self._actions_executors.get(run_task.run.payload.actionType)
+            if executor is None:
+                raise Exception("No executor registered for action")
+
+            while await executor.is_close_to_rate_limit():
+                await ocean.port_client.post_run_log(
+                    run_task.run.id,
+                    f"Delayed due to low remaining rate limit. Will attempt to re-run in {executor.get_remaining_seconds_until_rate_limit()} seconds",
+                )
+                await asyncio.sleep(
+                    await executor.get_remaining_seconds_until_rate_limit()
+                )
+
+            await ocean.port_client.acknowledge_run(run_task.run.id)
+            logger.debug("Run acknowledged successfully", run=run_task.run.id)
+            await executor.execute(run_task.run)
+        except RunAlreadyAcknowledgedError:
+            logger.debug("Run already acknowledged", run=run_task.run.id)
+            return
+        except Exception as e:
+            logger.error(
+                "Error executing run",
+                error=e,
+                run=run_task.run.id,
+                action=run_task.run.payload.actionType,
+            )
+            await ocean.port_client.patch_run(
+                run_task.run.id, {"summary": str(e), "status": RunStatus.FAILURE}
+            )
 
     async def _handle_global_queue_once(self):
         if await self._global_queue.size() == 0:
@@ -293,62 +342,12 @@ class ExecutionManager:
             async with self._queue_state_lock:
                 await self._active_sources.put(partition_name)
 
-    async def _process_actions_runs(self) -> None:
-        """
-        Round-robin worker across global queue and partition queues.
-        """
-        while not self._is_shutting_down.is_set():
-            source = await self._active_sources.get()
-
-            try:
-                if source == GLOBAL_SOURCE:
-                    await self._handle_global_queue_once()
-                else:
-                    await self._handle_partition_queue_once(source)
-            except Exception as e:
-                logger.exception("Worker processing error", source=source, error=e)
-
-    async def _execute_run(self, run_task: ActionRunTask) -> None:
-        """
-        Execute a run using its registered executor.
-        """
-        try:
-            if run_task.visibility_expiration_timestamp < datetime.now():
-                logger.debug(
-                    "Run visibility has already expired, skipping execution",
-                    run=run_task.run.id,
-                )
-                return
-
-            executor = self._actions_executors.get(run_task.run.payload.actionType)
-            if executor is None:
-                raise Exception("No executor registered for action")
-
-            while await executor.is_close_to_rate_limit():
-                await self._port_client.post_run_log(
-                    run_task.run.id,
-                    f"Delayed due to low remaining rate limit. Will attempt to re-run in {executor.get_remaining_seconds_until_rate_limit()} seconds",
-                )
-                await asyncio.sleep(
-                    await executor.get_remaining_seconds_until_rate_limit()
-                )
-
-            await self._port_client.acknowledge_run(run_task.run.id)
-            logger.debug("Run acknowledged successfully", run=run_task.run.id)
-            await executor.execute(run_task.run)
-        except RunAlreadyAcknowledgedError:
-            logger.debug("Run already acknowledged", run=run_task.run.id)
-            return
-        except Exception as e:
-            logger.error(
-                "Error executing run",
-                error=e,
-                run=run_task.run.id,
-                action=run_task.run.payload.actionType,
-            )
-            await self._port_client.patch_run(
-                run_task.run.id, {"summary": str(e), "status": RunStatus.FAILURE}
-            )
+    def _try_lock(self, key: str) -> bool:
+        if key in self._locked:
+            return False
+        self._locked.add(key)
+        self._lock_timestamps[key] = time.time()
+        return True
 
     async def _gracefully_cancel_task(self, task: asyncio.Task[None]) -> None:
         """
@@ -374,7 +373,7 @@ class ExecutionManager:
             await asyncio.wait_for(
                 asyncio.gather(
                     self._gracefully_cancel_task(self._polling_task),
-                    self._gracefully_cancel_task(self._timeout_task),
+                    self._gracefully_cancel_task(self._release_expired_locks_task),
                     *(worker for worker in self._workers_pool),
                 ),
                 timeout=self._max_wait_seconds_before_shutdown,

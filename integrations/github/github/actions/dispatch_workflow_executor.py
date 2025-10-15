@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 import json
 
 import httpx
-from loguru import logger
 from integrations.github.github.actions.utils import build_external_id
 from integrations.github.github.context.auth import (
     get_authenticated_user,

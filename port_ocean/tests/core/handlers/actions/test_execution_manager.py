@@ -2,7 +2,6 @@ import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 import pytest
-from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.mixins.actions import RunAlreadyAcknowledgedError
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.actions.execution_manager import (
@@ -65,12 +64,12 @@ def mock_signal_handler():
 @pytest.fixture
 def execution_manager(mock_webhook_manager, mock_signal_handler):
     return ExecutionManager(
-        port_client=MagicMock(spec=PortClient),
         webhook_manager=mock_webhook_manager,
         signal_handler=mock_signal_handler,
         runs_buffer_high_watermark=100,
         poll_check_interval_seconds=1,
-        sync_queue_lock_timeout_seconds=1.0,
+        max_action_execution_seconds=60,
+        max_wait_seconds_before_shutdown=30,
     )
 
 
@@ -239,7 +238,7 @@ class TestExecutionManager:
 
         # Verify tasks are created
         assert execution_manager._polling_task is not None
-        assert execution_manager._timeout_task is not None
+        assert execution_manager._release_expired_locks_task is not None
         assert len(execution_manager._workers_pool) > 0
 
         # Shutdown
@@ -247,7 +246,7 @@ class TestExecutionManager:
 
         # Verify tasks are cancelled
         assert execution_manager._polling_task.cancelled()
-        assert execution_manager._timeout_task.cancelled()
+        assert execution_manager._release_expired_locks_task.cancelled()
         assert all(task.cancelled() for task in execution_manager._workers_pool)
 
     @pytest.mark.asyncio
@@ -291,7 +290,7 @@ class TestExecutionManager:
     async def test_lock_timeout(self, execution_manager):
         """Test lock timeout behavior."""
         # Set a short lock timeout
-        execution_manager._lock_timeout_seconds = 0.1
+        execution_manager._max_action_execution_seconds = 0.1
 
         # Lock a queue
         queue_name = "test_queue"
@@ -301,7 +300,7 @@ class TestExecutionManager:
         await asyncio.sleep(0.2)
 
         # Run timeout check
-        await execution_manager._background_timeout_check()
+        await execution_manager._release_expired_locks()
 
         # Verify lock was released
         assert queue_name not in execution_manager._locked

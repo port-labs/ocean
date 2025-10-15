@@ -15,6 +15,7 @@ from port_ocean.core.event_listener import (
 from port_ocean.core.models import (
     CachingStorageMode,
     CreatePortResourcesOrigin,
+    EventListenerType,
     ProcessExecutionMode,
     Runtime,
 )
@@ -89,7 +90,7 @@ class ExecutionAgentSettings(BaseOceanModel, extra=Extra.allow):
     visibility_timeout_seconds: int = Field(default=90)
     poll_check_interval_seconds: int = Field(default=10)
     workers_count: int = Field(default=5)
-    sync_queue_lock_timeout_seconds: float = Field(default=60)
+    max_action_execution_seconds: int = Field(default=90)
 
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
@@ -137,6 +138,22 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     execution_agent: ExecutionAgentSettings = Field(
         default_factory=lambda: ExecutionAgentSettings()
     )
+
+    @root_validator
+    def validate_event_listener(
+        cls, values: dict[str, Any]
+    ) -> EventListenerSettingsType:
+        event_listener: EventListenerSettingsType = values.get("event_listener")
+        runtime: Runtime = values.get("runtime")
+
+        if (
+            event_listener.type == EventListenerType.ACTIONS_ONLY
+            and not runtime.is_saas_runtime
+        ):
+            raise ValueError(
+                "Actions-only event listener is only supported for Saas runtime"
+            )
+        return values
 
     @validator("process_execution_mode")
     def validate_process_execution_mode(
