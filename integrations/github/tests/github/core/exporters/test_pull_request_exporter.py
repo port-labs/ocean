@@ -31,7 +31,9 @@ TEST_PULL_REQUESTS = [
 def mock_datetime() -> Generator[datetime, None, None]:
     """Fixture that mocks the datetime module for consistent testing."""
     with patch("github.core.exporters.pull_request_exporter.datetime") as mock_dt:
-        mock_dt.now.return_value = datetime(2025, 8, 19, 12, 0, 0, tzinfo=UTC)  # do not change this value
+        mock_dt.now.return_value = datetime(
+            2025, 8, 19, 12, 0, 0, tzinfo=UTC
+        )  # do not change this value
         mock_dt.UTC = UTC
         mock_dt.timedelta = timedelta
         mock_dt.strptime = datetime.strptime
