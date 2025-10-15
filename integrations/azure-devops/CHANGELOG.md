@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.13 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.4.12 (2025-09-30)
+
+
+### Improvements
+
+- Updated spec file of Azure DevOps to support docs
+
+
+## 0.4.11 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.4.10 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.4.9 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+## 0.4.8 (2025-09-25)
+
+
+### Bug fixes
+
+- Handle request timeouts introduced by throttling delays.
+- Change expected headers to lowercase
+
+
+## 0.4.7 (2025-09-24)
+
+
+### Features
+
+- Added support for Iteration kind
+
+
 ## 0.4.6 (2025-09-22)
 
 

@@ -1,0 +1,26 @@
+description: Armorcode integration for Port Ocean
+icon: Armorcode
+title: Armorcode
+features:
+  - type: exporter
+    section: Code Quality & Security
+    resources:
+      - kind: product
+      - kind: sub-product
+      - kind: finding
+configurations:
+  - name: armorcodeApiKey
+    required: true
+    type: string
+    sensitive: true
+    description: "Armorcode API key for authentication , visit https://support.klera.io/hc/en-us/articles/16748469904665-ArmorCode to learn how to generate an API key."
+  - name: armorcodeApiBaseUrl
+    type: string
+    required: false
+    description: The base URL for the Armorcode API.
+    default: https://app.armorcode.com
+    example: "https://app.armorcode.com"
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
