@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from datetime import datetime, timedelta
 from typing import Dict, Set, Optional, List
 from loguru import logger
@@ -11,9 +9,6 @@ from port_ocean.core.models import (
 )
 import asyncio
 import time
-from port_ocean.clients.port.mixins.actions import (
-    RunAlreadyAcknowledgedError,
-)
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.queue.abstract_queue import AbstractQueue
 from port_ocean.core.handlers.queue.local_queue import LocalQueue
@@ -22,6 +17,11 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import IntegrationFeatureFlag
+from port_ocean.exceptions.execution_manager import (
+    DuplicateActionExecutorError,
+    PartitionKeyNotFoundError,
+    RunAlreadyAcknowledgedError,
+)
 from port_ocean.utils.signal import SignalHandler
 
 
@@ -70,7 +70,7 @@ class ExecutionManager:
         """
         action_name = executor.ACTION_NAME
         if action_name in self._actions_executors:
-            raise ValueError(
+            raise DuplicateActionExecutorError(
                 f"Executor for action '{action_name}' is already registered"
             )
 
@@ -110,50 +110,6 @@ class ExecutionManager:
             task = asyncio.create_task(self._process_actions_runs())
             self._workers_pool.add(task)
             task.add_done_callback(self._workers_pool.discard)
-
-    def _extract_partition_key(
-        self, run: ActionRun[IntegrationActionInvocationPayload], partition_key: str
-    ) -> str:
-        """
-        Extract the partition key from a run's payload.
-        """
-        value = run.payload.integrationActionExecutionProperties.get(partition_key)
-        if value:
-            return value
-
-        raise ValueError(
-            f"Partition key '{partition_key}' not found in invocation payload"
-        )
-
-    async def _add_run_to_queue(
-        self,
-        run: ActionRun[IntegrationActionInvocationPayload],
-        queue: AbstractQueue[ActionRunTask],
-        queue_name: str,
-        visibility_expiration_timestamp: datetime,
-    ) -> None:
-        """
-        Add a run to the queue.
-        """
-        was_empty = await queue.size() == 0
-        await queue.put(
-            ActionRunTask(
-                visibility_expiration_timestamp=visibility_expiration_timestamp, run=run
-            )
-        )
-        if was_empty:
-            async with self._queue_state_lock:
-                await self._active_sources.put(queue_name)
-
-    async def _get_queues_size(self) -> int:
-        """
-        Get the total size of all queues (global and partition queues).
-        """
-        global_size = await self._global_queue.size()
-        partition_sizes = []
-        for queue in self._partition_queues.values():
-            partition_sizes.append(await queue.size())
-        return global_size + sum(partition_sizes)
 
     async def _poll_action_runs(self):
         """
@@ -225,7 +181,54 @@ class ExecutionManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.exception("Unexpected error in poll action runs", error=e)
+                logger.exception(
+                    "Unexpected error in poll action runs, will attempt to re-poll",
+                    error=e,
+                )
+
+    async def _get_queues_size(self) -> int:
+        """
+        Get the total size of all queues (global and partition queues).
+        """
+        global_size = await self._global_queue.size()
+        partition_sizes = []
+        for queue in self._partition_queues.values():
+            partition_sizes.append(await queue.size())
+        return global_size + sum(partition_sizes)
+
+    async def _add_run_to_queue(
+        self,
+        run: ActionRun[IntegrationActionInvocationPayload],
+        queue: AbstractQueue[ActionRunTask],
+        queue_name: str,
+        visibility_expiration_timestamp: datetime,
+    ) -> None:
+        """
+        Add a run to the queue.
+        """
+        was_empty = await queue.size() == 0
+        await queue.put(
+            ActionRunTask(
+                visibility_expiration_timestamp=visibility_expiration_timestamp, run=run
+            )
+        )
+        if was_empty:
+            async with self._queue_state_lock:
+                await self._active_sources.put(queue_name)
+
+    def _extract_partition_key(
+        self, run: ActionRun[IntegrationActionInvocationPayload], partition_key: str
+    ) -> str:
+        """
+        Extract the partition key from a run's payload.
+        """
+        value = run.payload.integrationActionExecutionProperties.get(partition_key)
+        if value:
+            return value
+
+        raise PartitionKeyNotFoundError(
+            f"Partition key '{partition_key}' not found in invocation payload"
+        )
 
     async def _release_expired_locks(self) -> None:
         """
@@ -263,48 +266,6 @@ class ExecutionManager:
                     await self._handle_partition_queue_once(source)
             except Exception as e:
                 logger.exception("Worker processing error", source=source, error=e)
-
-    async def _execute_run(self, run_task: ActionRunTask) -> None:
-        """
-        Execute a run using its registered executor.
-        """
-        try:
-            if run_task.visibility_expiration_timestamp < datetime.now():
-                logger.debug(
-                    "Run visibility has already expired, skipping execution",
-                    run=run_task.run.id,
-                )
-                return
-
-            executor = self._actions_executors.get(run_task.run.payload.actionType)
-            if executor is None:
-                raise Exception("No executor registered for action")
-
-            while await executor.is_close_to_rate_limit():
-                await ocean.port_client.post_run_log(
-                    run_task.run.id,
-                    f"Delayed due to low remaining rate limit. Will attempt to re-run in {executor.get_remaining_seconds_until_rate_limit()} seconds",
-                )
-                await asyncio.sleep(
-                    await executor.get_remaining_seconds_until_rate_limit()
-                )
-
-            await ocean.port_client.acknowledge_run(run_task.run.id)
-            logger.debug("Run acknowledged successfully", run=run_task.run.id)
-            await executor.execute(run_task.run)
-        except RunAlreadyAcknowledgedError:
-            logger.debug("Run already acknowledged", run=run_task.run.id)
-            return
-        except Exception as e:
-            logger.error(
-                "Error executing run",
-                error=e,
-                run=run_task.run.id,
-                action=run_task.run.payload.actionType,
-            )
-            await ocean.port_client.patch_run(
-                run_task.run.id, {"summary": str(e), "status": RunStatus.FAILURE}
-            )
 
     async def _handle_global_queue_once(self):
         if await self._global_queue.size() == 0:
@@ -348,6 +309,48 @@ class ExecutionManager:
         self._locked.add(key)
         self._lock_timestamps[key] = time.time()
         return True
+
+    async def _execute_run(self, run_task: ActionRunTask) -> None:
+        """
+        Execute a run using its registered executor.
+        """
+        try:
+            if run_task.visibility_expiration_timestamp < datetime.now():
+                logger.debug(
+                    "Run visibility has already expired, skipping execution",
+                    run=run_task.run.id,
+                )
+                return
+
+            executor = self._actions_executors[run_task.run.payload.actionType]
+            while await executor.is_close_to_rate_limit():
+                await ocean.port_client.post_run_log(
+                    run_task.run.id,
+                    f"Delayed due to low remaining rate limit. Will attempt to re-run in {executor.get_remaining_seconds_until_rate_limit()} seconds",
+                )
+                await asyncio.sleep(
+                    await executor.get_remaining_seconds_until_rate_limit()
+                )
+
+            await ocean.port_client.acknowledge_run(run_task.run.id)
+            logger.debug("Run acknowledged successfully", run=run_task.run.id)
+            await executor.execute(run_task.run)
+        except RunAlreadyAcknowledgedError:
+            logger.warning(
+                "Run already being processed by another worker, skipping execution",
+                run=run_task.run.id,
+            )
+            return
+        except Exception as e:
+            logger.error(
+                "Error executing run",
+                error=e,
+                run=run_task.run.id,
+                action=run_task.run.payload.actionType,
+            )
+            await ocean.port_client.patch_run(
+                run_task.run.id, {"summary": str(e), "status": RunStatus.FAILURE}
+            )
 
     async def _gracefully_cancel_task(self, task: asyncio.Task[None]) -> None:
         """

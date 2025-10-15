@@ -10,10 +10,6 @@ from port_ocean.core.models import (
 )
 
 
-class RunAlreadyAcknowledgedError(Exception):
-    pass
-
-
 class ActionsClientMixin:
     def __init__(self, auth: PortAuthentication, client: httpx.AsyncClient):
         self.auth = auth

@@ -2,7 +2,6 @@ import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 import pytest
-from port_ocean.clients.port.mixins.actions import RunAlreadyAcknowledgedError
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.actions.execution_manager import (
     ExecutionManager,
@@ -11,12 +10,20 @@ from port_ocean.core.handlers.actions.execution_manager import (
 )
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
-    WebhookProcessorType,
 )
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
-from port_ocean.core.models import ActionRun, RunStatus
+from port_ocean.core.models import (
+    ActionRun,
+    IntegrationActionInvocationPayload,
+    InvocationType,
+    RunStatus,
+)
+from port_ocean.exceptions.execution_manager import (
+    DuplicateActionExecutorError,
+    RunAlreadyAcknowledgedError,
+)
 from port_ocean.utils.signal import SignalHandler
 
 
@@ -52,17 +59,19 @@ class MockPartitionedExecutor(MockExecutor):
 
 
 @pytest.fixture
-def mock_webhook_manager():
+def mock_webhook_manager() -> MagicMock:
     return MagicMock(spec=LiveEventsProcessorManager)
 
 
 @pytest.fixture
-def mock_signal_handler():
+def mock_signal_handler() -> MagicMock:
     return MagicMock(spec=SignalHandler)
 
 
 @pytest.fixture
-def execution_manager(mock_webhook_manager, mock_signal_handler):
+def execution_manager(
+    mock_webhook_manager: MagicMock, mock_signal_handler: MagicMock
+) -> ExecutionManager:
     return ExecutionManager(
         webhook_manager=mock_webhook_manager,
         signal_handler=mock_signal_handler,
@@ -74,76 +83,150 @@ def execution_manager(mock_webhook_manager, mock_signal_handler):
 
 
 @pytest.fixture
-def mock_action_run():
+def mock_test_action_run() -> ActionRun[IntegrationActionInvocationPayload]:
     return ActionRun(
         id="test-run-id",
-        action=MagicMock(name="test_action"),
-        payload={"oceanExecution": {}},
-        status=RunStatus.PENDING,
+        action=MagicMock(name="bla"),
+        payload=IntegrationActionInvocationPayload(
+            type=InvocationType.INTEGRATION_ACTION,
+            installationId="test-installation-id",
+            actionType=MockExecutor.ACTION_NAME,
+            integrationActionExecutionProperties={},
+        ),
+        status=RunStatus.IN_PROGRESS,
     )
 
 
 @pytest.fixture
-def mock_action_run_task(mock_action_run):
+def mock_test_partitioned_action_run() -> ActionRun[IntegrationActionInvocationPayload]:
+    return ActionRun(
+        id="test-run-id",
+        action=MagicMock(name="bla bla"),
+        payload=IntegrationActionInvocationPayload(
+            type=InvocationType.INTEGRATION_ACTION,
+            installationId="test-installation-id",
+            actionType=MockPartitionedExecutor.ACTION_NAME,
+            integrationActionExecutionProperties={
+                MockPartitionedExecutor.PARTITION_KEY: "A",
+            },
+        ),
+        status=RunStatus.IN_PROGRESS,
+    )
+
+
+@pytest.fixture
+def mock_test_action_run_task(
+    mock_test_action_run: ActionRun[IntegrationActionInvocationPayload],
+) -> ActionRunTask:
     return ActionRunTask(
         visibility_expiration_timestamp=datetime.now() + timedelta(minutes=5),
-        run=mock_action_run,
+        run=mock_test_action_run,
+    )
+
+
+@pytest.fixture
+def mock_test_partitioned_action_run_task(
+    mock_partitioned_action_run: ActionRun[IntegrationActionInvocationPayload],
+) -> ActionRunTask:
+    return ActionRunTask(
+        visibility_expiration_timestamp=datetime.now() + timedelta(minutes=5),
+        run=mock_partitioned_action_run,
     )
 
 
 class TestExecutionManager:
     @pytest.mark.asyncio
-    async def test_register_executor(self, execution_manager, mock_webhook_manager):
-        """Test registering an executor with webhook processor."""
+    async def test_register_executor(
+        self, execution_manager: ExecutionManager, mock_webhook_manager: MagicMock
+    ):
+        # Act
         execution_manager.register_executor(MockExecutor)
 
+        # Assert
         assert "test_action" in execution_manager._actions_executors
         mock_webhook_manager.register_processor.assert_called_once_with(
             "/test-webhook",
             MockWebhookProcessor,
-            WebhookProcessorType.ACTION,
         )
 
     @pytest.mark.asyncio
-    async def test_register_duplicate_executor(self, execution_manager):
-        """Test registering duplicate executor raises ValueError."""
+    async def test_register_duplicate_executor(
+        self, execution_manager: ExecutionManager
+    ):
+        # Act
         execution_manager.register_executor(MockExecutor)
 
+        # Assert
         with pytest.raises(
-            ValueError, match="Executor for action 'test_action' is already registered"
+            DuplicateActionExecutorError,
+            match="Executor for action 'test_action' is already registered",
         ):
             execution_manager.register_executor(MockExecutor)
 
     @pytest.mark.asyncio
-    async def test_execute_run_success(self, execution_manager, mock_action_run_task):
-        """Test successful execution of a run."""
+    async def test_execute_run_acknowledge(
+        self,
+        execution_manager: ExecutionManager,
+        mock_test_action_run_task: ActionRunTask,
+    ):
+        # Arrange
         execution_manager.register_executor(MockExecutor)
 
-        with patch.object(execution_manager, "acknowledge_run") as mock_acknowledge:
-            await execution_manager._execute_run(mock_action_run_task)
-            mock_acknowledge.assert_called_once_with(mock_action_run_task.run.id)
+        # Act & Assert
+        with patch.object(
+            execution_manager.ocean.port_client, "acknowledge_run"
+        ) as mock_acknowledge:
+            await execution_manager._execute_run(mock_test_action_run_task)
+            mock_acknowledge.assert_called_once_with(mock_test_action_run_task.run.id)
+
+    @pytest.mark.asyncio
+    async def test_execute_run_acknowledge_conflict(
+        self,
+        execution_manager: ExecutionManager,
+        mock_test_action_run_task: ActionRunTask,
+    ):
+        # Arrange
+        execution_manager.register_executor(MockExecutor)
+
+        # Act & Assert
+        with patch.object(
+            execution_manager.ocean.port_client, "acknowledge_run"
+        ) as mock_acknowledge:
+            mock_acknowledge.side_effect = RunAlreadyAcknowledgedError()
+            with patch.object(
+                execution_manager._actions_executors["test_action"], "execute"
+            ) as mock_execute:
+                await execution_manager._execute_run(mock_test_action_run_task)
+                mock_acknowledge.assert_called_once_with(
+                    mock_test_action_run_task.run.id
+                )
+                mock_execute.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_execute_run_expired_visibility(
-        self, execution_manager, mock_action_run
+        self,
+        execution_manager: ExecutionManager,
+        mock_action_run: ActionRun[IntegrationActionInvocationPayload],
     ):
-        """Test handling of expired visibility timeout."""
+        # Arrange
         expired_task = ActionRunTask(
             visibility_expiration_timestamp=datetime.now() - timedelta(minutes=5),
             run=mock_action_run,
         )
         execution_manager.register_executor(MockExecutor)
 
+        # Act & Assert
         with patch.object(execution_manager, "acknowledge_run") as mock_acknowledge:
             await execution_manager._execute_run(expired_task)
             mock_acknowledge.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_execute_run_rate_limited(
-        self, execution_manager, mock_action_run_task
+        self,
+        execution_manager: ExecutionManager,
+        mock_test_action_run_task: ActionRunTask,
     ):
-        """Test handling of rate limited execution."""
-
+        # Arrange
         class RateLimitedExecutor(MockExecutor):
             async def is_close_to_rate_limit(self) -> bool:
                 return True
@@ -153,129 +236,140 @@ class TestExecutionManager:
 
         execution_manager.register_executor(RateLimitedExecutor)
 
+        # Act & Assert
         with patch.object(execution_manager, "post_run_log") as mock_log:
             with patch.object(execution_manager, "acknowledge_run"):
-                await execution_manager._execute_run(mock_action_run_task)
+                await execution_manager._execute_run(mock_test_action_run_task)
                 mock_log.assert_called_with(
-                    mock_action_run_task.run.id,
+                    mock_test_action_run_task.run.id,
                     "Delayed due to low remaining rate limit. Will attempt to re-run in 1.0 seconds",
                 )
 
     @pytest.mark.asyncio
     async def test_execute_run_already_acknowledged(
-        self, execution_manager, mock_action_run_task
+        self,
+        execution_manager: ExecutionManager,
+        mock_test_action_run_task: ActionRunTask,
     ):
-        """Test handling of already acknowledged run."""
+        # Arrange
         execution_manager.register_executor(MockExecutor)
 
+        # Act & Assert
         with patch.object(execution_manager, "acknowledge_run") as mock_acknowledge:
             mock_acknowledge.side_effect = RunAlreadyAcknowledgedError()
-            await execution_manager._execute_run(mock_action_run_task)
-            mock_acknowledge.assert_called_once_with(mock_action_run_task.run.id)
+            await execution_manager._execute_run(mock_test_action_run_task)
+            mock_acknowledge.assert_called_once_with(mock_test_action_run_task.run.id)
 
     @pytest.mark.asyncio
-    async def test_execute_run_failure(self, execution_manager, mock_action_run_task):
-        """Test handling of execution failure."""
-
+    async def test_execute_run_failure(
+        self,
+        execution_manager: ExecutionManager,
+        mock_test_action_run_task: ActionRunTask,
+    ):
+        # Arrange
         class FailingExecutor(MockExecutor):
             async def execute(self, payload):
                 raise ValueError("Test error")
 
         execution_manager.register_executor(FailingExecutor)
 
+        # Act & Assert
         with patch.object(execution_manager, "acknowledge_run"):
             with patch.object(execution_manager, "patch_run") as mock_patch:
                 with pytest.raises(ValueError, match="Test error"):
-                    await execution_manager._execute_run(mock_action_run_task)
+                    await execution_manager._execute_run(mock_test_action_run_task)
 
                 mock_patch.assert_called_once_with(
-                    mock_action_run_task.run.id,
+                    mock_test_action_run_task.run.id,
                     {"summary": "Test error", "status": RunStatus.FAILURE},
                 )
 
     @pytest.mark.asyncio
-    async def test_execute_run_missing_executor(
-        self, execution_manager, mock_action_run_task
+    async def test_partition_queue_handling(
+        self,
+        execution_manager: ExecutionManager,
+        mock_test_partitioned_action_run: ActionRun[IntegrationActionInvocationPayload],
+        mock_test_partitioned_action_run_task: ActionRunTask,
     ):
-        """Test handling of missing executor."""
-        with pytest.raises(Exception, match="No executor registered for action"):
-            await execution_manager._execute_run(mock_action_run_task)
-
-    @pytest.mark.asyncio
-    async def test_partition_queue_handling(self, execution_manager):
-        """Test handling of partitioned queues."""
+        # Arrange
         execution_manager.register_executor(MockPartitionedExecutor)
 
-        run = ActionRun(
-            id="test-run-id",
-            action=MagicMock(name="test_partitioned_action"),
-            payload={"oceanExecution": {"partition_key": "test_partition"}},
-            status=RunStatus.PENDING,
-        )
-
-        task = ActionRunTask(
-            visibility_expiration_timestamp=datetime.now() + timedelta(minutes=5),
-            run=run,
-        )
-
+        # Act & Assert
         await execution_manager._add_run_to_queue(
-            run,
+            mock_test_partitioned_action_run,
             execution_manager._partition_queues.setdefault(
                 "test_partition", execution_manager._global_queue.__class__()
             ),
             "test_partition",
-            task.visibility_expiration_timestamp,
+            mock_test_partitioned_action_run_task.visibility_expiration_timestamp,
         )
 
         assert "test_partition" in execution_manager._partition_queues
         assert await execution_manager._partition_queues["test_partition"].size() == 1
 
     @pytest.mark.asyncio
-    async def test_graceful_shutdown(self, execution_manager):
-        """Test graceful shutdown of execution manager."""
+    async def test_graceful_shutdown(self, execution_manager: ExecutionManager):
+        # Arrange
         # Start processing
         await execution_manager.start_processing_action_runs()
 
+        # Assert
         # Verify tasks are created
         assert execution_manager._polling_task is not None
         assert execution_manager._release_expired_locks_task is not None
         assert len(execution_manager._workers_pool) > 0
 
+        # Act
         # Shutdown
         await execution_manager.shutdown()
 
+        # Assert
         # Verify tasks are cancelled
         assert execution_manager._polling_task.cancelled()
         assert execution_manager._release_expired_locks_task.cancelled()
         assert all(task.cancelled() for task in execution_manager._workers_pool)
 
     @pytest.mark.asyncio
-    async def test_queue_high_watermark(self, execution_manager):
-        """Test queue high watermark behavior."""
+    async def test_queue_high_watermark(self, execution_manager: ExecutionManager):
+        # Arrange
         execution_manager._high_watermark = 2
 
+        # Act
         # Add runs until high watermark
         run1 = ActionRun(
             id="run1",
             action=MagicMock(name="test_action"),
-            payload={"oceanExecution": {}},
+            payload=IntegrationActionInvocationPayload(
+                type=InvocationType.INTEGRATION_ACTION,
+                installationId="test-installation-id",
+                actionType=MockExecutor.ACTION_NAME,
+                integrationActionExecutionProperties={},
+            ),
             status=RunStatus.PENDING,
         )
         run2 = ActionRun(
             id="run2",
             action=MagicMock(name="test_action"),
-            payload={"oceanExecution": {}},
+            payload=IntegrationActionInvocationPayload(
+                type=InvocationType.INTEGRATION_ACTION,
+                installationId="test-installation-id",
+                actionType=MockExecutor.ACTION_NAME,
+                integrationActionExecutionProperties={},
+            ),
             status=RunStatus.PENDING,
         )
 
         expiration = datetime.now() + timedelta(minutes=5)
+        # Act & Assert
         await execution_manager._add_run_to_queue(
             run1, execution_manager._global_queue, GLOBAL_SOURCE, expiration
         )
+        # Act & Assert
         await execution_manager._add_run_to_queue(
             run2, execution_manager._global_queue, GLOBAL_SOURCE, expiration
         )
 
+        # Assert
         # Verify queue size is at high watermark
         assert await execution_manager._get_queues_size() == 2
 
@@ -287,8 +381,7 @@ class TestExecutionManager:
             )
 
     @pytest.mark.asyncio
-    async def test_lock_timeout(self, execution_manager):
-        """Test lock timeout behavior."""
+    async def test_lock_timeout(self, execution_manager: ExecutionManager):
         # Set a short lock timeout
         execution_manager._max_action_execution_seconds = 0.1
 
