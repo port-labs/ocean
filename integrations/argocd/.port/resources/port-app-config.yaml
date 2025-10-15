@@ -96,9 +96,11 @@ resources:
           properties:
             kind: .kind
             namespace: .namespace
-            version: .resourceVersion
-            annotations: .liveState | fromjson | .metadata.annotations
-            labels: .liveState | fromjson | .metadata.labels
+            version: if .kind == "Deployment" then .resourceVersion else null end
+            annotations: (.liveState // .targetState) | fromjson | .metadata.annotations
+            labels: (.liveState // .targetState) | fromjson | .metadata.labels
           relations:
             application: .__application.metadata.uid
-            image: 'if .kind == "Deployment" then .liveState | fromjson | .spec.template.spec.containers[0].image else null end'
+            image: >-
+              if .kind == "Deployment" then (.liveState // .targetState) |
+              fromjson | .spec.template.spec.containers[0].image else null end
