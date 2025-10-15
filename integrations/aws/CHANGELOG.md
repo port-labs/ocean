@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.182 (2025-10-08)
+
+
+### Improvements
+
+- Deprecate aws v2 integration
+
+
 ## 0.2.181 (2025-09-30)
 
 
