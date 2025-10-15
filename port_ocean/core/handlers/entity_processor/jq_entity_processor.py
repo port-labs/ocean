@@ -22,9 +22,9 @@ from port_ocean.core.utils.utils import (
 from port_ocean.exceptions.core import EntityProcessorException
 from port_ocean.utils.queue_utils import process_in_queue
 from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
-    InputEvaluationResult,
-    evaluate_input,
-    should_shortcut_no_input,
+    InputClassifyingResult,
+    classify_input,
+    can_expression_run_with_no_input,
 )
 
 
@@ -273,6 +273,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         items_to_parse_key: str | None,
     ) -> tuple[dict[str, str], dict[str, Any]]:
         if not items_to_parse_key:
+            # No items to parse, map the entity and return the misconfigurations and the mapped entity
             misconfigurations: dict[str, str] = {}
             data_to_search = data if isinstance(data, dict) else data[0]
             mapped_entity = await self._search_as_object(
@@ -291,22 +292,29 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         misconfigurations_item: dict[str, str] = {}
         misconfigurations_all: dict[str, str] = {}
+        # Map the entity with jq expressions that classified as single item expressions with the single item as input
         mapped_entity_item = await self._search_as_object(
             modified_data[0], raw_entity_mappings["item"], misconfigurations_item
         )
+        # To Prevent misclassification data loss, we merge the expressions that classified as single item expressions and resulted as misconfigured
+        # into the expressions that classified as all expressions
         if misconfigurations_item:
+            # The misconfigurations dict not contains the mapping expressions themselves, so we need to filter the original mapping by the misconfigured keys
             filtered_item_mappings = self._filter_mappings_by_keys(
                 raw_entity_mappings["item"], list(misconfigurations_item.keys())
             )
             raw_entity_mappings["all"] = self._deep_merge(
                 raw_entity_mappings["all"], filtered_item_mappings
             )
+        # Map the entity with jq expressions that classified as all expressions with the whole data as input
         mapped_entity_all = await self._search_as_object(
             modified_data[1], raw_entity_mappings["all"], misconfigurations_all
         )
+        # Map the entity with jq expressions that classified as no input required expressions with empty object as input
         mapped_entity_empty = await self._search_as_object(
             {}, raw_entity_mappings["empty"], misconfigurations_all
         )
+        # Merge the mapped entities
         mapped_entity = self._deep_merge(mapped_entity_item, mapped_entity_all)
         mapped_entity = self._deep_merge(mapped_entity, mapped_entity_empty)
         return misconfigurations_all, mapped_entity
@@ -317,7 +325,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         selector_query: str,
         items_to_parse_key: str | None,
     ) -> bool:
-        if should_shortcut_no_input(selector_query):
+        if can_expression_run_with_no_input(selector_query):
             return await self._search_as_bool({}, selector_query)
         if isinstance(data, tuple):
             return await self._search_as_bool(
@@ -393,11 +401,18 @@ class JQEntityProcessor(BaseEntityProcessor):
     def _build_raw_entity_mappings(
         self, raw_entity_mappings: dict[str, Any], items_to_parse_name: str
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-        """Filter entity mappings to only include values that start with f'.{items_to_parse_name}'"""
-        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
-            InputEvaluationResult.NONE: {},
-            InputEvaluationResult.SINGLE: {},
-            InputEvaluationResult.ALL: {},
+        """
+        Build the raw entity mappings for the items to parse.
+        The mappings are grouped by the input classifying result.
+        There are 3 input classifying results:
+            - NONE: The expression can be executed with no input
+            - SINGLE: The expression can be executed on a single item
+            - ALL: The expression can be executed on all the data
+        """
+        mappings: dict[InputClassifyingResult, dict[str, Any]] = {
+            InputClassifyingResult.NONE: {},
+            InputClassifyingResult.SINGLE: {},
+            InputClassifyingResult.ALL: {},
         }
         for key, value in raw_entity_mappings.items():
             if isinstance(value, str):
@@ -417,24 +432,25 @@ class JQEntityProcessor(BaseEntityProcessor):
                     value,
                 )
         return (
-            mappings[InputEvaluationResult.SINGLE],
-            mappings[InputEvaluationResult.ALL],
-            mappings[InputEvaluationResult.NONE],
+            mappings[InputClassifyingResult.SINGLE],
+            mappings[InputClassifyingResult.ALL],
+            mappings[InputClassifyingResult.NONE],
         )
 
     def group_complex_mapping_value(
         self,
         pattern: str,
-        mappings: dict[InputEvaluationResult, dict[str, Any]],
+        mappings: dict[InputClassifyingResult, dict[str, Any]],
         key: str,
         value: dict[str, Any],
     ) -> None:
-        mapping_dicts: dict[InputEvaluationResult, dict[str, Any]] = {
-            InputEvaluationResult.SINGLE: {},
-            InputEvaluationResult.ALL: {},
-            InputEvaluationResult.NONE: {},
-        }
+
         if key in ["properties", "relations"]:
+            mapping_dicts: dict[InputClassifyingResult, dict[str, Any]] = {
+                InputClassifyingResult.SINGLE: {},
+                InputClassifyingResult.ALL: {},
+                InputClassifyingResult.NONE: {},
+            }
             # For properties and relations, filter the dictionary values
             for dict_key, dict_value in value.items():
                 if isinstance(dict_value, str):
@@ -448,43 +464,23 @@ class JQEntityProcessor(BaseEntityProcessor):
                     # Handle IngestSearchQuery objects
                     self.group_search_query_mapping_value(
                         pattern,
-                        mapping_dicts[InputEvaluationResult.SINGLE],
-                        mapping_dicts[InputEvaluationResult.ALL],
+                        mapping_dicts[InputClassifyingResult.SINGLE],
+                        mapping_dicts[InputClassifyingResult.ALL],
                         dict_key,
                         dict_value,
                     )
+            for input_classifying_result, mapping_dict in mapping_dicts.items():
+                if mapping_dict:
+                    mappings[input_classifying_result][key] = mapping_dict
         else:
             # For identifier/team IngestSearchQuery objects
             self.group_search_query_mapping_value(
                 pattern,
-                mapping_dicts[InputEvaluationResult.SINGLE],
-                mapping_dicts[InputEvaluationResult.ALL],
+                mappings[InputClassifyingResult.SINGLE],
+                mappings[InputClassifyingResult.ALL],
                 key,
                 value,
             )
-            mapping_dicts[InputEvaluationResult.SINGLE] = (
-                mapping_dicts[InputEvaluationResult.SINGLE][key]
-                if mapping_dicts[InputEvaluationResult.SINGLE]
-                else {}
-            )
-            mapping_dicts[InputEvaluationResult.ALL] = (
-                mapping_dicts[InputEvaluationResult.ALL][key]
-                if mapping_dicts[InputEvaluationResult.ALL]
-                else {}
-            )
-
-        if mapping_dicts[InputEvaluationResult.SINGLE]:
-            mappings[InputEvaluationResult.SINGLE][key] = mapping_dicts[
-                InputEvaluationResult.SINGLE
-            ]
-        if mapping_dicts[InputEvaluationResult.ALL]:
-            mappings[InputEvaluationResult.ALL][key] = mapping_dicts[
-                InputEvaluationResult.ALL
-            ]
-        if mapping_dicts[InputEvaluationResult.NONE]:
-            mappings[InputEvaluationResult.NONE][key] = mapping_dicts[
-                InputEvaluationResult.NONE
-            ]
 
     def group_search_query_mapping_value(
         self,
@@ -494,7 +490,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         dict_key: str,
         dict_value: dict[str, Any],
     ) -> None:
-        if self._should_keep_ingest_search_query(dict_value, pattern):
+        if self._classify_search_query(dict_value, pattern):
             single_item_dict[dict_key] = dict_value
         else:
             all_item_dict[dict_key] = dict_value
@@ -502,17 +498,37 @@ class JQEntityProcessor(BaseEntityProcessor):
     def group_string_mapping_value(
         self,
         pattern: str,
-        mappings: dict[InputEvaluationResult, dict[str, Any]],
+        mappings: dict[InputClassifyingResult, dict[str, Any]],
         key: str,
         value: str,
     ) -> None:
-        input_evaluation_result = evaluate_input(value, pattern)
+        input_evaluation_result = classify_input(value, pattern)
         mappings[input_evaluation_result][key] = value
 
-    def _should_keep_ingest_search_query(
-        self, query_dict: dict[str, Any], pattern: str
-    ) -> bool:
-        """Check if an IngestSearchQuery should be kept based on its rules"""
+    def _classify_search_query(self, query_dict: dict[str, Any], pattern: str) -> bool:
+        """
+        Classify the input required to run jq expressions of an IngestSearchQuery
+        If at least one rule contains a value that includes the pattern, return True
+        Otherwise, return False
+        Example:
+        The pattern is item
+        relations:
+            someRelation:
+              combinator: "and"
+              rules:
+                - operator: "="
+                  property: "someProperty"
+                  value: .field
+                - combinator: "or"
+                  rules:
+                    - operator: "="
+                      property: "anotherProperty"
+                      value: .item.something
+                    - operator: "="
+                      property: "yetAnotherProperty"
+                      value: .yetAnotherValue
+        One value is .item.something, which is a single item based expression, so it will be classified as SINGLE
+        """
         if "rules" not in query_dict:
             return False
 
@@ -531,14 +547,33 @@ class JQEntityProcessor(BaseEntityProcessor):
     def _is_rule_or_query_contains_pattern(
         self, rule: dict[str, Any], pattern: str
     ) -> bool:
+        """
+        Check if a rule or query contains a value that includes the pattern
+        If the value is a single item based expression, return True
+        Otherwise, return False
+        Example:
+        The pattern is item
+        The rule is:
+                - combinator: "or"
+                  rules:
+                    - operator: "="
+                      property: "anotherProperty"
+                      value: .item.something
+                    - operator: "="
+                      property: "yetAnotherProperty"
+                      value: .yetAnotherValue
+        This rule is not a single rule (not contains a value property) but a search query rule (contains a rules property)
+        so we need to recursively check the rules property to check if at least one rule contains a value that includes the pattern
+        In this case, one value is .item.something, which is a single item based expression, so it will be classified as SINGLE ==> true
+        """
         if "value" in rule and isinstance(rule["value"], str):
             # Use evaluate_input to check if the pattern is relevant for this value
-            input_evaluation_result = evaluate_input(rule["value"], pattern)
-            if input_evaluation_result == InputEvaluationResult.SINGLE:
+            input_evaluation_result = classify_input(rule["value"], pattern)
+            if input_evaluation_result == InputClassifyingResult.SINGLE:
                 return True
         # Recursively check nested IngestSearchQuery objects
         elif "rules" in rule:
-            if self._should_keep_ingest_search_query(rule, pattern):
+            if self._classify_search_query(rule, pattern):
                 return True
         return False
 
@@ -548,6 +583,46 @@ class JQEntityProcessor(BaseEntityProcessor):
         """
         Filter mappings to preserve structure with only the specified keys present.
         Recursively handles nested dictionaries and lists, searching for keys at any level.
+
+        Args:
+            mappings: The dictionary containing mapping configurations to filter
+            target_keys: List of keys to preserve in the filtered result
+
+        Returns:
+            A filtered dictionary containing only the specified keys and their nested structures
+
+        Examples:
+            # Basic filtering with direct keys
+            mappings = {
+                "name": "John",
+                "age": 30,
+                "city": "New York",
+                "country": "USA"
+            }
+            target_keys = ["name", "age"]
+            result = self._filter_mappings_by_keys(mappings, target_keys)
+            # Returns: {"name": "John", "age": 30}
+
+            # Nested dictionary filtering
+            mappings = {
+                "user": {
+                    "profile": {"name": "John", "email": "john@example.com"},
+                    "settings": {"theme": "dark", "notifications": True}
+                },
+                "metadata": {"created_at": "2023-01-01", "version": "1.0"}
+            }
+            target_keys = ["name", "email", "created_at"]
+            result = self._filter_mappings_by_keys(mappings, target_keys)
+            # Returns: {
+            #     "user": {
+            #         "profile": {"name": "John", "email": "john@example.com"}
+            #     },
+            #     "metadata": {"created_at": "2023-01-01"}
+            # }
+
+            # Empty target keys returns empty dict
+            result = self._filter_mappings_by_keys(mappings, [])
+            # Returns: {}
         """
         if not target_keys:
             return {}
@@ -566,7 +641,44 @@ class JQEntityProcessor(BaseEntityProcessor):
     def _process_mapping_value(
         self, key: str, value: Any, target_keys: list[str]
     ) -> Any:
-        """Process a single mapping value, handling different types recursively."""
+        """
+        Process a single mapping value, handling different types recursively.
+
+        This helper method is used by _filter_mappings_by_keys to process individual
+        key-value pairs. It handles both simple values and nested dictionaries,
+        applying the filtering logic recursively to maintain the hierarchical structure.
+
+        Args:
+            key: The key of the current mapping item being processed
+            value: The value associated with the key (can be any type)
+            target_keys: List of keys to preserve in the filtered result
+
+        Returns:
+            The processed value if it should be included, None otherwise.
+            For dictionaries, returns the filtered dictionary or None if empty.
+            For simple values, returns the value if the key is in target_keys, None otherwise.
+
+        Examples:
+            # Simple value processing - key in target_keys
+            result = self._process_mapping_value("name", "John", ["name", "age"])
+            # Returns: "John"
+
+            # Simple value processing - key not in target_keys
+            result = self._process_mapping_value("city", "New York", ["name", "age"])
+            # Returns: None
+
+            # Dictionary processing with nested target keys
+            nested_dict = {
+                "profile": {"name": "John", "email": "john@example.com"},
+                "settings": {"theme": "dark"}
+            }
+            result = self._process_mapping_value("user", nested_dict, ["name", "email"])
+            # Returns: {"profile": {"name": "John", "email": "john@example.com"}}
+
+            # Dictionary processing with no matching target keys
+            result = self._process_mapping_value("user", nested_dict, ["version"])
+            # Returns: None
+        """
         if isinstance(value, dict):
             # Recursively filter nested dictionary
             filtered_dict = self._filter_mappings_by_keys(value, target_keys)

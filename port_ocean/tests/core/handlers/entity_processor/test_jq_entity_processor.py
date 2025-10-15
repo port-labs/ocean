@@ -432,66 +432,66 @@ class TestJQEntityProcessor:
     ) -> None:
         """Test group_string_mapping_value function with various string values"""
         from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
-            InputEvaluationResult,
+            InputClassifyingResult,
         )
 
         # Test with different input evaluation results
-        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
-            InputEvaluationResult.SINGLE: {},
-            InputEvaluationResult.ALL: {},
-            InputEvaluationResult.NONE: {},
+        mappings: dict[InputClassifyingResult, dict[str, Any]] = {
+            InputClassifyingResult.SINGLE: {},
+            InputClassifyingResult.ALL: {},
+            InputClassifyingResult.NONE: {},
         }
 
         # Test SINGLE evaluation (contains pattern)
         mocked_processor.group_string_mapping_value(
             "item", mappings, "identifier", ".item.id"
         )
-        assert mappings[InputEvaluationResult.SINGLE]["identifier"] == ".item.id"
+        assert mappings[InputClassifyingResult.SINGLE]["identifier"] == ".item.id"
         assert (
-            InputEvaluationResult.ALL not in mappings
-            or not mappings[InputEvaluationResult.ALL]
+            InputClassifyingResult.ALL not in mappings
+            or not mappings[InputClassifyingResult.ALL]
         )
         assert (
-            InputEvaluationResult.NONE not in mappings
-            or not mappings[InputEvaluationResult.NONE]
+            InputClassifyingResult.NONE not in mappings
+            or not mappings[InputClassifyingResult.NONE]
         )
 
         # Test ALL evaluation (contains dots but not pattern)
         mappings = {
-            InputEvaluationResult.SINGLE: {},
-            InputEvaluationResult.ALL: {},
-            InputEvaluationResult.NONE: {},
+            InputClassifyingResult.SINGLE: {},
+            InputClassifyingResult.ALL: {},
+            InputClassifyingResult.NONE: {},
         }
         mocked_processor.group_string_mapping_value(
             "item", mappings, "external_ref", ".external.ref"
         )
-        assert mappings[InputEvaluationResult.ALL]["external_ref"] == ".external.ref"
+        assert mappings[InputClassifyingResult.ALL]["external_ref"] == ".external.ref"
         assert (
-            InputEvaluationResult.SINGLE not in mappings
-            or not mappings[InputEvaluationResult.SINGLE]
+            InputClassifyingResult.SINGLE not in mappings
+            or not mappings[InputClassifyingResult.SINGLE]
         )
         assert (
-            InputEvaluationResult.NONE not in mappings
-            or not mappings[InputEvaluationResult.NONE]
+            InputClassifyingResult.NONE not in mappings
+            or not mappings[InputClassifyingResult.NONE]
         )
 
         # Test NONE evaluation (nullary expression)
         mappings = {
-            InputEvaluationResult.SINGLE: {},
-            InputEvaluationResult.ALL: {},
-            InputEvaluationResult.NONE: {},
+            InputClassifyingResult.SINGLE: {},
+            InputClassifyingResult.ALL: {},
+            InputClassifyingResult.NONE: {},
         }
         mocked_processor.group_string_mapping_value(
             "item", mappings, "static_value", '"static"'
         )
-        assert mappings[InputEvaluationResult.NONE]["static_value"] == '"static"'
+        assert mappings[InputClassifyingResult.NONE]["static_value"] == '"static"'
         assert (
-            InputEvaluationResult.SINGLE not in mappings
-            or not mappings[InputEvaluationResult.SINGLE]
+            InputClassifyingResult.SINGLE not in mappings
+            or not mappings[InputClassifyingResult.SINGLE]
         )
         assert (
-            InputEvaluationResult.ALL not in mappings
-            or not mappings[InputEvaluationResult.ALL]
+            InputClassifyingResult.ALL not in mappings
+            or not mappings[InputClassifyingResult.ALL]
         )
 
     async def test_group_complex_mapping_value_properties(
@@ -499,13 +499,13 @@ class TestJQEntityProcessor:
     ) -> None:
         """Test group_complex_mapping_value with properties dictionary"""
         from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
-            InputEvaluationResult,
+            InputClassifyingResult,
         )
 
-        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
-            InputEvaluationResult.SINGLE: {},
-            InputEvaluationResult.ALL: {},
-            InputEvaluationResult.NONE: {},
+        mappings: dict[InputClassifyingResult, dict[str, Any]] = {
+            InputClassifyingResult.SINGLE: {},
+            InputClassifyingResult.ALL: {},
+            InputClassifyingResult.NONE: {},
         }
 
         # Test properties with mixed string values
@@ -531,9 +531,9 @@ class TestJQEntityProcessor:
             "static_value": '"static"',
         }
 
-        assert mappings[InputEvaluationResult.SINGLE]["properties"] == expected_single
-        assert mappings[InputEvaluationResult.ALL]["properties"] == expected_all
-        assert mappings[InputEvaluationResult.NONE]["properties"] == expected_none
+        assert mappings[InputClassifyingResult.SINGLE]["properties"] == expected_single
+        assert mappings[InputClassifyingResult.ALL]["properties"] == expected_all
+        assert mappings[InputClassifyingResult.NONE]["properties"] == expected_none
 
     async def test_build_raw_entity_mappings_edge_cases(
         self, mocked_processor: JQEntityProcessor
@@ -924,13 +924,13 @@ class TestJQEntityProcessor:
     ) -> None:
         """Test group_complex_mapping_value with relations dictionary"""
         from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
-            InputEvaluationResult,
+            InputClassifyingResult,
         )
 
-        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
-            InputEvaluationResult.SINGLE: {},
-            InputEvaluationResult.ALL: {},
-            InputEvaluationResult.NONE: {},
+        mappings: dict[InputClassifyingResult, dict[str, Any]] = {
+            InputClassifyingResult.SINGLE: {},
+            InputClassifyingResult.ALL: {},
+            InputClassifyingResult.NONE: {},
         }
 
         # Test relations with mixed string and IngestSearchQuery values
@@ -992,22 +992,22 @@ class TestJQEntityProcessor:
             "static_relation": '"static"',
         }
 
-        assert mappings[InputEvaluationResult.SINGLE]["relations"] == expected_single
-        assert mappings[InputEvaluationResult.ALL]["relations"] == expected_all
-        assert mappings[InputEvaluationResult.NONE]["relations"] == expected_none
+        assert mappings[InputClassifyingResult.SINGLE]["relations"] == expected_single
+        assert mappings[InputClassifyingResult.ALL]["relations"] == expected_all
+        assert mappings[InputClassifyingResult.NONE]["relations"] == expected_none
 
     async def test_group_complex_mapping_value_identifier_ingest_search_query(
         self, mocked_processor: JQEntityProcessor
     ) -> None:
         """Test group_complex_mapping_value with identifier IngestSearchQuery"""
         from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
-            InputEvaluationResult,
+            InputClassifyingResult,
         )
 
-        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
-            InputEvaluationResult.SINGLE: {},
-            InputEvaluationResult.ALL: {},
-            InputEvaluationResult.NONE: {},
+        mappings: dict[InputClassifyingResult, dict[str, Any]] = {
+            InputClassifyingResult.SINGLE: {},
+            InputClassifyingResult.ALL: {},
+            InputClassifyingResult.NONE: {},
         }
 
         # Test identifier IngestSearchQuery that matches pattern
@@ -1025,14 +1025,14 @@ class TestJQEntityProcessor:
             "rules": [{"property": "id", "operator": "equals", "value": ".item.id"}],
         }
 
-        assert mappings[InputEvaluationResult.SINGLE]["identifier"] == expected_single
+        assert mappings[InputClassifyingResult.SINGLE]["identifier"] == expected_single
         assert (
-            InputEvaluationResult.ALL not in mappings
-            or not mappings[InputEvaluationResult.ALL]
+            InputClassifyingResult.ALL not in mappings
+            or not mappings[InputClassifyingResult.ALL]
         )
         assert (
-            InputEvaluationResult.NONE not in mappings
-            or not mappings[InputEvaluationResult.NONE]
+            InputClassifyingResult.NONE not in mappings
+            or not mappings[InputClassifyingResult.NONE]
         )
 
     async def test_group_complex_mapping_value_team_ingest_search_query(
@@ -1040,13 +1040,13 @@ class TestJQEntityProcessor:
     ) -> None:
         """Test group_complex_mapping_value with team IngestSearchQuery"""
         from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
-            InputEvaluationResult,
+            InputClassifyingResult,
         )
 
-        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
-            InputEvaluationResult.SINGLE: {},
-            InputEvaluationResult.ALL: {},
-            InputEvaluationResult.NONE: {},
+        mappings: dict[InputClassifyingResult, dict[str, Any]] = {
+            InputClassifyingResult.SINGLE: {},
+            InputClassifyingResult.ALL: {},
+            InputClassifyingResult.NONE: {},
         }
 
         # Test team IngestSearchQuery that doesn't match pattern
@@ -1068,14 +1068,14 @@ class TestJQEntityProcessor:
             ],
         }
 
-        assert mappings[InputEvaluationResult.ALL]["team"] == expected_all
+        assert mappings[InputClassifyingResult.ALL]["team"] == expected_all
         assert (
-            InputEvaluationResult.SINGLE not in mappings
-            or not mappings[InputEvaluationResult.SINGLE]
+            InputClassifyingResult.SINGLE not in mappings
+            or not mappings[InputClassifyingResult.SINGLE]
         )
         assert (
-            InputEvaluationResult.NONE not in mappings
-            or not mappings[InputEvaluationResult.NONE]
+            InputClassifyingResult.NONE not in mappings
+            or not mappings[InputClassifyingResult.NONE]
         )
 
     async def test_group_complex_mapping_value_nested_ingest_search_query(
@@ -1083,13 +1083,13 @@ class TestJQEntityProcessor:
     ) -> None:
         """Test group_complex_mapping_value with nested IngestSearchQuery"""
         from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
-            InputEvaluationResult,
+            InputClassifyingResult,
         )
 
-        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
-            InputEvaluationResult.SINGLE: {},
-            InputEvaluationResult.ALL: {},
-            InputEvaluationResult.NONE: {},
+        mappings: dict[InputClassifyingResult, dict[str, Any]] = {
+            InputClassifyingResult.SINGLE: {},
+            InputClassifyingResult.ALL: {},
+            InputClassifyingResult.NONE: {},
         }
 
         # Test nested IngestSearchQuery with mixed rules
@@ -1136,14 +1136,14 @@ class TestJQEntityProcessor:
             ],
         }
 
-        assert mappings[InputEvaluationResult.SINGLE]["identifier"] == expected_single
+        assert mappings[InputClassifyingResult.SINGLE]["identifier"] == expected_single
         assert (
-            InputEvaluationResult.ALL not in mappings
-            or not mappings[InputEvaluationResult.ALL]
+            InputClassifyingResult.ALL not in mappings
+            or not mappings[InputClassifyingResult.ALL]
         )
         assert (
-            InputEvaluationResult.NONE not in mappings
-            or not mappings[InputEvaluationResult.NONE]
+            InputClassifyingResult.NONE not in mappings
+            or not mappings[InputClassifyingResult.NONE]
         )
 
     async def test_group_complex_mapping_value_invalid_ingest_search_query(
@@ -1151,13 +1151,13 @@ class TestJQEntityProcessor:
     ) -> None:
         """Test group_complex_mapping_value with invalid IngestSearchQuery structures"""
         from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
-            InputEvaluationResult,
+            InputClassifyingResult,
         )
 
-        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
-            InputEvaluationResult.SINGLE: {},
-            InputEvaluationResult.ALL: {},
-            InputEvaluationResult.NONE: {},
+        mappings: dict[InputClassifyingResult, dict[str, Any]] = {
+            InputClassifyingResult.SINGLE: {},
+            InputClassifyingResult.ALL: {},
+            InputClassifyingResult.NONE: {},
         }
 
         # Test invalid IngestSearchQuery (no rules field)
@@ -1173,14 +1173,14 @@ class TestJQEntityProcessor:
         # Should go to ALL since it doesn't match the pattern
         expected_all = {"combinator": "and"}
 
-        assert mappings[InputEvaluationResult.ALL]["identifier"] == expected_all
+        assert mappings[InputClassifyingResult.ALL]["identifier"] == expected_all
         assert (
-            InputEvaluationResult.SINGLE not in mappings
-            or not mappings[InputEvaluationResult.SINGLE]
+            InputClassifyingResult.SINGLE not in mappings
+            or not mappings[InputClassifyingResult.SINGLE]
         )
         assert (
-            InputEvaluationResult.NONE not in mappings
-            or not mappings[InputEvaluationResult.NONE]
+            InputClassifyingResult.NONE not in mappings
+            or not mappings[InputClassifyingResult.NONE]
         )
 
     async def test_group_complex_mapping_value_empty_dict(
@@ -1188,13 +1188,13 @@ class TestJQEntityProcessor:
     ) -> None:
         """Test group_complex_mapping_value with empty dictionary"""
         from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
-            InputEvaluationResult,
+            InputClassifyingResult,
         )
 
-        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
-            InputEvaluationResult.SINGLE: {},
-            InputEvaluationResult.ALL: {},
-            InputEvaluationResult.NONE: {},
+        mappings: dict[InputClassifyingResult, dict[str, Any]] = {
+            InputClassifyingResult.SINGLE: {},
+            InputClassifyingResult.ALL: {},
+            InputClassifyingResult.NONE: {},
         }
 
         # Test empty properties dictionary
@@ -1206,16 +1206,16 @@ class TestJQEntityProcessor:
 
         # Should not add anything to any mapping
         assert (
-            InputEvaluationResult.SINGLE not in mappings
-            or not mappings[InputEvaluationResult.SINGLE]
+            InputClassifyingResult.SINGLE not in mappings
+            or not mappings[InputClassifyingResult.SINGLE]
         )
         assert (
-            InputEvaluationResult.ALL not in mappings
-            or not mappings[InputEvaluationResult.ALL]
+            InputClassifyingResult.ALL not in mappings
+            or not mappings[InputClassifyingResult.ALL]
         )
         assert (
-            InputEvaluationResult.NONE not in mappings
-            or not mappings[InputEvaluationResult.NONE]
+            InputClassifyingResult.NONE not in mappings
+            or not mappings[InputClassifyingResult.NONE]
         )
 
     async def test_group_complex_mapping_value_mixed_content(
@@ -1223,13 +1223,13 @@ class TestJQEntityProcessor:
     ) -> None:
         """Test group_complex_mapping_value with mixed string and IngestSearchQuery content"""
         from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
-            InputEvaluationResult,
+            InputClassifyingResult,
         )
 
-        mappings: dict[InputEvaluationResult, dict[str, Any]] = {
-            InputEvaluationResult.SINGLE: {},
-            InputEvaluationResult.ALL: {},
-            InputEvaluationResult.NONE: {},
+        mappings: dict[InputClassifyingResult, dict[str, Any]] = {
+            InputClassifyingResult.SINGLE: {},
+            InputClassifyingResult.ALL: {},
+            InputClassifyingResult.NONE: {},
         }
 
         # Test properties with mixed content
@@ -1285,6 +1285,6 @@ class TestJQEntityProcessor:
             "string_none": '"static"',
         }
 
-        assert mappings[InputEvaluationResult.SINGLE]["properties"] == expected_single
-        assert mappings[InputEvaluationResult.ALL]["properties"] == expected_all
-        assert mappings[InputEvaluationResult.NONE]["properties"] == expected_none
+        assert mappings[InputClassifyingResult.SINGLE]["properties"] == expected_single
+        assert mappings[InputClassifyingResult.ALL]["properties"] == expected_all
+        assert mappings[InputClassifyingResult.NONE]["properties"] == expected_none
