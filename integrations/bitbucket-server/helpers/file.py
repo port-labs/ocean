@@ -219,9 +219,10 @@ async def process_matching_file(
             content, file_obj.get("mimeType"), file_path
         )
 
+        file_obj["content"] = encoded_content
+        file_obj["contentEncoding"] = content_encoding
+
         result = {
-            "content": encoded_content,
-            "contentEncoding": content_encoding,
             "repo": repo,
             "project": {"key": project_key},
             "file": file_obj,
@@ -344,8 +345,8 @@ async def process_repository_files(
             client, project_key, repo_slug, ""
         ):
             # We only consider FILE items as candidates to match the filename patterns
-            if item.get("type") != "FILE":
-                continue
+            # if item.get("type") != "FILE":
+            #     continue
 
             file_path = item.get("path", "")
             if matches_file_pattern(

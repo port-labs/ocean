@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import fnmatch
+import posixpath
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, TYPE_CHECKING
 
@@ -103,22 +104,28 @@ async def _list_dirs_recursively(
     result_list: List[Dict[str, Any]],
 ) -> None:
     """
-    Recursively list all DIRECTORY-like items under 'path' using the /files API.
-    Records any item (FILE/DIRECTORY/SYMLINK/SUBMODULE), but only recurses into DIRECTORY.
+    Using /files only returns FILE paths (strings). We derive DIRECTORY paths
+    by taking all parent directories of each file.
     """
     try:
         base = "" if path in ("", "*") else path
-        async for contents in client.get_directory_contents(
-            project_key, repo_slug, base
-        ):
-            for item in contents:
-                await _process_directory_item(
-                    client, project_key, repo_slug, item, result_list
-                )
+        seen_dirs: set[str] = set()
+        async for file_batch in client.get_directory_contents(project_key, repo_slug, base):
+            for file_path in file_batch:  # strings like "users/migrations/0001_initial.py"
+                # Walk up parents: "users/migrations" -> "users" -> ""
+                p = _dir_like(file_path)
+                while True:
+                    p = posixpath.dirname(p)
+                    if not p:
+                        break
+                    if p not in seen_dirs:
+                        seen_dirs.add(p)
+                        result_list.append({"path": p, "type": "DIRECTORY"})
+        # If the user asked for base as an exact directory, include it too
+        if base and base not in seen_dirs:
+            result_list.append({"path": _dir_like(base), "type": "DIRECTORY"})
     except Exception as e:
-        logger.error(
-            f"[folders] Error listing '{path}' in {project_key}/{repo_slug}: {e}"
-        )
+        logger.error(f"[folders] Error listing '{path}' in {project_key}/{repo_slug}: {e}")
 
 
 async def _process_directory_item(
