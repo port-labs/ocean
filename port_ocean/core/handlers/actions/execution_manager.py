@@ -191,7 +191,7 @@ class ExecutionManager:
                         logger.warning(
                             "No Executors registered to handle this action, skipping run...",
                             action_type=action_type,
-                            run=run.id,
+                            run_id=run.id,
                         )
                         continue
 
@@ -242,10 +242,13 @@ class ExecutionManager:
         visibility_expiration_timestamp: datetime,
     ) -> None:
         """
-        Add a run to the queue.
+        Add a run to the queue, if the queue is empty, add the source to the active sources.
         """
         async with self._queues_locks[queue_name]:
-            self._deduplication_set.add(run.id)
+            if await queue.size() == 0:
+                await self._active_sources.put(queue_name)
+                self._deduplication_set.add(run.id)
+            logger.info(f"Adding run to queue {queue_name}", run_id=run.id)
             await queue.put(
                 ActionRunTask(
                     visibility_expiration_timestamp=visibility_expiration_timestamp,
@@ -253,11 +256,10 @@ class ExecutionManager:
                     run=run,
                 )
             )
-        await self._add_source_if_not_empty(queue_name)
 
-    async def _add_source_if_not_empty(self, source_name: str) -> None:
+    async def _add_source_if_not_empty(self, source_name: str, poller=False) -> None:
         """
-        Add a source to the active sources if the queue is not empty.
+        Add a source back to the active sources if the queue is not empty.
         """
         async with self._queues_locks[source_name]:
             queue = (
@@ -330,7 +332,7 @@ class ExecutionManager:
         Execute a run using its registered executor.
         """
         with logger.contextualize(
-            run=run_task.run.id, action=run_task.run.payload.actionType
+            run_id=run_task.run.id, action=run_task.run.payload.actionType
         ):
             try:
                 async with self._queues_locks[run_task.queue_name]:

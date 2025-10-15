@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import json
 
 import httpx
+from loguru import logger
 from integrations.github.github.actions.utils import build_external_id
 from integrations.github.github.context.auth import (
     get_authenticated_user,
@@ -242,6 +243,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 )
                 workflow_runs = response.get("workflow_runs", [])
                 if len(workflow_runs) == 0:
+                    logger.warning(f"Couldn't find the triggered workflow run, waiting for {WORKFLOW_POLL_DELAY_SECONDS} seconds",
+                        attempts_made=attempts_made,
+                    )
                     await asyncio.sleep(WORKFLOW_POLL_DELAY_SECONDS)
                     attempts_made += 1
 
