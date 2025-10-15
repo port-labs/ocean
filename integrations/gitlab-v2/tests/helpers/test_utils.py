@@ -128,11 +128,17 @@ class TestScalarToJsonText:
 
     def test_binary_tagged_values(self) -> None:
         """Test values with binary tags"""
-        assert scalar_to_json_text("SGVsbG8=", "tag:yaml.org,2002:binary", None) == '"SGVsbG8="'
+        assert (
+            scalar_to_json_text("SGVsbG8=", "tag:yaml.org,2002:binary", None)
+            == '"SGVsbG8="'
+        )
 
     def test_timestamp_tagged_values(self) -> None:
         """Test values with timestamp tags"""
-        assert scalar_to_json_text("2023-01-01", "tag:yaml.org,2002:timestamp", None) == '"2023-01-01"'
+        assert (
+            scalar_to_json_text("2023-01-01", "tag:yaml.org,2002:timestamp", None)
+            == '"2023-01-01"'
+        )
 
 
 class TestYamlToJsonChunks:
@@ -141,28 +147,28 @@ class TestYamlToJsonChunks:
     def test_single_document_array_mode(self) -> None:
         """Test single document in array mode"""
         yaml_text = "key: value"
-        result = list(yaml_to_json_chunks(yaml_text, "array"))
+        result = list(yaml_to_json_chunks(yaml_text, "array") or [])
         assert len(result) == 1
         assert json.loads(result[0]) == [{"key": "value"}]
 
     def test_multiple_documents_array_mode(self) -> None:
         """Test multiple documents in array mode"""
         yaml_text = "key1: value1\n---\nkey2: value2"
-        result = list(yaml_to_json_chunks(yaml_text, "array"))
+        result = list(yaml_to_json_chunks(yaml_text, "array") or [])
         assert len(result) == 1
         assert json.loads(result[0]) == [{"key1": "value1"}, {"key2": "value2"}]
 
     def test_single_document_single_mode(self) -> None:
         """Test single document in single mode"""
         yaml_text = "key: value"
-        result = list(yaml_to_json_chunks(yaml_text, "single"))
+        result = list(yaml_to_json_chunks(yaml_text, "single") or [])
         assert len(result) == 1
         assert json.loads(result[0]) == {"key": "value"}
 
     def test_multiple_documents_newline_mode(self) -> None:
         """Test multiple documents in newline mode"""
         yaml_text = "key1: value1\n---\nkey2: value2"
-        result = list(yaml_to_json_chunks(yaml_text, "newline"))
+        result = list(yaml_to_json_chunks(yaml_text, "newline") or [])
         assert len(result) == 3  # Two JSON objects plus newline
         assert json.loads(result[0]) == {"key1": "value1"}
         assert result[1] == "\n"
@@ -170,7 +176,7 @@ class TestYamlToJsonChunks:
 
     def test_empty_yaml(self) -> None:
         """Test empty YAML input"""
-        result = list(yaml_to_json_chunks("", "array"))
+        result = list(yaml_to_json_chunks("", "array") or [])
         assert len(result) == 1
         # Empty YAML results in empty string, which is not valid JSON
         assert result[0] == ""
@@ -305,6 +311,7 @@ class TestYamlToJsonStreamer:
         streamer = YamlToJsonStreamer(writer)
         # Add a frame with index 0 (first element)
         from gitlab.helpers.utils import _Frame
+
         streamer.stack.append(_Frame("seq"))
         streamer._comma_if_needed()
         writer.assert_not_called()
@@ -315,6 +322,7 @@ class TestYamlToJsonStreamer:
         streamer = YamlToJsonStreamer(writer)
         # Add a frame with index 1 (subsequent element)
         from gitlab.helpers.utils import _Frame
+
         frame = _Frame("seq")
         frame.index = 1
         streamer.stack.append(frame)
@@ -335,6 +343,7 @@ class TestYamlToJsonStreamer:
         writer = Mock()
         streamer = YamlToJsonStreamer(writer)
         from gitlab.helpers.utils import _Frame
+
         streamer.stack.append(_Frame("seq"))
         frame = streamer._close_seq()
         writer.assert_called_once_with("]")
@@ -356,6 +365,7 @@ class TestYamlToJsonStreamer:
         writer = Mock()
         streamer = YamlToJsonStreamer(writer)
         from gitlab.helpers.utils import _Frame
+
         streamer.stack.append(_Frame("map"))
         frame = streamer._close_map()
         writer.assert_called_once_with("}")
@@ -367,6 +377,7 @@ class TestYamlToJsonStreamer:
         writer = Mock()
         streamer = YamlToJsonStreamer(writer)
         from gitlab.helpers.utils import _Frame
+
         frame = _Frame("map", expect="key")
         streamer.stack.append(frame)
         streamer._emit_scalar("test_key", None, None)
@@ -378,6 +389,7 @@ class TestYamlToJsonStreamer:
         writer = Mock()
         streamer = YamlToJsonStreamer(writer)
         from gitlab.helpers.utils import _Frame
+
         frame = _Frame("map", expect="value")
         streamer.stack.append(frame)
         streamer._emit_scalar("test_value", None, None)
@@ -390,6 +402,7 @@ class TestYamlToJsonStreamer:
         writer = Mock()
         streamer = YamlToJsonStreamer(writer)
         from gitlab.helpers.utils import _Frame
+
         frame = _Frame("seq")
         frame.index = 1  # Not first element
         streamer.stack.append(frame)
@@ -402,6 +415,7 @@ class TestYamlToJsonStreamer:
         writer = Mock()
         streamer = YamlToJsonStreamer(writer)
         import yaml
+
         yaml_text = "key: value"
         events = list(yaml.parse(io.StringIO(yaml_text)))
         streamer.feed(events)
@@ -414,6 +428,7 @@ class TestYamlToJsonStreamer:
         streamer = YamlToJsonStreamer(writer)
         streamer.set_multiple_mode("array")
         import yaml
+
         yaml_text = "key: value"
         events = list(yaml.parse(io.StringIO(yaml_text)))
         streamer.feed(events)
@@ -440,12 +455,24 @@ level1:
             - item2:
                 sub_item: "test2"
 """
-        result = list(yaml_to_json_chunks(yaml_text, "single"))
+        result = list(yaml_to_json_chunks(yaml_text, "single") or [])
         assert len(result) == 1
         parsed = json.loads(result[0])
-        assert parsed["level1"]["level2"]["level3"]["level4"]["level5"]["value"] == "deep_value"
-        assert parsed["level1"]["level2"]["level3"]["level4"]["level5"]["numbers"] == [1, 2, 3, 4, 5]
-        assert len(parsed["level1"]["level2"]["level3"]["level4"]["level5"]["nested_list"]) == 2
+        assert (
+            parsed["level1"]["level2"]["level3"]["level4"]["level5"]["value"]
+            == "deep_value"
+        )
+        assert parsed["level1"]["level2"]["level3"]["level4"]["level5"]["numbers"] == [
+            1,
+            2,
+            3,
+            4,
+            5,
+        ]
+        assert (
+            len(parsed["level1"]["level2"]["level3"]["level4"]["level5"]["nested_list"])
+            == 2
+        )
 
     def test_mixed_data_types(self) -> None:
         """Test YAML with mixed data types"""
@@ -468,7 +495,7 @@ mixed_data:
     key2: "string"
     key3: [1, 2, 3]
 """
-        result = list(yaml_to_json_chunks(yaml_text, "single"))
+        result = list(yaml_to_json_chunks(yaml_text, "single") or [])
         assert len(result) == 1
         parsed = json.loads(result[0])
         assert parsed["mixed_data"]["string_value"] == "hello world"
@@ -499,7 +526,7 @@ nested_large:
   inner_list: {list(range(50))}
   inner_dict: {inner_dict}
 """
-        result = list(yaml_to_json_chunks(yaml_text, "single"))
+        result = list(yaml_to_json_chunks(yaml_text, "single") or [])
         assert len(result) == 1
         parsed = json.loads(result[0])
         assert len(parsed["large_list"]) == 1000
@@ -524,7 +551,7 @@ unicode_data:
   backslashes: "path\\\\to\\\\file"
   unicode_escape: "\\u0041\\u0042\\u0043"
 """
-        result = list(yaml_to_json_chunks(yaml_text, "single"))
+        result = list(yaml_to_json_chunks(yaml_text, "single") or [])
         assert len(result) == 1
         parsed = json.loads(result[0])
         assert "🚀" in parsed["unicode_data"]["emoji"]
@@ -559,7 +586,7 @@ multiline_data:
       }
     }
 """
-        result = list(yaml_to_json_chunks(yaml_text, "single"))
+        result = list(yaml_to_json_chunks(yaml_text, "single") or [])
         assert len(result) == 1
         parsed = json.loads(result[0])
         assert "\n" in parsed["multiline_data"]["literal_block"]
@@ -606,7 +633,7 @@ app2:
   <<: *shared
   name: "app2"
 """
-        result = list(yaml_to_json_chunks(yaml_text, "single"))
+        result = list(yaml_to_json_chunks(yaml_text, "single") or [])
         assert len(result) == 1
         parsed = json.loads(result[0])
         # Check that the YAML structure is preserved (anchors/aliases may not be fully resolved)
@@ -664,7 +691,7 @@ mixed_nested:
       - {key: "value3", number: 3}
       - {key: "value4", number: 4}
 """
-        result = list(yaml_to_json_chunks(yaml_text, "single"))
+        result = list(yaml_to_json_chunks(yaml_text, "single") or [])
         assert len(result) == 1
         parsed = json.loads(result[0])
         assert len(parsed["matrix_data"]) == 3
@@ -700,7 +727,7 @@ edge_cases:
   json_string: '{"key": "value"}'
   yaml_string: 'key: value'
 """
-        result = list(yaml_to_json_chunks(yaml_text, "single"))
+        result = list(yaml_to_json_chunks(yaml_text, "single") or [])
         assert len(result) == 1
         parsed = json.loads(result[0])
         assert parsed["edge_cases"]["zero"] == 0
@@ -767,7 +794,7 @@ document3:
             type: "string"
 """
         # Test array mode
-        result = list(yaml_to_json_chunks(yaml_text, "array"))
+        result = list(yaml_to_json_chunks(yaml_text, "array") or [])
         assert len(result) == 1
         parsed = json.loads(result[0])
         assert len(parsed) == 3
@@ -776,7 +803,7 @@ document3:
         assert parsed[2]["document3"]["type"] == "schema"
 
         # Test newline mode
-        result = list(yaml_to_json_chunks(yaml_text, "newline"))
+        result = list(yaml_to_json_chunks(yaml_text, "newline") or [])
         assert len(result) == 5  # 3 documents + 2 newlines
         assert json.loads(result[0])["document1"]["type"] == "config"
         assert result[1] == "\n"
@@ -803,14 +830,17 @@ valid_part:
       empty_dict: {}
 """
         # The YAML parser should handle this gracefully
-        result = list(yaml_to_json_chunks(yaml_text, "single"))
+        result = list(yaml_to_json_chunks(yaml_text, "single") or [])
         assert len(result) == 1
         parsed = json.loads(result[0])
         assert parsed["valid_part"]["key"] == "value"
         assert parsed["valid_part"]["number"] == 42
         assert parsed["valid_part"]["edge_cases"]["quoted_string"] == "quoted"
         assert parsed["valid_part"]["edge_cases"]["single_quoted"] == "single"
-        assert parsed["valid_part"]["edge_cases"]["mixed_quotes"] == 'single "double" quotes'
+        assert (
+            parsed["valid_part"]["edge_cases"]["mixed_quotes"]
+            == 'single "double" quotes'
+        )
         assert parsed["valid_part"]["edge_cases"]["trailing_comma_list"] == [1, 2, 3]
         assert parsed["valid_part"]["edge_cases"]["empty_values"]["empty_string"] == ""
         assert parsed["valid_part"]["edge_cases"]["empty_values"]["null_value"] is None
@@ -829,24 +859,19 @@ valid_part:
                     "metadata": {
                         "created": "2023-01-01",
                         "tags": [f"tag_{j}" for j in range(5)],
-                        "nested": {
-                            "level1": {
-                                "level2": {
-                                    "level3": f"value_{i}"
-                                }
-                            }
-                        }
-                    }
+                        "nested": {"level1": {"level2": {"level3": f"value_{i}"}}},
+                    },
                 }
                 for i in range(100)  # 100 items
             ]
         }
 
         import yaml
+
         yaml_text = yaml.dump(large_data, default_flow_style=False)
 
         # Test that it can be processed without memory issues
-        result = list(yaml_to_json_chunks(yaml_text, "single"))
+        result = list(yaml_to_json_chunks(yaml_text, "single") or [])
         assert len(result) == 1
         parsed = json.loads(result[0])
         assert len(parsed["items"]) == 100

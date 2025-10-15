@@ -417,7 +417,11 @@ class GitLabClient:
                     parsed_content.get("content"), project_id, ref
                 )
                 parsed_content["content"] = file_resolved_content
-            file_data["content"] = parsed_content if not parsed_content.get("content") else parsed_content["content"]
+            file_data["content"] = (
+                parsed_content
+                if not parsed_content.get("content")
+                else parsed_content["content"]
+            )
 
         if isinstance(file_data["content"], str):
             file_data["content"] = {"content": file_data["content"]}

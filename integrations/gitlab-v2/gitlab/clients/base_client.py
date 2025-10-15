@@ -57,7 +57,9 @@ class HTTPBaseClient:
             return response.json()
 
         except httpx.HTTPStatusError as e:
-            result = await self._handle_status_code_error(method, path, url, params, data, e)
+            result = await self._handle_status_code_error(
+                method, path, url, params, data, e
+            )
             if result is not None:
                 return result
             raise
@@ -66,26 +68,32 @@ class HTTPBaseClient:
             raise
 
     async def _handle_status_code_error(
-        self, method: str, path: str, url: str, params: dict[str, Any] | None, data: dict[str, Any] | None, e: httpx.HTTPStatusError
+        self,
+        method: str,
+        path: str,
+        url: str,
+        params: dict[str, Any] | None,
+        data: dict[str, Any] | None,
+        e: httpx.HTTPStatusError,
     ) -> dict[str, Any] | None:
         status_code = e.response.status_code
         if status_code == 401:
-                # Try to refresh token and retry the request
-                if await self._refresh_token():
-                    try:
-                        response = await self._client.request(
-                            method=method,
-                            url=url,
-                            headers=self._headers,
-                            params=params,
-                            json=data,
-                        )
-                        response.raise_for_status()
-                        return response.json()
-                    except httpx.HTTPStatusError:
-                        # If retry also fails, fall through to original error handling
-                        pass
-                return None
+            # Try to refresh token and retry the request
+            if await self._refresh_token():
+                try:
+                    response = await self._client.request(
+                        method=method,
+                        url=url,
+                        headers=self._headers,
+                        params=params,
+                        json=data,
+                    )
+                    response.raise_for_status()
+                    return response.json()
+                except httpx.HTTPStatusError:
+                    # If retry also fails, fall through to original error handling
+                    pass
+            return None
         if status_code in (403, 404):
             logger.warning(
                 f"Resource access error at {url} (status {status_code}): {e.response.text}"
@@ -127,7 +135,9 @@ class HTTPBaseClient:
                         os.unlink(out_path)
                     raise
         except httpx.HTTPStatusError as e:
-            result = await self._handle_status_code_error("GET", path, url, None, None, e)
+            result = await self._handle_status_code_error(
+                "GET", path, url, None, None, e
+            )
             if result is not None:
                 return result
             raise
