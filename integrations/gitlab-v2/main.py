@@ -211,7 +211,9 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         logger.info(f"Processing batch of {len(projects_batch)} projects for tags")
 
-        async for tags_batch in client.get_tags(projects_batch):
+        async for tags_batch in client.get_tags(
+            projects_batch, max_concurrent=DEFAULT_MAX_CONCURRENT
+        ):
             yield tags_batch
 
 
@@ -226,7 +228,9 @@ async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         logger.info(f"Processing batch of {len(projects_batch)} projects for releases")
 
-        async for releases_batch in client.get_releases(projects_batch):
+        async for releases_batch in client.get_releases(
+            projects_batch, max_concurrent=DEFAULT_MAX_CONCURRENT
+        ):
             yield releases_batch
 
 
