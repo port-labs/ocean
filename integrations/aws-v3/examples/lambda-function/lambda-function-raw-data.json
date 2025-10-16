@@ -1,0 +1,104 @@
+{
+  "Type": "AWS::Lambda::Function",
+  "Properties": {
+    "FunctionName": "my-function",
+    "FunctionArn": "arn:aws:lambda:us-east-1:123456789012:function:my-function",
+    "Runtime": "python3.9",
+    "Handler": "index.handler",
+    "MemorySize": 512,
+    "Timeout": 30,
+    "State": "Active",
+    "LastModified": "2023-12-01T10:30:00.000+0000",
+    "CodeSha256": "abcd1234efgh5678ijkl9012mnop3456qrst7890uvwx1234yzab5678cdef",
+    "CodeSize": 1024000,
+    "Description": "My sample Lambda function",
+    "Role": "arn:aws:iam::123456789012:role/lambda-execution-role",
+    "LastUpdateStatus": "Successful",
+    "LastUpdateStatusReason": "The function was successfully updated",
+    "LastUpdateStatusReasonCode": "Successful",
+    "Version": "$LATEST",
+    "RevisionId": "12345678-1234-1234-1234-123456789012",
+    "PackageType": "Zip",
+    "MasterArn": null,
+    "SigningJobArn": null,
+    "SigningProfileVersionArn": null,
+    "StateReason": "The function is ready",
+    "StateReasonCode": "OK",
+    "DeadLetterConfig": {
+      "TargetArn": "arn:aws:sqs:us-east-1:123456789012:my-dlq"
+    },
+    "Environment": {
+      "Variables": {
+        "ENV_VAR_1": "value1",
+        "ENV_VAR_2": "value2"
+      },
+      "Error": null
+    },
+    "VpcConfig": {
+      "VpcId": "vpc-12345678",
+      "SubnetIds": ["subnet-12345678", "subnet-87654321"],
+      "SecurityGroupIds": ["sg-12345678"],
+      "Ipv6AllowedForDualStack": false
+    },
+    "TracingConfig": {
+      "Mode": "Active"
+    },
+    "LoggingConfig": {
+      "LogFormat": "Text",
+      "ApplicationLogLevel": "INFO",
+      "SystemLogLevel": "INFO",
+      "LogGroup": "/aws/lambda/my-function"
+    },
+    "EphemeralStorage": {
+      "Size": {
+        "Size": 10240
+      }
+    },
+    "ImageConfigResponse": {
+      "ImageConfig": {
+        "Command": ["python", "app.py"],
+        "EntryPoint": ["/lambda-entrypoint.sh"],
+        "WorkingDirectory": "/var/task"
+      },
+      "Error": null
+    },
+    "RuntimeVersionConfig": {
+      "RuntimeVersionArn": "arn:aws:lambda:us-east-1::runtime:python3.9",
+      "Error": null
+    },
+    "SnapStart": {
+      "ApplyOn": "PublishedVersions",
+      "OptimizationStatus": "On"
+    },
+    "Layers": [
+      {
+        "Arn": "arn:aws:lambda:us-east-1:123456789012:layer:my-layer:1",
+        "CodeSize": 1024000,
+        "SigningJobArn": null,
+        "SigningProfileVersionArn": null
+      }
+    ],
+    "Architectures": ["x86_64"],
+    "FileSystemConfigs": [
+      {
+        "Arn": "arn:aws:elasticfilesystem:us-east-1:123456789012:access-point/fsap-12345678",
+        "LocalMountPath": "/mnt/efs"
+      }
+    ],
+    "Tags": [
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Team",
+        "Value": "backend"
+      },
+      {
+        "Key": "Project",
+        "Value": "my-project"
+      }
+    ],
+    "KmsKeyArn": "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+  }
+}
