@@ -189,21 +189,20 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         """
         return run.payload.integrationActionExecutionProperties.get("workflow")
 
-    async def _get_default_ref(self, repo: str) -> str:
+    async def _get_default_ref(self, repo_name: str) -> str:
         """
         Get the default branch name for a repository, using cache when available.
         """
-        if repo in self._default_ref_cache:
-            return self._default_ref_cache[repo]
+        if repo_name in self._default_ref_cache:
+            return self._default_ref_cache[repo_name]
 
         repoExporter = RestRepositoryExporter(self.rest_client)
-        repo = await repoExporter.get_resource(SingleRepositoryOptions(name=repo))
-        if not (repo.get("id") and repo.get("default_branch")):
-            raise Exception("Failed to get repository data")
+        repo = await repoExporter.get_resource(SingleRepositoryOptions(name=repo_name))
+        if not repo.get("default_branch"):
+            raise Exception(f"Failed to get repository data for {repo_name}")
 
-        repo_id = repo["id"]
-        self._default_ref_cache[repo_id] = repo["default_branch"]
-        return self._default_ref_cache[repo_id]
+        self._default_ref_cache[repo_name] = repo["default_branch"]
+        return self._default_ref_cache[repo_name]
 
     async def execute(self, run: ActionRun[IntegrationActionInvocationPayload]) -> None:
         """
@@ -231,9 +230,6 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 ignore_default_errors=False,
             )
 
-            # Initial delay to allow the workflow to be triggered in Github side
-            await asyncio.sleep(WORKFLOW_POLL_DELAY_SECONDS)
-
             # Get the workflow run id
             workflow_runs = []
             attempts_made = 0
@@ -248,6 +244,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                         "event": "workflow_dispatch",
                         "created": f">{isoDate}",
                         "exclude_pull_requests": True,
+                        "branch": ref,
                     },
                     method="GET",
                     ignore_default_errors=False,
