@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 3.0.0-beta (2025-10-14)
+## 3.0.0-beta (2025-10-16)
 
 
 ### Features
@@ -19,15 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `organization` as a new resource kind
 - Introduced `githubMultiOrganizations` in spec file
 
-### Breaking Changes
 
-- **File kind requires organization field**: All file kind patterns must now include an `organization` field. File objects provide direct access to properties: `.organization`, `.repository`, `.content`, `.path`, `.name`, `.branch`, `.metadata`. See [file ingestion documentation](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/github-ocean#ingest-files-from-your-repositories) and [migration guide](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/migration-guide#files--gitops).
-- **Folder kind requires organization field**: All folder kind patterns must now include an `organization` field. Folder objects use enriched properties `.__repository` and `.__organization` for accessing organization and repository context. See [folder ingestion documentation](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/github-ocean#ingest-folders-from-your-repositories) and [migration guide](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/migration-guide#folders).
-- **Authentication limitations**: Only classic Personal Access Tokens (PAT) support multi-organization. Fine-grained PATs and GitHub Apps are limited to single organization. See [authentication requirements](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/github-ocean#multi-organization-support).
+## 2.0.1-beta (2025-10-15)
 
-### Performance Impact
 
-- Syncing multiple organizations increases API calls and may slow down resync operations. See [performance considerations](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/github-ocean#multi-organization-support).
+### Improvements
+
+- Bumped ocean version to ^0.28.14
 
 
 ## 2.0.0-beta (2025-09-30)
