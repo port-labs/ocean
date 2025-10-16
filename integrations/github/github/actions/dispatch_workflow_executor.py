@@ -17,6 +17,7 @@ from integrations.github.github.webhook.registry import (
 )
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.handlers.queue.group_queue import MaybeStr
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     WebhookProcessorType,
 )
@@ -107,7 +108,6 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     by locating the workflow run closest to the trigger time and record its ID.
     Triggering the same workflow concurrently would prevent us from uniquely tracking each instance.
     """
-    PARTITION_KEY = "workflow"
 
     class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
         """
@@ -181,6 +181,14 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     WEBHOOK_PATH = DISPATCH_WEBHOOK_PATH
     _default_ref_cache: dict[str, str] = {}
 
+    async def _get_partition_key(
+        self, run: ActionRun[IntegrationActionInvocationPayload]
+    ) -> MaybeStr:
+        """
+        Get the workflow name as the partition key.
+        """
+        return run.payload.integrationActionExecutionProperties.get("workflow")
+
     async def _get_default_ref(self, repo: str) -> str:
         """
         Get the default branch name for a repository, using cache when available.
@@ -223,6 +231,9 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 ignore_default_errors=False,
             )
 
+            # Initial delay to allow the workflow to be triggered in Github side
+            await asyncio.sleep(WORKFLOW_POLL_DELAY_SECONDS)
+
             # Get the workflow run id
             workflow_runs = []
             attempts_made = 0
@@ -243,7 +254,8 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 )
                 workflow_runs = response.get("workflow_runs", [])
                 if len(workflow_runs) == 0:
-                    logger.warning(f"Couldn't find the triggered workflow run, waiting for {WORKFLOW_POLL_DELAY_SECONDS} seconds",
+                    logger.warning(
+                        f"Couldn't find the triggered workflow run, waiting for {WORKFLOW_POLL_DELAY_SECONDS} seconds",
                         attempts_made=attempts_made,
                     )
                     await asyncio.sleep(WORKFLOW_POLL_DELAY_SECONDS)

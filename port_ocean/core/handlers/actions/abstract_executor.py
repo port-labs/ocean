@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Type
 
 
+from port_ocean.core.handlers.queue.group_queue import MaybeStr
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -38,6 +39,7 @@ class AbstractExecutor(ABC):
             ACTION_NAME = "my_action"
             PARTITION_KEY = "resource_id"  # Optional
             WEBHOOK_PROCESSOR_CLASS = MyWebhookProcessor  # Optional
+            WEBHOOK_PATH = "/webhook/my_action"  # Optional
 
             async def is_close_to_rate_limit(self) -> bool:
                 return await self._check_rate_limit()
@@ -52,9 +54,20 @@ class AbstractExecutor(ABC):
     """
 
     ACTION_NAME: str
-    PARTITION_KEY: str
     WEBHOOK_PROCESSOR_CLASS: Optional[Type[AbstractWebhookProcessor]]
     WEBHOOK_PATH: str
+
+    async def _get_partition_key(
+        self, run: ActionRun[IntegrationActionInvocationPayload]
+    ) -> MaybeStr:
+        """
+        This method should return a string used to identify runs that must be executed sequentially,
+        or return None to allow runs to execute in parallel.
+
+        For example, in order to execute runs of the same workflow in sequential order,
+        this method should return the workflow name.
+        """
+        return None
 
     @abstractmethod
     async def is_close_to_rate_limit(self) -> bool:

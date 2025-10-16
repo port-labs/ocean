@@ -186,36 +186,52 @@ class ExecutionManager:
                 )
 
                 for run in runs:
-                    action_type = run.payload.actionType
-                    if action_type not in self._actions_executors:
-                        logger.warning(
-                            "No Executors registered to handle this action, skipping run...",
-                            action_type=action_type,
-                            run_id=run.id,
-                        )
-                        continue
+                    try:
+                        action_type = run.payload.actionType
+                        if action_type not in self._actions_executors:
+                            logger.warning(
+                                "No Executors registered to handle this action, skipping run...",
+                                action_type=action_type,
+                                run_id=run.id,
+                            )
+                            continue
 
-                    partition_key = self._actions_executors[action_type].PARTITION_KEY
-                    if not partition_key:
+                        partition_key = await self._actions_executors[
+                            action_type
+                        ]._get_partition_key(run)
+                        if not partition_key:
+                            await self._add_run_to_queue(
+                                run,
+                                self._global_queue,
+                                GLOBAL_SOURCE,
+                                visibility_expiration_timestamp,
+                            )
+                            continue
+
+                        partition_name = f"{action_type}:{partition_key}"
+                        if partition_name not in self._partition_queues:
+                            self._partition_queues[partition_name] = LocalQueue()
+                            self._queues_locks[partition_name] = asyncio.Lock()
                         await self._add_run_to_queue(
                             run,
-                            self._global_queue,
-                            GLOBAL_SOURCE,
+                            self._partition_queues[partition_name],
+                            partition_name,
                             visibility_expiration_timestamp,
                         )
-                        continue
-
-                    partition_key = self._extract_partition_key(run, partition_key)
-                    partition_name = f"{action_type}:{partition_key}"
-                    if partition_name not in self._partition_queues:
-                        self._partition_queues[partition_name] = LocalQueue()
-                        self._queues_locks[partition_name] = asyncio.Lock()
-                    await self._add_run_to_queue(
-                        run,
-                        self._partition_queues[partition_name],
-                        partition_name,
-                        visibility_expiration_timestamp,
-                    )
+                    except PartitionKeyNotFoundError as e:
+                        logger.warning(
+                            "Partition key not found in invocation payload, skipping run...",
+                            run_id=run.id,
+                            action_type=action_type,
+                            error=e,
+                        )
+                    except Exception as e:
+                        logger.exception(
+                            "Error adding run to queue",
+                            run_id=run.id,
+                            action_type=action_type,
+                            error=e,
+                        )
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -269,20 +285,6 @@ class ExecutionManager:
             )
             if await queue.size() > 0:
                 await self._active_sources.put(source_name)
-
-    def _extract_partition_key(
-        self, run: ActionRun[IntegrationActionInvocationPayload], partition_key: str
-    ) -> str:
-        """
-        Extract the partition key from a run's payload.
-        """
-        value = run.payload.integrationActionExecutionProperties.get(partition_key)
-        if value:
-            return value
-
-        raise PartitionKeyNotFoundError(
-            f"Partition key '{partition_key}' not found in invocation payload"
-        )
 
     async def _process_actions_runs(self) -> None:
         """
