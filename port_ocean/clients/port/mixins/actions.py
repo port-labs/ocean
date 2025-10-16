@@ -75,7 +75,7 @@ class ActionsClientMixin:
         num = random.random()
         return (
             []
-            if num < 0.5
+            if num < 0.0
             else [
                 ActionRun(
                     id="test-run-id",
