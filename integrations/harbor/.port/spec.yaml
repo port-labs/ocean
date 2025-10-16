@@ -1,0 +1,36 @@
+description: harbor integration for Port Ocean
+icon: Cookiecutter  # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Under Development  # Should be one of the available sections in Port
+    resources:
+      - kind: projects
+      - kind: repositories
+      - kind: users
+      - kind: artifacts
+configurations:
+  - name: username
+    required: false
+    type: string
+  - name: password
+    required: false
+    type: string
+    sensitive: true
+  - name: harborHost
+    required: true
+    type: url
+    description: The URL of the Harbor instance.
+  - name: robotName
+    required: false
+    type: string
+    description: The name of the robot used to authenticate with the Harbor instance.
+  - name: robotToken
+    required: false
+    type: string
+    sensitive: true
+    description: The token of the robot used to authenticate with the Harbor instance.
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: The secret used to authenticate incoming webhooks.

@@ -1,0 +1,77 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: projects
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"harborProjects"'
+          properties:
+            description: if .metadata.description then .metadata.description else "" end
+            visibility: if .metadata.public then "public" else "private" end
+            creationTime: .creation_time
+            updateTime: .update_time
+            owner: .owner_name
+            repositoryCount: .repo_count
+            chartCount: .chart_count
+          relations: {}
+  - kind: users
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .username
+          title: .username
+          blueprint: '"harborUsers"'
+          properties:
+            email: if .email then .email else "" end
+            realname: if .realname then .realname else "" end
+            adminRoleInAuth: .admin_role_in_auth
+            creationTime: .creation_time
+            updateTime: .update_time
+  - kind: repositories
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"harborRepositories"'
+          properties:
+            projectId: .project_id
+            projectName: .project_name
+            artifactCount: .artifact_count
+            pullCount: .pull_count
+            creationTime: .creation_time
+            updateTime: .update_time
+          relations:
+            project: .project_name
+  - kind: artifacts
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '(.project_id | tostring) + "/" + (.repository_id | tostring) + ":" + (.digest | split(":")[1] | .[0:12])'
+          title: if .tags and (.tags | length) > 0 then (.tags[0].name) else (.digest | split(":")[1] | .[0:12]) end
+          blueprint: '"harborArtifacts"'
+          properties:
+            projectId: .project_id
+            projectName: .project_name
+            repositoryId: .repository_id
+            repositoryName: .repository_name
+            digest: .digest
+            size: .size
+            pullCount: .pull_count
+            pushTime: .push_time
+            mediaType: .media_type
+            tags: if .tags then (.tags | map(.name)) else [] end
+            labels: if .labels then .labels else [] end
+          relations:
+            repository: .repository_name
