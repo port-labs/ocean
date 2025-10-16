@@ -1,9 +1,20 @@
 from dataclasses import dataclass, field
 from enum import Enum, StrEnum
-from typing import Any, TypedDict
+from typing import Any, Generic, Literal, TypeVar, TypedDict
 
 from pydantic import BaseModel
 from pydantic.fields import Field
+
+T = TypeVar("T")
+
+
+class EventListenerType(StrEnum):
+    WEBHOOK = "WEBHOOK"
+    KAFKA = "KAFKA"
+    POLLING = "POLLING"
+    ONCE = "ONCE"
+    WEBHOOKS_ONLY = "WEBHOOKS_ONLY"
+    ACTIONS_ONLY = "ACTIONS_ONLY"
 
 
 class CreatePortResourcesOrigin(StrEnum):
@@ -121,3 +132,36 @@ class EntityPortDiff:
     deleted: list[Entity] = field(default_factory=list)
     modified: list[Entity] = field(default_factory=list)
     created: list[Entity] = field(default_factory=list)
+
+
+class IntegrationFeatureFlag(StrEnum):
+    USE_PROVISIONED_DEFAULTS = "USE_PROVISIONED_DEFAULTS"
+    LAKEHOUSE_ELIGIBLE = "LAKEHOUSE_ELIGIBLE"
+    OCEAN_EXECUTION_AGENT_ELIGIBLE = "OCEAN_EXECUTION_AGENT_ELIGIBLE"
+
+
+class RunStatus(StrEnum):
+    IN_PROGRESS = "IN_PROGRESS"
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+
+
+class InvocationType(StrEnum):
+    INTEGRATION_ACTION = "INTEGRATION_ACTION"
+
+
+class InvocationPayload(BaseModel):
+    type: Literal[InvocationType]
+
+
+class IntegrationActionInvocationPayload(InvocationPayload):
+    type: Literal[InvocationType.INTEGRATION_ACTION]
+    installationId: str
+    actionType: str
+    integrationActionExecutionProperties: dict[str, Any] = Field(default_factory=dict)
+
+
+class ActionRun(BaseModel, Generic[T]):
+    id: str
+    status: RunStatus
+    payload: T
