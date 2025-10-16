@@ -233,7 +233,9 @@ class AzureDevopsClient(HTTPBaseClient):
         async for repositories in self.generate_repositories(
             include_disabled_repositories=False
         ):
-            semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING)
+            semaphore = asyncio.BoundedSemaphore(
+                MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING
+            )
             tasks = [
                 semaphore_async_iterator(
                     semaphore,
@@ -274,7 +276,7 @@ class AzureDevopsClient(HTTPBaseClient):
                             "name": branch_name,
                             "refName": ref_name,
                             "objectId": ref["objectId"],
-                            "__repository": repository
+                            "__repository": repository,
                         }
                         enriched_branches.append(enriched_branch)
 
