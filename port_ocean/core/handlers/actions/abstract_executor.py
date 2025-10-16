@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Optional, Type
 
 
-from port_ocean.core.handlers.queue.group_queue import MaybeStr
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -59,7 +58,7 @@ class AbstractExecutor(ABC):
 
     async def _get_partition_key(
         self, run: ActionRun[IntegrationActionInvocationPayload]
-    ) -> MaybeStr:
+    ) -> str | None:
         """
         This method should return a string used to identify runs that must be executed sequentially,
         or return None to allow runs to execute in parallel.
