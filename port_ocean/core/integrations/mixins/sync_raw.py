@@ -7,6 +7,9 @@ import typing
 from typing import Callable, Awaitable, Any
 import multiprocessing
 import httpx
+import json
+import os
+from datetime import datetime
 from loguru import logger
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import TriggerType, event_context, EventType, event
@@ -371,6 +374,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 raw_results.append(result)
                 if lakehouse_data_enabled:
                     await ocean.port_client.post_integration_raw_data(result, event.id, resource_config.kind)
+                    # Dump items to file after posting to lakehouse
+                    self._dump_items_to_file([result], resource_config.kind, event.id)
             else:
                 async_generators.append(result)
 
@@ -404,6 +409,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 async for items in generator:
                     if lakehouse_data_enabled:
                         await ocean.port_client.post_integration_raw_data(items, event.id, resource_config.kind)
+                        # Dump items to file after posting to lakehouse
+                        self._dump_items_to_file(items, resource_config.kind, event.id)
                     number_of_raw_results += len(items)
                     if send_raw_data_examples_amount > 0:
                         send_raw_data_examples_amount = max(
@@ -481,6 +488,37 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if "LAKEHOUSE_ELIGIBLE" in flags and ocean.config.lakehouse_enabled:
             return True
         return False
+
+    def _dump_items_to_file(
+        self,
+        items: list[dict[Any, Any]],
+        resource_kind: str,
+        event_id: str
+    ) -> None:
+        """Dump items to a file for debugging purposes.
+
+        Args:
+            items: The items to dump
+            resource_kind: The kind of resource
+            event_id: The event ID
+        """
+        try:
+            # Create dump directory if it doesn't exist
+            dump_dir = "raw_data_dumps"
+            os.makedirs(dump_dir, exist_ok=True)
+
+            # Create filename with timestamp and event info
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # Include milliseconds
+            filename = f"{dump_dir}/raw_data_{resource_kind}_{event_id}_{timestamp}.json"
+
+            # Write items to file
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(items, f, indent=2, ensure_ascii=False, default=str)
+
+            logger.debug(f"Dumped {len(items)} items to {filename}")
+
+        except Exception as e:
+            logger.warning(f"Failed to dump items to file: {e}")
 
     async def register_raw(
         self,
