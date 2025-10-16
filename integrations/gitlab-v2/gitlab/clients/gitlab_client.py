@@ -211,19 +211,21 @@ class GitLabClient:
         self,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        all_groups = []
         all_group_ids = set()
+        groups_by_id = {}
 
         async for group_batch in self.get_groups(params=params):
-            all_groups.extend(group_batch)
             for group in group_batch:
-                all_group_ids.add(group["id"])
+                group_id = group["id"]
+                all_group_ids.add(group_id)
+                groups_by_id[group_id] = group
 
-        top_level_groups = []
-        for group in all_groups:
-            parent_id = group.get("parent_id")
-            if parent_id is None or parent_id not in all_group_ids:
-                top_level_groups.append(group)
+        top_level_groups = [
+            group
+            for group in groups_by_id.values()
+            if group.get("parent_id") is None
+            or group.get("parent_id") not in all_group_ids
+        ]
 
         if top_level_groups:
             yield top_level_groups
