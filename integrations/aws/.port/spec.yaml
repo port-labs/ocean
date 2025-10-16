@@ -1,6 +1,7 @@
 title: AWS
 description: AWS integration for Port Ocean
 icon: AWS
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws
 features:
   - type: exporter
     section: Cloud Providers
