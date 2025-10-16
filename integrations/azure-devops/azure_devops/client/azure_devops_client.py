@@ -274,8 +274,7 @@ class AzureDevopsClient(HTTPBaseClient):
                             "name": branch_name,
                             "refName": ref_name,
                             "objectId": ref["objectId"],
-                            "__repository": repository,
-                            "__project": repository["project"],
+                            "__repository": repository
                         }
                         enriched_branches.append(enriched_branch)
 
