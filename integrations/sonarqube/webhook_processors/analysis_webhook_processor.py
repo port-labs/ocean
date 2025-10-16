@@ -1,3 +1,4 @@
+from typing import cast
 from loguru import logger
 from initialize_client import init_sonar_client
 from port_ocean.context.ocean import ocean
@@ -8,7 +9,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from integration import ObjectKind
+from integration import ObjectKind, SonarQubeOnPremAnalysisResourceConfig
 
 
 class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
@@ -32,6 +33,9 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
             logger.info(
                 f"Processing SonarQube analysis webhook for project: {project['key']}"
             )
+            if resource.kind == ObjectKind.ONPREM_ANALYSIS:
+                resource_config = cast(SonarQubeOnPremAnalysisResourceConfig, resource)
+                sonar_client.metrics = resource_config.selector.metrics
             analysis_data = await sonar_client.get_measures_for_all_pull_requests(
                 project["key"]
             )
@@ -40,8 +44,7 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
                 f"Processing SonarCloud analysis webhook for project: {project['key']}"
             )
             async for updated_analysis in sonar_client.get_analysis_by_project(project):
-                if updated_analysis:
-                    analysis_data.extend(updated_analysis)
+                analysis_data.extend(updated_analysis)
 
         return WebhookEventRawResults(
             updated_raw_results=analysis_data,
