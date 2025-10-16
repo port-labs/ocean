@@ -144,3 +144,18 @@ resources:
             cpu_cores: .meta.cpuCores
             agent_version: .meta.agent_version
             tags: .tags_by_source
+  - kind: serviceDependency
+    selector:
+      query: 'true'
+      environment: prod
+      startTime: 1
+    port:
+      entity:
+        mappings:
+          identifier: .name | tostring
+          title: .name
+          blueprint: '"datadogServiceDependency"'
+          properties:
+            sourceService: .name
+          relations:
+            dependencies: if .calls then .calls[] else [] end

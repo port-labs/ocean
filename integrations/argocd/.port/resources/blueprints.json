@@ -35,6 +35,22 @@
           "description": "The API server URL of the Kubernetes cluster",
           "type": "string",
           "icon": "DefaultProperty"
+        },
+        "status": {
+          "title": "Status",
+          "type": "enum",
+          "enum": [
+            "Successful",
+            "Failed",
+            "Unknown"
+          ],
+          "enumColors": {
+            "Successful": "green",
+            "Failed": "red",
+            "Unknown": "lightGray"
+          },
+          "description": "The connection state of the cluster",
+          "icon": "DefaultProperty"
         }
       },
       "required": []

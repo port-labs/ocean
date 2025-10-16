@@ -6,14 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-## 1.6.0-beta (2025-10-16)
+## 2.1.0-beta (2025-10-16)
 
 
 ### Improvements
 
 - Added support for running github workflows as part of Port actions
 
-## 1.5.10-beta (2025-09-30)
+## 2.0.1-beta (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+## 2.0.0-beta (2025-09-30)
 
 
 ### Improvements

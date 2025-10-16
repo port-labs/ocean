@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.190 (2025-10-15)
+
+
+### Bug Fixes
+
+- Fixed Bug with `cache_coroutine_result` hash function being passed invalid parameter
+
+
+## 0.1.189 (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
 ## 0.1.188 (2025-09-30)
 
 
