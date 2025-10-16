@@ -33,3 +33,7 @@ class CheckRunsException(Exception):
 
 class OrganizationRequiredException(Exception):
     """Exception for organization required."""
+
+
+class OrganizationConflictError(Exception):
+    """Raised when both github_organization and github_multi_organizations are provided."""

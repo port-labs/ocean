@@ -3,6 +3,7 @@ from typing import Any, DefaultDict
 
 from loguru import logger
 from github.core.exporters.file_exporter.utils import deep_dict
+from github.clients.utils import get_mono_repo_organization
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_coroutine_result
 from wcmatch import glob
@@ -28,7 +29,7 @@ def create_path_mapping(
     ] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
     for pattern in folder_patterns:
-        organization = pattern.organization
+        organization = get_mono_repo_organization(pattern.organization)
         path = pattern.path
         for repo in pattern.repos:
             repo_name = repo.name

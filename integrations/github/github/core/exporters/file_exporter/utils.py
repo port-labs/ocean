@@ -19,6 +19,7 @@ from typing import (
 
 import yaml
 from loguru import logger
+from github.clients.utils import get_mono_repo_organization
 from wcmatch import glob
 
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -138,7 +139,8 @@ async def group_file_patterns_by_repositories_in_selector(
     async def _get_repos_and_branches_for_selector(
         selector: "GithubFilePattern", path: str
     ) -> AsyncGenerator[Tuple[str, Optional[str]], None]:
-        organization = selector.organization
+
+        organization = get_mono_repo_organization(selector.organization)
         if selector.repos is None:
             logger.info(
                 f"No repositories specified for file pattern '{path}'. Fetching from '{repo_type}' repositories from {organization}."
@@ -159,7 +161,7 @@ async def group_file_patterns_by_repositories_in_selector(
     for file_selector in files:
         path = file_selector.path
         skip_parsing = file_selector.skip_parsing
-        organization = file_selector.organization
+        organization = get_mono_repo_organization(file_selector.organization)
 
         async for repo, branch in _get_repos_and_branches_for_selector(
             file_selector, path

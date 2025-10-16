@@ -13,7 +13,7 @@ from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
 from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
-from github.helpers.exceptions import MissingCredentials
+from github.helpers.exceptions import MissingCredentials, OrganizationConflictError
 
 
 class GitHubAuthenticatorFactory:
@@ -71,6 +71,15 @@ class GithubClientFactory:
             ValueError: If client_type is invalid
         """
 
+        github_organization = ocean.integration_config["github_organization"]
+        if (
+            github_organization
+            and ocean.integration_config["github_multi_organizations"]
+        ):
+            raise OrganizationConflictError(
+                "Cannot supply both github_organization and github_multi_organizations"
+            )
+
         if client_type not in self._instances:
             if client_type not in self._clients:
                 logger.error(f"Invalid client type: {client_type}")
@@ -78,7 +87,7 @@ class GithubClientFactory:
 
             authenticator = GitHubAuthenticatorFactory.create(
                 github_host=ocean.integration_config["github_host"],
-                organization=ocean.integration_config["github_organization"],
+                organization=github_organization,
                 token=ocean.integration_config.get("github_token"),
                 app_id=ocean.integration_config.get("github_app_id"),
                 private_key=ocean.integration_config.get("github_app_private_key"),
