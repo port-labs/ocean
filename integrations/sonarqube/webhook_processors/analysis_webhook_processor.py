@@ -1,3 +1,4 @@
+from loguru import logger
 from initialize_client import init_sonar_client
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -19,9 +20,8 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
         ]
 
     async def handle_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
+        self, payload: EventPayload, resource: ResourceConfig
     ) -> WebhookEventRawResults:
-
         sonar_client = init_sonar_client()
 
         analysis_data = []
@@ -29,10 +29,16 @@ class AnalysisWebhookProcessor(BaseSonarQubeWebhookProcessor):
         project = await sonar_client.get_single_component(payload["project"])
 
         if ocean.integration_config["sonar_is_on_premise"]:
+            logger.info(
+                f"Processing SonarQube analysis webhook for project: {project['key']}"
+            )
             analysis_data = await sonar_client.get_measures_for_all_pull_requests(
                 project["key"]
             )
         else:
+            logger.info(
+                f"Processing SonarCloud analysis webhook for project: {project['key']}"
+            )
             async for updated_analysis in sonar_client.get_analysis_by_project(project):
                 if updated_analysis:
                     analysis_data.extend(updated_analysis)
