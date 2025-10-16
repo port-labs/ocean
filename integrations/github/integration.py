@@ -297,14 +297,12 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
             if event_workers_count > 1
             else GithubLiveEventsProcessorManager
         )
-        processor_manager = ProcessManager(
+        self.context.app.webhook_manager = ProcessManager(
             self.context.app.integration_router,
             signal_handler,
             self.context.config.max_event_processing_seconds,
             self.context.config.max_wait_seconds_before_shutdown,
         )
-        self.context.app.webhook_manager = processor_manager
-        self.context.app.execution_manager._webhook_manager = processor_manager
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GithubPortAppConfig

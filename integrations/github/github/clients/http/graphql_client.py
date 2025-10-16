@@ -59,7 +59,6 @@ class GithubGraphQLClient(AbstractGithubClient):
         method: str = "POST",
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[IgnoredError]] = None,
-        ignore_default_errors: bool = True,
     ) -> Dict[str, Any]:
         response = await super().send_api_request(
             resource=resource,

@@ -90,12 +90,11 @@ class TestRateLimiter:
         resp = await client.make_request("/user")
         assert resp.status_code == 200
 
-        info = client.rate_limiter.rate_limit_info
-
-        assert info is not None
-        assert info.limit == 1000
-        assert info.remaining == 999
-        assert info.utilization_percentage == 0.1
+        status = client.rate_limiter.get_rate_limit_status()
+        assert client_config.api_type in status
+        assert status[client_config.api_type]["limit"] == 1000
+        assert status[client_config.api_type]["remaining"] == 999
+        assert status[client_config.api_type]["utilization_percentage"] == 0.1
 
         # No sleeping purely for success
         mock_sleep.assert_not_called()
@@ -188,10 +187,8 @@ class TestRateLimiter:
         assert c1.rate_limiter is c2.rate_limiter
 
         await c1.make_request("/user")
-        info = c2.rate_limiter.rate_limit_info
-
-        assert info is not None
-        assert info.remaining == 999
+        status = c2.rate_limiter.get_rate_limit_status()
+        assert status[client_config.api_type]["remaining"] == 999
 
     @pytest.mark.asyncio
     async def test_success_paths_do_not_sleep(
