@@ -8,7 +8,7 @@ from ..auth.abstract_authenticator import AbstractHarborAuthenticator
 from ..auth.auth_factory import HarborAuthenticatorFactory
 from loguru import logger
 from harbor.helpers.utils import IgnoredError
-from harbor.helpers.exceptions import MissingConfiguration, InvalidTokenException
+from harbor.helpers.exceptions import InvalidTokenException
 
 
 DEFAULT_PAGE_SIZE = 100
@@ -49,17 +49,16 @@ class HarborClient:
         robot_name = config.get("robot_name")
         robot_token = config.get("robot_token")
 
-        if not harbor_host:
-            raise MissingConfiguration(" is required in configuration")
-
-        # Use factory to create authenticator
         self._authenticator = HarborAuthenticatorFactory.create(
+            harbor_host=harbor_host,
             username=username,
             password=password,
             robot_name=robot_name,
             robot_token=robot_token,
         )
 
+        # harbor_host is validated in HarborAuthenticatorFactory.create()
+        assert harbor_host is not None, "harbor_host should not be None after factory validation"
         self._base_url = harbor_host.rstrip("/")
         self.api_url = f"{self._base_url}/api/v2.0"
         self.client = self._authenticator.client

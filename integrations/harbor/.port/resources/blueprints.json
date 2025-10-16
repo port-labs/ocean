@@ -42,8 +42,7 @@
                 }
             },
             "required": []
-        },
-        "relations": {}
+        }
     },
     {
         "identifier": "harborUsers",
@@ -76,8 +75,7 @@
                 }
             },
             "required": []
-        },
-        "relations": {}
+        }
     },
     {
         "identifier": "harborRepositories",

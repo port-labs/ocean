@@ -3,7 +3,7 @@ from typing import Optional
 from .basic_authenticator import HarborBasicAuthenticator
 from .robot_authenticator import HarborRobotAuthenticator
 from loguru import logger
-from harbor.helpers.exceptions import MissingCredentials
+from harbor.helpers.exceptions import MissingCredentials, MissingConfiguration
 
 
 class HarborAuthenticatorFactory:
@@ -11,11 +11,16 @@ class HarborAuthenticatorFactory:
 
     @staticmethod
     def create(
+        harbor_host: Optional[str] = None,
         username: Optional[str] = None,
         password: Optional[str] = None,
         robot_name: Optional[str] = None,
         robot_token: Optional[str] = None,
     ) -> HarborBasicAuthenticator | HarborRobotAuthenticator:
+        # Validate required configuration
+        if not harbor_host:
+            raise MissingConfiguration("harbor_host is required in configuration")
+
         # Prefer robot account authentication (recommended for automation)
         if robot_name and robot_token:
             logger.debug(
