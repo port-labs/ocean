@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.15 (2025-10-17)
+
+
+### Features
+
+- Added support for branch kind
+
+
 ## 0.4.14 (2025-10-15)
 
 
