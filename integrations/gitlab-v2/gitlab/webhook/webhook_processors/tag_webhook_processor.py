@@ -33,7 +33,9 @@ class TagWebhookProcessor(_GitlabAbstractWebhookProcessor):
 
         if tag:
             project_path = payload["project"]["path_with_namespace"]
-            tag = {**tag, "__project": {"path_with_namespace": project_path}}
+            tag = self._gitlab_webhook_client.enrich_with_project_path(
+                tag, project_path
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[tag], deleted_raw_results=[]
             )

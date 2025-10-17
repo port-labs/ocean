@@ -78,6 +78,12 @@ class TestReleaseWebhookProcessor:
         processor._gitlab_webhook_client.get_release = AsyncMock(
             return_value=expected_release_from_api
         )
+        processor._gitlab_webhook_client.enrich_with_project_path = MagicMock(
+            return_value={
+                **expected_release_from_api,
+                "__project": {"path_with_namespace": project_path},
+            }
+        )
 
         result = await processor.handle_event(release_payload, resource_config)
 

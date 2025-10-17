@@ -161,12 +161,19 @@ class GitLabClient:
         resource_iterator: AsyncIterator[list[dict[str, Any]]],
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Enrich resources with project information as they are fetched."""
-        project_info = {
-            "path_with_namespace": project["path_with_namespace"],
-        }
         async for batch in resource_iterator:
             if batch:
-                yield [{**resource, "__project": project_info} for resource in batch]
+                yield [
+                    self.enrich_with_project_path(
+                        resource, project["path_with_namespace"]
+                    )
+                    for resource in batch
+                ]
+
+    def enrich_with_project_path(
+        self, resource: dict[str, Any], project_path: str
+    ) -> dict[str, Any]:
+        return {**resource, "__project": {"path_with_namespace": project_path}}
 
     async def get_projects_resource_with_enrichment(
         self,

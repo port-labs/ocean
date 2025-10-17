@@ -43,7 +43,9 @@ class ReleaseWebhookProcessor(_GitlabAbstractWebhookProcessor):
         )
         if release:
             project_path = payload["project"]["path_with_namespace"]
-            release = {**release, "__project": {"path_with_namespace": project_path}}
+            release = self._gitlab_webhook_client.enrich_with_project_path(
+                release, project_path
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[release], deleted_raw_results=[]
             )
