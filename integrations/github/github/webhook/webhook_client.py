@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 from httpx import HTTPStatusError
 from loguru import logger
 from github.clients.http.rest_client import GithubRestClient
+from github.webhook.registry import WEBHOOK_PATH
 
 PAGE_SIZE = 100
 
@@ -86,7 +87,7 @@ class GithubWebhookClient(GithubRestClient):
     async def upsert_webhook(self, base_url: str, webhook_events: List[str]) -> None:
         """Create or update GitHub organization webhook with secret handling."""
 
-        webhook_url = f"{base_url}/integration/webhook"
+        webhook_url = f"{base_url}/integration{WEBHOOK_PATH}"
 
         try:
             existing_webhook = await self._get_existing_webhook(webhook_url)
