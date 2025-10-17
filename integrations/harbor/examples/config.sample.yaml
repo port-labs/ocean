@@ -1,0 +1,29 @@
+port:
+  clientId: ${PORT_CLIENT_ID}
+  clientSecret: ${PORT_CLIENT_SECRET}
+  baseUrl: https://api.getport.io/v1
+
+eventListener:
+  type: WEBHOOK
+
+integration:
+  identifier: harbor-demo
+  type: Harbor
+  config:
+    baseUrl: https://harbor.example.com/api/v2.0
+    authMode: robot_token
+    robotAccount: robot$port-sync
+    robotToken: ${HARBOR_ROBOT_TOKEN}
+    projects: ["platform", "sre"]
+    projectVisibilityFilter: ["public", "private"]
+    repositoryNamePrefix: "library/"
+    repositoryNameContains: "nginx"
+    artifactTagFilter:
+      - latest
+      - stable
+    artifactVulnSeverityAtLeast: High
+    maxConcurrentRequests: 10
+    maxRetries: 5
+    retryJitterSeconds: 0.5
+    logLevel: INFO
+    portOrgId: ${PORT_ORG_ID}
