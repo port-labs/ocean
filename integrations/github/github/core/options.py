@@ -4,8 +4,8 @@ from typing import List, NotRequired, Optional, Required, TypedDict
 class ListOrganizationOptions(TypedDict):
     """Options for listing organizations."""
 
-    organization: NotRequired[Optional[str]]
-    multi_organizations: NotRequired[Optional[List[str]]]
+    organization: NotRequired[str]
+    allowed_multi_organizations: NotRequired[List[str]]
 
 
 class SingleOrganizationOptions(TypedDict):

@@ -1,9 +1,11 @@
-from typing import Any, Dict
+from typing import Any, Dict, cast
 from github.core.options import ListOrganizationOptions
 from github.helpers.exceptions import OrganizationRequiredException
 from port_ocean.context.ocean import ocean
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from integration import GithubPortAppConfig
+from port_ocean.context.event import event
 
 
 def integration_config(authenticator: AbstractGitHubAuthenticator) -> Dict[str, Any]:
@@ -16,11 +18,11 @@ def integration_config(authenticator: AbstractGitHubAuthenticator) -> Dict[str, 
 def get_github_organizations() -> ListOrganizationOptions:
     """Get the organizations from the integration config."""
     organization = ocean.integration_config["github_organization"]
-    multi_organizations = ocean.integration_config["github_multi_organizations"]
-    return {
-        "organization": organization,
-        "multi_organizations": multi_organizations,
-    }
+    port_app_config = cast(GithubPortAppConfig, event.port_app_config)
+    return ListOrganizationOptions(
+        organization=organization,
+        allowed_multi_organizations=port_app_config.allowed_organizations(),
+    )
 
 
 def get_mono_repo_organization(organization: str | None) -> str:

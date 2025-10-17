@@ -6,6 +6,7 @@ from port_ocean.utils.cache import cache_iterator_result
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.http.rest_client import GithubRestClient
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from typing import List
 
 
 class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
@@ -19,17 +20,28 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_paginated_resources(
         self, options: ListOrganizationOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        """
+        If the organization is provided, fetch a single organization.
+        If the organization is not provided, fetch all organizations.
+        If the organization is not provided and the token is not a classic PAT token, raise an error.
+        If the organization is provided and the token is not a classic PAT token, raise an error.
+        If the organization is not provided and the token is a classic PAT token, fetch all organizations.
+        If the organization is provided and the token is a classic PAT token, fetch a single organization.
+        """
         logger.info("Fetching organizations")
 
-        organization = options.get("organization")
-        multi_organizations = set(options.get("multi_organizations") or [])
+        list_organizations_url = f"{self.client.base_url}/user/orgs"
+        allowed_multi_organizations: List[str] = options.get(
+            "allowed_multi_organizations", []
+        )
 
-        if organization:
+        if organization := options.get("organization"):
             logger.info(f"Fetching single organization {organization}")
-            org_data = await self.client.send_api_request(
-                f"{self.client.base_url}/orgs/{organization}"
-            )
-            yield [org_data]
+            yield [
+                await self.client.send_api_request(
+                    f"{self.client.base_url}/orgs/{organization}"
+                )
+            ]
             return
 
         if not await self.is_classic_pat_token():
@@ -37,24 +49,15 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
                 "Organization is required for non-classic PAT tokens"
             )
 
-        list_organizations_url = f"{self.client.base_url}/user/orgs"
-        if not multi_organizations:
-            logger.info("Fetching all organizations for non-classic PAT tokens")
-            async for orgs in self.client.send_paginated_request(
-                list_organizations_url
-            ):
-                yield orgs
-            return
-
         async for orgs in self.client.send_paginated_request(list_organizations_url):
-            filtered_orgs = [
-                org for org in orgs if org.get("login") in multi_organizations
-            ]
-            if filtered_orgs:
-                logger.info(
-                    f"Filtered to {len(filtered_orgs)} organizations from {len(orgs)} total"
-                )
-                yield filtered_orgs
+            # if allowed_multi_organizations is provided, filter the organizations, else yield all organizations
+            if allowed_multi_organizations:
+                orgs = [
+                    org
+                    for org in orgs
+                    if org.get("login") in allowed_multi_organizations
+                ]
+            yield orgs
 
     async def get_resource[ExporterOptionsT: None](self, options: None) -> RAW_ITEM:
         raise NotImplementedError

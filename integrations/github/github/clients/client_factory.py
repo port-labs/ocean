@@ -71,20 +71,12 @@ class GithubClientFactory:
             ValueError: If client_type is invalid
         """
 
-        github_organization = ocean.integration_config["github_organization"]
-        if (
-            github_organization
-            and ocean.integration_config["github_multi_organizations"]
-        ):
-            raise OrganizationConflictError(
-                "Cannot supply both github_organization and github_multi_organizations"
-            )
-
         if client_type not in self._instances:
             if client_type not in self._clients:
                 logger.error(f"Invalid client type: {client_type}")
                 raise ValueError(f"Invalid client type: {client_type}")
 
+            github_organization = ocean.integration_config["github_organization"]
             authenticator = GitHubAuthenticatorFactory.create(
                 github_host=ocean.integration_config["github_host"],
                 organization=github_organization,
