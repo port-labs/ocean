@@ -26,6 +26,17 @@ class ReleaseWebhookProcessor(_GitlabAbstractWebhookProcessor):
         logger.info(
             f"Handling release webhook event for project with ID '{project_id} and tag name '{tag_name}'"
         )
+        if payload["action"] == "delete":
+            release = {
+                **payload,
+                "__project": {
+                    "path_with_namespace": payload["project"]["path_with_namespace"]
+                },
+            }
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[release]
+            )
+
         release = await self._gitlab_webhook_client.get_release(
             project_id=project_id,
             tag_name=tag_name,
@@ -33,14 +44,8 @@ class ReleaseWebhookProcessor(_GitlabAbstractWebhookProcessor):
         if release:
             project_path = payload["project"]["path_with_namespace"]
             release = {**release, "__project": {"path_with_namespace": project_path}}
-
-            if payload["action"] == "delete":
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[release]
-                )
-            else:
-                return WebhookEventRawResults(
-                    updated_raw_results=[release], deleted_raw_results=[]
-                )
+            return WebhookEventRawResults(
+                updated_raw_results=[release], deleted_raw_results=[]
+            )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])

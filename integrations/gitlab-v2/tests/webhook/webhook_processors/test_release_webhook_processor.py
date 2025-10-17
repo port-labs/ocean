@@ -37,6 +37,7 @@ class TestReleaseWebhookProcessor:
             "object_kind": "release",
             "event_name": "release",
             "tag": "v1.0.0",
+            "action": "create",
             "project": {
                 "id": 123,
                 "name": "test-repo",
