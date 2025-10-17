@@ -8,7 +8,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from azure_integration.exporters.resource_containers import ResourceContainersExporter
 from azure_integration.exporters.resources import ResourcesExporter
-from azure_integration.factory import init_client_and_sub_manager
+from azure_integration.exporters.subscription import SubscriptionExporter
+from azure_integration.factory import create_azure_client
 from azure_integration.models import (
     ResourceContainerExporterOptions,
     ResourceExporterOptions,
@@ -25,11 +26,21 @@ class Kind(StrEnum):
 async def on_resync_resource_container(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting Azure to Port {kind} sync")
     selectors = cast(AzureResourceContainerConfig, event.resource_config).selector
-    client, subscription_manager = init_client_and_sub_manager()
-    async with client as client, subscription_manager as sub_manager:
-        exporter_options = ResourceContainerExporterOptions(tag_filter=selectors.tags)
-        exporter = ResourceContainersExporter(client, sub_manager)
-        async for resources in exporter.get_paginated_resources(exporter_options):
+    azure_client = create_azure_client()
+
+    subscription_exporter = SubscriptionExporter(azure_client)
+    resource_containers_exporter = ResourceContainersExporter(azure_client)
+    async for subscriptions in subscription_exporter.get_paginated_resources():
+        subscription_ids = [
+            subscription["subscriptionId"] for subscription in subscriptions
+        ]
+        exporter_options = ResourceContainerExporterOptions(
+            tag_filter=selectors.tags, subscription_ids=subscription_ids
+        )
+
+        async for resources in resource_containers_exporter.get_paginated_resources(
+            exporter_options
+        ):
             yield resources
 
 
@@ -37,13 +48,23 @@ async def on_resync_resource_container(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
 async def on_resync_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting Azure to Port {kind} sync")
     selectors = cast(AzureResourceConfig, event.resource_config).selector
-    client, subscription_manager = init_client_and_sub_manager()
-    async with client as client, subscription_manager as sub_manager:
+    azure_client = create_azure_client()
+
+    subscription_exporter = SubscriptionExporter(azure_client)
+    resources_exporter = ResourcesExporter(azure_client)
+    async for subscriptions in subscription_exporter.get_paginated_resources():
+
+        subscription_ids = [
+            subscription["subscriptionId"] for subscription in subscriptions
+        ]
         exporter_options = ResourceExporterOptions(
-            resource_types=selectors.resource_types, tag_filter=selectors.tags
+            resource_types=selectors.resource_types,
+            tag_filter=selectors.tags,
+            subscription_ids=subscription_ids,
         )
-        exporter = ResourcesExporter(client, sub_manager)
-        async for resources in exporter.get_paginated_resources(exporter_options):
+        async for resources in resources_exporter.get_paginated_resources(
+            exporter_options
+        ):
             yield resources
 
 

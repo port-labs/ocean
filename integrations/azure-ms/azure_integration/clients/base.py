@@ -1,20 +1,56 @@
-from __future__ import annotations
-
-from abc import abstractmethod
-from typing import Any, AsyncContextManager, AsyncGenerator, Protocol, Sequence
-
-
-class ResponseObject(Protocol):
-    data: Any
+from typing import Any, AsyncGenerator, Dict
+from azure.core.credentials_async import AsyncTokenCredential
+from pydantic import BaseModel
+from typing import List, Optional
+from abc import ABC, abstractmethod
 
 
-class AzureClient(AsyncContextManager["AzureClient"]):
+class AzureRequest(BaseModel, extra="allow"):
+    method: str = "GET"
+    params: Optional[Dict[str, Any]] = None
+    endpoint: Optional[str] = None
+    json_data: Optional[Dict[str, Any]] = None
+    ignored_errors: Optional[List[Dict[str, Any]]] = None
+    api_version: str = "2022-12-01"
+    page_size: int = 100
+    data_key: str = "value"
+
+
+class AbstractAzureClient(ABC):
+    """Abstract base for all Azure clients — REST, SDK, or hybrid."""
+
+    def __init__(
+        self,
+        credential: AsyncTokenCredential,
+        base_url: str,
+        **kwargs: Any,
+    ) -> None: ...
+
     @abstractmethod
     async def make_request(
-        self, query: str, subscriptions: Sequence[str], **kwargs: Any
-    ) -> ResponseObject: ...
+        self,
+        request: AzureRequest,
+    ) -> Dict[str, Any]:
+        """
+        Perform a single Azure API request.
+
+        Implementations may interpret:
+        - resource / method: REST endpoint (for ARM/management APIs)
+        - query / subscriptions: Resource Graph queries
+        - json_data: POST bodies for REST or other data operations
+        """
+        ...
 
     @abstractmethod
     def make_paginated_request(
-        self, query: str, subscriptions: Sequence[str]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]: ...
+        self,
+        request: AzureRequest,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """
+        Perform a paginated request, yielding batches of results.
+
+        Implementations decide what pagination means:
+        - For REST APIs: follow 'nextLink'
+        - For Resource Graph: use skip_token
+        """
+        ...

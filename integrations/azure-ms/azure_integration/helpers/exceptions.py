@@ -1,0 +1,2 @@
+class MissingAzureCredentials(Exception):
+    pass

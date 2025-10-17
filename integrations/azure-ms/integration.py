@@ -7,8 +7,8 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-
 from azure_integration.models import ResourceGroupTagFilters
+from pydantic import Field
 
 
 class TagSelector(Selector):
@@ -34,7 +34,9 @@ class AzureResourceContainerConfig(ResourceConfig):
 
 
 class AzurePortAppConfig(PortAppConfig):
-    resources: list[AzureResourceConfig | AzureResourceContainerConfig | ResourceConfig]
+    resources: list[
+        AzureResourceConfig | AzureResourceContainerConfig | ResourceConfig
+    ] = Field(default_factory=list)
 
 
 class AzureIntegration(BaseIntegration):

@@ -8,10 +8,10 @@ features:
       - kind: resourceContainer
       - kind: resource
 configurations:
-  - name: subscriptionBatchSize
+  - name: azureBaseUrl
     type: string
     required: false
-    default: 100
+    default: "https://management.azure.com"
   - name: azureClientId
     type: string
     required: true

@@ -1,22 +1,19 @@
 import asyncio
 import random
 from datetime import datetime
-from typing import cast
 
-from azure.core.exceptions import HttpResponseError
-from azure.core.rest import AsyncHttpResponse
 from loguru import logger
+import httpx
 
 
 class SubscriptionLimitReacheached(Exception):
     pass
 
 
-class AzureRequestThrottled(HttpResponseError):
-    async def handle_delay(self) -> None:
-        if not self.response:
-            return
-        response = cast(AsyncHttpResponse, self.response)
+class AzureRequestThrottled:
+
+    async def handle_delay(self, response: httpx.Response) -> None:
+
         self._check_for_subscription_limit(response)
 
         remaining_quota = response.headers["x-ms-user-quota-remaining"]
@@ -32,7 +29,7 @@ class AzureRequestThrottled(HttpResponseError):
             )
             await asyncio.sleep(sleep_duration)
 
-    def _check_for_subscription_limit(self, response: AsyncHttpResponse) -> None:
+    def _check_for_subscription_limit(self, response: httpx.Response) -> None:
         subscription_limit = response.headers.get("x-ms-tenant-subscription-limit-hit")
         if subscription_limit and subscription_limit == "true":
             raise SubscriptionLimitReacheached(

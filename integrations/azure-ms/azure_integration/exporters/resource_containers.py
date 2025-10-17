@@ -9,30 +9,36 @@ from azure_integration.models import (
     ResourceContainerExporterOptions,
     ResourceGroupTagFilters,
 )
-from azure_integration.utils import build_rg_tag_filter_clause
+from azure_integration.helpers.utils import build_rg_tag_filter_clause
+from azure_integration.clients.base import AzureRequest
 
 
 class ResourceContainersExporter(BaseExporter):
+
     async def get_paginated_resources(
         self, options: ResourceContainerExporterOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         query = self._build_sync_query(options.tag_filter)
-        async for sub_batch in self.sub_manager.get_sub_id_in_batches():
-            logger.info(
-                f"Exporting container resources for {len(sub_batch)} subscriptions"
-            )
-            async for resource_containers in self.client.make_paginated_request(
-                query,
-                sub_batch,
-            ):
-                if resource_containers:
-                    logger.info(
-                        f"Received batch of {len(resource_containers)} resource containers"
-                    )
-                    yield resource_containers
-                else:
-                    logger.info("No containers found in this batch")
-                    continue
+        logger.info(
+            f"Exporting container resources for {len(options.subscription_ids)} subscriptions"
+        )
+
+        request = AzureRequest(
+            endpoint="providers/Microsoft.ResourceGraph/resources",
+            json_data={"query": query, "subscriptions": options.subscription_ids},
+            method="POST",
+            api_version="2024-04-01",
+            data_key="data",
+        )
+        async for resource_containers in self.client.make_paginated_request(request):
+            if resource_containers:
+                logger.info(
+                    f"Received batch of {len(resource_containers)} resource containers"
+                )
+                yield resource_containers
+            else:
+                logger.info("No containers found in this batch")
+                continue
 
     def _build_sync_query(
         self, tag_filters: Optional[ResourceGroupTagFilters] = None

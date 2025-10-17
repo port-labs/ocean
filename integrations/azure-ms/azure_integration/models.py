@@ -1,5 +1,4 @@
-from typing import Optional
-from azure.identity.aio import ClientSecretCredential
+from typing import Optional, List
 from pydantic import BaseModel
 
 
@@ -12,23 +11,17 @@ class ResourceGroupTagFilters(BaseModel):
         return bool(self.included) or bool(self.excluded)
 
 
-class AuthCredentials(BaseModel):
-    client_id: str
-    client_secret: str
-    tenant_id: str
-
-    def create_azure_credential(self) -> ClientSecretCredential:
-        return ClientSecretCredential(
-            client_id=self.client_id,
-            client_secret=self.client_secret,
-            tenant_id=self.tenant_id,
-        )
+class SubscriptionIds(BaseModel):
+    subscription_ids: List[str]
 
 
-class ResourceExporterOptions(BaseModel):
+class ResourceExporterOptions(SubscriptionIds):
     tag_filter: Optional[ResourceGroupTagFilters] = None
     resource_types: Optional[list[str]] = None
 
 
-class ResourceContainerExporterOptions(BaseModel):
+class ResourceContainerExporterOptions(SubscriptionIds):
     tag_filter: Optional[ResourceGroupTagFilters] = None
+
+
+class SubscriptionExporterOptions(BaseModel): ...
