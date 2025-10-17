@@ -34,7 +34,7 @@ class ReleaseWebhookProcessor(_GitlabAbstractWebhookProcessor):
             project_path = payload["project"]["path_with_namespace"]
             release = {**release, "__project": {"path_with_namespace": project_path}}
 
-            if release["action"] == "delete":
+            if payload["action"] == "delete":
                 return WebhookEventRawResults(
                     updated_raw_results=[], deleted_raw_results=[release]
                 )
