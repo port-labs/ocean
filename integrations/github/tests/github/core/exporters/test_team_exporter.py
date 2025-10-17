@@ -16,6 +16,7 @@ from github.core.exporters.team_exporter import (
     GraphQLTeamWithMembersExporter,
     GraphQLTeamMembersAndReposExporter,
 )
+from github.core.options import ListTeamOptions
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
 from github.core.options import SingleTeamOptions
@@ -75,12 +76,14 @@ class TestRestTeamExporter:
         with patch.object(
             rest_client, "send_api_request", return_value=TEST_TEAMS[0]
         ) as mock_request:
-            team = await exporter.get_resource(SingleTeamOptions(slug="team-alpha"))
+            team = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-alpha")
+            )
 
             assert team == TEST_TEAMS[0]
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/orgs/{rest_client.organization}/teams/team-alpha"
+                f"{rest_client.base_url}/orgs/test-org/teams/team-alpha"
             )
 
     async def test_get_paginated_resources(self, rest_client: GithubRestClient) -> None:
@@ -97,7 +100,10 @@ class TestRestTeamExporter:
                 exporter = RestTeamExporter(rest_client)
 
                 teams: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources()
+                    batch
+                    async for batch in exporter.get_paginated_resources(
+                        ListTeamOptions(organization="test-org")
+                    )
                 ]
 
                 assert len(teams) == 1
@@ -105,7 +111,7 @@ class TestRestTeamExporter:
                 assert teams[0] == TEST_TEAMS
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/orgs/{rest_client.organization}/teams"
+                    f"{rest_client.base_url}/orgs/test-org/teams"
                 )
 
 
@@ -254,7 +260,9 @@ class TestGraphQLTeamExporter:
         with patch.object(
             graphql_client, "send_api_request", new=mock_send_api_request
         ):
-            team = await exporter.get_resource(SingleTeamOptions(slug="team-alpha"))
+            team = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-alpha")
+            )
 
             assert team == TEAM_ALPHA_RESOLVED
             assert mock_send_api_request.call_count == 2
@@ -262,7 +270,7 @@ class TestGraphQLTeamExporter:
             call_args_initial = mock_send_api_request.call_args_list[0]
             expected_variables_initial = {
                 "slug": "team-alpha",
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
             }
             expected_payload_initial = graphql_client.build_graphql_payload(
@@ -276,7 +284,7 @@ class TestGraphQLTeamExporter:
             call_args_page2 = mock_send_api_request.call_args_list[1]
             expected_variables_page2 = {
                 "slug": "team-alpha",
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": TEAM_ALPHA_MEMBERS_PAGE1_PAGEINFO["endCursor"],
             }
@@ -301,7 +309,9 @@ class TestGraphQLTeamExporter:
             "send_api_request",
             new=AsyncMock(return_value=mock_response_data),
         ) as mock_request:
-            team = await exporter.get_resource(SingleTeamOptions(slug="team-beta"))
+            team = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-beta")
+            )
 
             assert team == TEAM_BETA_RESOLVED
             mock_request.assert_called_once()
@@ -335,7 +345,10 @@ class TestGraphQLTeamExporter:
             ) as mock_exporter_fetch_members,
         ):
             result_batches: list[list[dict[str, Any]]] = [
-                batch async for batch in exporter.get_paginated_resources()
+                batch
+                async for batch in exporter.get_paginated_resources(
+                    ListTeamOptions(organization="test-org")
+                )
             ]
 
             assert len(result_batches) == 1
@@ -346,7 +359,7 @@ class TestGraphQLTeamExporter:
 
             # Assert send_paginated_request (for teams) was called correctly
             expected_variables_for_teams_fetch = {
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "__path": "organization.teams",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
             }
@@ -356,6 +369,7 @@ class TestGraphQLTeamExporter:
 
             # Assert fetch_other_members was called for Team Alpha
             mock_exporter_fetch_members.assert_called_once_with(
+                organization="test-org",
                 team_slug="team-alpha",
                 initial_members_page_info=TEAM_ALPHA_MEMBERS_PAGE1_PAGEINFO,
                 initial_member_nodes=TEAM_ALPHA_MEMBERS_PAGE1_NODES,
@@ -443,7 +457,9 @@ class TestGraphQLTeamMembersAndReposExporter:
             "send_api_request",
             new=AsyncMock(return_value=mock_response_data),
         ) as mock_request:
-            result = await exporter.get_resource(SingleTeamOptions(slug="team-gamma"))
+            result = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-gamma")
+            )
 
             assert result == expected_result
             mock_request.assert_called_once()
@@ -452,7 +468,7 @@ class TestGraphQLTeamMembersAndReposExporter:
             call_args = mock_request.call_args
             expected_variables = {
                 "slug": "team-gamma",
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": None,
                 "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
@@ -573,7 +589,9 @@ class TestGraphQLTeamMembersAndReposExporter:
         with patch.object(
             graphql_client, "send_api_request", new=mock_send_api_request
         ):
-            result = await exporter.get_resource(SingleTeamOptions(slug="team-delta"))
+            result = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-delta")
+            )
 
             assert result == expected_result
             assert mock_send_api_request.call_count == 2
@@ -582,7 +600,7 @@ class TestGraphQLTeamMembersAndReposExporter:
             call_args_1 = mock_send_api_request.call_args_list[0]
             expected_variables_1 = {
                 "slug": "team-delta",
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": None,
                 "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
@@ -600,7 +618,7 @@ class TestGraphQLTeamMembersAndReposExporter:
             call_args_2 = mock_send_api_request.call_args_list[1]
             expected_variables_2 = {
                 "slug": "team-delta",
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": "cursor_delta_members_p1",
                 "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
@@ -751,7 +769,9 @@ class TestGraphQLTeamMembersAndReposExporter:
         with patch.object(
             graphql_client, "send_api_request", new=mock_send_api_request
         ):
-            result = await exporter.get_resource(SingleTeamOptions(slug="team-epsilon"))
+            result = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-epsilon")
+            )
 
             assert result == expected_result
             assert mock_send_api_request.call_count == 2
@@ -760,7 +780,7 @@ class TestGraphQLTeamMembersAndReposExporter:
             call_args_1 = mock_send_api_request.call_args_list[0]
             expected_variables_1 = {
                 "slug": "team-epsilon",
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": None,
                 "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
@@ -778,7 +798,7 @@ class TestGraphQLTeamMembersAndReposExporter:
             call_args_2 = mock_send_api_request.call_args_list[1]
             expected_variables_2 = {
                 "slug": "team-epsilon",
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": None,
                 "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
@@ -962,7 +982,9 @@ class TestGraphQLTeamMembersAndReposExporter:
         with patch.object(
             graphql_client, "send_api_request", new=mock_send_api_request
         ):
-            result = await exporter.get_resource(SingleTeamOptions(slug="team-zeta"))
+            result = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-zeta")
+            )
 
             assert result == expected_result
             assert mock_send_api_request.call_count == 3
@@ -971,7 +993,7 @@ class TestGraphQLTeamMembersAndReposExporter:
             call_args_1 = mock_send_api_request.call_args_list[0]
             expected_variables_1 = {
                 "slug": "team-zeta",
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": None,
                 "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
@@ -989,7 +1011,7 @@ class TestGraphQLTeamMembersAndReposExporter:
             call_args_2 = mock_send_api_request.call_args_list[1]
             expected_variables_2 = {
                 "slug": "team-zeta",
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": "cursor_zeta_members_p1",
                 "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
@@ -1007,7 +1029,7 @@ class TestGraphQLTeamMembersAndReposExporter:
             call_args_3 = mock_send_api_request.call_args_list[2]
             expected_variables_3 = {
                 "slug": "team-zeta",
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": None,
                 "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
@@ -1031,7 +1053,9 @@ class TestGraphQLTeamMembersAndReposExporter:
             "send_api_request",
             new=AsyncMock(return_value=None),
         ) as mock_request:
-            result = await exporter.get_resource(SingleTeamOptions(slug="team-empty"))
+            result = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-empty")
+            )
 
             assert result == {}
             mock_request.assert_called_once()
@@ -1049,7 +1073,7 @@ class TestGraphQLTeamMembersAndReposExporter:
             new=AsyncMock(return_value=mock_response_data),
         ) as mock_request:
             result = await exporter.get_resource(
-                SingleTeamOptions(slug="team-not-found")
+                SingleTeamOptions(organization="test-org", slug="team-not-found")
             )
 
             # The method should handle None team gracefully

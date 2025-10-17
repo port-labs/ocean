@@ -31,11 +31,13 @@ def resource_config() -> GithubFileResourceConfig:
             query="true",
             files=[
                 GithubFilePattern(
+                    organization="test-org",
                     path="*.yaml",
                     repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
                     skipParsing=False,
                 ),
                 GithubFilePattern(
+                    organization="test-org",
                     path="*.json",
                     repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
                     skipParsing=True,
@@ -70,6 +72,7 @@ def payload() -> EventPayload:
         "after": "def456",
         "commits": [],
         "repository": {"name": "test-repo", "default_branch": "main"},
+        "organization": {"login": "test-org"},
     }
 
 
@@ -253,10 +256,11 @@ class TestFileWebhookProcessor:
 
             # Verify exporter calls
             mock_exporter.fetch_commit_diff.assert_called_once_with(
-                "test-repo", "abc123", "def456"
+                "test-org", "test-repo", "abc123", "def456"
             )
             mock_exporter.get_resource.assert_called_once_with(
                 FileContentOptions(
+                    organization="test-org",
                     repo_name="test-repo",
                     file_path="config.yaml",
                     branch="main",

@@ -124,6 +124,7 @@ class TestBranchWebhookProcessor:
             "ref": branch_ref,
             "ref_type": "branch",
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         branch_webhook_processor._event_type = event_type
@@ -150,6 +151,7 @@ class TestBranchWebhookProcessor:
             # Verify exporter was called with correct options
             mock_exporter.get_resource.assert_called_once_with(
                 SingleBranchOptions(
+                    organization="test-org",
                     repo_name="test-repo",
                     branch_name=branch_name,
                     protection_rules=protection_rules,

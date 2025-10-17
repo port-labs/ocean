@@ -42,8 +42,11 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
         action = payload["action"]
         repo = payload["repository"]
         name = repo["name"]
+        organization = payload["organization"]["login"]
 
-        logger.info(f"Processing repository event: {action} for {name}")
+        logger.info(
+            f"Processing repository event: {action} for {name} from {organization}"
+        )
 
         if action in REPOSITORY_DELETE_EVENTS:
             return WebhookEventRawResults(
@@ -55,6 +58,7 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         resource_config = cast(GithubRepositoryConfig, resource_config)
         options = SingleRepositoryOptions(
+            organization=organization,
             name=name,
             included_relationships=cast(list[str], resource_config.selector.include),
         )

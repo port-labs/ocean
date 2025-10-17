@@ -14,7 +14,7 @@ TEST_PULL_REQUESTS = [
         "title": "Fix bug in login",
         "state": "open",
         "html_url": "https://github.com/test-org/repo1/pull/101",
-        "updated_at": "2025-08-15T15:08:15Z",
+        "updated_at": "2025-08-15T15:08:15Z",  # do not change this value
     },
     {
         "id": 2,
@@ -22,7 +22,7 @@ TEST_PULL_REQUESTS = [
         "title": "Add new feature",
         "state": "open",
         "html_url": "https://github.com/test-org/repo1/pull/102",
-        "updated_at": "2025-08-15T15:08:15Z",
+        "updated_at": "2025-08-15T15:08:15Z",  # do not change this value
     },
 ]
 
@@ -31,7 +31,9 @@ TEST_PULL_REQUESTS = [
 def mock_datetime() -> Generator[datetime, None, None]:
     """Fixture that mocks the datetime module for consistent testing."""
     with patch("github.core.exporters.pull_request_exporter.datetime") as mock_dt:
-        mock_dt.now.return_value = datetime(2025, 8, 19, 12, 0, 0, tzinfo=UTC)
+        mock_dt.now.return_value = datetime(
+            2025, 8, 19, 12, 0, 0, tzinfo=UTC
+        )  # do not change this value
         mock_dt.UTC = UTC
         mock_dt.timedelta = timedelta
         mock_dt.strptime = datetime.strptime
@@ -50,14 +52,16 @@ class TestPullRequestExporter:
             AsyncMock(return_value=TEST_PULL_REQUESTS[0]),
         ) as mock_request:
             pr = await exporter.get_resource(
-                SinglePullRequestOptions(repo_name="repo1", pr_number=101)
+                SinglePullRequestOptions(
+                    organization="test-org", repo_name="repo1", pr_number=101
+                )
             )
 
             expected_pr = {**TEST_PULL_REQUESTS[0], "__repository": "repo1"}
             assert pr == expected_pr
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/pulls/101"
+                f"{rest_client.base_url}/repos/test-org/repo1/pulls/101"
             )
 
     @pytest.mark.parametrize(
@@ -77,6 +81,7 @@ class TestPullRequestExporter:
     async def test_get_paginated_resources_various_states(
         self,
         rest_client: GithubRestClient,
+        mock_datetime: datetime,
         states: list[str],
         expected_calls: list[dict[str, Any]],
     ) -> None:
@@ -92,7 +97,11 @@ class TestPullRequestExporter:
         ) as mock_paginated:
             async with event_context("test_event"):
                 options = ListPullRequestOptions(
-                    states=states, repo_name="repo1", max_results=10, since=60
+                    organization="test-org",
+                    states=states,
+                    repo_name="repo1",
+                    max_results=10,
+                    since=60,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -111,7 +120,7 @@ class TestPullRequestExporter:
             ]
             expected_call_args = [
                 (
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/pulls",
+                    f"{rest_client.base_url}/repos/test-org/repo1/pulls",
                     params,
                 )
                 for params in expected_calls
@@ -119,7 +128,7 @@ class TestPullRequestExporter:
             assert actual_calls == expected_call_args
 
     async def test_get_paginated_resources_respects_max_results(
-        self, rest_client: GithubRestClient
+        self, rest_client: GithubRestClient, mock_datetime: datetime
     ) -> None:
         exporter = RestPullRequestExporter(rest_client)
 
@@ -149,7 +158,11 @@ class TestPullRequestExporter:
         ):
             async with event_context("test_event"):
                 options = ListPullRequestOptions(
-                    states=["closed"], repo_name="repo1", max_results=5, since=60
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=5,
+                    since=60,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -167,7 +180,11 @@ class TestPullRequestExporter:
         ):
             async with event_context("test_event"):
                 options = ListPullRequestOptions(
-                    states=["closed"], repo_name="repo1", max_results=5, since=60
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=5,
+                    since=60,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -249,7 +266,11 @@ class TestPullRequestExporter:
             async with event_context("test_event"):
                 # Test 1: since=30 days with max_results=10 (should get only 5 PRs due to since filtering)
                 options = ListPullRequestOptions(
-                    states=["closed"], repo_name="repo1", max_results=10, since=30
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=10,
+                    since=30,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -267,7 +288,11 @@ class TestPullRequestExporter:
         ):
             async with event_context("test_event"):
                 options = ListPullRequestOptions(
-                    states=["closed"], repo_name="repo1", max_results=3, since=90
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=3,
+                    since=90,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)

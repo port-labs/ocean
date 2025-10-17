@@ -5,7 +5,7 @@ from loguru import logger
 
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.options import SingleTeamOptions
+from github.core.options import SingleTeamOptions, ListTeamOptions
 from github.helpers.gql_queries import (
     FETCH_TEAM_WITH_MEMBERS_GQL,
     LIST_TEAM_MEMBERS_GQL,
@@ -18,9 +18,10 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
     async def get_resource[
         ExporterOptionT: SingleTeamOptions
     ](self, options: ExporterOptionT) -> RAW_ITEM:
+        organization = options["organization"]
         variables = {
             "slug": options["slug"],
-            "organization": self.client.organization,
+            "organization": organization,
             "memberFirst": self.MEMBER_PAGE_SIZE,
         }
 
@@ -42,6 +43,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
         if member_page_info.get("hasNextPage"):
             all_member_nodes_for_team = await self.get_paginated_members(
+                organization=organization,
                 team_slug=team["slug"],
                 initial_members_page_info=member_page_info,
                 initial_member_nodes=member_nodes,
@@ -53,11 +55,12 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
         return team
 
-    async def get_paginated_resources(
-        self, options: None = None
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionT: ListTeamOptions
+    ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        organization = options["organization"]
         variables = {
-            "organization": self.client.organization,
+            "organization": organization,
             "__path": "organization.teams",
             "memberFirst": self.MEMBER_PAGE_SIZE,
         }
@@ -73,6 +76,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
                 if member_page_info.get("hasNextPage"):
                     all_member_nodes_for_team = await self.get_paginated_members(
+                        organization=organization,
                         team_slug=team["slug"],
                         initial_members_page_info=member_page_info,
                         initial_member_nodes=member_nodes,
@@ -93,6 +97,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
     async def get_paginated_members(
         self,
+        organization: str,
         team_slug: str,
         initial_members_page_info: dict[str, Any],
         initial_member_nodes: list[dict[str, Any]],
@@ -117,7 +122,7 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
         while current_page_info.get("hasNextPage"):
             variables = {
-                "organization": self.client.organization,
+                "organization": organization,
                 "slug": team_slug,
                 "memberFirst": member_page_size,
                 "memberAfter": current_page_info.get("endCursor"),

@@ -77,11 +77,13 @@ def file_resource_config() -> GithubFileResourceConfig:
             query="true",
             files=[
                 GithubFilePattern(
+                    organization="test-org",
                     path="*.yaml",
                     repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
                     validationCheck=True,
                 ),
                 GithubFilePattern(
+                    organization="test-org",
                     path="*.json",
                     repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
                     validationCheck=False,
@@ -123,6 +125,7 @@ def mock_payload() -> dict[str, Any]:
             "base": {"sha": "base-sha-123"},
             "head": {"sha": "head-sha-456"},
         },
+        "organization": {"login": "test-org"},
     }
 
 
@@ -249,7 +252,7 @@ class TestCheckRunValidatorWebhookProcessor:
 
                 # Verify that the file exporter methods were called
                 mock_file_exporter.fetch_commit_diff.assert_called_once_with(
-                    "test-repo", "base-sha-123", "head-sha-456"
+                    "test-org", "test-repo", "base-sha-123", "head-sha-456"
                 )
 
                 # Verify that validation service was created and called
@@ -274,6 +277,7 @@ class TestCheckRunValidatorWebhookProcessor:
                     "base": {"sha": "base-sha-123"},
                     "head": {"sha": "head-sha-456"},
                 },
+                "organization": {"login": "test-org"},
             }
 
             async with event_context("test_event") as event:

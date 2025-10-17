@@ -98,7 +98,11 @@ class TestRepositoryWebhookProcessor:
             "description": "Test repository",
         }
 
-        payload = {"action": action, "repository": repo_data}
+        payload = {
+            "action": action,
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
 
         if is_deletion:
             result = await repository_webhook_processor.handle_event(
@@ -119,7 +123,9 @@ class TestRepositoryWebhookProcessor:
 
             # Verify exporter was called with correct repo name
             mock_exporter.get_resource.assert_called_once_with(
-                SingleRepositoryOptions(name="test-repo", included_relationships=[])
+                SingleRepositoryOptions(
+                    organization="test-org", name="test-repo", included_relationships=[]
+                )
             )
 
         assert isinstance(result, WebhookEventRawResults)
@@ -152,7 +158,11 @@ class TestRepositoryWebhookProcessor:
 
         resource_config.selector.include = include_relationships
 
-        payload = {"action": "created", "repository": repo_data}
+        payload = {
+            "action": "created",
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
 
         # Mock the RepositoryExporter
         mock_exporter = AsyncMock()
@@ -168,6 +178,7 @@ class TestRepositoryWebhookProcessor:
 
         mock_exporter.get_resource.assert_called_once_with(
             SingleRepositoryOptions(
+                organization="test-org",
                 name="test-repo",
                 included_relationships=cast(list[str], include_relationships),
             )

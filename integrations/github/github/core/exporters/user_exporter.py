@@ -3,7 +3,7 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.options import SingleUserOptions
+from github.core.options import SingleUserOptions, ListUserOptions
 from github.helpers.gql_queries import (
     LIST_EXTERNAL_IDENTITIES_GQL,
     LIST_ORG_MEMBER_GQL,
@@ -15,6 +15,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
     async def get_resource[
         ExporterOptionT: SingleUserOptions
     ](self, options: ExporterOptionT) -> RAW_ITEM:
+        organization = options["organization"]
         variables = {"login": options["login"]}
         payload = self.client.build_graphql_payload(FETCH_GITHUB_USER_GQL, variables)
         response = await self.client.send_api_request(
@@ -25,14 +26,16 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         user = response["data"]["user"]
         if not user.get("email"):
-            await self._fetch_external_identities([user], {(0, user["login"]): user})
+            await self._fetch_external_identities(
+                organization, [user], {(0, user["login"]): user}
+            )
         return user
 
-    async def get_paginated_resources(
-        self, options: None = None
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionT: ListUserOptions
+    ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         variables = {
-            "organization": self.client.organization,
+            "organization": options["organization"],
             "__path": "organization.membersWithRole",
         }
         async for users in self.client.send_paginated_request(
@@ -49,16 +52,19 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
                     f"Found {len(users_with_no_email)} users without an email address."
                     f"Attempting to fetch their emails from an external identity provider."
                 )
-                await self._fetch_external_identities(users, users_with_no_email)
+                await self._fetch_external_identities(
+                    options["organization"], users, users_with_no_email
+                )
             yield users
 
     async def _fetch_external_identities(
         self,
+        organization: str,
         users: list[dict[str, Any]],
         users_no_email: dict[tuple[int, str], dict[str, Any]],
     ) -> None:
         variables = {
-            "organization": self.client.organization,
+            "organization": organization,
             "first": 100,
             "__path": "organization.samlIdentityProvider.externalIdentities",
             "__node_key": "edges",

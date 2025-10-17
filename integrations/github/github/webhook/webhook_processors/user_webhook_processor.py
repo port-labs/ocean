@@ -36,11 +36,14 @@ class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
         action = payload["action"]
         membership = payload["membership"]
         user = membership["user"]
+        organization = payload["organization"]["login"]
 
-        logger.info(f"Processing event: {action}")
+        logger.info(f"Processing event: {action} of organization: {organization}")
 
         if action in USER_DELETE_EVENTS:
-            logger.info(f"User {user['login']} was removed from org")
+            logger.info(
+                f"User {user['login']} was removed from organization: {organization}"
+            )
 
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[user]
@@ -50,10 +53,12 @@ class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
         exporter = GraphQLUserExporter(client)
 
         data_to_upsert = await exporter.get_resource(
-            SingleUserOptions(login=user["login"])
+            SingleUserOptions(organization=organization, login=user["login"])
         )
 
-        logger.info(f"User {user['login']} was upserted")
+        logger.info(
+            f"User {user['login']} of organization: {organization} was upserted"
+        )
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )

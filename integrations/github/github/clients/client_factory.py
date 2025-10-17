@@ -13,25 +13,25 @@ from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
 from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
-from github.helpers.exceptions import MissingCredentials
+from github.helpers.exceptions import MissingCredentials, OrganizationConflictError
 
 
 class GitHubAuthenticatorFactory:
     @staticmethod
     def create(
-        organization: str,
         github_host: str,
+        organization: Optional[str] = None,
         token: Optional[str] = None,
         app_id: Optional[str] = None,
         private_key: Optional[str] = None,
     ) -> AbstractGitHubAuthenticator:
         if token:
             logger.debug(
-                f"Creating Personal Token Authenticator for {organization} on {github_host}"
+                f"Creating Personal Token Authenticator for select organizations for PAT on {github_host}"
             )
             return PersonalTokenAuthenticator(token)
 
-        if app_id and private_key:
+        if organization and app_id and private_key:
             logger.debug(
                 f"Creating GitHub App Authenticator for {organization} on {github_host}"
             )
@@ -76,9 +76,10 @@ class GithubClientFactory:
                 logger.error(f"Invalid client type: {client_type}")
                 raise ValueError(f"Invalid client type: {client_type}")
 
+            github_organization = ocean.integration_config["github_organization"]
             authenticator = GitHubAuthenticatorFactory.create(
-                organization=ocean.integration_config["github_organization"],
                 github_host=ocean.integration_config["github_host"],
+                organization=github_organization,
                 token=ocean.integration_config.get("github_token"),
                 app_id=ocean.integration_config.get("github_app_id"),
                 private_key=ocean.integration_config.get("github_app_private_key"),

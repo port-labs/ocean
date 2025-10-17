@@ -104,6 +104,7 @@ class TestReleaseWebhookProcessor:
             "action": action,
             "release": release_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         if is_deletion:
@@ -125,7 +126,9 @@ class TestReleaseWebhookProcessor:
 
             # Verify exporter was called with correct options
             mock_exporter.get_resource.assert_called_once_with(
-                SingleReleaseOptions(repo_name="test-repo", release_id=1)
+                SingleReleaseOptions(
+                    organization="test-org", repo_name="test-repo", release_id=1
+                )
             )
 
         assert isinstance(result, WebhookEventRawResults)

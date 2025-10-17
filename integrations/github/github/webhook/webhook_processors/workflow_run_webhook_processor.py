@@ -32,22 +32,30 @@ class WorkflowRunWebhookProcessor(BaseRepositoryWebhookProcessor):
         action = payload["action"]
         repo = payload["repository"]
         workflow_run = payload["workflow_run"]
+        organization = payload["organization"]["login"]
 
-        logger.info(f"Processing workflow run event: {action}")
+        logger.info(
+            f"Processing workflow run event: {action} of organization: {organization}"
+        )
 
         if action in WORKFLOW_DELETE_EVENTS:
-            logger.info(f"Workflow run {workflow_run['name']} was deleted")
+            logger.info(
+                f"Workflow run {workflow_run['name']} was deleted from organization: {organization}"
+            )
 
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[workflow_run]
             )
+
         exporter = RestWorkflowRunExporter(create_github_client())
         options = SingleWorkflowRunOptions(
-            repo_name=repo["name"], run_id=workflow_run["id"]
+            organization=organization, repo_name=repo["name"], run_id=workflow_run["id"]
         )
 
         data_to_upsert = await exporter.get_resource(options)
-        logger.info(f"Workflow run {data_to_upsert['name']} was upserted")
+        logger.info(
+            f"Workflow run {data_to_upsert['name']} of organization: {organization} was upserted"
+        )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
