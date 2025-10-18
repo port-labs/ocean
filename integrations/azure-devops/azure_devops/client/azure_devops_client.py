@@ -221,6 +221,76 @@ class AzureDevopsClient(HTTPBaseClient):
                         if self._repository_is_healthy(repo)
                     ]
 
+    async def generate_branches(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate branches for all repositories in all projects.
+
+        API: GET {org}/{project}/_apis/git/repositories/{repoId}/refs?filter=heads/
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/refs/list?view=azure-devops-rest-7.1
+        """
+        async for repositories in self.generate_repositories(
+            include_disabled_repositories=False
+        ):
+            semaphore = asyncio.BoundedSemaphore(
+                MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING
+            )
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._get_branches_for_repository,
+                        repository,
+                    ),
+                )
+                for repository in repositories
+            ]
+            async for branches in stream_async_iterators_tasks(*tasks):
+                yield branches
+
+    async def _get_branches_for_repository(
+        self, repository: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get branches for a single repository."""
+        project_id = repository["project"]["id"]
+        repository_id = repository["id"]
+        repository_name = repository["name"]
+
+        branches_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repository_id}/refs"
+        params = {
+            "filter": "heads/",
+        }
+
+        try:
+            async for refs in self._get_paginated_by_top_and_continuation_token(
+                branches_url, additional_params=params
+            ):
+                enriched_branches = []
+                for ref in refs:
+                    ref_name = ref["name"]
+                    if ref_name.startswith("refs/heads/"):
+                        branch_name = ref_name.replace("refs/heads/", "")
+
+                        enriched_branch = {
+                            "name": branch_name,
+                            "refName": ref_name,
+                            "objectId": ref["objectId"],
+                            "__repository": repository,
+                        }
+                        enriched_branches.append(enriched_branch)
+
+                if enriched_branches:
+                    logger.info(
+                        f"Found {len(enriched_branches)} branches for repository {repository_name}"
+                    )
+                    yield enriched_branches
+
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch branches for repository {repository_name} in project {project_id}: {str(e)}"
+            )
+
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
