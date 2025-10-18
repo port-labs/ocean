@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added missing docs url on spec
 
 
+## 0.2.183 (2025-10-16)
+
+
+### Bug Fixes
+
+- Fix resync failures caused by known GeneralServiceException errors from CloudControl API that wrap underlying ResourceNotFoundException or AccessDenied errors in error messages.
+
+
 ## 0.2.182 (2025-10-15)
 
 
