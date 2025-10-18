@@ -111,6 +111,80 @@ class GitLabClient:
             logger.info(f"Received batch with {len(groups_batch)} groups")
             yield groups_batch
 
+    async def get_tags(
+        self,
+        projects_batch: list[dict[str, Any]],
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch tags for each project in the batch.
+
+        Args:
+            projects_batch: List of projects to fetch tags for
+            max_concurrent: Maximum number of concurrent requests
+        """
+        async for tags_batch in self.get_projects_resource_with_enrichment(
+            projects_batch, "repository/tags", max_concurrent
+        ):
+            logger.info(f"Received batch with {len(tags_batch)} tags")
+            yield tags_batch
+
+    async def get_releases(
+        self,
+        projects_batch: list[dict[str, Any]],
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch releases for each project in the batch.
+
+        Args:
+            projects_batch: List of projects to fetch releases for
+            max_concurrent: Maximum number of concurrent requests
+        """
+        async for releases_batch in self.get_projects_resource_with_enrichment(
+            projects_batch, "releases", max_concurrent
+        ):
+            logger.info(f"Received batch with {len(releases_batch)} releases")
+            yield releases_batch
+
+    async def _enrich_project_resources(
+        self,
+        project: dict[str, Any],
+        resource_iterator: AsyncIterator[list[dict[str, Any]]],
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Enrich resources with project information as they are fetched."""
+        project_info = {
+            "path_with_namespace": project["path_with_namespace"],
+        }
+        async for batch in resource_iterator:
+            if batch:
+                yield [{**resource, "__project": project_info} for resource in batch]
+
+    async def get_projects_resource_with_enrichment(
+        self,
+        projects_batch: list[dict[str, Any]],
+        resource_type: str,
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                partial(
+                    self._enrich_project_resources,
+                    project,
+                    self.rest.get_paginated_project_resource(
+                        str(project["id"]),
+                        resource_type,
+                    ),
+                ),
+            )
+            for project in projects_batch
+        ]
+
+        async for batch in stream_async_iterators_tasks(*tasks):
+            if batch:
+                yield batch
+
     async def get_projects_resource(
         self,
         projects_batch: list[dict[str, Any]],
@@ -322,7 +396,12 @@ class GitLabClient:
     ) -> dict[str, Any]:
 
         repo = await self.get_project(file["project_id"])
-        return {"file": file, "repo": repo}
+        return {
+            "file": file,
+            "__type": "path" if file["content"].get("path") is not None else "content",
+            "repo": repo,
+            "__base_jq": ".file.content",
+        }
 
     async def _enrich_files_with_repos(
         self,
@@ -407,11 +486,19 @@ class GitLabClient:
             parsed_content = await anyio.to_thread.run_sync(
                 parse_file_content, file_data["content"], file_path, context
             )
-            parsed_content = await self._resolve_file_references(
-                parsed_content, project_id, ref
+            if parsed_content.get("should_resolve_references", False):
+                file_resolved_content = await self._resolve_file_references(
+                    parsed_content.get("content"), project_id, ref
+                )
+                parsed_content["content"] = file_resolved_content
+            file_data["content"] = (
+                parsed_content
+                if not parsed_content.get("content")
+                else parsed_content["content"]
             )
-            file_data["content"] = parsed_content
 
+        if isinstance(file_data["content"], str):
+            file_data["content"] = {"content": file_data["content"]}
         return file_data
 
     async def _process_file_batch(

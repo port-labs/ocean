@@ -13,6 +13,7 @@ resources:
           properties:
             applicationsCount: .info.applicationsCount
             serverVersion: .serverVersion
+            status: .connectionState.status
             labels: .labels
             updatedAt: .connectionState.attemptedAt
             server: .server

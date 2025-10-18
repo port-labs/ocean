@@ -27,7 +27,7 @@ def cache_coroutine_result() -> Callable[[AsyncCallable], AsyncCallable]:
     def decorator(func: AsyncCallable) -> AsyncCallable:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            cache_key = hash_func(func.__name__, *args, **kwargs)
+            cache_key = hash_func(func, *args, **kwargs)
 
             if cache := event.attributes.get(cache_key):
                 return cache

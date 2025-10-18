@@ -4,6 +4,10 @@ Global pytest configuration for the integration tests
 
 from unittest.mock import MagicMock, patch
 from typing import Any
+import importlib
+
+importlib.import_module("gitlab.clients")
+importlib.import_module("gitlab.clients.client_factory")
 
 # Patch the client factory globally before any tests run
 # This prevents the error during module import
