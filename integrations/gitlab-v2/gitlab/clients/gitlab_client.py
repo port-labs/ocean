@@ -25,6 +25,16 @@ class GitLabClient:
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
 
+    async def get_tag(self, project_id: int, tag_name: str) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/repository/tags/{tag_name}"
+        )
+
+    async def get_release(self, project_id: int, tag_name: str) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/releases/{tag_name}"
+        )
+
     async def get_project(self, project_path: str | int) -> dict[str, Any]:
         encoded_path = quote(str(project_path), safe="")
         return await self.rest.send_api_request("GET", f"projects/{encoded_path}")
@@ -151,12 +161,19 @@ class GitLabClient:
         resource_iterator: AsyncIterator[list[dict[str, Any]]],
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Enrich resources with project information as they are fetched."""
-        project_info = {
-            "path_with_namespace": project["path_with_namespace"],
-        }
         async for batch in resource_iterator:
             if batch:
-                yield [{**resource, "__project": project_info} for resource in batch]
+                yield [
+                    self.enrich_with_project_path(
+                        resource, project["path_with_namespace"]
+                    )
+                    for resource in batch
+                ]
+
+    def enrich_with_project_path(
+        self, resource: dict[str, Any], project_path: str
+    ) -> dict[str, Any]:
+        return {**resource, "__project": {"path_with_namespace": project_path}}
 
     async def get_projects_resource_with_enrichment(
         self,
