@@ -11,6 +11,7 @@ from integration import (
     AlertAndIncidentResourceConfig,
     ScheduleResourceConfig,
     TeamResourceConfig,
+    CommentResourceConfig,
 )
 
 
@@ -161,6 +162,42 @@ async def on_schedule_oncall_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             opsgenie_client, schedules_batch
         )
         yield schedule_oncall
+
+
+@ocean.on_resync(ObjectKind.COMMENT)
+async def on_comment_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    opsgenie_client = init_client()
+
+    selector = cast(CommentResourceConfig, event.resource_config).selector
+    # Get all alerts first (with filtering if configured), then fetch comments for each alert
+    async for alerts_batch in opsgenie_client.get_paginated_resources(
+        resource_type=ObjectKind.ALERT,
+        query_params=(
+            selector.api_query_params.generate_request_params()
+            if selector.api_query_params
+            else None
+        ),
+    ):
+        logger.info(f"Fetching comments for {len(alerts_batch)} alerts")
+
+        comments_batch = []
+        for alert in alerts_batch:
+            alert_id = alert.get("id")
+            if alert_id:
+                try:
+                    comments = await opsgenie_client.get_alert_comments(alert_id)
+                    # Enrich each comment with alert reference
+                    for comment in comments:
+                        comment["__alert"] = alert_id
+                    comments_batch.extend(comments)
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to fetch comments for alert {alert_id}: {e}"
+                    )
+
+        if comments_batch:
+            logger.info(f"Yielding {len(comments_batch)} comments")
+            yield comments_batch
 
 
 @ocean.router.post("/webhook")
