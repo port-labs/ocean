@@ -58,7 +58,9 @@ class HarborClient:
         )
 
         # harbor_host is validated in HarborAuthenticatorFactory.create()
-        assert harbor_host is not None, "harbor_host should not be None after factory validation"
+        assert (
+            harbor_host is not None
+        ), "harbor_host should not be None after factory validation"
         self._base_url = harbor_host.rstrip("/")
         self.api_url = f"{self._base_url}/api/v2.0"
         self.client = self._authenticator.client

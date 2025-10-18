@@ -6,6 +6,7 @@ from harbor.core.options import SingleProjectOptions, ListProjectOptions
 from harbor.helpers.utils import build_project_params
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
+from port_ocean.utils.cache import cache_iterator_result
 
 
 class HarborProjectExporter(AbstractHarborExporter[HarborClient]):
@@ -20,6 +21,7 @@ class HarborProjectExporter(AbstractHarborExporter[HarborClient]):
         response = await self.client.make_request(f"/projects/{project_name}")
         return response.json()
 
+    @cache_iterator_result()
     async def get_paginated_resources(
         self, options: ListProjectOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:

@@ -67,7 +67,10 @@ class TestRepositoryWebhookProcessor:
 
     @pytest.mark.asyncio
     async def test_handle_event_push_artifact(
-        self, processor: RepositoryWebhookProcessor, mock_payload: Dict[str, Any], mock_resource_config: ResourceConfig
+        self,
+        processor: RepositoryWebhookProcessor,
+        mock_payload: Dict[str, Any],
+        mock_resource_config: ResourceConfig,
     ) -> None:
         """Test handling PUSH_ARTIFACT event."""
         with (
@@ -84,7 +87,10 @@ class TestRepositoryWebhookProcessor:
 
             mock_exporter = AsyncMock()
             mock_exporter_class.return_value = mock_exporter
-            mock_exporter.get_resource.return_value = {"id": "test-repo", "name": "test/repo"}
+            mock_exporter.get_resource.return_value = {
+                "id": "test-repo",
+                "name": "test/repo",
+            }
 
             result = await processor.handle_event(mock_payload, mock_resource_config)
 
@@ -93,7 +99,9 @@ class TestRepositoryWebhookProcessor:
 
     @pytest.mark.asyncio
     async def test_handle_event_delete_artifact(
-        self, processor: RepositoryWebhookProcessor, mock_resource_config: ResourceConfig
+        self,
+        processor: RepositoryWebhookProcessor,
+        mock_resource_config: ResourceConfig,
     ) -> None:
         """Test handling DELETE_ARTIFACT event."""
         payload: Dict[str, Any] = {

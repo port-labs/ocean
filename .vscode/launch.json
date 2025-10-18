@@ -1,0 +1,341 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/jira",
+        "envFile": "${workspaceFolder}/integrations/jira/.env",
+        "justMyCode": true,
+        "name": "Run jira integration",
+        "program": "${workspaceFolder}/integrations/jira/debug.py",
+        "python": "${workspaceFolder}/integrations/jira/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/snyk",
+        "envFile": "${workspaceFolder}/integrations/snyk/.env",
+        "justMyCode": true,
+        "name": "Run snyk integration",
+        "program": "${workspaceFolder}/integrations/snyk/debug.py",
+        "python": "${workspaceFolder}/integrations/snyk/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/fake-integration",
+        "envFile": "${workspaceFolder}/integrations/fake-integration/.env",
+        "justMyCode": true,
+        "name": "Run fake-integration integration",
+        "program": "${workspaceFolder}/integrations/fake-integration/debug.py",
+        "python": "${workspaceFolder}/integrations/fake-integration/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "name": "Attach to docker fake-integration integration",
+        "type": "debugpy",
+        "request": "attach",
+        "connect": {
+          "host": "localhost",
+          "port": 5678
+        },
+        "pathMappings": [
+          {
+            "localRoot": "${workspaceFolder}",
+            "remoteRoot": "/app"
+          }
+        ],
+        "justMyCode": false
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/pagerduty",
+        "envFile": "${workspaceFolder}/integrations/pagerduty/.env",
+        "justMyCode": true,
+        "name": "Run pagerduty integration",
+        "program": "${workspaceFolder}/integrations/pagerduty/debug.py",
+        "python": "${workspaceFolder}/integrations/pagerduty/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/gitlab",
+        "envFile": "${workspaceFolder}/integrations/gitlab/.env",
+        "name": "Run gitlab integration",
+        "program": "${workspaceFolder}/integrations/gitlab/debug.py",
+        "python": "${workspaceFolder}/integrations/gitlab/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/argocd",
+        "envFile": "${workspaceFolder}/integrations/argocd/.env",
+        "justMyCode": true,
+        "name": "Run argocd integration",
+        "program": "${workspaceFolder}/integrations/argocd/debug.py",
+        "python": "${workspaceFolder}/integrations/argocd/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/azure-devops",
+        "envFile": "${workspaceFolder}/integrations/azure-devops/.env",
+        "justMyCode": true,
+        "name": "Run azure-devops integration",
+        "program": "${workspaceFolder}/integrations/azure-devops/debug.py",
+        "python": "${workspaceFolder}/integrations/azure-devops/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/gcp",
+        "envFile": "${workspaceFolder}/integrations/gcp/.env",
+        "justMyCode": false,
+        "name": "Run GCP integration",
+        "program": "${workspaceFolder}/integrations/gcp/debug.py",
+        "python": "${workspaceFolder}/integrations/gcp/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/aws",
+        "envFile": "${workspaceFolder}/integrations/aws/.env",
+        "justMyCode": false,
+        "name": "Run AWS integration",
+        "program": "${workspaceFolder}/integrations/aws/debug.py",
+        "python": "${workspaceFolder}/integrations/aws/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/datadog",
+        "envFile": "${workspaceFolder}/integrations/datadog/.env",
+        "justMyCode": false,
+        "name": "Run Datadog integration",
+        "program": "${workspaceFolder}/integrations/datadog/debug.py",
+        "python": "${workspaceFolder}/integrations/datadog/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/aws-v3",
+        "envFile": "${workspaceFolder}/integrations/aws-v3/.env",
+        "justMyCode": false,
+        "name": "Run AWS-v3 integration",
+        "program": "${workspaceFolder}/integrations/aws-v3/debug.py",
+        "python": "${workspaceFolder}/integrations/aws-v3/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/test-integration",
+        "envFile": "${workspaceFolder}/integrations/test-integration/.env",
+        "justMyCode": true,
+        "name": "Run test-integration integration",
+        "program": "${workspaceFolder}/integrations/test-integration/debug.py",
+        "python": "${workspaceFolder}/integrations/test-integration/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/backstage",
+        "envFile": "${workspaceFolder}/integrations/backstage/.env",
+        "justMyCode": true,
+        "name": "Run backstage integration",
+        "program": "${workspaceFolder}/integrations/backstage/debug.py",
+        "python": "${workspaceFolder}/integrations/backstage/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/gitlab-v2",
+        "envFile": "${workspaceFolder}/integrations/gitlab-v2/.env",
+        "justMyCode": true,
+        "name": "Run gitlab-v2 integration",
+        "program": "${workspaceFolder}/integrations/gitlab-v2/debug.py",
+        "python": "${workspaceFolder}/integrations/gitlab-v2/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/bitbucket-cloud",
+        "envFile": "${workspaceFolder}/integrations/bitbucket-cloud/.env",
+        "justMyCode": true,
+        "name": "Run bitbucket-cloud integration",
+        "program": "${workspaceFolder}/integrations/bitbucket-cloud/debug.py",
+        "python": "${workspaceFolder}/integrations/bitbucket-cloud/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/port_ocean/cli",
+        "justMyCode": true,
+        "name": "Run ocean new command",
+        "program": "${workspaceFolder}/port_ocean/debug_cli.py",
+        "python": "${workspaceFolder}/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy",
+        "args": [
+          "new"
+        ]
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/github-copilot",
+        "envFile": "${workspaceFolder}/integrations/github-copilot/.env",
+        "justMyCode": true,
+        "name": "Run github-copilot integration",
+        "program": "${workspaceFolder}/integrations/github-copilot/debug.py",
+        "python": "${workspaceFolder}/integrations/github-copilot/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/azure-resource-graph",
+        "envFile": "${workspaceFolder}/integrations/azure-resource-graph/.env",
+        "justMyCode": true,
+        "name": "Run azure-rg integration",
+        "program": "${workspaceFolder}/integrations/azure-resource-graph/debug.py",
+        "python": "${workspaceFolder}/integrations/azure-resource-graph/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/jira-server",
+        "envFile": "${workspaceFolder}/integrations/jira-server/.env",
+        "justMyCode": true,
+        "name": "Run jira-server integration",
+        "program": "${workspaceFolder}/integrations/jira-server/debug.py",
+        "python": "${workspaceFolder}/integrations/jira-server/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/komodor",
+        "envFile": "${workspaceFolder}/integrations/komodor/.env",
+        "justMyCode": true,
+        "name": "Run komodor integration",
+        "program": "${workspaceFolder}/integrations/komodor/debug.py",
+        "python": "${workspaceFolder}/integrations/komodor/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/checkmarx-one",
+        "envFile": "${workspaceFolder}/integrations/checkmarx-one/.env",
+        "justMyCode": true,
+        "name": "Run checkmarx_one integration",
+        "program": "${workspaceFolder}/integrations/checkmarx-one/debug.py",
+        "python": "${workspaceFolder}/integrations/checkmarx-one/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/aikido",
+        "envFile": "${workspaceFolder}/integrations/aikido/.env",
+        "justMyCode": true,
+        "name": "Run aikido integration",
+        "program": "${workspaceFolder}/integrations/aikido/debug.py",
+        "python": "${workspaceFolder}/integrations/aikido/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/okta",
+        "envFile": "${workspaceFolder}/integrations/okta/.env",
+        "justMyCode": true,
+        "name": "Run okta integration",
+        "program": "${workspaceFolder}/integrations/okta/debug.py",
+        "python": "${workspaceFolder}/integrations/okta/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/armorcode",
+        "envFile": "${workspaceFolder}/integrations/armorcode/.env",
+        "justMyCode": true,
+        "name": "Run armorcode integration",
+        "program": "${workspaceFolder}/integrations/armorcode/debug.py",
+        "python": "${workspaceFolder}/integrations/armorcode/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/bitbucket-server",
+        "envFile": "${workspaceFolder}/integrations/bitbucket-server/.env",
+        "justMyCode": true,
+        "name": "Run bitbucket-server integration",
+        "program": "${workspaceFolder}/integrations/bitbucket-server/debug.py",
+        "python": "${workspaceFolder}/integrations/bitbucket-server/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/http-server",
+        "envFile": "${workspaceFolder}/integrations/http-server/examples/config-no-auth.env",
+        "justMyCode": true,
+        "name": "HTTP Server - No Auth",
+        "program": "${workspaceFolder}/integrations/http-server/debug.py",
+        "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/http-server",
+        "envFile": "${workspaceFolder}/integrations/http-server/examples/config-bearer-token.env",
+        "justMyCode": true,
+        "name": "HTTP Server - Bearer Token",
+        "program": "${workspaceFolder}/integrations/http-server/debug.py",
+        "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/http-server",
+        "envFile": "${workspaceFolder}/integrations/http-server/examples/config-basic-auth.env",
+        "justMyCode": true,
+        "name": "HTTP Server - Basic Auth",
+        "program": "${workspaceFolder}/integrations/http-server/debug.py",
+        "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      },
+      {
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}/integrations/http-server",
+        "envFile": "${workspaceFolder}/integrations/http-server/examples/config-api-key.env",
+        "justMyCode": true,
+        "name": "HTTP Server - API Key",
+        "program": "${workspaceFolder}/integrations/http-server/debug.py",
+        "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy"
+      }
+    ]
+  }

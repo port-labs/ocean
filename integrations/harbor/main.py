@@ -19,8 +19,6 @@ from harbor.core.options import (
     ListArtifactOptions,
 )
 from harbor.helpers.utils import ObjectKind
-from harbor.webhook.webhook_client import log_harbor_webhook_config
-from harbor.webhook.events import WEBHOOK_CREATE_EVENTS
 from harbor.webhook.registry import register_harbor_webhooks
 from integration import (
     HarborProjectsConfig,
@@ -40,9 +38,8 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(HarborProjectsConfig, event.resource_config)
 
     options = ListProjectOptions(
-        name_prefix=config.selector.name_prefix,
-        visibility=config.selector.visibility,
-        owner=config.selector.owner,
+        q=config.selector.q,
+        sort=config.selector.sort,
     )
 
     async for projects in exporter.get_paginated_resources(options):
@@ -59,9 +56,8 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(HarborUsersConfig, event.resource_config)
 
     options = ListUserOptions(
-        username_prefix=config.selector.username_prefix,
-        email=config.selector.email,
-        admin_only=config.selector.admin_only,
+        q=config.selector.q,
+        sort=config.selector.sort,
     )
 
     async for users in exporter.get_paginated_resources(options):
@@ -78,10 +74,8 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(HarborRepositoriesConfig, event.resource_config)
 
     options = ListRepositoryOptions(
-        project_name=config.selector.project_name,
-        repository_name=config.selector.repository_name,
-        label=config.selector.label,
         q=config.selector.q,
+        sort=config.selector.sort,
     )
 
     async for repositories in exporter.get_paginated_resources(options):
@@ -119,14 +113,15 @@ async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         artifact_options = ListArtifactOptions(
             project_name=project_name,
             repository_name=repository_name,
-            tag=getattr(selector, "tag", None),
-            digest=getattr(selector, "digest", None),
-            label=getattr(selector, "label", None),
-            media_type=getattr(selector, "media_type", None),
-            created_since=getattr(selector, "created_since", None),
-            severity_threshold=getattr(selector, "severity_threshold", None),
-            with_scan_overview=getattr(selector, "with_scan_overview", None),
             q=getattr(selector, "q", None),
+            sort=getattr(selector, "sort", None),
+            with_tag=getattr(selector, "with_tag", None),
+            with_label=getattr(selector, "with_label", None),
+            with_scan_overview=getattr(selector, "with_scan_overview", None),
+            with_sbom_overview=getattr(selector, "with_sbom_overview", None),
+            with_signature=getattr(selector, "with_signature", None),
+            with_immutable_status=getattr(selector, "with_immutable_status", None),
+            with_accessory=getattr(selector, "with_accessory", None),
         )
 
         tasks.append(artifact_exporter.get_paginated_resources(artifact_options))
@@ -145,9 +140,6 @@ async def on_start() -> None:
     try:
         client = init_client()
         logger.info(f"Harbor client initialized for {client.base_url}")
-
-        # Log webhook configuration instructions
-        log_harbor_webhook_config(client.base_url, WEBHOOK_CREATE_EVENTS)
 
     except Exception as e:
         logger.error(f"Failed to initialize Harbor client: {e}")

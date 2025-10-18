@@ -1,7 +1,6 @@
 """Harbor integration options for filtering and configuration."""
 
-from typing import NotRequired, Optional, Required, TypedDict, Union
-from datetime import datetime
+from typing import NotRequired, Optional, Required, TypedDict
 
 
 class SingleProjectOptions(TypedDict):
@@ -13,10 +12,8 @@ class SingleProjectOptions(TypedDict):
 class ListProjectOptions(TypedDict):
     """Options for listing Harbor projects with filtering."""
 
-    name_prefix: NotRequired[Optional[str]]
-    visibility: NotRequired[Optional[str]]  # "public" or "private"
-    owner: NotRequired[Optional[str]]
-    public: NotRequired[Optional[bool]]
+    q: NotRequired[Optional[str]]
+    sort: NotRequired[Optional[str]]
 
 
 class SingleUserOptions(TypedDict):
@@ -28,9 +25,8 @@ class SingleUserOptions(TypedDict):
 class ListUserOptions(TypedDict):
     """Options for listing Harbor users with filtering."""
 
-    username_prefix: NotRequired[Optional[str]]
-    email: NotRequired[Optional[str]]
-    admin_only: NotRequired[Optional[bool]]
+    q: NotRequired[Optional[str]]
+    sort: NotRequired[Optional[str]]
 
 
 class SingleRepositoryOptions(TypedDict):
@@ -43,10 +39,8 @@ class SingleRepositoryOptions(TypedDict):
 class ListRepositoryOptions(TypedDict):
     """Options for listing Harbor repositories with filtering."""
 
-    project_name: NotRequired[Optional[str]]
-    repository_name: NotRequired[Optional[str]]
-    label: NotRequired[Optional[str]]
-    q: NotRequired[Optional[str]]  # Harbor query string
+    q: NotRequired[Optional[str]]
+    sort: NotRequired[Optional[str]]
 
 
 class SingleArtifactOptions(TypedDict):
@@ -54,7 +48,7 @@ class SingleArtifactOptions(TypedDict):
 
     project_name: Required[str]
     repository_name: Required[str]
-    reference: Required[str]  # tag or digest
+    reference: Required[str]
 
 
 class ListArtifactOptions(TypedDict):
@@ -62,13 +56,12 @@ class ListArtifactOptions(TypedDict):
 
     project_name: Required[str]
     repository_name: Required[str]
-    tag: NotRequired[Optional[str]]
-    digest: NotRequired[Optional[str]]
-    label: NotRequired[Optional[str]]
-    media_type: NotRequired[Optional[str]]
-    created_since: NotRequired[Optional[Union[str, datetime]]]
-    severity_threshold: NotRequired[
-        Optional[str]
-    ]  # "Low", "Medium", "High", "Critical"
+    q: NotRequired[Optional[str]]
+    sort: NotRequired[Optional[str]]
+    with_tag: NotRequired[Optional[bool]]
+    with_label: NotRequired[Optional[bool]]
     with_scan_overview: NotRequired[Optional[bool]]
-    q: NotRequired[Optional[str]]  # Harbor query string
+    with_sbom_overview: NotRequired[Optional[bool]]
+    with_signature: NotRequired[Optional[bool]]
+    with_immutable_status: NotRequired[Optional[bool]]
+    with_accessory: NotRequired[Optional[bool]]

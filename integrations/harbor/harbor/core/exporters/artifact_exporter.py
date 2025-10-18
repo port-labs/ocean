@@ -6,6 +6,7 @@ from harbor.core.options import ListArtifactOptions, SingleArtifactOptions
 from harbor.helpers.utils import build_artifact_params, enrich_artifacts_with_context
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
+from port_ocean.utils.cache import cache_iterator_result
 
 
 class HarborArtifactExporter(AbstractHarborExporter[HarborClient]):
@@ -29,6 +30,7 @@ class HarborArtifactExporter(AbstractHarborExporter[HarborClient]):
         )
         return response.json()
 
+    @cache_iterator_result()
     async def get_paginated_resources(
         self, options: ListArtifactOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:

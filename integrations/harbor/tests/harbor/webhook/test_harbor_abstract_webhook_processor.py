@@ -18,7 +18,9 @@ class ConcreteWebhookProcessor(HarborAbstractWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return ["test-kind"]
 
-    async def handle_event(self, payload: Dict[str, Any], resource_config: ResourceConfig) -> WebhookEventRawResults:
+    async def handle_event(
+        self, payload: Dict[str, Any], resource_config: ResourceConfig
+    ) -> WebhookEventRawResults:
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
     async def validate_payload(self, payload: Dict[str, Any]) -> bool:
@@ -39,7 +41,9 @@ class TestHarborAbstractWebhookProcessor:
         return ConcreteWebhookProcessor(mock_webhook_event)
 
     @pytest.mark.asyncio
-    async def test_authenticate_with_valid_secret(self, processor: ConcreteWebhookProcessor) -> None:
+    async def test_authenticate_with_valid_secret(
+        self, processor: ConcreteWebhookProcessor
+    ) -> None:
         """Test authentication with valid secret."""
         payload: Dict[str, Any] = {"type": "PUSH_ARTIFACT"}
         headers: Dict[str, str] = {"authorization": "test-secret"}
@@ -55,7 +59,9 @@ class TestHarborAbstractWebhookProcessor:
             assert result is True
 
     @pytest.mark.asyncio
-    async def test_authenticate_with_invalid_secret(self, processor: ConcreteWebhookProcessor) -> None:
+    async def test_authenticate_with_invalid_secret(
+        self, processor: ConcreteWebhookProcessor
+    ) -> None:
         """Test authentication with invalid secret."""
         payload: Dict[str, Any] = {"type": "PUSH_ARTIFACT"}
         headers: Dict[str, str] = {"authorization": "wrong-secret"}
@@ -71,7 +77,9 @@ class TestHarborAbstractWebhookProcessor:
             assert result is False
 
     @pytest.mark.asyncio
-    async def test_authenticate_missing_header(self, processor: ConcreteWebhookProcessor) -> None:
+    async def test_authenticate_missing_header(
+        self, processor: ConcreteWebhookProcessor
+    ) -> None:
         """Test authentication with missing authorization header."""
         payload: Dict[str, Any] = {"type": "PUSH_ARTIFACT"}
         headers: Dict[str, str] = {}
@@ -87,7 +95,9 @@ class TestHarborAbstractWebhookProcessor:
             assert result is False
 
     @pytest.mark.asyncio
-    async def test_should_process_event(self, processor: ConcreteWebhookProcessor) -> None:
+    async def test_should_process_event(
+        self, processor: ConcreteWebhookProcessor
+    ) -> None:
         """Test should_process_event always returns True."""
         mock_event = MagicMock()
         result = await processor.should_process_event(mock_event)

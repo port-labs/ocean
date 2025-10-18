@@ -68,7 +68,10 @@ class TestArtifactWebhookProcessor:
 
     @pytest.mark.asyncio
     async def test_handle_event_push_artifact(
-        self, processor: ArtifactWebhookProcessor, mock_payload: Dict[str, Any], mock_resource_config: ResourceConfig
+        self,
+        processor: ArtifactWebhookProcessor,
+        mock_payload: Dict[str, Any],
+        mock_resource_config: ResourceConfig,
     ) -> None:
         """Test handling PUSH_ARTIFACT event."""
         with (

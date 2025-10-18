@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test suite with 32 passing tests
 - Type-safe code with full mypy compliance
 - Code quality tools integration (ruff, black, mypy)
+- Webhook authentication with signature validation
+- Configuration validation refactoring for better separation of concerns
 
 ### Features
 - **Projects**: Fetch and filter by visibility and name prefix
@@ -35,5 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test coverage with mocked Harbor responses
 - Production-ready logging and error handling
 - Full type annotation compliance
+- Refactored configuration validation from client to authenticator factory
+- Optimized webhook tests focusing on core functionality
 
 <!-- towncrier release notes start -->
