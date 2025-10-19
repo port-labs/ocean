@@ -17,7 +17,7 @@ def init_client() -> HttpServerClient:
         auth_type=config.get("auth_type", "none"),
         auth_config=config,
         pagination_config=config,
-        timeout=config.get("timeout", 30),
+        timeout=int(config.get("timeout", 30)),
         verify_ssl=config.get("verify_ssl", True),
-        max_concurrent_requests=config.get("max_concurrent_requests", 10),
+        max_concurrent_requests=int(config.get("max_concurrent_requests", 10)),
     )

@@ -1,11 +1,10 @@
 title: HTTP Server
 description: Universal HTTP REST API integration with dynamic path parameters and flexible authentication
-icon: Api
+icon: RestAPI
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/api/http-server
-recommendedInstallationMethod: Saas
 features:
   - type: exporter
-    section: API
+    section: Other
     resources:
       - kind: dynamic
         description: HTTP API resources - kind is the endpoint path (e.g., /api/v1/users)
@@ -52,8 +51,8 @@ configurations:
     enum: ["none", "offset", "page", "cursor"]
   - name: pageSize
     required: false
-    type: integer
-    default: 100
+    type: string
+    default: "100"
     description: "Number of items per page for pagination"
   - name: paginationParam
     required: false
@@ -65,7 +64,8 @@ configurations:
     description: "Query parameter name for page size/limit. Examples: 'limit', 'size', 'page[size]', 'per_page'. Defaults vary by paginationType."
   - name: startPage
     required: false
-    type: integer
+    type: string
+    default: "1"
     description: "Starting page number for page-based pagination (e.g., 0 or 1). Defaults to 1."
   - name: cursorPath
     required: false
@@ -77,8 +77,8 @@ configurations:
     description: "Dot-notation path to check if more pages exist (e.g., 'meta.has_more', 'pagination.hasMore'). Works with all pagination types. Defaults to common patterns if not specified."
   - name: timeout
     required: false
-    type: integer
-    default: 30
+    type: string
+    default: "30"
     description: "Request timeout in seconds"
   - name: verifySsl
     required: false
@@ -87,8 +87,8 @@ configurations:
     description: "Whether to verify SSL certificates"
   - name: maxConcurrentRequests
     required: false
-    type: integer
-    default: 10
+    type: string
+    default: "10"
     description: "Maximum concurrent API requests (uses Ocean's built-in rate limiting and caching)"
 saas:
   enabled: true

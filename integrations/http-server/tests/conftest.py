@@ -18,7 +18,7 @@ def mock_ocean_context() -> None:
             "auth_type": "bearer_token",
             "api_token": "test-token",
             "pagination_type": "offset",
-            "page_size": 100,
+            "page_size": "100",
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
