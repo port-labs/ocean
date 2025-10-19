@@ -1,4 +1,4 @@
-# HTTP Server Integration Makefile
+# Generic HTTP Integration Makefile
 
 define check_integration_env
 	@if [ -z "$(INTEGRATION_PATH)" ]; then \
@@ -8,7 +8,7 @@ define check_integration_env
 endef
 
 # Default values
-INTEGRATION_PATH := integrations/http-server
+INTEGRATION_PATH := integrations/generic-http
 VERSION := $(shell grep version pyproject.toml | head -1 | cut -d '"' -f 2)
 
 # Install dependencies

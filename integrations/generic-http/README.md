@@ -1,4 +1,4 @@
-# HTTP Server Integration
+# Generic HTTP Integration
 
 A generic Ocean integration that can connect to any HTTP REST API with configurable authentication, pagination, and data mapping.
 
