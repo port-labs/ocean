@@ -1,7 +1,7 @@
 """
-HTTP Server Client Factory
+Generic HTTP Client Factory
 
-Factory function to create HTTP server client instances from Ocean configuration.
+Factory function to create HTTP client instances from Ocean configuration.
 """
 
 from http_server.client import HttpServerClient
@@ -9,7 +9,7 @@ from port_ocean.context.ocean import ocean
 
 
 def init_client() -> HttpServerClient:
-    """Initialize HTTP server client from Ocean configuration"""
+    """Initialize Generic HTTP client from Ocean configuration"""
     config = ocean.integration_config
 
     return HttpServerClient(

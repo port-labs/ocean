@@ -1,4 +1,4 @@
-title: HTTP Server
+title: Generic HTTP
 description: Universal HTTP REST API integration with dynamic path parameters and flexible authentication
 icon: RestAPI
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/api/http-server

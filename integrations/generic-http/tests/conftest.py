@@ -1,4 +1,4 @@
-"""Shared test fixtures for HTTP Server integration tests"""
+"""Shared test fixtures for Generic HTTP integration tests"""
 
 from typing import Generator
 from unittest.mock import AsyncMock, MagicMock
