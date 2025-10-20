@@ -14,7 +14,7 @@ TEST_PULL_REQUESTS = [
         "title": "Fix bug in login",
         "state": "open",
         "html_url": "https://github.com/test-org/repo1/pull/101",
-        "updated_at": "2025-08-15T15:08:15Z",
+        "updated_at": "2025-08-15T15:08:15Z",  # do not change this value
     },
     {
         "id": 2,
@@ -22,7 +22,7 @@ TEST_PULL_REQUESTS = [
         "title": "Add new feature",
         "state": "open",
         "html_url": "https://github.com/test-org/repo1/pull/102",
-        "updated_at": "2025-08-15T15:08:15Z",
+        "updated_at": "2025-08-15T15:08:15Z",  # do not change this value
     },
 ]
 
@@ -31,7 +31,9 @@ TEST_PULL_REQUESTS = [
 def mock_datetime() -> Generator[datetime, None, None]:
     """Fixture that mocks the datetime module for consistent testing."""
     with patch("github.core.exporters.pull_request_exporter.datetime") as mock_dt:
-        mock_dt.now.return_value = datetime(2025, 8, 19, 12, 0, 0, tzinfo=UTC)
+        mock_dt.now.return_value = datetime(
+            2025, 8, 19, 12, 0, 0, tzinfo=UTC
+        )  # do not change this value
         mock_dt.UTC = UTC
         mock_dt.timedelta = timedelta
         mock_dt.strptime = datetime.strptime
@@ -77,6 +79,7 @@ class TestPullRequestExporter:
     async def test_get_paginated_resources_various_states(
         self,
         rest_client: GithubRestClient,
+        mock_datetime: datetime,
         states: list[str],
         expected_calls: list[dict[str, Any]],
     ) -> None:
@@ -119,7 +122,7 @@ class TestPullRequestExporter:
             assert actual_calls == expected_call_args
 
     async def test_get_paginated_resources_respects_max_results(
-        self, rest_client: GithubRestClient
+        self, rest_client: GithubRestClient, mock_datetime: datetime
     ) -> None:
         exporter = RestPullRequestExporter(rest_client)
 
