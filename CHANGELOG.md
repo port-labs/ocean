@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.28.15 (2025-10-20)
+
+### Bug fixes
+
+- Fix examples construction on items_to_parse (extra nesting removed)
+- Fix onload process from fs in items_to_parse with no yield_items_to_parse branch
+
 ## 0.28.14 (2025-10-15)
 
 ### Bug fixes
