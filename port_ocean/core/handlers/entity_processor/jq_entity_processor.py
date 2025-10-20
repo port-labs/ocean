@@ -808,5 +808,12 @@ class JQEntityProcessor(BaseEntityProcessor):
     ) -> dict[str, Any]:
         if isinstance(data, tuple):
             raw_data = json.loads(data[1])
-            return {items_to_parse_name: data[0], **raw_data}
+            return {
+                **(
+                    data[0]
+                    if items_to_parse_name in data[0]
+                    else {items_to_parse_name: data[0]}
+                ),
+                **raw_data,
+            }
         return data
