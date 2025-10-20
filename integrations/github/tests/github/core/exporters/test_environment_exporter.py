@@ -45,13 +45,15 @@ class TestRestEnvironmentExporter:
         ) as mock_request:
             mock_request.return_value = mock_response.json()
             environment = await exporter.get_resource(
-                SingleEnvironmentOptions(repo_name="test-repo", name="production")
+                SingleEnvironmentOptions(
+                    organization="test-org", repo_name="test-repo", name="production"
+                )
             )
 
             assert environment == {**TEST_ENVIRONMENTS[0], "__repository": "test-repo"}
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/environments/production"
+                f"{rest_client.base_url}/repos/test-org/test-repo/environments/production"
             )
 
     async def test_get_paginated_resources(
@@ -67,7 +69,9 @@ class TestRestEnvironmentExporter:
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
         ) as mock_request:
             async with event_context("test_event"):
-                options = ListEnvironmentsOptions(repo_name="test-repo")
+                options = ListEnvironmentsOptions(
+                    organization="test-org", repo_name="test-repo"
+                )
                 exporter = RestEnvironmentExporter(rest_client)
 
                 environments: list[list[dict[str, Any]]] = [
@@ -85,6 +89,6 @@ class TestRestEnvironmentExporter:
                 )
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/environments",
+                    f"{rest_client.base_url}/repos/test-org/test-repo/environments",
                     {},
                 )

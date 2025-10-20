@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "generic-http"
-version = "0.1.0-dev"
+version = "0.1.1-dev"
 description = "Generic HTTP Integration for Ocean"
 authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.28.14", extras = ["cli"]}
+port_ocean = {version = "^0.28.15", extras = ["cli"]}
 httpx = "^0.28.1"
 pydantic = "^1.10.8"
 

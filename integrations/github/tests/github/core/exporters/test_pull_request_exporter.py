@@ -52,14 +52,16 @@ class TestPullRequestExporter:
             AsyncMock(return_value=TEST_PULL_REQUESTS[0]),
         ) as mock_request:
             pr = await exporter.get_resource(
-                SinglePullRequestOptions(repo_name="repo1", pr_number=101)
+                SinglePullRequestOptions(
+                    organization="test-org", repo_name="repo1", pr_number=101
+                )
             )
 
             expected_pr = {**TEST_PULL_REQUESTS[0], "__repository": "repo1"}
             assert pr == expected_pr
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/pulls/101"
+                f"{rest_client.base_url}/repos/test-org/repo1/pulls/101"
             )
 
     @pytest.mark.parametrize(
@@ -95,7 +97,11 @@ class TestPullRequestExporter:
         ) as mock_paginated:
             async with event_context("test_event"):
                 options = ListPullRequestOptions(
-                    states=states, repo_name="repo1", max_results=10, since=60
+                    organization="test-org",
+                    states=states,
+                    repo_name="repo1",
+                    max_results=10,
+                    since=60,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -114,7 +120,7 @@ class TestPullRequestExporter:
             ]
             expected_call_args = [
                 (
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/pulls",
+                    f"{rest_client.base_url}/repos/test-org/repo1/pulls",
                     params,
                 )
                 for params in expected_calls
@@ -152,7 +158,11 @@ class TestPullRequestExporter:
         ):
             async with event_context("test_event"):
                 options = ListPullRequestOptions(
-                    states=["closed"], repo_name="repo1", max_results=5, since=60
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=5,
+                    since=60,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -170,7 +180,11 @@ class TestPullRequestExporter:
         ):
             async with event_context("test_event"):
                 options = ListPullRequestOptions(
-                    states=["closed"], repo_name="repo1", max_results=5, since=60
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=5,
+                    since=60,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -252,7 +266,11 @@ class TestPullRequestExporter:
             async with event_context("test_event"):
                 # Test 1: since=30 days with max_results=10 (should get only 5 PRs due to since filtering)
                 options = ListPullRequestOptions(
-                    states=["closed"], repo_name="repo1", max_results=10, since=30
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=10,
+                    since=30,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -270,7 +288,11 @@ class TestPullRequestExporter:
         ):
             async with event_context("test_event"):
                 options = ListPullRequestOptions(
-                    states=["closed"], repo_name="repo1", max_results=3, since=90
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=3,
+                    since=90,
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)

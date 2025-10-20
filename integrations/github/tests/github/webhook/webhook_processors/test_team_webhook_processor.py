@@ -105,7 +105,11 @@ class TestTeamWebhookProcessor:
             }
         }
 
-        payload = {"action": action, "team": team_data}
+        payload = {
+            "action": action,
+            "team": team_data,
+            "organization": {"login": "test-org"},
+        }
 
         # Create resource_config based on include_members
         resource_config = GithubTeamConfig(
@@ -153,7 +157,7 @@ class TestTeamWebhookProcessor:
 
                 # Verify exporter was called with correct team slug
                 mock_exporter.get_resource.assert_called_once_with(
-                    SingleTeamOptions(slug="test-team")
+                    SingleTeamOptions(organization="test-org", slug="test-team")
                 )
 
         assert isinstance(result, WebhookEventRawResults)
