@@ -1,4 +1,5 @@
-from typing import Any, AsyncGenerator, Dict, Optional, cast
+from typing import Any, AsyncGenerator, Dict, Optional, cast, TYPE_CHECKING
+import fnmatch
 
 import httpx
 from aiolimiter import AsyncLimiter
@@ -7,6 +8,9 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
+
+from helpers.folder import process_folder_patterns
+from helpers.file_kind import process_file_patterns
 
 # Rate limit docs: https://support.atlassian.com/bitbucket-cloud/docs/api-request-limits/
 BITBUCKET_RATE_LIMIT = 1000  # requests per hour
@@ -323,6 +327,55 @@ class BitbucketClient:
 
         return repository
 
+    async def get_directory_contents(
+        self,
+        project_key: str,
+        repo_slug: str,
+        path: str = "",
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Get contents of a directory in a repository.
+
+        Args:
+            project_key: Key of the project
+            repo_slug: Slug of the repository
+            path: Path within the repository
+
+        Yields:
+            Lists of directory contents
+        """
+        endpoint = f"projects/{project_key}/repos/{repo_slug}/files/{path}"
+
+        async for contents in self.get_paginated_resource(endpoint):
+            yield contents
+
+    async def get_file_content(
+        self,
+        project_key: str,
+        repo_slug: str,
+        path: str,
+    ) -> str:
+        """
+        Get the content of a file in a repository.
+
+        Args:
+            project_key: Key of the project
+            repo_slug: Slug of the repository
+            path: Path to the file
+
+        Returns:
+            File content as string
+        """
+        endpoint = f"projects/{project_key}/repos/{repo_slug}/browse/{path}"
+
+        url = f"{self.base_url}/rest/api/latest/{endpoint}"
+        async with self.rate_limiter:
+            response = await self.client.request("GET", url)
+            response.raise_for_status()
+            # The response is JSON with file content in a "text" field
+            data = response.json()
+            return data.get("text", "")
+
     async def get_single_pull_request(
         self, project_key: str, repo_slug: str, pr_key: str
     ) -> dict[str, Any]:
@@ -384,3 +437,35 @@ class BitbucketClient:
         except Exception as e:
             logger.error(f"Failed to connect to Bitbucket Server: {e}")
             raise ConnectionError("Failed to connect to Bitbucket Server") from e
+
+    async def get_folders_by_patterns(
+        self,
+        folder_patterns: list["BitbucketServerFolderPattern"]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Get folders matching the specified patterns.
+
+        Args:
+            folder_patterns: List of folder patterns to match
+
+        Yields:
+            Lists of matching folders with their metadata
+        """
+        async for result in process_folder_patterns(folder_patterns, self):
+            yield result
+
+    async def get_files_by_patterns(
+        self,
+        file_pattern: "BitbucketServerFilePattern"
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Get files matching the specified pattern.
+
+        Args:
+            file_pattern: File pattern to match
+
+        Yields:
+            Lists of matching files with their metadata
+        """
+        async for result in process_file_patterns(file_pattern, self):
+            yield result
