@@ -205,17 +205,8 @@ class GithubBranchConfig(ResourceConfig):
     selector: GithubBranchSelector
 
 
-class OrganizationPolicy(BaseModel):
-    allow: List[str] = Field(default_factory=list)
-    deny: List[str] = Field(default_factory=list)
-
-
 class GithubPortAppConfig(PortAppConfig):
-    organization_policy: OrganizationPolicy = Field(
-        alias="organizationPolicy",
-        default_factory=OrganizationPolicy,
-        description="Specify the organizations to exclude from syncing a mult organization sync",
-    )
+    organizations: List[str] = Field(default_factory=list)
     repository_type: str = Field(alias="repositoryType", default="all")
     resources: list[
         GithubRepositoryConfig
@@ -231,48 +222,9 @@ class GithubPortAppConfig(PortAppConfig):
         | ResourceConfig
     ] = Field(default_factory=list)
 
-    def is_organization_allowed(self, organization: str) -> bool:
-        """
-            Determines if a given organization is allowed based on the query organizations policy.
-            This method checks the `organization_policy` attribute to decide if the specified
-            organization should be allowed or denied. The policy can contain "allow" and "deny" lists
-            which dictate the behavior.
-
-            Scenarios:
-            - If `organization_policy` is not set or empty, the method returns True, allowing all organizations.
-            - If the organization is listed in the "deny" list of `organization_policy`, the method returns False.
-            - If the organization is listed in the "allow" list of `organization_policy`, the method returns True.
-            - If the organization is not listed in either "allow" or "deny" lists, the method returns False.
-            - If the organization is listed in both "allow" and "deny" lists, the method returns False.
-            - If the policy denies organizations but does not explicitly allow any, and the specific organization is not in the deny list, then the organization is considered allowed.
-            - If the policy allows organizations but does not explicitly deny any, and the specific organization is not in the allow list, then the organization is considered denied.
-            Args:
-                organization (str): The organization to be checked.
-
-        Returns:
-            bool: True if the region is allowed, False otherwise.
-        """
-        if not self.organization_policy.allow and not self.organization_policy.deny:
-            return True
-        if organization in self.organization_policy.deny:
-            return False
-        if organization in self.organization_policy.allow:
-            return True
-        if self.organization_policy.deny and not self.organization_policy.allow:
-            return True
-        if self.organization_policy.allow and not self.organization_policy.deny:
-            return False
-        return False
-
     def allowed_organizations(self) -> List[str]:
-        allow_list = self.organization_policy.allow
-        deny_list = self.organization_policy.deny
-        all_organizations = allow_list + deny_list
-        return [
-            organization
-            for organization in set(all_organizations)
-            if self.is_organization_allowed(organization)
-        ]
+        """Return the list of explicitly allowed organizations, if any."""
+        return self.organizations
 
 
 class GitManipulationHandler(JQEntityProcessor):

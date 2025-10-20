@@ -1,11 +1,15 @@
-from typing import Any, Dict, cast
+from typing import Any, Dict, cast, Protocol, runtime_checkable
 from github.core.options import ListOrganizationOptions
 from github.helpers.exceptions import OrganizationRequiredException
 from port_ocean.context.ocean import ocean
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
-from integration import GithubPortAppConfig
 from port_ocean.context.event import event
+
+
+@runtime_checkable
+class SupportsAllowedOrganizations(Protocol):
+    def allowed_organizations(self) -> list[str]: ...
 
 
 def integration_config(authenticator: AbstractGitHubAuthenticator) -> Dict[str, Any]:
@@ -18,7 +22,8 @@ def integration_config(authenticator: AbstractGitHubAuthenticator) -> Dict[str, 
 def get_github_organizations() -> ListOrganizationOptions:
     """Get the organizations from the integration config."""
     organization = ocean.integration_config["github_organization"]
-    port_app_config = cast(GithubPortAppConfig, event.port_app_config)
+    port_app_config = cast(SupportsAllowedOrganizations, event.port_app_config)
+
     return ListOrganizationOptions(
         organization=organization,
         allowed_multi_organizations=port_app_config.allowed_organizations(),

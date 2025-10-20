@@ -194,7 +194,9 @@ class TestRestOrganizationExporter:
 
             async with event_context("test_event"):
                 # Filter to only org1 and org3
-                options = ListOrganizationOptions(multi_organizations=["org1", "org3"])
+                options = ListOrganizationOptions(
+                    allowed_multi_organizations=["org1", "org3"]
+                )
                 orgs: list[list[dict[str, Any]]] = [
                     batch async for batch in exporter.get_paginated_resources(options)
                 ]
@@ -236,14 +238,15 @@ class TestRestOrganizationExporter:
             async with event_context("test_event"):
                 # Filter with organizations that don't exist
                 options = ListOrganizationOptions(
-                    multi_organizations=["non-existent-org", "another-fake-org"]
+                    allowed_multi_organizations=["non-existent-org", "another-fake-org"]
                 )
                 orgs: list[list[dict[str, Any]]] = [
                     batch async for batch in exporter.get_paginated_resources(options)
                 ]
 
-                # Should have no results since filter doesn't match
-                assert len(orgs) == 0
+                # Should yield a single empty batch when filter matches none
+                assert len(orgs) == 1
+                assert len(orgs[0]) == 0
 
                 mock_is_classic.assert_called_once()
                 mock_request.assert_called_once_with(
@@ -277,7 +280,7 @@ class TestRestOrganizationExporter:
             async with event_context("test_event"):
                 # Filter includes one existing org and one non-existent
                 options = ListOrganizationOptions(
-                    multi_organizations=["org2", "non-existent-org"]
+                    allowed_multi_organizations=["org2", "non-existent-org"]
                 )
                 orgs: list[list[dict[str, Any]]] = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -318,7 +321,7 @@ class TestRestOrganizationExporter:
 
             async with event_context("test_event"):
                 # Empty multi_organizations list
-                options = ListOrganizationOptions(multi_organizations=[])
+                options = ListOrganizationOptions(allowed_multi_organizations=[])
                 orgs: list[list[dict[str, Any]]] = [
                     batch async for batch in exporter.get_paginated_resources(options)
                 ]

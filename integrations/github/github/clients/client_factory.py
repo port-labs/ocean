@@ -13,7 +13,7 @@ from github.clients.auth.personal_access_token_authenticator import (
     PersonalTokenAuthenticator,
 )
 from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
-from github.helpers.exceptions import MissingCredentials, OrganizationConflictError
+from github.helpers.exceptions import MissingCredentials
 
 
 class GitHubAuthenticatorFactory:
