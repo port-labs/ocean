@@ -229,10 +229,6 @@ class GithubPortAppConfig(PortAppConfig):
         | ResourceConfig
     ] = Field(default_factory=list)
 
-    def allowed_organizations(self) -> List[str]:
-        """Return the list of explicitly allowed organizations, if any."""
-        return self.organizations
-
 
 class GitManipulationHandler(JQEntityProcessor):
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
