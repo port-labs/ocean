@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "azure-devops"
-version = "0.4.14"
+version = "0.4.15"
 description = "An Azure Devops Ocean integration"
 authors = ["Matan Geva <matang@getport.io>"]
 
