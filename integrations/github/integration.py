@@ -206,7 +206,14 @@ class GithubBranchConfig(ResourceConfig):
 
 
 class GithubPortAppConfig(PortAppConfig):
-    organizations: List[str] = Field(default_factory=list)
+    organizations: List[str] = Field(
+        default_factory=list,
+        description=(
+            "List of GitHub organization names (optional - if not provided, "
+            "will sync all organizations the personal access token user is a "
+            "member of) for Classic PAT authentication."
+        ),
+    )
     repository_type: str = Field(alias="repositoryType", default="all")
     resources: list[
         GithubRepositoryConfig
