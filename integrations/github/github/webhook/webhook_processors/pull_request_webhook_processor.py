@@ -38,13 +38,16 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
         pull_request = payload["pull_request"]
         number = pull_request["number"]
         repo_name = payload["repository"]["name"]
+        organization = payload["organization"]["login"]
 
-        logger.info(f"Processing pull request event: {action} for {repo_name}/{number}")
+        logger.info(
+            f"Processing pull request event: {action} for {repo_name}/{number} from {organization}"
+        )
 
         config = cast(GithubPullRequestConfig, resource_config)
         if action == "closed" and "closed" not in config.selector.states:
             logger.info(
-                f"Pull request {repo_name}/{number} was closed and will be deleted"
+                f"Pull request {repo_name}/{number} was closed and will be deleted from {organization}"
             )
 
             return WebhookEventRawResults(
@@ -54,7 +57,9 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         exporter = RestPullRequestExporter(create_github_client())
         data_to_upsert = await exporter.get_resource(
-            SinglePullRequestOptions(repo_name=repo_name, pr_number=number)
+            SinglePullRequestOptions(
+                organization=organization, repo_name=repo_name, pr_number=number
+            )
         )
 
         logger.debug(f"Successfully fetched pull request data for {repo_name}/{number}")
