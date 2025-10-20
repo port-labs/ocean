@@ -242,12 +242,8 @@ async def test_search_entities_uses_datasource_route_when_query_is_none_two_page
     mock_response_second.headers = {}
 
     # Mock the client to return different responses for each call
-    entity_client.client.post = AsyncMock(
-        side_effect=[mock_response_first, mock_response_second]
-    )  # type: ignore
-    entity_client.auth.headers = AsyncMock(  # type: ignore
-        return_value={"Authorization": "Bearer test"}
-    )
+    entity_client.client.post = AsyncMock(side_effect=[mock_response_first, mock_response_second])  # type: ignore
+    entity_client.auth.headers = AsyncMock(return_value={"Authorization": "Bearer test"})  # type: ignore
 
     entity_client.auth.integration_type = "test-integration"
     entity_client.auth.integration_identifier = "test-identifier"
