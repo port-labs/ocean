@@ -23,7 +23,7 @@ from github.clients.client_factory import create_github_client
 from github.helpers.utils import GithubClientType
 from github.clients.http.base_client import AbstractGithubClient
 
-TEST_INTEGRATION_CONFIG: Dict[str, str] = {
+TEST_INTEGRATION_CONFIG: Dict[str, Any] = {
     "github_token": "mock-github-token",
     "github_organization": "test-org",
     "github_app_id": "appid",
