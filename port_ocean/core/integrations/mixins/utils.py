@@ -56,7 +56,7 @@ def _process_path_type_items(
                         content = json.loads(f.read())
                     # Create a copy of the item with the content field
                     processed_item = item.copy()
-                    processed_item["content"] = content
+                    processed_item["file"]["content"] = content
                     processed_result.append(processed_item)
                 else:
                     # If file doesn't exist, keep the original item
@@ -97,12 +97,12 @@ def resync_error_handling() -> Generator[None, None, None]:
 
 
 async def resync_function_wrapper(
-    fn: Callable[[str], Awaitable[RAW_RESULT]], kind: str
+    fn: Callable[[str], Awaitable[RAW_RESULT]], kind: str, items_to_parse: str | None = None
 ) -> RAW_RESULT:
     with resync_error_handling():
         results = await fn(kind)
         validated_results = validate_result(results)
-        return _process_path_type_items(validated_results)
+        return _process_path_type_items(validated_results, items_to_parse)
 
 
 async def resync_generator_wrapper(
@@ -117,7 +117,7 @@ async def resync_generator_wrapper(
                     result = await anext(generator)
                     if not ocean.config.yield_items_to_parse:
                         validated_result = validate_result(result)
-                        processed_result = _process_path_type_items(validated_result)
+                        processed_result = _process_path_type_items(validated_result,items_to_parse)
                         yield processed_result
                     else:
                         if items_to_parse:
