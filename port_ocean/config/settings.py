@@ -233,8 +233,11 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     def validate_execution_agent(
         cls, execution_agent: ExecutionAgentSettings
     ) -> ExecutionAgentSettings:
+        if not execution_agent.enabled:
+            return execution_agent
+
         spec = get_spec_file()
-        if spec and spec.get("execution_agent", {}).get("enabled", None):
+        if not (spec and spec.get("executionAgent", {}).get("enabled", False)):
             raise ValueError(
                 "Serving as an execution agent is not currently supported for this integration."
             )

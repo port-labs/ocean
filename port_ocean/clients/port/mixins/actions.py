@@ -71,14 +71,15 @@ class ActionsClientMixin:
         from port_ocean.core.models import IntegrationActionInvocationPayload
         from port_ocean.core.models import InvocationType
         from port_ocean.context.ocean import ocean
+        import uuid
 
         num = random.random()
         return (
             []
-            if num < 0.0
+            if num < 0.3
             else [
                 ActionRun(
-                    id="test-run-id",
+                    id=f"test-run-id-{uuid.uuid4()}",
                     payload=IntegrationActionInvocationPayload(
                         type=InvocationType.INTEGRATION_ACTION,
                         installationId=ocean.config.integration.identifier,

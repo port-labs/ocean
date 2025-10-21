@@ -336,6 +336,17 @@
       "python": "${workspaceFolder}/integrations/http-server/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
-    }
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/github",
+      "envFile": "${workspaceFolder}/integrations/github/.env",
+      "justMyCode": true,
+      "name": "Run Github integration",
+      "program": "${workspaceFolder}/integrations/github/debug.py",
+      "python": "${workspaceFolder}/integrations/github/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
   ]
 }

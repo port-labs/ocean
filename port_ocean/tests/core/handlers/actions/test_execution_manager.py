@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from fastapi import APIRouter, FastAPI
+from loguru import logger
 from pydantic import BaseModel
 import pytest
 from port_ocean.clients.port.client import PortClient
@@ -11,7 +12,6 @@ from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.actions.execution_manager import (
     ExecutionManager,
-    ActionRunTask,
     GLOBAL_SOURCE,
 )
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -49,21 +49,6 @@ def generate_mock_action_run(
             integrationActionExecutionProperties=integrationActionExecutionProperties,
         ),
         status=RunStatus.IN_PROGRESS,
-    )
-
-
-def generate_mock_action_run_task(
-    visibility_expiration_timestamp: datetime | None = None,
-    queue_name: str | None = None,
-) -> ActionRunTask:
-    return ActionRunTask(
-        visibility_expiration_timestamp=(
-            visibility_expiration_timestamp
-            if visibility_expiration_timestamp is not None
-            else (datetime.now() + timedelta(minutes=5))
-        ),
-        queue_name=queue_name or GLOBAL_SOURCE,
-        run=generate_mock_action_run(),
     )
 
 
@@ -174,10 +159,6 @@ def execution_manager(
     )
     execution_manager.register_executor(mock_test_executor)
     execution_manager.register_executor(mock_test_partition_executor)
-    execution_manager._actions_executors = {
-        mock_test_executor.ACTION_NAME: mock_test_executor,
-        mock_test_partition_executor.ACTION_NAME: mock_test_partition_executor,
-    }
     return execution_manager
 
 
@@ -226,15 +207,15 @@ class TestExecutionManager:
         mock_port_client: MagicMock,
     ):
         # Arrange
-        mock_test_action_run_task = generate_mock_action_run_task()
+        mock_test_action_run = generate_mock_action_run()
 
         # Act & Assert
         with patch.object(
             execution_manager._actions_executors["test_action"], "execute"
         ) as mock_execute:
-            await execution_manager._execute_run(mock_test_action_run_task)
+            await execution_manager._execute_run(mock_test_action_run)
             mock_port_client.acknowledge_run.assert_called_once_with(
-                mock_test_action_run_task.run.id
+                mock_test_action_run.id
             )
             mock_execute.assert_called_once()
 
@@ -245,69 +226,25 @@ class TestExecutionManager:
         mock_port_client: MagicMock,
     ):
         # Arrange
-        mock_test_action_run_task = generate_mock_action_run_task()
+        mock_test_action_run = generate_mock_action_run()
         mock_port_client.acknowledge_run.side_effect = RunAlreadyAcknowledgedError()
 
         # Act
         with patch.object(
             execution_manager._actions_executors["test_action"], "execute"
         ) as mock_execute:
-            await execution_manager._execute_run(mock_test_action_run_task)
+            await execution_manager._execute_run(mock_test_action_run)
 
             # Assert
             mock_port_client.acknowledge_run.assert_called_once_with(
-                mock_test_action_run_task.run.id
+                mock_test_action_run.id
             )
-            mock_execute.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_execute_run_expired_visibility_and_not_deduplicated_should_try_to_process(
-        self,
-        execution_manager: ExecutionManager,
-        mock_port_client: MagicMock,
-    ):
-        # Arrange
-        mock_test_action_run_task = generate_mock_action_run_task()
-        expired_task = mock_test_action_run_task.copy(
-            update={
-                "visibility_expiration_timestamp": datetime.now() - timedelta(minutes=1)
-            }
-        )
-
-        # Act & Assert
-        with patch.object(
-            execution_manager._actions_executors["test_action"], "execute"
-        ) as mock_execute:
-            await execution_manager._execute_run(expired_task)
-            mock_port_client.acknowledge_run.assert_called_once_with(
-                expired_task.run.id
-            )
-            mock_execute.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_execute_run_expired_visibility_and_deduplicated_should_be_skipped(
-        self,
-        execution_manager: ExecutionManager,
-        mock_port_client: MagicMock,
-    ):
-        # Arrange
-        expired_task = generate_mock_action_run_task(
-            visibility_expiration_timestamp=datetime.now() - timedelta(minutes=1)
-        )
-        execution_manager._deduplication_set.add(expired_task.run.id)
-
-        # Act & Assert
-        with patch.object(
-            execution_manager._actions_executors["test_action"], "execute"
-        ) as mock_execute:
-            await execution_manager._execute_run(expired_task)
-            mock_port_client.acknowledge_run.assert_not_called()
             mock_execute.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_execute_run_should_sleep_if_rate_limited(
         self,
-        execution_manager: ExecutionManager,
+        execution_manager_without_executors: ExecutionManager,
         mock_port_client: MagicMock,
         mock_test_executor: MagicMock,
     ):
@@ -319,17 +256,15 @@ class TestExecutionManager:
         mock_test_executor.get_remaining_seconds_until_rate_limit = AsyncMock(
             side_effect=lambda: (few_seconds_away - datetime.now()).total_seconds()
         )
-        execution_manager._actions_executors[mock_test_executor.ACTION_NAME] = (
-            mock_test_executor
-        )
-        mock_test_action_run_task = generate_mock_action_run_task()
+        execution_manager_without_executors.register_executor(mock_test_executor)
+        mock_test_action_run = generate_mock_action_run()
 
         # Act
-        await execution_manager._execute_run(mock_test_action_run_task)
+        await execution_manager._execute_run(mock_test_action_run)
 
         # Assert
         mock_port_client.post_run_log.assert_called_with(
-            mock_test_action_run_task.run.id,
+            mock_test_action_run.id,
             ANY,
         )
 
@@ -338,14 +273,14 @@ class TestExecutionManager:
         self, execution_manager: ExecutionManager
     ):
         # Arrange
-        await execution_manager._global_queue.put(generate_mock_action_run_task())
-        await execution_manager._global_queue.put(generate_mock_action_run_task())
+        await execution_manager._global_queue.put(generate_mock_action_run())
+        await execution_manager._global_queue.put(generate_mock_action_run())
 
         execution_manager._partition_queues["partition1"] = (
             execution_manager._global_queue.__class__()
         )
         await execution_manager._partition_queues["partition1"].put(
-            generate_mock_action_run_task()
+            generate_mock_action_run()
         )
 
         # Act
@@ -360,12 +295,9 @@ class TestExecutionManager:
     ):
         # Arrange
         run = generate_mock_action_run()
-        visibility_expiration = datetime.now() + timedelta(minutes=5)
 
         # Act
-        await execution_manager._add_run_to_queue(
-            run, GLOBAL_SOURCE, visibility_expiration
-        )
+        await execution_manager._add_run_to_queue(run, GLOBAL_SOURCE)
 
         # Assert
         assert await execution_manager._global_queue.size() == 1
@@ -380,17 +312,12 @@ class TestExecutionManager:
         # Arrange
         run1 = generate_mock_action_run()
         run2 = generate_mock_action_run()
-        visibility_expiration = datetime.now() + timedelta(minutes=5)
 
         # Act & Assert
-        await execution_manager._add_run_to_queue(
-            run1, GLOBAL_SOURCE, visibility_expiration
-        )
+        await execution_manager._add_run_to_queue(run1, GLOBAL_SOURCE)
 
         with patch.object(execution_manager._active_sources, "put") as mock_add_source:
-            await execution_manager._add_run_to_queue(
-                run2, GLOBAL_SOURCE, visibility_expiration
-            )
+            await execution_manager._add_run_to_queue(run2, GLOBAL_SOURCE)
             mock_add_source.assert_not_called()
 
     @pytest.mark.asyncio
@@ -399,12 +326,10 @@ class TestExecutionManager:
     ):
         # Arrange
         queue_name = "test_action:partition1"
-        run_task = generate_mock_action_run_task(queue_name=queue_name)
+        run = generate_mock_action_run()
 
         # Act
-        await execution_manager._add_run_to_queue(
-            run_task.run, queue_name, run_task.visibility_expiration_timestamp
-        )
+        await execution_manager._add_run_to_queue(run, queue_name)
 
         # Assert
         assert queue_name in execution_manager._partition_queues
@@ -418,11 +343,10 @@ class TestExecutionManager:
         mock_port_client: MagicMock,
     ):
         # Arrange
-        run_task = generate_mock_action_run_task()
+        run = generate_mock_action_run()
         await execution_manager._add_run_to_queue(
-            run_task.run,
+            run,
             GLOBAL_SOURCE,
-            run_task.visibility_expiration_timestamp,
         )
 
         # Act & Assert
@@ -431,9 +355,9 @@ class TestExecutionManager:
         ) as mock_execute:
             await execution_manager._handle_global_queue_once()
 
-            assert run_task.run.id not in execution_manager._deduplication_set
-            mock_port_client.acknowledge_run.assert_called_once_with(run_task.run.id)
-            mock_execute.assert_called_once_with(run_task.run)
+            assert run.id not in execution_manager._deduplication_set
+            mock_port_client.acknowledge_run.assert_called_once_with(run.id)
+            mock_execute.assert_called_once_with(run)
 
     @pytest.mark.asyncio
     async def test_handle_partition_queue_once_should_process_run(
@@ -443,11 +367,10 @@ class TestExecutionManager:
     ):
         # Arrange
         partition_name = "test_action:partition1"
-        run_task = generate_mock_action_run_task(queue_name=partition_name)
+        run = generate_mock_action_run()
         await execution_manager._add_run_to_queue(
-            run_task.run,
+            run,
             partition_name,
-            run_task.visibility_expiration_timestamp,
         )
 
         # Act & Assert
@@ -456,9 +379,9 @@ class TestExecutionManager:
         ) as mock_execute:
             await execution_manager._handle_partition_queue_once(partition_name)
 
-            assert run_task.run.id not in execution_manager._deduplication_set
-            mock_port_client.acknowledge_run.assert_called_once_with(run_task.run.id)
-            mock_execute.assert_called_once_with(run_task.run)
+            assert run.id not in execution_manager._deduplication_set
+            mock_port_client.acknowledge_run.assert_called_once_with(run.id)
+            mock_execute.assert_called_once_with(run)
 
     @pytest.mark.asyncio
     async def test_poll_action_runs_should_respect_high_watermark(
@@ -467,7 +390,7 @@ class TestExecutionManager:
         # Arrange
         execution_manager._high_watermark = 2
         for _ in range(3):
-            await execution_manager._global_queue.put(generate_mock_action_run_task())
+            await execution_manager._global_queue.put(generate_mock_action_run())
 
         mock_port_client.get_pending_runs.return_value = []
 
@@ -488,8 +411,9 @@ class TestExecutionManager:
         # Arrange
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0.1
-        mock_run = generate_mock_action_run()
-        mock_port_client.get_pending_runs.return_value = [mock_run]
+        mock_port_client.get_pending_runs.side_effect = (
+            lambda limit, visibility_timeout_seconds: [generate_mock_action_run()]
+        )
 
         # Act
         polling_task = asyncio.create_task(execution_manager._poll_action_runs())
@@ -510,9 +434,11 @@ class TestExecutionManager:
         # Arrange
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0.1
-        mock_run = generate_mock_action_run()
-        mock_run.payload.actionType = "unregistered_action"
-        mock_port_client.get_pending_runs.return_value = [mock_run]
+        mock_port_client.get_pending_runs.side_effect = (
+            lambda limit, visibility_timeout_seconds: [
+                generate_mock_action_run(action_type="unregistered_action")
+            ]
+        )
 
         # Act
         polling_task = asyncio.create_task(execution_manager._poll_action_runs())
@@ -568,55 +494,10 @@ class TestExecutionManager:
         assert mock_port_client.acknowledge_run.call_count == ack_calls_count
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Not been tested yet")
-    async def test_concurrent_workers_no_deadlock(
+    async def test_global_and_partition_queues_concurrency(
         self,
-        execution_manager: ExecutionManager,
-        mock_port_client: MagicMock,
-    ):
-        """Test that multiple workers can process runs concurrently without deadlocking"""
-        # Arrange
-        num_runs = 10
-        for i in range(num_runs):
-            run_task = generate_mock_action_run_task()
-            await execution_manager._global_queue.put(run_task)
-            if i == 0:
-                await execution_manager._active_sources.put(GLOBAL_SOURCE)
-
-        # Create multiple workers
-        workers = []
-        for _ in range(3):
-            worker = asyncio.create_task(
-                self._process_n_items(execution_manager, num_runs // 3)
-            )
-            workers.append(worker)
-
-        # Act
-        try:
-            await asyncio.wait_for(asyncio.gather(*workers), timeout=5.0)
-        except asyncio.TimeoutError:
-            pytest.fail("Workers deadlocked")
-
-        # Assert - all runs should be processed
-        assert await execution_manager._global_queue.size() == 0
-
-    async def _process_n_items(self, manager: ExecutionManager, n: int):
-        """Helper to process N items from queues"""
-        for _ in range(n):
-            try:
-                source = await asyncio.wait_for(
-                    manager._active_sources.get(), timeout=1.0
-                )
-                if source == GLOBAL_SOURCE:
-                    await manager._handle_global_queue_once()
-            except asyncio.TimeoutError:
-                break
-
-    @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Not been tested yet")
-    async def test_global_and_partition_queues_isolation(
-        self,
-        execution_manager: ExecutionManager,
+        execution_manager_without_executors: ExecutionManager,
+        mock_test_executor: MagicMock,
         mock_test_partition_executor: MagicMock,
         mock_port_client: MagicMock,
     ):
@@ -627,102 +508,118 @@ class TestExecutionManager:
             start_time: datetime
             end_time: datetime
 
-        partition1 = f"{mock_test_partition_executor.ACTION_NAME}:partition1"
-        partition2 = f"{mock_test_partition_executor.ACTION_NAME}:partition2"
+        partition1 = "partition1"
+        partition2 = "partition2"
+        partition1_queue_name = f"{mock_test_partition_executor.ACTION_NAME}:partition1"
+        partition2_queue_name = f"{mock_test_partition_executor.ACTION_NAME}:partition2"
         run_measurements: dict[str, list[RunMeasurement]] = {
-            partition1: [],
-            partition2: [],
+            partition1_queue_name: [],
+            partition2_queue_name: [],
             GLOBAL_SOURCE: [],
         }
 
-        execution_manager._workers_count = 5
-        execution_manager._high_watermark = 20
-        execution_manager._poll_check_interval_seconds = 0.1
-        execution_manager._max_wait_seconds_before_shutdown = 1
+        execution_manager_without_executors._workers_count = 5
+        execution_manager_without_executors._high_watermark = 20
+        execution_manager_without_executors._poll_check_interval_seconds = 0.1
+        execution_manager_without_executors._max_wait_seconds_before_shutdown = 1
+
+        async def mock_execute(run):
+            await asyncio.sleep(0.1)
+            return None
+
+        mock_test_executor.execute.side_effect = mock_execute
+        mock_test_partition_executor.execute.side_effect = mock_execute
+        execution_manager_without_executors.register_executor(mock_test_executor)
+        execution_manager_without_executors.register_executor(
+            mock_test_partition_executor
+        )
 
         # Patch the relevant methods to record execution timings for measurement
-        original_handle_global_queue_once = execution_manager._handle_global_queue_once
+        original_handle_global_queue_once = (
+            execution_manager_without_executors._handle_global_queue_once
+        )
         original_handle_partition_queue_once = (
-            execution_manager._handle_partition_queue_once
+            execution_manager_without_executors._handle_partition_queue_once
         )
 
         async def wrapped_handle_global_queue_once():
-            run_task = None
-            # Peek the run_task to get the run and its queue; need to lock to do so.
-            async with execution_manager._queues_locks[GLOBAL_SOURCE]:
-                if await execution_manager._global_queue.size() > 0:
-                    run_task = await execution_manager._global_queue.peek()
-            run_id = run_task.run.id if run_task else None
-            measurement = RunMeasurement(start_time=datetime.now(), end_time=None)
-            if run_id:
-                run_measurements[GLOBAL_SOURCE].append(measurement)
+            start_time = datetime.now()
             await original_handle_global_queue_once()
-            if run_id:
-                measurement.end_time = datetime.now()
+            try:
+                run_measurements[GLOBAL_SOURCE].append(
+                    RunMeasurement(start_time=start_time, end_time=datetime.now())
+                )
+            except Exception as e:
+                logger.error(f"Error recording run measurement: {e}")
 
         async def wrapped_handle_partition_queue_once(partition_name: str):
-            queue = execution_manager._partition_queues[partition_name]
-            run_task = None
-            # Peek the run_task to get the run at the head of the queue, if present
-            async with execution_manager._queues_locks[partition_name]:
-                if await queue.size() > 0:
-                    run_task = await queue.peek()
-            run_id = run_task.run.id if run_task else None
-            measurement = RunMeasurement(start_time=datetime.now(), end_time=None)
-            if run_id:
-                run_measurements[partition_name].append(measurement)
+            start_time = datetime.now()
             await original_handle_partition_queue_once(partition_name)
-            if run_id:
-                measurement.end_time = datetime.now()
+            try:
+                run_measurements[partition_name].append(
+                    RunMeasurement(start_time=start_time, end_time=datetime.now())
+                )
+            except Exception as e:
+                logger.error(f"Error recording run measurement: {e}")
 
-        execution_manager._handle_global_queue_once = wrapped_handle_global_queue_once
-        execution_manager._handle_partition_queue_once = (
+        execution_manager_without_executors._handle_global_queue_once = (
+            wrapped_handle_global_queue_once
+        )
+        execution_manager_without_executors._handle_partition_queue_once = (
             wrapped_handle_partition_queue_once
         )
-        mock_port_client.get_pending_runs.return_value = [
-            *[
-                generate_mock_action_run(
-                    action_type=mock_test_partition_executor.ACTION_NAME,
-                    integrationActionExecutionProperties={"partition_name": partition1},
-                )
-                for _ in range(5)
-            ],
-            *[
-                generate_mock_action_run(
-                    action_type=mock_test_partition_executor.ACTION_NAME,
-                    integrationActionExecutionProperties={"partition_name": partition2},
-                )
-                for _ in range(5)
-            ],
-            *[generate_mock_action_run() for _ in range(5)],
-        ]
+        mock_port_client.get_pending_runs.side_effect = (
+            lambda limit, visibility_timeout_seconds: [
+                *[
+                    generate_mock_action_run(
+                        action_type=mock_test_partition_executor.ACTION_NAME,
+                        integrationActionExecutionProperties={
+                            "partition_name": partition1
+                        },
+                    )
+                    for _ in range(5)
+                ],
+                *[
+                    generate_mock_action_run(
+                        action_type=mock_test_partition_executor.ACTION_NAME,
+                        integrationActionExecutionProperties={
+                            "partition_name": partition2
+                        },
+                    )
+                    for _ in range(5)
+                ],
+                *[generate_mock_action_run() for _ in range(5)],
+            ]
+        )
 
-        def check_queue_measurements(queue_name: str):
+        def check_global_queue_measurements():
+            queue_measurements = run_measurements[GLOBAL_SOURCE]
+            assert any(
+                m.end_time >= queue_measurements[i + 1].start_time
+                for i, m in enumerate(queue_measurements[:-1])
+            )
+
+        def check_partition_queue_measurements(queue_name: str):
             queue_measurements = run_measurements[queue_name]
             for idx, measurement in enumerate(queue_measurements):
                 if idx == len(queue_measurements) - 1:
                     continue
-                if queue_name == GLOBAL_SOURCE:
-                    assert measurement.end_time < queue_measurements[idx + 1].start_time
-                else:
-                    assert (
-                        measurement.end_time >= queue_measurements[idx + 1].start_time
-                    )
+                assert measurement.end_time < queue_measurements[idx + 1].start_time
 
         # Act
-        await execution_manager.start_processing_action_runs()
-        # Allow sufficient time for some action runs to be processed
-        await asyncio.sleep(3)
-        await execution_manager.shutdown()
+        await execution_manager_without_executors.start_processing_action_runs()
+        await asyncio.sleep(1)
+        await execution_manager_without_executors.shutdown()
 
         # Assert
-        assert execution_manager._polling_task.cancelled()
-        assert len(execution_manager._workers_pool) == 0
-        assert len(run_measurements[GLOBAL_SOURCE]) > 0
-        assert len(run_measurements[partition1]) > 0
-        assert len(run_measurements[partition2]) > 0
+        assert execution_manager_without_executors._polling_task.cancelled()
+        assert len(execution_manager_without_executors._workers_pool) == 0
         for queue_name in run_measurements:
-            check_queue_measurements(queue_name)
+            assert len(run_measurements[queue_name]) > 0
+            if queue_name == GLOBAL_SOURCE:
+                check_global_queue_measurements()
+            else:
+                check_partition_queue_measurements(queue_name)
 
     @pytest.mark.asyncio
     async def test_execute_run_handles_general_exception(
@@ -732,14 +629,14 @@ class TestExecutionManager:
         mock_test_executor: MagicMock,
     ):
         # Arrange
-        run_task = generate_mock_action_run_task()
+        run = generate_mock_action_run()
         error_msg = "Test error"
         mock_test_executor.execute.side_effect = Exception(error_msg)
 
         # Act
-        await execution_manager._execute_run(run_task)
+        await execution_manager._execute_run(run)
 
         # Assert
         mock_port_client.patch_run.assert_called_once_with(
-            run_task.run.id, {"summary": error_msg, "status": RunStatus.FAILURE}
+            run.id, {"summary": error_msg, "status": RunStatus.FAILURE}
         )

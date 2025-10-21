@@ -1,8 +1,6 @@
-from datetime import datetime, timedelta
 import time
 from typing import Dict, Set
 from loguru import logger
-from pydantic import BaseModel
 from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
@@ -28,12 +26,6 @@ RATE_LIMIT_MAX_BACKOFF_SECONDS = 10
 GLOBAL_SOURCE = "__global__"
 
 
-class ActionRunTask(BaseModel):
-    visibility_expiration_timestamp: datetime
-    queue_name: str
-    run: ActionRun[IntegrationActionInvocationPayload]
-
-
 class ExecutionManager:
     """
     Orchestrates action executors, polling, and webhook handlers for integration actions.
@@ -51,8 +43,8 @@ class ExecutionManager:
         _workers_pool (set[asyncio.Task[None]]): Pool of worker tasks processing runs
         _actions_executors (Dict[str, AbstractExecutor]): Registered action executors
         _is_shutting_down (asyncio.Event): Event flag for graceful shutdown
-        _global_queue (LocalQueue[ActionRunTask]): Queue for non-partitioned actions
-        _partition_queues (Dict[str, AbstractQueue[ActionRunTask]]): Queues for partitioned actions
+        _global_queue (LocalQueue[ActionRun[IntegrationActionInvocationPayload]]): Queue for non-partitioned actions
+        _partition_queues (Dict[str, AbstractQueue[ActionRun[IntegrationActionInvocationPayload]]]): Queues for partitioned actions
         _deduplication_set (Set[str]): Set of run IDs for deduplication
         _queues_locks (Dict[str, asyncio.Lock]): Locks for queue access synchronization
         _active_sources (AbstractQueue[str]): Queue of active sources (global or partition-specific) used for round-robin distribution of work among workers
@@ -98,8 +90,10 @@ class ExecutionManager:
         self._workers_pool: set[asyncio.Task[None]] = set()
         self._actions_executors: Dict[str, AbstractExecutor] = {}
         self._is_shutting_down = asyncio.Event()
-        self._global_queue = LocalQueue[ActionRunTask]()
-        self._partition_queues: Dict[str, AbstractQueue[ActionRunTask]] = {}
+        self._global_queue = LocalQueue[ActionRun[IntegrationActionInvocationPayload]]()
+        self._partition_queues: Dict[
+            str, AbstractQueue[ActionRun[IntegrationActionInvocationPayload]]
+        ] = {}
         self._deduplication_set: Set[str] = set()
         self._queues_locks: Dict[str, asyncio.Lock] = {GLOBAL_SOURCE: asyncio.Lock()}
         self._active_sources: AbstractQueue[str] = LocalQueue[str]()
@@ -191,10 +185,6 @@ class ExecutionManager:
                     await asyncio.sleep(self._poll_check_interval_seconds)
                     continue
 
-                visibility_expiration_timestamp = datetime.now() + timedelta(
-                    seconds=self._visibility_timeout_seconds
-                )
-
                 for run in runs:
                     try:
                         action_type = run.payload.actionType
@@ -202,6 +192,13 @@ class ExecutionManager:
                             logger.warning(
                                 "No Executors registered to handle this action, skipping run...",
                                 action_type=action_type,
+                                run_id=run.id,
+                            )
+                            continue
+
+                        if run.id in self._deduplication_set:
+                            logger.info(
+                                "Run is already being processed, skipping...",
                                 run_id=run.id,
                             )
                             continue
@@ -215,9 +212,7 @@ class ExecutionManager:
                             if not partition_key
                             else f"{action_type}:{partition_key}"
                         )
-                        await self._add_run_to_queue(
-                            run, queue_name, visibility_expiration_timestamp
-                        )
+                        await self._add_run_to_queue(run, queue_name)
                     except PartitionKeyNotFoundError as e:
                         logger.warning(
                             "Partition key not found in invocation payload, skipping run...",
@@ -252,7 +247,6 @@ class ExecutionManager:
         self,
         run: ActionRun[IntegrationActionInvocationPayload],
         queue_name: str,
-        visibility_expiration_timestamp: datetime,
     ) -> None:
         """
         Add a run to the queue, if the queue is empty, add the source to the active sources.
@@ -271,15 +265,9 @@ class ExecutionManager:
                 await self._active_sources.put(queue_name)
                 self._deduplication_set.add(run.id)
             logger.info(f"Adding run to queue {queue_name}", run_id=run.id)
-            await queue.put(
-                ActionRunTask(
-                    visibility_expiration_timestamp=visibility_expiration_timestamp,
-                    queue_name=queue_name,
-                    run=run,
-                )
-            )
+            await queue.put(run)
 
-    async def _add_source_if_not_empty(self, source_name: str, poller=False) -> None:
+    async def _add_source_if_not_empty(self, source_name: str) -> None:
         """
         Add a source back to the active sources if the queue is not empty.
         """
@@ -310,12 +298,12 @@ class ExecutionManager:
     async def _handle_global_queue_once(self):
         try:
             async with self._queues_locks[GLOBAL_SOURCE]:
-                run_task = await self._global_queue.get()
-                if run_task.run.id in self._deduplication_set:
-                    self._deduplication_set.remove(run_task.run.id)
+                run = await self._global_queue.get()
+                if run.id in self._deduplication_set:
+                    self._deduplication_set.remove(run.id)
 
             await self._add_source_if_not_empty(GLOBAL_SOURCE)
-            await self._execute_run(run_task)
+            await self._execute_run(run)
         finally:
             await self._global_queue.commit()
 
@@ -327,33 +315,23 @@ class ExecutionManager:
         queue = self._partition_queues[partition_name]
         try:
             async with self._queues_locks[partition_name]:
-                run_task = await queue.get()
-                if run_task.run.id in self._deduplication_set:
-                    self._deduplication_set.remove(run_task.run.id)
-            await self._execute_run(run_task)
+                run = await queue.get()
+                if run.id in self._deduplication_set:
+                    self._deduplication_set.remove(run.id)
+            await self._execute_run(run)
         finally:
             await queue.commit()
             await self._add_source_if_not_empty(partition_name)
 
-    async def _execute_run(self, run_task: ActionRunTask) -> None:
+    async def _execute_run(
+        self, run: ActionRun[IntegrationActionInvocationPayload]
+    ) -> None:
         """
         Execute a run using its registered executor.
         """
-        with logger.contextualize(
-            run_id=run_task.run.id, action=run_task.run.payload.actionType
-        ):
+        with logger.contextualize(run_id=run.id, action=run.payload.actionType):
             try:
-                async with self._queues_locks[run_task.queue_name]:
-                    if (
-                        run_task.visibility_expiration_timestamp < datetime.now()
-                        and run_task.run.id in self._deduplication_set
-                    ):
-                        logger.info(
-                            "Run visibility has already expired and is being deduplicated, skipping execution"
-                        )
-                        return
-
-                executor = self._actions_executors[run_task.run.payload.actionType]
+                executor = self._actions_executors[run.payload.actionType]
                 while (
                     await executor.is_close_to_rate_limit()
                     and not self._is_shutting_down.is_set()
@@ -363,7 +341,7 @@ class ExecutionManager:
                         await executor.get_remaining_seconds_until_rate_limit(),
                     )
                     await ocean.port_client.post_run_log(
-                        run_task.run.id,
+                        run.id,
                         f"Delayed due to low remaining rate limit. Will attempt to re-run in {backoff_seconds} seconds",
                     )
                     await asyncio.sleep(backoff_seconds)
@@ -374,10 +352,10 @@ class ExecutionManager:
                     )
                     return
 
-                await ocean.port_client.acknowledge_run(run_task.run.id)
+                await ocean.port_client.acknowledge_run(run.id)
                 logger.debug("Run acknowledged successfully")
                 start_time = time.monotonic()
-                await executor.execute(run_task.run)
+                await executor.execute(run)
                 logger.info(
                     "Run executed successfully",
                     elapsed_ms=(time.monotonic() - start_time) * 1000,
@@ -393,7 +371,7 @@ class ExecutionManager:
                     error=e,
                 )
                 await ocean.port_client.patch_run(
-                    run_task.run.id, {"summary": str(e), "status": RunStatus.FAILURE}
+                    run.id, {"summary": str(e), "status": RunStatus.FAILURE}
                 )
 
     async def _gracefully_cancel_task(self, task: asyncio.Task[None]) -> None:
