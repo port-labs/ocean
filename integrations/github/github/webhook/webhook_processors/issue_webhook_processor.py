@@ -38,8 +38,11 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
         issue = payload["issue"]
         repo_name = payload["repository"]["name"]
         issue_number = payload["issue"]["number"]
+        organization = payload["organization"]["login"]
 
-        logger.info(f"Processing issue event: {action} for {repo_name}/{issue_number}")
+        logger.info(
+            f"Processing issue event: {action} for {repo_name}/{issue_number} from {organization}"
+        )
 
         config = cast(GithubIssueConfig, resource_config)
 
@@ -54,7 +57,11 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         exporter = RestIssueExporter(create_github_client())
         data_to_upsert = await exporter.get_resource(
-            SingleIssueOptions(repo_name=repo_name, issue_number=issue_number)
+            SingleIssueOptions(
+                organization=organization,
+                repo_name=repo_name,
+                issue_number=issue_number,
+            )
         )
 
         return WebhookEventRawResults(

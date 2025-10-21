@@ -235,7 +235,7 @@ class TestCollaboratorMembershipWebhookProcessor:
 
                     # Verify team exporter was called
                     mock_team_exporter.get_team_repositories_by_slug.assert_called_once_with(
-                        SingleTeamOptions(slug="test-team")
+                        SingleTeamOptions(organization="test-org", slug="test-team")
                     )
                 else:
                     # For non-upsert events, no repositories should be fetched

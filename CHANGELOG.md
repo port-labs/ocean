@@ -6,13 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.28.16 (2025-10-21)
+
+### Bug fixes
+
+- Add pagination to search entities API call
+
+## 0.28.15 (2025-10-20)
+
+### Bug fixes
+
+- Fix examples construction on items_to_parse (extra nesting removed)
+- Fix onload process from fs in items_to_parse with no yield_items_to_parse branch
+
+## 0.28.14 (2025-10-15)
+
+### Bug fixes
+
+- Fix items_to_parse without yield_items_to_parse bug on array data type
+- Fix items_to_parse group_complex_mapping_value bug
+
 ## 0.28.13 (2025-10-03)
 
 ### Improvements
 
 - Improved cache key generation for instance/class methods in Ocean's caching utilities
 - Added comprehensive test coverage for cache decorators on instance/class/static methods
-
 
 ## 0.28.12 (2025-09-30)
 
@@ -39,7 +58,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - revert memory optimization commit
-
 
 ## 0.28.8 (2025-09-21)
 

@@ -37,9 +37,10 @@ class SecretScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         alert_number = alert["number"]
         repo_name = repo["name"]
+        organization = payload["organization"]["login"]
 
         logger.info(
-            f"Processing Secret Scanning alert event: {action} for alert {alert_number} in {repo_name}"
+            f"Processing Secret Scanning alert event: {action} for alert {alert_number} in {repo_name} from {organization}"
         )
 
         config = cast(GithubSecretScanningAlertConfig, resource_config)
@@ -47,7 +48,7 @@ class SecretScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         if not possible_states:
             logger.info(
-                f"The action {action} is not allowed for secret scanning alert {alert_number} in {repo_name}. Skipping resource."
+                f"The action {action} is not allowed for secret scanning alert {alert_number} in {repo_name} from {organization}. Skipping resource."
             )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
@@ -58,7 +59,7 @@ class SecretScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
             and config.selector.state not in possible_states
         ):
             logger.info(
-                f"The action {action} is not allowed for secret scanning alert {alert_number} in {repo_name}. Deleting resource."
+                f"The action {action} is not allowed for secret scanning alert {alert_number} in {repo_name} from {organization}. Deleting resource."
             )
 
             alert = enrich_with_repository(alert, repo_name)
@@ -68,7 +69,7 @@ class SecretScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
         logger.info(
-            f"The action {action} is allowed for secret scanning alert {alert_number} in {repo_name}. Updating resource."
+            f"The action {action} is allowed for secret scanning alert {alert_number} in {repo_name} from {organization}. Updating resource."
         )
 
         rest_client = create_github_client()
@@ -76,6 +77,7 @@ class SecretScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         data_to_upsert = await exporter.get_resource(
             SingleSecretScanningAlertOptions(
+                organization=organization,
                 repo_name=repo_name,
                 alert_number=alert_number,
                 hide_secret=config.selector.hide_secret,
