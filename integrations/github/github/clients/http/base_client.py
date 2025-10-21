@@ -21,12 +21,10 @@ if TYPE_CHECKING:
 class AbstractGithubClient(ABC):
     def __init__(
         self,
-        organization: str,
         github_host: str,
         authenticator: "AbstractGitHubAuthenticator",
         **kwargs: Any,
     ) -> None:
-        self.organization = organization
         self.github_host = github_host
         self.authenticator = authenticator
         self.kwargs = kwargs
