@@ -1,6 +1,6 @@
 # Zendesk Integration Example
 
-This example demonstrates how to integrate Zendesk with Port using the HTTP Server integration. It showcases several advanced features:
+This example demonstrates how to integrate Zendesk with Port using the Generic HTTP integration. It showcases several advanced features:
 
 ## Features Demonstrated
 
@@ -77,6 +77,12 @@ zendesk_comment → (relates to ticket and author)
 ## Learn More
 
 - [Zendesk API Documentation](https://developer.zendesk.com/api-reference/)
-- [Port HTTP Server Integration](../../README.md)
+- [Port Generic HTTP Integration](../../README.md)
 - [Ocean Framework Documentation](https://ocean.getport.io/)
+
+
+
+
+
+
 

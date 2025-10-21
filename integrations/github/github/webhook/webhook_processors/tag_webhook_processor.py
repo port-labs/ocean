@@ -38,9 +38,10 @@ class TagWebhookProcessor(BaseRepositoryWebhookProcessor):
         tag_ref = payload["ref"]
         repo = payload["repository"]
         repo_name = repo["name"]
+        organization = payload["organization"]["login"]
 
         logger.info(
-            f"Processing tag event: {self._event_type} for tag {tag_ref} in {repo_name}"
+            f"Processing tag event: {self._event_type} for tag {tag_ref} in {repo_name} from {organization}"
         )
 
         if self._event_type == "delete":
@@ -53,7 +54,9 @@ class TagWebhookProcessor(BaseRepositoryWebhookProcessor):
         exporter = RestTagExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
-            SingleTagOptions(repo_name=repo_name, tag_name=tag_ref)
+            SingleTagOptions(
+                organization=organization, repo_name=repo_name, tag_name=tag_ref
+            )
         )
 
         return WebhookEventRawResults(

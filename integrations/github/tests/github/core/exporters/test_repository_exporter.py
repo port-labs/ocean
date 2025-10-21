@@ -54,12 +54,14 @@ class TestRestRepositoryExporter:
             rest_client, "send_api_request", new_callable=AsyncMock
         ) as mock_request:
             mock_request.return_value = mock_response.json()
-            repo = await exporter.get_resource(SingleRepositoryOptions(name="repo1"))
+            repo = await exporter.get_resource(
+                SingleRepositoryOptions(organization="test-org", name="repo1")
+            )
 
             assert repo == TEST_REPOS[0]
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1"
+                f"{rest_client.base_url}/repos/test-org/repo1"
             )
 
     async def test_get_paginated_resources(
@@ -76,7 +78,7 @@ class TestRestRepositoryExporter:
         ) as mock_request:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
-                    type=mock_port_app_config.repository_type
+                    organization="test-org", type=mock_port_app_config.repository_type
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
@@ -89,7 +91,7 @@ class TestRestRepositoryExporter:
                 assert repos[0] == TEST_REPOS
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/orgs/{rest_client.organization}/repos",
+                    f"{rest_client.base_url}/orgs/test-org/repos",
                     {"type": "all"},
                 )
 
@@ -110,6 +112,7 @@ class TestRestRepositoryExporter:
         ) as mock_request:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
+                    organization="test-org",
                     type=mock_port_app_config.repository_type,
                     included_relationships=["collaborators"],
                 )
@@ -134,18 +137,18 @@ class TestRestRepositoryExporter:
 
                 # Verify the main repository request was called
                 mock_request.assert_any_call(
-                    f"{rest_client.base_url}/orgs/{rest_client.organization}/repos",
+                    f"{rest_client.base_url}/orgs/test-org/repos",
                     {"type": "all", "included_relationships": ["collaborators"]},
                 )
 
                 # Verify collaborator requests were called for each repository
                 expected_collaborator_calls: list[tuple[str, dict[str, Any]]] = [
                     (
-                        f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/collaborators",
+                        f"{rest_client.base_url}/repos/test-org/repo1/collaborators",
                         {},
                     ),
                     (
-                        f"{rest_client.base_url}/repos/{rest_client.organization}/repo2/collaborators",
+                        f"{rest_client.base_url}/repos/test-org/repo2/collaborators",
                         {},
                     ),
                 ]
