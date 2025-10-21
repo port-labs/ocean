@@ -1,6 +1,6 @@
 import pytest
 from typing import Any, Dict, List
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from azure_devops.webhooks.webhook_processors.branch_webhook_processor import (
     BranchWebhookProcessor,
@@ -8,21 +8,7 @@ from azure_devops.webhooks.webhook_processors.branch_webhook_processor import (
 
 
 @pytest.fixture
-def branch_webhook_processor(
-    event: WebhookEvent, monkeypatch: pytest.MonkeyPatch
-) -> BranchWebhookProcessor:
-    mock_client = MagicMock()
-    mock_client.get_repository = AsyncMock(
-        return_value={
-            "id": "repo1",
-            "name": "Repo One",
-            "project": {"id": "p1", "name": "Proj"},
-        }
-    )
-    monkeypatch.setattr(
-        "azure_devops.webhooks.webhook_processors.branch_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-        lambda: mock_client,
-    )
+def branch_webhook_processor(event: WebhookEvent) -> BranchWebhookProcessor:
     return BranchWebhookProcessor(event)
 
 
@@ -64,7 +50,11 @@ async def test_handle_event_update_and_delete(
         "eventType": "git.push",
         "publisherId": "tfs",
         "resource": {
-            "repository": {"id": "repo1"},
+            "repository": {
+                "id": "repo1",
+                "name": "Test Repo",
+                "project": {"id": "p1", "name": "Test Project"},
+            },
             "refUpdates": [
                 {"name": "refs/heads/main", "oldObjectId": "old", "newObjectId": "new"},
                 {
@@ -87,6 +77,7 @@ async def test_handle_event_update_and_delete(
     assert updated_branch["refName"] == "refs/heads/main"
     assert updated_branch["objectId"] == "new"
     assert "__repository" in updated_branch
+    assert updated_branch["__repository"]["id"] == "repo1"
 
     # Test deleted branches
     assert len(result.deleted_raw_results) == 1
@@ -98,34 +89,28 @@ async def test_handle_event_update_and_delete(
 
 
 @pytest.mark.asyncio
-async def test_handle_event_repository_not_found(
+async def test_handle_event_repository_with_no_matching_branches(
     branch_webhook_processor: BranchWebhookProcessor, mock_event_context: None
 ) -> None:
-    """Test handling when repository is not found."""
-    # Mock the client creation to return a client that returns None for repository
-    mock_client = MagicMock()
-    mock_client.get_repository = AsyncMock(return_value=None)
-
-    with pytest.MonkeyPatch().context() as m:
-        m.setattr(
-            "azure_devops.webhooks.webhook_processors.branch_webhook_processor.AzureDevopsClient.create_from_ocean_config",
-            lambda: mock_client,
-        )
-
-        payload = {
-            "eventType": "git.push",
-            "publisherId": "tfs",
-            "resource": {
-                "repository": {"id": "nonexistent"},
-                "refUpdates": [{"name": "refs/heads/main", "newObjectId": "new"}],
+    """Test handling when repository exists but has no matching branch updates."""
+    payload = {
+        "eventType": "git.push",
+        "publisherId": "tfs",
+        "resource": {
+            "repository": {
+                "id": "repo1",
+                "name": "Test Repo",
+                "project": {"id": "p1", "name": "Test Project"},
             },
-        }
+            "refUpdates": [],  # Empty ref updates
+        },
+    }
 
-        result = await branch_webhook_processor.handle_event(
-            payload, resource_config=MagicMock()
-        )
-        assert len(result.updated_raw_results) == 0
-        assert len(result.deleted_raw_results) == 0
+    result = await branch_webhook_processor.handle_event(
+        payload, resource_config=MagicMock()
+    )
+    assert len(result.updated_raw_results) == 0
+    assert len(result.deleted_raw_results) == 0
 
 
 @pytest.mark.asyncio
@@ -137,7 +122,11 @@ async def test_handle_event_no_branch_refs(
         "eventType": "git.push",
         "publisherId": "tfs",
         "resource": {
-            "repository": {"id": "repo1"},
+            "repository": {
+                "id": "repo1",
+                "name": "Test Repo",
+                "project": {"id": "p1", "name": "Test Project"},
+            },
             "refUpdates": [
                 {"name": "refs/tags/v1.0", "oldObjectId": "t", "newObjectId": "t2"},
                 {

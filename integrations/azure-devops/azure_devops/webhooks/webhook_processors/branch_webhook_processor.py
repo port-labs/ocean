@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Tuple
 
 from loguru import logger
-from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import Kind
 from azure_devops.webhooks.events import PushEvents
 from azure_devops.webhooks.webhook_processors.base_processor import (
@@ -48,8 +47,7 @@ class BranchWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         resource = payload["resource"]
         repository_id = resource["repository"]["id"]
 
-        client = AzureDevopsClient.create_from_ocean_config()
-        repository = await client.get_repository(repository_id)
+        repository = resource["repository"]
         if not repository:
             logger.warning(f"Repository with ID {repository_id} not found")
             return WebhookEventRawResults(
