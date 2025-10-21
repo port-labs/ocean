@@ -151,7 +151,7 @@ class InvocationType(StrEnum):
 
 
 class InvocationPayload(BaseModel):
-    type: Literal[InvocationType]
+    type: InvocationType
 
 
 class IntegrationActionInvocationPayload(InvocationPayload):

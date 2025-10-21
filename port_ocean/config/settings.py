@@ -106,7 +106,9 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     base_url: str | None = None
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(
-        default_factory=lambda: PollingEventListenerSettings()
+        default_factory=lambda: PollingEventListenerSettings(
+            type=EventListenerType.POLLING
+        )
     )
     event_workers_count: int = 1
     # If an identifier or type is not provided, it will be generated based on the integration name
@@ -139,14 +141,14 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     )
 
     @root_validator
-    def validate_event_listener(
-        cls, values: dict[str, Any]
-    ) -> EventListenerSettingsType:
-        event_listener: EventListenerSettingsType = values.get("event_listener")
-        runtime: Runtime = values.get("runtime")
+    def validate_event_listener(cls, values: dict[str, Any]) -> dict[str, Any]:
+        event_listener: EventListenerSettingsType | None = values.get("event_listener")
+        runtime: Runtime | None = values.get("runtime")
 
         if (
-            event_listener.type == EventListenerType.ACTIONS_ONLY
+            event_listener
+            and runtime
+            and event_listener.type == EventListenerType.ACTIONS_ONLY
             and not runtime.is_saas_runtime
         ):
             raise ValueError(

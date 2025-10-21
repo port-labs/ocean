@@ -130,7 +130,7 @@ class ExecutionManager:
         self._actions_executors[action_name] = executor
         logger.info("Registered action executor", action=action_name)
 
-    async def start_processing_action_runs(self):
+    async def start_processing_action_runs(self) -> None:
         """
         Start polling and processing action runs for all registered actions.
         """
@@ -149,7 +149,7 @@ class ExecutionManager:
             self._workers_pool.add(task)
             task.add_done_callback(self._workers_pool.discard)
 
-    async def _poll_action_runs(self):
+    async def _poll_action_runs(self) -> None:
         """
         Poll action runs for all registered actions.
         Respects high watermark for queue size management.
@@ -295,7 +295,7 @@ class ExecutionManager:
             except Exception as e:
                 logger.exception("Worker processing error", source=source, error=e)
 
-    async def _handle_global_queue_once(self):
+    async def _handle_global_queue_once(self) -> None:
         try:
             async with self._queues_locks[GLOBAL_SOURCE]:
                 run = await self._global_queue.get()
@@ -307,7 +307,7 @@ class ExecutionManager:
         finally:
             await self._global_queue.commit()
 
-    async def _handle_partition_queue_once(self, partition_name: str):
+    async def _handle_partition_queue_once(self, partition_name: str) -> None:
         """
         Try to process a single run from the given partition queue.
         Returns True if work was done, False otherwise.
@@ -374,7 +374,7 @@ class ExecutionManager:
                     run.id, {"summary": str(e), "status": RunStatus.FAILURE}
                 )
 
-    async def _gracefully_cancel_task(self, task: asyncio.Task[None]) -> None:
+    async def _gracefully_cancel_task(self, task: asyncio.Task[None] | None) -> None:
         """
         Gracefully cancel a task.
         """

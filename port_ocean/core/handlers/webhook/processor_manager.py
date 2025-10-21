@@ -72,7 +72,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         while True:
             event = None
             matching_processors: List[
-                Tuple[ResourceConfig, AbstractWebhookProcessor]
+                Tuple[ResourceConfig | None, AbstractWebhookProcessor]
             ] = []
             try:
                 event = await queue.get()
@@ -149,10 +149,12 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
 
     async def _extract_matching_processors(
         self, webhook_event: WebhookEvent, path: str
-    ) -> list[tuple[ResourceConfig, AbstractWebhookProcessor]]:
+    ) -> list[tuple[ResourceConfig | None, AbstractWebhookProcessor]]:
         """Find and extract the matching processor for an event"""
 
-        created_processors: list[tuple[ResourceConfig, AbstractWebhookProcessor]] = []
+        created_processors: list[
+            tuple[ResourceConfig | None, AbstractWebhookProcessor]
+        ] = []
         event_processor_names = []
 
         for processor_class in self._processors_classes[path]:
@@ -199,7 +201,10 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         event.set_timestamp(LiveEventTimestamp.FinishedProcessingWithError)
 
     async def _process_single_event(
-        self, processor: AbstractWebhookProcessor, path: str, resource: ResourceConfig
+        self,
+        processor: AbstractWebhookProcessor,
+        path: str,
+        resource: ResourceConfig | None,
     ) -> WebhookEventRawResults:
         """Process a single event with a specific processor"""
         try:
@@ -219,7 +224,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             raise
 
     async def _execute_processor(
-        self, processor: AbstractWebhookProcessor, resource: ResourceConfig
+        self, processor: AbstractWebhookProcessor, resource: ResourceConfig | None
     ) -> WebhookEventRawResults:
         """Execute a single processor within a max processing time"""
         try:
@@ -233,7 +238,7 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             )
 
     async def _process_webhook_request(
-        self, processor: AbstractWebhookProcessor, resource: ResourceConfig
+        self, processor: AbstractWebhookProcessor, resource: ResourceConfig | None
     ) -> WebhookEventRawResults:
         """Process a webhook request with retry logic
 
@@ -254,10 +259,15 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         webhook_event_raw_results = None
         while True:
             try:
-                webhook_event_raw_results = await processor.handle_event(
-                    payload, resource
-                )
-                webhook_event_raw_results.resource = resource
+                if resource is None:
+                    webhook_event_raw_results = WebhookEventRawResults(
+                        updated_raw_results=[], deleted_raw_results=[]
+                    )
+                else:
+                    webhook_event_raw_results = await processor.handle_event(
+                        payload, resource
+                    )
+                    webhook_event_raw_results.resource = resource
                 break
 
             except Exception as e:

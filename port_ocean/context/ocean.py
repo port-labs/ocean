@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration
     from port_ocean.ocean import Ocean
     from port_ocean.clients.port.client import PortClient
-    from port_ocean.core.handlers.actions.execution_manager import AbstractExecutor
+    from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 
 from loguru import logger
 
