@@ -1,5 +1,5 @@
 description: GitHub integration for Port Ocean
-icon: github
+icon: Github
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github/
 features:
   - type: exporter
@@ -70,6 +70,7 @@ executionAgent:
   enabled: true
   actions:
   - name: dispatch_github_workflow
+    icon: GithubActions
     description: Dispatch a GitHub workflow
     inputs:
       - name: repo
