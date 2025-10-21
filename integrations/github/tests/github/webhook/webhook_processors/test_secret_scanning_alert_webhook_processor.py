@@ -89,6 +89,7 @@ class TestSecretScanningAlertWebhookProcessor:
                     "action": "created",
                     "alert": {"number": 42},
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -97,6 +98,7 @@ class TestSecretScanningAlertWebhookProcessor:
                     "action": "resolved",
                     "alert": {"number": 43},
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -105,6 +107,7 @@ class TestSecretScanningAlertWebhookProcessor:
                     "action": "publicly_leaked",
                     "alert": {"number": 44},
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -112,6 +115,7 @@ class TestSecretScanningAlertWebhookProcessor:
                 {
                     "action": "created",
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },  # missing alert
                 False,
             ),
@@ -120,6 +124,7 @@ class TestSecretScanningAlertWebhookProcessor:
                     "action": "created",
                     "alert": {},  # missing number
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },
                 False,
             ),
@@ -179,6 +184,7 @@ class TestSecretScanningAlertWebhookProcessor:
             "action": action,
             "alert": alert_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         # Mock the RestSecretScanningAlertExporter
@@ -252,6 +258,7 @@ class TestSecretScanningAlertWebhookProcessor:
             "action": action,
             "alert": alert_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         result = await secret_scanning_webhook_processor.handle_event(
@@ -292,6 +299,7 @@ class TestSecretScanningAlertWebhookProcessor:
             "action": "unknown_action",
             "alert": alert_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         result = await secret_scanning_webhook_processor.handle_event(
