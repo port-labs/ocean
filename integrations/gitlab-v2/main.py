@@ -54,6 +54,12 @@ from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
 from gitlab.webhook.webhook_processors.project_webhook_processor import (
     ProjectWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.tag_webhook_processor import (
+    TagWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.release_webhook_processor import (
+    ReleaseWebhookProcessor,
+)
 
 
 RESYNC_GROUP_MEMBERS_BATCH_SIZE = 10
@@ -337,5 +343,5 @@ ocean.add_webhook_processor("/hook/{group_id}", GroupWithMemberWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ProjectWebhookProcessor)
-#!todo - add tag webhook processor
-#!todo - add release webhook processor
+ocean.add_webhook_processor("/hook/{group_id}", TagWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", ReleaseWebhookProcessor)
