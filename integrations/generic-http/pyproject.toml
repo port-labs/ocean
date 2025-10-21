@@ -6,7 +6,7 @@ authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.28.15", extras = ["cli"]}
+port_ocean = {version = "^0.28.16", extras = ["cli"]}
 httpx = "^0.28.1"
 pydantic = "^1.10.8"
 
@@ -114,5 +114,3 @@ exclude = '''
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-vv -n auto ./tests"
-
-
