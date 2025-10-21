@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0 (2025-10-22)
+
+### Improvements
+
+- Optimize Jenkins build fetching with timestamp filtering and max build limit
+
+
 ## 0.1.189 (2025-10-20)
 
 

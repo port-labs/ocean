@@ -2,6 +2,7 @@ from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urljoin
 import httpx
+import time
 
 from loguru import logger
 
@@ -11,6 +12,7 @@ from port_ocean.context.ocean import ocean
 
 
 PAGE_SIZE = 50
+MAX_BUILDS = 4
 
 
 class ResourceKey(StrEnum):
@@ -84,17 +86,39 @@ class JenkinsClient:
             event.attributes.setdefault(ResourceKey.JOBS, []).extend(jobs)
             yield jobs
 
-    async def get_builds(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_builds(
+        self, build_limit: int, days_limit: int, job_filter: list[str]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(ResourceKey.BUILDS):
             logger.info("picking jenkins builds from cache")
             yield cache
             return
 
-        async for _jobs in self._get_paginated_resources(ResourceKey.BUILDS):
-            builds = [build for job in _jobs for build in job.get("builds", [])]
-            logger.debug(f"Builds received {builds}")
+        async for _jobs in self._get_paginated_resources(
+            ResourceKey.BUILDS,
+            build_limit=build_limit,
+            job_filter=job_filter,
+        ):
+            if days_limit == 0:
+                days_limit = 1  # last 24 hours
+
+            end_timestamp = int(time.time() * 1000)
+            start_timestamp = int((time.time() - days_limit * 24 * 3600) * 1000)
+            builds = []
+            for job in _jobs:
+                for build in job.get("builds", []):
+                    if start_timestamp <= build["timestamp"] <= end_timestamp:
+                        builds.append(build)
+
+                    logger.debug(f"Builds received {builds}")
+                    if len(builds) >= MAX_BUILDS:
+                        yield builds
+                        builds = []
+
             event.attributes.setdefault(ResourceKey.BUILDS, []).extend(builds)
-            yield builds
+            if builds:
+                logger.debug(f"Builds received {builds}")
+                yield builds
 
     async def _get_build_stages(self, build_url: str) -> list[dict[str, Any]]:
         response = await self._send_api_request("GET", f"{build_url}/wfapi/describe")
@@ -128,15 +152,19 @@ class JenkinsClient:
                     )
 
     async def _get_paginated_resources(
-        self, resource: str, parent_job: Optional[dict[str, Any]] = None
+        self,
+        resource: str,
+        parent_job: Optional[dict[str, Any]] = None,
+        build_limit: int = PAGE_SIZE,
+        job_filter: list[str] = [],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        page_size = PAGE_SIZE
+        page_size = build_limit
         page = 0
 
         child_jobs = []
 
         while True:
-            params = self._build_api_params(resource, page_size, page)
+            params = self._build_api_params(resource, page_size, page, job_filter)
             base_url = self._build_base_url(parent_job)
             logger.info(f"Fetching {resource} from {base_url} with params {params}")
 
@@ -171,14 +199,31 @@ class JenkinsClient:
                 yield fetched_jobs
 
     def _build_api_params(
-        self, resource: str, page_size: int, page: int
+        self,
+        resource: str,
+        page_size: int,
+        page: int,
+        job_filter: list[str] = [],
     ) -> dict[str, Any]:
+        """
+        Build pagination params for the API request
+
+        Args:
+            resource: The resource to fetch
+            page_size: The number of items per page
+            page: The current page
+            job_filter: The list of jobs to fetch builds for
+
+        Returns:
+            dict[str, Any]: The pagination params for the API request
+        """
+
         start_idx = page_size * page
         end_idx = start_idx + page_size
 
         jobs_pagination = f"{{{start_idx},{end_idx}}}"
         builds_query = (
-            ",builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName,previousBuild[id,url]]{0,100}"
+            f",builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName,previousBuild[id,url]]{{0,{page_size}}}"
             if resource == "builds"
             else ""
         )
