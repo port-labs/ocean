@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "generic-http"
-version = "0.1.1-dev"
+version = "0.1.2-dev"
 description = "Generic HTTP Integration for Ocean"
 authors = ["Port Team <support@getport.io>"]
 
