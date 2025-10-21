@@ -120,6 +120,15 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield repositories
 
 
+@ocean.on_resync(Kind.BRANCH)
+async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+
+    async for branches in azure_devops_client.generate_branches():
+        logger.info(f"Resyncing {len(branches)} branches")
+        yield branches
+
+
 @ocean.on_resync(Kind.REPOSITORY_POLICY)
 async def resync_repository_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()

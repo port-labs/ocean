@@ -91,6 +91,57 @@ EXPECTED_REPOSITORIES = [
     },
 ]
 
+EXPECTED_BRANCHES_RAW = [
+    {
+        "name": "refs/heads/main",
+        "objectId": "abc123def456",
+    },
+    {
+        "name": "refs/heads/develop",
+        "objectId": "def456ghi789",
+    },
+    {
+        "name": "refs/heads/feature/new-feature",
+        "objectId": "ghi789jkl012",
+    },
+]
+
+EXPECTED_BRANCHES = [
+    {
+        "name": "main",
+        "refName": "refs/heads/main",
+        "objectId": "abc123def456",
+        "__repository": {
+            "id": "repo1",
+            "name": "Repository One",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        "__project": {"id": "proj1", "name": "Project One"},
+    },
+    {
+        "name": "develop",
+        "refName": "refs/heads/develop",
+        "objectId": "def456ghi789",
+        "__repository": {
+            "id": "repo1",
+            "name": "Repository One",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        "__project": {"id": "proj1", "name": "Project One"},
+    },
+    {
+        "name": "feature/new-feature",
+        "refName": "refs/heads/feature/new-feature",
+        "objectId": "ghi789jkl012",
+        "__repository": {
+            "id": "repo1",
+            "name": "Repository One",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        "__project": {"id": "proj1", "name": "Project One"},
+    },
+]
+
 EXPECTED_PULL_REQUESTS = [
     {
         "pullRequestId": "pr1",
@@ -3663,3 +3714,50 @@ async def test_iterations_for_project() -> None:
         assert sprint["__project"]["name"] == "Project One"
         assert sprint["__team"]["name"] == "Team One"
         assert sprint["attributes"]["timeFrame"] == "current"
+
+
+@pytest.mark.asyncio
+async def test_generate_branches(mock_event_context: MagicMock) -> None:
+    """Test that generate_branches correctly fetches and enriches branches."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_repositories(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {
+                "id": "repo1",
+                "name": "Repository One",
+                "project": {"id": "proj1", "name": "Project One"},
+            }
+        ]
+
+    async def mock_get_branches_for_repository(
+        repository: Dict[str, Any]
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield EXPECTED_BRANCHES
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_repositories", side_effect=mock_generate_repositories
+        ):
+            with patch.object(
+                client,
+                "_get_branches_for_repository",
+                side_effect=mock_get_branches_for_repository,
+            ):
+                # ACT
+                branches: List[Dict[str, Any]] = []
+                async for branch_batch in client.generate_branches():
+                    branches.extend(branch_batch)
+
+                # ASSERT
+                assert len(branches) == 3
+                assert branches[0]["name"] == "main"
+                assert branches[0]["refName"] == "refs/heads/main"
+                assert branches[0]["objectId"] == "abc123def456"
+                assert branches[0]["__repository"]["name"] == "Repository One"
+                assert branches[0]["__project"]["name"] == "Project One"

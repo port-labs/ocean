@@ -8,7 +8,11 @@ MOCK_PORT_OCEAN_CONTEXT = AsyncMock()
 @pytest.mark.asyncio
 async def test_file_entity_processor_search_monorepo_success() -> None:
     data = {
-        "repository": {"name": "test-repo", "default_branch": "main"},
+        "repository": {
+            "name": "test-repo",
+            "default_branch": "main",
+            "owner": {"login": "test-org"},
+        },
         "branch": "develop",
         "metadata": {"path": "src/config.yaml"},
     }
@@ -30,6 +34,7 @@ async def test_file_entity_processor_search_monorepo_success() -> None:
         assert result == expected_content
         mock_exporter.get_resource.assert_called_once_with(
             {
+                "organization": "test-org",
                 "repo_name": "test-repo",
                 "file_path": "src/config.json",
                 "branch": "develop",
@@ -42,6 +47,7 @@ async def test_file_entity_processor_search_non_monorepo_success() -> None:
     data = {
         "name": "test-repo",
         "default_branch": "main",
+        "owner": {"login": "test-org"},
     }
     pattern = "file://README.md"
     expected_content = "plain text content"
@@ -61,6 +67,7 @@ async def test_file_entity_processor_search_non_monorepo_success() -> None:
         assert result == expected_content
         mock_exporter.get_resource.assert_called_once_with(
             {
+                "organization": "test-org",
                 "repo_name": "test-repo",
                 "file_path": "README.md",
                 "branch": "main",
@@ -73,6 +80,7 @@ async def test_file_entity_processor_search_large_file() -> None:
     data = {
         "name": "test-repo",
         "default_branch": "main",
+        "owner": {"login": "test-org"},
     }
     pattern = "file://large-file.txt"
 
@@ -98,6 +106,7 @@ async def test_file_entity_processor_search_error_handling() -> None:
     data = {
         "name": "test-repo",
         "default_branch": "main",
+        "owner": {"login": "test-org"},
     }
     pattern = "file://config.json"
 
@@ -134,6 +143,7 @@ async def test_file_entity_processor_search_missing_default_branch() -> None:
     # Data without default branch
     data = {
         "name": "test-repo",
+        "owner": {"login": "test-org"},
     }
     pattern = "file://config.json"
     expected_content = '{"key": "value"}'
@@ -155,6 +165,7 @@ async def test_file_entity_processor_search_missing_default_branch() -> None:
         # Should use None as branch when default_branch is missing
         mock_exporter.get_resource.assert_called_once_with(
             {
+                "organization": "test-org",
                 "repo_name": "test-repo",
                 "file_path": "config.json",
                 "branch": None,
@@ -166,7 +177,11 @@ async def test_file_entity_processor_search_missing_default_branch() -> None:
 async def test_file_entity_processor_search_monorepo_missing_metadata_path() -> None:
     # Monorepo data without metadata path
     data = {
-        "repository": {"name": "test-repo", "default_branch": "main"},
+        "repository": {
+            "name": "test-repo",
+            "default_branch": "main",
+            "owner": {"login": "test-org"},
+        },
         "branch": "develop",
         "metadata": {},  # Missing path
     }
@@ -183,6 +198,7 @@ async def test_file_entity_processor_search_yaml_file() -> None:
     data = {
         "name": "test-repo",
         "default_branch": "main",
+        "owner": {"login": "test-org"},
     }
     pattern = "file://config.yaml"
     expected_content = "name: test\nvalue: 123"
@@ -202,6 +218,7 @@ async def test_file_entity_processor_search_yaml_file() -> None:
         assert result == expected_content
         mock_exporter.get_resource.assert_called_once_with(
             {
+                "organization": "test-org",
                 "repo_name": "test-repo",
                 "file_path": "config.yaml",
                 "branch": "main",
@@ -214,6 +231,7 @@ async def test_file_entity_processor_search_nested_path() -> None:
     data = {
         "name": "test-repo",
         "default_branch": "main",
+        "owner": {"login": "test-org"},
     }
     pattern = "file://src/config/app.json"
     expected_content = '{"app": "config"}'
@@ -233,6 +251,7 @@ async def test_file_entity_processor_search_nested_path() -> None:
         assert result == expected_content
         mock_exporter.get_resource.assert_called_once_with(
             {
+                "organization": "test-org",
                 "repo_name": "test-repo",
                 "file_path": "src/config/app.json",
                 "branch": "main",
@@ -243,7 +262,11 @@ async def test_file_entity_processor_search_nested_path() -> None:
 @pytest.mark.asyncio
 async def test_file_entity_processor_search_monorepo_nested_path() -> None:
     data = {
-        "repository": {"name": "test-repo", "default_branch": "main"},
+        "repository": {
+            "name": "test-repo",
+            "default_branch": "main",
+            "owner": {"login": "test-org"},
+        },
         "branch": "develop",
         "metadata": {"path": "services/auth/config.yaml"},
     }
@@ -265,6 +288,7 @@ async def test_file_entity_processor_search_monorepo_nested_path() -> None:
         assert result == expected_content
         mock_exporter.get_resource.assert_called_once_with(
             {
+                "organization": "test-org",
                 "repo_name": "test-repo",
                 "file_path": "services/auth/app.json",
                 "branch": "develop",

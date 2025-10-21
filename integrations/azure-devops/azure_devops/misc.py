@@ -30,6 +30,7 @@ class Kind(StrEnum):
     USER = "user"
     FOLDER = "folder"
     ITERATION = "iteration"
+    BRANCH = "branch"
 
 
 PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [

@@ -83,6 +83,7 @@ class TestDependabotAlertWebhookProcessor:
                     "action": "created",
                     "alert": {"number": 1},
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -91,6 +92,7 @@ class TestDependabotAlertWebhookProcessor:
                     "action": "dismissed",
                     "alert": {"number": 2},
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -99,6 +101,7 @@ class TestDependabotAlertWebhookProcessor:
                     "action": "fixed",
                     "alert": {"number": 3},
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -106,6 +109,7 @@ class TestDependabotAlertWebhookProcessor:
                 {
                     "action": "created",
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },  # missing alert
                 False,
             ),
@@ -114,6 +118,7 @@ class TestDependabotAlertWebhookProcessor:
                     "action": "created",
                     "alert": {},  # missing number
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },
                 False,
             ),
@@ -157,6 +162,7 @@ class TestDependabotAlertWebhookProcessor:
             "action": "created",
             "alert": alert_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         # Mock the RestDependabotAlertExporter
@@ -234,6 +240,7 @@ class TestDependabotAlertWebhookProcessor:
             "action": "dismissed",
             "alert": alert_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         result = await dependabot_webhook_processor.handle_event(

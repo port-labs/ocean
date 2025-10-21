@@ -60,6 +60,7 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
         member = payload["member"]
         team_slug = payload["team"]["slug"]
         member_login = member["login"]
+        organization = payload["organization"]["login"]
 
         logger.info(
             f"Handling membership event: {action} for {member_login} in team {team_slug}"
@@ -68,7 +69,7 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
         if action not in COLLABORATOR_UPSERT_EVENTS:
             # Since we cannot ascertain the repos for which the member was a collaborator,
             logger.info(
-                f"Skipping unsupported membership event {action} for {member_login}"
+                f"Skipping unsupported membership event {action} for {member_login} of organization: {organization}"
             )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
@@ -79,12 +80,12 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         repositories = []
         async for batch in team_exporter.get_team_repositories_by_slug(
-            SingleTeamOptions(slug=team_slug)
+            SingleTeamOptions(organization=organization, slug=team_slug)
         ):
             for repo in batch:
                 if not await self.validate_repository_visibility(repo["visibility"]):
                     logger.info(
-                        f"Skipping repository {repo['name']} due to visibility validation"
+                        f"Skipping repository {repo['name']} due to visibility validation of organization: {organization}"
                     )
                     continue
                 repositories.append(repo)
@@ -94,7 +95,7 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         logger.info(
-            f"Upserting {len(list_data_to_upsert)} collaborators for member {member_login} in team {team_slug}"
+            f"Upserting {len(list_data_to_upsert)} collaborators for member {member_login} in team {team_slug} of organization: {organization}"
         )
 
         return WebhookEventRawResults(

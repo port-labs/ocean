@@ -797,3 +797,106 @@ class TestGitLabClient:
             mock_get_projects.assert_called_once_with(
                 "projects", params={"all_available": True, "min_access_level": 50}
             )
+
+    async def test_get_tags(self, client: GitLabClient) -> None:
+        """Test fetching tags for projects with enrichment"""
+        mock_projects = [
+            {"id": 1, "name": "Test Project", "path_with_namespace": "test/project"},
+        ]
+        mock_tags = [
+            {
+                "name": "v1.0.0",
+                "message": "Release v1.0.0",
+                "__project": {"path_with_namespace": "test/project"},
+            },
+            {
+                "name": "v1.1.0",
+                "message": "Release v1.1.0",
+                "__project": {"path_with_namespace": "test/project"},
+            },
+        ]
+
+        with patch.object(
+            client,
+            "get_projects_resource_with_enrichment",
+            return_value=async_mock_generator([mock_tags]),
+        ) as mock_get_resource_enrichment:
+            results = []
+            async for batch in client.get_tags(mock_projects, max_concurrent=5):
+                results.extend(batch)
+
+            assert len(results) == 2
+            assert results[0]["name"] == "v1.0.0"
+            assert results[1]["name"] == "v1.1.0"
+            assert results[0]["__project"]["path_with_namespace"] == "test/project"
+            assert results[1]["__project"]["path_with_namespace"] == "test/project"
+            mock_get_resource_enrichment.assert_called_once_with(
+                mock_projects, "repository/tags", 5
+            )
+
+    async def test_get_releases(self, client: GitLabClient) -> None:
+        """Test fetching releases for projects with enrichment"""
+        mock_projects = [
+            {"id": 1, "name": "Test Project", "path_with_namespace": "test/project"},
+        ]
+        mock_releases = [
+            {
+                "name": "v1.0.0",
+                "tag_name": "v1.0.0",
+                "description": "First release",
+                "__project": {"path_with_namespace": "test/project"},
+            },
+            {
+                "name": "v2.0.0",
+                "tag_name": "v2.0.0",
+                "description": "Second release",
+                "__project": {"path_with_namespace": "test/project"},
+            },
+        ]
+
+        with patch.object(
+            client,
+            "get_projects_resource_with_enrichment",
+            return_value=async_mock_generator([mock_releases]),
+        ) as mock_get_resource_enrichment:
+            results = []
+            async for batch in client.get_releases(mock_projects, max_concurrent=5):
+                results.extend(batch)
+
+            assert len(results) == 2
+            assert results == mock_releases
+            mock_get_resource_enrichment.assert_called_once_with(
+                mock_projects, "releases", 5
+            )
+
+    async def test_get_projects_resource_with_enrichment(
+        self, client: GitLabClient
+    ) -> None:
+        """Test fetching project resources with project information enrichment"""
+        mock_projects = [
+            {"id": 1, "path_with_namespace": "test/project1"},
+            {"id": 2, "path_with_namespace": "test/project2"},
+        ]
+        mock_resource_p1 = [{"id": 101, "name": "Resource 1"}]
+        mock_resource_p2 = [{"id": 102, "name": "Resource 2"}]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            side_effect=[
+                async_mock_generator([mock_resource_p1]),
+                async_mock_generator([mock_resource_p2]),
+            ],
+        ) as mock_get_paginated:
+            results = []
+            async for batch in client.get_projects_resource_with_enrichment(
+                mock_projects, "issues", max_concurrent=2
+            ):
+                results.extend(batch)
+
+            assert len(results) == 2
+            assert results[0]["id"] == 101
+            assert results[0]["__project"]["path_with_namespace"] == "test/project1"
+            assert results[1]["id"] == 102
+            assert results[1]["__project"]["path_with_namespace"] == "test/project2"
+            assert mock_get_paginated.call_count == 2

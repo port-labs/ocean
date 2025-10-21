@@ -103,7 +103,7 @@ class PaginationHandler:
         self.extract_items = extract_items_fn
         self.make_request = make_request_fn
         self.get_nested_value = get_nested_value_fn
-        self.page_size = config.get("page_size", 100)
+        self.page_size = int(config.get("page_size", 100))
 
     async def fetch_all(
         self,
@@ -145,7 +145,7 @@ class PagePagination(PaginationHandler):
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
         page_param = self.config.get("pagination_param", "page")
         size_param = self.config.get("size_param", "size")
-        start_page = self.config.get("start_page", 1)
+        start_page = int(self.config.get("start_page", 1))
         has_more_path = self.config.get("has_more_path", "")
 
         page = start_page

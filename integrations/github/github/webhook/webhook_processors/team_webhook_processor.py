@@ -41,8 +41,9 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         action = payload["action"]
         team = payload["team"]
+        organization = payload["organization"]["login"]
 
-        logger.info(f"Processing org event: {action}")
+        logger.info(f"Processing org event: {action} of {organization}")
 
         config = cast(GithubTeamConfig, resource_config)
         selector = config.selector
@@ -51,7 +52,7 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
             if selector.members:
                 team["id"] = team["node_id"]
 
-            logger.info(f"Team {team['name']} was removed from org")
+            logger.info(f"Team {team['name']} was removed from org: {organization}")
 
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[team]
@@ -66,10 +67,10 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
             exporter = RestTeamExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
-            SingleTeamOptions(slug=team["slug"])
+            SingleTeamOptions(organization=organization, slug=team["slug"])
         )
 
-        logger.info(f"Team {team['slug']} was upserted")
+        logger.info(f"Team {team['slug']} of organization: {organization} was upserted")
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )

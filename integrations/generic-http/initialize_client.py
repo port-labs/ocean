@@ -1,7 +1,7 @@
 """
-HTTP Server Client Factory
+Generic HTTP Client Factory
 
-Factory function to create HTTP server client instances from Ocean configuration.
+Factory function to create HTTP client instances from Ocean configuration.
 """
 
 from http_server.client import HttpServerClient
@@ -9,7 +9,7 @@ from port_ocean.context.ocean import ocean
 
 
 def init_client() -> HttpServerClient:
-    """Initialize HTTP server client from Ocean configuration"""
+    """Initialize Generic HTTP client from Ocean configuration"""
     config = ocean.integration_config
 
     return HttpServerClient(
@@ -17,7 +17,7 @@ def init_client() -> HttpServerClient:
         auth_type=config.get("auth_type", "none"),
         auth_config=config,
         pagination_config=config,
-        timeout=config.get("timeout", 30),
+        timeout=int(config.get("timeout", 30)),
         verify_ssl=config.get("verify_ssl", True),
-        max_concurrent_requests=config.get("max_concurrent_requests", 10),
+        max_concurrent_requests=int(config.get("max_concurrent_requests", 10)),
     )

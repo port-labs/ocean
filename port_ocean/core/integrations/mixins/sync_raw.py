@@ -123,7 +123,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     f"Found sync function for {resource_config.kind} name: {task.__qualname__}"
                 )
                 task = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
-                tasks.append(resync_function_wrapper(task, resource_config.kind))
+                tasks.append(resync_function_wrapper(task, resource_config.kind, resource_config.port.items_to_parse))
 
         logger.info(
             f"Found {len(tasks) + len(results)} resync tasks for {resource_config.kind}"

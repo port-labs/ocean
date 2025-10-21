@@ -45,7 +45,10 @@ class TestRestBranchExporter:
             mock_request.return_value = mock_response.json()
             branch = await exporter.get_resource(
                 SingleBranchOptions(
-                    repo_name="repo1", branch_name="main", protection_rules=False
+                    organization="test-org",
+                    repo_name="repo1",
+                    branch_name="main",
+                    protection_rules=False,
                 )
             )
 
@@ -53,7 +56,7 @@ class TestRestBranchExporter:
             assert branch["name"] == "main"  # Check name is preserved
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/branches/main"
+                f"{rest_client.base_url}/repos/test-org/repo1/branches/main"
             )
 
     async def test_get_paginated_resources(
@@ -70,7 +73,10 @@ class TestRestBranchExporter:
         ) as mock_request:
             async with event_context("test_event"):
                 options = ListBranchOptions(
-                    repo_name="repo1", protection_rules=False, detailed=False
+                    organization="test-org",
+                    repo_name="repo1",
+                    protection_rules=False,
+                    detailed=False,
                 )
                 exporter = RestBranchExporter(rest_client)
 
@@ -86,7 +92,7 @@ class TestRestBranchExporter:
                     assert "__repository" in branch
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/branches",
+                    f"{rest_client.base_url}/repos/test-org/repo1/branches",
                     {},
                 )
 
@@ -112,7 +118,10 @@ class TestRestBranchExporter:
 
                 branch = await exporter.get_resource(
                     SingleBranchOptions(
-                        repo_name="repo1", branch_name="main", protection_rules=True
+                        organization="test-org",
+                        repo_name="repo1",
+                        branch_name="main",
+                        protection_rules=True,
                     )
                 )
 
@@ -132,7 +141,9 @@ class TestRestBranchExporter:
         exporter = RestBranchExporter(rest_client)
 
         # Mock get_resource to simulate detailed hydration
-        async def fake_fetch_branch(repo_name: str, branch_name: str) -> dict[str, Any]:
+        async def fake_fetch_branch(
+            repo_name: str, branch_name: str, organization: str
+        ) -> dict[str, Any]:
             # Return a shape that differs from list payload to ensure replacement happened
             return {"name": branch_name, "commit": {"sha": "zzz"}, "_links": {}}
 
@@ -146,7 +157,10 @@ class TestRestBranchExporter:
         ):
             async with event_context("test_event"):
                 options = ListBranchOptions(
-                    repo_name="repo1", detailed=True, protection_rules=False
+                    organization="test-org",
+                    repo_name="repo1",
+                    detailed=True,
+                    protection_rules=False,
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -169,7 +183,9 @@ class TestRestBranchExporter:
 
         exporter = RestBranchExporter(rest_client)
 
-        async def fake_enrich(repo: str, branch: dict[str, Any]) -> dict[str, Any]:
+        async def fake_enrich(
+            repo_name: str, branch: dict[str, Any], organization: str
+        ) -> dict[str, Any]:
             return {**branch, "__protection_rules": {"enabled": True}}
 
         with (
@@ -186,7 +202,10 @@ class TestRestBranchExporter:
         ):
             async with event_context("test_event"):
                 options = ListBranchOptions(
-                    repo_name="repo1", detailed=False, protection_rules=True
+                    organization="test-org",
+                    repo_name="repo1",
+                    detailed=False,
+                    protection_rules=True,
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -209,10 +228,14 @@ class TestRestBranchExporter:
 
         exporter = RestBranchExporter(rest_client)
 
-        async def fake_fetch_branch(repo_name: str, branch_name: str) -> dict[str, Any]:
+        async def fake_fetch_branch(
+            repo_name: str, branch_name: str, organization: str
+        ) -> dict[str, Any]:
             return {"name": branch_name, "_links": {}}
 
-        async def fake_enrich(repo: str, branch: dict[str, Any]) -> dict[str, Any]:
+        async def fake_enrich(
+            repo_name: str, branch: dict[str, Any], organization: str
+        ) -> dict[str, Any]:
             # ensure we see the detailed branch passed in
             assert isinstance(branch.get("_links"), dict)
             return {**branch, "__protection_rules": {"enabled": True}}
@@ -232,7 +255,10 @@ class TestRestBranchExporter:
         ):
             async with event_context("test_event"):
                 options = ListBranchOptions(
-                    repo_name="repo1", detailed=True, protection_rules=True
+                    organization="test-org",
+                    repo_name="repo1",
+                    detailed=True,
+                    protection_rules=True,
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)

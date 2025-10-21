@@ -5,6 +5,7 @@ features:
   - type: exporter
     section: Git
     resources:
+      - kind: organization
       - kind: repository
       - kind: folder
       - kind: user
@@ -44,9 +45,9 @@ configurations:
     sensitive: true
     description: If App ID is passed, then app private key is required.
   - name: githubOrganization
-    required: true
+    required: false
     type: string
-    description: GitHub organization name
+    description: Optional GitHub organization name for GitHub App or Fine-grained PAT authentication.
   - name: webhookSecret
     type: string
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from GitHub are accepted.

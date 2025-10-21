@@ -83,6 +83,7 @@ class TestCodeScanningAlertWebhookProcessor:
                     "action": "created",
                     "alert": {"number": 42},
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -91,6 +92,7 @@ class TestCodeScanningAlertWebhookProcessor:
                     "action": "closed_by_user",
                     "alert": {"number": 43},
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -99,6 +101,7 @@ class TestCodeScanningAlertWebhookProcessor:
                     "action": "fixed",
                     "alert": {"number": 44},
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -106,6 +109,7 @@ class TestCodeScanningAlertWebhookProcessor:
                 {
                     "action": "created",
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },  # missing alert
                 False,
             ),
@@ -114,6 +118,7 @@ class TestCodeScanningAlertWebhookProcessor:
                     "action": "created",
                     "alert": {},  # missing number
                     "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
                 },
                 False,
             ),
@@ -179,6 +184,7 @@ class TestCodeScanningAlertWebhookProcessor:
             "action": action,
             "alert": alert_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         # Mock the RestCodeScanningAlertExporter
@@ -261,6 +267,7 @@ class TestCodeScanningAlertWebhookProcessor:
             "action": action,
             "alert": alert_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         result = await code_scanning_webhook_processor.handle_event(

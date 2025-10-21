@@ -1,6 +1,6 @@
 # Zendesk Integration Installation Examples
 
-This example demonstrates how to set up the HTTP Server integration with Zendesk using cursor pagination and path parameters.
+This example demonstrates how to set up the Generic HTTP integration with Zendesk using cursor pagination and path parameters.
 
 ## Prerequisites
 
@@ -233,4 +233,10 @@ The integration uses `data_path` to extract arrays from Zendesk's nested respons
 - Users: `data_path: .users`
 - Organizations: `data_path: .organizations`
 - Comments: `data_path: .comments`
+
+
+
+
+
+
 

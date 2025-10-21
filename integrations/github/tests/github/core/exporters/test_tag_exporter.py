@@ -44,7 +44,9 @@ class TestRestTagExporter:
         ) as mock_request:
             mock_request.return_value = mock_response.json()
             tag = await exporter.get_resource(
-                SingleTagOptions(repo_name="repo1", tag_name="v1.0")
+                SingleTagOptions(
+                    organization="test-org", repo_name="repo1", tag_name="v1.0"
+                )
             )
 
             assert tag["name"] == "v1.0"  # Check name is set
@@ -52,7 +54,7 @@ class TestRestTagExporter:
             assert tag["commit"] == TEST_TAGS[0]["object"]  # Check commit is set
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/refs/tags/v1.0"
+                f"{rest_client.base_url}/repos/test-org/repo1/git/refs/tags/v1.0"
             )
 
     async def test_get_paginated_resources(
@@ -68,7 +70,7 @@ class TestRestTagExporter:
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
         ) as mock_request:
             async with event_context("test_event"):
-                options = ListTagOptions(repo_name="repo1")
+                options = ListTagOptions(organization="test-org", repo_name="repo1")
                 exporter = RestTagExporter(rest_client)
 
                 tags: list[list[dict[str, Any]]] = [
@@ -83,6 +85,6 @@ class TestRestTagExporter:
                     assert "__repository" in tag
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/tags",
+                    f"{rest_client.base_url}/repos/test-org/repo1/tags",
                     {},
                 )

@@ -43,8 +43,11 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
         action = payload["action"]
         team = payload["team"]
         member = payload["member"]
+        organization = payload["organization"]["login"]
 
-        logger.info(f"Processing {action} event for team {team['name']}")
+        logger.info(
+            f"Processing {action} event for team {team['name']} from {organization}"
+        )
 
         config = cast(GithubTeamConfig, resource_config)
         selector = config.selector
@@ -58,7 +61,7 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
 
         if action in MEMBERSHIP_DELETE_EVENTS:
             logger.info(
-                f"Member '{member['login']}' was removed from team '{team['name']}'. "
+                f"Member '{member['login']}' was removed from team '{team['name']}' of {organization}. "
                 f"Explicit deletion will be skipped as the user might still be a member of other teams. "
             )
 
@@ -73,10 +76,10 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
         exporter = GraphQLTeamWithMembersExporter(graphql_client)
 
         data_to_upsert = await exporter.get_resource(
-            SingleTeamOptions(slug=team["slug"])
+            SingleTeamOptions(organization=organization, slug=team["slug"])
         )
 
-        logger.info(f"Upserting team '{team['slug']}'")
+        logger.info(f"Upserting team '{team['slug']}' of {organization}")
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

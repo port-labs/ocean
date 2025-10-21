@@ -39,9 +39,10 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         alert_number = alert["number"]
         repo_name = repo["name"]
+        organization = payload["organization"]["login"]
 
         logger.info(
-            f"Processing code scanning alert event: {action} for alert {alert_number} in {repo_name}"
+            f"Processing code scanning alert event: {action} for alert {alert_number} in {repo_name} from {organization}"
         )
 
         config = cast(GithubCodeScanningAlertConfig, resource_config)
@@ -49,7 +50,7 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         if not possible_states:
             logger.info(
-                f"The action {action} is not allowed for code scanning alert {alert_number} in {repo_name}. Skipping resource."
+                f"The action {action} is not allowed for code scanning alert {alert_number} in {repo_name} from {organization}. Skipping resource."
             )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
@@ -57,7 +58,7 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         if config.selector.state not in possible_states:
             logger.info(
-                f"The action {action} is not allowed for code scanning alert {alert_number} in {repo_name}. Deleting resource."
+                f"The action {action} is not allowed for code scanning alert {alert_number} in {repo_name} from {organization}. Deleting resource."
             )
 
             alert = enrich_with_repository(alert, repo_name)
@@ -71,7 +72,9 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         data_to_upsert = await exporter.get_resource(
             SingleCodeScanningAlertOptions(
-                repo_name=repo_name, alert_number=alert_number
+                organization=organization,
+                repo_name=repo_name,
+                alert_number=alert_number,
             )
         )
 

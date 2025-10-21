@@ -56,6 +56,7 @@ class RepositoryBranchMapping(BaseModel):
 
 
 class FolderSelector(BaseModel):
+    organization: Optional[str] = Field(default=None)
     path: str = Field(default="*")
     repos: list[RepositoryBranchMapping]
 
@@ -157,6 +158,7 @@ class GithubSecretScanningAlertConfig(ResourceConfig):
 
 
 class GithubFilePattern(BaseModel):
+    organization: Optional[str] = Field(default=None)
     path: str = Field(
         alias="path",
         description="Specify the path to match files from",
@@ -204,6 +206,14 @@ class GithubBranchConfig(ResourceConfig):
 
 
 class GithubPortAppConfig(PortAppConfig):
+    organizations: List[str] = Field(
+        default_factory=list,
+        description=(
+            "List of GitHub organization names (optional - if not provided, "
+            "will sync all organizations the personal access token user is a "
+            "member of) for Classic PAT authentication."
+        ),
+    )
     repository_type: str = Field(alias="repositoryType", default="all")
     resources: list[
         GithubRepositoryConfig
@@ -217,7 +227,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | ResourceConfig
-    ]
+    ] = Field(default_factory=list)
 
 
 class GitManipulationHandler(JQEntityProcessor):

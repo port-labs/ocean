@@ -49,21 +49,30 @@ class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         action = payload["action"]
         team_slug = payload["team"]["slug"]
+        organization = payload["organization"]["login"]
 
-        logger.info(f"Handling team event: {action} for team {team_slug}")
+        logger.info(
+            f"Handling team event: {action} for team {team_slug} of organization: {organization}"
+        )
 
         if action not in TEAM_COLLABORATOR_EVENTS:
-            logger.info(f"Skipping unsupported team event {action} for {team_slug}")
+            logger.info(
+                f"Skipping unsupported team event {action} for {team_slug} of organization: {organization}"
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
         graphql_client = create_github_client(client_type=GithubClientType.GRAPHQL)
         team_exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
-        team_data = await team_exporter.get_resource(SingleTeamOptions(slug=team_slug))
+        team_data = await team_exporter.get_resource(
+            SingleTeamOptions(organization=organization, slug=team_slug)
+        )
 
         if not team_data:
-            logger.warning(f"No team data returned for team {team_slug}")
+            logger.warning(
+                f"No team data returned for team {team_slug} of organization: {organization}"
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
@@ -81,7 +90,7 @@ class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
         ]
 
         logger.info(
-            f"Upserting {len(data_to_upsert)} collaborators for team {team_slug}"
+            f"Upserting {len(data_to_upsert)} collaborators for team {team_slug} of organization: {organization}"
         )
 
         return WebhookEventRawResults(
