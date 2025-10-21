@@ -14,10 +14,6 @@ class RateLimitInfo:
     def seconds_until_reset(self) -> int:
         return max(0, self.reset_time - int(time.time()))
 
-    @property
-    def utilization_percentage(self) -> float:
-        return ((self.limit - self.remaining) / self.limit) * 100
-
 
 @dataclass
 class GitHubRateLimiterConfig:

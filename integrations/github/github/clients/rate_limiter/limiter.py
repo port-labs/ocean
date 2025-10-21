@@ -13,7 +13,7 @@ class GitHubRateLimiter:
     def __init__(self, config: GitHubRateLimiterConfig) -> None:
         self.api_type = config.api_type
         self._semaphore = asyncio.Semaphore(config.max_concurrent)
-        self.rate_limit_info: Optional[RateLimitInfo] = None
+        self._rate_limit_info: Optional[RateLimitInfo] = None
 
         self._block_lock = asyncio.Lock()
         self._current_resource: Optional[str] = None
@@ -22,8 +22,8 @@ class GitHubRateLimiter:
         await self._semaphore.acquire()
 
         async with self._block_lock:
-            if self.rate_limit_info and (self.rate_limit_info.remaining <= 1):
-                delay = self.rate_limit_info.seconds_until_reset
+            if self._rate_limit_info and (self._rate_limit_info.remaining <= 1):
+                delay = self._rate_limit_info.seconds_until_reset
                 if delay > 0:
                     logger.warning(
                         f"{self.api_type} requests paused for {delay:.1f}s due to earlier rate limit"
@@ -79,17 +79,36 @@ class GitHubRateLimiter:
 
         info = self._parse_rate_limit_headers(rate_limit_headers)
         if info:
-            self.rate_limit_info = info
+            self._rate_limit_info = info
             logger.debug(
                 f"Rate limit hit on {resource} for {self.api_type}: {info.remaining}/{info.limit} remaining"
             )
         return info
 
+    def get_rate_limit_status(self) -> Dict[str, Any]:
+        if not self._rate_limit_info:
+            return {}
+
+        info = self._rate_limit_info
+        return {
+            self.api_type: {
+                "limit": info.limit,
+                "remaining": info.remaining,
+                "reset_time": info.reset_time,
+                "seconds_until_reset": info.seconds_until_reset,
+                "utilization_percentage": ((info.limit - info.remaining) / info.limit)
+                * 100,
+            }
+        }
+
     def log_rate_limit_status(self) -> None:
-        info = self.rate_limit_info
-        if info:
-            logger.debug(
-                f"{self.api_type}: {info.remaining}/{info.limit} remaining "
-                f"({info.utilization_percentage:.1f}% used) - "
-                f"resets in {info.seconds_until_reset}s"
-            )
+        status = self.get_rate_limit_status()
+        if not status:
+            return
+
+        info = status[self.api_type]
+        logger.debug(
+            f"{self.api_type}: {info['remaining']}/{info['limit']} remaining "
+            f"({info['utilization_percentage']:.1f}% used) - "
+            f"resets in {info['seconds_until_reset']}s"
+        )
