@@ -11,6 +11,8 @@ class ObjectKind(StrEnum):
     RDS_DB_INSTANCE = "AWS::RDS::DBInstance"
     EKS_CLUSTER = "AWS::EKS::Cluster"
     LAMBDA_FUNCTION = "AWS::Lambda::Function"
+    ECS_SERVICE = "AWS::ECS::Service"
+    SQS_QUEUE = "AWS::SQS::Queue"
 
 
 SupportedServices = Literal[

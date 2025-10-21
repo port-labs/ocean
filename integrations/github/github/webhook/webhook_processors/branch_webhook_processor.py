@@ -44,9 +44,10 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         branch_name = ref.replace("refs/heads/", "")
         repo_name = repo["name"]
+        organization = payload["organization"]["login"]
 
         logger.info(
-            f"Processing branch event: {self._event_type} for branch {branch_name} in {repo_name}"
+            f"Processing branch event: {self._event_type} for branch {branch_name} in {repo_name} from {organization}"
         )
 
         if self._event_type == "delete":
@@ -61,6 +62,7 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         data_to_upsert = await exporter.get_resource(
             SingleBranchOptions(
+                organization=organization,
                 repo_name=repo_name,
                 branch_name=branch_name,
                 protection_rules=selector.protection_rules,

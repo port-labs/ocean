@@ -139,6 +139,16 @@ class GitlabMergeRequestResourceConfig(ResourceConfig):
     kind: Literal["merge-request"]
 
 
+class TagResourceConfig(ResourceConfig):
+    kind: Literal["tag"]
+    selector: Selector
+
+
+class ReleaseResourceConfig(ResourceConfig):
+    kind: Literal["release"]
+    selector: Selector
+
+
 class GitLabFoldersResourceConfig(ResourceConfig):
     selector: GitlabFolderSelector
     kind: Literal["folder"]
@@ -186,6 +196,8 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitLabFoldersResourceConfig
         | GitLabFilesResourceConfig
         | GitlabMergeRequestResourceConfig
+        | TagResourceConfig
+        | ReleaseResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

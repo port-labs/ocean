@@ -25,6 +25,7 @@ VALID_MEMBER_COLLABORATOR_PAYLOADS: dict[str, Any] = {
     "action": "added",
     "repository": {"name": "test-repo"},
     "member": {"id": 1, "login": "test-user"},
+    "organization": {"login": "test-org"},
 }
 
 INVALID_MEMBER_COLLABORATOR_PAYLOADS: dict[str, Any] = {
@@ -187,7 +188,9 @@ class TestCollaboratorMemberWebhookProcessor:
                     assert result.updated_raw_results == [mock_collaborator_data]
                     mock_exporter.get_resource.assert_called_once_with(
                         SingleCollaboratorOptions(
-                            repo_name="test-repo", username="test-user"
+                            organization="test-org",
+                            repo_name="test-repo",
+                            username="test-user",
                         )
                     )
 

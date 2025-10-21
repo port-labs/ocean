@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.4.6 (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 1.4.5 (2025-10-20)
+
+### Improvements
+
+- Move aws-v3 integration from beta to stable
+
+## 1.4.4-beta (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+## 1.4.3-beta (2025-10-08)
+
+
+### Improvements
+
+- Improved resync resilience and observability for multi-account scenarios.
+
+
+## 1.4.2-beta (2025-10-06)
+
+
+### Features
+
+- Add support for AWS::SQS::Queue Kind
+
+
+## 1.4.1-beta (2025-10-06)
+
+
+### Features
+
+- Add support for AWS::ECS::Service Kind
+
+
 ## 1.4.0-beta (2025-10-06)
 
 

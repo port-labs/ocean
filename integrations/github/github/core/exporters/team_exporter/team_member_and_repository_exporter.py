@@ -33,13 +33,15 @@ class GraphQLTeamMembersAndReposExporter(AbstractGithubExporter[GithubGraphQLCli
     async def get_resource[
         ExporterOptionT: SingleTeamOptions
     ](self, options: ExporterOptionT) -> RAW_ITEM:
-        return await self._fetch_team_with_members_and_repositories(options["slug"])
+        return await self._fetch_team_with_members_and_repositories(
+            options["slug"], options["organization"]
+        )
 
     def get_paginated_resources(self, options: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
         raise NotImplementedError("This exporter does not support pagination")
 
     async def _fetch_team_with_members_and_repositories(
-        self, team_slug: str
+        self, team_slug: str, organization: str
     ) -> dict[str, Any]:
         logger.info(f"Fetching team '{team_slug}' with members and repositories")
 
@@ -50,7 +52,7 @@ class GraphQLTeamMembersAndReposExporter(AbstractGithubExporter[GithubGraphQLCli
                 f"Fetching next page for team '{team_slug}' - members_complete: {state.members_complete}, member_after: {state.member_after}, repo_after: {state.repo_after}"
             )
 
-            response = await self._fetch_next_team_page(state)
+            response = await self._fetch_next_team_page(state, organization)
 
             if not response:
                 logger.warning(f"No response received for team '{team_slug}'")
@@ -95,12 +97,14 @@ class GraphQLTeamMembersAndReposExporter(AbstractGithubExporter[GithubGraphQLCli
         )
         return state.team_data
 
-    async def _fetch_next_team_page(self, state: TeamFetchState) -> dict[str, Any]:
+    async def _fetch_next_team_page(
+        self, state: TeamFetchState, organization: str
+    ) -> dict[str, Any]:
         if not state.members_complete:
             state.repo_after = None
 
         variables = {
-            "organization": self.client.organization,
+            "organization": organization,
             "slug": state.team_slug,
             "memberFirst": self.PAGE_SIZE,
             "memberAfter": state.member_after,

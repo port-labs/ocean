@@ -16,12 +16,16 @@ from aws.core.exporters.eks.cluster.exporter import EksClusterExporter
 from aws.core.exporters.eks.cluster.models import PaginatedEksClusterRequest
 from aws.core.exporters.rds.db_instance.exporter import RdsDbInstanceExporter
 from aws.core.exporters.rds.db_instance.models import PaginatedDbInstanceRequest
+from aws.core.exporters.ecs.service.exporter import EcsServiceExporter
+from aws.core.exporters.ecs.service.models import PaginatedServiceRequest
 from aws.core.exporters.organizations.account.exporter import (
     OrganizationsAccountExporter,
 )
 from aws.core.exporters.organizations.account.models import PaginatedAccountRequest
 from aws.core.exporters.aws_lambda.function.exporter import LambdaFunctionExporter
 from aws.core.exporters.aws_lambda.function.models import PaginatedLambdaFunctionRequest
+from aws.core.exporters.sqs import SqsQueueExporter
+from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
@@ -82,6 +86,15 @@ async def resync_lambda_function(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
+@ocean.on_resync(ObjectKind.ECS_SERVICE)
+async def resync_ecs_service(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, EcsServiceExporter, PaginatedServiceRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
 @ocean.on_resync(ObjectKind.AccountInfo)
 async def resync_single_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     batch = []
@@ -134,3 +147,12 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
             continue
         # Only need one valid management/delegated account
         break
+
+
+@ocean.on_resync(ObjectKind.SQS_QUEUE)
+async def resync_sqs_queue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, SqsQueueExporter, PaginatedQueueRequest, regional=True
+    )
+    async for batch in service:
+        yield batch

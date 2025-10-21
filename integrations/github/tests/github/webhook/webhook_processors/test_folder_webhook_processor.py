@@ -32,6 +32,7 @@ def folder_resource_config() -> GithubFolderResourceConfig:
             query="true",
             folders=[
                 FolderSelector(
+                    organization="test-org",
                     path="folder1/*",
                     repos=[
                         RepositoryBranchMapping(name="test-repo", branch="main"),
@@ -39,6 +40,7 @@ def folder_resource_config() -> GithubFolderResourceConfig:
                     ],
                 ),
                 FolderSelector(
+                    organization="test-org",
                     path="folder2/*",
                     repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
                 ),
@@ -95,6 +97,7 @@ class TestFolderWebhookProcessor:
                     "repository": {"name": "test"},
                     "before": "ldl",
                     "after": "jdj",
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -152,6 +155,7 @@ class TestFolderWebhookProcessor:
             "ref": f"refs/heads/{branch_name}",
             "after": ref_sha_after,
             "before": ref_sha_before,
+            "organization": {"login": "test-org"},
         }
 
         all_folders_from_exporter = [
@@ -216,16 +220,16 @@ class TestFolderWebhookProcessor:
         assert not result.deleted_raw_results
 
         mock_fetch_commit_diff.assert_called_once_with(
-            mock_client, repo_name, ref_sha_before, ref_sha_after
+            mock_client, "test-org", "test-repo", ref_sha_before, ref_sha_after
         )
         mock_extract_changed_files.assert_called_once_with([{"filename": "dummy"}])
 
-        repo_mapping1 = {repo_name: {branch_name: ["folder1/*"]}}
+        repo_mapping1 = {"test-org": {repo_name: {branch_name: ["folder1/*"]}}}
         mock_exporter_instance.get_paginated_resources.assert_any_call(
             ListFolderOptions(repo_mapping=repo_mapping1)
         )
 
-        repo_mapping2 = {repo_name: {branch_name: ["folder2/*"]}}
+        repo_mapping2 = {"test-org": {repo_name: {branch_name: ["folder2/*"]}}}
         mock_exporter_instance.get_paginated_resources.assert_any_call(
             ListFolderOptions(repo_mapping=repo_mapping2)
         )
@@ -263,6 +267,7 @@ class TestFolderWebhookProcessor:
             "ref": f"refs/heads/{branch_name}",
             "after": ref_sha_after,
             "before": ref_sha_before,
+            "organization": {"login": "test-org"},
         }
 
         mock_client = MagicMock()
@@ -281,7 +286,7 @@ class TestFolderWebhookProcessor:
         assert not result.deleted_raw_results
 
         mock_fetch_commit_diff.assert_called_once_with(
-            mock_client, repo_name, ref_sha_before, ref_sha_after
+            mock_client, "test-org", "test-repo", ref_sha_before, ref_sha_after
         )
         mock_extract_changed_files.assert_called_once_with([])
         mock_exporter_instance.get_paginated_resources.assert_not_called()
