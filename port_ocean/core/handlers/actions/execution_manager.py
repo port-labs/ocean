@@ -51,7 +51,7 @@ class ExecutionManager:
         _workers_count (int): Number of workers to start
         _high_watermark (int): Maximum total runs in all queues
         _poll_check_interval_seconds (int): Seconds between polling attempts
-        _visibility_timeout_seconds (int): Visibility timeout for runs
+        _visibility_timeout_ms (int): Visibility timeout for runs
         _max_wait_seconds_before_shutdown (float): Maximum wait time during shutdown
 
     Example:
@@ -63,7 +63,7 @@ class ExecutionManager:
             workers_count=3,
             runs_buffer_high_watermark=1000,
             poll_check_interval_seconds=5,
-            visibility_timeout_seconds=30,
+            visibility_timeout_ms=30000,
             max_wait_seconds_before_shutdown=30.0
         )
 
@@ -82,7 +82,7 @@ class ExecutionManager:
         runs_buffer_high_watermark: int,
         workers_count: int,
         poll_check_interval_seconds: int,
-        visibility_timeout_seconds: int,
+        visibility_timeout_ms: int,
         max_wait_seconds_before_shutdown: float,
     ):
         self._webhook_manager = webhook_manager
@@ -100,7 +100,7 @@ class ExecutionManager:
         self._workers_count: int = workers_count
         self._high_watermark: int = runs_buffer_high_watermark
         self._poll_check_interval_seconds: int = poll_check_interval_seconds
-        self._visibility_timeout_seconds: int = visibility_timeout_seconds
+        self._visibility_timeout_ms: int = visibility_timeout_ms
         self._max_wait_seconds_before_shutdown: float = max_wait_seconds_before_shutdown
 
         signal_handler.register(self.shutdown)
@@ -170,9 +170,9 @@ class ExecutionManager:
 
                 poll_limit = self._high_watermark - queues_size
                 runs: list[ActionRun[IntegrationActionInvocationPayload]] = (
-                    await ocean.port_client.get_pending_runs(
+                    await ocean.port_client.claim_pending_runs(
                         limit=poll_limit,
-                        visibility_timeout_seconds=self._visibility_timeout_seconds,
+                        visibility_timeout_ms=self._visibility_timeout_ms,
                     )
                 )
 

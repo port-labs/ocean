@@ -55,7 +55,7 @@ def generate_mock_action_run(
 @pytest.fixture
 def mock_port_client() -> MagicMock:
     mock_port_client = MagicMock(spec=PortClient)
-    mock_port_client.get_pending_runs = AsyncMock()
+    mock_port_client.claim_pending_runs = AsyncMock()
     mock_port_client.acknowledge_run = AsyncMock()
     mock_port_client.get_run_by_external_id = AsyncMock()
     mock_port_client.patch_run = AsyncMock()
@@ -136,7 +136,7 @@ def execution_manager_without_executors(
         workers_count=3,
         runs_buffer_high_watermark=100,
         poll_check_interval_seconds=5,
-        visibility_timeout_seconds=30,
+        visibility_timeout_ms=30,
         max_wait_seconds_before_shutdown=30,
     )
 
@@ -154,7 +154,7 @@ def execution_manager(
         workers_count=3,
         runs_buffer_high_watermark=100,
         poll_check_interval_seconds=5,
-        visibility_timeout_seconds=30,
+        visibility_timeout_ms=30,
         max_wait_seconds_before_shutdown=30,
     )
     execution_manager.register_executor(mock_test_executor)
@@ -260,7 +260,7 @@ class TestExecutionManager:
         mock_test_action_run = generate_mock_action_run()
 
         # Act
-        await execution_manager._execute_run(mock_test_action_run)
+        await execution_manager_without_executors._execute_run(mock_test_action_run)
 
         # Assert
         mock_port_client.post_run_log.assert_called_with(
@@ -392,7 +392,7 @@ class TestExecutionManager:
         for _ in range(3):
             await execution_manager._global_queue.put(generate_mock_action_run())
 
-        mock_port_client.get_pending_runs.return_value = []
+        mock_port_client.claim_pending_runs.return_value = []
 
         # Act
         polling_task = asyncio.create_task(execution_manager._poll_action_runs())
@@ -400,7 +400,7 @@ class TestExecutionManager:
         await execution_manager._gracefully_cancel_task(polling_task)
 
         # Assert
-        mock_port_client.get_pending_runs.assert_not_called()
+        mock_port_client.claim_pending_runs.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_poll_action_runs_should_poll_when_below_watermark(
@@ -411,8 +411,8 @@ class TestExecutionManager:
         # Arrange
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0.1
-        mock_port_client.get_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_seconds: [generate_mock_action_run()]
+        mock_port_client.claim_pending_runs.side_effect = (
+            lambda limit, visibility_timeout_ms: [generate_mock_action_run()]
         )
 
         # Act
@@ -421,7 +421,7 @@ class TestExecutionManager:
         await execution_manager._gracefully_cancel_task(polling_task)
 
         # Assert
-        mock_port_client.get_pending_runs.assert_called()
+        mock_port_client.claim_pending_runs.assert_called()
         assert (
             await execution_manager._global_queue.size()
             == execution_manager._high_watermark
@@ -434,8 +434,8 @@ class TestExecutionManager:
         # Arrange
         execution_manager._high_watermark = 10
         execution_manager._poll_check_interval_seconds = 0.1
-        mock_port_client.get_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_seconds: [
+        mock_port_client.claim_pending_runs.side_effect = (
+            lambda limit, visibility_timeout_ms: [
                 generate_mock_action_run(action_type="unregistered_action")
             ]
         )
@@ -481,7 +481,7 @@ class TestExecutionManager:
         execution_manager._max_wait_seconds_before_shutdown = 1
         execution_manager._high_watermark = 50
         execution_manager._poll_check_interval_seconds = 0.1
-        mock_port_client.get_pending_runs.return_value = [
+        mock_port_client.claim_pending_runs.return_value = [
             generate_mock_action_run() for _ in range(10)
         ]
         await execution_manager.start_processing_action_runs()
@@ -568,8 +568,8 @@ class TestExecutionManager:
         execution_manager_without_executors._handle_partition_queue_once = (
             wrapped_handle_partition_queue_once
         )
-        mock_port_client.get_pending_runs.side_effect = (
-            lambda limit, visibility_timeout_seconds: [
+        mock_port_client.claim_pending_runs.side_effect = (
+            lambda limit, visibility_timeout_ms: [
                 *[
                     generate_mock_action_run(
                         action_type=mock_test_partition_executor.ACTION_NAME,
