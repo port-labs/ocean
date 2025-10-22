@@ -31,6 +31,9 @@ from azure_devops.webhooks.webhook_processors.gitops_webhook_processor import (
 from azure_devops.webhooks.webhook_processors.folder_webhook_processor import (
     FolderWebhookProcessor,
 )
+from azure_devops.webhooks.webhook_processors.branch_webhook_processor import (
+    BranchWebhookProcessor,
+)
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -310,3 +313,4 @@ ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FileWebhookProcessor)
 ocean.add_webhook_processor("/webhook", GitopsWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FolderWebhookProcessor)
+ocean.add_webhook_processor("/webhook", BranchWebhookProcessor)
