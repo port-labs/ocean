@@ -286,7 +286,15 @@ class ExecutionManager:
         """
         while not self._is_shutting_down.is_set():
             try:
-                source = await self._active_sources.get()
+                # Enable graceful worker shutdown when there are no active sources to process
+                # Using asyncio.Queue.get without a timeout would block indefinitely if active sources are empty
+                try:
+                    source = await asyncio.wait_for(
+                        self._active_sources.get(),
+                        timeout=self._max_wait_seconds_before_shutdown / 3,
+                    )
+                except asyncio.TimeoutError:
+                    continue
 
                 if source == GLOBAL_SOURCE:
                     await self._handle_global_queue_once()
