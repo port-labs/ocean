@@ -259,12 +259,6 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         webhook_event_raw_results = None
         while True:
             try:
-                if resource is None:
-                    logger.warning(
-                        "No resource config specified for webhook event, cannot process event",
-                        webhook_path=processor.event,
-                    )
-                    raise ValueError("No resource config specified for webhook event")
                 webhook_event_raw_results = await processor.handle_event(
                     payload, resource
                 )
