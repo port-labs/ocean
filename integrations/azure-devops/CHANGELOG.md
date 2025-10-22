@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.18 (2025-10-22)
+
+
+### Bug Fix
+
+- Increase timeout for itemsbatch
+
 ## 0.4.17 (2025-10-22)
 
 
