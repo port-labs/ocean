@@ -157,7 +157,7 @@ class InvocationPayload(BaseModel):
 class IntegrationActionInvocationPayload(InvocationPayload):
     type: Literal[InvocationType.INTEGRATION_ACTION]
     installationId: str
-    actionType: str
+    integrationActionType: str
     integrationActionExecutionProperties: dict[str, Any] = Field(default_factory=dict)
 
 

@@ -47,7 +47,7 @@ def generate_mock_action_run(
         payload=IntegrationActionInvocationPayload(
             type=InvocationType.INTEGRATION_ACTION,
             installationId="test-installation-id",
-            actionType=action_type,
+            integrationActionType=action_type,
             integrationActionExecutionProperties=integrationActionExecutionProperties,
         ),
     )

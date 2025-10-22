@@ -187,7 +187,7 @@ class ExecutionManager:
 
                 for run in runs:
                     try:
-                        action_type = run.payload.actionType
+                        action_type = run.payload.integrationActionType
                         if action_type not in self._actions_executors:
                             logger.warning(
                                 "No Executors registered to handle this action, skipping run...",
@@ -329,9 +329,11 @@ class ExecutionManager:
         """
         Execute a run using its registered executor.
         """
-        with logger.contextualize(run_id=run.id, action=run.payload.actionType):
+        with logger.contextualize(
+            run_id=run.id, action=run.payload.integrationActionType
+        ):
             try:
-                executor = self._actions_executors[run.payload.actionType]
+                executor = self._actions_executors[run.payload.integrationActionType]
                 while (
                     await executor.is_close_to_rate_limit()
                     and not self._is_shutting_down.is_set()
