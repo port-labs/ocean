@@ -22,10 +22,7 @@ class BranchWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         return [Kind.BRANCH]
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
-        try:
-            return event.payload.get("eventType") == PushEvents.PUSH
-        except Exception:
-            return False
+        return event.payload.get("eventType") == PushEvents.PUSH
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         if not await super().validate_payload(payload):
@@ -85,8 +82,8 @@ class BranchWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 continue
 
             branch_name = ref_name.replace("refs/heads/", "")
-            new_oid = ref.get("newObjectId") or ""
-            old_oid = ref.get("oldObjectId") or ""
+            new_oid = ref.get("newObjectId", "")
+            old_oid = ref.get("oldObjectId", "")
 
             # Deletion when newObjectId is all zeros (per ADO semantics)
             if new_oid == ZERO_OBJECT_ID:
