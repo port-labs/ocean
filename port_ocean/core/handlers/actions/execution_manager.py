@@ -3,7 +3,6 @@ from typing import Dict, Set
 from loguru import logger
 from port_ocean.core.models import (
     ActionRun,
-    IntegrationActionInvocationPayload,
     RunStatus,
 )
 import asyncio
@@ -43,8 +42,8 @@ class ExecutionManager:
         _workers_pool (set[asyncio.Task[None]]): Pool of worker tasks processing runs
         _actions_executors (Dict[str, AbstractExecutor]): Registered action executors
         _is_shutting_down (asyncio.Event): Event flag for graceful shutdown
-        _global_queue (LocalQueue[ActionRun[IntegrationActionInvocationPayload]]): Queue for non-partitioned actions
-        _partition_queues (Dict[str, AbstractQueue[ActionRun[IntegrationActionInvocationPayload]]]): Queues for partitioned actions
+        _global_queue (LocalQueue[ActionRun]): Queue for non-partitioned actions
+        _partition_queues (Dict[str, AbstractQueue[ActionRun]]): Queues for partitioned actions
         _deduplication_set (Set[str]): Set of run IDs for deduplication
         _queues_locks (Dict[str, asyncio.Lock]): Locks for queue access synchronization
         _active_sources (AbstractQueue[str]): Queue of active sources (global or partition-specific) used for round-robin distribution of work among workers
@@ -90,10 +89,8 @@ class ExecutionManager:
         self._workers_pool: set[asyncio.Task[None]] = set()
         self._actions_executors: Dict[str, AbstractExecutor] = {}
         self._is_shutting_down = asyncio.Event()
-        self._global_queue = LocalQueue[ActionRun[IntegrationActionInvocationPayload]]()
-        self._partition_queues: Dict[
-            str, AbstractQueue[ActionRun[IntegrationActionInvocationPayload]]
-        ] = {}
+        self._global_queue = LocalQueue[ActionRun]()
+        self._partition_queues: Dict[str, AbstractQueue[ActionRun]] = {}
         self._deduplication_set: Set[str] = set()
         self._queues_locks: Dict[str, asyncio.Lock] = {GLOBAL_SOURCE: asyncio.Lock()}
         self._active_sources: AbstractQueue[str] = LocalQueue[str]()
@@ -169,11 +166,9 @@ class ExecutionManager:
                     continue
 
                 poll_limit = self._high_watermark - queues_size
-                runs: list[ActionRun[IntegrationActionInvocationPayload]] = (
-                    await ocean.port_client.claim_pending_runs(
-                        limit=poll_limit,
-                        visibility_timeout_ms=self._visibility_timeout_ms,
-                    )
+                runs: list[ActionRun] = await ocean.port_client.claim_pending_runs(
+                    limit=poll_limit,
+                    visibility_timeout_ms=self._visibility_timeout_ms,
                 )
 
                 if not runs:
@@ -245,7 +240,7 @@ class ExecutionManager:
 
     async def _add_run_to_queue(
         self,
-        run: ActionRun[IntegrationActionInvocationPayload],
+        run: ActionRun,
         queue_name: str,
     ) -> None:
         """
@@ -331,9 +326,7 @@ class ExecutionManager:
             await queue.commit()
             await self._add_source_if_not_empty(partition_name)
 
-    async def _execute_run(
-        self, run: ActionRun[IntegrationActionInvocationPayload]
-    ) -> None:
+    async def _execute_run(self, run: ActionRun) -> None:
         """
         Execute a run using its registered executor.
         """

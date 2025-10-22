@@ -24,7 +24,6 @@ from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
     IntegrationFeatureFlag,
-    InvocationType,
     RunStatus,
 )
 from port_ocean.exceptions.execution_manager import (
@@ -38,14 +37,14 @@ from port_ocean.utils.signal import SignalHandler
 def generate_mock_action_run(
     action_type: str = "test_action",
     integrationActionExecutionProperties: dict[str, Any] | None = None,
-) -> ActionRun[IntegrationActionInvocationPayload]:
+) -> ActionRun:
     if integrationActionExecutionProperties is None:
         integrationActionExecutionProperties = {}
     return ActionRun(
         id=f"test-run-id-{uuid.uuid4()}",
         status=RunStatus.IN_PROGRESS,
         payload=IntegrationActionInvocationPayload(
-            type=InvocationType.INTEGRATION_ACTION,
+            type="INTEGRATION_ACTION",
             installationId="test-installation-id",
             integrationActionType=action_type,
             integrationActionExecutionProperties=integrationActionExecutionProperties,
@@ -534,7 +533,7 @@ class TestExecutionManager:
         execution_manager_without_executors._max_wait_seconds_before_shutdown = 1.0
 
         async def mock_execute(
-            run: ActionRun[IntegrationActionInvocationPayload],
+            run: ActionRun,
         ) -> None:
             await asyncio.sleep(0.1)
             return None

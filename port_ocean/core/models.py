@@ -1,11 +1,8 @@
 from dataclasses import dataclass, field
 from enum import Enum, StrEnum
-from typing import Any, Generic, Literal, TypeVar, TypedDict
-
+from typing import Any, Literal, TypedDict
 from pydantic import BaseModel
 from pydantic.fields import Field
-
-T = TypeVar("T")
 
 
 class EventListenerType(StrEnum):
@@ -146,22 +143,14 @@ class RunStatus(StrEnum):
     FAILURE = "FAILURE"
 
 
-class InvocationType(StrEnum):
-    INTEGRATION_ACTION = "INTEGRATION_ACTION"
-
-
-class InvocationPayload(BaseModel):
-    type: InvocationType
-
-
-class IntegrationActionInvocationPayload(InvocationPayload):
-    type: Literal[InvocationType.INTEGRATION_ACTION]
+class IntegrationActionInvocationPayload(BaseModel):
+    type: Literal["INTEGRATION_ACTION"]
     installationId: str
     integrationActionType: str
     integrationActionExecutionProperties: dict[str, Any] = Field(default_factory=dict)
 
 
-class ActionRun(BaseModel, Generic[T]):
+class ActionRun(BaseModel):
     id: str
     status: RunStatus
-    payload: T
+    payload: IntegrationActionInvocationPayload

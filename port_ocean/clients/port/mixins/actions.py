@@ -28,7 +28,7 @@ class ActionsClientMixin:
 
     async def claim_pending_runs(
         self, limit: int, visibility_timeout_ms: int
-    ) -> list[ActionRun[Any]]:
+    ) -> list[ActionRun]:
         response = await self.client.post(
             f"{self.auth.api_url}/actions/runs/claim-pending",
             headers=await self.auth.headers(),
@@ -41,19 +41,19 @@ class ActionsClientMixin:
         handle_port_status_code(response)
         return [ActionRun.parse_obj(run) for run in response.json().get("runs", [])]
 
-    async def get_run_by_external_id(self, external_id: str) -> ActionRun[Any] | None:
+    async def get_run_by_external_id(self, external_id: str) -> ActionRun | None:
         response = await self.client.get(
-            f"{self.auth.api_url}/actions/runs?external_run_id={external_id}",
+            f"{self.auth.api_url}/actions/runs?version=v2&external_run_id={external_id}",
             headers=await self.auth.headers(),
         )
         handle_port_status_code(response)
         runs = response.json().get("runs", [])
-        return None if not len(runs) else runs[0]
+        return None if not len(runs) else ActionRun.parse_obj(runs[0])
 
     async def patch_run(
         self,
         run_id: str,
-        run: ActionRun[Any] | dict[str, Any],
+        run: ActionRun | dict[str, Any],
     ) -> None:
         response = await self.client.patch(
             f"{self.auth.api_url}/actions/runs/{run_id}",

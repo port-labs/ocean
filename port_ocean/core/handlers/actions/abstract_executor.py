@@ -5,7 +5,7 @@ from typing import Optional, Type
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from port_ocean.core.models import ActionRun, IntegrationActionInvocationPayload
+from port_ocean.core.models import ActionRun
 
 
 class AbstractExecutor(ABC):
@@ -46,7 +46,7 @@ class AbstractExecutor(ABC):
             async def get_remaining_seconds_until_rate_limit(self) -> float:
                 return await self._get_rate_limit_wait_time()
 
-            async def execute(self, run: ActionRun[IntegrationActionInvocationPayload]) -> None:
+            async def execute(self, run: ActionRun) -> None:
                 # Implement action logic here
                 pass
         ```
@@ -56,9 +56,7 @@ class AbstractExecutor(ABC):
     WEBHOOK_PROCESSOR_CLASS: Optional[Type[AbstractWebhookProcessor]]
     WEBHOOK_PATH: str
 
-    async def _get_partition_key(
-        self, run: ActionRun[IntegrationActionInvocationPayload]
-    ) -> str | None:
+    async def _get_partition_key(self, run: ActionRun) -> str | None:
         """
         This method should return a string used to identify runs that must be executed sequentially,
         or return None to allow runs to execute in parallel.
@@ -114,12 +112,12 @@ class AbstractExecutor(ABC):
         pass
 
     @abstractmethod
-    async def execute(self, run: ActionRun[IntegrationActionInvocationPayload]) -> None:
+    async def execute(self, run: ActionRun) -> None:
         """
         Execute the integration action with the provided run configuration.
 
         Args:
-            run (ActionRun[IntegrationActionInvocationPayload]): The action run configuration
+            run (ActionRun): The action run configuration
                 containing all necessary parameters and context for execution.
 
         Raises:
@@ -128,7 +126,7 @@ class AbstractExecutor(ABC):
 
         Example:
             ```python
-            async def execute(self, run: ActionRun[IntegrationActionInvocationPayload]) -> None:
+            async def execute(self, run: ActionRun) -> None:
                 try:
                     # Extract parameters
                     params = run.payload.integrationActionExecutionProperties
