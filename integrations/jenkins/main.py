@@ -27,15 +27,17 @@ async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     jenkins_client = JenkinsClient.create_from_ocean_configuration()
 
     build_selector = cast(JenkinsBuildResourceConfig, event.resource_config)
-    build_limit = build_selector.selector.build_limit
-    days_limit = build_selector.selector.days_limit
+    max_builds_per_job = build_selector.selector.max_builds_per_job
+    days_since = build_selector.selector.days_since
     job_filter = build_selector.selector.job_filter
 
     logger.debug(
-        f"Syncing builds for job {job_filter} with limit {build_limit} and days limit {days_limit}"
+        f"Syncing builds for job {job_filter} with limit {max_builds_per_job} and days limit {days_since}"
     )
 
-    async for builds in jenkins_client.get_builds(build_limit, days_limit, job_filter):
+    async for builds in jenkins_client.get_builds(
+        max_builds_per_job, days_since, job_filter
+    ):
         logger.info(f"Received batch with {len(builds)} builds")
         yield builds
 

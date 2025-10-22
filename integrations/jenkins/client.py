@@ -87,7 +87,7 @@ class JenkinsClient:
             yield jobs
 
     async def get_builds(
-        self, build_limit: int, days_limit: int, job_filter: list[str]
+        self, max_builds_per_job: int, days_since: int, job_filter: list[str]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(ResourceKey.BUILDS):
             logger.info("picking jenkins builds from cache")
@@ -96,14 +96,11 @@ class JenkinsClient:
 
         async for _jobs in self._get_paginated_resources(
             ResourceKey.BUILDS,
-            build_limit=build_limit,
+            max_builds_per_job=max_builds_per_job,
             job_filter=job_filter,
         ):
-            if days_limit == 0:
-                days_limit = 1  # last 24 hours
-
             end_timestamp = int(time.time() * 1000)
-            start_timestamp = int((time.time() - days_limit * 24 * 3600) * 1000)
+            start_timestamp = int((time.time() - days_since * 24 * 3600) * 1000)
             builds = []
             for job in _jobs:
                 for build in job.get("builds", []):
@@ -155,10 +152,10 @@ class JenkinsClient:
         self,
         resource: str,
         parent_job: Optional[dict[str, Any]] = None,
-        build_limit: int = PAGE_SIZE,
+        max_builds_per_job: int = PAGE_SIZE,
         job_filter: list[str] = [],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        page_size = build_limit
+        page_size = max_builds_per_job
         page = 0
 
         child_jobs = []
