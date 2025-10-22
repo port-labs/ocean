@@ -8,7 +8,6 @@ Uses Ocean's built-in HTTP client with caching and rate limiting.
 import asyncio
 import functools
 from typing import AsyncGenerator, List, Dict, Any, Optional
-from urllib.parse import urljoin
 import httpx
 from loguru import logger
 
@@ -79,7 +78,21 @@ class HttpServerClient:
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch data with pagination handling using handler pattern"""
 
-        url = urljoin(self.base_url, endpoint.lstrip("/"))
+        #  URL building: if base_url has query params, insert endpoint before them
+        # Otherwise, just concatenate base_url + endpoint
+        if "?" in self.base_url:
+            base_path, query_string = self.base_url.split("?", 1)
+            base_clean = base_path.rstrip("/")
+            endpoint_clean = endpoint.lstrip("/")
+            url = (
+                f"{base_clean}/{endpoint_clean}?{query_string}"
+                if endpoint_clean
+                else self.base_url
+            )
+        else:
+            base_clean = self.base_url.rstrip("/")
+            endpoint_clean = endpoint.lstrip("/")
+            url = f"{base_clean}/{endpoint_clean}" if endpoint_clean else base_clean
         params = query_params or {}
         request_headers = headers or {}
 
