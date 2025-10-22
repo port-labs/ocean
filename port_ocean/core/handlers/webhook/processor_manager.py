@@ -187,7 +187,10 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             logger.debug("Start processing queued webhook")
             processor.event.set_timestamp(LiveEventTimestamp.StartedProcessing)
 
-            if ocean.config.runtime.is_saas_runtime:
+            if (
+                ocean.config.runtime.is_saas_runtime
+                and event.event_type == EventType.HTTP_REQUEST
+            ):
                 ocean.metrics.inc_metric(
                     name=MetricType.LIVE_EVENTS_PROCESSED_TOTAL_NAME,
                     labels=[
