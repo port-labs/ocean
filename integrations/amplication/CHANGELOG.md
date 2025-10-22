@@ -1,3 +1,11 @@
+## 0.1.79 (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
 ## 0.1.78 (2025-10-20)
 
 
