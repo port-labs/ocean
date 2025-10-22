@@ -62,7 +62,7 @@ def mock_port_client() -> MagicMock:
     mock_port_client.patch_run = AsyncMock()
     mock_port_client.post_run_log = AsyncMock()
     mock_port_client.get_organization_feature_flags = AsyncMock(
-        return_value=[IntegrationFeatureFlag.OCEAN_EXECUTION_AGENT_ELIGIBLE]
+        return_value=[IntegrationFeatureFlag.OCEAN_EXECUTION_AGENT_ENABLED]
     )
     return mock_port_client
 
