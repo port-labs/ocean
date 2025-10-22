@@ -12,7 +12,7 @@ from port_ocean.context.ocean import ocean
 
 
 PAGE_SIZE = 50
-MAX_BUILDS = 4
+MAX_BUILDS = 100
 
 
 class ResourceKey(StrEnum):
@@ -161,7 +161,7 @@ class JenkinsClient:
         child_jobs = []
 
         while True:
-            params = self._build_api_params(resource, page_size, page, job_filter)
+            params = self._build_api_params(resource, page_size, page)
             base_url = self._build_base_url(parent_job)
             logger.info(f"Fetching {resource} from {base_url} with params {params}")
 
@@ -172,7 +172,14 @@ class JenkinsClient:
                 f"Fetched job data from {base_url}/api/json with params {params}"
             )
 
-            jobs = job_response.get("jobs", [])
+            if job_filter:
+                jobs = [
+                    job
+                    for job in job_response.get("jobs", [])
+                    if job.get("name") in job_filter
+                ]
+            else:
+                jobs = job_response.get("jobs", [])
             logger.info(f"Fetched {len(jobs)} jobs")
 
             if not jobs:
@@ -200,7 +207,6 @@ class JenkinsClient:
         resource: str,
         page_size: int,
         page: int,
-        job_filter: list[str] = [],
     ) -> dict[str, Any]:
         """
         Build pagination params for the API request
@@ -209,7 +215,6 @@ class JenkinsClient:
             resource: The resource to fetch
             page_size: The number of items per page
             page: The current page
-            job_filter: The list of jobs to fetch builds for
 
         Returns:
             dict[str, Any]: The pagination params for the API request
