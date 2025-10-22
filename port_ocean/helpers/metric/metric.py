@@ -88,6 +88,11 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
         "rate_limit_wait description",
         ["kind", "phase", "endpoint"],
     ),
+    MetricType.LIVE_EVENTS_PROCESSED_TOTAL_NAME: (
+        MetricType.LIVE_EVENTS_PROCESSED_TOTAL_NAME,
+        "Total number of live events processed",
+        ["event_kind", "integration_type"],
+    ),
 }
 
 

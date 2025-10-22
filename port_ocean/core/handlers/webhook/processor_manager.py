@@ -190,7 +190,10 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
             if ocean.config.runtime.is_saas_runtime:
                 ocean.metrics.inc_metric(
                     name=MetricType.LIVE_EVENTS_PROCESSED_TOTAL_NAME,
-                    labels=[],
+                    labels=[
+                        EventType.HTTP_REQUEST.value,
+                        ocean.config.integration.type,
+                    ],
                     value=1,
                 )
 
