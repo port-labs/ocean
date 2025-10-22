@@ -11,6 +11,7 @@ from port_ocean.core.handlers.queue.abstract_queue import AbstractQueue
 from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.live_events import LiveEventsMixin
 from port_ocean.exceptions.webhook_processor import WebhookEventNotSupportedError
+from port_ocean.helpers.metric.metric import MetricType
 from .webhook_event import WebhookEvent, WebhookEventRawResults, LiveEventTimestamp
 from port_ocean.context.event import event
 
@@ -185,6 +186,13 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         try:
             logger.debug("Start processing queued webhook")
             processor.event.set_timestamp(LiveEventTimestamp.StartedProcessing)
+
+            if ocean.config.runtime.is_saas_runtime:
+                ocean.metrics.inc_metric(
+                    name=MetricType.LIVE_EVENTS_PROCESSED_TOTAL_NAME,
+                    labels=[],
+                    value=1,
+                )
 
             webhook_event_raw_results = await self._execute_processor(
                 processor, resource

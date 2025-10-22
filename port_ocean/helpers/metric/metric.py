@@ -50,6 +50,7 @@ class MetricType:
     OBJECT_COUNT_NAME = "object_count"
     SUCCESS_NAME = "success"
     RATE_LIMIT_WAIT_NAME = "rate_limit_wait_seconds"
+    LIVE_EVENTS_PROCESSED_TOTAL_NAME = "live_events_processed_total"
 
 
 class SyncState:
