@@ -1,5 +1,5 @@
 import platform
-from typing import Any, Literal, Optional, Type, cast
+from typing import Any, Literal, Optional, Type
 
 from pydantic import AnyHttpUrl, Extra, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
@@ -8,10 +8,14 @@ from pydantic.fields import Field
 from pydantic.main import BaseModel
 
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
-from port_ocean.core.event_listener import EventListenerSettingsType
+from port_ocean.core.event_listener import (
+    EventListenerSettingsType,
+    PollingEventListenerSettings,
+)
 from port_ocean.core.models import (
     CachingStorageMode,
     CreatePortResourcesOrigin,
+    EventListenerType,
     ProcessExecutionMode,
     Runtime,
 )
@@ -80,6 +84,14 @@ class StreamingSettings(BaseOceanModel, extra=Extra.allow):
     location: str = Field(default="/tmp/ocean/streaming")
 
 
+class ExecutionAgentSettings(BaseOceanModel, extra=Extra.allow):
+    enabled: bool = Field(default=False)
+    runs_buffer_high_watermark: int = Field(default=100)
+    visibility_timeout_ms: int = Field(default=30000)
+    poll_check_interval_seconds: int = Field(default=10)
+    workers_count: int = Field(default=1)
+
+
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     _integration_config_model: BaseModel | None = None
 
@@ -94,7 +106,9 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     base_url: str | None = None
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(
-        default=cast(EventListenerSettingsType, {"type": "POLLING"})
+        default_factory=lambda: PollingEventListenerSettings(
+            type=EventListenerType.POLLING
+        )
     )
     event_workers_count: int = 1
     # If an identifier or type is not provided, it will be generated based on the integration name
@@ -122,6 +136,25 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     yield_items_to_parse_batch_size: int = 10
 
     streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
+    execution_agent: ExecutionAgentSettings = Field(
+        default_factory=lambda: ExecutionAgentSettings()
+    )
+
+    @root_validator
+    def validate_event_listener(cls, values: dict[str, Any]) -> dict[str, Any]:
+        event_listener: EventListenerSettingsType | None = values.get("event_listener")
+        runtime: Runtime | None = values.get("runtime")
+
+        if (
+            event_listener
+            and runtime
+            and event_listener.type == EventListenerType.ACTIONS_ONLY
+            and not runtime.is_saas_runtime
+        ):
+            raise ValueError(
+                "Actions-only event listener is only supported for Saas runtime"
+            )
+        return values
 
     @validator("process_execution_mode")
     def validate_process_execution_mode(
@@ -197,3 +230,18 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
                 raise ValueError("This integration can't be ran as Saas")
 
         return runtime
+
+    @validator("execution_agent")
+    def validate_execution_agent(
+        cls, execution_agent: ExecutionAgentSettings
+    ) -> ExecutionAgentSettings:
+        if not execution_agent.enabled:
+            return execution_agent
+
+        spec = get_spec_file()
+        if not (spec and spec.get("executionAgent", {}).get("enabled", False)):
+            raise ValueError(
+                "Serving as an execution agent is not currently supported for this integration."
+            )
+
+        return execution_agent
