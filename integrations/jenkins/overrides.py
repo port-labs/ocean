@@ -11,17 +11,17 @@ from pydantic import Field
 class JenkinsBuildResourceConfig(ResourceConfig):
     class JenkinsBuildSelector(Selector):
         query: str
-        build_limit: int = Field(
-            alias="buildLimit",
+        max_builds_per_job: int = Field(
+            alias="maxBuildsPerJob",
             required=False,
             default=100,
             description="Number of builds to fetch. Defaults to 100",
         )
-        days_limit: int = Field(
-            alias="daysLimit",
+        days_since: int = Field(
+            alias="daysSince",
             required=False,
-            default=0,
-            description="Number of days to fetch builds for. Defaults to 0",
+            default=1,
+            description="Number of days to fetch builds for. Defaults to 1",
         )
         job_filter: list[str] = Field(
             alias="jobFilter",
