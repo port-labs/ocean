@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.186 (2025-10-22)
+
+
+### Bug Fixes
+
+- Fix resync failures caused by known GeneralServiceException errors from CloudControl API that wrap underlying ResourceNotFoundException or AccessDenied errors in error messages.
+
+
+## 0.2.185-post (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 0.2.184-post (2025-10-21)
+
+### Improvements
+
+- Deprecate aws v2 integration
+
+
 ## 0.2.184 (2025-10-20)
 
 
