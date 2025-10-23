@@ -1072,6 +1072,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 params=API_PARAMS,
                 data=json.dumps(request_data),
                 headers={"Content-Type": "application/json"},
+                timeout=30,
             )
             if not response or response.status_code >= 400:
                 logger.warning(f"Failed to fetch items from {items_batch_url}")
