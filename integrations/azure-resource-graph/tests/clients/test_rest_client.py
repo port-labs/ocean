@@ -6,7 +6,6 @@ import pytest
 
 from azure_integration.clients.rest_client import AzureRestClient
 from azure_integration.clients.base import AzureRequest
-from azure_integration.auth.token_auth import TokenCredential
 
 
 class _FakeResponse:
@@ -41,6 +40,15 @@ class _FakeResponse:
             )
 
 
+class _FakeToken:
+    token = "t"
+
+
+class _FakeCredential:
+    async def get_token(self, *args: Any, **kwargs: Any) -> _FakeToken:
+        return _FakeToken()
+
+
 class _FakeClient:
     def __init__(self, response: _FakeResponse | Exception) -> None:
         self._response = response
@@ -64,7 +72,7 @@ class _FakeClient:
 
 @pytest.mark.asyncio
 async def test_make_request_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    cred = cast(Any, TokenCredential())
+    cred = cast(Any, _FakeCredential())
     client = AzureRestClient(credential=cred, base_url="https://management.azure.com")
     fake_response = _FakeResponse(
         status_code=200,
@@ -84,7 +92,7 @@ async def test_make_request_success(monkeypatch: pytest.MonkeyPatch) -> None:
 async def test_make_request_ignored_http_error_returns_empty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    cred = cast(Any, TokenCredential())
+    cred = cast(Any, _FakeCredential())
     client = AzureRestClient(credential=cred, base_url="https://management.azure.com")
     # Prepare an HTTPStatusError with 404
     req = httpx.Request("GET", "https://management.azure.com/subscriptions")
@@ -105,7 +113,7 @@ async def test_make_request_ignored_http_error_returns_empty(
 async def test_make_paginated_request_yields_batches(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    cred = cast(Any, TokenCredential())
+    cred = cast(Any, _FakeCredential())
     client = AzureRestClient(credential=cred, base_url="https://management.azure.com")
 
     responses: List[Dict[str, Any]] = [

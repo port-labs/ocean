@@ -11,7 +11,6 @@ from azure.core.credentials_async import AsyncTokenCredential
 from azure_integration.clients.base import AbstractAzureClient, AzureRequest
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
-from memory_profiler import profile
 
 
 class AzureRestClient(AbstractAzureClient):
@@ -55,7 +54,6 @@ class AzureRestClient(AbstractAzureClient):
             "Content-Type": "application/json",
         }
 
-    @profile
     async def make_request(
         self,
         request: AzureRequest,

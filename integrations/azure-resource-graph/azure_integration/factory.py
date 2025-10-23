@@ -27,7 +27,7 @@ class AzureClientFactory:
 
     def get_client(self, client_type: AzureClientType) -> AbstractAzureClient:
         """
-        Get or create AzureClient and SubscriptionManager instances from Ocean configuration.
+        Get or create AzureClient instances from Ocean configuration.
 
         Returns:
             AbstractAzureClient
