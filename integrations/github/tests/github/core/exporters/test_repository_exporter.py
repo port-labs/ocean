@@ -158,3 +158,41 @@ class TestRestRepositoryExporter:
                 assert mock_request.call_count == 3
                 mock_request.assert_any_call(*expected_collaborator_calls[0])
                 mock_request.assert_any_call(*expected_collaborator_calls[1])
+
+    async def test_get_paginated_resources_with_exclude_archived(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        async def mock_paginated_request(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any] | list[dict[str, Any]], None]:
+            if "search" in url:
+                yield {"items": TEST_REPOS}
+            else:
+                yield TEST_REPOS
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    type=mock_port_app_config.repository_type,
+                    exclude_archived=True,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(repos) == 1
+                assert len(repos[0]) == 2
+                assert repos[0] == TEST_REPOS
+
+                mock_request.assert_called_once_with(
+                    f"{rest_client.base_url}/search/repositories",
+                    {
+                        "q": "org:test-org fork:true archived:false",
+                        "type": "all",
+                    },
+                )
