@@ -5,10 +5,6 @@
     "icon": "Azure",
     "schema": {
       "properties": {
-        "subscriptionId": {
-          "title": "Subscription ID",
-          "type": "string"
-        },
         "tags": {
           "title": "Tags",
           "type": "object"
@@ -22,9 +18,9 @@
     "relations": {}
   },
   {
-    "identifier": "azureResourceGroup",
-    "description": "This blueprint represents an Azure Resource Group in our software catalog",
-    "title": "Azure Resource Group",
+    "identifier": "azureResourceContainer",
+    "description": "This blueprint represents an Azure Resource Container in our software catalog",
+    "title": "Azure Resource Container",
     "icon": "Azure",
     "schema": {
       "properties": {
@@ -52,9 +48,9 @@
     }
   },
   {
-    "identifier": "azureCloudResources",
-    "description": "This blueprint represents an AzureCloud Resource in our software catalog",
-    "title": "Azure Cloud Resources",
+    "identifier": "azureResource",
+    "description": "This blueprint represents an Azure Resource in our software catalog",
+    "title": "Azure Resource",
     "icon": "Azure",
     "schema": {
       "properties": {
@@ -86,4 +82,3 @@
     }
   }
 ]
-
