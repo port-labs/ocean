@@ -8,6 +8,20 @@ from port_ocean.core.handlers.port_app_config.models import (
 from pydantic import Field
 
 
+class JenkinsBuildResourceConfig(ResourceConfig):
+    class JenkinsBuildSelector(Selector):
+        query: str
+        max_builds_per_job: int = Field(
+            alias="maxBuildsPerJob",
+            required=False,
+            default=100,
+            description="Number of builds to fetch. Defaults to 100",
+        )
+
+    kind: typing.Literal["build"]
+    selector: JenkinsBuildSelector
+
+
 class JenkinStagesResourceConfig(ResourceConfig):
     class JenkinStageSelector(Selector):
         query: str
@@ -18,6 +32,6 @@ class JenkinStagesResourceConfig(ResourceConfig):
 
 
 class JenkinsPortAppConfig(PortAppConfig):
-    resources: list[JenkinStagesResourceConfig | ResourceConfig] = Field(
-        default_factory=list
-    )
+    resources: list[
+        JenkinStagesResourceConfig | JenkinsBuildResourceConfig | ResourceConfig
+    ] = Field(default_factory=list)
