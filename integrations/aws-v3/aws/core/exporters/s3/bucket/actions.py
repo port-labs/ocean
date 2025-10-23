@@ -165,12 +165,12 @@ class GetBucketTaggingAction(Action):
 
 class S3BucketActionsMap(ActionMap):
     defaults: List[Type[Action]] = [
-        GetBucketTaggingAction,
-        GetBucketLocationAction,
         ListBucketsAction,
+        GetBucketTaggingAction,
     ]
     options: List[Type[Action]] = [
         GetBucketPublicAccessBlockAction,
         GetBucketOwnershipControlsAction,
         GetBucketEncryptionAction,
+        GetBucketLocationAction,
     ]
