@@ -21,9 +21,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         "teams": "_enrich_repository_with_teams",
     }
 
-    async def get_resource[
-        ExporterOptionsT: SingleRepositoryOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleRepositoryOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         name = options["name"]
         organization = options["organization"]
         included_relationships = options.get("included_relationships")
@@ -43,19 +43,14 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
     @cache_iterator_result()
-    async def get_paginated_resources[
-        ExporterOptionsT: ListRepositoryOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListRepositoryOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
-        _, organization, params = parse_github_options(dict(options))
+        organization = options["organization"]
         included_relationships = options.get("included_relationships")
 
-        async for repos in self.client.send_paginated_request(
-            f"{self.client.base_url}/orgs/{organization}/repos", params
-        ):
-            logger.info(
-                f"Fetched batch of {len(repos)} repositories from organization {organization}"
-            )
+        async for repos in self._fetch_repositories(options):
             if not included_relationships:
                 yield repos
             else:
@@ -69,6 +64,40 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                     ]
                 )
                 yield batch
+
+    async def _fetch_repositories(
+        self, options: ListRepositoryOptions
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        if options.get("exclude_archived"):
+            repo_fetcher = self._fetch_repositories_with_search_api
+        else:
+            repo_fetcher = self._fetch_repositories_with_list_api
+
+        async for repos in repo_fetcher(options):
+            yield repos
+
+    async def _fetch_repositories_with_list_api(
+        self, options: ListRepositoryOptions
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        _, organization, params = parse_github_options(dict(options))
+        async for repos in self.client.send_paginated_request(
+            f"{self.client.base_url}/orgs/{organization}/repos", params
+        ):
+            logger.info(
+                f"Fetched batch of {len(repos)} repositories from organization {organization}"
+            )
+            yield repos
+
+    async def _fetch_repositories_with_search_api(
+        self, options: ListRepositoryOptions
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        _, organization, params = parse_github_options(dict(options))
+        search_query = f"org:{organization} fork:true"
+        query = {"q": search_query, **params}
+        url = f"{self.client.base_url}/search/repositories"
+        async for search_results in self.client.send_paginated_request(url, query):
+            casted = cast(dict[str, Any], search_results)
+            yield casted["items"]
 
     async def enrich_repository_with_selected_relationships(
         self,

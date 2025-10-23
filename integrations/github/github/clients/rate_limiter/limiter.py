@@ -37,7 +37,6 @@ class GitHubRateLimiter:
         exc_val: Optional[BaseException],
         exc_tb: Optional[Any],
     ) -> None:
-
         self._semaphore.release()
 
     def get_rate_limit_status_codes(self) -> List[int]:
@@ -51,8 +50,8 @@ class GitHubRateLimiter:
             return False
 
         return status_code == 429 or (
-            headers.get("X-RateLimit-Remaining") == "0"
-            and headers.get("X-RateLimit-Reset") is not None
+            headers.get("x-ratelimit-remaining") == "0"
+            and headers.get("x-ratelimit-reset") is not None
         )
 
     def _parse_rate_limit_headers(
@@ -74,7 +73,6 @@ class GitHubRateLimiter:
     def update_rate_limits(
         self, headers: httpx.Headers, resource: str
     ) -> Optional[RateLimitInfo]:
-
         rate_limit_headers = RateLimiterRequiredHeaders(**headers)
 
         info = self._parse_rate_limit_headers(rate_limit_headers)
