@@ -92,7 +92,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         self, options: ListRepositoryOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         _, organization, params = parse_github_options(dict(options))
-        search_query = f"org:{organization} fork:true"
+        search_query = f"org:{organization} fork:true archived:false"
         query = {"q": search_query, **params}
         url = f"{self.client.base_url}/search/repositories"
         async for search_results in self.client.send_paginated_request(url, query):
