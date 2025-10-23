@@ -165,6 +165,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     organization=org["login"],
                     type=port_app_config.repository_type,
                     included_relationships=cast(list[str], included_relationships),
+                    exclude_archived=port_app_config.exclude_archived,
                 )
             )
             for org in organizations
@@ -248,7 +249,9 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             workflow_exporter = RestWorkflowExporter(rest_client)
 
             repo_options = ListRepositoryOptions(
-                organization=org_name, type=port_app_config.repository_type
+                organization=org_name,
+                type=port_app_config.repository_type,
+                exclude_archived=port_app_config.exclude_archived,
             )
 
             async for repositories in repo_exporter.get_paginated_resources(
@@ -287,7 +290,9 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
-                organization=org_name, type=port_app_config.repository_type
+                organization=org_name,
+                type=port_app_config.repository_type,
+                exclude_archived=port_app_config.exclude_archived,
             )
 
             async for repositories in repo_exporter.get_paginated_resources(
@@ -338,7 +343,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
-                organization=org_name, type=port_app_config.repository_type
+                organization=org_name,
+                type=port_app_config.repository_type,
+                exclude_archived=port_app_config.exclude_archived,
             )
 
             async for repos in repository_exporter.get_paginated_resources(
@@ -382,7 +389,9 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
-                organization=org_name, type=port_app_config.repository_type
+                organization=org_name,
+                type=port_app_config.repository_type,
+                exclude_archived=port_app_config.exclude_archived,
             )
 
             async for repos in repository_exporter.get_paginated_resources(
@@ -422,7 +431,9 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
-                organization=org_name, type=port_app_config.repository_type
+                organization=org_name,
+                type=port_app_config.repository_type,
+                exclude_archived=port_app_config.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -460,7 +471,9 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
-                organization=org_name, type=port_app_config.repository_type
+                organization=org_name,
+                type=port_app_config.repository_type,
+                exclude_archived=port_app_config.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -500,7 +513,9 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
-                organization=org_name, type=port_app_config.repository_type
+                organization=org_name,
+                type=port_app_config.repository_type,
+                exclude_archived=port_app_config.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -542,7 +557,9 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             org_name = org["login"]
 
             repo_options = ListRepositoryOptions(
-                organization=org_name, type=port_app_config.repository_type
+                organization=org_name,
+                type=port_app_config.repository_type,
+                exclude_archived=port_app_config.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -582,7 +599,9 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             org_name = org["login"]
 
             repo_options = ListRepositoryOptions(
-                organization=org_name, type=port_app_config.repository_type
+                organization=org_name,
+                type=port_app_config.repository_type,
+                exclude_archived=port_app_config.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -624,7 +643,9 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             org_name = org["login"]
 
             repo_options = ListRepositoryOptions(
-                organization=org_name, type=port_app_config.repository_type
+                organization=org_name,
+                type=port_app_config.repository_type,
+                exclude_archived=port_app_config.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -667,7 +688,9 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             org_name = org["login"]
 
             repo_options = ListRepositoryOptions(
-                organization=org_name, type=port_app_config.repository_type
+                organization=org_name,
+                type=port_app_config.repository_type,
+                exclude_archived=port_app_config.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -750,7 +773,9 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
-                organization=org_name, type=port_app_config.repository_type
+                organization=org_name,
+                type=port_app_config.repository_type,
+                exclude_archived=port_app_config.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(
@@ -790,7 +815,9 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
-                organization=org_name, type=port_app_config.repository_type
+                organization=org_name,
+                type=port_app_config.repository_type,
+                exclude_archived=port_app_config.exclude_archived,
             )
 
             async for repositories in repository_exporter.get_paginated_resources(

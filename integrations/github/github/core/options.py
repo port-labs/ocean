@@ -21,6 +21,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     """Options for listing repositories."""
 
     type: str
+    exclude_archived: bool
     included_relationships: NotRequired[Optional[list[str]]]
 
 

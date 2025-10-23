@@ -215,6 +215,10 @@ class GithubPortAppConfig(PortAppConfig):
         ),
     )
     repository_type: str = Field(alias="repositoryType", default="all")
+    exclude_archived: bool = Field(
+        default=False,
+        description="Exclude archived repositories from being fetched from Github.",
+    )
     resources: list[
         GithubRepositoryConfig
         | GithubPullRequestConfig
