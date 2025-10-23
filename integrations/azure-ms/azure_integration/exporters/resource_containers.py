@@ -18,7 +18,7 @@ class ResourceContainersExporter(BaseExporter):
     async def get_paginated_resources(
         self, options: ResourceContainerExporterOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        query = self._build_sync_query(options.tag_filter)
+        query = self._build_graph_query(options.tag_filter)
         logger.info(
             f"Exporting container resources for {len(options.subscription_ids)} subscriptions"
         )
@@ -40,7 +40,7 @@ class ResourceContainersExporter(BaseExporter):
                 logger.info("No containers found in this batch")
                 continue
 
-    def _build_sync_query(
+    def _build_graph_query(
         self, tag_filters: Optional[ResourceGroupTagFilters] = None
     ) -> str:
         rg_tag_filter_clause = (

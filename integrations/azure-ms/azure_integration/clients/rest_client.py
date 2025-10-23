@@ -4,7 +4,7 @@ import httpx
 from loguru import logger
 
 from azure_integration.helpers.rate_limiter import (
-    AdaptiveTokenBucketRateLimiter,
+    TokenBucketRateLimiter,
 )
 from azure.core.credentials_async import AsyncTokenCredential
 
@@ -28,8 +28,8 @@ class AzureRestClient(AbstractAzureClient):
         self.credential: AsyncTokenCredential = credential
         self.base_url: str = base_url
         self.kwargs: Any = kwargs
-        self.rate_limiter: AdaptiveTokenBucketRateLimiter = (
-            AdaptiveTokenBucketRateLimiter(capacity=250, refill_rate=25)
+        self.rate_limiter: TokenBucketRateLimiter = TokenBucketRateLimiter(
+            capacity=250, refill_rate=25
         )
 
     @property

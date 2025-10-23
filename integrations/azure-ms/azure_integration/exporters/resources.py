@@ -16,7 +16,7 @@ class ResourcesExporter(BaseExporter):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         resource_types = options.resource_types
         tag_filters = options.tag_filter
-        query = self._build_full_sync_query(resource_types, tag_filters)
+        query = self._build_graph_query(resource_types, tag_filters)
         logger.info(
             f"Exporting resources for {len(options.subscription_ids)} subscriptions"
         )
@@ -32,7 +32,7 @@ class ResourcesExporter(BaseExporter):
                 logger.info("No resources found in this batch")
                 continue
 
-    def _build_full_sync_query(
+    def _build_graph_query(
         self,
         resource_types: list[str] | None = None,
         tag_filters: Optional[ResourceGroupTagFilters] = None,
