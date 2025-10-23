@@ -1082,7 +1082,9 @@ class AzureDevopsClient(HTTPBaseClient):
 
                 batch_results = response.json()
                 return [
-                    file for sublist in batch_results.get("value", []) for file in sublist
+                    file
+                    for sublist in batch_results.get("value", [])
+                    for file in sublist
                 ]
 
             except ReadTimeout as e:
