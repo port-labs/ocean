@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "okta"
-version = "0.1.0-dev"
+version = "0.1.4-dev"
 description = "Integration to bring information from Okta into Port"
 authors = ["Iyanuoluwa Adebayo <ioluwadunsinadebayo@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {extras = ["cli"], version = "^0.28.12"}
+port_ocean = {version = "^0.28.16", extras = ["cli"]}
 httpx = "^0.28.1"
 
 [tool.poetry.group.dev.dependencies]

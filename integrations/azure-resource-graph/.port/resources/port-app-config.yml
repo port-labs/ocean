@@ -12,6 +12,9 @@ resources:
             tags: .tags
             type: .type
             location: .location
+          relations:
+            resource_group: >-
+              ("/subscriptions/" + .subscriptionId + "/resourceGroups/"  + .resourceGroup) | gsub(" ";"_")
   - kind: resourceContainer
     selector:
       query: .type == "microsoft.resources/subscriptions"

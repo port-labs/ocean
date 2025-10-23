@@ -58,3 +58,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Implemented the Azure multi subscription ocean integration (0.1.0)
+

@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.18 (2025-10-22)
+
+
+### Bug Fix
+
+- Increase timeout for itemsbatch
+
+## 0.4.17 (2025-10-22)
+
+
+### Improvements
+
+- Added live events support for branch kind
+
+
+## 0.4.16 (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 0.4.16 (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 0.4.15 (2025-10-20)
+
+
+### Features
+
+- Added support for branch kind
+
+
+## 0.4.14 (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
 ## 0.4.13 (2025-09-30)
 
 

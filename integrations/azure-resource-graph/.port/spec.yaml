@@ -1,4 +1,4 @@
-title: Azure Multi Subscription
+title: Azure Resource Graph
 description: Azure integration for Port Ocean based on ARG
 icon: Azure
 features:
@@ -8,19 +8,18 @@ features:
       - kind: resourceContainer
       - kind: resource
 configurations:
-  - name: azureBaseUrl
-    type: string
-    required: false
-    default: "https://management.azure.com"
   - name: azureClientId
     type: string
     required: true
     sensitive: true
+    description: "The client ID of your Azure service principal."
   - name: azureClientSecret
     type: string
     required: true
     sensitive: true
+    description: "The client secret of your Azure service principal."
   - name: azureTenantId
     type: string
     required: true
     sensitive: true
+    description: "The tenant ID of your Azure service principal."

@@ -39,3 +39,4 @@ class AzurePortAppConfig(PortAppConfig):
 class AzureResourceGraphIntegration(BaseIntegration):
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = AzurePortAppConfig
+

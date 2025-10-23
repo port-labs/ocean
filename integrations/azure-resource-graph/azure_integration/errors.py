@@ -35,3 +35,4 @@ class AzureRequestThrottled:
             raise SubscriptionLimitReacheached(
                 "Principal has reached a maximum subsciption limit of 10000"
             )
+
