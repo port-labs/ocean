@@ -325,6 +325,17 @@
       "python": "${workspaceFolder}/integrations/generic-http/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/jfrog",
+      "envFile": "${workspaceFolder}/integrations/jfrog/.env",
+      "justMyCode": true,
+      "name": "Run jfrog integration",
+      "program": "${workspaceFolder}/integrations/jfrog/debug.py",
+      "python": "${workspaceFolder}/integrations/jfrog/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }

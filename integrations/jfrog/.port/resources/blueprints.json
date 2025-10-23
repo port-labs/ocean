@@ -1,0 +1,90 @@
+[
+    {
+      "identifier": "jfrogRepository",
+      "title": "JFrog Repository",
+      "icon": "JfrogXray",
+      "schema": {
+        "properties": {
+          "key": {"type": "string", "title": "Key"},
+          "description": {"type": "string", "title": "Description"},
+          "type": {
+            "type": "string",
+            "title": "Repository Type",
+            "enum": ["LOCAL", "REMOTE", "VIRTUAL", "FEDERATED", "DISTRIBUTION"]
+          },
+          "url": {"type": "string", "format": "url", "title": "URL"},
+          "packageType": {"type": "string", "title": "Package Type"}
+        }
+      },
+      "relations": {}
+    },
+    {
+      "identifier": "jfrogBuild",
+      "title": "JFrog Build",
+      "icon": "JfrogXray",
+      "schema": {
+        "properties": {
+          "name": {"type": "string", "title": "Build Name"},
+          "uri": {"type": "string", "title": "Build URI"},
+          "lastStarted": {"type": "string", "format": "date-time", "title": "Last Started"}
+        }
+      },
+      "relations": {}
+    },
+    {
+      "identifier": "jfrogProject",
+      "title": "JFrog Project",
+      "icon": "JfrogXray",
+      "schema": {
+        "properties": {
+          "key": {"type": "string", "title": "Key"},
+          "name": {"type": "string", "title": "Name"},
+          "description": {"type": "string", "title": "Description"},
+          "adminPrivileges": {"type": "object", "title": "Admin Privileges"},
+          "roles": {"type": "array", "title": "Roles"}
+        }
+      },
+      "relations": {}
+    },
+    {
+      "identifier": "containerImage",
+      "title": "Container Image",
+      "icon": "Docker",
+      "schema": {
+        "properties": {
+          "name": {"type": "string", "title": "Image Name"},
+          "tag": {"type": "string", "title": "Tag"},
+          "fullName": {"type": "string", "title": "Full Name"},
+          "sha256": {"type": "string", "title": "SHA256"}
+        }
+      },
+      "relations": {
+        "repository": {
+          "target": "jfrogRepository",
+          "required": false,
+          "many": false
+        }
+      }
+    },
+    {
+      "identifier": "containerVulnerability",
+      "title": "Container Vulnerability",
+      "icon": "Vulnerability",
+      "schema": {
+        "properties": {
+          "cve": {"type": "string", "title": "CVE"},
+          "severity": {"type": "string", "title": "Severity"},
+          "component": {"type": "string", "title": "Component"},
+          "cvssScore": {"type": "number", "title": "CVSS Score"},
+          "description": {"type": "string", "title": "Description"}
+        }
+      },
+      "relations": {
+        "containerImage": {
+          "target": "containerImage",
+          "required": false,
+          "many": false
+        }
+      }
+    }
+  ]
