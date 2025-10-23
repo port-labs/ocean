@@ -28,16 +28,10 @@ async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     build_selector = cast(JenkinsBuildResourceConfig, event.resource_config)
     max_builds_per_job = build_selector.selector.max_builds_per_job
-    days_since = build_selector.selector.days_since
-    job_filter = build_selector.selector.job_filter
 
-    logger.debug(
-        f"Syncing builds for job {job_filter} with limit {max_builds_per_job} and days limit {days_since}"
-    )
+    logger.debug(f"Syncing builds with limit {max_builds_per_job}")
 
-    async for builds in jenkins_client.get_builds(
-        max_builds_per_job, days_since, job_filter
-    ):
+    async for builds in jenkins_client.get_builds(max_builds_per_job):
         logger.info(f"Received batch with {len(builds)} builds")
         yield builds
 

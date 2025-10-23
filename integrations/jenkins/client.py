@@ -2,7 +2,6 @@ from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urljoin
 import httpx
-import time
 
 from loguru import logger
 
@@ -87,7 +86,8 @@ class JenkinsClient:
             yield jobs
 
     async def get_builds(
-        self, max_builds_per_job: int, days_since: int, job_filter: list[str]
+        self,
+        max_builds_per_job: int,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(ResourceKey.BUILDS):
             logger.info("picking jenkins builds from cache")
@@ -97,25 +97,11 @@ class JenkinsClient:
         async for _jobs in self._get_paginated_resources(
             ResourceKey.BUILDS,
             max_builds_per_job=max_builds_per_job,
-            job_filter=job_filter,
         ):
-            end_timestamp = int(time.time() * 1000)
-            start_timestamp = int((time.time() - days_since * 24 * 3600) * 1000)
-            builds = []
-            for job in _jobs:
-                for build in job.get("builds", []):
-                    if start_timestamp <= build["timestamp"] <= end_timestamp:
-                        builds.append(build)
-
-                    logger.debug(f"Builds received {builds}")
-                    if len(builds) >= MAX_BUILDS:
-                        yield builds
-                        builds = []
-
+            builds = [build for job in _jobs for build in job.get("builds", [])]
+            logger.debug(f"Builds received {builds}")
             event.attributes.setdefault(ResourceKey.BUILDS, []).extend(builds)
-            if builds:
-                logger.debug(f"Builds received {builds}")
-                yield builds
+            yield builds
 
     async def _get_build_stages(self, build_url: str) -> list[dict[str, Any]]:
         response = await self._send_api_request("GET", f"{build_url}/wfapi/describe")
@@ -153,7 +139,6 @@ class JenkinsClient:
         resource: str,
         parent_job: Optional[dict[str, Any]] = None,
         max_builds_per_job: int = PAGE_SIZE,
-        job_filter: list[str] = [],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         page_size = max_builds_per_job
         page = 0
@@ -172,14 +157,7 @@ class JenkinsClient:
                 f"Fetched job data from {base_url}/api/json with params {params}"
             )
 
-            if job_filter:
-                jobs = [
-                    job
-                    for job in job_response.get("jobs", [])
-                    if job.get("name") in job_filter
-                ]
-            else:
-                jobs = job_response.get("jobs", [])
+            jobs = job_response["jobs"]
             logger.info(f"Fetched {len(jobs)} jobs")
 
             if not jobs:
