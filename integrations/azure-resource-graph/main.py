@@ -6,66 +6,49 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from azure_integration.exporters.resource_containers import ResourceContainersExporter
-from azure_integration.exporters.resources import ResourcesExporter
+from azure_integration.exporters.resource_graph import ResourceGraphExporter
 from azure_integration.exporters.subscription import SubscriptionExporter
 from azure_integration.factory import create_azure_client
-from azure_integration.models import (
-    ResourceContainerExporterOptions,
-    ResourceExporterOptions,
+from azure_integration.options import (
+    ResourceGraphExporterOptions,
 )
-from integration import AzureResourceConfig, AzureResourceContainerConfig
+from integration import (
+    AzureResourceGraphConfig,
+)
 
 
 class Kind(StrEnum):
-    RESOURCE_CONTAINER = "resourceContainer"
-    RESOURCE = "resource"
+    GRAPH_RESOURCE = "graphResource"
+    SUBSCRIPTION = "subscription"
 
 
-@ocean.on_resync(Kind.RESOURCE_CONTAINER)
-async def on_resync_resource_container(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+@ocean.on_resync(Kind.SUBSCRIPTION)
+async def on_resync_subscription(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting Azure to Port {kind} sync")
-    selectors = cast(AzureResourceContainerConfig, event.resource_config).selector
     azure_client = create_azure_client()
-
     subscription_exporter = SubscriptionExporter(azure_client)
-    resource_containers_exporter = ResourceContainersExporter(azure_client)
+    async for subscriptions in subscription_exporter.get_paginated_resources():
+        yield subscriptions
+
+
+@ocean.on_resync(Kind.GRAPH_RESOURCE)
+async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    logger.info(f"Starting Azure to Port {kind} sync")
+    selectors = cast(AzureResourceGraphConfig, event.resource_config).selector
+    azure_client = create_azure_client()
+    resource_graph_exporter = ResourceGraphExporter(azure_client)
+    subscription_exporter = SubscriptionExporter(azure_client)
     async for subscriptions in subscription_exporter.get_paginated_resources():
         subscription_ids = [
             subscription["subscriptionId"] for subscription in subscriptions
         ]
-        exporter_options = ResourceContainerExporterOptions(
-            tag_filter=selectors.tags, subscription_ids=subscription_ids
+        exporter_options = ResourceGraphExporterOptions(
+            query=selectors.graph_query, subscriptions=subscription_ids
         )
-
-        async for resources in resource_containers_exporter.get_paginated_resources(
+        async for results in resource_graph_exporter.get_paginated_resources(
             exporter_options
         ):
-            yield resources
-
-
-@ocean.on_resync(Kind.RESOURCE)
-async def on_resync_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Starting Azure to Port {kind} sync")
-    selectors = cast(AzureResourceConfig, event.resource_config).selector
-    azure_client = create_azure_client()
-
-    subscription_exporter = SubscriptionExporter(azure_client)
-    resources_exporter = ResourcesExporter(azure_client)
-    async for subscriptions in subscription_exporter.get_paginated_resources():
-
-        subscription_ids = [
-            subscription["subscriptionId"] for subscription in subscriptions
-        ]
-        exporter_options = ResourceExporterOptions(
-            resource_types=selectors.resource_types,
-            tag_filter=selectors.tags,
-            subscription_ids=subscription_ids,
-        )
-        async for resources in resources_exporter.get_paginated_resources(
-            exporter_options
-        ):
-            yield resources
+            yield results
 
 
 @ocean.on_start()

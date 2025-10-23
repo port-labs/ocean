@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 
 import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -13,50 +13,37 @@ def mock_ocean_context() -> None:
             "azure_client_id": "123",
             "azure_client_secret": "secret",
             "azure_tenant_id": "123",
+            "azure_base_url": "https://management.azure.com",
         }
         mock_ocean_app.config.resources = [
             {
-                "kind": "resourceContainer",
+                "kind": "graphResource",
                 "selector": {
-                    "types": ["Microsoft.Resources/subscriptions/resourceGroups"],
-                    "tags": {},
-                },
-                "port": {
-                    "entity": {
-                        "mappings": {
-                            "identifier": ".name",
-                            "title": ".name",
-                            "blueprint": "'resourceGroup'",
-                            "properties": {"tags": ".tags"},
-                        }
-                    }
-                },
-            },
-            {
-                "kind": "resource",
-                "selector": {
-                    "types": ["Microsoft.Compute/virtualMachines"],
-                    "tags": {},
+                    "graphQuery": "Resources | limit 1",
                 },
                 "port": {
                     "entity": {
                         "mappings": {
                             "identifier": ".id",
                             "title": ".name",
-                            "blueprint": "'virtualMachine'",
-                            "properties": {"tags": ".tags"},
+                            "blueprint": "'resource'",
                         }
                     }
                 },
-            },
+            }
         ]
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
+        # Provide an awaitable cache provider for cache_iterator_result decorator
+        mock_cache = MagicMock()
+        mock_cache.get = AsyncMock(return_value=None)
+        mock_cache.set = AsyncMock(return_value=None)
+        mock_ocean_app.cache_provider = mock_cache
 
-        # We also need to mock the integration class on the app, so that the correct AppConfigHandlerClass is used
-        from integration import AzureIntegration
+        # Use the integration class defined by this integration package
+        from integration import AzureResourceGraphIntegration
 
-        mock_ocean_app.integration = AzureIntegration(mock_ocean_app)
+        mock_ocean_app.integration = AzureResourceGraphIntegration(mock_ocean_app)
 
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:

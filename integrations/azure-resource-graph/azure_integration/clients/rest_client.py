@@ -4,13 +4,14 @@ import httpx
 from loguru import logger
 
 from azure_integration.helpers.rate_limiter import (
-    TokenBucketRateLimiter,
+    AdaptiveTokenBucketRateLimiter,
 )
 from azure.core.credentials_async import AsyncTokenCredential
 
 from azure_integration.clients.base import AbstractAzureClient, AzureRequest
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
+from memory_profiler import profile
 
 
 class AzureRestClient(AbstractAzureClient):
@@ -28,8 +29,8 @@ class AzureRestClient(AbstractAzureClient):
         self.credential: AsyncTokenCredential = credential
         self.base_url: str = base_url
         self.kwargs: Any = kwargs
-        self.rate_limiter: TokenBucketRateLimiter = TokenBucketRateLimiter(
-            capacity=250, refill_rate=25
+        self.rate_limiter: AdaptiveTokenBucketRateLimiter = (
+            AdaptiveTokenBucketRateLimiter(capacity=250, refill_rate=25)
         )
 
     @property
@@ -54,6 +55,7 @@ class AzureRestClient(AbstractAzureClient):
             "Content-Type": "application/json",
         }
 
+    @profile
     async def make_request(
         self,
         request: AzureRequest,
@@ -74,7 +76,6 @@ class AzureRestClient(AbstractAzureClient):
                     headers=headers,
                 )
                 response.raise_for_status()
-                print(f"Headers: {response.headers}")
                 logger.info(f"Successfully fetched {request.method} {url}")
                 self.rate_limiter.adjust_from_headers(dict(response.headers))
                 return response.json()
@@ -110,16 +111,18 @@ class AzureRestClient(AbstractAzureClient):
         self,
         request: AzureRequest,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Send a paginated Azure API request and yield items in batches of 100."""
+        """Stream paginated Azure API responses efficiently in fixed-size batches."""
         next_url = request.endpoint
-        buffer: List[Dict[str, Any]] = []
+        batch: List[Dict[str, Any]] = []
+        page_size = request.page_size
 
         while next_url:
             params = {
                 **(request.params or {}),
                 "api-version": request.api_version,
-                "page_size": request.page_size,
+                "page_size": page_size,
             }
+
             response = await self.make_request(
                 AzureRequest(
                     endpoint=next_url,
@@ -134,12 +137,11 @@ class AzureRestClient(AbstractAzureClient):
 
             next_url = response.get("nextLink")
 
-            if values := response[request.data_key]:
-                buffer.extend(values)
+            for item in response[request.data_key]:
+                batch.append(item)
+                if len(batch) == page_size:
+                    yield batch
+                    batch = []
 
-                while len(buffer) >= request.page_size:
-                    yield buffer[: request.page_size]
-                    buffer = buffer[request.page_size :]
-
-        if buffer:
-            yield buffer
+        if batch:
+            yield batch

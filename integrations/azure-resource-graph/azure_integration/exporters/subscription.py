@@ -1,7 +1,7 @@
 from typing import AsyncGenerator, Dict, Any, Optional
 from port_ocean.utils.cache import cache_iterator_result
 from azure_integration.exporters.base import BaseExporter
-from azure_integration.models import SubscriptionExporterOptions
+from azure_integration.options import SubscriptionExporterOptions
 from azure_integration.clients.base import AzureRequest
 
 

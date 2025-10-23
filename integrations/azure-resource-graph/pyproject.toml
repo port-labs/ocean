@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "azure-ms"
-version = "0.1.0-dev"
+name = "azure-rg"
+version = "0.2.0-beta"
 description = "Azure multi-subscription integration for Port based on Azure Resource Graph"
-authors = ["Niv Meshorer <nivm@getport.io>", "Melody Anyaegbulam <melody.anyaegbulam@port.io>"]
+authors = ["Michael Armah <mikeyarmah@gmail.com>", "Niv Meshorer <nivm@getport.io>", "Melody Anyaegbulam <melody.anyaegbulam@port.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
