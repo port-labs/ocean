@@ -1,0 +1,55 @@
+title: JFrog
+description: JFrog Artifactory and XRay integration for Port Ocean
+icon: JfrogXray
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/artifact-registries/jfrog
+recommendedInstallationMethod: Saas
+features:
+  - type: exporter
+    section: Artifact Registries
+    resources:
+      - kind: repository
+      - kind: build
+      - kind: project
+      - kind: artifact
+      - kind: dockerImage
+      - kind: vulnerability
+
+configurations:
+  - name: jfrogHostUrl
+    required: true
+    type: string
+    description: The base URL of your JFrog instance (e.g., https://your-instance.jfrog.io)
+
+  - name: accessToken
+    required: true
+    type: string
+    sensitive: true
+    description: JFrog access token for authentication. See <a href="https://jfrog.com/help/r/jfrog-platform-administration-documentation/access-tokens" target="_blank">JFrog docs</a>
+
+  - name: includeVulnerabilities
+    required: false
+    type: boolean
+    default: true
+    description: Whether to fetch vulnerability data from XRay
+
+  - name: repositoryTypes
+    required: false
+    type: array
+    description: Filter repositories by type (LOCAL, REMOTE, VIRTUAL, FEDERATED)
+
+  - name: rateLimitPerSecond
+    required: false
+    type: integer
+    default: 10
+    description: Maximum API requests per second (adjust based on your JFrog plan)
+
+  - name: includeXray
+    required: false
+    type: boolean
+    default: true
+    description: Whether to fetch XRay data
+
+saas:
+  enabled: true
+  liveEvents:
+    enabled: false

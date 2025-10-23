@@ -1,0 +1,80 @@
+resources:
+  - kind: repository
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .key
+          blueprint: '"jfrogRepository"'
+          properties:
+            key: .key
+            description: .description
+            type: .type | ascii_upcase
+            url: .url
+            packageType: .packageType
+
+  - kind: build
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .uri | split("/") | last
+          title: .uri | split("/") | last
+          blueprint: '"jfrogBuild"'
+          properties:
+            name: .uri | split("/") | last
+            uri: .uri
+            lastStarted: .lastStarted
+
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .project_key
+          title: .display_name
+          blueprint: '"jfrogProject"'
+          properties:
+            key: .project_key
+            name: .display_name
+            description: .description
+            adminPrivileges: .admin_privileges
+            roles: .roles
+
+  - kind: dockerImage
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .fullName
+          title: .fullName
+          blueprint: '"containerImage"'
+          properties:
+            name: .name
+            tag: .tag
+            fullName: .fullName
+          relations:
+            repository: .repository
+
+  - kind: vulnerability
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .__image + "-" + .cve
+          title: .cve + " in " + .__image
+          blueprint: '"containerVulnerability"'
+          properties:
+            cve: .cve
+            severity: .severity
+            component: .component
+            cvssScore: .cvssScore
+            description: .description
+          relations:
+            containerImage: .__image
