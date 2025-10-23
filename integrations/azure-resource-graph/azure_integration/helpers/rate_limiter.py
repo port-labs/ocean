@@ -190,4 +190,3 @@ class AdaptiveTokenBucketRateLimiter:
                 logger.info(
                     f"Recovering refill rate → {self._adaptive_refill_rate:.2f}/s (quota healthy)"
                 )
-

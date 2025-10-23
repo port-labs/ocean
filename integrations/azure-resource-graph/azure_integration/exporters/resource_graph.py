@@ -1,4 +1,3 @@
-from typing import Optional
 
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE

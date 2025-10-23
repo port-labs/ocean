@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -39,4 +39,3 @@ class AzurePortAppConfig(PortAppConfig):
 class AzureResourceGraphIntegration(BaseIntegration):
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = AzurePortAppConfig
-

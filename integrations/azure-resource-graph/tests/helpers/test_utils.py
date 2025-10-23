@@ -1,4 +1,3 @@
-import pytest
 
 from azure_integration.helpers.utils import format_query
 
