@@ -113,7 +113,12 @@ class TestTeamMemberWebhookProcessor:
         team_data = {"name": "test-team-name", "slug": "test-team-slug"}
         member_data = {"login": "test-member"}
 
-        payload = {"action": action, "team": team_data, "member": member_data}
+        payload = {
+            "action": action,
+            "team": team_data,
+            "member": member_data,
+            "organization": {"login": "test-org"},
+        }
 
         resource_config = GithubTeamConfig(
             kind=ObjectKind.TEAM,
@@ -173,7 +178,7 @@ class TestTeamMemberWebhookProcessor:
                     mock_graphql_client
                 )
                 mock_exporter_instance.get_resource.assert_called_once_with(
-                    SingleTeamOptions(slug=team_data["slug"])
+                    SingleTeamOptions(organization="test-org", slug=team_data["slug"])
                 )
         else:
             # No API call expected for team upsert (e.g., member added but selector.members is False)
@@ -263,7 +268,12 @@ class TestTeamMemberWebhookProcessor:
 
         team_data = {"name": "test-team-name", "deleted": True}
         member_data = {"login": "test-member"}
-        payload = {"action": action, "team": team_data, "member": member_data}
+        payload = {
+            "action": action,
+            "team": team_data,
+            "member": member_data,
+            "organization": {"login": "test-org"},
+        }
 
         resource_config = GithubTeamConfig(
             kind=ObjectKind.TEAM,

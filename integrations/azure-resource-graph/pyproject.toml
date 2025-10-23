@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "azure-rg"
-version = "0.1.1-beta"
+version = "0.1.3-beta"
 description = "Azure multi-subscription integration for Port based on Azure Resource Graph"
 authors = ["Niv Meshorer <nivm@getport.io>", "Melody Anyaegbulam <melody.anyaegbulam@port.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.28.14", extras = ["cli"]}
+port_ocean = {version = "^0.28.16", extras = ["cli"]}
 azure-identity = "^1.21.0"
 azure-mgmt-subscription = "^3.1.1"
 azure-mgmt-resource = "^23.3.0"

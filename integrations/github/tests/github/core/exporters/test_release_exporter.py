@@ -44,14 +44,16 @@ class TestRestReleaseExporter:
         ) as mock_request:
             mock_request.return_value = mock_response.json()
             release = await exporter.get_resource(
-                SingleReleaseOptions(repo_name="repo1", release_id=1)
+                SingleReleaseOptions(
+                    organization="test-org", repo_name="repo1", release_id=1
+                )
             )
 
             assert release["name"] == "Release 1.0"
             assert release["__repository"] == "repo1"  # Check repository is enriched
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/releases/1"
+                f"{rest_client.base_url}/repos/test-org/repo1/releases/1"
             )
 
     async def test_get_paginated_resources(
@@ -67,7 +69,7 @@ class TestRestReleaseExporter:
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
         ) as mock_request:
             async with event_context("test_event"):
-                options = ListReleaseOptions(repo_name="repo1")
+                options = ListReleaseOptions(organization="test-org", repo_name="repo1")
                 exporter = RestReleaseExporter(rest_client)
 
                 releases: list[list[dict[str, Any]]] = [
@@ -82,6 +84,6 @@ class TestRestReleaseExporter:
                     assert "__repository" in release
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/releases",
+                    f"{rest_client.base_url}/repos/test-org/repo1/releases",
                     {},
                 )
