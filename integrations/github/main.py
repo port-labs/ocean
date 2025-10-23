@@ -747,7 +747,10 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     files_pattern = config.selector.files
 
     repo_path_map = await group_file_patterns_by_repositories_in_selector(
-        files_pattern, repo_exporter, app_config.repository_type
+        files_pattern,
+        repo_exporter,
+        app_config.repository_type,
+        app_config.exclude_archived,
     )
 
     async for file_results in file_exporter.get_paginated_resources(repo_path_map):

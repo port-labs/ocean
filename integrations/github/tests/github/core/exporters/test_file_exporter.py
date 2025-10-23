@@ -555,10 +555,11 @@ class TestFileExporterUtils:
         repo_exporter.get_paginated_resources = mock_paginated_resources
 
         repo_type = "private"
+        exclude_archived = False
 
         # Act
         result = await group_file_patterns_by_repositories_in_selector(
-            files, repo_exporter, repo_type
+            files, repo_exporter, repo_type, exclude_archived
         )
 
         # Assert
@@ -600,7 +601,7 @@ class TestFileExporterUtils:
 
         # Act
         result = await group_file_patterns_by_repositories_in_selector(
-            files, repo_exporter, repo_type
+            files, repo_exporter, repo_type, False
         )
 
         # Assert

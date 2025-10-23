@@ -78,7 +78,8 @@ class TestRestRepositoryExporter:
         ) as mock_request:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
-                    organization="test-org", type=mock_port_app_config.repository_type
+                    organization="test-org",
+                    type=mock_port_app_config.repository_type,
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
