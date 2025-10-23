@@ -11,7 +11,7 @@ from port_ocean.utils.cache import cache_iterator_result
 from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.webhooks.events import RepositoryEvents, PullRequestEvents, PushEvents
 
-from azure_devops.client.base_client import HTTPBaseClient
+from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 from azure_devops.client.base_client import PAGE_SIZE
 
@@ -1083,11 +1083,25 @@ class AzureDevopsClient(HTTPBaseClient):
                 file for sublist in batch_results.get("value", []) for file in sublist
             ]
 
-        except ReadTimeout:
-            logger.error(
-                f"Request timeout while fetching items for {repository['name']}"
-            )
-            return []
+        except ReadTimeout as e:
+            timeout_retries += 1
+            if timeout_retries <= MAX_TIMEMOUT_RETRIES:
+                logger.warning(
+                    f"Request timeout while fetching items for repository {repository['name']} "
+                    f"(attempt {timeout_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
+                )
+                await asyncio.sleep(2 ** (timeout_retries - 1))
+            else:
+                logger.error(
+                    f"Request timeout while fetching items for repository {repository['name']} "
+                    f"after {MAX_TIMEMOUT_RETRIES + 1} attempts. Skipping repository update to prevent "
+                    f"false deletions. This should be reported as a bug for further investigation."
+                )
+                raise TimeoutError(
+                    f"Persistent timeout fetching files for repository {repository['name']}. "
+                    f"Skipping update to prevent false entity deletions."
+                )
+
         except HTTPStatusError as e:
             logger.error(e.response.status_code)
             logger.error(e.response.text)
