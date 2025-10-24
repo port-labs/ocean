@@ -25,7 +25,7 @@ class KindWithSpecialHandling(StrEnum):
 
 @ocean.on_resync(KindWithSpecialHandling.SUBSCRIPTION)
 async def on_resync_subscription(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Starting Azure to Port {kind} sync")
+    logger.info(f"Starting resync of {kind}")
     selectors = cast(AzureSubscriptionResourceConfig, event.resource_config).selector
     exporter_options = SubscriptionExporterOptions(
         api_version=selectors.api_params.version
@@ -44,7 +44,7 @@ async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in KindWithSpecialHandling:
         return
 
-    logger.info(f"Starting Azure to Port {kind} sync")
+    logger.info(f"Starting resync of {kind} from resource graph")
     selectors = cast(AzureResourceGraphConfig, event.resource_config).selector
     azure_client = create_azure_client()
     resource_graph_exporter = ResourceGraphExporter(azure_client)
@@ -57,6 +57,9 @@ async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         subscription_ids = [
             subscription["subscriptionId"] for subscription in subscriptions
         ]
+        logger.info(
+            f"Fetching {kind}`s for {len(subscription_ids)} subscriptions from resource graph"
+        )
         exporter_options = ResourceGraphExporterOptions(
             api_version=selectors.api_params.version,
             query=selectors.graph_query,

@@ -8,13 +8,13 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id | gsub(" ";"_")
-          title: .name
+          identifier: .subscriptionId
+          title: .displayName
           blueprint: '"azureSubscription"'
           properties:
             tags: .tags
-            type: .type
-            location: .location
+            state: .state
+            subscriptionPolicy: .subscriptionPolicy
   - kind: resourceContainer
     selector:
       query: 'true'

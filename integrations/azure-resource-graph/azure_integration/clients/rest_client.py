@@ -134,6 +134,9 @@ class AzureRestClient(AbstractAzureClient):
 
             next_url = response.get("nextLink")
 
+            logger.info(
+                f"Retrieved batch of {len(response[request.data_key])} items from {next_url} before buffering"
+            )
             for item in response[request.data_key]:
                 batch.append(item)
                 if len(batch) == page_size:

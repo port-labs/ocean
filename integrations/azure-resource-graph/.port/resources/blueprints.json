@@ -8,9 +8,16 @@
         "tags": {
           "title": "Tags",
           "type": "object"
+        },
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
+        "subscriptionPolicy": {
+          "title": "Subscription Policy",
+          "type": "object"
         }
-      },
-      "required": []
+      }
     },
     "mirrorProperties": {},
     "calculationProperties": {},

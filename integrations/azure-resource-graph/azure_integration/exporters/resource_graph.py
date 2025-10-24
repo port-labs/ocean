@@ -27,5 +27,7 @@ class ResourceGraphExporter(BaseExporter):
 
         async for results in self.client.make_paginated_request(request):
             if results:
-                logger.info(f"Received batch of {len(results)} results")
+                logger.info(
+                    f"Received batch of {len(results)} results from resource graph"
+                )
                 yield results
