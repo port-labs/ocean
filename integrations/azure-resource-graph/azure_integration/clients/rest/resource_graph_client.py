@@ -57,8 +57,6 @@ class AzureResourceGraphClient(AzureRestClient):
 
             json["options"]["$skipToken"] = skipToken
 
-            logger.warning(f"Skipped token: {skipToken}")
-
             logger.info(
                 f"Retrieved batch of {len(response[request.data_key])} items from {next_url} before buffering"
             )
