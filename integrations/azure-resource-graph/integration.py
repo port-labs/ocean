@@ -7,21 +7,39 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic import Field
+from pydantic import Field, BaseModel
 
 
-class AzureAPIParams(Selector):
-    api_version: str = Field(
-        default="2024-04-01",
+class AzureAPIParams(BaseModel):
+    version: str = Field(
+        ...,
         description="The API version to use for the resource graph",
     )
 
 
-class AzureResourceGraphSelector(AzureAPIParams):
+class AzureSubscriptionParams(BaseModel):
+    api_params: AzureAPIParams = Field(
+        default=AzureAPIParams(version="2022-12-01"),
+        description="The API parameters to use for the subscription",
+        alias="apiParams",
+    )
+
+
+class AzureResourceGraphSelector(Selector):
     graph_query: str = Field(
         ...,
         alias="graphQuery",
         description="The Resource Graph query to use for the resource graph",
+    )
+    api_params: AzureAPIParams = Field(
+        default=AzureAPIParams(version="2024-04-01"),
+        description="The API parameters to use for the resource graph",
+        alias="apiParams",
+    )
+    subscription: AzureSubscriptionParams = Field(
+        default=AzureSubscriptionParams(),
+        description="The subscription to use for the resource graph",
+        alias="subscription",
     )
 
 
@@ -30,10 +48,18 @@ class AzureResourceGraphConfig(ResourceConfig):
     kind: Literal["resource", "resourceContainer"]
 
 
+class AzureSubscriptionSelector(Selector, AzureSubscriptionParams): ...
+
+
+class AzureSubscriptionResourceConfig(ResourceConfig):
+    selector: AzureSubscriptionSelector
+    kind: Literal["subscription"]
+
+
 class AzurePortAppConfig(PortAppConfig):
-    resources: list[AzureResourceGraphConfig | ResourceConfig] = Field(
-        default_factory=list
-    )
+    resources: list[
+        AzureResourceGraphConfig | AzureSubscriptionResourceConfig | ResourceConfig
+    ] = Field(default_factory=list)
 
 
 class AzureResourceGraphIntegration(BaseIntegration):

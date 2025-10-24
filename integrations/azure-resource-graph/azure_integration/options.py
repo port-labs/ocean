@@ -6,9 +6,13 @@ class SubscriptionIds(BaseModel):
     subscription_ids: List[str]
 
 
-class ResourceGraphExporterOptions(BaseModel):
+class AzureAPIOptions(BaseModel):
+    api_version: str
+
+
+class ResourceGraphExporterOptions(AzureAPIOptions):
     query: str
     subscriptions: List[str]
 
 
-class SubscriptionExporterOptions(BaseModel): ...
+class SubscriptionExporterOptions(AzureAPIOptions): ...

@@ -11,28 +11,39 @@ from azure_integration.exporters.subscription import SubscriptionExporter
 from azure_integration.factory import create_azure_client
 from azure_integration.options import (
     ResourceGraphExporterOptions,
+    SubscriptionExporterOptions,
 )
 from integration import (
     AzureResourceGraphConfig,
+    AzureSubscriptionResourceConfig,
 )
 
 
-class Kind(StrEnum):
-    GRAPH_RESOURCE = "graphResource"
+class KindWithSpecialHandling(StrEnum):
     SUBSCRIPTION = "subscription"
 
 
-@ocean.on_resync(Kind.SUBSCRIPTION)
+@ocean.on_resync(KindWithSpecialHandling.SUBSCRIPTION)
 async def on_resync_subscription(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting Azure to Port {kind} sync")
+    selectors = cast(AzureSubscriptionResourceConfig, event.resource_config).selector
+    exporter_options = SubscriptionExporterOptions(
+        api_version=selectors.api_params.version
+    )
     azure_client = create_azure_client()
     subscription_exporter = SubscriptionExporter(azure_client)
-    async for subscriptions in subscription_exporter.get_paginated_resources():
+    async for subscriptions in subscription_exporter.get_paginated_resources(
+        exporter_options
+    ):
         yield subscriptions
 
 
-@ocean.on_resync(Kind.GRAPH_RESOURCE)
+@ocean.on_resync()
 async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+
+    if kind not in KindWithSpecialHandling:
+        return
+
     logger.info(f"Starting Azure to Port {kind} sync")
     selectors = cast(AzureResourceGraphConfig, event.resource_config).selector
     azure_client = create_azure_client()
@@ -43,7 +54,9 @@ async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             subscription["subscriptionId"] for subscription in subscriptions
         ]
         exporter_options = ResourceGraphExporterOptions(
-            query=selectors.graph_query, subscriptions=subscription_ids
+            api_version=selectors.api_params.version,
+            query=selectors.graph_query,
+            subscriptions=subscription_ids,
         )
         async for results in resource_graph_exporter.get_paginated_resources(
             exporter_options

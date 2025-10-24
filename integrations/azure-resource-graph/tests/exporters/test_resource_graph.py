@@ -27,6 +27,7 @@ async def test_resource_graph_exporter_builds_request_and_streams() -> None:
     exporter = ResourceGraphExporter(client=client)
 
     opts = ResourceGraphExporterOptions(
+        api_version="2024-04-01",
         query="Resources | project id",
         subscriptions=["s1", "s2"],
     )
