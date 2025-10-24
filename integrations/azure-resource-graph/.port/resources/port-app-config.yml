@@ -14,7 +14,7 @@ resources:
           properties:
             tags: .tags
             state: .state
-            subscriptionPolicy: .subscriptionPolicy
+            subscriptionPolicies: .subscriptionPolicies
   - kind: resourceContainer
     selector:
       query: 'true'

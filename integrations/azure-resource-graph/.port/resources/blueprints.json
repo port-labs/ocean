@@ -13,8 +13,8 @@
           "title": "State",
           "type": "string"
         },
-        "subscriptionPolicy": {
-          "title": "Subscription Policy",
+        "subscriptionPolicies": {
+          "title": "Subscription Policies",
           "type": "object"
         }
       }
