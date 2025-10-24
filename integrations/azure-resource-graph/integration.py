@@ -27,7 +27,7 @@ class AzureResourceGraphSelector(AzureAPIParams):
 
 class AzureResourceGraphConfig(ResourceConfig):
     selector: AzureResourceGraphSelector
-    kind: Literal["azureResource", "azureResourceContainer"]
+    kind: Literal["resource", "resourceContainer"]
 
 
 class AzurePortAppConfig(PortAppConfig):

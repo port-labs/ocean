@@ -18,9 +18,9 @@
     "relations": {}
   },
   {
-    "identifier": "azureResourceContainer",
-    "description": "This blueprint represents an Azure Resource Container in our software catalog",
-    "title": "Azure Resource Container",
+    "identifier": "azureResourceGroup",
+    "description": "This blueprint represents an Azure Resource Group in our software catalog",
+    "title": "Azure Resource Group",
     "icon": "Azure",
     "schema": {
       "properties": {

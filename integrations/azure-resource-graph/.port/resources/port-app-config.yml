@@ -15,13 +15,13 @@ resources:
             tags: .tags
             type: .type
             location: .location
-  - kind: azureResourceContainer
+  - kind: resourceContainer
     selector:
       query: 'true'
       graphQuery: >-
         "
         resourcecontainers
-        | where type != 'microsoft.resources/subscriptions'
+        | where type =~ 'microsoft.resources/subscriptions/resourcegroups'
         | project id, type, name, location, tags, subscriptionId, resourceGroup
         | extend resourceGroup=tolower(resourceGroup)
         | extend type=tolower(type)
@@ -31,12 +31,14 @@ resources:
         mappings:
           identifier: .id | gsub(" ";"_")
           title: .name
-          blueprint: '"azureResourceContainer"'
+          blueprint: '"azureResourceGroup"'
           properties:
             tags: .tags
             type: .type
             location: .location
-  - kind: azureResource
+          relations:
+            subscription: ("/subscriptions/" + .subscriptionId) | gsub(" ";"_")
+  - kind: resource
     selector:
       query: 'true'
       graphQuery: >-
@@ -62,4 +64,5 @@ resources:
             tags: .tags
             location: .location
           relations:
-            subscription: ("/subscriptions/" + .subscriptionId) | gsub(" ";"_")
+            resource_group: >-
+              ("/subscriptions/" + .subscriptionId + "/resourceGroups/"  + .resourceGroup) | gsub(" ";"_")

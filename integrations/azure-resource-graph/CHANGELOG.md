@@ -12,14 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added new azureCloudResource Kind, enabling users to perform advanced queries and fully leverage all features of the Azure Resource Graph API.
 - Added an Adaptive Token Bucket Rate Limiter, which intelligently adjusts its refill rate and request limiting in real time based on feedback from Azure API responses. This improvement enhances performance and more gracefully handles Azure rate limiting.
 - Refactored API request handling to use Port's httpx client instead of the Azure SDK. This reduces resource usage and eliminates the overhead of managing multiple client contexts concurrently.
 - Azure typically returns around 1,000 entities per Resource Graph request. This release implementes a buffering mechanism to yield results in batches of 100, reducing the processing load on Ocean Core.
 
 ## Breaking Changes
 
-- The resourceContainer and resource Kinds have been removed. Their functionality is now available through the new azureCloudResource Kind.
+- The `resource` and `resourceContainer` Kinds have been revamped, enabling users to perform advanced queries through `graphQuery` selector thereby fully leveraging all features of the Azure Resource Graph API.
 
 ## Bug Fixes
 
