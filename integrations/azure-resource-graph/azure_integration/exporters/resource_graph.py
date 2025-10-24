@@ -23,8 +23,6 @@ class ResourceGraphExporter(BaseExporter):
             endpoint="providers/Microsoft.ResourceGraph/resources",
             json_data={"query": query, "subscriptions": options.subscriptions},
             method="POST",
-            api_version="2024-04-01",
-            data_key="data",
         )
 
         async for results in self.client.make_paginated_request(request):

@@ -11,9 +11,9 @@ class AzureRequest(BaseModel, extra="allow"):
     endpoint: Optional[str] = None
     json_data: Optional[Dict[str, Any]] = None
     ignored_errors: Optional[List[Dict[str, Any]]] = None
-    api_version: str = "2022-12-01"
+    api_version: str = "2024-04-01"
     page_size: int = 100
-    data_key: str = "value"
+    data_key: str = "data"
 
 
 class AbstractAzureClient(ABC):

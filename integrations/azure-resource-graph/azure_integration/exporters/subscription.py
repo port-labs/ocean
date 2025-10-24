@@ -13,6 +13,7 @@ class SubscriptionExporter(BaseExporter):
     ) -> AsyncGenerator[list[Dict[str, Any]], None]:
         request = AzureRequest(
             endpoint="subscriptions",
+            data_key="value",
         )
         async for subscriptions in self.client.make_paginated_request(request):
             yield subscriptions
