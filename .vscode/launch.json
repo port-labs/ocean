@@ -1,6 +1,7 @@
 {
   "version": "0.2.0",
   "configurations": [
+
     {
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/jira",
@@ -202,6 +203,17 @@
       "name": "Run github-copilot integration",
       "program": "${workspaceFolder}/integrations/github-copilot/debug.py",
       "python": "${workspaceFolder}/integrations/github-copilot/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/azure-resource-graph",
+      "envFile": "${workspaceFolder}/integrations/azure-resource-graph/.env",
+      "justMyCode": true,
+      "name": "Run Azure Resource Graph integration",
+      "program": "${workspaceFolder}/integrations/azure-resource-graph/debug.py",
+      "python": "${workspaceFolder}/integrations/azure-resource-graph/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },
