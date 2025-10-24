@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "azure-rg"
-version = "0.2.0-beta.rc1"
+version = "0.2.0-rc1"
 description = "Azure multi-subscription integration for Port based on Azure Resource Graph"
 authors = ["Michael Armah <mikeyarmah@gmail.com>", "Melody Anyaegbulam <melody.anyaegbulam@port.io>", "Niv Meshorer <nivm@getport.io>"]
 
