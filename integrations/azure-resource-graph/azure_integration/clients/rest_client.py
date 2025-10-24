@@ -27,7 +27,6 @@ class AzureRestClient(AbstractAzureClient):
     ) -> None:
         self.credential: AsyncTokenCredential = credential
         self.base_url: str = base_url
-        self.kwargs: Any = kwargs
         self.rate_limiter: AdaptiveTokenBucketRateLimiter = (
             AdaptiveTokenBucketRateLimiter(capacity=250, refill_rate=25)
         )
