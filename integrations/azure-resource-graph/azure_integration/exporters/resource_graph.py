@@ -21,7 +21,7 @@ class ResourceGraphExporter(BaseExporter):
 
         request = AzureRequest(
             endpoint="providers/Microsoft.ResourceGraph/resources",
-            json_data={"query": query, "subscriptions": options.subscriptions},
+            json_body={"query": query, "subscriptions": options.subscriptions},
             method="POST",
         )
 

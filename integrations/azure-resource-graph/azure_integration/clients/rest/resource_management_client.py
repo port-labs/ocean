@@ -42,7 +42,7 @@ class AzureResourceManagerClient(AzureRestClient):
                     endpoint=next_url,
                     method=request.method,
                     params=params,
-                    json=request.json_body,
+                    json_body=request.json_body,
                     ignored_errors=request.ignored_errors,
                 )
             )

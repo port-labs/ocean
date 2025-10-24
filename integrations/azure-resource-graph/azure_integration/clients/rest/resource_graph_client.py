@@ -49,7 +49,7 @@ class AzureResourceGraphClient(AzureRestClient):
                     endpoint=next_url,
                     method=request.method,
                     params=params,
-                    json=json,
+                    json_body=json,
                     ignored_errors=request.ignored_errors,
                 )
             )

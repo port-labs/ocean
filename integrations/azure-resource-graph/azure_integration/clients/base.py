@@ -3,18 +3,20 @@ from azure.core.credentials_async import AsyncTokenCredential
 from pydantic import BaseModel
 from typing import List, Optional
 from abc import ABC, abstractmethod
-from pydantic import Field
+from pydantic import Field, ConfigDict, Extra
 
 
-class AzureRequest(BaseModel, extra="allow"):
+class AzureRequest(BaseModel):
     method: str = "GET"
     params: Dict[str, Any] = Field(default_factory=dict, alias="params")
     endpoint: Optional[str] = None
-    json_body: Dict[str, Any] = Field(default_factory=dict, alias="json")
+    json_body: Dict[str, Any] = Field(default_factory=dict, alias="json_body")
     ignored_errors: Optional[List[Dict[str, Any]]] = None
     api_version: str = "2024-04-01"
     page_size: int = 100
     data_key: str = "data"
+
+    config: ConfigDict = ConfigDict(extra=Extra.forbid)
 
 
 class AbstractAzureClient(ABC):
