@@ -21,10 +21,10 @@ resources:
       graphQuery: >-
         "
         resourcecontainers
-
+        | where type != 'microsoft.resources/subscriptions'
         | project id, type, name, location, tags, subscriptionId, resourceGroup
-        | extend resourceGroup=tolower(resourceGroup) | extend
-        type=tolower(type)
+        | extend resourceGroup=tolower(resourceGroup)
+        | extend type=tolower(type)
         "
     port:
       entity:
