@@ -71,7 +71,7 @@ class AzureRestClient(AbstractAzureClient):
                 )
                 response.raise_for_status()
                 logger.info(f"Successfully fetched {request.method} {url}")
-                logger.error(f"Response headers for {url}: {response.headers}")
+                logger.debug(f"Response headers for {url}: {response.headers}")
                 self.rate_limiter.adjust_from_headers(dict(response.headers))
                 return response.json()
 
