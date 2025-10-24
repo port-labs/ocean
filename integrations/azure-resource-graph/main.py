@@ -49,7 +49,11 @@ async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_client = create_azure_client()
     resource_graph_exporter = ResourceGraphExporter(azure_client)
     subscription_exporter = SubscriptionExporter(azure_client)
-    async for subscriptions in subscription_exporter.get_paginated_resources():
+    async for subscriptions in subscription_exporter.get_paginated_resources(
+        SubscriptionExporterOptions(
+            api_version=selectors.subscription.api_params.version
+        )
+    ):
         subscription_ids = [
             subscription["subscriptionId"] for subscription in subscriptions
         ]
