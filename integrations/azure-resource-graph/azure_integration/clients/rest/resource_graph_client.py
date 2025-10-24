@@ -54,8 +54,6 @@ class AzureResourceGraphClient(AzureRestClient):
                 )
             )
             skipToken = response.get("$skipToken")
-            if not skipToken:
-                break
 
             json["options"]["$skipToken"] = skipToken
 
@@ -69,6 +67,9 @@ class AzureResourceGraphClient(AzureRestClient):
                 if len(batch) == page_size:
                     yield batch
                     batch = []
+
+            if not skipToken:
+                break
 
         if batch:
             yield batch

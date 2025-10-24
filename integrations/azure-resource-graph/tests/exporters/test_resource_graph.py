@@ -42,7 +42,7 @@ async def test_resource_graph_exporter_builds_request_and_streams() -> None:
     assert req.method == "POST"
     assert req.api_version == "2024-04-01"
     assert req.data_key == "data"
-    assert req.json_data == {
+    assert req.json_body == {
         "query": "Resources | project id",
         "subscriptions": ["s1", "s2"],
     }

@@ -152,7 +152,13 @@ class AdaptiveTokenBucketRateLimiter:
         This function is lightweight and safe to call after *every* response.
         """
         now = time.monotonic()
+        logger.debug(
+            f"Adjusting rate limiter from headers at {now}. Last adjustment at {self._last_adjustment_time} (cooldown {self.adjustment_cooldown}s)."
+        )
         if now - self._last_adjustment_time < self.adjustment_cooldown:
+            logger.debug(
+                f"Adjustment skipped due to cooldown. Time since last adjustment: {now - self._last_adjustment_time:.2f}s"
+            )
             return
 
         self._last_adjustment_time = now
@@ -161,17 +167,28 @@ class AdaptiveTokenBucketRateLimiter:
         try:
             if "x-ms-ratelimit-remaining-tenant-reads" in headers:
                 quota_remaining = int(headers["x-ms-ratelimit-remaining-tenant-reads"])
+                logger.debug(
+                    f"Found quota header: x-ms-ratelimit-remaining-tenant-reads={quota_remaining}"
+                )
+            else:
+                logger.debug("No x-ms-ratelimit-remaining-tenant-reads header present.")
 
         except Exception as e:
             logger.debug(f"Header parse error: {e}")
 
         if quota_remaining is not None:
             remaining_ratio = quota_remaining / float(self.capacity)
+            logger.debug(
+                f"Parsed quota_remaining: {quota_remaining}, capacity: {self.capacity}, remaining_ratio: {remaining_ratio:.3f}, current refill rate: {self._adaptive_refill_rate:.3f}/s"
+            )
 
             # Slow down adaptively
             if remaining_ratio < 0.1:
                 slowdown_factor = max(self.min_refill_factor, remaining_ratio)
                 new_rate = self.refill_rate * slowdown_factor
+                logger.debug(
+                    f"Nearing quota exhaustion: ratio={remaining_ratio:.3f}, applying slowdown_factor={slowdown_factor:.3f}, proposed new_rate={new_rate:.3f}/s"
+                )
                 if abs(new_rate - self._adaptive_refill_rate) > 0.01:
                     logger.warning(
                         f"Nearing quota exhaustion (remaining={quota_remaining}), "
@@ -183,9 +200,16 @@ class AdaptiveTokenBucketRateLimiter:
             elif (
                 remaining_ratio > 0.8 and self._adaptive_refill_rate < self.refill_rate
             ):
+                logger.debug(
+                    f"Quota healthy: ratio={remaining_ratio:.3f}. Attempting refill rate recovery."
+                )
+                previous_rate = self._adaptive_refill_rate
                 self._adaptive_refill_rate = min(
                     self.refill_rate,
                     self._adaptive_refill_rate * self.recovery_rate,
+                )
+                logger.debug(
+                    f"Recovered adaptive refill rate from {previous_rate:.3f}/s to {self._adaptive_refill_rate:.3f}/s"
                 )
                 logger.info(
                     f"Recovering refill rate → {self._adaptive_refill_rate:.2f}/s (quota healthy)"

@@ -46,8 +46,6 @@ class AzureResourceManagerClient(AzureRestClient):
                     ignored_errors=request.ignored_errors,
                 )
             )
-            if not response:
-                break
 
             next_url = response.get("nextLink")
 
@@ -59,6 +57,9 @@ class AzureResourceManagerClient(AzureRestClient):
                 if len(batch) == page_size:
                     yield batch
                     batch = []
+
+            if not next_url:
+                break
 
         if batch:
             yield batch
