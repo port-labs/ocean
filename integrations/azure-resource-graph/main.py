@@ -41,7 +41,7 @@ async def on_resync_subscription(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync()
 async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
-    if kind not in KindWithSpecialHandling:
+    if kind in KindWithSpecialHandling:
         return
 
     logger.info(f"Starting Azure to Port {kind} sync")
