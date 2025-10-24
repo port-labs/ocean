@@ -3,13 +3,14 @@ from azure.core.credentials_async import AsyncTokenCredential
 from pydantic import BaseModel
 from typing import List, Optional
 from abc import ABC, abstractmethod
+from pydantic import Field
 
 
 class AzureRequest(BaseModel, extra="allow"):
     method: str = "GET"
-    params: Optional[Dict[str, Any]] = None
+    params: Dict[str, Any] = Field(default_factory=dict, alias="params")
     endpoint: Optional[str] = None
-    json_data: Optional[Dict[str, Any]] = None
+    json_body: Dict[str, Any] = Field(default_factory=dict, alias="json")
     ignored_errors: Optional[List[Dict[str, Any]]] = None
     api_version: str = "2024-04-01"
     page_size: int = 100

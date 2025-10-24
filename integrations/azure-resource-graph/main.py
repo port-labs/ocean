@@ -17,6 +17,7 @@ from integration import (
     AzureResourceGraphConfig,
     AzureSubscriptionResourceConfig,
 )
+from azure_integration.factory import AzureClientType
 
 
 class KindWithSpecialHandling(StrEnum):
@@ -30,7 +31,7 @@ async def on_resync_subscription(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     exporter_options = SubscriptionExporterOptions(
         api_version=selectors.api_params.version
     )
-    azure_client = create_azure_client()
+    azure_client = create_azure_client(AzureClientType.RESOURCE_MANAGER)
     subscription_exporter = SubscriptionExporter(azure_client)
     async for subscriptions in subscription_exporter.get_paginated_resources(
         exporter_options
@@ -46,9 +47,12 @@ async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     logger.info(f"Starting resync of {kind} from resource graph")
     selectors = cast(AzureResourceGraphConfig, event.resource_config).selector
-    azure_client = create_azure_client()
-    resource_graph_exporter = ResourceGraphExporter(azure_client)
-    subscription_exporter = SubscriptionExporter(azure_client)
+    azure_resource_graph_client = create_azure_client(AzureClientType.RESOURCE_GRAPH)
+    azure_resource_manager_client = create_azure_client(
+        AzureClientType.RESOURCE_MANAGER
+    )
+    resource_graph_exporter = ResourceGraphExporter(azure_resource_graph_client)
+    subscription_exporter = SubscriptionExporter(azure_resource_manager_client)
     async for subscriptions in subscription_exporter.get_paginated_resources(
         SubscriptionExporterOptions(
             api_version=selectors.subscription.api_params.version

@@ -1,4 +1,4 @@
-from typing import Any, Optional, Dict, List, AsyncGenerator, cast
+from typing import Any, Optional, Dict, List, cast
 
 import httpx
 from loguru import logger
@@ -9,8 +9,7 @@ from azure_integration.helpers.rate_limiter import (
 from azure.core.credentials_async import AsyncTokenCredential
 
 from azure_integration.clients.base import AbstractAzureClient, AzureRequest
-from port_ocean.helpers.retry import RetryConfig
-from port_ocean.helpers.async_client import OceanAsyncClient
+from abc import abstractmethod
 
 
 class AzureRestClient(AbstractAzureClient):
@@ -23,23 +22,21 @@ class AzureRestClient(AbstractAzureClient):
     ]
 
     def __init__(
-        self, credential: AsyncTokenCredential, base_url: str, **kwargs: Any
+        self,
+        credential: AsyncTokenCredential,
+        base_url: str,
+        rate_limiter: AdaptiveTokenBucketRateLimiter,
+        **kwargs: Any,
     ) -> None:
         self.credential: AsyncTokenCredential = credential
         self.base_url: str = base_url
-        self.rate_limiter: AdaptiveTokenBucketRateLimiter = (
-            AdaptiveTokenBucketRateLimiter(capacity=250, refill_rate=25)
-        )
+        self.rate_limiter: AdaptiveTokenBucketRateLimiter = rate_limiter
 
     @property
+    @abstractmethod
     def client(self) -> httpx.AsyncClient:
-        retry_config = RetryConfig(
-            retry_after_headers=[
-                "Retry-After",
-                "x-ms-user-quota-resets-after",
-            ],
-        )
-        return OceanAsyncClient(retry_config=retry_config)
+        """An abstract property representing the async HTTP client."""
+        pass
 
     @property
     def scope(self) -> str:
@@ -69,7 +66,7 @@ class AzureRestClient(AbstractAzureClient):
                     method=request.method,
                     url=url,
                     params=request.params,
-                    json=request.json_data,
+                    json=request.json_body,
                     headers=headers,
                 )
                 response.raise_for_status()
@@ -103,45 +100,3 @@ class AzureRestClient(AbstractAzureClient):
                 logger.warning(f"Ignored Azure error: {entry['message']}")
                 return True
         return False
-
-    async def make_paginated_request(
-        self,
-        request: AzureRequest,
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Stream paginated Azure API responses efficiently in fixed-size batches."""
-        next_url = request.endpoint
-        batch: List[Dict[str, Any]] = []
-        page_size = request.page_size
-
-        while next_url:
-            params = {
-                **(request.params or {}),
-                "api-version": request.api_version,
-                "page_size": page_size,
-            }
-
-            response = await self.make_request(
-                AzureRequest(
-                    endpoint=next_url,
-                    method=request.method,
-                    params=params,
-                    json_data=request.json_data,
-                    ignored_errors=request.ignored_errors,
-                )
-            )
-            if not response:
-                break
-
-            next_url = response.get("nextLink")
-
-            logger.info(
-                f"Retrieved batch of {len(response[request.data_key])} items from {next_url} before buffering"
-            )
-            for item in response[request.data_key]:
-                batch.append(item)
-                if len(batch) == page_size:
-                    yield batch
-                    batch = []
-
-        if batch:
-            yield batch

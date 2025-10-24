@@ -5,18 +5,26 @@ from azure_integration.clients.base import AbstractAzureClient
 from enum import StrEnum
 from loguru import logger
 from typing import Dict, Type
-from azure_integration.clients.rest_client import AzureRestClient
+from azure_integration.clients.rest.resource_management_client import (
+    AzureResourceManagerClient,
+)
+from azure_integration.clients.rest.resource_graph_client import (
+    AzureResourceGraphClient,
+)
 from azure_integration.helpers.exceptions import MissingAzureCredentials
+from azure_integration.helpers.rate_limiter import AdaptiveTokenBucketRateLimiter
 
 
 class AzureClientType(StrEnum):
-    REST = "rest"
+    RESOURCE_MANAGER = "resource_manager"
+    RESOURCE_GRAPH = "resource_graph"
 
 
 class AzureClientFactory:
     _instance = None
     _clients: Dict[AzureClientType, Type[AbstractAzureClient]] = {
-        AzureClientType.REST: AzureRestClient,
+        AzureClientType.RESOURCE_MANAGER: AzureResourceManagerClient,
+        AzureClientType.RESOURCE_GRAPH: AzureResourceGraphClient,
     }
     _instances: Dict[AzureClientType, AbstractAzureClient] = {}
 
@@ -43,8 +51,12 @@ class AzureClientFactory:
                 client_id=ocean.integration_config["azure_client_id"],
                 client_secret=ocean.integration_config["azure_client_secret"],
             )
+            rate_limiter = AdaptiveTokenBucketRateLimiter(
+                capacity=250,
+                refill_rate=25,
+            )
             self._instances[client_type] = self._clients[client_type](
-                credential=credential, base_url=base_url
+                credential=credential, base_url=base_url, rate_limiter=rate_limiter
             )
             logger.info(f"Created new Azure {client_type} client")
         return self._instances[client_type]
@@ -70,7 +82,7 @@ class AzureAuthenticatorFactory:
 
 
 def create_azure_client(
-    client_type: AzureClientType = AzureClientType.REST,
+    client_type: AzureClientType = AzureClientType.RESOURCE_MANAGER,
 ) -> AbstractAzureClient:
     factory = AzureClientFactory()
     return factory.get_client(client_type)
