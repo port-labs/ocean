@@ -51,7 +51,7 @@
     "relations": {}
   },
   {
-    "identifier": "containerImage",
+    "identifier": "jfrogContainerImage",
     "title": "Container Image",
     "icon": "Docker",
     "schema": {
@@ -63,10 +63,24 @@
         "imageSize": { "type": "string", "title": "Image Size" },
         "architecture": { "type": "string", "title": "Architecture" },
         "os": { "type": "string", "title": "Operating System" },
-        "createdAt": { "type": "string", "format": "date-time", "title": "Created At" },
-        "lastScanned": { "type": "string", "format": "date-time", "title": "Last Scanned" },
-        "vulnerabilityCount": { "type": "number", "title": "Total Vulnerabilities" },
-        "criticalVulns": { "type": "number", "title": "Critical Vulnerabilities" },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        },
+        "lastScanned": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Scanned"
+        },
+        "vulnerabilityCount": {
+          "type": "number",
+          "title": "Total Vulnerabilities"
+        },
+        "criticalVulns": {
+          "type": "number",
+          "title": "Critical Vulnerabilities"
+        },
         "highVulns": { "type": "number", "title": "High Vulnerabilities" },
         "mediumVulns": { "type": "number", "title": "Medium Vulnerabilities" },
         "lowVulns": { "type": "number", "title": "Low Vulnerabilities" }
@@ -82,7 +96,7 @@
     }
   },
   {
-    "identifier": "containerVulnerability",
+    "identifier": "jfrogContainerVulnerability",
     "title": "Container Vulnerability",
     "icon": "Vulnerability",
     "schema": {
@@ -92,7 +106,14 @@
         "severity": {
           "type": "string",
           "title": "Severity",
-          "enum": ["Critical", "High", "Medium", "Low", "Informational", "Unknown"]
+          "enum": [
+            "Critical",
+            "High",
+            "Medium",
+            "Low",
+            "Informational",
+            "Unknown"
+          ]
         },
         "status": {
           "type": "string",
@@ -104,9 +125,17 @@
         "imageName": { "type": "string", "title": "Image Name" },
         "imageTag": { "type": "string", "title": "Image Tag" },
         "cvssScore": { "type": "number", "title": "CVSS Score" },
-        "description": { "type": "string", "format": "markdown", "title": "Description" },
+        "description": {
+          "type": "string",
+          "format": "markdown",
+          "title": "Description"
+        },
         "summary": { "type": "string", "title": "Summary" },
-        "created": { "type": "string", "format": "date-time", "title": "Created" },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created"
+        },
         "issueId": { "type": "string", "title": "Issue ID" },
         "provider": { "type": "string", "title": "Provider" },
         "artifactPath": { "type": "string", "title": "Artifact Path" },
@@ -116,7 +145,7 @@
     },
     "relations": {
       "containerImage": {
-        "target": "containerImage",
+        "target": "jfrogContainerImage",
         "required": false,
         "many": false
       }
@@ -133,7 +162,14 @@
         "severity": {
           "type": "string",
           "title": "Severity",
-          "enum": ["Critical", "High", "Medium", "Low", "Informational", "Unknown"]
+          "enum": [
+            "Critical",
+            "High",
+            "Medium",
+            "Low",
+            "Informational",
+            "Unknown"
+          ]
         },
         "status": {
           "type": "string",
@@ -146,9 +182,17 @@
         "component": { "type": "string", "title": "Component" },
         "fixedVersion": { "type": "string", "title": "Fixed Version" },
         "cvssScore": { "type": "number", "title": "CVSS Score" },
-        "description": { "type": "string", "format": "markdown", "title": "Description" },
+        "description": {
+          "type": "string",
+          "format": "markdown",
+          "title": "Description"
+        },
         "summary": { "type": "string", "title": "Summary" },
-        "created": { "type": "string", "format": "date-time", "title": "Created" },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created"
+        },
         "issueId": { "type": "string", "title": "Issue ID" },
         "provider": { "type": "string", "title": "Provider" }
       },
@@ -156,7 +200,7 @@
     },
     "relations": {
       "containerImage": {
-        "target": "containerImage",
+        "target": "jfrogContainerImage",
         "required": false,
         "many": false
       }

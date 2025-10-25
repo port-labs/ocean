@@ -4,6 +4,11 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from jfrog.client import JFrogClient
+from jfrog.webhook_processors.processors import (
+    ArtifactWebhookProcessor,
+    BuildWebhookProcessor,
+    DockerWebhookProcessor,
+)
 
 
 def init_client() -> JFrogClient:
@@ -115,3 +120,7 @@ async def on_base_image_vulnerability_resync(kind: str) -> ASYNC_GENERATOR_RESYN
         if base_vulnerabilities:
             logger.info(f"Found {len(base_vulnerabilities)} base image vulnerabilities")
             yield base_vulnerabilities
+
+ocean.add_webhook_processor("/webhook", ArtifactWebhookProcessor)
+ocean.add_webhook_processor("/webhook", BuildWebhookProcessor)
+ocean.add_webhook_processor("/webhook", DockerWebhookProcessor)
