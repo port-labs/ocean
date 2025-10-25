@@ -13,6 +13,7 @@ features:
       - kind: artifact
       - kind: dockerImage
       - kind: vulnerability
+      - kind: baseImageVulnerability
 
 configurations:
   - name: jfrogHostUrl
@@ -25,29 +26,6 @@ configurations:
     type: string
     sensitive: true
     description: JFrog access token for authentication. See <a href="https://jfrog.com/help/r/jfrog-platform-administration-documentation/access-tokens" target="_blank">JFrog docs</a>
-
-  - name: includeVulnerabilities
-    required: false
-    type: boolean
-    default: true
-    description: Whether to fetch vulnerability data from XRay
-
-  - name: repositoryTypes
-    required: false
-    type: array
-    description: Filter repositories by type (LOCAL, REMOTE, VIRTUAL, FEDERATED)
-
-  - name: rateLimitPerSecond
-    required: false
-    type: integer
-    default: 10
-    description: Maximum API requests per second (adjust based on your JFrog plan)
-
-  - name: includeXray
-    required: false
-    type: boolean
-    default: true
-    description: Whether to fetch XRay data
 
 saas:
   enabled: true

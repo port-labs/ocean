@@ -59,8 +59,19 @@
         "name": { "type": "string", "title": "Image Name" },
         "tag": { "type": "string", "title": "Tag" },
         "fullName": { "type": "string", "title": "Full Name" },
-        "sha256": { "type": "string", "title": "SHA256" }
-      }
+        "sha256": { "type": "string", "title": "SHA256" },
+        "imageSize": { "type": "string", "title": "Image Size" },
+        "architecture": { "type": "string", "title": "Architecture" },
+        "os": { "type": "string", "title": "Operating System" },
+        "createdAt": { "type": "string", "format": "date-time", "title": "Created At" },
+        "lastScanned": { "type": "string", "format": "date-time", "title": "Last Scanned" },
+        "vulnerabilityCount": { "type": "number", "title": "Total Vulnerabilities" },
+        "criticalVulns": { "type": "number", "title": "Critical Vulnerabilities" },
+        "highVulns": { "type": "number", "title": "High Vulnerabilities" },
+        "mediumVulns": { "type": "number", "title": "Medium Vulnerabilities" },
+        "lowVulns": { "type": "number", "title": "Low Vulnerabilities" }
+      },
+      "required": ["name", "tag", "fullName"]
     },
     "relations": {
       "repository": {
@@ -77,11 +88,71 @@
     "schema": {
       "properties": {
         "cve": { "type": "string", "title": "CVE" },
-        "severity": { "type": "string", "title": "Severity" },
+        "cwe": { "type": "array", "title": "CWE" },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": ["Critical", "High", "Medium", "Low", "Informational", "Unknown"]
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["Open", "Fixed", "Ignored", "Not Applicable"],
+          "default": "Open"
+        },
         "component": { "type": "string", "title": "Component" },
+        "imageName": { "type": "string", "title": "Image Name" },
+        "imageTag": { "type": "string", "title": "Image Tag" },
         "cvssScore": { "type": "number", "title": "CVSS Score" },
-        "description": { "type": "string", "title": "Description" }
+        "description": { "type": "string", "format": "markdown", "title": "Description" },
+        "summary": { "type": "string", "title": "Summary" },
+        "created": { "type": "string", "format": "date-time", "title": "Created" },
+        "issueId": { "type": "string", "title": "Issue ID" },
+        "provider": { "type": "string", "title": "Provider" },
+        "artifactPath": { "type": "string", "title": "Artifact Path" },
+        "packageType": { "type": "string", "title": "Package Type" }
+      },
+      "required": ["cve", "severity", "status", "component", "imageName"]
+    },
+    "relations": {
+      "containerImage": {
+        "target": "containerImage",
+        "required": false,
+        "many": false
       }
+    }
+  },
+  {
+    "identifier": "baseImageVulnerability",
+    "title": "Base Image Vulnerability",
+    "icon": "Vulnerability",
+    "schema": {
+      "properties": {
+        "cve": { "type": "string", "title": "CVE" },
+        "cwe": { "type": "array", "title": "CWE" },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": ["Critical", "High", "Medium", "Low", "Informational", "Unknown"]
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["Open", "Fixed", "Ignored", "Not Applicable"],
+          "default": "Open"
+        },
+        "baseImage": { "type": "string", "title": "Base Image" },
+        "layer": { "type": "string", "title": "Container Layer" },
+        "component": { "type": "string", "title": "Component" },
+        "fixedVersion": { "type": "string", "title": "Fixed Version" },
+        "cvssScore": { "type": "number", "title": "CVSS Score" },
+        "description": { "type": "string", "format": "markdown", "title": "Description" },
+        "summary": { "type": "string", "title": "Summary" },
+        "created": { "type": "string", "format": "date-time", "title": "Created" },
+        "issueId": { "type": "string", "title": "Issue ID" },
+        "provider": { "type": "string", "title": "Provider" }
+      },
+      "required": ["cve", "severity", "status", "baseImage"]
     },
     "relations": {
       "containerImage": {
