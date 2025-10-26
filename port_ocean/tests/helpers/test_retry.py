@@ -392,7 +392,7 @@ class TestResponseSizeLogging:
             transport._get_content_length(mock_response)
 
     @patch("port_ocean.helpers.retry.cast")
-    def test_log_response_size_with_content_length(self, mock_cast) -> None:
+    def test_log_response_size_with_content_length(self, mock_cast: Mock) -> None:
         """Test _log_response_size logs when Content-Length header is present."""
         mock_transport = Mock()
         mock_logger = Mock()
@@ -403,7 +403,7 @@ class TestResponseSizeLogging:
         mock_request.method = "GET"
         mock_url = Mock()
         mock_url.host = "api.example.com"
-        mock_url.__str__ = Mock(return_value="https://api.example.com/data")
+        mock_url.configure_mock(__str__=lambda: "https://api.example.com/data")
         mock_request.url = mock_url
 
         mock_response = Mock()
@@ -416,7 +416,7 @@ class TestResponseSizeLogging:
         )
 
     @patch("port_ocean.helpers.retry.cast")
-    def test_log_response_size_without_content_length(self, mock_cast) -> None:
+    def test_log_response_size_without_content_length(self, mock_cast: Mock) -> None:
         """Test _log_response_size reads content when no Content-Length header."""
         mock_transport = Mock()
         mock_logger = Mock()
@@ -427,7 +427,7 @@ class TestResponseSizeLogging:
         mock_request.method = "POST"
         mock_url = Mock()
         mock_url.host = "api.example.com"
-        mock_url.__str__ = Mock(return_value="https://api.example.com/create")
+        mock_url.configure_mock(__str__=lambda: "https://api.example.com/create")
         mock_request.url = mock_url
 
         mock_response = Mock()
@@ -442,7 +442,7 @@ class TestResponseSizeLogging:
         )
 
     @patch("port_ocean.helpers.retry.cast")
-    def test_log_response_size_read_error(self, mock_cast) -> None:
+    def test_log_response_size_read_error(self, mock_cast: Mock) -> None:
         """Test _log_response_size handles read errors gracefully."""
         mock_transport = Mock()
         mock_logger = Mock()
@@ -465,7 +465,7 @@ class TestResponseSizeLogging:
         mock_logger.info.assert_not_called()
 
     @patch("port_ocean.helpers.retry.cast")
-    def test_log_response_size_skips_when_should_not_log(self, mock_cast) -> None:
+    def test_log_response_size_skips_when_should_not_log(self, mock_cast: Mock) -> None:
         """Test _log_response_size skips logging when _should_log_response_size returns False."""
         mock_transport = Mock()
         mock_logger = Mock()
@@ -484,7 +484,9 @@ class TestResponseSizeLogging:
 
     @pytest.mark.asyncio
     @patch("port_ocean.helpers.retry.cast")
-    async def test_log_response_size_async_with_content_length(self, mock_cast) -> None:
+    async def test_log_response_size_async_with_content_length(
+        self, mock_cast: Mock
+    ) -> None:
         """Test _log_response_size_async logs when Content-Length header is present."""
         mock_transport = Mock()
         mock_logger = Mock()
@@ -495,7 +497,7 @@ class TestResponseSizeLogging:
         mock_request.method = "GET"
         mock_url = Mock()
         mock_url.host = "api.example.com"
-        mock_url.__str__ = Mock(return_value="https://api.example.com/data")
+        mock_url.configure_mock(__str__=lambda: "https://api.example.com/data")
         mock_request.url = mock_url
 
         mock_response = Mock()
@@ -510,7 +512,7 @@ class TestResponseSizeLogging:
     @pytest.mark.asyncio
     @patch("port_ocean.helpers.retry.cast")
     async def test_log_response_size_async_without_content_length(
-        self, mock_cast
+        self, mock_cast: Mock
     ) -> None:
         """Test _log_response_size_async reads content when no Content-Length header."""
         mock_transport = Mock()
@@ -522,7 +524,7 @@ class TestResponseSizeLogging:
         mock_request.method = "POST"
         mock_url = Mock()
         mock_url.host = "api.example.com"
-        mock_url.__str__ = Mock(return_value="https://api.example.com/create")
+        mock_url.configure_mock(__str__=lambda: "https://api.example.com/create")
         mock_request.url = mock_url
 
         mock_response = Mock()
@@ -538,7 +540,7 @@ class TestResponseSizeLogging:
 
     @pytest.mark.asyncio
     @patch("port_ocean.helpers.retry.cast")
-    async def test_log_response_size_async_read_error(self, mock_cast) -> None:
+    async def test_log_response_size_async_read_error(self, mock_cast: Mock) -> None:
         """Test _log_response_size_async handles read errors gracefully."""
         mock_transport = Mock()
         mock_logger = Mock()
@@ -563,7 +565,7 @@ class TestResponseSizeLogging:
     @pytest.mark.asyncio
     @patch("port_ocean.helpers.retry.cast")
     async def test_log_response_size_async_skips_when_should_not_log(
-        self, mock_cast
+        self, mock_cast: Mock
     ) -> None:
         """Test _log_response_size_async skips logging when _should_log_response_size returns False."""
         mock_transport = Mock()
@@ -583,7 +585,9 @@ class TestResponseSizeLogging:
 
     @pytest.mark.asyncio
     @patch("port_ocean.helpers.retry.cast")
-    async def test_log_response_size_async_restores_content(self, mock_cast) -> None:
+    async def test_log_response_size_async_restores_content(
+        self, mock_cast: Mock
+    ) -> None:
         """Test _log_response_size_async restores response content after reading."""
         mock_transport = Mock()
         mock_logger = Mock()
@@ -594,7 +598,7 @@ class TestResponseSizeLogging:
         mock_request.method = "GET"
         mock_url = Mock()
         mock_url.host = "api.example.com"
-        mock_url.__str__ = Mock(return_value="https://api.example.com/data")
+        mock_url.configure_mock(__str__=lambda: "https://api.example.com/data")
         mock_request.url = mock_url
 
         test_content = b"test response content"
@@ -611,7 +615,7 @@ class TestResponseSizeLogging:
         )
 
     @patch("port_ocean.helpers.retry.cast")
-    def test_log_response_size_restores_content(self, mock_cast) -> None:
+    def test_log_response_size_restores_content(self, mock_cast: Mock) -> None:
         """Test _log_response_size restores response content after reading."""
         mock_transport = Mock()
         mock_logger = Mock()
@@ -622,7 +626,7 @@ class TestResponseSizeLogging:
         mock_request.method = "GET"
         mock_url = Mock()
         mock_url.host = "api.example.com"
-        mock_url.__str__ = Mock(return_value="https://api.example.com/data")
+        mock_url.configure_mock(__str__=lambda: "https://api.example.com/data")
         mock_request.url = mock_url
 
         test_content = b"test response content"
@@ -648,7 +652,9 @@ class TestResponseSizeLoggingIntegration:
         retry_module._ON_RETRY_CALLBACK = None
 
     @patch("port_ocean.helpers.retry.cast")
-    def test_log_response_size_preserves_json_consumption(self, mock_cast) -> None:
+    def test_log_response_size_preserves_json_consumption(
+        self, mock_cast: Mock
+    ) -> None:
         """Test that _log_response_size preserves response for .json() consumption."""
         mock_transport = Mock()
         mock_logger = Mock()
@@ -682,7 +688,7 @@ class TestResponseSizeLoggingIntegration:
 
     @patch("port_ocean.helpers.retry.cast")
     def test_log_response_size_with_content_length_preserves_json(
-        self, mock_cast
+        self, mock_cast: Mock
     ) -> None:
         """Test that _log_response_size with Content-Length header preserves JSON consumption."""
         mock_transport = Mock()
@@ -715,7 +721,7 @@ class TestResponseSizeLoggingIntegration:
     @pytest.mark.asyncio
     @patch("port_ocean.helpers.retry.cast")
     async def test_log_response_size_async_preserves_json_consumption(
-        self, mock_cast
+        self, mock_cast: Mock
     ) -> None:
         """Test that _log_response_size_async preserves response for .json() consumption."""
         mock_transport = Mock()
@@ -751,7 +757,7 @@ class TestResponseSizeLoggingIntegration:
     @pytest.mark.asyncio
     @patch("port_ocean.helpers.retry.cast")
     async def test_log_response_size_async_with_content_length_preserves_json(
-        self, mock_cast
+        self, mock_cast: Mock
     ) -> None:
         """Test that _log_response_size_async with Content-Length header preserves JSON consumption."""
         mock_transport = Mock()
@@ -785,7 +791,9 @@ class TestResponseSizeLoggingIntegration:
         mock_response.aread.assert_not_called()
 
     @patch("port_ocean.helpers.retry.cast")
-    def test_log_response_size_preserves_text_consumption(self, mock_cast) -> None:
+    def test_log_response_size_preserves_text_consumption(
+        self, mock_cast: Mock
+    ) -> None:
         """Test that _log_response_size preserves response for .text consumption."""
         mock_transport = Mock()
         mock_logger = Mock()
@@ -819,7 +827,7 @@ class TestResponseSizeLoggingIntegration:
     @pytest.mark.asyncio
     @patch("port_ocean.helpers.retry.cast")
     async def test_log_response_size_async_preserves_content_consumption(
-        self, mock_cast
+        self, mock_cast: Mock
     ) -> None:
         """Test that _log_response_size_async preserves response for .content consumption."""
         mock_transport = Mock()
@@ -853,7 +861,7 @@ class TestResponseSizeLoggingIntegration:
 
     @patch("port_ocean.helpers.retry.cast")
     def test_log_response_size_error_handling_preserves_response(
-        self, mock_cast
+        self, mock_cast: Mock
     ) -> None:
         """Test that _log_response_size error handling doesn't break response consumption."""
         mock_transport = Mock()
@@ -889,7 +897,7 @@ class TestResponseSizeLoggingIntegration:
     @pytest.mark.asyncio
     @patch("port_ocean.helpers.retry.cast")
     async def test_log_response_size_async_error_handling_preserves_response(
-        self, mock_cast
+        self, mock_cast: Mock
     ) -> None:
         """Test that _log_response_size_async error handling doesn't break response consumption."""
         mock_transport = Mock()
