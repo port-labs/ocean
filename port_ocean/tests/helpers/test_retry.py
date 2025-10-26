@@ -403,7 +403,7 @@ class TestResponseSizeLogging:
         mock_request.method = "GET"
         mock_url = Mock()
         mock_url.host = "api.example.com"
-        mock_url.configure_mock(__str__=lambda: "https://api.example.com/data")
+        mock_url.configure_mock(__str__=lambda self: "https://api.example.com/data")
         mock_request.url = mock_url
 
         mock_response = Mock()
@@ -427,7 +427,7 @@ class TestResponseSizeLogging:
         mock_request.method = "POST"
         mock_url = Mock()
         mock_url.host = "api.example.com"
-        mock_url.configure_mock(__str__=lambda: "https://api.example.com/create")
+        mock_url.configure_mock(__str__=lambda self: "https://api.example.com/create")
         mock_request.url = mock_url
 
         mock_response = Mock()
@@ -497,7 +497,7 @@ class TestResponseSizeLogging:
         mock_request.method = "GET"
         mock_url = Mock()
         mock_url.host = "api.example.com"
-        mock_url.configure_mock(__str__=lambda: "https://api.example.com/data")
+        mock_url.configure_mock(__str__=lambda self: "https://api.example.com/data")
         mock_request.url = mock_url
 
         mock_response = Mock()
@@ -524,7 +524,7 @@ class TestResponseSizeLogging:
         mock_request.method = "POST"
         mock_url = Mock()
         mock_url.host = "api.example.com"
-        mock_url.configure_mock(__str__=lambda: "https://api.example.com/create")
+        mock_url.configure_mock(__str__=lambda self: "https://api.example.com/create")
         mock_request.url = mock_url
 
         mock_response = Mock()
@@ -598,7 +598,7 @@ class TestResponseSizeLogging:
         mock_request.method = "GET"
         mock_url = Mock()
         mock_url.host = "api.example.com"
-        mock_url.configure_mock(__str__=lambda: "https://api.example.com/data")
+        mock_url.configure_mock(__str__=lambda self: "https://api.example.com/data")
         mock_request.url = mock_url
 
         test_content = b"test response content"
@@ -626,7 +626,7 @@ class TestResponseSizeLogging:
         mock_request.method = "GET"
         mock_url = Mock()
         mock_url.host = "api.example.com"
-        mock_url.configure_mock(__str__=lambda: "https://api.example.com/data")
+        mock_url.configure_mock(__str__=lambda self: "https://api.example.com/data")
         mock_request.url = mock_url
 
         test_content = b"test response content"
