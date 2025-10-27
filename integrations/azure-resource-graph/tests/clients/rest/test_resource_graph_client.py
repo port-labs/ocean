@@ -1,4 +1,3 @@
-import json
 from unittest.mock import AsyncMock, PropertyMock, MagicMock
 
 import pytest
