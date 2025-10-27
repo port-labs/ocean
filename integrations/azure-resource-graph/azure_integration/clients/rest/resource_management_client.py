@@ -7,7 +7,7 @@ from azure_integration.clients.rest.rest_client import AzureRestClient
 from azure_integration.clients.base import AzureRequest
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
-from urllib.parse import urlparse, urlunparse, parse_qs
+from urllib.parse import urlparse, parse_qs
 
 
 class AzureResourceManagerClient(AzureRestClient):
@@ -37,7 +37,6 @@ class AzureResourceManagerClient(AzureRestClient):
         }
 
         while next_url:
-
             response = await self.make_request(
                 AzureRequest(
                     endpoint=next_url,
@@ -66,7 +65,7 @@ class AzureResourceManagerClient(AzureRestClient):
             params = new_params
             if "api-version" not in params:
                 params["api-version"] = request.api_version
-            logger.error(f"Next URL: {next_url}, Params: {params}")
+            logger.debug(f"Next URL: {next_url}, Params: {params}")
 
         if batch:
             yield batch
@@ -74,6 +73,6 @@ class AzureResourceManagerClient(AzureRestClient):
     def _split_url_params(self, url: str) -> Tuple[str, Dict[str, str]]:
         """Extract query params from a full URL (handles %24skiptoken decoding)."""
         parsed = urlparse(url)
-        endpoint = parsed.path
+        endpoint = parsed.path.rstrip("/")
         params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
         return endpoint, params
