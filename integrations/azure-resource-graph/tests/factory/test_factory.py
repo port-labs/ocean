@@ -32,5 +32,5 @@ def test_create_azure_client_returns_rest_client(
         AzureAuthenticatorFactory, "create", staticmethod(lambda **_: _DummyCred())
     )
 
-    client = create_azure_client(AzureClientType.REST)
+    client = create_azure_client(AzureClientType.RESOURCE_MANAGER)
     assert isinstance(client, AzureRestClient)
