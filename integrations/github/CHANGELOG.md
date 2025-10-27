@@ -15,6 +15,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for excluding archived repositories
 
 
+## 3.0.2-beta (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 3.0.1-beta (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
 ## 3.0.0-beta (2025-10-20)
 
 

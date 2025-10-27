@@ -359,8 +359,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         else:
             # If no Content-Length header, try to get actual content size
             try:
-                actual_size = len(await response.aread())
+                content = await response.aread()
+                actual_size = len(content)
                 size_info = actual_size
+                # Restore the cached body so downstream code can still use .json()/.text/.content
+                response._content = content  # httpx convention
             except Exception as e:
                 cast(logging.Logger, self._logger).error(
                     f"Error getting response size: {e}"
@@ -383,8 +386,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         else:
             # If no Content-Length header, try to get actual content size
             try:
-                actual_size = len(response.read())
+                content = response.read()
+                actual_size = len(content)
                 size_info = actual_size
+                # Restore the cached body so downstream code can still use .json()/.text/.content
+                response._content = content  # httpx convention
             except Exception as e:
                 cast(logging.Logger, self._logger).error(
                     f"Error getting response size: {e}"
