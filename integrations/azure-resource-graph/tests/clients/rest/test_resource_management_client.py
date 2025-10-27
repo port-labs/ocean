@@ -19,7 +19,7 @@ async def test_make_paginated_request_with_nextlink(
     base_url = "https://management.azure.com"
     endpoint = "subscriptions"
     api_version = "2024-04-01"
-    next_link = f"{base_url}/subscriptions/?$skipToken=123"
+    next_link = f"{base_url}/subscriptions/?skipToken=123"
 
     mock_make_request = AsyncMock(
         side_effect=[
@@ -49,16 +49,12 @@ async def test_make_paginated_request_with_nextlink(
     assert mock_make_request.call_args_list[0].args[0].endpoint == endpoint
     # This assertion highlights a bug: the client incorrectly uses only the path
     # from the absolute nextLink URL for subsequent requests.
-    assert mock_make_request.call_args_list[1].args[0].endpoint == urlparse(
-        next_link
-    ).path
     assert (
-        "api-version"
-        in mock_make_request.call_args_list[1].args[0].params
+        mock_make_request.call_args_list[1].args[0].endpoint == urlparse(next_link).path
     )
+    assert "api-version" in mock_make_request.call_args_list[1].args[0].params
     assert (
-        mock_make_request.call_args_list[1].args[0].params["api-version"]
-        == api_version
+        mock_make_request.call_args_list[1].args[0].params["api-version"] == api_version
     )
 
 
