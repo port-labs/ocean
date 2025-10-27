@@ -22,6 +22,7 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 MAX_CONCURRENT_REQUESTS = 10
 
+
 class KindWithSpecialHandling(StrEnum):
     SUBSCRIPTION = "subscription"
 

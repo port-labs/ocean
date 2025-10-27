@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, AsyncGenerator
+from typing import Any, Dict, List, AsyncGenerator, Tuple
 
 import httpx
 from loguru import logger
@@ -7,6 +7,7 @@ from azure_integration.clients.rest.rest_client import AzureRestClient
 from azure_integration.clients.base import AzureRequest
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
+from urllib.parse import urlparse, urlunparse, parse_qs
 
 
 class AzureResourceManagerClient(AzureRestClient):
@@ -46,20 +47,30 @@ class AzureResourceManagerClient(AzureRestClient):
                     ignored_errors=request.ignored_errors,
                 )
             )
-
-            next_url = response.get("nextLink")
+            if not response:
+                break
 
             logger.info(
                 f"Retrieved batch of {len(response[request.data_key])} items from {next_url} before buffering"
             )
+
             for item in response[request.data_key]:
                 batch.append(item)
                 if len(batch) == page_size:
                     yield batch
                     batch = []
 
-            if not next_url:
+            if not (next_link := response.get("nextLink")):
                 break
+            next_url, params = self._split_url_params(next_link)
+            logger.error(f"Next URL: {next_url}, Params: {params}")
 
         if batch:
             yield batch
+
+    def _split_url_params(self, url: str) -> Tuple[str, Dict[str, str]]:
+        """Extract query params from a full URL (handles %24skiptoken decoding)."""
+        parsed = urlparse(url)
+        endpoint = urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+        params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        return endpoint, params

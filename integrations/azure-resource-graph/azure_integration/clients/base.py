@@ -9,7 +9,7 @@ from pydantic import Field, ConfigDict, Extra
 class AzureRequest(BaseModel):
     method: str = "GET"
     params: Dict[str, Any] = Field(default_factory=dict, alias="params")
-    endpoint: Optional[str] = None
+    endpoint: str = Field(..., alias="endpoint")
     json_body: Dict[str, Any] = Field(default_factory=dict, alias="json_body")
     ignored_errors: Optional[List[Dict[str, Any]]] = None
     api_version: str = "2024-04-01"

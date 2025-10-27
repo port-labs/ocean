@@ -1,4 +1,4 @@
-from typing import Any, Optional, Dict, List, cast
+from typing import Any, Optional, Dict, List
 
 import httpx
 from loguru import logger
@@ -55,10 +55,11 @@ class AzureRestClient(AbstractAzureClient):
         request: AzureRequest,
     ) -> Dict[str, Any]:
         """Make a request to Azure API with rate limiting and error handling."""
-        endpoint: str = cast(str, request.endpoint)
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        url: str = f"{self.base_url}/{request.endpoint.lstrip('/')}"
 
-        logger.info(f"Making request to {url} with params {request.params}")
+        logger.info(
+            f"Making request to {request.endpoint} with params {request.params}"
+        )
         async with self.rate_limiter.limit():
             try:
                 headers = await self.get_headers()
@@ -77,7 +78,7 @@ class AzureRestClient(AbstractAzureClient):
 
             except httpx.HTTPStatusError as e:
                 response = e.response
-                if self._should_ignore_error(e, request.ignored_errors):
+                if self._should_ignore_error(e, url, request.ignored_errors):
                     return {}
 
                 logger.error(
@@ -93,11 +94,14 @@ class AzureRestClient(AbstractAzureClient):
     def _should_ignore_error(
         self,
         error: httpx.HTTPStatusError,
+        url: str,
         ignored_errors: Optional[List[Dict[str, Any]]] = None,
     ) -> bool:
         ignored = (ignored_errors or []) + self._DEFAULT_IGNORED_ERRORS
         for entry in ignored:
             if str(error.response.status_code) == str(entry["status"]):
-                logger.warning(f"Ignored Azure error: {entry['message']}")
+                logger.warning(
+                    f"Failed to fetch resources at {url} due to {entry['message']}, Error Message: {error.response.text}"
+                )
                 return True
         return False

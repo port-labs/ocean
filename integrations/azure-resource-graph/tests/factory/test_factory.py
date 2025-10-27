@@ -7,7 +7,7 @@ from azure_integration.factory import (
     AzureClientType,
 )
 from azure_integration.helpers.exceptions import MissingAzureCredentials
-from azure_integration.clients.rest_client import AzureRestClient
+from azure_integration.clients.rest.rest_client import AzureRestClient
 
 
 def test_azure_authenticator_factory_requires_credentials() -> None:
