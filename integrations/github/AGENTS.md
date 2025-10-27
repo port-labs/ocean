@@ -1,3 +1,7 @@
+## Agent instructions
+
+Don't on diagnostics that are unrelated to the task or issue you've been tasked with. Resolve diagnostics only when you're asked to resolve them or when you introduce them.
+
 ## Build, Lint, and Test Commands
 
 This project uses `poetry` for dependency management.
