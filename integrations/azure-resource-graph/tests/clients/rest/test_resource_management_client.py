@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, PropertyMock
+from unittest.mock import AsyncMock, PropertyMock, MagicMock
 
 import pytest
 
@@ -19,10 +19,10 @@ async def test_make_paginated_request_with_nextlink(
     base_url = "https://management.azure.com"
     endpoint = "subscriptions"
     api_version = "2024-04-01"
-    next_link = "/subscriptions/?$skipToken=123"
+    next_link = f"{base_url}/subscriptions/?$skipToken=123"
 
     # setup mock responses
-    mock_response_1 = AsyncMock()
+    mock_response_1 = MagicMock()
     mock_response_1.json.return_value = {
         "value": [{"id": "resource1"}],
         "nextLink": next_link,
@@ -30,7 +30,7 @@ async def test_make_paginated_request_with_nextlink(
     mock_response_1.headers = {}
     mock_response_1.raise_for_status.return_value = None
 
-    mock_response_2 = AsyncMock()
+    mock_response_2 = MagicMock()
     mock_response_2.json.return_value = {"value": [{"id": "resource2"}]}
     mock_response_2.headers = {}
     mock_response_2.raise_for_status.return_value = None
@@ -70,7 +70,7 @@ async def test_make_paginated_request_without_nextlink(
     endpoint = "subscriptions/123/resources"
     api_version = "2024-04-01"
 
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.json.return_value = {"value": [{"id": "resource1"}]}
     mock_response.headers = {}
     mock_response.raise_for_status.return_value = None

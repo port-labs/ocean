@@ -1,5 +1,5 @@
 import json
-from unittest.mock import AsyncMock, PropertyMock
+from unittest.mock import AsyncMock, PropertyMock, MagicMock
 
 import pytest
 
@@ -23,7 +23,7 @@ async def test_make_paginated_request_with_skiptoken(
     skip_token = "skip-me"
 
     # Mock responses
-    mock_response_1 = AsyncMock()
+    mock_response_1 = MagicMock()
     mock_response_1.json.return_value = {
         "data": [{"id": "resource1"}],
         "$skipToken": skip_token,
@@ -31,7 +31,7 @@ async def test_make_paginated_request_with_skiptoken(
     mock_response_1.headers = {}
     mock_response_1.raise_for_status.return_value = None
 
-    mock_response_2 = AsyncMock()
+    mock_response_2 = MagicMock()
     mock_response_2.json.return_value = {"data": [{"id": "resource2"}]}
     mock_response_2.headers = {}
     mock_response_2.raise_for_status.return_value = None
@@ -78,7 +78,7 @@ async def test_make_paginated_request_without_skiptoken(
     api_version = "2024-04-01"
 
     # Mock response
-    mock_response = AsyncMock()
+    mock_response = MagicMock()
     mock_response.json.return_value = {"data": [{"id": "resource1"}]}
     mock_response.headers = {}
     mock_response.raise_for_status.return_value = None
