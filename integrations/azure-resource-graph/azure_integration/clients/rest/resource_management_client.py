@@ -62,7 +62,10 @@ class AzureResourceManagerClient(AzureRestClient):
 
             if not (next_link := response.get("nextLink")):
                 break
-            next_url, params = self._split_url_params(next_link)
+            next_url, new_params = self._split_url_params(next_link)
+            params = new_params
+            if "api-version" not in params:
+                params["api-version"] = request.api_version
             logger.error(f"Next URL: {next_url}, Params: {params}")
 
         if batch:
@@ -71,6 +74,6 @@ class AzureResourceManagerClient(AzureRestClient):
     def _split_url_params(self, url: str) -> Tuple[str, Dict[str, str]]:
         """Extract query params from a full URL (handles %24skiptoken decoding)."""
         parsed = urlparse(url)
-        endpoint = urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+        endpoint = parsed.path
         params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
         return endpoint, params

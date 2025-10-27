@@ -52,6 +52,14 @@ async def test_make_paginated_request_with_nextlink(
     assert mock_make_request.call_args_list[1].args[0].endpoint == urlparse(
         next_link
     ).path
+    assert (
+        "api-version"
+        in mock_make_request.call_args_list[1].args[0].params
+    )
+    assert (
+        mock_make_request.call_args_list[1].args[0].params["api-version"]
+        == api_version
+    )
 
 
 @pytest.mark.asyncio
