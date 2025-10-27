@@ -1,11 +1,20 @@
-from contextlib import contextmanager
-from typing import Awaitable, Generator, Callable, cast
-
-from loguru import logger
 import asyncio
-import multiprocessing
-import re
 import json
+import multiprocessing
+import os
+import re
+import shutil
+import stat
+import subprocess
+import tempfile
+from contextlib import contextmanager
+from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
+
+import ijson
+from loguru import logger
+
+from port_ocean.clients.port.utils import _http_client as _port_http_client
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import JQEntityProcessor
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
@@ -19,17 +28,8 @@ from port_ocean.exceptions.core import (
     OceanAbortException,
     KindNotImplementedException,
 )
-import os
-import shutil
-from port_ocean.utils.async_http import _http_client
-from port_ocean.clients.port.utils import _http_client as _port_http_client
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
-from port_ocean.context.ocean import ocean
-import subprocess
-import tempfile
-import stat
-import ijson
-from typing import Any, AsyncGenerator
+from port_ocean.utils.async_http import _http_client
 
 def _process_path_type_items(
     result: RAW_RESULT, items_to_parse: str | None = None
