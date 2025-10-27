@@ -19,6 +19,9 @@ class _NoOpRateLimiter:
     async def limit(self, tokens: float = 1.0) -> AsyncGenerator[None, None]:
         yield
 
+    def adjust_from_headers(self, headers: dict[str, str]) -> None:
+        pass
+
 
 @pytest.fixture
 def dummy_credential() -> _DummyCredential:
