@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+
+## 0.1.5-beta (2025-10-27)
+
+
+### Improvements
+
+- Rename resource kind "tags" selector to "resource_group_tags"
+
+
 ## 0.1.4-beta (2025-10-26)
 
 
