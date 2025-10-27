@@ -81,8 +81,8 @@ class BaseEventListener:
 class EventListenerSettings(BaseOceanModel, extra=Extra.allow):
     type: EventListenerType
     should_resync: bool = True
-    should_create_webhooks_if_enabled: bool = True
-    should_run_execution_agent_if_enabled: bool = True
+    should_process_webhooks: bool = True
+    should_run_actions: bool = True
 
     def get_changelog_destination_details(self) -> dict[str, Any]:
         """

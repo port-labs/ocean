@@ -16,7 +16,7 @@ class WebhooksOnlyEventListenerSettings(EventListenerSettings):
 
     type: Literal[EventListenerType.WEBHOOKS_ONLY]
     should_resync: bool = False
-    should_run_execution_agent_if_enabled: bool = False
+    should_run_actions: bool = False
 
 
 class WebhooksOnlyEventListener(BaseEventListener):

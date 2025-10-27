@@ -212,21 +212,22 @@ class Ocean:
         return None
 
     async def _register_addons(self) -> None:
-        if not self.base_url:
+        if self.base_url and self.config.event_listener.should_process_webhooks:
+            await self.webhook_manager.start_processing_event_messages()
+        else:
             logger.warning(
-                "No base URL provided, skipping webhook processing and execution agent setup"
+                "No base URL provided, or webhook processing is disabled is this event listener, skipping webhook processing"
             )
-            return
 
-        await self.webhook_manager.start_processing_event_messages()
-        if not self.config.execution_agent.enabled:
-            logger.warning(
-                "Execution agent is not enabled, skipping execution agent setup"
-            )
-            return
-
-        if self.config.event_listener.should_run_execution_agent_if_enabled:
+        if (
+            self.config.execution_agent.enabled
+            and self.config.event_listener.should_run_actions
+        ):
             await self.execution_manager.start_processing_action_runs()
+        else:
+            logger.warning(
+                "Execution agent is not enabled, or actions processing is disabled in this event listener, skipping execution agent setup"
+            )
 
     def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
