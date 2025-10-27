@@ -2,7 +2,8 @@ from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 
 import pytest
-from azure.core.credentials import AccessToken, AsyncTokenCredential
+from azure.core.credentials import AccessToken
+from azure.core.credentials_async import AsyncTokenCredential
 from pytest_httpx import HTTPXMock
 
 from azure_integration.clients import AzureRequest
