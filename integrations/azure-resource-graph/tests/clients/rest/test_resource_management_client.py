@@ -21,8 +21,6 @@ async def test_make_paginated_request_with_nextlink(
     api_version = "2024-04-01"
     next_link = f"{base_url}/subscriptions/?$skipToken=123"
 
-    assert "$skipToken" in urlparse(next_link).query
-
     mock_make_request = AsyncMock(
         side_effect=[
             {
@@ -58,6 +56,7 @@ async def test_make_paginated_request_with_nextlink(
     assert (
         mock_make_request.call_args_list[1].args[0].params["api-version"] == api_version
     )
+    assert "$skipToken" in mock_make_request.call_args_list[1].args[0].params
 
 
 @pytest.mark.asyncio
