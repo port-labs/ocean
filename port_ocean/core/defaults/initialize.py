@@ -77,7 +77,7 @@ async def _initialize_required_integration_settings(
                 integration_config.integration.type,
                 integration_config.event_listener.get_changelog_destination_details(),
                 port_app_config=default_mapping,
-                is_execution_agent=integration_config.execution_agent.enabled,
+                actions_processing_enabled=integration_config.actions_processor.enabled,
                 create_port_resources_origin_in_port=integration_config.create_port_resources_origin
                 == CreatePortResourcesOrigin.Port,
             )
@@ -104,13 +104,13 @@ async def _initialize_required_integration_settings(
         integration.get("changelogDestination") != changelog_destination
         or integration.get("installationAppType") != integration_config.integration.type
         or integration.get("version") != port_client.integration_version
-        or integration.get("isExecutionAgent")
-        != integration_config.execution_agent.enabled
+        or integration.get("actionsProcessingEnabled")
+        != integration_config.actions_processor.enabled
     ):
         await port_client.patch_integration(
             _type=integration_config.integration.type,
             changelog_destination=changelog_destination,
-            is_execution_agent=integration_config.execution_agent.enabled,
+            actions_processing_enabled=integration_config.actions_processor.enabled,
         )
 
 

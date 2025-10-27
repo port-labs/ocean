@@ -132,9 +132,9 @@ class ExecutionManager:
         Start polling and processing action runs for all registered actions.
         """
         flags = await ocean.port_client.get_organization_feature_flags()
-        if IntegrationFeatureFlag.OCEAN_EXECUTION_AGENT_ENABLED not in flags:
+        if IntegrationFeatureFlag.OCEAN_ACTIONS_PROCESSING_ENABLED not in flags:
             logger.warning(
-                "Execution agent is not allowed for your organization, skipping execution agent setup"
+                "Actions processing is not allowed for your organization, skipping actions processing"
             )
             return
 

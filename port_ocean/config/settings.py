@@ -84,7 +84,7 @@ class StreamingSettings(BaseOceanModel, extra=Extra.allow):
     location: str = Field(default="/tmp/ocean/streaming")
 
 
-class ExecutionAgentSettings(BaseOceanModel, extra=Extra.allow):
+class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
     enabled: bool = Field(default=False)
     runs_buffer_high_watermark: int = Field(default=100)
     visibility_timeout_ms: int = Field(default=30000)
@@ -136,8 +136,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     yield_items_to_parse_batch_size: int = 10
 
     streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
-    execution_agent: ExecutionAgentSettings = Field(
-        default_factory=lambda: ExecutionAgentSettings()
+    actions_processor: ActionsProcessorSettings = Field(
+        default_factory=lambda: ActionsProcessorSettings()
     )
 
     @root_validator
@@ -231,17 +231,17 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
 
         return runtime
 
-    @validator("execution_agent")
-    def validate_execution_agent(
-        cls, execution_agent: ExecutionAgentSettings
-    ) -> ExecutionAgentSettings:
-        if not execution_agent.enabled:
-            return execution_agent
+    @validator("actions_processor")
+    def validate_actions_processor(
+        cls, actions_processor: ActionsProcessorSettings
+    ) -> ActionsProcessorSettings:
+        if not actions_processor.enabled:
+            return actions_processor
 
         spec = get_spec_file()
-        if not (spec and spec.get("executionAgent", {}).get("enabled", False)):
+        if not (spec and spec.get("actionsProcessorEnabled", False)):
             raise ValueError(
-                "Serving as an execution agent is not currently supported for this integration."
+                "Serving as an actions processor is not currently supported for this integration."
             )
 
-        return execution_agent
+        return actions_processor

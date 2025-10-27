@@ -92,10 +92,10 @@ class Ocean:
         self.execution_manager = ExecutionManager(
             webhook_manager=self.webhook_manager,
             signal_handler=signal_handler,
-            workers_count=self.config.execution_agent.workers_count,
-            runs_buffer_high_watermark=self.config.execution_agent.runs_buffer_high_watermark,
-            poll_check_interval_seconds=self.config.execution_agent.poll_check_interval_seconds,
-            visibility_timeout_ms=self.config.execution_agent.visibility_timeout_ms,
+            workers_count=self.config.actions_processor.workers_count,
+            runs_buffer_high_watermark=self.config.actions_processor.runs_buffer_high_watermark,
+            poll_check_interval_seconds=self.config.actions_processor.poll_check_interval_seconds,
+            visibility_timeout_ms=self.config.actions_processor.visibility_timeout_ms,
             max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
         )
 
@@ -220,7 +220,7 @@ class Ocean:
             )
 
         if (
-            self.config.execution_agent.enabled
+            self.config.actions_processor.enabled
             and self.config.event_listener.should_run_actions
         ):
             await self.execution_manager.start_processing_action_runs()
