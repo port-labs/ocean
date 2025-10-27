@@ -18,13 +18,15 @@ async def test_make_paginated_request_with_skiptoken(
 ) -> None:
     base_url = "https://management.azure.com"
     endpoint = "resources"
+    api_version = "2024-04-01"
     full_url = f"{base_url}/{endpoint}"
+    mocked_url = f"{full_url}?api-version={api_version}"
     skip_token = "skip-me"
 
     # Mock first page response
     httpx_mock.add_response(
         method="POST",
-        url=full_url,
+        url=mocked_url,
         json={
             "data": [{"id": "resource1"}],
             "$skipToken": skip_token,
@@ -37,7 +39,7 @@ async def test_make_paginated_request_with_skiptoken(
     # Mock second page response
     httpx_mock.add_response(
         method="POST",
-        url=full_url,
+        url=mocked_url,
         json={"data": [{"id": "resource2"}]},
         match_content=json.dumps(
             {
@@ -55,9 +57,10 @@ async def test_make_paginated_request_with_skiptoken(
     )
 
     request = AzureRequest(
+        method="POST",
         endpoint=endpoint,
         data_key="data",
-        json_body={"query": "resources", "subscriptions": ["sub1"]},
+        data={"query": "resources", "subscriptions": ["sub1"]},
     )
 
     results = []
@@ -67,6 +70,8 @@ async def test_make_paginated_request_with_skiptoken(
     assert results == [{"id": "resource1"}, {"id": "resource2"}]
     requests = httpx_mock.get_requests()
     assert len(requests) == 2
+    assert str(requests[0].url) == mocked_url
+    assert str(requests[1].url) == mocked_url
     assert json.loads(requests[1].content)["options"]["$skipToken"] == skip_token
 
 
@@ -78,12 +83,14 @@ async def test_make_paginated_request_without_skiptoken(
 ) -> None:
     base_url = "https://management.azure.com"
     endpoint = "resources"
+    api_version = "2024-04-01"
     full_url = f"{base_url}/{endpoint}"
+    mocked_url = f"{full_url}?api-version={api_version}"
 
     # Mock response
     httpx_mock.add_response(
         method="POST",
-        url=full_url,
+        url=mocked_url,
         json={"data": [{"id": "resource1"}]},
         match_content=json.dumps(
             {"query": "resources", "subscriptions": ["sub1"]}
@@ -97,9 +104,10 @@ async def test_make_paginated_request_without_skiptoken(
     )
 
     request = AzureRequest(
+        method="POST",
         endpoint=endpoint,
         data_key="data",
-        json_body={"query": "resources", "subscriptions": ["sub1"]},
+        data={"query": "resources", "subscriptions": ["sub1"]},
     )
 
     results = []
@@ -109,3 +117,4 @@ async def test_make_paginated_request_without_skiptoken(
     assert results == [{"id": "resource1"}]
     requests = httpx_mock.get_requests()
     assert len(requests) == 1
+    assert str(requests[0].url) == mocked_url

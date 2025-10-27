@@ -16,18 +16,22 @@ async def test_make_paginated_request_with_nextlink(
 ) -> None:
     base_url = "https://management.azure.com"
     endpoint = "subscriptions"
+    api_version = "2024-04-01"
     next_link_path = "/?$skipToken=123"
     first_page_url = f"{base_url}/{endpoint}"
     next_page_url = f"{first_page_url}{next_link_path}"
 
+    mocked_first_url = f"{first_page_url}?api-version={api_version}"
+    mocked_next_url = f"{next_page_url}&api-version={api_version}"
+
     httpx_mock.add_response(
         method="GET",
-        url=first_page_url,
+        url=mocked_first_url,
         json={"value": [{"id": "resource1"}], "nextLink": next_page_url},
     )
     httpx_mock.add_response(
         method="GET",
-        url=next_page_url,
+        url=mocked_next_url,
         json={"value": [{"id": "resource2"}]},
     )
 
@@ -46,8 +50,8 @@ async def test_make_paginated_request_with_nextlink(
     assert results == [{"id": "resource1"}, {"id": "resource2"}]
     requests = httpx_mock.get_requests()
     assert len(requests) == 2
-    assert str(requests[0].url) == first_page_url
-    assert str(requests[1].url) == next_page_url
+    assert str(requests[0].url) == mocked_first_url
+    assert str(requests[1].url) == mocked_next_url
 
 
 @pytest.mark.asyncio
@@ -58,10 +62,12 @@ async def test_make_paginated_request_without_nextlink(
 ) -> None:
     base_url = "https://management.azure.com"
     endpoint = "subscriptions/123/resources"
+    api_version = "2024-04-01"
     full_url = f"{base_url}/{endpoint}"
+    mocked_url = f"{full_url}?api-version={api_version}"
 
     httpx_mock.add_response(
-        method="GET", url=full_url, json={"value": [{"id": "resource1"}]}
+        method="GET", url=mocked_url, json={"value": [{"id": "resource1"}]}
     )
 
     client = AzureResourceManagerClient(
@@ -79,4 +85,4 @@ async def test_make_paginated_request_without_nextlink(
     assert results == [{"id": "resource1"}]
     requests = httpx_mock.get_requests()
     assert len(requests) == 1
-    assert str(requests[0].url) == full_url
+    assert str(requests[0].url) == mocked_url
