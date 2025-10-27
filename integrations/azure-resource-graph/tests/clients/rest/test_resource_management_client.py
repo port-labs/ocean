@@ -52,6 +52,43 @@ async def test_make_paginated_request_with_nextlink(
     assert (
         mock_make_request.call_args_list[1].args[0].endpoint == urlparse(next_link).path
     )
+
+
+@pytest.mark.asyncio
+async def test_paginated_request_preserves_api_version_and_skiptoken(
+    dummy_credential: _DummyCredential,
+    noop_rate_limiter: _NoOpRateLimiter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base_url = "https://management.azure.com"
+    endpoint = "subscriptions"
+    api_version = "2024-04-01"
+    next_link = f"{base_url}/subscriptions/?$skipToken=123"
+
+    mock_make_request = AsyncMock(
+        side_effect=[
+            {
+                "value": [{"id": "resource1"}],
+                "nextLink": next_link,
+            },
+            {"value": [{"id": "resource2"}]},
+        ]
+    )
+    monkeypatch.setattr(AzureResourceManagerClient, "make_request", mock_make_request)
+
+    client = AzureResourceManagerClient(
+        credential=dummy_credential,
+        base_url=base_url,
+        rate_limiter=noop_rate_limiter,
+    )
+
+    request = AzureRequest(endpoint=endpoint, data_key="value", api_version=api_version)
+
+    # Fully consume the generator to trigger all paginated calls
+    results = []
+    async for page in client.make_paginated_request(request):
+        results.extend(page)
+
     assert "api-version" in mock_make_request.call_args_list[1].args[0].params
     assert (
         mock_make_request.call_args_list[1].args[0].params["api-version"] == api_version
