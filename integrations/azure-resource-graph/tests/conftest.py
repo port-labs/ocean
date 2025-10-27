@@ -1,8 +1,33 @@
+from contextlib import asynccontextmanager
+from typing import Any, AsyncGenerator
 from unittest.mock import MagicMock, AsyncMock
 
 import pytest
+from azure.core.credentials import AccessToken
+from azure.core.credentials_async import AsyncTokenCredential
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+
+
+class _DummyCredential(AsyncTokenCredential):
+    async def get_token(self, *scopes: str, **kwargs: Any) -> AccessToken:
+        return AccessToken("dummy-token", 9999999999)
+
+
+class _NoOpRateLimiter:
+    @asynccontextmanager
+    async def limit(self, tokens: float = 1.0) -> AsyncGenerator[None, None]:
+        yield
+
+
+@pytest.fixture
+def dummy_credential() -> _DummyCredential:
+    return _DummyCredential()
+
+
+@pytest.fixture
+def noop_rate_limiter() -> _NoOpRateLimiter:
+    return _NoOpRateLimiter()
 
 
 @pytest.fixture(autouse=True)

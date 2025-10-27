@@ -1,36 +1,11 @@
-from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator
-
 import pytest
-from azure.core.credentials import AccessToken
-from azure.core.credentials_async import AsyncTokenCredential
 from pytest_httpx import HTTPXMock
 
 from azure_integration.clients.base import AzureRequest
 from azure_integration.clients.rest.resource_management_client import (
     AzureResourceManagerClient,
 )
-
-
-class _DummyCredential(AsyncTokenCredential):
-    async def get_token(self, *scopes: str, **kwargs: Any) -> AccessToken:
-        return AccessToken("dummy-token", 9999999999)
-
-
-class _NoOpRateLimiter:
-    @asynccontextmanager
-    async def limit(self, tokens: float = 1.0) -> AsyncGenerator[None, None]:
-        yield
-
-
-@pytest.fixture
-def dummy_credential() -> _DummyCredential:
-    return _DummyCredential()
-
-
-@pytest.fixture
-def noop_rate_limiter() -> _NoOpRateLimiter:
-    return _NoOpRateLimiter()
+from tests.conftest import _DummyCredential, _NoOpRateLimiter
 
 
 @pytest.mark.asyncio
