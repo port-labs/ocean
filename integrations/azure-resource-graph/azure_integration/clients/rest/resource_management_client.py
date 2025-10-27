@@ -73,6 +73,6 @@ class AzureResourceManagerClient(AzureRestClient):
     def _split_url_params(self, url: str) -> Tuple[str, Dict[str, str]]:
         """Extract query params from a full URL (handles %24skiptoken decoding)."""
         parsed = urlparse(url)
-        endpoint = parsed.path.rstrip("/")
+        endpoint = parsed.path
         params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
         return endpoint, params
