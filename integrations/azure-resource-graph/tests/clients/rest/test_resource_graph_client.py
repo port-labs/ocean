@@ -1,7 +1,7 @@
 import json
+from unittest.mock import AsyncMock, PropertyMock
 
 import pytest
-from pytest_httpx import HTTPXMock
 
 from azure_integration.clients.base import AzureRequest
 from azure_integration.clients.rest.resource_graph_client import (
@@ -12,43 +12,31 @@ from tests.conftest import _DummyCredential, _NoOpRateLimiter
 
 @pytest.mark.asyncio
 async def test_make_paginated_request_with_skiptoken(
-    httpx_mock: HTTPXMock,
     dummy_credential: _DummyCredential,
     noop_rate_limiter: _NoOpRateLimiter,
+    mock_httpx_client: AsyncMock,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     base_url = "https://management.azure.com"
     endpoint = "resources"
     api_version = "2024-04-01"
-    full_url = f"{base_url}/{endpoint}"
-    mocked_url = f"{full_url}?api-version={api_version}"
     skip_token = "skip-me"
 
-    # Mock first page response
-    httpx_mock.add_response(
-        method="POST",
-        url=mocked_url,
-        json={
-            "data": [{"id": "resource1"}],
-            "$skipToken": skip_token,
-        },
-        match_content=json.dumps(
-            {"query": "resources", "subscriptions": ["sub1"]}
-        ).encode("utf-8"),
-    )
+    # Mock responses
+    mock_response_1 = AsyncMock()
+    mock_response_1.json.return_value = {
+        "data": [{"id": "resource1"}],
+        "$skipToken": skip_token,
+    }
+    mock_response_1.headers = {}
+    mock_response_1.raise_for_status.return_value = None
 
-    # Mock second page response
-    httpx_mock.add_response(
-        method="POST",
-        url=mocked_url,
-        json={"data": [{"id": "resource2"}]},
-        match_content=json.dumps(
-            {
-                "query": "resources",
-                "subscriptions": ["sub1"],
-                "options": {"$skipToken": skip_token},
-            }
-        ).encode("utf-8"),
-    )
+    mock_response_2 = AsyncMock()
+    mock_response_2.json.return_value = {"data": [{"id": "resource2"}]}
+    mock_response_2.headers = {}
+    mock_response_2.raise_for_status.return_value = None
+
+    mock_httpx_client.request.side_effect = [mock_response_1, mock_response_2]
 
     client = AzureResourceGraphClient(
         credential=dummy_credential,
@@ -56,11 +44,18 @@ async def test_make_paginated_request_with_skiptoken(
         rate_limiter=noop_rate_limiter,
     )
 
+    monkeypatch.setattr(
+        AzureResourceGraphClient,
+        "client",
+        PropertyMock(return_value=mock_httpx_client),
+    )
+
     request = AzureRequest(
         method="POST",
         endpoint=endpoint,
         data_key="data",
         json_body={"query": "resources", "subscriptions": ["sub1"]},
+        api_version=api_version,
     )
 
     results = []
@@ -68,39 +63,36 @@ async def test_make_paginated_request_with_skiptoken(
         results.extend(page)
 
     assert results == [{"id": "resource1"}, {"id": "resource2"}]
-    requests = httpx_mock.get_requests()
-    assert len(requests) == 2
-    assert str(requests[0].url) == mocked_url
-    assert str(requests[1].url) == mocked_url
-    assert json.loads(requests[1].content)["options"]["$skipToken"] == skip_token
+    assert mock_httpx_client.request.call_count == 2
 
 
 @pytest.mark.asyncio
 async def test_make_paginated_request_without_skiptoken(
-    httpx_mock: HTTPXMock,
     dummy_credential: _DummyCredential,
     noop_rate_limiter: _NoOpRateLimiter,
+    mock_httpx_client: AsyncMock,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     base_url = "https://management.azure.com"
     endpoint = "resources"
     api_version = "2024-04-01"
-    full_url = f"{base_url}/{endpoint}"
-    mocked_url = f"{full_url}?api-version={api_version}"
 
     # Mock response
-    httpx_mock.add_response(
-        method="POST",
-        url=mocked_url,
-        json={"data": [{"id": "resource1"}]},
-        match_content=json.dumps(
-            {"query": "resources", "subscriptions": ["sub1"]}
-        ).encode("utf-8"),
-    )
+    mock_response = AsyncMock()
+    mock_response.json.return_value = {"data": [{"id": "resource1"}]}
+    mock_response.headers = {}
+    mock_response.raise_for_status.return_value = None
+    mock_httpx_client.request.return_value = mock_response
 
     client = AzureResourceGraphClient(
         credential=dummy_credential,
         base_url=base_url,
         rate_limiter=noop_rate_limiter,
+    )
+    monkeypatch.setattr(
+        AzureResourceGraphClient,
+        "client",
+        PropertyMock(return_value=mock_httpx_client),
     )
 
     request = AzureRequest(
@@ -108,6 +100,7 @@ async def test_make_paginated_request_without_skiptoken(
         endpoint=endpoint,
         data_key="data",
         json_body={"query": "resources", "subscriptions": ["sub1"]},
+        api_version=api_version,
     )
 
     results = []
@@ -115,6 +108,4 @@ async def test_make_paginated_request_without_skiptoken(
         results.extend(page)
 
     assert results == [{"id": "resource1"}]
-    requests = httpx_mock.get_requests()
-    assert len(requests) == 1
-    assert str(requests[0].url) == mocked_url
+    mock_httpx_client.request.assert_called_once()

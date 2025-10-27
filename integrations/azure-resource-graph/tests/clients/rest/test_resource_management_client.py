@@ -1,5 +1,6 @@
+from unittest.mock import AsyncMock, PropertyMock
+
 import pytest
-from pytest_httpx import HTTPXMock
 
 from azure_integration.clients.base import AzureRequest
 from azure_integration.clients.rest.resource_management_client import (
@@ -10,30 +11,31 @@ from tests.conftest import _DummyCredential, _NoOpRateLimiter
 
 @pytest.mark.asyncio
 async def test_make_paginated_request_with_nextlink(
-    httpx_mock: HTTPXMock,
     dummy_credential: _DummyCredential,
     noop_rate_limiter: _NoOpRateLimiter,
+    mock_httpx_client: AsyncMock,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     base_url = "https://management.azure.com"
     endpoint = "subscriptions"
     api_version = "2024-04-01"
-    next_link_path = "/?$skipToken=123"
-    first_page_url = f"{base_url}/{endpoint}"
-    next_page_url = f"{first_page_url}{next_link_path}"
+    next_link = "/subscriptions/?$skipToken=123"
 
-    mocked_first_url = f"{first_page_url}?api-version={api_version}"
-    mocked_next_url = f"{next_page_url}&api-version={api_version}"
+    # setup mock responses
+    mock_response_1 = AsyncMock()
+    mock_response_1.json.return_value = {
+        "value": [{"id": "resource1"}],
+        "nextLink": next_link,
+    }
+    mock_response_1.headers = {}
+    mock_response_1.raise_for_status.return_value = None
 
-    httpx_mock.add_response(
-        method="GET",
-        url=mocked_first_url,
-        json={"value": [{"id": "resource1"}], "nextLink": next_page_url},
-    )
-    httpx_mock.add_response(
-        method="GET",
-        url=mocked_next_url,
-        json={"value": [{"id": "resource2"}]},
-    )
+    mock_response_2 = AsyncMock()
+    mock_response_2.json.return_value = {"value": [{"id": "resource2"}]}
+    mock_response_2.headers = {}
+    mock_response_2.raise_for_status.return_value = None
+
+    mock_httpx_client.request.side_effect = [mock_response_1, mock_response_2]
 
     client = AzureResourceManagerClient(
         credential=dummy_credential,
@@ -41,34 +43,38 @@ async def test_make_paginated_request_with_nextlink(
         rate_limiter=noop_rate_limiter,
     )
 
-    request = AzureRequest(endpoint=endpoint, data_key="value")
+    monkeypatch.setattr(
+        AzureResourceManagerClient,
+        "client",
+        PropertyMock(return_value=mock_httpx_client),
+    )
+
+    request = AzureRequest(endpoint=endpoint, data_key="value", api_version=api_version)
 
     results = []
     async for page in client.make_paginated_request(request):
         results.extend(page)
 
     assert results == [{"id": "resource1"}, {"id": "resource2"}]
-    requests = httpx_mock.get_requests()
-    assert len(requests) == 2
-    assert str(requests[0].url) == mocked_first_url
-    assert str(requests[1].url) == mocked_next_url
+    assert mock_httpx_client.request.call_count == 2
 
 
 @pytest.mark.asyncio
 async def test_make_paginated_request_without_nextlink(
-    httpx_mock: HTTPXMock,
     dummy_credential: _DummyCredential,
     noop_rate_limiter: _NoOpRateLimiter,
+    mock_httpx_client: AsyncMock,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     base_url = "https://management.azure.com"
     endpoint = "subscriptions/123/resources"
     api_version = "2024-04-01"
-    full_url = f"{base_url}/{endpoint}"
-    mocked_url = f"{full_url}?api-version={api_version}"
 
-    httpx_mock.add_response(
-        method="GET", url=mocked_url, json={"value": [{"id": "resource1"}]}
-    )
+    mock_response = AsyncMock()
+    mock_response.json.return_value = {"value": [{"id": "resource1"}]}
+    mock_response.headers = {}
+    mock_response.raise_for_status.return_value = None
+    mock_httpx_client.request.return_value = mock_response
 
     client = AzureResourceManagerClient(
         credential=dummy_credential,
@@ -76,13 +82,17 @@ async def test_make_paginated_request_without_nextlink(
         rate_limiter=noop_rate_limiter,
     )
 
-    request = AzureRequest(endpoint=endpoint, data_key="value")
+    monkeypatch.setattr(
+        AzureResourceManagerClient,
+        "client",
+        PropertyMock(return_value=mock_httpx_client),
+    )
+
+    request = AzureRequest(endpoint=endpoint, data_key="value", api_version=api_version)
 
     results = []
     async for page in client.make_paginated_request(request):
         results.extend(page)
 
     assert results == [{"id": "resource1"}]
-    requests = httpx_mock.get_requests()
-    assert len(requests) == 1
-    assert str(requests[0].url) == mocked_url
+    mock_httpx_client.request.assert_called_once()

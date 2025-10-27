@@ -33,6 +33,13 @@ def noop_rate_limiter() -> _NoOpRateLimiter:
     return _NoOpRateLimiter()
 
 
+@pytest.fixture
+def mock_httpx_client() -> AsyncMock:
+    """Fixture for a mocked httpx.AsyncClient."""
+    mock_client = AsyncMock()
+    return mock_client
+
+
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
     try:
