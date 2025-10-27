@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "okta"
-version = "0.1.5-dev"
+version = "0.1.0-betas"
 description = "Integration to bring information from Okta into Port"
 authors = ["Iyanuoluwa Adebayo <ioluwadunsinadebayo@gmail.com>"]
 
