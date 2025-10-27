@@ -7,20 +7,20 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from pydantic import Field
 
 from azure_integration.models import ResourceGroupTagFilters
 
 
-class TagSelector(Selector):
-    tags: Optional[ResourceGroupTagFilters] = None
-
-
-class ResourceSelector(TagSelector):
+class ResourceSelector(Selector):
     resource_types: Optional[list[str]] = None
+    resource_group_tags: Optional[ResourceGroupTagFilters] = Field(
+        default=None, alias="resourceGroupTags"
+    )
 
 
-class ResourceContainerSelector(TagSelector):
-    pass
+class ResourceContainerSelector(Selector):
+    tags: Optional[ResourceGroupTagFilters] = None
 
 
 class AzureResourceConfig(ResourceConfig):
