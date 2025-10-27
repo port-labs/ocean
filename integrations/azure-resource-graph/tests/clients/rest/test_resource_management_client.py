@@ -6,7 +6,7 @@ from azure.core.credentials import AccessToken
 from azure.core.credentials_async import AsyncTokenCredential
 from pytest_httpx import HTTPXMock
 
-from azure_integration.clients import AzureRequest
+from azure_integration.clients.base import AzureRequest
 from azure_integration.clients.rest.resource_management_client import (
     AzureResourceManagerClient,
 )
