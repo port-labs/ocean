@@ -15,10 +15,10 @@ async def test_make_paginated_request_with_nextlink(
     noop_rate_limiter: _NoOpRateLimiter,
 ) -> None:
     base_url = "https://management.azure.com"
-    endpoint = "subscriptions/123/resources"
-    next_link_path = "/next?token=123"
+    endpoint = "subscriptions"
+    next_link_path = "/?$skipToken=123"
     first_page_url = f"{base_url}/{endpoint}"
-    next_page_url = f"{base_url}{next_link_path}"
+    next_page_url = f"{first_page_url}{next_link_path}"
 
     httpx_mock.add_response(
         method="GET",

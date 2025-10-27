@@ -57,7 +57,7 @@ async def test_make_paginated_request_with_skiptoken(
     request = AzureRequest(
         endpoint=endpoint,
         data_key="data",
-        data={"query": "resources", "subscriptions": ["sub1"]},
+        json_body={"query": "resources", "subscriptions": ["sub1"]},
     )
 
     results = []
@@ -99,7 +99,7 @@ async def test_make_paginated_request_without_skiptoken(
     request = AzureRequest(
         endpoint=endpoint,
         data_key="data",
-        data={"query": "resources", "subscriptions": ["sub1"]},
+        json_body={"query": "resources", "subscriptions": ["sub1"]},
     )
 
     results = []
