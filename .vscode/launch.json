@@ -284,12 +284,45 @@
     },
     {
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/integrations/harbor-server",
-      "envFile": "${workspaceFolder}/integrations/harbor-server/.env",
+      "cwd": "${workspaceFolder}/integrations/generic-http",
+      "envFile": "${workspaceFolder}/integrations/generic-http/examples/config-no-auth.env",
       "justMyCode": true,
-      "name": "Run harbor-server integration",
-      "program": "${workspaceFolder}/integrations/harbor-server/debug.py",
-      "python": "${workspaceFolder}/integrations/harbor-server/.venv/bin/python",
+      "name": "Generic HTTP - No Auth",
+      "program": "${workspaceFolder}/integrations/generic-http/debug.py",
+      "python": "${workspaceFolder}/integrations/generic-http/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/generic-http",
+      "envFile": "${workspaceFolder}/integrations/generic-http/examples/config-bearer-token.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - Bearer Token",
+      "program": "${workspaceFolder}/integrations/generic-http/debug.py",
+      "python": "${workspaceFolder}/integrations/generic-http/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/generic-http",
+      "envFile": "${workspaceFolder}/integrations/generic-http/examples/config-basic-auth.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - Basic Auth",
+      "program": "${workspaceFolder}/integrations/generic-http/debug.py",
+      "python": "${workspaceFolder}/integrations/generic-http/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/generic-http",
+      "envFile": "${workspaceFolder}/integrations/generic-http/examples/config-api-key.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - API Key",
+      "program": "${workspaceFolder}/integrations/generic-http/debug.py",
+      "python": "${workspaceFolder}/integrations/generic-http/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     }

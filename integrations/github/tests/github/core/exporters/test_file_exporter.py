@@ -95,6 +95,7 @@ class TestRestFileExporter:
         ) as mock_request:
             file_data = await exporter.get_resource(
                 FileContentOptions(
+                    organization="test-org",
                     repo_name="repo1",
                     file_path="test.txt",
                     branch="main",
@@ -106,7 +107,7 @@ class TestRestFileExporter:
             assert file_data["path"] == "test.txt"
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/contents/test.txt",
+                f"{rest_client.base_url}/repos/test-org/repo1/contents/test.txt",
                 params={"ref": "main"},
             )
 
@@ -123,6 +124,7 @@ class TestRestFileExporter:
         ):
             file_data = await exporter.get_resource(
                 FileContentOptions(
+                    organization="test-org",
                     repo_name="repo1",
                     file_path="large-file.txt",
                     branch="main",
@@ -134,13 +136,25 @@ class TestRestFileExporter:
 
     async def test_get_paginated_resources(self, rest_client: GithubRestClient) -> None:
         exporter = RestFileExporter(rest_client)
+        organization = "test-org"
 
         options = [
             ListFileSearchOptions(
+                organization=organization,
                 repo_name="repo1",
                 files=[
-                    FileSearchOptions(path="*.txt", skip_parsing=False, branch="main"),
-                    FileSearchOptions(path="*.yaml", skip_parsing=True, branch="main"),
+                    FileSearchOptions(
+                        organization=organization,
+                        path="*.txt",
+                        skip_parsing=False,
+                        branch="main",
+                    ),
+                    FileSearchOptions(
+                        organization=organization,
+                        path="*.yaml",
+                        skip_parsing=True,
+                        branch="main",
+                    ),
                 ],
             )
         ]
@@ -180,18 +194,31 @@ class TestRestFileExporter:
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestFileExporter(rest_client)
+        organization = "test-org"
 
         options = [
             ListFileSearchOptions(
+                organization=organization,
                 repo_name="repo1",
                 files=[
-                    FileSearchOptions(path="*.txt", skip_parsing=False, branch="main")
+                    FileSearchOptions(
+                        organization=organization,
+                        path="*.txt",
+                        skip_parsing=False,
+                        branch="main",
+                    )
                 ],
             ),
             ListFileSearchOptions(
+                organization=organization,
                 repo_name="repo2",
                 files=[
-                    FileSearchOptions(path="*.yaml", skip_parsing=True, branch="main")
+                    FileSearchOptions(
+                        organization=organization,
+                        path="*.yaml",
+                        skip_parsing=True,
+                        branch="main",
+                    )
                 ],
             ),
         ]
@@ -233,16 +260,16 @@ class TestRestFileExporter:
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=TEST_REPO_METADATA)
         ) as mock_request:
-            metadata = await exporter.get_repository_metadata("repo1")
+            metadata = await exporter.get_repository_metadata("test-org", "repo1")
 
             assert metadata == TEST_REPO_METADATA
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1"
+                f"{rest_client.base_url}/repos/test-org/repo1"
             )
 
     async def test_collect_matched_files(self, rest_client: GithubRestClient) -> None:
         exporter = RestFileExporter(rest_client)
-
+        organization = "test-org"
         with (
             patch.object(
                 exporter,
@@ -256,8 +283,18 @@ class TestRestFileExporter:
             ),
         ):
             file_patterns = [
-                FileSearchOptions(path="*.txt", skip_parsing=False, branch="main"),
-                FileSearchOptions(path="*.yaml", skip_parsing=True, branch="main"),
+                FileSearchOptions(
+                    organization=organization,
+                    path="*.txt",
+                    skip_parsing=False,
+                    branch="main",
+                ),
+                FileSearchOptions(
+                    organization=organization,
+                    path="*.yaml",
+                    skip_parsing=True,
+                    branch="main",
+                ),
             ]
 
             graphql_files, rest_files = await exporter.collect_matched_files(
@@ -278,7 +315,6 @@ class TestRestFileExporter:
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestFileExporter(rest_client)
-
         # Create tree entries with files of different sizes
         tree_entries_with_sizes = [
             {
@@ -314,7 +350,12 @@ class TestRestFileExporter:
             ),
         ):
             file_patterns = [
-                FileSearchOptions(path="*.txt", skip_parsing=False, branch="main"),
+                FileSearchOptions(
+                    organization="test-org",
+                    path="*.txt",
+                    skip_parsing=False,
+                    branch="main",
+                ),
             ]
 
             graphql_files, rest_files = await exporter.collect_matched_files(
@@ -349,7 +390,12 @@ class TestRestFileExporter:
             ),
         ):
             file_patterns = [
-                FileSearchOptions(path="*.py", skip_parsing=False, branch="main"),
+                FileSearchOptions(
+                    organization="test-org",
+                    path="*.py",
+                    skip_parsing=False,
+                    branch="main",
+                ),
             ]
 
             graphql_files, rest_files = await exporter.collect_matched_files(
@@ -379,6 +425,7 @@ class TestRestFileExporter:
 
             files = [
                 {
+                    "organization": "test-org",
                     "repo_name": "repo1",
                     "file_path": "test.txt",
                     "skip_parsing": False,
@@ -405,6 +452,7 @@ class TestRestFileExporter:
         ):
             files = [
                 {
+                    "organization": "test-org",
                     "repo_name": "repo1",
                     "file_path": "test.txt",
                     "skip_parsing": False,
@@ -426,11 +474,11 @@ class TestRestFileExporter:
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=tree_response)
         ) as mock_request:
-            tree = await exporter.get_tree_recursive("repo1", "main")
+            tree = await exporter.get_tree_recursive("test-org", "repo1", "main")
 
             assert tree == TEST_TREE_ENTRIES
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/main?recursive=1",
+                f"{rest_client.base_url}/repos/test-org/repo1/git/trees/main?recursive=1",
                 ignored_errors=[IgnoredError(status=409, message="empty repository")],
             )
 
@@ -438,20 +486,22 @@ class TestRestFileExporter:
         self, rest_client: GithubRestClient
     ) -> None:
         exporter = RestFileExporter(rest_client)
+        organization = "test-org"
 
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=None)
         ) as mock_request:
-            tree = await exporter.get_tree_recursive("repo1", "main")
+            tree = await exporter.get_tree_recursive(organization, "repo1", "main")
 
             assert tree == []
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/git/trees/main?recursive=1",
+                f"{rest_client.base_url}/repos/{organization}/repo1/git/trees/main?recursive=1",
                 ignored_errors=[IgnoredError(status=409, message="empty repository")],
             )
 
     async def test_fetch_commit_diff(self, rest_client: GithubRestClient) -> None:
         exporter = RestFileExporter(rest_client)
+        organization = "test-org"
 
         diff_response = {
             "url": "https://api.github.com/repos/test-org/repo1/compare/before...after",
@@ -468,11 +518,13 @@ class TestRestFileExporter:
         with patch.object(
             rest_client, "send_api_request", AsyncMock(return_value=diff_response)
         ) as mock_request:
-            diff = await exporter.fetch_commit_diff("repo1", "before-sha", "after-sha")
+            diff = await exporter.fetch_commit_diff(
+                organization, "repo1", "before-sha", "after-sha"
+            )
 
             assert diff == diff_response
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/compare/before-sha...after-sha"
+                f"{rest_client.base_url}/repos/{organization}/repo1/compare/before-sha...after-sha"
             )
 
 
@@ -486,7 +538,7 @@ class TestFileExporterUtils:
         """
         # Arrange
         mock_file_pattern = GithubFilePattern(
-            path="**/*.yaml", skipParsing=False, repos=None
+            organization="test-org", path="**/*.yaml", skipParsing=False, repos=None
         )
         files = [mock_file_pattern]
 
@@ -533,6 +585,7 @@ class TestFileExporterUtils:
         """
         # Arrange
         mock_file_pattern = GithubFilePattern(
+            organization="test-org",
             path="**/*.yaml",
             skipParsing=False,
             repos=[

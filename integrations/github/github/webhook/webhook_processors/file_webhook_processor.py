@@ -46,6 +46,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
+        organization = payload["organization"]["login"]
         repository = payload["repository"]
         before_sha = payload["before"]
         after_sha = payload["after"]
@@ -57,7 +58,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         file_patterns = selector.files
 
         logger.info(
-            f"Processing push event for file kind for repository {repo_name} with {len(file_patterns)} file patterns"
+            f"Processing push event for file kind for repository {repo_name} of organization: {organization} with {len(file_patterns)} file patterns"
         )
 
         matching_patterns = self._get_matching_patterns(
@@ -73,6 +74,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
         updated_raw_results, deleted_raw_results = await self._process_matching_files(
+            organization,
             repo_name,
             before_sha,
             after_sha,
@@ -126,6 +128,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
 
     async def _process_matching_files(
         self,
+        organization: str,
         repo_name: str,
         before_sha: str,
         after_sha: str,
@@ -134,30 +137,35 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         current_branch: str,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         logger.info(
-            f"Fetching commit diff for repository {repo_name} from {before_sha} to {after_sha}"
+            f"Fetching commit diff for repository {repo_name} of organization: {organization} from {before_sha} to {after_sha}"
         )
         rest_client = create_github_client()
         exporter = RestFileExporter(rest_client)
 
-        diff_data = await exporter.fetch_commit_diff(repo_name, before_sha, after_sha)
+        diff_data = await exporter.fetch_commit_diff(
+            organization, repo_name, before_sha, after_sha
+        )
         files_to_process = diff_data["files"]
         matching_files = get_matching_files(files_to_process, matching_patterns)
 
         if not matching_files:
-            logger.info("No matching files found for any patterns, skipping processing")
+            logger.info(
+                f"No matching files found for any patterns, skipping processing for organization: {organization}"
+            )
             return [], []
 
         deleted_files, updated_files = group_files_by_status(matching_files)
         logger.info(
-            f"Found {len(deleted_files)} deleted files and {len(updated_files)} updated files"
+            f"Found {len(deleted_files)} deleted files and {len(updated_files)} updated files of organization: {organization}"
         )
 
         updated_raw_results = await self._process_updated_files(
-            updated_files, exporter, repository, repo_name, current_branch
+            organization, updated_files, exporter, repository, repo_name, current_branch
         )
 
         deleted_raw_results = [
             {
+                "organization": organization,
                 "path": file["filename"],
                 "metadata": {"path": file["filename"]},
                 "repository": repository,
@@ -171,6 +179,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
 
     async def _process_updated_files(
         self,
+        organization: str,
         updated_files: list[dict[str, Any]],
         exporter: "RestFileExporter",
         repository: dict[str, Any],
@@ -187,6 +196,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                 try:
                     file_content_response = await exporter.get_resource(
                         FileContentOptions(
+                            organization=organization,
                             repo_name=repo_name,
                             file_path=file_path,
                             branch=current_branch,
@@ -196,11 +206,12 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                     content = file_content_response.get("content")
                     if content is None:
                         logger.warning(
-                            f"File {file_path} has no content or is too large"
+                            f"File {file_path} has no content or is too large from {organization}"
                         )
                         continue
 
                     file_obj = await exporter.file_processor.process_file(
+                        organization=organization,
                         content=content,
                         repository=repository,
                         file_path=file_path,
@@ -211,13 +222,15 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
 
                     results.append(dict(file_obj))
                     logger.debug(
-                        f"Successfully processed file {file_path} with pattern {pattern.path}"
+                        f"Successfully processed file {file_path} with pattern {pattern.path} from {organization}"
                     )
 
                 except Exception as e:
                     logger.error(
-                        f"Error processing file {file_path} with pattern {pattern.path}: {e}"
+                        f"Error processing file {file_path} with pattern {pattern.path}: {e} from {organization}"
                     )
 
-        logger.info(f"Successfully processed {len(results)} file results")
+        logger.info(
+            f"Successfully processed {len(results)} file results from {organization}"
+        )
         return results

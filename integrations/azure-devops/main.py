@@ -31,6 +31,9 @@ from azure_devops.webhooks.webhook_processors.gitops_webhook_processor import (
 from azure_devops.webhooks.webhook_processors.folder_webhook_processor import (
     FolderWebhookProcessor,
 )
+from azure_devops.webhooks.webhook_processors.branch_webhook_processor import (
+    BranchWebhookProcessor,
+)
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -118,6 +121,15 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for repositories in azure_devops_client.generate_repositories():
         logger.info(f"Resyncing {len(repositories)} repositories")
         yield repositories
+
+
+@ocean.on_resync(Kind.BRANCH)
+async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+
+    async for branches in azure_devops_client.generate_branches():
+        logger.info(f"Resyncing {len(branches)} branches")
+        yield branches
 
 
 @ocean.on_resync(Kind.REPOSITORY_POLICY)
@@ -301,3 +313,4 @@ ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FileWebhookProcessor)
 ocean.add_webhook_processor("/webhook", GitopsWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FolderWebhookProcessor)
+ocean.add_webhook_processor("/webhook", BranchWebhookProcessor)
