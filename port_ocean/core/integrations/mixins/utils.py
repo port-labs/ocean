@@ -20,6 +20,7 @@ from port_ocean.exceptions.core import (
     KindNotImplementedException,
 )
 import os
+import shutil
 from port_ocean.utils.async_http import _http_client
 from port_ocean.clients.port.utils import _http_client as _port_http_client
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
@@ -216,7 +217,9 @@ async def get_items_to_parse_bulks(raw_data: dict[Any, Any], data_path: str, ite
       | map({{{items_to_parse_name}: ., {base_jq_object_string}}})"""
 
         # Use subprocess with list arguments instead of shell=True
-        jq_args = ["/bin/jq", jq_expression, data_path]
+
+        jq_path = shutil.which("jq") or "/bin/jq"
+        jq_args = [jq_path, jq_expression, data_path]
 
         with open(temp_output_path, "w") as output_file:
             result = subprocess.run(
@@ -271,7 +274,7 @@ def get_events_as_a_stream(
         max_buffer_size_mb: int = 1
     ) -> Generator[list[dict[str, Any]], None, None]:
         events = ijson.sendable_list()
-        coro = ijson.items_coro(events, target_items)
+        coro = ijson.items_coro(events, target_items, use_float=True)
 
         # Convert MB to bytes for the buffer size
         buffer_size = max_buffer_size_mb * 1024 * 1024
