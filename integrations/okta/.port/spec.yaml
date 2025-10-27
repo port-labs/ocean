@@ -24,3 +24,7 @@ configurations:
     type: string
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from Okta are accepted.
     sensitive: true
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
