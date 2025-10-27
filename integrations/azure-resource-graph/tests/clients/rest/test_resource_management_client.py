@@ -19,7 +19,9 @@ async def test_make_paginated_request_with_nextlink(
     base_url = "https://management.azure.com"
     endpoint = "subscriptions"
     api_version = "2024-04-01"
-    next_link = f"{base_url}/subscriptions/?skipToken=123"
+    next_link = f"{base_url}/subscriptions/?$skipToken=123"
+
+    assert "$skipToken" in urlparse(next_link).query
 
     mock_make_request = AsyncMock(
         side_effect=[
