@@ -71,7 +71,7 @@ def parse_github_options(
     """Extract the repository name and other parameters from the options."""
     organization = params.pop("organization")
     repo_name = params.pop("repo_name", None)
-    params.pop("exclude_archived", None)
+    params.pop("search_params", None)
     return repo_name, organization, params
 
 

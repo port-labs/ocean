@@ -123,7 +123,6 @@ async def group_file_patterns_by_repositories_in_selector(
     files: List["GithubFilePattern"],
     repo_exporter: "AbstractGithubExporter[Any]",
     repo_type: str,
-    exclude_archived: bool,
 ) -> List[ListFileSearchOptions]:
     """
     Group file patterns by repository to enable batch processing.
@@ -148,7 +147,6 @@ async def group_file_patterns_by_repositories_in_selector(
             repo_option = ListRepositoryOptions(
                 organization=organization,
                 type=repo_type,
-                exclude_archived=exclude_archived,
             )
             async for repo_batch in repo_exporter.get_paginated_resources(repo_option):
                 for repository in repo_batch:

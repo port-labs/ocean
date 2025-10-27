@@ -1,6 +1,7 @@
 import asyncio
-from typing import Any, Dict, TYPE_CHECKING, cast, ClassVar
+from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from github.helpers.models import RepoSearchParams
 from github.helpers.utils import parse_github_options
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
@@ -21,9 +22,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         "teams": "_enrich_repository_with_teams",
     }
 
-    async def get_resource[
-        ExporterOptionsT: SingleRepositoryOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleRepositoryOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         name = options["name"]
         organization = options["organization"]
         included_relationships = options.get("included_relationships")
@@ -43,9 +44,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
     @cache_iterator_result()
-    async def get_paginated_resources[
-        ExporterOptionsT: ListRepositoryOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListRepositoryOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
         organization = options["organization"]
         included_relationships = options.get("included_relationships")
@@ -68,7 +69,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     async def _fetch_repositories(
         self, options: ListRepositoryOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        if options.get("exclude_archived"):
+        if options.get("search_params"):
             repo_fetcher = self._fetch_repositories_with_search_api
         else:
             repo_fetcher = self._fetch_repositories_with_list_api
@@ -80,7 +81,8 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         self, options: ListRepositoryOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         _, organization, params = parse_github_options(dict(options))
-        params.pop("exclude_archived", None)
+        params.pop("search_params", None)
+
         async for repos in self.client.send_paginated_request(
             f"{self.client.base_url}/orgs/{organization}/repos", params
         ):
@@ -93,7 +95,12 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         self, options: ListRepositoryOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         _, organization, params = parse_github_options(dict(options))
-        search_query = f"org:{organization} fork:true archived:false"
+        search_params = cast(
+            Optional[RepoSearchParams], params.pop("search_params", None)
+        )
+        search_query = (
+            f"org:{organization} {search_params.search_query if search_params else ' '}"
+        )
         query = {"q": search_query, **params}
         url = f"{self.client.base_url}/search/repositories"
         async for search_results in self.client.send_paginated_request(url, query):

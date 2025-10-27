@@ -1,5 +1,7 @@
 from typing import List, NotRequired, Optional, Required, TypedDict
 
+from github.helpers.models import RepoSearchParams
+
 
 class ListOrganizationOptions(TypedDict):
     """Options for listing organizations."""
@@ -21,7 +23,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     """Options for listing repositories."""
 
     type: str
-    exclude_archived: NotRequired[bool]
+    search_params: NotRequired[Optional[RepoSearchParams]]
     included_relationships: NotRequired[Optional[list[str]]]
 
 
