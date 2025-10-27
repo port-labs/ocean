@@ -50,7 +50,8 @@ async def test_make_paginated_request_with_nextlink(
     # This assertion highlights a bug: the client incorrectly uses only the path
     # from the absolute nextLink URL for subsequent requests.
     assert (
-        mock_make_request.call_args_list[1].args[0].endpoint == urlparse(next_link).path
+        mock_make_request.call_args_list[1].args[0].endpoint
+        == urlparse(next_link).path.rstrip("/")
     )
 
 
