@@ -5,7 +5,7 @@ from botocore.exceptions import ClientError
 
 from aws.core.exporters.sqs.queue.actions import (
     GetQueueAttributesAction,
-    GetQueueTagsAction,
+    ListQueueTagsAction,
     ListQueuesAction,
     SqsQueueActionsMap,
 )
@@ -129,16 +129,16 @@ class TestGetQueueTagsAction:
         return mock_client
 
     @pytest.fixture
-    def action(self, mock_client: AsyncMock) -> GetQueueTagsAction:
+    def action(self, mock_client: AsyncMock) -> ListQueueTagsAction:
         """Create a GetQueueTagsAction instance for testing."""
-        return GetQueueTagsAction(mock_client)
+        return ListQueueTagsAction(mock_client)
 
-    def test_inheritance(self, action: GetQueueTagsAction) -> None:
+    def test_inheritance(self, action: ListQueueTagsAction) -> None:
         """Test that the action inherits from Action."""
         assert isinstance(action, Action)
 
     @pytest.mark.asyncio
-    async def test_execute_success(self, action: GetQueueTagsAction) -> None:
+    async def test_execute_success(self, action: ListQueueTagsAction) -> None:
         """Test successful execution of list_queue_tags."""
         # Mock response
         expected_response = {"Tags": {"Environment": "Production", "Team": "Backend"}}
@@ -158,7 +158,7 @@ class TestGetQueueTagsAction:
         )
 
     @pytest.mark.asyncio
-    async def test_execute_no_tags(self, action: GetQueueTagsAction) -> None:
+    async def test_execute_no_tags(self, action: ListQueueTagsAction) -> None:
         """Test execution with no tags."""
         # Mock response with no tags
         expected_response: dict[str, Any] = {"Tags": {}}
@@ -178,7 +178,7 @@ class TestGetQueueTagsAction:
 
     @pytest.mark.asyncio
     async def test_execute_with_recoverable_exception(
-        self, action: GetQueueTagsAction
+        self, action: ListQueueTagsAction
     ) -> None:
         """Test execution with recoverable exception."""
         # Mock ClientError for access denied
@@ -201,7 +201,7 @@ class TestGetQueueTagsAction:
 
     @pytest.mark.asyncio
     async def test_execute_with_non_recoverable_exception(
-        self, action: GetQueueTagsAction
+        self, action: ListQueueTagsAction
     ) -> None:
         """Test execution with non-recoverable exception."""
         # Mock ClientError for non-recoverable exception
@@ -274,4 +274,4 @@ class TestSqsQueueActionsMap:
     def test_merge_with_options(self) -> None:
         """Test that merge works with options and includes tag action as optional."""
         actions_map = SqsQueueActionsMap()
-        assert actions_map.options == [GetQueueTagsAction]
+        assert actions_map.options == [ListQueueTagsAction]
