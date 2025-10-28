@@ -22,9 +22,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         "teams": "_enrich_repository_with_teams",
     }
 
-    async def get_resource[
-        ExporterOptionsT: SingleRepositoryOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleRepositoryOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         name = options["name"]
         organization = options["organization"]
         included_relationships = options.get("included_relationships")
@@ -44,9 +44,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
     @cache_iterator_result()
-    async def get_paginated_resources[
-        ExporterOptionsT: ListRepositoryOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListRepositoryOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
         organization = options["organization"]
         included_relationships = options.get("included_relationships")
@@ -99,7 +99,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             Optional[RepoSearchParams], params.pop("search_params", None)
         )
         search_query = (
-            f"org:{organization} {search_params.search_query if search_params else ' '}"
+            f"org:{organization} {search_params.query if search_params else ' '}"
         )
         query = {"q": search_query, **params}
         url = f"{self.client.base_url}/search/repositories"

@@ -121,7 +121,7 @@ class GithubTeamConfig(ResourceConfig):
     kind: Literal[ObjectKind.TEAM]
 
 
-class GithubDependabotAlertSelector(Selector):
+class GithubDependabotAlertSelector(RepoSearchSelector):
     states: list[Literal["auto_dismissed", "dismissed", "fixed", "open"]] = Field(
         default=["open"],
         description="Filter alerts by state (auto_dismissed, dismissed, fixed, open)",
@@ -210,6 +210,10 @@ class GithubBranchConfig(ResourceConfig):
     selector: GithubBranchSelector
 
 
+class GithubGeneralConfig(ResourceConfig):
+    selector: RepoSearchSelector
+
+
 class GithubPortAppConfig(PortAppConfig):
     organizations: List[str] = Field(
         default_factory=list,
@@ -231,7 +235,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFileResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
-        | ResourceConfig
+        | GithubGeneralConfig
     ] = Field(default_factory=list)
 
 
