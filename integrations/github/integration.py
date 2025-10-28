@@ -236,6 +236,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | GithubGeneralConfig
+        | ResourceConfig
     ] = Field(default_factory=list)
 
 

@@ -178,9 +178,7 @@ class TestRestRepositoryExporter:
                 options = ListRepositoryOptions(
                     organization="test-org",
                     type=mock_port_app_config.repository_type,
-                    search_params=RepoSearchParams(
-                        operators={"archived": "false", "fork": "true"}
-                    ),
+                    search_params=RepoSearchParams(query="code in:name"),
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
@@ -195,7 +193,7 @@ class TestRestRepositoryExporter:
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/search/repositories",
                     {
-                        "q": "org:test-org archived:false fork:true",
+                        "q": "org:test-org code in:name",
                         "type": "all",
                     },
                 )
