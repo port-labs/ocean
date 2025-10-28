@@ -69,43 +69,27 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     async def _fetch_repositories(
         self, options: ListRepositoryOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        if options.get("search_params"):
-            repo_fetcher = self._fetch_repositories_with_search_api
-        else:
-            repo_fetcher = self._fetch_repositories_with_list_api
-
-        async for repos in repo_fetcher(options):
-            yield repos
-
-    async def _fetch_repositories_with_list_api(
-        self, options: ListRepositoryOptions
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        _, organization, params = parse_github_options(dict(options))
-        params.pop("search_params", None)
-
-        async for repos in self.client.send_paginated_request(
-            f"{self.client.base_url}/orgs/{organization}/repos", params
-        ):
-            logger.info(
-                f"Fetched batch of {len(repos)} repositories from organization {organization}"
-            )
-            yield repos
-
-    async def _fetch_repositories_with_search_api(
-        self, options: ListRepositoryOptions
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         _, organization, params = parse_github_options(dict(options))
         search_params = cast(
             Optional[RepoSearchParams], params.pop("search_params", None)
         )
-        search_query = (
-            f"org:{organization} {search_params.query if search_params else ' '}"
-        )
-        query = {"q": search_query, **params}
-        url = f"{self.client.base_url}/search/repositories"
-        async for search_results in self.client.send_paginated_request(url, query):
-            casted = cast(dict[str, Any], search_results)
-            yield casted["items"]
+
+        if search_params:
+            search_query = (
+                f"org:{organization} {search_params.query if search_params else ' '}"
+            )
+            query = {"q": search_query, **params}
+            url = f"{self.client.base_url}/search/repositories"
+            async for search_results in self.client.send_paginated_request(url, query):
+                casted = cast(dict[str, Any], search_results)
+                yield casted["items"]
+        else:
+            url = f"{self.client.base_url}/orgs/{organization}/repos"
+            async for repos in self.client.send_paginated_request(url, params):
+                logger.info(
+                    f"Fetched batch of {len(repos)} repositories from organization {organization}"
+                )
+                yield repos
 
     async def enrich_repository_with_selected_relationships(
         self,
