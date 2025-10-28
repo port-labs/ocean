@@ -85,7 +85,7 @@ class HarborClient:
             self.base_url = f"{base_url_clean}{api_suffix}"
         self.username = username
         self.password = password
-        self.verify_ssl = verify_ssl  # do we really need SSL, let's just have it
+        self.verify_ssl = verify_ssl
 
         self.client, self.client.timeout = http_async_client, Timeout(DEFAULT_TIMEOUT)
 
@@ -93,15 +93,10 @@ class HarborClient:
             username, password
         )
 
-        # if not hasattr(self.client, "headers"):
-        #     self.client.headers = {}
-        # self.client.headers[auth_header_name] = auth_header_value
         self.auth_headers = {auth_header_name: auth_header_value}
 
         # to help us control batch requests
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
-
-        # ideally we would want to use structured logging, but it is what it is
         logger.info(
             f"[Ocean][Harbor] Initialized client for {self.base_url} "
             f"(verify_ssl={self.verify_ssl})"
@@ -205,10 +200,12 @@ class HarborClient:
         project_name: Optional[str] = None,
         repository_name: Optional[str] = None,
     ):
-        # pretty much self-explanatory no? :eyes:
-        #
-        # Raises:
-        #   InvalidConfigurationError: If required parameters are missing
+        """
+        Constructs the API endpoint URL based on resource kind and parameters
+
+        Raises:
+          InvalidConfigurationError: If required parameters are missing
+        """
         match kind:
             case HarborKind.PROJECT:
                 return ENDPOINTS["projects"]
@@ -230,7 +227,7 @@ class HarborClient:
                     raise InvalidConfigurationError(
                         "Both project_name and repository_name are required when fetching artifacts"
                     )
-                # double-encode repository name - don't blame me, see Harbor requirement for slashes
+                # double-encode repository name
                 # First encoding: library/nginx -> library%2Fnginx
                 # Second encoding: library%2Fnginx -> library%252Fnginx
                 encoded_project = quote(project_name, safe="")
@@ -239,8 +236,6 @@ class HarborClient:
                 return ENDPOINTS["artifacts"].format(
                     project_name=encoded_project, repository_name=encoded_repo
                 )
-            case _:
-                raise InvalidConfigurationError(f"Unknown resource kind: {kind}")
 
     async def get_paginated_resources(
         self,
@@ -321,13 +316,15 @@ class HarborClient:
     async def get_paginated_projects(
         self, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        # Convenience method to fetch projects
-        #
-        # Args:
-        #     params: Optional filters (public, private, name, etc.)
-        #
-        # Yields:
-        #     Batches of projects
+        """
+        Convenience method to fetch projects
+
+        Args:
+            params: Optional filters (public, private, name, etc.)
+
+        Yields:
+            Batches of projects
+        """
         async for batch in self.get_paginated_resources(
             HarborKind.PROJECT, params=params
         ):
@@ -336,13 +333,15 @@ class HarborClient:
     async def get_paginated_users(
         self, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        # Method to fetch users
-        #
-        # Args:
-        #     params: Optional filters
-        #
-        # Yields:
-        #     Batches of users
+        """
+        Method to fetch users
+
+        Args:
+            params: Optional filters
+
+        Yields:
+            Batches of users
+        """
         async for batch in self.get_paginated_resources(HarborKind.USER, params=params):
             yield batch
 
@@ -351,14 +350,16 @@ class HarborClient:
         project_name: str,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        # Method to fetch repositories for a project
-        #
-        # Args:
-        #     project_name: Project name
-        #     params: Optional filters
-        #
-        # Yields:
-        #     Batches of repositories
+        """
+        Method to fetch repositories for a project
+
+        Args:
+            project_name: Project name
+            params: Optional filters
+
+        Yields:
+            Batches of repositories
+        """
         async for batch in self.get_paginated_resources(
             HarborKind.REPOSITORY, project_name=project_name, params=params
         ):
@@ -370,15 +371,17 @@ class HarborClient:
         repository_name: str,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        # Method to fetch artifacts for a repository
-        #
-        # Args:
-        #     project_name: Project name
-        #     repository_name: Repository name
-        #     params: Optional filters (with_tag, with_scan_overview, etc.)
-        #
-        # Yields:
-        #     Batches of artifacts
+        """
+        Method to fetch artifacts for a repository
+
+        Args:
+            project_name: Project name
+            repository_name: Repository name
+            params: Optional filters (with_tag, with_scan_overview, etc.)
+
+        Yields:
+            Batches of artifacts
+        """
         async for batch in self.get_paginated_resources(
             HarborKind.ARTIFACT,
             project_name=project_name,
