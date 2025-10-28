@@ -6,7 +6,7 @@ from loguru import logger
 import asyncio
 
 
-class GetBucketPublicAccessBlockAction(Action):
+class GetPublicAccessBlockAction(Action):
     async def _execute(self, buckets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         public_access_blocks = await asyncio.gather(
             *(self._fetch_public_access_block(bucket) for bucket in buckets),
@@ -166,11 +166,11 @@ class GetBucketTaggingAction(Action):
 class S3BucketActionsMap(ActionMap):
     defaults: List[Type[Action]] = [
         GetBucketTaggingAction,
-        GetBucketLocationAction,
         ListBucketsAction,
     ]
     options: List[Type[Action]] = [
-        GetBucketPublicAccessBlockAction,
+        GetPublicAccessBlockAction,
         GetBucketOwnershipControlsAction,
         GetBucketEncryptionAction,
+        GetBucketLocationAction
     ]

@@ -4,7 +4,7 @@ import pytest
 from botocore.exceptions import ClientError
 
 from aws.core.exporters.s3.bucket.actions import (
-    GetBucketPublicAccessBlockAction,
+    GetPublicAccessBlockAction,
     GetBucketOwnershipControlsAction,
     GetBucketEncryptionAction,
     GetBucketTaggingAction,
@@ -15,7 +15,7 @@ from aws.core.interfaces.action import Action
 # mypy: disable-error-code=attr-defined
 
 
-class TestGetBucketPublicAccessBlockAction:
+class TestGetPublicAccessBlockAction:
 
     @pytest.fixture
     def mock_client(self) -> AsyncMock:
@@ -26,18 +26,18 @@ class TestGetBucketPublicAccessBlockAction:
         return mock_client
 
     @pytest.fixture
-    def action(self, mock_client: AsyncMock) -> GetBucketPublicAccessBlockAction:
-        """Create a GetBucketPublicAccessBlockAction instance for testing."""
-        return GetBucketPublicAccessBlockAction(mock_client)
+    def action(self, mock_client: AsyncMock) -> GetPublicAccessBlockAction:
+        """Create a GetPublicAccessBlockAction instance for testing."""
+        return GetPublicAccessBlockAction(mock_client)
 
-    def test_inheritance(self, action: GetBucketPublicAccessBlockAction) -> None:
+    def test_inheritance(self, action: GetPublicAccessBlockAction) -> None:
         """Test that the action inherits from Action."""
         assert isinstance(action, Action)
 
     @pytest.mark.asyncio
     @patch("aws.core.exporters.s3.bucket.actions.logger")
     async def test_execute_success(
-        self, mock_logger: MagicMock, action: GetBucketPublicAccessBlockAction
+        self, mock_logger: MagicMock, action: GetPublicAccessBlockAction
     ) -> None:
         """Test successful execution of get_public_access_block."""
         # Mock response
@@ -74,7 +74,7 @@ class TestGetBucketPublicAccessBlockAction:
 
     @pytest.mark.asyncio
     async def test_execute_different_bucket(
-        self, action: GetBucketPublicAccessBlockAction
+        self, action: GetPublicAccessBlockAction
     ) -> None:
         """Test execution with different bucket name."""
         expected_response = {
@@ -387,7 +387,7 @@ class TestAllActionsIntegration:
 
         # Create all actions
         actions = [
-            GetBucketPublicAccessBlockAction(mock_client),
+            GetPublicAccessBlockAction(mock_client),
             GetBucketOwnershipControlsAction(mock_client),
             GetBucketEncryptionAction(mock_client),
             GetBucketTaggingAction(mock_client),
@@ -444,7 +444,7 @@ class TestAllActionsIntegration:
         mock_client.get_bucket_tagging.side_effect = client_error
 
         # Create actions
-        public_access_action = GetBucketPublicAccessBlockAction(mock_client)
+        public_access_action = GetPublicAccessBlockAction(mock_client)
         ownership_action = GetBucketOwnershipControlsAction(mock_client)
         encryption_action = GetBucketEncryptionAction(mock_client)
         tagging_action = GetBucketTaggingAction(mock_client)
