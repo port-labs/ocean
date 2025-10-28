@@ -20,10 +20,8 @@ class TestHarborBasicAuthenticator:
         """Test that token is correctly generated as base64 encoded username:password."""
         token = await basic_auth.get_token()
 
-        # Decode the token to verify it contains the correct credentials
         decoded = base64.b64decode(token.token).decode()
         assert decoded == "testuser:testpass"
-        # Basic auth tokens don't expire (no expires_at field)
 
     @pytest.mark.asyncio
     async def test_headers_generation(
@@ -35,7 +33,6 @@ class TestHarborBasicAuthenticator:
         assert headers.authorization.startswith("Basic ")
         assert headers.accept == "application/json"
 
-        # Verify the authorization header contains the base64 token
         auth_token = headers.authorization.split(" ")[1]
         decoded = base64.b64decode(auth_token).decode()
         assert decoded == "testuser:testpass"
@@ -46,7 +43,6 @@ class TestHarborBasicAuthenticator:
         token1 = await basic_auth.get_token()
         token2 = await basic_auth.get_token()
 
-        # Should be the same token instance
         assert token1 is token2
         assert token1.token == token2.token
 
@@ -64,7 +60,6 @@ class TestHarborBasicAuthenticator:
         client = basic_auth.client
 
         assert client is not None
-        # Should be an OceanAsyncClient instance
         assert hasattr(client, "request")
 
 

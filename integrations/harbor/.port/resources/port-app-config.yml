@@ -17,7 +17,6 @@ resources:
             updateTime: .update_time
             owner: .owner_name
             repositoryCount: .repo_count
-            chartCount: .chart_count
           relations: {}
   - kind: users
     selector:
@@ -68,7 +67,6 @@ resources:
             repositoryName: .repository_name
             digest: .digest
             size: .size
-            pullCount: .pull_count
             pushTime: .push_time
             mediaType: .media_type
             tags: if .tags then (.tags | map(.name)) else [] end

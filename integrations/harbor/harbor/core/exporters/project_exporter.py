@@ -28,7 +28,6 @@ class HarborProjectExporter(AbstractHarborExporter[HarborClient]):
         """Get all Harbor projects with pagination and filtering."""
         logger.info("Starting Harbor projects export")
 
-        # Build query parameters using utility function
         params = build_project_params(options)
 
         async for projects_page in self.client.send_paginated_request(

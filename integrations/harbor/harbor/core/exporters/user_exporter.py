@@ -26,7 +26,6 @@ class HarborUserExporter(AbstractHarborExporter[HarborClient]):
         """Get all Harbor users with pagination and filtering."""
         logger.info("Starting Harbor users export")
 
-        # Build query parameters using utility function
         params = build_user_params(options)
 
         async for users_page in self.client.send_paginated_request(

@@ -109,17 +109,13 @@ class HarborArtifactsConfig(ResourceConfig):
 class HarborPortAppConfig(PortAppConfig):
     """Main Harbor integration configuration."""
 
-    webhook_secret: Optional[str] = Field(
-        None, description="Secret for Harbor webhook authentication"
-    )
-
     resources: List[
         Union[
             HarborProjectsConfig,
             HarborUsersConfig,
             HarborRepositoriesConfig,
             HarborArtifactsConfig,
-            ResourceConfig,  # Fallback for generic resources
+            ResourceConfig,
         ]
     ] = Field(default_factory=list, description="List of Harbor resources to sync")
 

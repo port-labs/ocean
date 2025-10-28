@@ -36,7 +36,6 @@ class HarborRepositoryExporter(AbstractHarborExporter[HarborClient]):
 
         params = build_repository_params(options)
 
-        # Get projects map for enrichment - cache this to avoid repeated calls
         if not hasattr(self, "_projects_map"):
             self._projects_map = {}
             async for projects_page in self.client.send_paginated_request("/projects"):
@@ -46,7 +45,6 @@ class HarborRepositoryExporter(AbstractHarborExporter[HarborClient]):
         async for repositories_page in self.client.send_paginated_request(
             "/repositories", params=params
         ):
-            # Enrich repositories with project_name
             for repository in repositories_page:
                 project_id = repository.get("project_id")
                 if project_id in self._projects_map:

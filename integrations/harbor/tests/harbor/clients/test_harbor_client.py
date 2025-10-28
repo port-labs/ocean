@@ -9,24 +9,15 @@ from harbor.helpers.exceptions import InvalidTokenException
 
 @pytest.mark.asyncio
 class TestHarborClient:
-    async def test_singleton_pattern(self) -> None:
-        """Test that HarborClient follows singleton pattern."""
-        # Reset singleton for clean test
-        HarborClient._instance = None
+    async def test_client_creation(self) -> None:
+        """Test that HarborClient can be created with authenticator."""
+        mock_authenticator = MagicMock()
+        mock_authenticator.client = MagicMock()
 
-        with patch(
-            "harbor.clients.http.harbor_client.HarborAuthenticatorFactory"
-        ) as mock_factory:
-            mock_authenticator = MagicMock()
-            mock_authenticator.client = MagicMock()
-            mock_factory.create.return_value = mock_authenticator
+        client1 = HarborClient("http://localhost:8081", mock_authenticator)
+        client2 = HarborClient("http://localhost:8081", mock_authenticator)
 
-            client1 = HarborClient()
-            client2 = HarborClient()
-
-            # Should be the same instance
-            assert client1 is client2
-            assert HarborClient._instance is client1
+        assert client1 is not client2
 
     async def test_client_initialization(self, harbor_client: HarborClient) -> None:
         """Test HarborClient initialization."""
@@ -41,7 +32,6 @@ class TestHarborClient:
         mock_response.json.return_value = {"data": "test"}
         mock_response.headers = {"content-type": "application/json"}
 
-        # Mock the authenticator's get_headers method
         mock_headers = MagicMock()
         mock_headers.as_dict.return_value = {
             "Authorization": "Basic test",
@@ -70,7 +60,6 @@ class TestHarborClient:
             "Unauthorized", request=MagicMock(), response=mock_response
         )
 
-        # Mock the authenticator's get_headers method
         mock_headers = MagicMock()
         mock_headers.as_dict.return_value = {
             "Authorization": "Basic test",
@@ -100,7 +89,6 @@ class TestHarborClient:
             "Not Found", request=MagicMock(), response=mock_response
         )
 
-        # Mock the authenticator's get_headers method
         mock_headers = MagicMock()
         mock_headers.as_dict.return_value = {
             "Authorization": "Basic test",
@@ -121,7 +109,6 @@ class TestHarborClient:
                     "/test", ignored_errors=ignored_errors
                 )
 
-                # Should return empty response instead of raising error
                 assert result.status_code == 200
                 assert result.content == b"{}"
 
@@ -129,13 +116,11 @@ class TestHarborClient:
         self, harbor_client: HarborClient
     ) -> None:
         """Test paginated request with single page."""
-        # Create a mock HTTP response that returns fewer items than page_size
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
         mock_response.json.return_value = [{"id": 1, "name": "project1"}]
-        mock_response.headers = {}  # No Link header = no next page
+        mock_response.headers = {}
 
-        # Mock make_request to return the HTTP response
         with patch.object(
             harbor_client, "make_request", AsyncMock(return_value=mock_response)
         ) as mock_make_request:
@@ -145,7 +130,6 @@ class TestHarborClient:
             ):
                 results.append(page)
 
-            # Should only be called once since there's no Link header
             assert mock_make_request.call_count == 1
             assert len(results) == 1
             assert len(results[0]) == 1
@@ -155,7 +139,6 @@ class TestHarborClient:
         self, harbor_client: HarborClient
     ) -> None:
         """Test paginated request with multiple pages."""
-        # First page - full page
         mock_response1 = MagicMock(spec=httpx.Response)
         mock_response1.status_code = 200
         mock_response1.json.return_value = [
@@ -166,13 +149,11 @@ class TestHarborClient:
             "Link": '</api/v2.0/projects?page=2&page_size=2>; rel="next"'
         }
 
-        # Second page - partial page (indicates end)
         mock_response2 = MagicMock(spec=httpx.Response)
         mock_response2.status_code = 200
         mock_response2.json.return_value = [{"id": 3, "name": "project3"}]
-        mock_response2.headers = {}  # No Link header = no next page
+        mock_response2.headers = {}
 
-        # Mock the authenticator's get_headers method
         mock_headers = MagicMock()
         mock_headers.as_dict.return_value = {
             "Authorization": "Basic test",
@@ -195,14 +176,13 @@ class TestHarborClient:
                     results.append(page)
 
                 assert len(results) == 2
-                assert len(results[0]) == 2  # First page full
-                assert len(results[1]) == 1  # Second page partial (stops pagination)
+                assert len(results[0]) == 2
+                assert len(results[1]) == 1
 
     async def test_send_paginated_request_404_stops_pagination(
         self, harbor_client: HarborClient
     ) -> None:
         """Test that 404 error stops pagination."""
-        # First page - full page
         mock_response1 = MagicMock(spec=httpx.Response)
         mock_response1.status_code = 200
         mock_response1.json.return_value = [
@@ -213,17 +193,15 @@ class TestHarborClient:
             "Link": '</api/v2.0/projects?page=2&page_size=2>; rel="next"'
         }
 
-        # Second page - 404 error
         mock_response2 = MagicMock(spec=httpx.Response)
         mock_response2.status_code = 404
         mock_response2.text = "Not Found"
-        mock_response2.headers = {}  # No headers for error response
+        mock_response2.headers = {}
 
         mock_http_error = httpx.HTTPStatusError(
             "Not Found", request=MagicMock(), response=mock_response2
         )
 
-        # Mock the authenticator's get_headers method
         mock_headers = MagicMock()
         mock_headers.as_dict.return_value = {
             "Authorization": "Basic test",
@@ -246,7 +224,6 @@ class TestHarborClient:
                     ):
                         results.append(page)
 
-                # Should only get the first page before the error is raised
                 assert len(results) == 1
                 assert len(results[0]) == 2
                 assert results[0][0]["name"] == "project1"
@@ -283,7 +260,6 @@ class TestHarborClient:
                     method="GET",
                 )
 
-                # Verify the request was made with correct parameters
                 mock_request.assert_called_once()
                 call_args = mock_request.call_args
                 assert call_args[1]["params"]["page"] == 1
@@ -299,7 +275,6 @@ class TestHarborClient:
         mock_response.status_code = 200
         mock_response.json.return_value = {"data": "created"}
 
-        # Mock the authenticator's get_headers method
         mock_headers = MagicMock()
         mock_headers.as_dict.return_value = {
             "Authorization": "Basic test",
@@ -319,7 +294,6 @@ class TestHarborClient:
                     "/projects", method="POST", json_data=json_data
                 )
 
-                # Verify the request was made with JSON data
                 mock_request.assert_called_once()
                 call_args = mock_request.call_args
                 assert call_args[1]["json"] == json_data

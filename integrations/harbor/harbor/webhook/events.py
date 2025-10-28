@@ -12,19 +12,18 @@ ARTIFACT_DELETE_EVENTS = [
 
 ARTIFACT_EVENTS = ARTIFACT_UPSERT_EVENTS + ARTIFACT_DELETE_EVENTS
 
-# Repository events
+
 REPOSITORY_UPSERT_EVENTS = [
-    "PUSH_ARTIFACT",  # Repository gets updated when artifacts are pushed
-    "PULL_ARTIFACT",  # Repository pull count gets updated
+    "PUSH_ARTIFACT",
+    "PULL_ARTIFACT",
 ]
 
 REPOSITORY_DELETE_EVENTS = [
-    "DELETE_ARTIFACT",  # Repository gets updated when artifacts are deleted
+    "DELETE_ARTIFACT",
 ]
 
 REPOSITORY_EVENTS = REPOSITORY_UPSERT_EVENTS + REPOSITORY_DELETE_EVENTS
 
-# Project events
 PROJECT_UPSERT_EVENTS = [
     "PUSH_ARTIFACT",
     "PULL_ARTIFACT",

@@ -1,5 +1,6 @@
 """Harbor integration main module."""
 
+import asyncio
 from typing import cast
 from loguru import logger
 from port_ocean.context.event import event
@@ -12,6 +13,7 @@ from harbor.core.exporters.project_exporter import HarborProjectExporter
 from harbor.core.exporters.user_exporter import HarborUserExporter
 from harbor.core.exporters.repository_exporter import HarborRepositoryExporter
 from harbor.core.exporters.artifact_exporter import HarborArtifactExporter
+from harbor.webhook.webhook_client import HarborWebhookClient
 from harbor.core.options import (
     ListProjectOptions,
     ListUserOptions,
@@ -26,6 +28,7 @@ from integration import (
     HarborRepositoriesConfig,
     HarborArtifactsConfig,
 )
+from harbor.webhook.events import WEBHOOK_CREATE_EVENTS
 
 
 @ocean.on_resync(ObjectKind.PROJECTS)
@@ -92,41 +95,34 @@ async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     artifact_exporter = HarborArtifactExporter(client)
     config = cast(HarborArtifactsConfig, event.resource_config)
 
-    # Get all repositories first (already enriched with project_name)
     repository_options = ListRepositoryOptions()
 
-    # Apply filtering from the config selector
     selector = getattr(config, "selector", {})
 
-    all_repositories = []
     async for repositories in repository_exporter.get_paginated_resources(
         repository_options
     ):
-        all_repositories.extend(repositories)
+        tasks = [
+            artifact_exporter.get_paginated_resources(
+                ListArtifactOptions(
+                    project_name=repository.get("project_name"),
+                    repository_name=repository["name"],
+                    q=getattr(selector, "q", None),
+                    sort=getattr(selector, "sort", None),
+                    with_tag=getattr(selector, "with_tag", None),
+                    with_label=getattr(selector, "with_label", None),
+                    with_scan_overview=getattr(selector, "with_scan_overview", None),
+                    with_sbom_overview=getattr(selector, "with_sbom_overview", None),
+                    with_signature=getattr(selector, "with_signature", None),
+                    with_immutable_status=getattr(
+                        selector, "with_immutable_status", None
+                    ),
+                    with_accessory=getattr(selector, "with_accessory", None),
+                )
+            )
+            for repository in repositories
+        ]
 
-    # Create tasks to fetch artifacts for each repository
-    tasks = []
-    for repository in all_repositories:
-        project_name = repository.get("project_name")
-        repository_name = repository["name"]
-
-        artifact_options = ListArtifactOptions(
-            project_name=project_name,
-            repository_name=repository_name,
-            q=getattr(selector, "q", None),
-            sort=getattr(selector, "sort", None),
-            with_tag=getattr(selector, "with_tag", None),
-            with_label=getattr(selector, "with_label", None),
-            with_scan_overview=getattr(selector, "with_scan_overview", None),
-            with_sbom_overview=getattr(selector, "with_sbom_overview", None),
-            with_signature=getattr(selector, "with_signature", None),
-            with_immutable_status=getattr(selector, "with_immutable_status", None),
-            with_accessory=getattr(selector, "with_accessory", None),
-        )
-
-        tasks.append(artifact_exporter.get_paginated_resources(artifact_options))
-
-    if tasks:
         logger.info(f"Fetching artifacts from {len(tasks)} repositories")
         async for artifacts in stream_async_iterators_tasks(*tasks):
             yield artifacts
@@ -137,14 +133,36 @@ async def on_start() -> None:
     """Initialize the Harbor integration."""
     logger.info("Starting Harbor integration")
 
-    try:
-        client = init_client()
-        logger.info(f"Harbor client initialized for {client.base_url}")
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
 
-    except Exception as e:
-        logger.error(f"Failed to initialize Harbor client: {e}")
-        raise
+    base_url = ocean.app.base_url
+
+    if not base_url:
+        return
+
+    client = init_client()
+    project_exporter = HarborProjectExporter(client)
+    project_options = ListProjectOptions()
+
+    webhook_secret = ocean.integration_config.get("webhook_secret")
+    webhook_client = HarborWebhookClient(client, webhook_secret)
+
+    logger.info("Creating Harbor webhooks for all projects")
+
+    async for projects_page in project_exporter.get_paginated_resources(
+        project_options
+    ):
+        tasks = [
+            webhook_client.upsert_webhook(
+                base_url, project["name"], WEBHOOK_CREATE_EVENTS
+            )
+            for project in projects_page
+        ]
+
+        await asyncio.gather(*tasks)
+        logger.info("Successfully upserted Harbor webhooks for all projects")
 
 
-# Register webhook processors
 register_harbor_webhooks(path="/webhook")

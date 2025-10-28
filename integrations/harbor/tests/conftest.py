@@ -47,19 +47,11 @@ def mock_ocean_context() -> None:
 @pytest.fixture
 def harbor_client() -> HarborClient:
     """Provide a HarborClient instance with test configuration."""
-    # Reset singleton instance for testing
-    HarborClient._instance = None
+    mock_authenticator = MagicMock(spec=AbstractHarborAuthenticator)
+    mock_authenticator.client = MagicMock()
 
-    # Mock the authenticator factory to avoid real authentication
-    with patch(
-        "harbor.clients.http.harbor_client.HarborAuthenticatorFactory"
-    ) as mock_factory:
-        mock_authenticator = MagicMock(spec=AbstractHarborAuthenticator)
-        mock_authenticator.client = MagicMock()
-        mock_factory.create.return_value = mock_authenticator
-
-        client = HarborClient()
-        return client
+    client = HarborClient("http://localhost:8081", mock_authenticator)
+    return client
 
 
 @pytest.fixture

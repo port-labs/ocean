@@ -3,9 +3,7 @@ from urllib.parse import urljoin
 import httpx
 import re
 
-from port_ocean.context.ocean import ocean
 from ..auth.abstract_authenticator import AbstractHarborAuthenticator
-from ..auth.auth_factory import HarborAuthenticatorFactory
 from loguru import logger
 from harbor.helpers.utils import IgnoredError
 from harbor.helpers.exceptions import InvalidTokenException
@@ -15,52 +13,19 @@ DEFAULT_PAGE_SIZE = 100
 
 
 class HarborClient:
-    """Harbor API v2.0 client using Ocean's async HTTP client - Singleton pattern"""
+    """Harbor API v2.0 client using Ocean's async HTTP client"""
 
-    _instance: Optional["HarborClient"] = None
-    _authenticator: AbstractHarborAuthenticator
-
-    # Pattern to extract next page URL from Harbor Link header
     NEXT_PATTERN = re.compile(r'<([^>]+)>; rel="next"')
 
-    # Default errors to ignore for Harbor API
     _DEFAULT_IGNORED_ERRORS = [
         IgnoredError(status=404, message="Resource not found"),
         IgnoredError(status=403, message="Access forbidden"),
     ]
 
-    def __new__(cls) -> "HarborClient":
-        if cls._instance is None:
-            cls._instance = super(HarborClient, cls).__new__(cls)
-        return cls._instance
-
-    def __init__(self) -> None:
-        if not hasattr(self, "_initialized"):
-            self._initialized = True
-            self._setup_client()
-
-    def _setup_client(self) -> None:
-        """Setup Harbor client from Ocean configuration using factory"""
-        config = ocean.integration_config
-
-        harbor_host = config.get("harbor_host")
-        username = config.get("username")
-        password = config.get("password")
-        robot_name = config.get("robot_name")
-        robot_token = config.get("robot_token")
-
-        self._authenticator = HarborAuthenticatorFactory.create(
-            harbor_host=harbor_host,
-            username=username,
-            password=password,
-            robot_name=robot_name,
-            robot_token=robot_token,
-        )
-
-        # harbor_host is validated in HarborAuthenticatorFactory.create()
-        assert (
-            harbor_host is not None
-        ), "harbor_host should not be None after factory validation"
+    def __init__(
+        self, harbor_host: str, authenticator: AbstractHarborAuthenticator
+    ) -> None:
+        self._authenticator = authenticator
         self._base_url = harbor_host.rstrip("/")
         self.api_url = f"{self._base_url}/api/v2.0"
         self.client = self._authenticator.client
@@ -69,13 +34,9 @@ class HarborClient:
 
     @property
     def base_url(self) -> str:
-        """Get the base URL for Harbor API."""
         return self._base_url
 
     def _get_next_link(self, link_header: str) -> Optional[str]:
-        """
-        Extracts the URL from the 'next' link in a Harbor Link header.
-        """
         match = self.NEXT_PATTERN.search(link_header)
         return match.group(1) if match else None
 
@@ -105,15 +66,16 @@ class HarborClient:
         ignored_errors: Optional[List[Any]] = None,
     ) -> httpx.Response:
         """Make a request to the Harbor API with authentication and error handling."""
-
-        # Build full URL
         url = urljoin(self.api_url + "/", resource.lstrip("/"))
 
-        # Get authentication headers
         headers = await self._authenticator.get_headers()
         headers_dict = headers.as_dict()
 
         logger.debug(f"Harbor API {method} {url} with params: {params}")
+
+        # Clear cookies for non-GET requests
+        if method in ["POST", "PUT", "PATCH"]:
+            self.client.cookies.clear()
 
         try:
             response = await self.client.request(
@@ -129,7 +91,6 @@ class HarborClient:
             return response
 
         except httpx.HTTPStatusError as e:
-            # Handle robot token expiration specifically
             if e.response.status_code == 401:
                 raise InvalidTokenException()
 
