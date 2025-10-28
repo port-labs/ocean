@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.28.18 (2025-10-27)
+
+### Bug fixes
+
+- Fix logging exception on process finish
+- Fixed serialization issue caused by Decimal objects returned from ijson.items_coro during jq transformation when yield_items_to_parse is enabled
+
 ## 0.28.17 (2025-10-26)
 
 ### Bug fixes
