@@ -40,7 +40,8 @@ async def on_resync_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client, subscription_manager = init_client_and_sub_manager()
     async with client as client, subscription_manager as sub_manager:
         exporter_options = ResourceExporterOptions(
-            resource_types=selectors.resource_types, tag_filter=selectors.tags
+            resource_types=selectors.resource_types,
+            tag_filter=selectors.resource_group_tags,
         )
         exporter = ResourcesExporter(client, sub_manager)
         async for resources in exporter.get_paginated_resources(exporter_options):
