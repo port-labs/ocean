@@ -559,7 +559,7 @@ class TestFileExporterUtils:
 
         # Act
         result = await group_file_patterns_by_repositories_in_selector(
-            files, repo_exporter, repo_type, exclude_archived
+            files, repo_exporter, repo_type
         )
 
         # Assert
@@ -601,7 +601,7 @@ class TestFileExporterUtils:
 
         # Act
         result = await group_file_patterns_by_repositories_in_selector(
-            files, repo_exporter, repo_type, False
+            files, repo_exporter, repo_type
         )
 
         # Assert

@@ -76,7 +76,6 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
             pr_number,
             repository_type,
             validation_mappings,
-            port_app_config.exclude_archived,
         )
 
         return self._NoWebhookEventResults
@@ -90,7 +89,6 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
         pr_number: int,
         repository_type: str,
         validation_mappings: List[ResourceConfigToPatternMapping],
-        exclude_archived: bool,
     ) -> None:
         logger.info(
             f"Fetching commit diff for repository {repo_name} of organization: {organization} from {base_sha} to {head_sha}"
@@ -119,7 +117,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
             files_pattern = validation_mapping.patterns
 
             repo_path_map = await group_file_patterns_by_repositories_in_selector(
-                files_pattern, file_exporter, repository_type, exclude_archived
+                files_pattern, file_exporter, repository_type
             )
 
             async for file_results in file_exporter.get_paginated_resources(

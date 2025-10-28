@@ -107,7 +107,7 @@ class GithubIssueSelector(RepoSearchSelector):
     )
 
 
-class GithubIssueConfig(RepoSearchSelector):
+class GithubIssueConfig(ResourceConfig):
     selector: GithubIssueSelector
     kind: Literal["issue"]
 

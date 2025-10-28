@@ -5,9 +5,10 @@ import httpx
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )
+from github.core.options import ListRepositoryOptions, SingleRepositoryOptions
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
-from github.core.options import SingleRepositoryOptions, ListRepositoryOptions
+from github.helpers.models import RepoSearchParams
 from github.clients.http.rest_client import GithubRestClient
 
 
@@ -159,7 +160,7 @@ class TestRestRepositoryExporter:
                 mock_request.assert_any_call(*expected_collaborator_calls[0])
                 mock_request.assert_any_call(*expected_collaborator_calls[1])
 
-    async def test_get_paginated_resources_with_exclude_archived(
+    async def test_get_paginated_resources_with_search_params(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:
         async def mock_paginated_request(
@@ -177,7 +178,9 @@ class TestRestRepositoryExporter:
                 options = ListRepositoryOptions(
                     organization="test-org",
                     type=mock_port_app_config.repository_type,
-                    exclude_archived=True,
+                    search_params=RepoSearchParams(
+                        operators={"archived": "false", "fork": "true"}
+                    ),
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
@@ -192,7 +195,7 @@ class TestRestRepositoryExporter:
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/search/repositories",
                     {
-                        "q": "org:test-org fork:true archived:false",
+                        "q": "org:test-org archived:false fork:true",
                         "type": "all",
                     },
                 )
