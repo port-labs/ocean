@@ -2,6 +2,7 @@ from typing import Any, AsyncGenerator
 from loguru import logger
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.context.ocean import ocean
 
 from harbor.factory import HarborClientFactory
@@ -62,8 +63,8 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             projects.extend(project_batch)
 
         logger.info(f"Fetching repositories across {len(projects)} projects")
-
-        for project in projects:
+        async def fetch_repos_for_project(project):
+            """Fetch repositories for a single project"""
             project_name = project["name"]
             try:
                 async for repo_batch in client.get_paginated_resources(
@@ -77,9 +78,12 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         yield repo_batch
             except Exception as e:
                 logger.error(f"Error fetching repositories for project '{project_name}': {e}")
-                # Continue with other projects
-                continue
 
+
+        async for batch in stream_async_iterators_tasks(
+            *[fetch_repos_for_project(project) for project in projects]
+        ):
+            yield batch
     except Exception as e:
         logger.error(f"Error syncing {kind}: {e}", exc_info=True)
         raise
@@ -107,8 +111,8 @@ async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             projects.extend(project_batch)
 
         logger.info(f"Fetching artifacts across {len(projects)} projects")
-
-        for project in projects:
+        async def fetch_artifacts_for_project(project):
+            """Fetch artifacts for all repositories in a project."""
             project_name = project["name"]
 
             try:
@@ -117,7 +121,6 @@ async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     project_name=project_name
                 ):
                     for repo in repo_batch:
-                        # Repository name format: "project/repo"
                         repo_full_name = repo["name"]
 
                         try:
@@ -132,14 +135,16 @@ async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                     )
                                     yield artifact_batch
                         except Exception as e:
-                            logger.error(
-                                f"Error fetching artifacts for '{repo_full_name}': {e}"
-                            )
-                            continue
+                            logger.error(f"Error fetching artifacts for '{repo_full_name}': {e}")
 
             except Exception as e:
                 logger.error(f"Error processing project '{project_name}' for artifacts: {e}")
-                continue
+
+
+        async for batch in stream_async_iterators_tasks(
+            *[fetch_artifacts_for_project(project) for project in projects]
+        ):
+            yield batch
 
     except Exception as e:
         logger.error(f"Error syncing {kind}: {e}", exc_info=True)
