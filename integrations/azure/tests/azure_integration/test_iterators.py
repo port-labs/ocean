@@ -14,6 +14,209 @@ class TestResourceBaseKindIterator:
     """Test the core generic iterator that handles all base resource kinds"""
 
     @pytest.mark.asyncio
+    async def test_iterator_fetches_container_app(
+        self,
+        mock_azure_credential: AsyncMock,
+        mock_container_app: Dict[str, Any],
+    ) -> None:
+        """Test iterator can fetch Container App"""
+        mock_resource = MagicMock()
+        mock_resource.as_dict.return_value = mock_container_app
+
+        async def mock_list_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[Any, None]:
+            yield mock_resource
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        with patch(
+            "azure_integration.iterators.ResourceManagementClient",
+            return_value=mock_client,
+        ):
+            with patch(
+                "azure_integration.iterators.list_resources",
+                side_effect=mock_list_resources,
+            ):
+                results: List[List[Dict[str, Any]]] = []
+                async for batch in resource_base_kind_iterator(
+                    credential=mock_azure_credential,
+                    subscription_id="test-sub-id",
+                    resource_kind="Microsoft.App/containerApps",
+                    api_version="2022-03-01",
+                ):
+                    results.append(batch)
+
+                all_resources = [item for batch in results for item in batch]
+                assert len(all_resources) == 1
+                assert all_resources[0]["type"] == "Microsoft.App/containerApps"
+
+    @pytest.mark.asyncio
+    async def test_iterator_fetches_storage_account(
+        self,
+        mock_azure_credential: AsyncMock,
+        mock_storage_account: Dict[str, Any],
+    ) -> None:
+        """Test iterator can fetch Storage Account"""
+        mock_resource = MagicMock()
+        mock_resource.as_dict.return_value = mock_storage_account
+
+        async def mock_list_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[Any, None]:
+            yield mock_resource
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        with patch(
+            "azure_integration.iterators.ResourceManagementClient",
+            return_value=mock_client,
+        ):
+            with patch(
+                "azure_integration.iterators.list_resources",
+                side_effect=mock_list_resources,
+            ):
+                results: List[List[Dict[str, Any]]] = []
+                async for batch in resource_base_kind_iterator(
+                    credential=mock_azure_credential,
+                    subscription_id="test-sub-id",
+                    resource_kind="Microsoft.Storage/storageAccounts",
+                    api_version="2023-01-01",
+                ):
+                    results.append(batch)
+
+                all_resources = [item for batch in results for item in batch]
+                assert len(all_resources) == 1
+                assert all_resources[0]["type"] == "Microsoft.Storage/storageAccounts"
+
+    @pytest.mark.asyncio
+    async def test_iterator_fetches_virtual_machine(
+        self,
+        mock_azure_credential: AsyncMock,
+        mock_virtual_machine: Dict[str, Any],
+    ) -> None:
+        """Test iterator can fetch Virtual Machine"""
+        mock_resource = MagicMock()
+        mock_resource.as_dict.return_value = mock_virtual_machine
+
+        async def mock_list_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[Any, None]:
+            yield mock_resource
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        with patch(
+            "azure_integration.iterators.ResourceManagementClient",
+            return_value=mock_client,
+        ):
+            with patch(
+                "azure_integration.iterators.list_resources",
+                side_effect=mock_list_resources,
+            ):
+                results: List[List[Dict[str, Any]]] = []
+                async for batch in resource_base_kind_iterator(
+                    credential=mock_azure_credential,
+                    subscription_id="test-sub-id",
+                    resource_kind="Microsoft.Compute/virtualMachines",
+                    api_version="2023-03-01",
+                ):
+                    results.append(batch)
+
+                all_resources = [item for batch in results for item in batch]
+                assert len(all_resources) == 1
+                assert all_resources[0]["type"] == "Microsoft.Compute/virtualMachines"
+
+    @pytest.mark.asyncio
+    async def test_iterator_fetches_aks_cluster(
+        self,
+        mock_azure_credential: AsyncMock,
+        mock_aks_cluster: Dict[str, Any],
+    ) -> None:
+        """Test iterator can fetch AKS Cluster"""
+        mock_resource = MagicMock()
+        mock_resource.as_dict.return_value = mock_aks_cluster
+
+        async def mock_list_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[Any, None]:
+            yield mock_resource
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        with patch(
+            "azure_integration.iterators.ResourceManagementClient",
+            return_value=mock_client,
+        ):
+            with patch(
+                "azure_integration.iterators.list_resources",
+                side_effect=mock_list_resources,
+            ):
+                results: List[List[Dict[str, Any]]] = []
+                async for batch in resource_base_kind_iterator(
+                    credential=mock_azure_credential,
+                    subscription_id="test-sub-id",
+                    resource_kind="Microsoft.ContainerService/managedClusters",
+                    api_version="2023-05-01",
+                ):
+                    results.append(batch)
+
+                all_resources = [item for batch in results for item in batch]
+                assert len(all_resources) == 1
+                assert (
+                    all_resources[0]["type"]
+                    == "Microsoft.ContainerService/managedClusters"
+                )
+
+    @pytest.mark.asyncio
+    async def test_iterator_fetches_load_balancer(
+        self,
+        mock_azure_credential: AsyncMock,
+        mock_load_balancer: Dict[str, Any],
+    ) -> None:
+        """Test iterator can fetch Load Balancer"""
+        mock_resource = MagicMock()
+        mock_resource.as_dict.return_value = mock_load_balancer
+
+        async def mock_list_resources(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[Any, None]:
+            yield mock_resource
+
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        with patch(
+            "azure_integration.iterators.ResourceManagementClient",
+            return_value=mock_client,
+        ):
+            with patch(
+                "azure_integration.iterators.list_resources",
+                side_effect=mock_list_resources,
+            ):
+                results: List[List[Dict[str, Any]]] = []
+                async for batch in resource_base_kind_iterator(
+                    credential=mock_azure_credential,
+                    subscription_id="test-sub-id",
+                    resource_kind="Microsoft.Network/loadBalancers",
+                    api_version="2023-02-01",
+                ):
+                    results.append(batch)
+
+                all_resources = [item for batch in results for item in batch]
+                assert len(all_resources) == 1
+                assert all_resources[0]["type"] == "Microsoft.Network/loadBalancers"
+
+    @pytest.mark.asyncio
     async def test_iterator_fetches_service_bus_namespace(
         self,
         mock_azure_credential: AsyncMock,

@@ -13,6 +13,110 @@ def mock_azure_credential() -> AsyncMock:
 
 
 @pytest.fixture
+def mock_subscription() -> Dict[str, Any]:
+    """Mock Azure Subscription"""
+    return {
+        "id": "/subscriptions/test-subscription-id",
+        "subscription_id": "test-subscription-id",
+        "display_name": "Test Subscription",
+        "state": "Enabled",
+        "tags": {"environment": "test"},
+    }
+
+
+@pytest.fixture
+def mock_resource_group() -> Dict[str, Any]:
+    """Mock Azure Resource Group"""
+    return {
+        "id": "/subscriptions/test-sub/resourceGroups/test-rg",
+        "name": "test-rg",
+        "type": "Microsoft.Resources/resourceGroups",
+        "location": "eastus",
+        "properties": {
+            "provisioningState": "Succeeded",
+        },
+        "tags": {"environment": "production"},
+    }
+
+
+@pytest.fixture
+def mock_container_app() -> Dict[str, Any]:
+    """Mock Azure Container App"""
+    return {
+        "id": "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.App/containerApps/test-app",
+        "name": "test-app",
+        "type": "Microsoft.App/containerApps",
+        "location": "eastus",
+        "tags": {"app": "web"},
+        "properties": {
+            "provisioningState": "Succeeded",
+        },
+    }
+
+
+@pytest.fixture
+def mock_storage_account() -> Dict[str, Any]:
+    """Mock Azure Storage Account"""
+    return {
+        "id": "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/teststorage",
+        "name": "teststorage",
+        "type": "Microsoft.Storage/storageAccounts",
+        "location": "eastus",
+        "tags": {"tier": "standard"},
+        "properties": {
+            "provisioningState": "Succeeded",
+        },
+    }
+
+
+@pytest.fixture
+def mock_virtual_machine() -> Dict[str, Any]:
+    """Mock Azure Virtual Machine"""
+    return {
+        "id": "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Compute/virtualMachines/test-vm",
+        "name": "test-vm",
+        "type": "Microsoft.Compute/virtualMachines",
+        "location": "eastus",
+        "tags": {"os": "linux"},
+        "properties": {
+            "provisioningState": "Succeeded",
+            "vmId": "test-vm-id",
+        },
+    }
+
+
+@pytest.fixture
+def mock_aks_cluster() -> Dict[str, Any]:
+    """Mock Azure Kubernetes Service Cluster"""
+    return {
+        "id": "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.ContainerService/managedClusters/test-aks",
+        "name": "test-aks",
+        "type": "Microsoft.ContainerService/managedClusters",
+        "location": "eastus",
+        "tags": {"cluster": "production"},
+        "properties": {
+            "provisioningState": "Succeeded",
+            "kubernetesVersion": "1.27.0",
+        },
+    }
+
+
+@pytest.fixture
+def mock_load_balancer() -> Dict[str, Any]:
+    """Mock Azure Load Balancer"""
+    return {
+        "id": "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Network/loadBalancers/test-lb",
+        "name": "test-lb",
+        "type": "Microsoft.Network/loadBalancers",
+        "location": "eastus",
+        "tags": {"tier": "frontend"},
+        "properties": {
+            "provisioningState": "Succeeded",
+        },
+    }
+
+
+@pytest.fixture
 def mock_service_bus_namespace() -> Dict[str, Any]:
     """Mock ServiceBus Namespace resource"""
     return {
