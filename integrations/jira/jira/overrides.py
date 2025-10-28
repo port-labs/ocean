@@ -22,7 +22,10 @@ class TeamResourceConfig(ResourceConfig):
 
 
 class JiraIssueSelector(Selector):
-    jql: str | None = None
+    jql: str = Field(
+        default="ORDER BY created DESC",
+        description="JQL query to filter issues. Defaults to 'ORDER BY created DESC' to fetch all issues.",
+    )
     fields: str | None = Field(
         description="Additional fields to be included in the API response",
         default="*all",

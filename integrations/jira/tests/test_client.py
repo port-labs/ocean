@@ -209,6 +209,30 @@ async def test_get_paginated_issues_without_jql_param(
 
 
 @pytest.mark.asyncio
+async def test_get_paginated_issues_with_empty_jql(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test get_paginated_issues with empty JQL - should use default search endpoint and not break"""
+    issues_data = {"issues": [{"key": "TEST-1"}, {"key": "TEST-2"}], "total": 2}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [issues_data, {"issues": []}]
+
+        issues = []
+        async for issue_batch in mock_jira_client.get_paginated_issues(params={"jql": ""}):
+            issues.extend(issue_batch)
+
+        assert len(issues) == 2
+        mock_request.assert_called_with(
+            "GET",
+            f"{mock_jira_client.api_url}/search",
+            params={},
+        )
+
+
+@pytest.mark.asyncio
 async def test_get_single_user(mock_jira_client: JiraClient) -> None:
     """Test get_single_user method"""
     user_data: dict[str, Any] = {
