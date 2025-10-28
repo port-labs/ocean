@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.20 (2025-10-28)
+
+
+### Bug Fixes
+
+- Fixed linting error caused by ReadTimeout exception
+
+
 ## 0.4.19 (2025-10-26)
 
 
