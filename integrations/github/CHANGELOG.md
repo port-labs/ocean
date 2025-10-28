@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 4.0.0-beta (2025-10-23)
+## 3.1.0-beta (2025-10-28)
 
 
 ### Features
 
-- Added support for excluding archived repositories
+- Added support for ingesting repositories using Github search API
 
 
 ## 3.0.2-beta (2025-10-26)
