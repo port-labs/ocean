@@ -49,10 +49,9 @@ async def test_make_paginated_request_with_nextlink(
     assert mock_make_request.call_args_list[0].args[0].endpoint == endpoint
     # This assertion highlights a bug: the client incorrectly uses only the path
     # from the absolute nextLink URL for subsequent requests.
-    assert (
-        mock_make_request.call_args_list[1].args[0].endpoint
-        == urlparse(next_link).path.rstrip("/")
-    )
+    assert mock_make_request.call_args_list[1].args[0].endpoint == urlparse(
+        next_link
+    ).path.rstrip("/")
 
 
 @pytest.mark.asyncio

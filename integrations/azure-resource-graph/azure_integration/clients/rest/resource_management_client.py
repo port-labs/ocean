@@ -61,8 +61,7 @@ class AzureResourceManagerClient(AzureRestClient):
 
             if not (next_link := response.get("nextLink")):
                 break
-            next_url, new_params = self._split_url_params(next_link)
-            params = new_params
+            next_url, params = self._split_url_params(next_link)
             if "api-version" not in params:
                 params["api-version"] = request.api_version
             logger.debug(f"Next URL: {next_url}, Params: {params}")
