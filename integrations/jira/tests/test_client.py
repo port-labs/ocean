@@ -221,7 +221,9 @@ async def test_get_paginated_issues_with_empty_jql(
         mock_request.side_effect = [issues_data, {"issues": []}]
 
         issues = []
-        async for issue_batch in mock_jira_client.get_paginated_issues(params={"jql": ""}):
+        async for issue_batch in mock_jira_client.get_paginated_issues(
+            params={"jql": ""}
+        ):
             issues.extend(issue_batch)
 
         assert len(issues) == 2
