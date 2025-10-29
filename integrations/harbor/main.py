@@ -22,8 +22,8 @@ def build_params(extra: dict[str, Any] | None = None) -> dict[str, Any]:
     Returns:
         Dictionary of request parameters including pagination and query filters
     """
-    params = {"page_size": DEFAULT_PAGE_SIZE}
-
+    params: dict[str, Any] = {"page_size": str(DEFAULT_PAGE_SIZE)}
+    
     if extra:
         params.update(extra)
 

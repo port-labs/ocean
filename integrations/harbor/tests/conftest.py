@@ -3,7 +3,7 @@ Pytest configuration and shared fixtures for Harbor integration tests
 """
 import pytest
 import asyncio
-from typing import Generator, Any, Dict, List
+from typing import Generator, Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch, Mock
 
 

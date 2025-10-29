@@ -276,7 +276,7 @@ class TestDataTransformation:
         """Test transforming Harbor artifact to Port entity"""
         artifact = mock_harbor_api_response["artifacts"][0]
 
-        tags = [tag["name"] for tag in artifact["tags"]]
+        tags: list[str] = [tag["name"] for tag in artifact["tags"]]
 
         entity = {
             "identifier": artifact["digest"],
@@ -293,8 +293,8 @@ class TestDataTransformation:
         }
 
         assert entity["identifier"] == "sha256:abc123"
-        assert "latest" in entity["properties"]["tags"]
-        assert "v1.0.0" in entity["properties"]["tags"]
+        assert "latest" in tags
+        assert "v1.0.0" in tags
         assert entity["properties"]["vulnerabilities"]["critical"] == 2
 
 
@@ -350,8 +350,9 @@ class TestWebhooks:
         }
 
         assert webhook_payload["type"] == "SCANNING_COMPLETED"
-        assert "scan_overview" in webhook_payload["event_data"]["resources"][0]
-        scan = webhook_payload["event_data"]["resources"][0]["scan_overview"]
+        resources: list[Dict[str, Any]] = webhook_payload["event_data"]["resources"]
+        assert "scan_overview" in resources[0]
+        scan: Dict[str, Any] = resources[0]["scan_overview"]
         assert scan["scan_status"] == "Success"
         assert scan["vulnerabilities"]["critical"] == 5
 

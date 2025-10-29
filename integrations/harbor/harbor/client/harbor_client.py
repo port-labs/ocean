@@ -781,7 +781,7 @@ class HarborClient:
                 return
             
             page_size = params.get("page_size", DEFAULT_PAGE_SIZE)
-            async for users in self._get("/users", params, page_size):
+            async for users in self._paginate("/users", params, page_size):
                 yield users
                 
         except HTTPStatusError as e:
@@ -1055,7 +1055,10 @@ class HarborClient:
             )
             return []
 
-    async def get_all_artifacts(self, params: dict[str, Any]):
+    async def get_all_artifacts(
+    self, 
+    params: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:  # FIXED: Added return type annotation
         """
         Fetch all artifacts from all projects and repositories.
 
@@ -1076,6 +1079,7 @@ class HarborClient:
         )
         
         all_repos = []
+
         async for repos in self.get_all_repositories({"page_size": DEFAULT_PAGE_SIZE}):
             all_repos.extend(repos)
 

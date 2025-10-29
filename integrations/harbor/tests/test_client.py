@@ -2,7 +2,7 @@
 Tests for Harbor Client API interactions
 """
 import pytest
-from typing import Any, Dict, List
+from typing import Any, Dict
 from unittest.mock import AsyncMock, patch, Mock
 
 @pytest.mark.client
