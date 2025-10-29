@@ -92,8 +92,10 @@ class PortAuthentication:
         return self.last_token_object.full_token
 
     async def is_machine_user(self) -> bool:
+        # Ensure self.last_token_object is populated
+        await self.token
         payload: dict[str, Any] = jwt.decode(
-            await self.token, options={"verify_signature": False}
+            self.last_token_object.access_token, options={"verify_signature": False}
         )
         is_machine_user = payload.get("isMachine")
         if is_machine_user is None:
