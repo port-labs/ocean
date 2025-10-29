@@ -138,6 +138,12 @@ class ExecutionManager:
             )
             return
 
+        if not await ocean.port_client.auth.is_machine_user:
+            logger.warning(
+                "Actions processing is allowed only for machine users, skipping actions processing"
+            )
+            return
+
         self._polling_task = asyncio.create_task(self._poll_action_runs())
 
         workers_count = max(1, self._workers_count)

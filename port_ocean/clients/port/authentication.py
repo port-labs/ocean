@@ -1,4 +1,5 @@
 import re
+import jwt
 from typing import Any
 
 import httpx
@@ -89,6 +90,20 @@ class PortAuthentication:
                 self.client_id, self.client_secret
             )
         return self.last_token_object.full_token
+
+    @property
+    async def is_machine_user(self) -> bool:
+        payload: dict[str, Any] = jwt.decode(
+            await self.token, options={"verify_signature": False}
+        )
+        is_machine_user = payload.get("isMachine")
+        if is_machine_user is None:
+            logger.warning(
+                "Can not determine if the user is a machine user directly, checking for personal token usage instead"
+            )
+            return not payload.get("personalToken", True)
+
+        return is_machine_user
 
     @staticmethod
     def _is_personal_token(client_id: str) -> bool:

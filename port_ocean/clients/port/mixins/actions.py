@@ -8,6 +8,8 @@ from port_ocean.core.models import (
 )
 from port_ocean.exceptions.execution_manager import RunAlreadyAcknowledgedError
 
+INTERNAL_ACTIONS_CLIENT_HEADER = {"x-port-automation-client": "true"}
+
 
 class ActionsClientMixin:
     def __init__(self, auth: PortAuthentication, client: httpx.AsyncClient):
@@ -31,7 +33,7 @@ class ActionsClientMixin:
     ) -> list[ActionRun]:
         response = await self.client.post(
             f"{self.auth.api_url}/actions/runs/claim-pending",
-            headers=await self.auth.headers(),
+            headers={**(await self.auth.headers()), **INTERNAL_ACTIONS_CLIENT_HEADER},
             json={
                 "installationId": self.auth.integration_identifier,
                 "limit": limit,
@@ -66,7 +68,10 @@ class ActionsClientMixin:
         try:
             response = await self.client.patch(
                 f"{self.auth.api_url}/actions/runs/ack",
-                headers=await self.auth.headers(),
+                headers={
+                    **(await self.auth.headers()),
+                    **INTERNAL_ACTIONS_CLIENT_HEADER,
+                },
                 json={"runId": run_id},
             )
             handle_port_status_code(response)

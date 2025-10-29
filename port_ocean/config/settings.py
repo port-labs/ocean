@@ -140,22 +140,6 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         default_factory=lambda: ActionsProcessorSettings()
     )
 
-    @root_validator
-    def validate_event_listener(cls, values: dict[str, Any]) -> dict[str, Any]:
-        event_listener: EventListenerSettingsType | None = values.get("event_listener")
-        runtime: Runtime | None = values.get("runtime")
-
-        if (
-            event_listener
-            and runtime
-            and event_listener.type == EventListenerType.ACTIONS_ONLY
-            and not runtime.is_saas_runtime
-        ):
-            raise ValueError(
-                "Actions-only event listener is only supported for Saas runtime"
-            )
-        return values
-
     @validator("process_execution_mode")
     def validate_process_execution_mode(
         cls, process_execution_mode: ProcessExecutionMode
