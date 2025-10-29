@@ -223,7 +223,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
             return actions_processor
 
         spec = get_spec_file()
-        if not (spec and spec.get("actionsProcessorEnabled", False)):
+        if not (spec and spec.get("actionsProcessingEnabled", False)):
             raise ValueError(
                 "Serving as an actions processor is not currently supported for this integration."
             )
