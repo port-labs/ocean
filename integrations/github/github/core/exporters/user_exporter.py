@@ -7,6 +7,7 @@ from github.core.options import SingleUserOptions, ListUserOptions
 from github.helpers.gql_queries import (
     LIST_EXTERNAL_IDENTITIES_GQL,
     LIST_ORG_MEMBER_GQL,
+    LIST_ORG_MEMBER_WITH_BOTS_GQL,
     FETCH_GITHUB_USER_GQL,
 )
 
@@ -38,12 +39,12 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
             "organization": options["organization"],
             "__path": "organization.membersWithRole",
         }
-        async for users in self.client.send_paginated_request(
-            LIST_ORG_MEMBER_GQL, variables
-        ):
-            if not options.get("include_bots"):
-                users = [user for user in users if user.get("type") == "User"]
+        if options.get("include_bots"):
+            resource = LIST_ORG_MEMBER_WITH_BOTS_GQL
+        else:
+            resource = LIST_ORG_MEMBER_GQL
 
+        async for users in self.client.send_paginated_request(resource, variables):
             users_with_no_email = {
                 (idx, user["login"]): user
                 for idx, user in enumerate(users)

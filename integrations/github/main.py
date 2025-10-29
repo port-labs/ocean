@@ -190,7 +190,9 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         tasks = (
             GraphQLUserExporter(graphql_client).get_paginated_resources(
-                options=ListUserOptions(organization=org["login"], include_bots=include_bots)
+                options=ListUserOptions(
+                    organization=org["login"], include_bots=include_bots
+                )
             )
             for org in organizations
         )
