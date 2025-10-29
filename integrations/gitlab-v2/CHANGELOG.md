@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.3.6 (2025-10-29)
+
+
+### Bug Fixes
+
+- Fix async stream tried to be read in a sync context in file kind
 
 ## 0.3.5 (2025-10-27)
 
