@@ -1,5 +1,6 @@
 from typing import Any, AsyncGenerator
 from loguru import logger
+from harbor.webhooks.processor import ArtifactWebhookProcessor, RepositoryWebhookProcessor
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
@@ -160,3 +161,6 @@ async def on_start() -> None:
     except Exception as e:
         logger.error(f"Can't access integration config: {e}")
         raise
+
+ocean.add_webhook_processor("/webhook", ArtifactWebhookProcessor)
+ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
