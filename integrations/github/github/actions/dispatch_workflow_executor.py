@@ -136,16 +136,16 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             """
             Determine if this webhook event should be processed.
             """
-            if super()._should_process_event(event):
+            if not (await super()._should_process_event(event)):
                 return False
 
             workflow_run = event.payload["workflow_run"]
             authenticated_user = await get_authenticated_user()
             should_process = (
-                await super()._should_process_event(event)
-                and workflow_run["status"] == "completed"
+                workflow_run["status"] == "completed"
                 and workflow_run["actor"]["login"] == authenticated_user.login
             )
+
             return should_process
 
         async def handle_event(
