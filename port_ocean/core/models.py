@@ -19,6 +19,7 @@ class ProcessExecutionMode(StrEnum):
 class CachingStorageMode(StrEnum):
     disk = "disk"
     memory = "memory"
+    hybrid = "hybrid"
 
 
 class Runtime(Enum):
