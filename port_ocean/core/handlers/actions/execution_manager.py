@@ -138,7 +138,7 @@ class ExecutionManager:
             )
             return
 
-        if not await ocean.port_client.auth.is_machine_user:
+        if not await ocean.port_client.auth.is_machine_user():
             logger.warning(
                 "Actions processing is allowed only for machine users, skipping actions processing"
             )

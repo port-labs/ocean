@@ -91,7 +91,6 @@ class PortAuthentication:
             )
         return self.last_token_object.full_token
 
-    @property
     async def is_machine_user(self) -> bool:
         payload: dict[str, Any] = jwt.decode(
             await self.token, options={"verify_signature": False}

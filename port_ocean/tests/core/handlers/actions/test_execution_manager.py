@@ -7,6 +7,7 @@ from fastapi import APIRouter, FastAPI
 from loguru import logger
 from pydantic import BaseModel
 import pytest
+from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.client import PortClient
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
@@ -63,6 +64,8 @@ def mock_port_client() -> MagicMock:
     mock_port_client.get_organization_feature_flags = AsyncMock(
         return_value=[IntegrationFeatureFlag.OCEAN_ACTIONS_PROCESSING_ENABLED]
     )
+    mock_port_client.auth = AsyncMock(spec=PortAuthentication)
+    mock_port_client.auth.is_machine_user = AsyncMock(return_value=True)
     return mock_port_client
 
 
