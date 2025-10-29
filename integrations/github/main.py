@@ -87,8 +87,8 @@ from integration import (
 )
 
 
-@ocean.on_resync_start()
-async def on_resync_start() -> None:
+@ocean.on_start()
+async def on_start() -> None:
     """Initialize the integration and set up webhooks."""
     logger.info("Setting up webhooks for GitHub organizations")
 
@@ -104,6 +104,7 @@ async def on_resync_start() -> None:
 
     org_exporter = RestOrganizationExporter(create_github_client())
 
+    await ocean.integration.port_app_config_handler.get_port_app_config()
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
