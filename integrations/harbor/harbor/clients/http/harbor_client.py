@@ -73,7 +73,16 @@ class HarborClient:
 
         logger.debug(f"Harbor API {method} {url} with params: {params}")
 
-        # Clear cookies for non-GET requests
+        # Harbor's API issues a session ID cookie (`sid`) during GET requests,
+        # which is meant for UI sessions (the Harbor web interface) and enforces CSRF checks
+        # on subsequent modifying requests (POST, PUT, PATCH).
+        #
+        # When we authenticate using Basic Auth programmatically (like in our Ocean client),
+        # these cookies are unnecessary and can cause CSRF validation errors:
+        #     {"code": "FORBIDDEN", "message": "CSRF token not found in request"}
+        #
+        # To avoid this, we clear cookies before any write operation so the request behaves
+        # like a stateless API call.
         if method in ["POST", "PUT", "PATCH"]:
             self.client.cookies.clear()
 
