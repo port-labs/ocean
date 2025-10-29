@@ -61,9 +61,9 @@ def _http_loguru_handler(level: LogLevelType) -> None:
 
     http_memory_handler = HTTPMemoryHandler()
     signal_handler.register(
-        http_memory_handler.wait_for_lingering_threads, priority=-200
+        http_memory_handler.wait_for_lingering_threads, priority=-900
     )
-    signal_handler.register(http_memory_handler.flush, priority=-200)
+    signal_handler.register(http_memory_handler.flush, priority=-899)
 
     queue_listener = QueueListener(queue, http_memory_handler)
     queue_listener.start()
