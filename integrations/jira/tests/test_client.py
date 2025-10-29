@@ -193,27 +193,9 @@ async def test_get_paginated_issues_with_jql_param(
 async def test_get_paginated_issues_without_jql_param(
     mock_jira_client: JiraClient,
 ) -> None:
-    """Test get_paginated_issues without JQL parameter"""
+    """Test get_paginated_issues without JQL parameter - should use default JQL"""
     issues_data = {"issues": [{"key": "TEST-1"}, {"key": "TEST-2"}], "total": 2}
-
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.side_effect = [issues_data, {"issues": []}]
-
-        issues = []
-        async for issue_batch in mock_jira_client.get_paginated_issues(params={}):
-            issues.extend(issue_batch)
-
-        assert len(issues) == 2
-
-
-@pytest.mark.asyncio
-async def test_get_paginated_issues_with_empty_jql(
-    mock_jira_client: JiraClient,
-) -> None:
-    """Test get_paginated_issues with empty JQL - should use default search endpoint and not break"""
-    issues_data = {"issues": [{"key": "TEST-1"}, {"key": "TEST-2"}], "total": 2}
+    default_jql = "project is not EMPTY ORDER BY created DESC"
 
     with patch.object(
         mock_jira_client, "_send_api_request", new_callable=AsyncMock
@@ -222,15 +204,42 @@ async def test_get_paginated_issues_with_empty_jql(
 
         issues = []
         async for issue_batch in mock_jira_client.get_paginated_issues(
-            params={"jql": ""}
+            params={"jql": default_jql}
         ):
             issues.extend(issue_batch)
 
         assert len(issues) == 2
         mock_request.assert_called_with(
             "GET",
-            f"{mock_jira_client.api_url}/search",
-            params={},
+            f"{mock_jira_client.api_url}/search/jql",
+            params={"jql": default_jql},
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_issues_with_empty_jql(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test get_paginated_issues with empty JQL - should use default JQL and /search/jql endpoint"""
+    issues_data = {"issues": [{"key": "TEST-1"}, {"key": "TEST-2"}], "total": 2}
+    custom_jql = "project = MYPROJECT ORDER BY updated DESC"
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [issues_data, {"issues": []}]
+
+        issues = []
+        async for issue_batch in mock_jira_client.get_paginated_issues(
+            params={"jql": custom_jql}
+        ):
+            issues.extend(issue_batch)
+
+        assert len(issues) == 2
+        mock_request.assert_called_with(
+            "GET",
+            f"{mock_jira_client.api_url}/search/jql",
+            params={"jql": custom_jql},
         )
 
 

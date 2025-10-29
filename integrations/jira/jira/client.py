@@ -303,15 +303,8 @@ class JiraClient(OAuthClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
         params = params or {}
-        jql = params.get("jql", "").strip()
-        if jql:
-            logger.info(f"Using JQL filter: {jql}")
-            params["jql"] = jql
-            url = f"{self.api_url}/search/jql"
-        else:
-            params.pop("jql", None)
-            logger.info("No JQL filter provided, using default search endpoint")
-            url = f"{self.api_url}/search"
+        logger.info(f"Using JQL filter: {params['jql']}")
+        url = f"{self.api_url}/search/jql"
 
         async for issues in self._get_paginated_data_using_next_page_token(
             url, "issues", initial_params=params
