@@ -1,6 +1,6 @@
 """Harbor Client Initialization Module."""
 
-from integrations.harbor.harbor.config.app_config import get_harbor_config
+from harbor.config.app_config import get_harbor_config
 from harbor.client.harbor_client import HarborClient
 
 _client_instance: HarborClient | None = None
