@@ -2,7 +2,7 @@ import asyncio
 from typing import Optional
 from pydantic import BaseModel
 
-from integrations.github.github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client
 
 
 class AuthContext(BaseModel):

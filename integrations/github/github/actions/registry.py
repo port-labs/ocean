@@ -1,5 +1,5 @@
 from port_ocean.context.ocean import ocean
-from integrations.github.github.actions.dispatch_workflow_executor import (
+from github.actions.dispatch_workflow_executor import (
     DispatchWorkflowExecutor,
 )
 

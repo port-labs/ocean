@@ -1,4 +1,4 @@
-from integrations.github.github.clients.client_factory import create_github_client
+from github.clients.client_factory import create_github_client
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 
 
