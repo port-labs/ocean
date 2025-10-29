@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for ingesting repositories using Github search API
 
 
+## 3.0.3-beta (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
 ## 3.0.2-beta (2025-10-26)
 
 
