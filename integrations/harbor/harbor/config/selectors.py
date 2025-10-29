@@ -11,7 +11,6 @@ This module defines the configuration structure for the Harbor integration,
 including selectors, resource configs, and the main integration class.
 """
 
-
 # ============================================================================
 # Selectors - Define user-configurable parameters for each kind
 # ============================================================================
@@ -23,8 +22,8 @@ class ProjectSelector(Selector):
     Allows users to filter and configure which projects to ingest.
     """
 
-    query: str | None = Field(
-        default=None,
+    query: str = Field(
+        default="",
         description="Query string to filter projects (e.g., 'name=~library'). "
                     "Supports name, public, and owner filters."
     )
@@ -48,8 +47,8 @@ class UserSelector(Selector):
     Allows users to filter and configure which users to ingest.
     """
 
-    username: str | None = Field(
-        default=None,
+    username: str = Field(
+        default="",
         description="Filter users by username (supports partial matching)"
     )
 
@@ -72,14 +71,14 @@ class RepositorySelector(Selector):
     Allows users to filter and configure which repositories to ingest.
     """
 
-    project_name: str | None = Field(
-        default=None,
+    project_name: str = Field(
+        default="",
         description="Filter repositories by project name. "
                     "If not specified, repositories from all projects will be fetched."
     )
 
-    query: str | None = Field(
-        default=None,
+    query: str = Field(
+        default="",
         description="Query string to filter repositories (e.g., 'name=~nginx')"
     )
 
@@ -102,19 +101,19 @@ class ArtifactSelector(Selector):
     Allows users to filter and configure which artifacts to ingest.
     """
 
-    project_name: str | None = Field(
-        default=None,
+    project_name: str = Field(
+        default="",
         description="Filter artifacts by project name. "
                     "If not specified, artifacts from all projects will be fetched."
     )
 
-    repository_name: str | None = Field(
-        default=None,
+    repository_name: str = Field(
+        default="",
         description="Filter artifacts by repository name within the specified project"
     )
 
-    query: str | None = Field(
-        default=None,
+    query: str = Field(
+        default="",
         description="Query string to filter artifacts (e.g., 'tags=~v1.*')"
     )
 

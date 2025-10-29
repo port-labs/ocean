@@ -1,5 +1,5 @@
 from loguru import logger
-from harbor.client.client_initializer import init_harbor_client
+from harbor.client.client_initializer import get_harbor_client
 from harbor.constants import ObjectKind
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -53,7 +53,7 @@ class ProjectWebhookProcessor(AbstractWebhookProcessor):
         Since project modifications aren't directly webhooks, we fetch the project
         to ensure we have the latest state.
         """
-        client = init_harbor_client()
+        client = get_harbor_client()
         event_type = payload.get("type", "")
         event_data = payload.get("event_data", {})
 

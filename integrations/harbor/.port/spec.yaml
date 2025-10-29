@@ -44,6 +44,13 @@ configurations:
     sensitive: true
     description: Shared secret for webhook signature verification (HMAC-SHA256)
     default: ""
+    
+  - name: appHost
+    required: false
+    type: string
+    sensitive: false
+    description: Application Host
+    default: ""
 
   - name: projectFilters
     required: false

@@ -1,36 +1,36 @@
 """Harbor Client Initialization Module."""
 
-from port_ocean.context.ocean import ocean
+from integrations.harbor.harbor.config.app_config import get_harbor_config
 from harbor.client.harbor_client import HarborClient
 
+_client_instance: HarborClient | None = None
 
-def init_harbor_client() -> HarborClient:
+
+def get_harbor_client() -> HarborClient:
     """Initialize and return a configured Harbor client.
 
-    Reads configuration from ocean.integration_config and creates a client
-    instance with the necessary authentication and connection parameters.
+    Creates a Harbor client using configuration from ocean.integration_config.
+    Subsequent calls return the cached instance.
 
     Returns:
         HarborClient: Configured Harbor API client instance
-    
+
     Raises:
         ValueError: If required configuration is missing
     """
-    harbor_url = ocean.integration_config.get("harbor_url")
-    username = ocean.integration_config.get("harbor_username")
-    password = ocean.integration_config.get("harbor_password")
-    verify_ssl = ocean.integration_config.get("verify_ssl", True)
 
-    if not harbor_url:
-        raise ValueError("harbor_url is required in integration config")
-    if not username:
-        raise ValueError("harbor_username is required in integration config")
-    if not password:
-        raise ValueError("harbor_password is required in integration config")
+    global _client_instance
 
-    return HarborClient(
+    if _client_instance is not None:
+        return _client_instance
+    
+    harbor_url, username, password, verify_ssl = get_harbor_config()   
+
+    _client_instance = HarborClient(
         harbor_url=str(harbor_url),
         username=str(username),
         password=str(password),
         verify_ssl=bool(verify_ssl),
     )
+
+    return _client_instance

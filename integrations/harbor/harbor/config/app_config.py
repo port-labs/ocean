@@ -9,35 +9,35 @@ from typing import Literal
 from pydantic import Field
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig, ResourceConfig
-from selectors import ProjectSelector, UserSelector, RepositorySelector, ArtifactSelector
+from .selectors import ProjectSelector, UserSelector, RepositorySelector, ArtifactSelector
 
 
 class ProjectResourceConfig(ResourceConfig):
     """Resource configuration for Harbor Projects."""
 
     selector: ProjectSelector
-    kind: Literal["project"]
+    kind: Literal["project"] = "project"
 
 
 class UserResourceConfig(ResourceConfig):
     """Resource configuration for Harbor Users."""
 
     selector: UserSelector
-    kind: Literal["user"]
+    kind: Literal["user"] = "user"
 
 
 class RepositoryResourceConfig(ResourceConfig):
     """Resource configuration for Harbor Repositories."""
 
     selector: RepositorySelector
-    kind: Literal["repository"]
+    kind: Literal["repository"] = "repository"
 
 
 class ArtifactResourceConfig(ResourceConfig):
     """Resource configuration for Harbor Artifacts."""
 
     selector: ArtifactSelector
-    kind: Literal["artifact"]
+    kind: Literal["artifact"] = "artifact"
 
 
 # ============================================================================
@@ -61,20 +61,24 @@ class HarborPortAppConfig(PortAppConfig):
     ] = Field(
         default_factory=lambda: [
             ProjectResourceConfig(
+                kind="project",
                 selector=ProjectSelector(),
-                kind="project"
+                port=None
             ),
             UserResourceConfig(
+                kind="user",
                 selector=UserSelector(),
-                kind="user"
+                port=None
             ),
             RepositoryResourceConfig(
+                kind="repository",
                 selector=RepositorySelector(),
-                kind="repository"
+                port=None
             ),
             ArtifactResourceConfig(
+                kind="artifact",
                 selector=ArtifactSelector(),
-                kind="artifact"
+                port=None
             ),
         ],
         description="List of resource configurations for Harbor entities to ingest"
@@ -96,10 +100,11 @@ def get_harbor_config() -> tuple[str, str, str, bool]:
     password = ocean.integration_config.get("harbor_password")
     verify_ssl = ocean.integration_config.get("verify_ssl", True)
 
-    if not all([harbor_url, username, password]):
-        raise ValueError(
-            "Missing required Harbor configuration. "
-            "Ensure harbor_url, harbor_username, and harbor_password are configured."
-        )
+    if not harbor_url:
+        raise ValueError("harbor_url is required in integration config")
+    if not username:
+        raise ValueError("harbor_username is required in integration config")
+    if not password:
+        raise ValueError("harbor_password is required in integration config")
 
     return harbor_url, username, password, verify_ssl
