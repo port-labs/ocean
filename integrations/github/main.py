@@ -92,7 +92,7 @@ async def on_resync_start() -> None:
     """Initialize the integration and set up webhooks."""
     logger.info("Setting up webhooks for GitHub organizations")
 
-    if not ocean.app.config.event_listener.should_create_webhooks_if_enabled:
+    if not ocean.app.config.event_listener.should_process_webhooks:
         logger.info(
             "Skipping webhook creation as it's not supported for this event listener"
         )
