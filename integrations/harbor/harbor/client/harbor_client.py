@@ -750,11 +750,14 @@ class HarborClient:
     # ========================================================================
 
     async def get_paginated_users(
-        self,
-        params: dict[str, Any]
+    self,
+    params: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetch users with pagination.
+        
+        Note: This endpoint requires system admin permissions.
+        If the user is not a system admin, this will yield empty results.
 
         Args:
             params: Query parameters (page_size, q, etc.)
@@ -762,18 +765,39 @@ class HarborClient:
         Yields:
             Lists of user dictionaries
         """
-        logger.debug(
-            "Starting paginated users fetch",
-            extra={
-                "component": "harbor_client",
-                "operation": "get_paginated_users",
-                "page_size": params.get("page_size", DEFAULT_PAGE_SIZE)
-            }
-        )
-        
-        page_size = params.get("page_size", DEFAULT_PAGE_SIZE)
-        async for users in self._paginate("/users", params, page_size):
-            yield users
+        try:
+            is_admin = await self.has_system_admin_permission()
+            
+            if not is_admin:
+                logger.warning(
+                    "User does not have system admin permissions, skipping user sync",
+                    extra={
+                        "component": "harbor_client",
+                        "operation": "get_paginated_users",
+                        "reason": "insufficient_permissions",
+                        "required_permission": "system_admin"
+                    }
+                )
+                return
+            
+            page_size = params.get("page_size", DEFAULT_PAGE_SIZE)
+            async for users in self._get("/users", params, page_size):
+                yield users
+                
+        except HTTPStatusError as e:
+            if e.response.status_code == 401:
+                logger.warning(
+                    "Cannot fetch users - insufficient permissions",
+                    extra={
+                        "component": "harbor_client",
+                        "operation": "get_paginated_users",
+                        "status_code": 401,
+                        "reason": "This endpoint requires system administrator privileges"
+                    }
+                )
+                return
+            else:
+                raise
 
     # ========================================================================
     # Repositories API

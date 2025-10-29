@@ -3,12 +3,12 @@ Pytest configuration and shared fixtures for Harbor integration tests
 """
 import pytest
 import asyncio
-from typing import Generator
+from typing import Generator, Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch, Mock
 
 
 @pytest.fixture(scope="session")
-def event_loop() -> Generator:
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     """Create an instance of the default event loop for the test session."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
@@ -16,7 +16,7 @@ def event_loop() -> Generator:
 
 
 @pytest.fixture
-def mock_harbor_config():
+def mock_harbor_config() -> Dict[str, Any]:
     """Provide mock Harbor configuration"""
     return {
         "harbor_url": "https://harbor.test.com",
@@ -28,7 +28,7 @@ def mock_harbor_config():
 
 
 @pytest.fixture
-def mock_http_client():
+def mock_http_client() -> AsyncMock:
     """Mock HTTP client that mimics httpx.AsyncClient"""
     client = AsyncMock()
     client.request = AsyncMock()
@@ -38,7 +38,6 @@ def mock_http_client():
     client.delete = AsyncMock()
     client.close = AsyncMock()
 
-    # Mock response
     mock_response = Mock()
     mock_response.status_code = 200
     mock_response.json = Mock(return_value={})
@@ -57,9 +56,8 @@ def mock_http_client():
 
 
 @pytest.fixture
-def harbor_client(mock_http_client):
+def harbor_client(mock_http_client: AsyncMock) -> Generator[Any, None, None]:
     """Create a Harbor client instance with mocked HTTP client"""
-    # Patch the http_async_client before importing HarborClient
     with patch('harbor.client.harbor_client.http_async_client', mock_http_client):
         from harbor.client.harbor_client import HarborClient
 
@@ -70,14 +68,13 @@ def harbor_client(mock_http_client):
             verify_ssl=True
         )
 
-        # Override the client attribute with our mock
         client.client = mock_http_client
 
         yield client
 
 
 @pytest.fixture
-def sample_project_data():
+def sample_project_data() -> Dict[str, Any]:
     """Sample Harbor project data"""
     return {
         "project_id": 1,
@@ -100,7 +97,7 @@ def sample_project_data():
 
 
 @pytest.fixture
-def sample_repository_data():
+def sample_repository_data() -> Dict[str, Any]:
     """Sample Harbor repository data"""
     return {
         "id": 1,
@@ -115,7 +112,7 @@ def sample_repository_data():
 
 
 @pytest.fixture
-def sample_artifact_data():
+def sample_artifact_data() -> Dict[str, Any]:
     """Sample Harbor artifact data"""
     return {
         "id": 1,
@@ -188,7 +185,7 @@ def sample_artifact_data():
 
 
 @pytest.fixture
-def sample_vulnerability_data():
+def sample_vulnerability_data() -> Dict[str, Any]:
     """Sample vulnerability data"""
     return {
         "id": "CVE-2024-12345",
@@ -208,7 +205,7 @@ def sample_vulnerability_data():
 
 
 @pytest.fixture
-def sample_user_data():
+def sample_user_data() -> Dict[str, Any]:
     """Sample Harbor user data"""
     return {
         "user_id": 1,
@@ -223,7 +220,7 @@ def sample_user_data():
 
 
 @pytest.fixture
-def sample_webhook_payload():
+def sample_webhook_payload() -> Dict[str, Any]:
     """Sample webhook payload"""
     return {
         "type": "PUSH_ARTIFACT",
@@ -249,7 +246,7 @@ def sample_webhook_payload():
 
 
 @pytest.fixture
-def mock_port_client():
+def mock_port_client() -> AsyncMock:
     """Mock Port client"""
     client = AsyncMock()
     client.upsert_entity = AsyncMock()
@@ -259,7 +256,7 @@ def mock_port_client():
 
 
 @pytest.fixture
-def mock_ocean_context():
+def mock_ocean_context() -> Generator[MagicMock, None, None]:
     """Mock Ocean context for testing"""
     with patch('port_ocean.context.ocean.ocean') as mock:
         mock.integration_config = {
@@ -276,7 +273,7 @@ def mock_ocean_context():
 
 
 @pytest.fixture
-def mock_integration_runtime():
+def mock_integration_runtime() -> Generator[MagicMock, None, None]:
     """Mock integration runtime context"""
     with patch("port_ocean.context.ocean.ocean") as mock_ocean:
         mock_ocean.integration_config = {
@@ -290,22 +287,19 @@ def mock_integration_runtime():
 
 
 @pytest.fixture
-def mock_logger():
+def mock_logger() -> Generator[MagicMock, None, None]:
     """Mock logger"""
     with patch("loguru.logger") as mock:
         yield mock
 
 
-# Cleanup fixtures
 @pytest.fixture(autouse=True)
-def cleanup():
+def cleanup() -> Generator[None, None, None]:
     """Cleanup after each test"""
     yield
-    # Add any cleanup logic here
 
 
-# Markers for test categorization
-def pytest_configure(config):
+def pytest_configure(config: Any) -> None:
     """Configure custom pytest markers"""
     config.addinivalue_line(
         "markers", "unit: marks tests as unit tests"

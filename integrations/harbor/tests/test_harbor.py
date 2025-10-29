@@ -2,10 +2,11 @@
 Tests for Harbor Server Integration with Port Ocean
 """
 import pytest
+from typing import Dict, Any
 from unittest.mock import AsyncMock, Mock, patch
 
 @pytest.fixture
-def mock_harbor_api_response():
+def mock_harbor_api_response() -> Dict[str, Any]:
     """Mock Harbor API responses"""
     return {
         "projects": [
@@ -78,7 +79,7 @@ class TestHarborClient:
     """Test Harbor Client functionality"""
 
     @pytest.mark.asyncio
-    async def test_get_projects(self, harbor_client, mock_harbor_api_response):
+    async def test_get_projects(self, harbor_client: Any, mock_harbor_api_response: Dict[str, Any]) -> None:
         """Test fetching projects from Harbor"""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -98,9 +99,8 @@ class TestHarborClient:
         assert projects[1]["name"] == "production"
 
     @pytest.mark.asyncio
-    async def test_get_repositories(self, harbor_client, mock_harbor_api_response):
+    async def test_get_repositories(self, harbor_client: Any, mock_harbor_api_response: Dict[str, Any]) -> None:
         """Test fetching repositories from Harbor"""
-        # Mock project response
         project_response = Mock()
         project_response.status_code = 200
         project_response.json = Mock(
@@ -108,7 +108,6 @@ class TestHarborClient:
         project_response.content = b'[...]'
         project_response.raise_for_status = Mock()
 
-        # Mock repository response
         repo_response = Mock()
         repo_response.status_code = 200
         repo_response.json = Mock(
@@ -127,9 +126,8 @@ class TestHarborClient:
         assert repositories[0]["name"] == "library/nginx"
 
     @pytest.mark.asyncio
-    async def test_get_artifacts(self, harbor_client, mock_harbor_api_response):
+    async def test_get_artifacts(self, harbor_client: Any, mock_harbor_api_response: Dict[str, Any]) -> None:
         """Test fetching artifacts from Harbor"""
-        # Mock project response
         project_response = Mock()
         project_response.status_code = 200
         project_response.json = Mock(
@@ -137,7 +135,6 @@ class TestHarborClient:
         project_response.content = b'[...]'
         project_response.raise_for_status = Mock()
 
-        # Mock repository response
         repo_response = Mock()
         repo_response.status_code = 200
         repo_response.json = Mock(
@@ -145,7 +142,6 @@ class TestHarborClient:
         repo_response.content = b'[...]'
         repo_response.raise_for_status = Mock()
 
-        # Mock artifact response
         artifact_response = Mock()
         artifact_response.status_code = 200
         artifact_response.json = Mock(
@@ -168,7 +164,7 @@ class TestHarborClient:
         assert len(artifacts[0]["tags"]) == 2
 
     @pytest.mark.asyncio
-    async def test_authentication_failure(self, mock_http_client):
+    async def test_authentication_failure(self, mock_http_client: AsyncMock) -> None:
         """Test handling authentication failures"""
         with patch('harbor.client.harbor_client.http_async_client', mock_http_client):
             from harbor.client.harbor_client import HarborClient
@@ -199,13 +195,13 @@ class TestHarborClient:
                 response=mock_response
             )
 
-            client.client.request.return_value = mock_response
+            mock_http_client.request = AsyncMock(return_value=mock_response)
 
             with pytest.raises(HTTPStatusError):
                 await client.validate_connection()
 
     @pytest.mark.asyncio
-    async def test_ssl_verification(self, mock_http_client):
+    async def test_ssl_verification(self, mock_http_client: AsyncMock) -> None:
         """Test SSL verification setting"""
         with patch('harbor.client.harbor_client.http_async_client', mock_http_client):
             from harbor.client.harbor_client import HarborClient
@@ -231,7 +227,7 @@ class TestHarborClient:
 class TestDataTransformation:
     """Test data transformation for Port entities"""
 
-    def test_project_to_entity(self, mock_harbor_api_response):
+    def test_project_to_entity(self, mock_harbor_api_response: Dict[str, Any]) -> None:
         """Test transforming Harbor project to Port entity"""
         project = mock_harbor_api_response["projects"][0]
 
@@ -252,7 +248,7 @@ class TestDataTransformation:
         assert entity["properties"]["public"] is True
         assert entity["properties"]["repositoryCount"] == 5
 
-    def test_repository_to_entity(self, mock_harbor_api_response):
+    def test_repository_to_entity(self, mock_harbor_api_response: Dict[str, Any]) -> None:
         """Test transforming Harbor repository to Port entity"""
         repo = mock_harbor_api_response["repositories"][0]
 
@@ -276,7 +272,7 @@ class TestDataTransformation:
         assert entity["properties"]["pullCount"] == 100
         assert entity["relations"]["project"] == "project-1"
 
-    def test_artifact_to_entity(self, mock_harbor_api_response):
+    def test_artifact_to_entity(self, mock_harbor_api_response: Dict[str, Any]) -> None:
         """Test transforming Harbor artifact to Port entity"""
         artifact = mock_harbor_api_response["artifacts"][0]
 
@@ -306,7 +302,7 @@ class TestWebhooks:
     """Test webhook handling"""
 
     @pytest.mark.asyncio
-    async def test_webhook_push_artifact(self):
+    async def test_webhook_push_artifact(self) -> None:
         """Test handling push artifact webhook"""
         webhook_payload = {
             "type": "PUSH_ARTIFACT",
@@ -325,13 +321,12 @@ class TestWebhooks:
             "occur_at": 1234567890
         }
 
-        # Test webhook processing
         assert webhook_payload["type"] == "PUSH_ARTIFACT"
         assert "resources" in webhook_payload["event_data"]
         assert webhook_payload["event_data"]["resources"][0]["tag"] == "v2.0.0"
 
     @pytest.mark.asyncio
-    async def test_webhook_scan_completed(self):
+    async def test_webhook_scan_completed(self) -> None:
         """Test handling scan completed webhook"""
         webhook_payload = {
             "type": "SCANNING_COMPLETED",
@@ -354,22 +349,21 @@ class TestWebhooks:
             "occur_at": 1234567890
         }
 
-        # Test webhook processing
         assert webhook_payload["type"] == "SCANNING_COMPLETED"
         assert "scan_overview" in webhook_payload["event_data"]["resources"][0]
         scan = webhook_payload["event_data"]["resources"][0]["scan_overview"]
         assert scan["scan_status"] == "Success"
         assert scan["vulnerabilities"]["critical"] == 5
 
-    def test_webhook_validation(self):
+    def test_webhook_validation(self) -> None:
         """Test webhook signature validation"""
-        valid_payload = {
+        valid_payload: Dict[str, Any] = {
             "type": "PUSH_ARTIFACT",
             "event_data": {},
             "occur_at": 1234567890
         }
 
-        invalid_payload = {
+        invalid_payload: Dict[str, Any] = {
             "type": "UNKNOWN_TYPE"
         }
 
@@ -383,9 +377,8 @@ class TestResyncLogic:
     """Test resync functionality"""
 
     @pytest.mark.asyncio
-    async def test_full_resync(self, harbor_client, mock_harbor_api_response):
+    async def test_full_resync(self, harbor_client: Any, mock_harbor_api_response: Dict[str, Any]) -> None:
         """Test full resync of all Harbor resources"""
-        # Mock projects
         project_response = Mock()
         project_response.status_code = 200
         project_response.json = Mock(
@@ -393,7 +386,6 @@ class TestResyncLogic:
         project_response.content = b'[...]'
         project_response.raise_for_status = Mock()
 
-        # Mock repositories
         repo_response = Mock()
         repo_response.status_code = 200
         repo_response.json = Mock(
@@ -401,7 +393,6 @@ class TestResyncLogic:
         repo_response.content = b'[...]'
         repo_response.raise_for_status = Mock()
 
-        # Mock artifacts
         artifact_response = Mock()
         artifact_response.status_code = 200
         artifact_response.json = Mock(
@@ -416,7 +407,6 @@ class TestResyncLogic:
             artifact_response
         ]
 
-        # Test getting projects
         projects = []
         async for batch in harbor_client.get_paginated_projects({"page_size": 100}):
             projects.extend(batch)
@@ -424,7 +414,7 @@ class TestResyncLogic:
         assert len(projects) == 2
 
     @pytest.mark.asyncio
-    async def test_incremental_sync(self, harbor_client):
+    async def test_incremental_sync(self, harbor_client: Any) -> None:
         """Test incremental sync with updated_after parameter"""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -452,7 +442,7 @@ class TestErrorHandling:
     """Test error handling scenarios"""
 
     @pytest.mark.asyncio
-    async def test_network_timeout(self, harbor_client):
+    async def test_network_timeout(self, harbor_client: Any) -> None:
         """Test handling network timeouts"""
         harbor_client.client.request.side_effect = TimeoutError(
             "Request timed out")
@@ -463,7 +453,7 @@ class TestErrorHandling:
                 projects.extend(batch)
 
     @pytest.mark.asyncio
-    async def test_invalid_json_response(self, harbor_client):
+    async def test_invalid_json_response(self, harbor_client: Any) -> None:
         """Test handling invalid JSON responses"""
         harbor_client.client.request.side_effect = ValueError("Invalid JSON")
 
@@ -473,7 +463,7 @@ class TestErrorHandling:
                 projects.extend(batch)
 
     @pytest.mark.asyncio
-    async def test_rate_limiting(self, harbor_client):
+    async def test_rate_limiting(self, harbor_client: Any) -> None:
         """Test handling rate limiting"""
         from httpx import HTTPStatusError, Response, Request
 
@@ -506,7 +496,7 @@ class TestErrorHandling:
             assert result is True
 
     @pytest.mark.asyncio
-    async def test_missing_resource(self, harbor_client):
+    async def test_missing_resource(self, harbor_client: Any) -> None:
         """Test handling 404 not found"""
         from httpx import HTTPStatusError, Response, Request
 
@@ -534,9 +524,9 @@ class TestErrorHandling:
 class TestIntegrationConfig:
     """Test integration configuration"""
 
-    def test_config_validation(self):
+    def test_config_validation(self) -> None:
         """Test configuration validation"""
-        valid_config = {
+        valid_config: Dict[str, Any] = {
             "harbor_url": "https://harbor.example.com",
             "username": "admin",
             "password": "password",
@@ -544,13 +534,14 @@ class TestIntegrationConfig:
         }
 
         assert "harbor_url" in valid_config
-        assert valid_config["harbor_url"].startswith("https://")
+        harbor_url_str = str(valid_config["harbor_url"])
+        assert harbor_url_str.startswith("https://")
         assert "username" in valid_config
         assert "password" in valid_config
 
-    def test_optional_config_defaults(self):
+    def test_optional_config_defaults(self) -> None:
         """Test optional configuration defaults"""
-        config = {
+        config: Dict[str, Any] = {
             "harbor_url": "https://harbor.example.com",
             "username": "admin",
             "password": "password"
