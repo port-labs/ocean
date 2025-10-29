@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added mangager to default user fields
+- Added manager to default user fields
 - Added Okta icon to group and user blueprints
 - Added installation docs for Okta integration
 
