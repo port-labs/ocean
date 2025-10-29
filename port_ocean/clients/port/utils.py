@@ -46,7 +46,7 @@ def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
             timeout=PORT_HTTPX_TIMEOUT,
             limits=PORT_HTTPX_LIMITS,
             verify=ssl_context,
-        )        
+        )
         _http_client.push(client)
 
     return client
