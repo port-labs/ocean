@@ -6,12 +6,69 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-## 0.2.39 (2025-01-27)
+## 0.3.7 (2025-11-02)
 
 
 ### Bug Fixes
 
 - Fix pagination bug in get_parent_groups that was creating duplicate webhooks for child groups
+
+
+
+## 0.3.6 (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 0.3.5 (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+## 0.3.4 (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 0.3.3 (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 0.3.2 (2025-10-20)
+
+
+### Features
+
+- Added live events for `tag` and `release` kinds
+
+
+## 0.3.1 (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 0.3.0 (2025-10-16)
+
+
+### Features
+
+- Added support for `releases` and `tags` kinds
 
 
 ## 0.2.38 (2025-10-15)
@@ -20,6 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Add memory optimizations for file kind
+
 
 ## 0.2.37 (2025-10-15)
 

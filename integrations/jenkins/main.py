@@ -8,7 +8,7 @@ from port_ocean.context.event import event
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from overrides import JenkinStagesResourceConfig
+from overrides import JenkinStagesResourceConfig, JenkinsBuildResourceConfig
 from webhook.webhook_processors import BuildWebhookProcessor, JobWebhookProcessor
 from utils import ObjectKind
 
@@ -26,7 +26,12 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     jenkins_client = JenkinsClient.create_from_ocean_configuration()
 
-    async for builds in jenkins_client.get_builds():
+    build_selector = cast(JenkinsBuildResourceConfig, event.resource_config)
+    max_builds_per_job = build_selector.selector.max_builds_per_job
+
+    logger.debug(f"Syncing builds with limit {max_builds_per_job}")
+
+    async for builds in jenkins_client.get_builds(max_builds_per_job):
         logger.info(f"Received batch with {len(builds)} builds")
         yield builds
 

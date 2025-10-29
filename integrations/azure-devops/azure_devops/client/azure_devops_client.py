@@ -11,7 +11,7 @@ from port_ocean.utils.cache import cache_iterator_result
 from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.webhooks.events import RepositoryEvents, PullRequestEvents, PushEvents
 
-from azure_devops.client.base_client import HTTPBaseClient
+from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 from azure_devops.client.base_client import PAGE_SIZE
 
@@ -220,6 +220,76 @@ class AzureDevopsClient(HTTPBaseClient):
                         for repo in repositories
                         if self._repository_is_healthy(repo)
                     ]
+
+    async def generate_branches(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate branches for all repositories in all projects.
+
+        API: GET {org}/{project}/_apis/git/repositories/{repoId}/refs?filter=heads/
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/refs/list?view=azure-devops-rest-7.1
+        """
+        async for repositories in self.generate_repositories(
+            include_disabled_repositories=False
+        ):
+            semaphore = asyncio.BoundedSemaphore(
+                MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING
+            )
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._get_branches_for_repository,
+                        repository,
+                    ),
+                )
+                for repository in repositories
+            ]
+            async for branches in stream_async_iterators_tasks(*tasks):
+                yield branches
+
+    async def _get_branches_for_repository(
+        self, repository: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get branches for a single repository."""
+        project_id = repository["project"]["id"]
+        repository_id = repository["id"]
+        repository_name = repository["name"]
+
+        branches_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repository_id}/refs"
+        params = {
+            "filter": "heads/",
+        }
+
+        try:
+            async for refs in self._get_paginated_by_top_and_continuation_token(
+                branches_url, additional_params=params
+            ):
+                enriched_branches = []
+                for ref in refs:
+                    ref_name = ref["name"]
+                    if ref_name.startswith("refs/heads/"):
+                        branch_name = ref_name.replace("refs/heads/", "")
+
+                        enriched_branch = {
+                            "name": branch_name,
+                            "refName": ref_name,
+                            "objectId": ref["objectId"],
+                            "__repository": repository,
+                        }
+                        enriched_branches.append(enriched_branch)
+
+                if enriched_branches:
+                    logger.info(
+                        f"Found {len(enriched_branches)} branches for repository {repository_name}"
+                    )
+                    yield enriched_branches
+
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch branches for repository {repository_name} in project {project_id}: {str(e)}"
+            )
 
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None
@@ -995,43 +1065,67 @@ class AzureDevopsClient(HTTPBaseClient):
             "latestProcessedChange": True,
         }
 
-        try:
-            response = await self.send_request(
-                "POST",
-                items_batch_url,
-                params=API_PARAMS,
-                data=json.dumps(request_data),
-                headers={"Content-Type": "application/json"},
-            )
-            if not response or response.status_code >= 400:
-                logger.warning(f"Failed to fetch items from {items_batch_url}")
-                return []
-
-            batch_results = response.json()
-            return [
-                file for sublist in batch_results.get("value", []) for file in sublist
-            ]
-
-        except ReadTimeout:
-            logger.error(
-                f"Request timeout while fetching items for {repository['name']}"
-            )
-            return []
-        except HTTPStatusError as e:
-            logger.error(e.response.status_code)
-            logger.error(e.response.text)
-            if e.response.status_code == 400:
-                logger.warning(
-                    f"None of the paths {', '.join([d.pattern for d in descriptors])} were found in repository {repository['name']}"
+        timeout_retries = 0
+        while timeout_retries <= MAX_TIMEMOUT_RETRIES:
+            try:
+                response = await self.send_request(
+                    "POST",
+                    items_batch_url,
+                    params=API_PARAMS,
+                    data=json.dumps(request_data),
+                    headers={"Content-Type": "application/json"},
+                    timeout=30,
                 )
-                return []
-            else:
+                if not response or response.status_code >= 400:
+                    logger.warning(f"Failed to fetch items from {items_batch_url}")
+                    return []
+
+                batch_results = response.json()
+                return [
+                    file
+                    for sublist in batch_results.get("value", [])
+                    for file in sublist
+                ]
+
+            except ReadTimeout:
+                timeout_retries += 1
+                if timeout_retries <= MAX_TIMEMOUT_RETRIES:
+                    logger.warning(
+                        f"Request timeout while fetching items for repository {repository['name']} "
+                        f"(attempt {timeout_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
+                    )
+                    await asyncio.sleep(2 ** (timeout_retries - 1))
+                    continue
+                else:
+                    logger.error(
+                        f"Request timeout while fetching items for repository {repository['name']} "
+                        f"after {MAX_TIMEMOUT_RETRIES + 1} attempts. Skipping repository update to prevent "
+                        f"false deletions. This should be reported as a bug for further investigation."
+                    )
+                    raise TimeoutError(
+                        f"Persistent timeout fetching files for repository {repository['name']}. "
+                        f"Skipping update to prevent false entity deletions."
+                    )
+
+            except HTTPStatusError as e:
+                logger.error(e.response.status_code)
+                logger.error(e.response.text)
+                if e.response.status_code == 400:
+                    logger.warning(
+                        f"None of the paths {', '.join([d.pattern for d in descriptors])} were found in repository {repository['name']}"
+                    )
+                    return []
+                else:
+                    raise
+            except Exception as e:
+                logger.error(
+                    f"Unexpected error processing files in {repository['name']}: {e}"
+                )
                 raise
-        except Exception as e:
-            logger.error(
-                f"Unexpected error processing files in {repository['name']}: {e}"
-            )
-            raise
+
+        raise RuntimeError(
+            f"Failed to fetch files for repository {repository['name']} after all retry attempts"
+        )
 
     async def download_single_file(
         self, file: dict[str, Any], repository: dict[str, Any], branch: str

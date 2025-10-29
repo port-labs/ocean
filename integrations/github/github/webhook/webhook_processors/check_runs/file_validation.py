@@ -38,9 +38,11 @@ class CheckRuns:
     def __init__(self) -> None:
         self.client = create_github_client()
 
-    async def create_validation_check(self, repo_name: str, head_sha: str) -> str:
+    async def create_validation_check(
+        self, organization: str, repo_name: str, head_sha: str
+    ) -> str:
         """Create a new check run for validation."""
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/check-runs"
+        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/check-runs"
 
         payload = {
             "name": "File Kind validation",
@@ -56,18 +58,21 @@ class CheckRuns:
             endpoint, method="POST", json_data=payload
         )
         if not response:
-            log_message = f"Failed to create check run for {repo_name}"
+            log_message = f"Failed to create check run for {repo_name} of organization: {organization}"
             logger.error(log_message)
             raise CheckRunsException(log_message)
 
         check_run_id = response["id"]
 
-        logger.info(f"Created check run {check_run_id} for {repo_name}")
+        logger.info(
+            f"Created check run {check_run_id} for {repo_name} of organization: {organization}"
+        )
 
         return str(check_run_id)
 
     async def update_check_run(
         self,
+        organization: str,
         repo_name: str,
         check_run_id: str,
         status: str,
@@ -77,7 +82,7 @@ class CheckRuns:
         details: str,
     ) -> None:
         """Update check run with results."""
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/check-runs/{check_run_id}"
+        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/check-runs/{check_run_id}"
 
         payload = {
             "status": status,
@@ -89,14 +94,15 @@ class CheckRuns:
         await self.client.send_api_request(endpoint, method="PATCH", json_data=payload)
 
         logger.info(
-            f"Updated check run {check_run_id} for {repo_name} with {conclusion} status"
+            f"Updated check run {check_run_id} for {repo_name} with {conclusion} status of organization: {organization}"
         )
 
 
 class FileValidationService:
     """Service for validating files during pull request processing."""
 
-    def __init__(self) -> None:
+    def __init__(self, organization: str) -> None:
+        self.organization = organization
         self.check_runs = CheckRuns()
 
     async def validate_pull_request_files(
@@ -112,7 +118,7 @@ class FileValidationService:
         file_path = changed_file["path"]
 
         logger.info(
-            f"Starting validation for file {file_path} in PR {repo_name}/{pr_number}"
+            f"Starting validation for file {file_path} in PR {repo_name}/{pr_number} of organization: {self.organization}"
         )
 
         validation_check_status = "completed"
@@ -123,10 +129,12 @@ class FileValidationService:
 
         try:
             check_run_id = await self.check_runs.create_validation_check(
-                repo_name=repo_name, head_sha=head_sha
+                organization=self.organization, repo_name=repo_name, head_sha=head_sha
             )
         except Exception as e:
-            logger.error(f"Failed to create validation check: {str(e)}")
+            logger.error(
+                f"Failed to create validation check: {str(e)} of organization: {self.organization}"
+            )
             return
 
         try:
@@ -136,13 +144,11 @@ class FileValidationService:
             )
 
             logger.info(
-                f"Validation result {'success' if result['success'] else 'failure'} for file {file_path}"
+                f"Validation result {'success' if result['success'] else 'failure'} for file {file_path} of organization: {self.organization}"
             )
 
             if not result["success"]:
-                error_msg = (
-                    f"Validation failed for {file_path}: {', '.join(result['errors'])}"
-                )
+                error_msg = f"Validation failed for {file_path}: {', '.join(result['errors'])} of organization: {self.organization}"
                 validation_errors.append(error_msg)
 
             if validation_errors:
@@ -154,13 +160,16 @@ class FileValidationService:
                 validation_check_details = "\n".join(validation_errors)
 
         except Exception as e:
-            logger.error(f"Validation error: {str(e)}")
+            logger.error(
+                f"Validation error: {str(e)} of organization: {self.organization}"
+            )
             validation_check_conclusion = "failure"
             validation_check_title = "File validation error"
             validation_check_summary = "An error occurred during validation"
             validation_check_details = str(e)
 
         await self.check_runs.update_check_run(
+            self.organization,
             repo_name,
             check_run_id,
             validation_check_status,
@@ -246,7 +255,7 @@ class FileValidationService:
 
 
 def get_file_validation_mappings(
-    port_app_config: GithubPortAppConfig, repo_name: str
+    port_app_config: GithubPortAppConfig,
 ) -> List[ResourceConfigToPatternMapping]:
     """
     Get file resource configurations with validation enabled for the specific repository.

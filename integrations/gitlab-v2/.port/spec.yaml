@@ -9,6 +9,8 @@ features:
       - kind: groups
       - kind: issues
       - kind: merge-request
+      - kind: releases
+      - kind: tags
 configurations:
   - name: gitlabToken
     required: true

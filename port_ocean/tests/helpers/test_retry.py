@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from http import HTTPStatus
 import httpx
 
@@ -307,3 +307,243 @@ class TestRetryConfigIntegration:
             "Retry-After",
         ]
         assert HTTPStatus.FORBIDDEN in transport._retry_config.retry_status_codes
+
+
+class TestResponseSizeLogging:
+    """Tests for response size logging functionality."""
+
+    def setup_method(self) -> None:
+        """Reset global callback state before each test."""
+        retry_module._RETRY_CONFIG_CALLBACK = None
+        retry_module._ON_RETRY_CALLBACK = None
+
+    def test_should_log_response_size_with_logger(self) -> None:
+        """Test _should_log_response_size returns True when logger is present and not getport.io."""
+        mock_transport = Mock()
+        mock_logger = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport, logger=mock_logger)
+
+        mock_request = Mock()
+        mock_request.url.host = "api.example.com"
+
+        assert transport._should_log_response_size(mock_request) is True
+
+    def test_should_log_response_size_without_logger(self) -> None:
+        """Test _should_log_response_size returns False when no logger."""
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport)
+
+        mock_request = Mock()
+        mock_request.url.host = "api.example.com"
+
+        assert transport._should_log_response_size(mock_request) is False
+
+    def test_should_log_response_size_getport_io(self) -> None:
+        """Test _should_log_response_size returns False for getport.io domains."""
+        mock_transport = Mock()
+        mock_logger = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport, logger=mock_logger)
+
+        mock_request = Mock()
+        mock_request.url.host = "api.getport.io"
+
+        assert transport._should_log_response_size(mock_request) is False
+
+    def test_get_content_length_from_headers(self) -> None:
+        """Test _get_content_length extracts content length from headers."""
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport)
+
+        mock_response = Mock()
+        mock_response.headers = {"Content-Length": "1024"}
+
+        assert transport._get_content_length(mock_response) == 1024
+
+    def test_get_content_length_case_insensitive(self) -> None:
+        """Test _get_content_length works with case insensitive headers."""
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport)
+
+        mock_response = Mock()
+        mock_response.headers = {"content-length": "2048"}
+
+        assert transport._get_content_length(mock_response) == 2048
+
+    def test_get_content_length_no_header(self) -> None:
+        """Test _get_content_length returns None when no content-length header."""
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport)
+
+        mock_response = Mock()
+        mock_response.headers = {}
+
+        assert transport._get_content_length(mock_response) is None
+
+    def test_get_content_length_invalid_value(self) -> None:
+        """Test _get_content_length handles invalid header values."""
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport)
+
+        mock_response = Mock()
+        mock_response.headers = {"Content-Length": "invalid"}
+
+        # Should raise ValueError when converting to int
+        with pytest.raises(ValueError):
+            transport._get_content_length(mock_response)
+
+    @patch("port_ocean.helpers.retry.cast")
+    def test_log_response_size_with_content_length(self, mock_cast: Mock) -> None:
+        """Test _log_response_size logs when Content-Length header is present."""
+        mock_transport = Mock()
+        mock_logger = Mock()
+        mock_cast.return_value = mock_logger
+        transport = RetryTransport(wrapped_transport=mock_transport, logger=mock_logger)
+
+        mock_request = Mock()
+        mock_request.method = "GET"
+        mock_url = Mock()
+        mock_url.host = "api.example.com"
+        mock_url.configure_mock(__str__=lambda self: "https://api.example.com/data")
+        mock_request.url = mock_url
+
+        mock_response = Mock()
+        mock_response.headers = {"Content-Length": "1024"}
+
+        transport._log_response_size(mock_request, mock_response)
+
+        mock_logger.info.assert_called_once_with(
+            "Response for GET https://api.example.com/data - Size: 1024 bytes"
+        )
+
+    @patch("port_ocean.helpers.retry.cast")
+    def test_log_response_size_without_content_length(self, mock_cast: Mock) -> None:
+        """Test _log_response_size does nothing when no Content-Length header."""
+        mock_transport = Mock()
+        mock_logger = Mock()
+        mock_cast.return_value = mock_logger
+        transport = RetryTransport(wrapped_transport=mock_transport, logger=mock_logger)
+
+        mock_request = Mock()
+        mock_request.method = "POST"
+        mock_url = Mock()
+        mock_url.host = "api.example.com"
+        mock_url.configure_mock(__str__=lambda self: "https://api.example.com/create")
+        mock_request.url = mock_url
+
+        mock_response = Mock()
+        mock_response.headers = {}
+
+        transport._log_response_size(mock_request, mock_response)
+
+        mock_response.read.assert_not_called()
+        mock_logger.info.assert_not_called()
+
+    # Read error path removed since _log_response_size no longer reads body
+
+    @patch("port_ocean.helpers.retry.cast")
+    def test_log_response_size_skips_when_should_not_log(self, mock_cast: Mock) -> None:
+        """Test _log_response_size skips logging when _should_log_response_size returns False."""
+        mock_transport = Mock()
+        mock_logger = Mock()
+        mock_cast.return_value = mock_logger
+        transport = RetryTransport(wrapped_transport=mock_transport, logger=mock_logger)
+
+        mock_request = Mock()
+        mock_request.url.host = "api.getport.io"  # This should skip logging
+
+        mock_response = Mock()
+        mock_response.headers = {"Content-Length": "1024"}
+
+        transport._log_response_size(mock_request, mock_response)
+
+        mock_logger.info.assert_not_called()
+
+
+class TestResponseSizeLoggingIntegration:
+    """Integration tests to verify response consumption works after size logging."""
+
+    def setup_method(self) -> None:
+        """Reset global callback state before each test."""
+        retry_module._RETRY_CONFIG_CALLBACK = None
+        retry_module._ON_RETRY_CALLBACK = None
+
+    @patch("port_ocean.helpers.retry.cast")
+    def test_log_response_size_preserves_json_consumption(
+        self, mock_cast: Mock
+    ) -> None:
+        """When no Content-Length, no logging/reading occurs; response usable."""
+        mock_transport = Mock()
+        mock_logger = Mock()
+        mock_cast.return_value = mock_logger
+        transport = RetryTransport(wrapped_transport=mock_transport, logger=mock_logger)
+
+        mock_request = Mock()
+        mock_request.method = "GET"
+        mock_request.url.host = "api.example.com"
+
+        mock_response = Mock()
+        mock_response.headers = {}
+        mock_response.json.return_value = {"message": "test", "data": [1, 2, 3]}
+
+        transport._log_response_size(mock_request, mock_response)
+
+        mock_logger.info.assert_not_called()
+        result = mock_response.json()
+        assert result == {"message": "test", "data": [1, 2, 3]}
+        mock_response.read.assert_not_called()
+
+    @patch("port_ocean.helpers.retry.cast")
+    def test_log_response_size_with_content_length_preserves_json(
+        self, mock_cast: Mock
+    ) -> None:
+        """Test that _log_response_size with Content-Length header preserves JSON consumption."""
+        mock_transport = Mock()
+        mock_logger = Mock()
+        mock_cast.return_value = mock_logger
+        transport = RetryTransport(wrapped_transport=mock_transport, logger=mock_logger)
+
+        mock_request = Mock()
+        mock_request.method = "POST"
+        mock_request.url.host = "api.example.com"
+
+        # Create a mock response with Content-Length header
+        mock_response = Mock()
+        mock_response.headers = {"Content-Length": "1024"}
+        mock_response.json.return_value = {"status": "success", "id": 123}
+
+        # Call the logging function
+        transport._log_response_size(mock_request, mock_response)
+
+        # Verify logging occurred
+        mock_logger.info.assert_called_once()
+
+        # Verify that response.json() can still be called
+        result = mock_response.json()
+        assert result == {"status": "success", "id": 123}
+
+        # Verify that read was NOT called since we had Content-Length
+        mock_response.read.assert_not_called()
+
+    @patch("port_ocean.helpers.retry.cast")
+    def test_log_response_size_preserves_text_consumption(
+        self, mock_cast: Mock
+    ) -> None:
+        """When no Content-Length, no logging/reading; response.text still accessible."""
+        mock_transport = Mock()
+        mock_logger = Mock()
+        mock_cast.return_value = mock_logger
+        transport = RetryTransport(wrapped_transport=mock_transport, logger=mock_logger)
+
+        mock_request = Mock()
+        mock_request.method = "GET"
+        mock_request.url.host = "api.example.com"
+
+        mock_response = Mock()
+        mock_response.headers = {}
+        mock_response.text = "Hello, World! This is a test response."
+
+        transport._log_response_size(mock_request, mock_response)
+
+        mock_logger.info.assert_not_called()
+        assert mock_response.text == "Hello, World! This is a test response."
+        mock_response.read.assert_not_called()

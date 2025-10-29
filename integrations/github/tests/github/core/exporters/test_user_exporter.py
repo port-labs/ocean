@@ -13,7 +13,7 @@ from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
-from github.core.options import SingleUserOptions
+from github.core.options import SingleUserOptions, ListUserOptions
 from github.helpers.gql_queries import (
     LIST_ORG_MEMBER_GQL,
     LIST_EXTERNAL_IDENTITIES_GQL,
@@ -76,7 +76,9 @@ class TestGraphQLUserExporter:
         with patch.object(
             graphql_client, "send_api_request", return_value=mock_response_data
         ) as mock_request:
-            user = await exporter.get_resource(SingleUserOptions(login="user1"))
+            user = await exporter.get_resource(
+                SingleUserOptions(organization="test-org", login="user1")
+            )
 
             assert user == TEST_USERS_NO_EMAIL_INITIAL[0]
 
@@ -112,7 +114,7 @@ class TestGraphQLUserExporter:
                 side_effect=mock_external_identities_request,
             ) as mock_paginated_request_identities,
         ):
-            user_options = SingleUserOptions(login="user2")
+            user_options = SingleUserOptions(organization="test-org", login="user2")
             user = await exporter.get_resource(user_options)
 
             expected_user = {
@@ -133,7 +135,7 @@ class TestGraphQLUserExporter:
             mock_paginated_request_identities.assert_called_once_with(
                 LIST_EXTERNAL_IDENTITIES_GQL,
                 {
-                    "organization": graphql_client.organization,
+                    "organization": "test-org",
                     "first": 100,
                     "__path": "organization.samlIdentityProvider.externalIdentities",
                     "__node_key": "edges",
@@ -179,7 +181,9 @@ class TestGraphQLUserExporter:
                 exporter = GraphQLUserExporter(graphql_client)
 
                 users: list[list[dict[str, Any]]] = []
-                async for batch in exporter.get_paginated_resources():
+                async for batch in exporter.get_paginated_resources(
+                    ListUserOptions(organization="test-org")
+                ):
                     users.append(batch)
 
                 assert len(users) == 1
@@ -188,14 +192,14 @@ class TestGraphQLUserExporter:
                 mock_request.assert_any_call(
                     LIST_ORG_MEMBER_GQL,
                     {
-                        "organization": graphql_client.organization,
+                        "organization": "test-org",
                         "__path": "organization.membersWithRole",
                     },
                 )
                 mock_request.assert_any_call(
                     LIST_EXTERNAL_IDENTITIES_GQL,
                     {
-                        "organization": graphql_client.organization,
+                        "organization": "test-org",
                         "first": 100,
                         "__path": "organization.samlIdentityProvider.externalIdentities",
                         "__node_key": "edges",
@@ -231,7 +235,9 @@ class TestGraphQLUserExporter:
             side_effect=[mock_paginated_request_external_identities()],
         ) as mock_request:
             exporter = GraphQLUserExporter(graphql_client)
-            await exporter._fetch_external_identities(initial_users, users_no_email)
+            await exporter._fetch_external_identities(
+                "test-org", initial_users, users_no_email
+            )
 
             expected_users = [
                 {"login": "user1", "email": "johndoe@email.com"},
@@ -243,7 +249,7 @@ class TestGraphQLUserExporter:
             mock_request.assert_called_once_with(
                 LIST_EXTERNAL_IDENTITIES_GQL,
                 {
-                    "organization": graphql_client.organization,
+                    "organization": "test-org",
                     "first": 100,
                     "__path": "organization.samlIdentityProvider.externalIdentities",
                     "__node_key": "edges",

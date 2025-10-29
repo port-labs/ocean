@@ -1,11 +1,20 @@
-from contextlib import contextmanager
-from typing import Awaitable, Generator, Callable, cast
-
-from loguru import logger
 import asyncio
-import multiprocessing
-import re
 import json
+import multiprocessing
+import os
+import re
+import shutil
+import stat
+import subprocess
+import tempfile
+from contextlib import contextmanager
+from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
+
+import ijson
+from loguru import logger
+
+from port_ocean.clients.port.utils import _http_client as _port_http_client
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import JQEntityProcessor
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
@@ -19,16 +28,8 @@ from port_ocean.exceptions.core import (
     OceanAbortException,
     KindNotImplementedException,
 )
-import os
-from port_ocean.utils.async_http import _http_client
-from port_ocean.clients.port.utils import _http_client as _port_http_client
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
-from port_ocean.context.ocean import ocean
-import subprocess
-import tempfile
-import stat
-import ijson
-from typing import Any, AsyncGenerator
+from port_ocean.utils.async_http import _http_client
 
 def _process_path_type_items(
     result: RAW_RESULT, items_to_parse: str | None = None
@@ -56,7 +57,7 @@ def _process_path_type_items(
                         content = json.loads(f.read())
                     # Create a copy of the item with the content field
                     processed_item = item.copy()
-                    processed_item["content"] = content
+                    processed_item["file"]["content"] = content
                     processed_result.append(processed_item)
                 else:
                     # If file doesn't exist, keep the original item
@@ -97,12 +98,12 @@ def resync_error_handling() -> Generator[None, None, None]:
 
 
 async def resync_function_wrapper(
-    fn: Callable[[str], Awaitable[RAW_RESULT]], kind: str
+    fn: Callable[[str], Awaitable[RAW_RESULT]], kind: str, items_to_parse: str | None = None
 ) -> RAW_RESULT:
     with resync_error_handling():
         results = await fn(kind)
         validated_results = validate_result(results)
-        return _process_path_type_items(validated_results)
+        return _process_path_type_items(validated_results, items_to_parse)
 
 
 async def resync_generator_wrapper(
@@ -117,7 +118,7 @@ async def resync_generator_wrapper(
                     result = await anext(generator)
                     if not ocean.config.yield_items_to_parse:
                         validated_result = validate_result(result)
-                        processed_result = _process_path_type_items(validated_result)
+                        processed_result = _process_path_type_items(validated_result,items_to_parse)
                         yield processed_result
                     else:
                         if items_to_parse:
@@ -216,7 +217,9 @@ async def get_items_to_parse_bulks(raw_data: dict[Any, Any], data_path: str, ite
       | map({{{items_to_parse_name}: ., {base_jq_object_string}}})"""
 
         # Use subprocess with list arguments instead of shell=True
-        jq_args = ["/bin/jq", jq_expression, data_path]
+
+        jq_path = shutil.which("jq") or "/bin/jq"
+        jq_args = [jq_path, jq_expression, data_path]
 
         with open(temp_output_path, "w") as output_file:
             result = subprocess.run(
@@ -271,7 +274,7 @@ def get_events_as_a_stream(
         max_buffer_size_mb: int = 1
     ) -> Generator[list[dict[str, Any]], None, None]:
         events = ijson.sendable_list()
-        coro = ijson.items_coro(events, target_items)
+        coro = ijson.items_coro(events, target_items, use_float=True)
 
         # Convert MB to bytes for the buffer size
         buffer_size = max_buffer_size_mb * 1024 * 1024

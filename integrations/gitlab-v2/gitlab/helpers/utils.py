@@ -32,6 +32,8 @@ class ObjectKind(StrEnum):
     PIPELINE = "pipeline"
     JOB = "job"
     FOLDER = "folder"
+    TAG = "tag"
+    RELEASE = "release"
 
 
 def parse_file_content(

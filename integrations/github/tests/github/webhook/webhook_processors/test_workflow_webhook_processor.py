@@ -190,6 +190,7 @@ class TestWorkflowWebhookProcessor:
             "after": "sha2",
             "commits": [{}],
             "ref": "refs/heads/main",
+            "organization": {"login": "test-org"},
         }
 
         mock_rest_client = MagicMock()
@@ -238,6 +239,7 @@ class TestWorkflowWebhookProcessor:
                 assert mock_exporter.get_resource.call_count == expected_updated_count
                 for i, workflow_file in enumerate(mock_extracted_updated_workflows):
                     expected_options = SingleWorkflowOptions(
+                        organization="test-org",
                         repo_name="test-repo",
                         workflow_id=workflow_webhook_processor._extract_file_name(
                             workflow_file["filename"]

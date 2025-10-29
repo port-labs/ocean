@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.4.11-beta (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 1.4.10-beta (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+## 1.4.9-beta (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 1.4.8-beta (2025-10-26)
+
+### Improvements
+
+- Move aws-v3 integration from stable to beta
+
+
+## 1.4.7 (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 1.4.6 (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 1.4.5 (2025-10-20)
+
+### Improvements
+
+- Move aws-v3 integration from beta to stable
+
 ## 1.4.4-beta (2025-10-15)
 
 
