@@ -65,12 +65,24 @@ class GithubFolderSelector(Selector):
     folders: list[FolderSelector]
 
 
+class GithubUserSelector(Selector):
+    include_bots: bool = Field(
+        default=False,
+        description="Include bots in the list of users",
+    )
+
+
+class GithubUserConfig(ResourceConfig):
+    selector: GithubUserSelector
+    kind: Literal[ObjectKind.USER]
+
+
 class GithubFolderResourceConfig(ResourceConfig):
     selector: GithubFolderSelector
     kind: Literal[ObjectKind.FOLDER]
 
 
-class GithubPullRequestSelector(Selector):
+class GithubPullRequestSelector(GithubUserSelector):
     states: list[Literal["open", "closed"]] = Field(
         default=["open"],
         description="Filter by pull request state (e.g., open, closed)",
@@ -92,7 +104,7 @@ class GithubPullRequestSelector(Selector):
 
 class GithubPullRequestConfig(ResourceConfig):
     selector: GithubPullRequestSelector
-    kind: Literal["pull-request"]
+    kind: Literal[ObjectKind.PULL_REQUEST]
 
 
 class GithubIssueSelector(Selector):
@@ -104,7 +116,7 @@ class GithubIssueSelector(Selector):
 
 class GithubIssueConfig(ResourceConfig):
     selector: GithubIssueSelector
-    kind: Literal["issue"]
+    kind: Literal[ObjectKind.ISSUE]
 
 
 class GithubTeamSector(Selector):
@@ -125,7 +137,7 @@ class GithubDependabotAlertSelector(Selector):
 
 class GithubDependabotAlertConfig(ResourceConfig):
     selector: GithubDependabotAlertSelector
-    kind: Literal["dependabot-alert"]
+    kind: Literal[ObjectKind.DEPENDABOT_ALERT]
 
 
 class GithubCodeScanningAlertSelector(Selector):
@@ -137,7 +149,7 @@ class GithubCodeScanningAlertSelector(Selector):
 
 class GithubCodeScanningAlertConfig(ResourceConfig):
     selector: GithubCodeScanningAlertSelector
-    kind: Literal["code-scanning-alerts"]
+    kind: Literal[ObjectKind.CODE_SCANNING_ALERT]
 
 
 class GithubSecretScanningAlertSelector(Selector):
@@ -226,6 +238,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFileResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
+        | GithubUserConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

@@ -18,9 +18,11 @@ query OrgMemberQuery(
         after: $after
       ) {{
         nodes {{
-          login
-          email
-          name
+          ... on User {{
+                login
+                email
+                name
+            }}
         }}
         pageInfo {{
         ...PageInfoFields

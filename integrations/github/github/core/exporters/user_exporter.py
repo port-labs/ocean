@@ -41,6 +41,9 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         async for users in self.client.send_paginated_request(
             LIST_ORG_MEMBER_GQL, variables
         ):
+            if not options.get("include_bots"):
+                users = [user for user in users if user.get("type") == "User"]
+
             users_with_no_email = {
                 (idx, user["login"]): user
                 for idx, user in enumerate(users)
