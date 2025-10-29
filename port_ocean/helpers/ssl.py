@@ -22,11 +22,11 @@ def get_ssl_context(client_type: SSLClientType = SSLClientType.PORT) -> ssl.SSLC
     
     Environment Variables for Port client (client_type=PORT):
         OCEAN__VERIFY_SSL: Enable/disable SSL verification (default: True)
-        OCEAN__NO_STRICT_VERIFY: Disable strict x509 verification introduced in Python 3.13 (default: False)
+        OCEAN__NO_STRICT_VERIFY_SSL: Disable strict x509 verification introduced in Python 3.13 (default: False)
         
     Environment Variables for Third Party clients (client_type=THIRD_PARTY):
         OCEAN__THIRD_PARTY_VERIFY_SSL: Enable/disable SSL verification (default: True)
-        OCEAN__THIRD_PARTY_NO_STRICT_VERIFY: Disable strict x509 verification introduced in Python 3.13 (default: False)
+        OCEAN__THIRD_PARTY_NO_STRICT_VERIFY_SSL: Disable strict x509 verification introduced in Python 3.13 (default: False)
     
     Returns:
         Optional[ssl.SSLContext]: Custom SSL context if verification settings are modified, None for default behavior
@@ -46,7 +46,7 @@ def get_ssl_context(client_type: SSLClientType = SSLClientType.PORT) -> ssl.SSLC
         logger.warning(f"Strict X.509 certificate verification is disabled for {client_name} client. "
                       f"This may affect security.")
         context = ssl.create_default_context()
-        # Remove VERIFY_X509_STRICT flag set by default starting Python 3.13
+        # Remove VERIFY_X509_STRICT flag that is set by default starting Python 3.13
         # See: https://docs.python.org/3/library/ssl.html#ssl.create_default_context
         context.verify_flags &= ~ssl.VERIFY_X509_STRICT
         return context
