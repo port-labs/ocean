@@ -2,7 +2,7 @@
     {
         "identifier": "oktaGroup",
         "title": "Okta Group",
-        "icon": "Group",
+        "icon": "Okta",
         "schema": {
             "properties": {
                 "name": {
@@ -21,7 +21,7 @@
     {
         "identifier": "oktaUser",
         "title": "Okta User",
-        "icon": "User",
+        "icon": "Okta",
         "schema": {
             "properties": {
                 "email": {
