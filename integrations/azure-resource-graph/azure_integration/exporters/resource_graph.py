@@ -5,7 +5,7 @@ from azure_integration.exporters.base import BaseExporter
 from azure_integration.options import (
     ResourceGraphExporterOptions,
 )
-from azure_integration.helpers.utils import format_query
+from azure_integration.helpers.http import format_query
 from azure_integration.clients.base import AzureRequest
 
 

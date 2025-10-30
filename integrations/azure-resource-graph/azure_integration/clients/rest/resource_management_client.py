@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, AsyncGenerator, Tuple
+from typing import Any, Dict, List, AsyncGenerator
 
 import httpx
 from loguru import logger
@@ -7,7 +7,10 @@ from azure_integration.clients.rest.rest_client import AzureRestClient
 from azure_integration.clients.base import AzureRequest
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
-from urllib.parse import urlparse, parse_qs
+from azure_integration.helpers.http import (
+    parse_url_components,
+    DEFAULT_HTTP_REQUEST_TIMEOUT,
+)
 
 
 class AzureResourceManagerClient(AzureRestClient):
@@ -20,7 +23,9 @@ class AzureResourceManagerClient(AzureRestClient):
                 "Retry-After",
             ],
         )
-        return OceanAsyncClient(retry_config=retry_config)
+        return OceanAsyncClient(
+            retry_config=retry_config, timeout=DEFAULT_HTTP_REQUEST_TIMEOUT
+        )
 
     async def make_paginated_request(
         self,
@@ -61,17 +66,10 @@ class AzureResourceManagerClient(AzureRestClient):
 
             if not (next_link := response.get("nextLink")):
                 break
-            next_url, params = self._split_url_params(next_link)
+            next_url, params = parse_url_components(next_link)
             if "api-version" not in params:
                 params["api-version"] = request.api_version
             logger.debug(f"Next URL: {next_url}, Params: {params}")
 
         if batch:
             yield batch
-
-    def _split_url_params(self, url: str) -> Tuple[str, Dict[str, str]]:
-        """Extract query params from a full URL (handles %24skiptoken decoding)."""
-        parsed = urlparse(url)
-        endpoint = parsed.path.rstrip("/")
-        params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
-        return endpoint, params
