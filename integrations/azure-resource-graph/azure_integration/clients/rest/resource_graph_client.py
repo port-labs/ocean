@@ -19,6 +19,7 @@ class AzureResourceGraphClient(AzureRestClient):
                 "Retry-After",
                 "x-ms-user-quota-resets-after",
             ],
+            retryable_methods=["GET", "POST"],
         )
         return OceanAsyncClient(retry_config=retry_config)
 

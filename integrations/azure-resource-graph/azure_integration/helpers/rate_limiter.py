@@ -80,6 +80,9 @@ class AdaptiveTokenBucketRateLimiter:
         async with limiter.limit():
             response = await client.get(url)
             limiter.adjust_from_headers(response.headers)
+
+    For more details on Azure's use of this algorithm, and the default values, see:
+    https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/request-limits-and-throttling#migrating-to-regional-throttling-and-token-bucket-algorithm
     """
 
     def __init__(
@@ -152,6 +155,17 @@ class AdaptiveTokenBucketRateLimiter:
         This function is lightweight and safe to call after *every* response.
         """
         now = time.monotonic()
+        if not self._should_adjust(now):
+            return
+
+        self._last_adjustment_time = now
+        quota_remaining = self._parse_quota_remaining_from_headers(headers)
+        if quota_remaining is not None:
+            remaining_ratio = quota_remaining / float(self.capacity)
+            self._log_quota_status(quota_remaining, remaining_ratio)
+            self._adapt_refill_rate(remaining_ratio, quota_remaining)
+
+    def _should_adjust(self, now: float) -> bool:
         logger.debug(
             f"Adjusting rate limiter from headers at {now}. Last adjustment at {self._last_adjustment_time} (cooldown {self.adjustment_cooldown}s)."
         )
@@ -159,58 +173,68 @@ class AdaptiveTokenBucketRateLimiter:
             logger.debug(
                 f"Adjustment skipped due to cooldown. Time since last adjustment: {now - self._last_adjustment_time:.2f}s"
             )
-            return
+            return False
+        return True
 
-        self._last_adjustment_time = now
-        quota_remaining = None
-
+    def _parse_quota_remaining_from_headers(
+        self, headers: dict[str, str]
+    ) -> int | None:
         try:
             if "x-ms-ratelimit-remaining-tenant-reads" in headers:
                 quota_remaining = int(headers["x-ms-ratelimit-remaining-tenant-reads"])
                 logger.debug(
                     f"Found quota header: x-ms-ratelimit-remaining-tenant-reads={quota_remaining}"
                 )
+                return quota_remaining
             else:
                 logger.debug("No x-ms-ratelimit-remaining-tenant-reads header present.")
-
+                return None
         except Exception as e:
             logger.debug(f"Header parse error: {e}")
+            return None
 
-        if quota_remaining is not None:
-            remaining_ratio = quota_remaining / float(self.capacity)
-            logger.debug(
-                f"Parsed quota_remaining: {quota_remaining}, capacity: {self.capacity}, remaining_ratio: {remaining_ratio:.3f}, current refill rate: {self._adaptive_refill_rate:.3f}/s"
+    def _log_quota_status(self, quota_remaining: int, remaining_ratio: float) -> None:
+        logger.debug(
+            f"Parsed quota_remaining: {quota_remaining}, capacity: {self.capacity}, remaining_ratio: {remaining_ratio:.3f}, current refill rate: {self._adaptive_refill_rate:.3f}/s"
+        )
+
+    def _adapt_refill_rate(self, remaining_ratio: float, quota_remaining: int) -> None:
+        """
+        Adjust the adaptive refill rate based on the remaining quota ratio.
+        Delegates to slowdown or recovery sub-functions according to thresholds.
+        """
+        if remaining_ratio < 0.1:
+            self._apply_slowdown(remaining_ratio, quota_remaining)
+        elif remaining_ratio > 0.8 and self._adaptive_refill_rate < self.refill_rate:
+            self._attempt_refill_recovery(remaining_ratio)
+
+    def _apply_slowdown(self, remaining_ratio: float, quota_remaining: int) -> None:
+        """Slow down the refill rate adaptively when quota is running out."""
+        slowdown_factor = max(self.min_refill_factor, remaining_ratio)
+        new_rate = self.refill_rate * slowdown_factor
+        logger.debug(
+            f"Nearing quota exhaustion: ratio={remaining_ratio:.3f}, applying slowdown_factor={slowdown_factor:.3f}, proposed new_rate={new_rate:.3f}/s"
+        )
+        if abs(new_rate - self._adaptive_refill_rate) > 0.01:
+            logger.warning(
+                f"Nearing quota exhaustion (remaining={quota_remaining}), "
+                f"reducing refill rate → {new_rate:.2f}/s"
             )
+        self._adaptive_refill_rate = new_rate
 
-            # Slow down adaptively
-            if remaining_ratio < 0.1:
-                slowdown_factor = max(self.min_refill_factor, remaining_ratio)
-                new_rate = self.refill_rate * slowdown_factor
-                logger.debug(
-                    f"Nearing quota exhaustion: ratio={remaining_ratio:.3f}, applying slowdown_factor={slowdown_factor:.3f}, proposed new_rate={new_rate:.3f}/s"
-                )
-                if abs(new_rate - self._adaptive_refill_rate) > 0.01:
-                    logger.warning(
-                        f"Nearing quota exhaustion (remaining={quota_remaining}), "
-                        f"reducing refill rate → {new_rate:.2f}/s"
-                    )
-                self._adaptive_refill_rate = new_rate
-
-            # Smooth recovery (ramp-up)
-            elif (
-                remaining_ratio > 0.8 and self._adaptive_refill_rate < self.refill_rate
-            ):
-                logger.debug(
-                    f"Quota healthy: ratio={remaining_ratio:.3f}. Attempting refill rate recovery."
-                )
-                previous_rate = self._adaptive_refill_rate
-                self._adaptive_refill_rate = min(
-                    self.refill_rate,
-                    self._adaptive_refill_rate * self.recovery_rate,
-                )
-                logger.debug(
-                    f"Recovered adaptive refill rate from {previous_rate:.3f}/s to {self._adaptive_refill_rate:.3f}/s"
-                )
-                logger.info(
-                    f"Recovering refill rate → {self._adaptive_refill_rate:.2f}/s (quota healthy)"
-                )
+    def _attempt_refill_recovery(self, remaining_ratio: float) -> None:
+        """Ramp up refill rate smoothly when quota is healthy."""
+        logger.debug(
+            f"Quota healthy: ratio={remaining_ratio:.3f}. Attempting refill rate recovery."
+        )
+        previous_rate = self._adaptive_refill_rate
+        self._adaptive_refill_rate = min(
+            self.refill_rate,
+            self._adaptive_refill_rate * self.recovery_rate,
+        )
+        logger.debug(
+            f"Recovered adaptive refill rate from {previous_rate:.3f}/s to {self._adaptive_refill_rate:.3f}/s"
+        )
+        logger.info(
+            f"Recovering refill rate → {self._adaptive_refill_rate:.2f}/s (quota healthy)"
+        )
