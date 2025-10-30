@@ -326,14 +326,34 @@ class BitbucketServerWebhookClient(BitbucketClient):
 
 
 def initialize_client() -> BitbucketServerWebhookClient:
+    config = ocean.integration_config
+
+    # Extract rate limiting configuration
+    rate_limit = int(config.get("bitbucket_rate_limit", 1000))
+    rate_limit_window = int(config.get("bitbucket_rate_limit_window", 3600))
+
+    # Extract pagination and concurrency configuration
+    page_size = int(config.get("bitbucket_page_size", 25))
+    max_concurrent_requests = int(config.get("bitbucket_max_concurrent_requests", 10))
+
+    # Extract project filtering configuration
+    projects_filter_regex = config.get("bitbucket_projects_filter_regex")
+    projects_filter_suffix = config.get("bitbucket_projects_filter_suffix")
+
     return BitbucketServerWebhookClient(
-        username=ocean.integration_config["bitbucket_username"],
-        password=ocean.integration_config["bitbucket_password"],
-        base_url=ocean.integration_config["bitbucket_base_url"],
-        webhook_secret=ocean.integration_config["bitbucket_webhook_secret"],
+        username=config["bitbucket_username"],
+        password=config["bitbucket_password"],
+        base_url=config["bitbucket_base_url"],
+        webhook_secret=config.get("bitbucket_webhook_secret"),
         app_host=ocean.app.base_url,
         is_version_8_7_or_older=cast(
             bool,
-            ocean.integration_config.get("bitbucket_is_version8_point7_or_older"),
+            config.get("bitbucket_is_version8_point7_or_older"),
         ),
+        rate_limit=rate_limit,
+        rate_limit_window=rate_limit_window,
+        page_size=page_size,
+        max_concurrent_requests=max_concurrent_requests,
+        projects_filter_regex=projects_filter_regex,
+        projects_filter_suffix=projects_filter_suffix,
     )
