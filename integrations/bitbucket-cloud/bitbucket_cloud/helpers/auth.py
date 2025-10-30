@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from loguru import logger
+import base64
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 from bitbucket_cloud.helpers.token_manager import TokenManager
 from bitbucket_cloud.helpers.utils import (
@@ -42,7 +43,6 @@ class BasicAuth(AbstractAuth):
     """Basic authentication using username and password."""
 
     def __init__(self, username: str, password: str):
-        import base64
 
         self.encoded_credentials = base64.b64encode(
             f"{username}:{password}".encode()
@@ -120,6 +120,8 @@ class BitbucketAuthFacade:
     def create(
         username: Optional[str] = None,
         app_password: Optional[str] = None,
+        user_email: Optional[str] = None,
+        user_scoped_token: Optional[str] = None,
         workspace_token: Optional[str] = None,
     ) -> AbstractAuth:
         """
@@ -128,6 +130,8 @@ class BitbucketAuthFacade:
         Args:
             username: Bitbucket username for basic auth
             app_password: Bitbucket app password for basic auth
+            user_email: Bitbucket user email for user scoped token auth
+            user_scoped_token: Bitbucket user scoped token for user scoped token auth
             workspace_token: Comma-separated workspace tokens
 
         Returns:
@@ -151,6 +155,8 @@ class BitbucketAuthFacade:
                 return SingleTokenAuth(tokens[0])
         elif app_password and username:
             return BasicAuth(username, app_password)
+        elif user_scoped_token and user_email:
+            return BasicAuth(user_email, user_scoped_token)
         else:
             raise MissingIntegrationCredentialException(
                 "Either workspace token or both username and app password must be provided"
