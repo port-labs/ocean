@@ -1,41 +1,29 @@
-"""Harbor Ocean Integration - Main Resync Implementation."""
-
-from typing import Any
+from harbor.utils.helper import build_params
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
-from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from harbor.constants import DEFAULT_PAGE_SIZE, ObjectKind
-from harbor.client.client_initializer import init_harbor_client
+from harbor.constants import ObjectKind
+from harbor.client.client_initializer import get_harbor_client
+from harbor.webhooks.processors.artifact_processor import ArtifactWebhookProcessor
+from harbor.webhooks.processors.project_processor import ProjectWebhookProcessor
+from harbor.webhooks.processors.repository_processor import RepositoryWebhookProcessor
 from harbor.webhooks.orchestrator import HarborWebhookOrchestrator
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync Harbor projects."""
-    client = init_harbor_client()
-
-    # Access selector from the event context
-    resource_config = event.resource_config
-    selector = resource_config.selector if resource_config else None
-
-    # Build API parameters from selector configuration
-    params: dict[str, Any] = {
-        "page_size": DEFAULT_PAGE_SIZE,
-    }
-
-    # Add query if it exists in selector and is not "true" (Port's default selector)
-    if selector and hasattr(selector, 'query') and selector.query and selector.query != "true":
-        params["q"] = selector.query
-
+    client = get_harbor_client()
+    params = build_params()
+    
     logger.info(f"Starting project resync with params: {params}")
-
+    
     try:
         async for projects in client.get_paginated_projects(params):
             logger.info(f"Received batch with {len(projects)} projects")
             yield projects
+            
     except Exception as e:
         logger.error(f"Error during project resync: {e}")
         raise
@@ -43,18 +31,8 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.USER)
 async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync Harbor users."""
-    client = init_harbor_client()
-
-    resource_config = event.resource_config
-    selector = resource_config.selector if resource_config else None
-
-    params: dict[str, Any] = {
-        "page_size": DEFAULT_PAGE_SIZE,
-    }
-
-    if selector and hasattr(selector, 'query') and selector.query and selector.query != "true":
-        params["q"] = selector.query
+    client = get_harbor_client()
+    params = build_params()
 
     logger.info(f"Starting user resync with params: {params}")
 
@@ -62,6 +40,7 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for users in client.get_paginated_users(params):
             logger.info(f"Received batch with {len(users)} users")
             yield users
+            
     except Exception as e:
         logger.error(f"Error during user resync: {e}")
         raise
@@ -69,27 +48,17 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync Harbor repositories."""
-    client = init_harbor_client()
-
-    resource_config = event.resource_config
-    selector = resource_config.selector if resource_config else None
-
-    params: dict[str, Any] = {
-        "page_size": DEFAULT_PAGE_SIZE,
-    }
-
-    if selector and hasattr(selector, 'query') and selector.query and selector.query != "true":
-        params["q"] = selector.query
+    client = get_harbor_client()
+    params = build_params()
 
     logger.info(f"Starting repository resync with params: {params}")
 
     try:
         logger.info("Fetching repositories from all projects")
         async for repositories in client.get_all_repositories(params):
-            logger.info(
-                f"Received batch with {len(repositories)} repositories")
+            logger.info(f"Received batch with {len(repositories)} repositories")
             yield repositories
+            
     except Exception as e:
         logger.error(f"Error during repository resync: {e}")
         raise
@@ -97,20 +66,8 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ARTIFACT)
 async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """Resync Harbor artifacts."""
-    client = init_harbor_client()
-
-    resource_config = event.resource_config
-    selector = resource_config.selector if resource_config else None
-
-    params: dict[str, Any] = {
-        "page_size": DEFAULT_PAGE_SIZE,
-        "with_tag": True,
-        "with_scan_overview": True,
-    }
-
-    if selector and hasattr(selector, 'query') and selector.query and selector.query != "true":
-        params["q"] = selector.query
+    client = get_harbor_client()
+    params = build_params({"with_tag": True, "with_scan_overview": True})
 
     logger.info(f"Starting artifact resync with params: {params}")
 
@@ -119,6 +76,7 @@ async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for artifacts in client.get_all_artifacts(params):
             logger.info(f"Received batch with {len(artifacts)} artifacts")
             yield artifacts
+            
     except Exception as e:
         logger.error(f"Error during artifact resync: {e}")
         raise
@@ -126,20 +84,10 @@ async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_start()
 async def on_start() -> None:
-    """Initialize the Harbor integration on startup."""
-    logger.info('''
-════════════════════════════════════════════════════════════════════════════
-
-  Harbor → Port Ocean Integration
-  Status: Starting...
-
-════════════════════════════════════════════════════════════════════════════
-    ''')
-
     try:
-        client = init_harbor_client()
+        client = get_harbor_client()
 
-        logger.info("Validating Harbor connection...")
+        logger.info("Validating Harbor connection")
         await client.validate_connection()
         logger.info("✓ Harbor connection validated successfully")
 
@@ -154,36 +102,27 @@ async def on_start() -> None:
                 integration_identifier=ocean.config.integration.identifier
             )
 
-            logger.info(
-                f"✓ Webhook setup completed: "
-                f"{results['successful']} successful, "
-                f"{results['failed']} failed, "
-                f"{results['skipped']} skipped"
-            )
+            logger.info("Webhook setup completed")
 
-            if results['failed'] > 0:
-                logger.warning(
-                    f"Some webhooks failed to create. Check project permissions. "
-                    f"Details: {results['details']}"
-                )
+            if results["failed"] > 0:
+                logger.warning("Some webhooks failed to create")
         else:
-            logger.warning(
-                "No app_host configured - webhooks will not be set up. "
-                "Real-time events will not be available."
-            )
+            logger.warning("No app_host configured - webhooks disabled")
 
-        logger.info('''
-════════════════════════════════════════════════════════════════════════════
-
-  Harbor → Port Ocean Integration
-  Status: ✓ Running
-
-════════════════════════════════════════════════════════════════════════════
-        ''')
+        logger.info("Harbor → Port Ocean Integration started successfully")
 
     except ValueError as e:
         logger.error(f"Configuration error: {e}")
         raise
+    
     except Exception as e:
         logger.error(f"Failed to start Harbor integration: {e}")
         raise
+
+logger.info("Registering webhook processors")
+
+ocean.add_webhook_processor("/webhook", ArtifactWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+
+logger.debug("Webhook processors registered successfully")

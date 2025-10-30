@@ -35,8 +35,10 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         repository = payload["repository"]
         branch = payload.get("ref", "").replace("refs/heads/", "")
         ref = payload["after"]
+        organization = payload["organization"]["login"]
+
         logger.info(
-            f"Processing push event for project {repository['name']} on branch {branch} at ref {ref}"
+            f"Processing push event for repository {repository['name']} of organization: {organization} on branch {branch} at ref {ref}"
         )
 
         config = cast(GithubFolderResourceConfig, resource_config)
@@ -46,11 +48,11 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
 
         if not folders:
             logger.info(
-                f"No folders found matching patterns for {repository['name']} at ref {ref}"
+                f"No folders found matching patterns for {repository['name']} of organization: {organization} at ref {ref}"
             )
         else:
             logger.info(
-                f"Completed push event processing; updated {len(folders)} folders"
+                f"Completed push event processing; updated {len(folders)} folders of organization: {organization}"
             )
 
         return WebhookEventRawResults(
@@ -104,8 +106,11 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         event_payload: EventPayload,
     ) -> list[dict[str, Any]]:
         client = create_github_client()
+        organization = event_payload["organization"]["login"]
+
         commit_diff = await fetch_commit_diff(
             client,
+            organization,
             repository["name"],
             event_payload["before"],
             event_payload["after"],
@@ -113,7 +118,9 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         _, changed_file_paths = extract_changed_files(commit_diff.get("files", []))
 
         if not changed_file_paths:
-            logger.info("No changed files detected in the push event.")
+            logger.info(
+                f"No changed files detected in the push event for organization: {organization}."
+            )
             return []
 
         exporter = RestFolderExporter(client)
@@ -122,7 +129,9 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         changed_folders = []
         processed_folder_paths: set[str] = set()
 
-        repo_options = SingleRepositoryOptions(name=repository["name"])
+        repo_options = SingleRepositoryOptions(
+            organization=organization, name=repository["name"]
+        )
         repository = await repo_exporter.get_resource(repo_options)
 
         for pattern in folder_selector:
@@ -130,10 +139,13 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
                 continue
 
             logger.debug(
-                f"Fetching folders for path '{pattern.path}' in {repository['name']} on branch {branch}"
+                f"Fetching folders for path '{pattern.path}' in {repository['name']} of organization: {organization} on branch {branch}"
             )
-            repo_mapping = {repository["name"]: {branch: [pattern.path]}}
+            repo_mapping = {
+                organization: {repository["name"]: {branch: [pattern.path]}}
+            }
             options = ListFolderOptions(repo_mapping=repo_mapping)
+
             async for folder_batch in exporter.get_paginated_resources(options):
                 changed_folders.extend(
                     self._filter_changed_folders(
@@ -143,5 +155,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
                     )
                 )
 
-        logger.info(f"Found {len(changed_folders)} changed folders")
+        logger.info(
+            f"Found {len(changed_folders)} changed folders of organization: {organization}"
+        )
         return changed_folders

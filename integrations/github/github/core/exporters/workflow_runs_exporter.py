@@ -11,11 +11,13 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[
         ExporterOptionsT: SingleWorkflowRunOptions
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{options['repo_name']}/actions/runs/{options['run_id']}"
+        organization = options["organization"]
+        repo_name = options["repo_name"]
+        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/actions/runs/{options['run_id']}"
         response = await self.client.send_api_request(endpoint)
 
         logger.info(
-            f"Fetched workflow run {options['run_id']} from {options['repo_name']}"
+            f"Fetched workflow run {options['run_id']} from {repo_name} from {organization}"
         )
 
         return response
@@ -24,8 +26,11 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
         ExporterOptionsT: ListWorkflowRunOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
+        organization = options["organization"]
+        repo_name = options["repo_name"]
+        workflow_id = options["workflow_id"]
 
-        url = f"{self.client.base_url}/repos/{self.client.organization}/{options['repo_name']}/actions/workflows/{options['workflow_id']}/runs"
+        url = f"{self.client.base_url}/repos/{organization}/{repo_name}/actions/workflows/{options['workflow_id']}/runs"
         fetched_batch = 0
 
         async for workflows in self.client.send_paginated_request(url):
@@ -33,8 +38,8 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
             workflow_runs = workflow_batch["workflow_runs"]
 
             logger.info(
-                f"Fetched batch of {len(workflow_runs)} workflow runs from {options['repo_name']} "
-                f"for workflow {options['workflow_id']}"
+                f"Fetched batch of {len(workflow_runs)} workflow runs from {repo_name} "
+                f"for workflow {workflow_id} from {organization}"
             )
             yield workflow_runs
 
@@ -42,6 +47,6 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
             if fetched_batch >= options["max_runs"]:
                 logger.info(
                     f"Reached maximum limit of {options['max_runs']} workflow runs"
-                    f"for workflow {options['workflow_id']} in {options['repo_name']}"
+                    f"for workflow {workflow_id} in {repo_name} from {organization}"
                 )
                 return

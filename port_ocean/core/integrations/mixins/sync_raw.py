@@ -117,13 +117,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.info(
                     f"Found async generator function for {resource_config.kind} name: {task.__qualname__}"
                 )
-                results.append(resync_generator_wrapper(task, resource_config.kind,resource_config.port.items_to_parse))
+                results.append(resync_generator_wrapper(task, resource_config.kind, resource_config.port.items_to_parse_name, resource_config.port.items_to_parse))
             else:
                 logger.info(
                     f"Found sync function for {resource_config.kind} name: {task.__qualname__}"
                 )
                 task = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
-                tasks.append(resync_function_wrapper(task, resource_config.kind))
+                tasks.append(resync_function_wrapper(task, resource_config.kind, resource_config.port.items_to_parse))
 
         logger.info(
             f"Found {len(tasks) + len(results)} resync tasks for {resource_config.kind}"

@@ -35,9 +35,10 @@ class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         alert_number = alert["number"]
         repo_name = repo["name"]
+        organization = payload["organization"]["login"]
 
         logger.info(
-            f"Processing Dependabot alert event: {action} for alert {alert_number} in {repo_name}"
+            f"Processing Dependabot alert event: {action} for alert {alert_number} in {repo_name} from {organization}"
         )
 
         config = cast(GithubDependabotAlertConfig, resource_config)
@@ -55,7 +56,11 @@ class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         exporter = RestDependabotAlertExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
-            SingleDependabotAlertOptions(repo_name=repo_name, alert_number=alert_number)
+            SingleDependabotAlertOptions(
+                organization=organization,
+                repo_name=repo_name,
+                alert_number=alert_number,
+            )
         )
 
         return WebhookEventRawResults(
