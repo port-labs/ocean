@@ -10,6 +10,7 @@ features:
       - kind: project
       - kind: workspace
       - kind: state-version
+      - kind: state-file
       - kind: run
 configurations:
   - name: terraformCloudHost

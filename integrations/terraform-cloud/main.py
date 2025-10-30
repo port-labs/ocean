@@ -13,6 +13,7 @@ class ObjectKind(StrEnum):
     WORKSPACE = "workspace"
     RUN = "run"
     STATE_VERSION = "state-version"
+    STATE_FILE = "state-file"
     PROJECT = "project"
     ORGANIZATION = "organization"
 
@@ -152,6 +153,16 @@ async def resync_state_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             terraform_client, state_versions_batch
         )
         yield enriched_state_versions_batch
+
+
+@ocean.on_resync(ObjectKind.STATE_FILE)
+async def resync_state_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    terraform_client = init_terraform_client()
+
+    async for state_files_batch in terraform_client.get_paginated_state_files():
+        logger.info(f"Received batch with {len(state_files_batch)} {kind}")
+
+        yield state_files_batch
 
 
 @ocean.on_resync()

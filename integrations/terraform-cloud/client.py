@@ -1,9 +1,13 @@
+import asyncio
 from enum import StrEnum
+from urllib.parse import urlparse
 from typing import Any, AsyncGenerator, Optional
 from aiolimiter import AsyncLimiter
 from loguru import logger
 
 from port_ocean.context.event import event
+from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils import http_async_client
 
 TERRAFORM_WEBHOOK_EVENTS = [
@@ -44,8 +48,9 @@ class TerraformClient:
         method: str = "GET",
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
+        follow_redirects: bool = False,
     ) -> dict[str, Any]:
-        url = f"{self.api_url}/{endpoint}"
+        url = endpoint if urlparse(endpoint).scheme else f"{self.api_url}/{endpoint}"
 
         try:
             async with self.rate_limiter:
@@ -58,6 +63,7 @@ class TerraformClient:
                     url=url,
                     params=query_params,
                     json=json_data,
+                    follow_redirects=follow_redirects,
                 )
 
                 response.raise_for_status()
@@ -208,6 +214,7 @@ class TerraformClient:
         async for runs in self.get_paginated_resources(endpoint):
             yield runs
 
+    @cache_iterator_result()
     async def get_paginated_state_versions(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -228,6 +235,22 @@ class TerraformClient:
                     "state-versions", filter_params
                 ):
                     yield state_versions
+
+    async def get_paginated_state_files(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for state_version_batch in self.get_paginated_state_versions():
+            file_batch = []
+            tasks = [
+                self.send_api_request(
+                    state_version["attributes"]["hosted-state-download-url"],
+                    follow_redirects=True,
+                )
+                for state_version in state_version_batch
+            ]
+            for state_file in await asyncio.gather(*tasks):
+                file_batch.append(state_file)
+            yield file_batch
 
     async def create_workspace_webhook(self, app_host: str) -> None:
         webhook_target_url = f"{app_host}/integration/webhook"
