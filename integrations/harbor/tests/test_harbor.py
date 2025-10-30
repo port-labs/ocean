@@ -322,8 +322,10 @@ class TestWebhooks:
         }
 
         assert webhook_payload["type"] == "PUSH_ARTIFACT"
-        assert "resources" in webhook_payload["event_data"]
-        assert webhook_payload["event_data"]["resources"][0]["tag"] == "v2.0.0"
+        event_data: Any = webhook_payload["event_data"]
+        assert "resources" in event_data
+        resources: list[Dict[str, Any]] = event_data["resources"]
+        assert resources[0]["tag"] == "v2.0.0"
 
     @pytest.mark.asyncio
     async def test_webhook_scan_completed(self) -> None:
@@ -350,11 +352,13 @@ class TestWebhooks:
         }
 
         assert webhook_payload["type"] == "SCANNING_COMPLETED"
-        resources: list[Dict[str, Any]] = webhook_payload["event_data"]["resources"]
+        event_data: Any = webhook_payload["event_data"]
+        resources: list[Dict[str, Any]] = event_data["resources"]
         assert "scan_overview" in resources[0]
         scan: Dict[str, Any] = resources[0]["scan_overview"]
         assert scan["scan_status"] == "Success"
-        assert scan["vulnerabilities"]["critical"] == 5
+        vulnerabilities: Dict[str, Any] = scan["vulnerabilities"]
+        assert vulnerabilities["critical"] == 5
 
     def test_webhook_validation(self) -> None:
         """Test webhook signature validation"""

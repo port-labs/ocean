@@ -3,7 +3,7 @@
 from typing import Literal
 from pydantic import Field
 from port_ocean.context.ocean import ocean
-from port_ocean.core.handlers.port_app_config.models import PortAppConfig, ResourceConfig
+from port_ocean.core.handlers.port_app_config.models import EntityMapping, MappingsConfig, PortAppConfig, PortResourceConfig, ResourceConfig
 from .selectors import ProjectSelector, UserSelector, RepositorySelector, ArtifactSelector
 
 
@@ -18,19 +18,15 @@ class UserResourceConfig(ResourceConfig):
     selector: UserSelector
     kind: Literal["user"] = "user"
 
-
 class RepositoryResourceConfig(ResourceConfig):
     """Resource configuration for Harbor Repositories."""
     selector: RepositorySelector
     kind: Literal["repository"] = "repository"
-
-
 class ArtifactResourceConfig(ResourceConfig):
     """Resource configuration for Harbor Artifacts."""
     selector: ArtifactSelector
     kind: Literal["artifact"] = "artifact"
-
-
+    
 # ============================================================================
 # PortAppConfig - Main integration configuration
 # ============================================================================
@@ -49,23 +45,119 @@ class HarborPortAppConfig(PortAppConfig):
         | ResourceConfig
     ] = Field(
         default_factory=lambda: [
-            ProjectResourceConfig(
-                kind="project",
-                selector=ProjectSelector()
+        ProjectResourceConfig(
+            kind="project",
+            selector=ProjectSelector(),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".project_id",
+                        title=".name",
+                        blueprint="harborProject",
+                        properties={
+                            "projectId": ".project_id",
+                            "public": ".metadata.public",
+                            "ownerId": ".owner_id",
+                            "ownerName": ".owner_name",
+                            "creationTime": ".creation_time",
+                            "updateTime": ".update_time",
+                            "repoCount": ".repo_count",
+                            "chartCount": ".chart_count",
+                            "storageLimit": ".storage_limit",
+                            "registryId": ".registry_id",
+                            "cveSeverity": ".cve_severity",
+                            "memberCount": ".member_count",
+                        },
+                        relations={},
+                    )
+                )
             ),
-            UserResourceConfig(
-                kind="user",
-                selector=UserSelector(query="true")
+        ),
+        UserResourceConfig(
+            kind="user",
+            selector=UserSelector(query="true"),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".user_id",
+                        title=".username",
+                        blueprint="harborUser",
+                        properties={
+                            "userId": ".user_id",
+                            "username": ".username",
+                            "email": ".email",
+                            "realname": ".realname",
+                            "comment": ".comment",
+                            "adminRoleInAuth": ".admin_role_in_auth",
+                            "creationTime": ".creation_time",
+                            "updateTime": ".update_time",
+                            "sysadminFlag": ".sysadmin_flag",
+                        },
+                        relations={},
+                    )
+                )
             ),
-            RepositoryResourceConfig(
-                kind="repository",
-                selector=RepositorySelector()
+        ),
+        RepositoryResourceConfig(
+            kind="repository",
+            selector=RepositorySelector(),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".repository_id",
+                        title=".name",
+                        blueprint="harborRepository",
+                        properties={
+                            "repositoryId": ".repository_id",
+                            "name": ".name",
+                            "projectId": ".project_id",
+                            "description": ".description",
+                            "artifactCount": ".artifact_count",
+                            "pullCount": ".pull_count",
+                            "creationTime": ".creation_time",
+                            "updateTime": ".update_time",
+                        },
+                        relations={
+                            "project": ".project_id",
+                        },
+                    )
+                )
             ),
-            ArtifactResourceConfig(
-                kind="artifact",
-                selector=ArtifactSelector()
+        ),
+        ArtifactResourceConfig(
+            kind="artifact",
+            selector=ArtifactSelector(),
+            port=PortResourceConfig(
+                entity=MappingsConfig(
+                    mappings=EntityMapping(
+                        identifier=".digest",
+                        title=".digest",
+                        blueprint="harborArtifact",
+                        properties={
+                            "digest": ".digest",
+                            "size": ".size",
+                            "pushTime": ".push_time",
+                            "pullTime": ".pull_time",
+                            "type": ".type",
+                            "tags": ".tags",
+                            "vulnerabilities": ".vulnerabilities",
+                            "scanStatus": ".scan_status",
+                            "severity": ".severity",
+                            "criticalCount": ".critical_count",
+                            "highCount": ".high_count",
+                            "mediumCount": ".medium_count",
+                            "lowCount": ".low_count",
+                            "labels": ".labels",
+                        },
+                        relations={
+                            "repository": ".repository_id",
+                            "project": ".project_id",
+                        },
+                    )
+                )
             ),
-        ],
+        ),
+    ],
         description="List of resource configurations for Harbor entities to ingest"
     )
 

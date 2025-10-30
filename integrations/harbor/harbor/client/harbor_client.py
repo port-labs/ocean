@@ -385,6 +385,7 @@ class HarborClient:
         """
         page = 1
         params = params.copy()
+        page_size = int(page_size)
         params["page_size"] = page_size
 
         logger.debug(
