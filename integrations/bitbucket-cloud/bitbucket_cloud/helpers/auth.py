@@ -159,5 +159,5 @@ class BitbucketAuthFacade:
             return BasicAuth(user_email, user_scoped_token)
         else:
             raise MissingIntegrationCredentialException(
-                "Either workspace token or both username and app password must be provided"
+                "Either workspace token, both username and app password, or both user_email and user_scoped_token must be provided"
             )
