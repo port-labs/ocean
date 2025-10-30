@@ -295,6 +295,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/jenkins",
+      "envFile": "${workspaceFolder}/integrations/jenkins/.env",
+      "justMyCode": true,
+      "name": "Run jenkins integration",
+      "program": "${workspaceFolder}/integrations/jenkins/debug.py",
+      "python": "${workspaceFolder}/integrations/jenkins/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/generic-http",
       "envFile": "${workspaceFolder}/integrations/generic-http/examples/config-no-auth.env",
       "justMyCode": true,
