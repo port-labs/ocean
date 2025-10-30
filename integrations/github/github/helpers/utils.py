@@ -205,6 +205,8 @@ class IgnoredError(NamedTuple):
 
 # sanitize .login fields containing [ or ] by replacing them with - when ingesting GitHub data.
 def sanitize_login(login: str) -> str:
-    return re.sub(
-        r"\\[|\\](?=.)|\\]$", lambda m: "-" if m.group() != "]" else "", login
-    )
+    sanitized = re.sub(r"\]\[", "-", login)
+    sanitized = re.sub(r"\[", "-", sanitized)
+    sanitized = re.sub(r"\](?=.)", "-", sanitized)
+    sanitized = re.sub(r"\]$", "", sanitized)
+    return sanitized

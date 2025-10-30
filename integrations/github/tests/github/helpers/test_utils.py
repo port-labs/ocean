@@ -5,6 +5,7 @@ from github.helpers.utils import (
     create_search_params,
     enrich_with_repository,
     parse_github_options,
+    sanitize_login,
 )
 
 
@@ -206,46 +207,41 @@ class TestCreateSearchParams:
         assert list(create_search_params(repos)) == []
 
 
-# class TestSanitizeLogin:
-#     """Test cases for sanitize_login function."""
+class TestSanitizeLogin:
+    """Test cases for sanitize_login function."""
 
-#     @pytest.mark.parametrize(
-#         "input_login,expected_output",
-#         [
-#             # Bot usernames with square brackets
-#             ("snyk[bot]", "snyk-bot"),
-#             ("dependabot[bot]", "dependabot-bot"),
-#             ("renovate[bot]", "renovate-bot"),
-#             # Bot usernames with brackets in middle
-#             ("snyk[bot]test", "snyk-bot-test"),
-#             ("user[name]suffix", "user-name-suffix"),
-#             # Regular usernames (should remain unchanged)
-#             ("regular-user", "regular-user"),
-#             ("user123", "user123"),
-#             ("user_name", "user_name"),
-#             # Edge cases
-#             ("user]", "user"),  # trailing bracket only
-#             ("[user", "-user"),  # leading bracket only
-#             ("user[]", "user-"),  # empty brackets
-#             ("[]", "-"),  # only brackets
-#             ("", ""),  # empty string
-#             ("user[multiple][brackets]", "user-multiple-brackets"),
-#         ],
-#     )
-#     def test_sanitize_login(self, input_login: str, expected_output: str) -> None:
-#         """Test that sanitize_login correctly sanitizes various login formats."""
-#         result = sanitize_login(input_login)
-#         assert result == expected_output
+    @pytest.mark.parametrize(
+        "input_login,expected_output",
+        [
+            # Bot usernames with square brackets
+            ("snyk[bot]", "snyk-bot"),
+            ("dependabot[bot]", "dependabot-bot"),
+            ("renovate[bot]", "renovate-bot"),
+            # Bot usernames with brackets in middle
+            ("snyk[bot]test", "snyk-bot-test"),
+            ("user[name]suffix", "user-name-suffix"),
+            # Regular usernames (should remain unchanged)
+            ("regular-user", "regular-user"),
+            ("user123", "user123"),
+            ("user_name", "user_name"),
+            ("", ""),  # empty string
+            ("user[multiple][brackets]", "user-multiple-brackets"),
+        ],
+    )
+    def test_sanitize_login(self, input_login: str, expected_output: str) -> None:
+        """Test that sanitize_login correctly sanitizes various login formats."""
+        result = sanitize_login(input_login)
+        assert result == expected_output
 
-#     def test_sanitize_login_preserves_valid_characters(self) -> None:
-#         """Test that sanitize_login preserves valid identifier characters."""
-#         valid_login = "user-name_123.test"
-#         result = sanitize_login(valid_login)
-#         assert result == valid_login
+    def test_sanitize_login_preserves_valid_characters(self) -> None:
+        """Test that sanitize_login preserves valid identifier characters."""
+        valid_login = "user-name_123.test"
+        result = sanitize_login(valid_login)
+        assert result == valid_login
 
-#     def test_sanitize_login_handles_multiple_brackets(self) -> None:
-#         """Test that sanitize_login handles multiple bracket pairs correctly."""
-#         login_with_multiple_brackets = "prefix[bot][suffix][end]"
-#         expected = "prefix-bot-suffix-end"
-#         result = sanitize_login(login_with_multiple_brackets)
-#         assert result == expected
+    def test_sanitize_login_handles_multiple_brackets(self) -> None:
+        """Test that sanitize_login handles multiple bracket pairs correctly."""
+        login_with_multiple_brackets = "prefix[bot][suffix][end]"
+        expected = "prefix-bot-suffix-end"
+        result = sanitize_login(login_with_multiple_brackets)
+        assert result == expected
