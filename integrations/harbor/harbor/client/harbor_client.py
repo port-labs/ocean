@@ -49,11 +49,10 @@ class HarborClient:
         self.username = username
         self.password = password
         self.verify_ssl = verify_ssl
-        self._client = http_async_client
 
         # Configure Ocean's HTTP client with Basic Auth
         self.client = http_async_client
-        self.client.auth = BasicAuth(username, password)
+        self.auth = BasicAuth(username, password)
         self.client.timeout = Timeout(CLIENT_TIMEOUT)
 
         # Semaphore for controlling concurrent requests
@@ -250,7 +249,7 @@ class HarborClient:
         Raises:
             HTTPStatusError: For HTTP errors
         """
-        if not self._client:
+        if not self.client:
             raise RuntimeError("HTTP client not initialized")
 
         if not endpoint.startswith('/api/'):
@@ -264,6 +263,7 @@ class HarborClient:
                 "component": "harbor_client",
                 "operation": "api_request",
                 "method": method,
+                "url": url,
                 "endpoint": endpoint,
                 "has_params": bool(params),
                 "has_json": bool(json)
@@ -280,6 +280,8 @@ class HarborClient:
                     url=url,
                     params=params,
                     json=json,
+                    auth=self.auth,
+                    timeout=CLIENT_TIMEOUT,
                 )
 
                 latency = time.time() - start_time
