@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.1.0-beta (2025-10-30)
+
+
+### Improvements
+
+- Added support for running github workflows as part of Port actions
+
 ## 3.0.3-beta (2025-10-27)
 
 
@@ -20,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Bumped ocean version to ^0.28.17
+- Bumped ocean version to ^0.28.16
 
 
 ## 3.0.1-beta (2025-10-21)

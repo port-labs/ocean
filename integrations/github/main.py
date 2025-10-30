@@ -1,6 +1,7 @@
 from typing import Any, cast
 
 from loguru import logger
+from github.actions.registry import register_actions_executors
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -86,13 +87,15 @@ from integration import (
 )
 
 
-@ocean.on_resync_start()
-async def on_resync_start() -> None:
+@ocean.on_start()
+async def on_start() -> None:
     """Initialize the integration and set up webhooks."""
     logger.info("Setting up webhooks for GitHub organizations")
 
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
+    if not ocean.app.config.event_listener.should_process_webhooks:
+        logger.info(
+            "Skipping webhook creation as it's not supported for this event listener"
+        )
         return
 
     base_url = ocean.app.base_url
@@ -101,6 +104,7 @@ async def on_resync_start() -> None:
 
     org_exporter = RestOrganizationExporter(create_github_client())
 
+    await ocean.integration.port_app_config_handler.get_port_app_config()
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -813,4 +817,7 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
 
 
 # Register webhook processors
-register_live_events_webhooks(path="/webhook")
+register_live_events_webhooks()
+
+# Register actions executors
+register_actions_executors()
