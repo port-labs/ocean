@@ -1087,7 +1087,7 @@ class AzureDevopsClient(HTTPBaseClient):
                     for file in sublist
                 ]
 
-            except ReadTimeout as e:
+            except ReadTimeout:
                 timeout_retries += 1
                 if timeout_retries <= MAX_TIMEMOUT_RETRIES:
                     logger.warning(
