@@ -342,8 +342,6 @@ class BitbucketClient:
         tasks = []
         async for repo_batch in self.get_repositories(projects_filter):
             for repo in repo_batch:
-                # Wrap each repository PR fetcher with semaphore for controlled concurrency
-                # Use functools.partial to properly bind repository and state parameters
                 pr_iterator_func = functools.partial(
                     self._get_pull_requests_for_repository,
                     repo["project"]["key"],
