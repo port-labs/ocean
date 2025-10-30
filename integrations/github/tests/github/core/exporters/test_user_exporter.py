@@ -23,10 +23,12 @@ from github.helpers.gql_queries import (
 
 TEST_USERS_NO_EMAIL_INITIAL = [
     {
+        "__typename": "User",
         "login": "user1",
         "email": "johndoe@email.com",
     },
     {
+        "__typename": "User",
         "login": "user2",
     },
 ]
@@ -34,7 +36,7 @@ TEST_USERS_NO_EMAIL_INITIAL = [
 EXTERNAL_IDENTITIES_MOCK = [
     {
         "node": {
-            "user": {"login": "user2"},
+            "user": {"login": "user2", "__typename": "User"},
             "samlIdentity": {"nameId": "user2@email.com"},
         }
     }
@@ -118,6 +120,7 @@ class TestGraphQLUserExporter:
             user = await exporter.get_resource(user_options)
 
             expected_user = {
+                "__typename": "User",
                 "login": "user2",
                 "email": "user2@email.com",  # Email fetched from external identity
             }
@@ -160,10 +163,12 @@ class TestGraphQLUserExporter:
 
         expected_users_after_fetch = [
             {
+                "__typename": "User",
                 "login": "user1",
                 "email": "johndoe@email.com",
             },
             {
+                "__typename": "User",
                 "login": "user2",
                 "email": "user2@email.com",
             },
@@ -182,7 +187,7 @@ class TestGraphQLUserExporter:
 
                 users: list[list[dict[str, Any]]] = []
                 async for batch in exporter.get_paginated_resources(
-                    ListUserOptions(organization="test-org")
+                    ListUserOptions(organization="test-org", include_bots=False)
                 ):
                     users.append(batch)
 
