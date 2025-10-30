@@ -26,6 +26,8 @@ from aws.core.exporters.aws_lambda.function.exporter import LambdaFunctionExport
 from aws.core.exporters.aws_lambda.function.models import PaginatedLambdaFunctionRequest
 from aws.core.exporters.sqs import SqsQueueExporter
 from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
+from aws.core.exporters.apigateway import RestApiExporter
+from aws.core.exporters.apigateway.rest_api.models import PaginatedRestApiRequest
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
@@ -153,6 +155,15 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
 async def resync_sqs_queue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, SqsQueueExporter, PaginatedQueueRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.API_GATEWAY_REST_API)
+async def resync_api_gateway_rest_api(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, RestApiExporter, PaginatedRestApiRequest, regional=True
     )
     async for batch in service:
         yield batch

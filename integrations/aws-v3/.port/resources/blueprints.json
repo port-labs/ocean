@@ -522,5 +522,99 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "apiGatewayRestApi",
+    "title": "API Gateway REST API",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "apiId": {
+          "type": "string",
+          "title": "API ID",
+          "description": "The unique identifier of the REST API"
+        },
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the REST API"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region",
+          "description": "The AWS region where the REST API is located"
+        },
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "The name of the REST API"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "The description of the REST API"
+        },
+        "version": {
+          "type": "string",
+          "title": "Version",
+          "description": "The version of the REST API"
+        },
+        "createdDate": {
+          "type": "string",
+          "title": "Created Date",
+          "description": "The timestamp when the REST API was created",
+          "format": "date-time"
+        },
+        "apiKeySource": {
+          "type": "string",
+          "title": "API Key Source",
+          "description": "The source of the API key for metering requests",
+          "enum": ["HEADER", "AUTHORIZER"]
+        },
+        "binaryMediaTypes": {
+          "type": "array",
+          "title": "Binary Media Types",
+          "description": "The list of binary media types supported by the REST API",
+          "items": {
+            "type": "string"
+          }
+        },
+        "minimumCompressionSize": {
+          "type": "number",
+          "title": "Minimum Compression Size",
+          "description": "A nullable integer that is used to enable compression"
+        },
+        "endpointConfiguration": {
+          "type": "object",
+          "title": "Endpoint Configuration",
+          "description": "The endpoint configuration of this REST API"
+        },
+        "disableExecuteApiEndpoint": {
+          "type": "boolean",
+          "title": "Disable Execute API Endpoint",
+          "description": "Specifies whether clients can invoke your API by using the default execute-api endpoint"
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags",
+          "description": "Tags associated with the REST API",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "awsAccount",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

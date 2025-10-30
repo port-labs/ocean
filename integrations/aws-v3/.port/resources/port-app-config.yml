@@ -177,3 +177,28 @@ resources:
             sqsManagedSseEnabled: .Properties.SqsManagedSseEnabled
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::ApiGateway::RestApi
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '"arn:aws:apigateway:" + .__ExtraContext.Region + "::/restapis/" + .Properties.Id'
+          title: .Properties.Name
+          blueprint: '"apiGatewayRestApi"'
+          properties:
+            apiId: .Properties.Id
+            arn: '"arn:aws:apigateway:" + .__ExtraContext.Region + "::/restapis/" + .Properties.Id'
+            region: .__ExtraContext.Region
+            name: .Properties.Name
+            description: .Properties.Description
+            version: .Properties.Version
+            createdDate: .Properties.CreatedDate
+            apiKeySource: .Properties.ApiKeySource
+            binaryMediaTypes: .Properties.BinaryMediaTypes
+            minimumCompressionSize: .Properties.MinimumCompressionSize
+            endpointConfiguration: .Properties.EndpointConfiguration
+            disableExecuteApiEndpoint: .Properties.DisableExecuteApiEndpoint
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
