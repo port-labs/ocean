@@ -4,10 +4,10 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleUserOptions, ListUserOptions
+from github.helpers.utils import sanitize_login
 from github.helpers.gql_queries import (
     LIST_EXTERNAL_IDENTITIES_GQL,
     LIST_ORG_MEMBER_GQL,
-    LIST_ORG_MEMBER_WITH_BOTS_GQL,
     FETCH_GITHUB_USER_GQL,
 )
 
@@ -26,6 +26,8 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
             return response
 
         user = response["data"]["user"]
+        user["login"] = sanitize_login(user["login"])
+
         if not user.get("email"):
             await self._fetch_external_identities(
                 organization, [user], {(0, user["login"]): user}
@@ -39,16 +41,19 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
             "organization": options["organization"],
             "__path": "organization.membersWithRole",
         }
-        if options.get("include_bots"):
-            resource = LIST_ORG_MEMBER_WITH_BOTS_GQL
-        else:
-            resource = LIST_ORG_MEMBER_GQL
+        async for users in self.client.send_paginated_request(
+            LIST_ORG_MEMBER_GQL, variables
+        ):
+            if not options.get("include_bots"):
+                users = [user for user in users if user.get("__typename") == "User"]
 
-        async for users in self.client.send_paginated_request(resource, variables):
+            # Sanitize login fields for all users
+            users = [{**user, "login": sanitize_login(user["login"])} for user in users]
+
             users_with_no_email = {
                 (idx, user["login"]): user
                 for idx, user in enumerate(users)
-                if not user.get("email")
+                if not user.get("email") and user.get("__typename") == "User"
             }
 
             if users_with_no_email:
@@ -82,9 +87,9 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 variables,
             ):
                 saml_users = {
-                    user["node"]["user"]["login"]: user["node"]["samlIdentity"][
-                        "nameId"
-                    ]
+                    sanitize_login(user["node"]["user"]["login"]): user["node"][
+                        "samlIdentity"
+                    ]["nameId"]
                     for user in identity_batch
                     if user["node"].get("user")
                 }
