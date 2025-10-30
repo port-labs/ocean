@@ -324,34 +324,3 @@ def clear_http_client_context() -> None:
             _port_http_client.pop()
     except (RuntimeError, AttributeError):
         pass
-
-class _AiterReader:
-    """
-    Wraps an iterable of byte chunks (e.g., response.iter_bytes())
-    and exposes a .read(n) method that ijson expects.
-    """
-    def __init__(self, iterable):
-        self._iter = iter(iterable)
-        self._buf = bytearray()
-        self._eof = False
-
-    def read(self, n=-1):
-        # If n < 0, return everything until EOF
-        if n is None or n < 0:
-            chunks = [bytes(self._buf)]
-            self._buf.clear()
-            chunks.extend(self._iter)  # drain the iterator
-            return b"".join(chunks)
-
-        # Fill buffer until we have n bytes or hit EOF
-        while len(self._buf) < n and not self._eof:
-            try:
-                self._buf.extend(next(self._iter))
-            except StopIteration:
-                self._eof = True
-                break
-
-        # Serve up to n bytes
-        out = bytes(self._buf[:n])
-        del self._buf[:n]
-        return out

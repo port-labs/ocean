@@ -1,6 +1,6 @@
 from enum import StrEnum
 from loguru import logger
-from typing import Any, Callable, Generator
+from typing import Any, Callable, Generator, AsyncIterator
 import json
 import yaml
 import io
@@ -558,3 +558,38 @@ def iter_yaml_docs_as_single_json(yaml_text: str) -> Generator[str, None, None]:
     # Handle no-document YAML (empty input)
     if not doc_started and not buf and not pending:
         yield "null"
+
+
+class _AiterReader:
+    """
+    Wraps an async iterable of byte chunks (e.g., response.aiter_bytes())
+    and exposes an async .read(n) method that ijson.asyncio expects.
+    """
+
+    def __init__(self, async_iterable: AsyncIterator[bytes]):
+        self._aiter = async_iterable.__aiter__()
+        self._buf = bytearray()
+        self._eof = False
+
+    async def read(self, n: int = -1) -> bytes:
+        # If n < 0, return everything until EOF
+        if n is None or n < 0:
+            chunks = [bytes(self._buf)]
+            self._buf.clear()
+            async for chunk in self._aiter:
+                chunks.append(chunk)
+            return b"".join(chunks)
+
+        # Fill buffer until we have n bytes or hit EOF
+        while len(self._buf) < n and not self._eof:
+            try:
+                chunk = await self._aiter.__anext__()
+                self._buf.extend(chunk)
+            except StopAsyncIteration:
+                self._eof = True
+                break
+
+        # Serve up to n bytes
+        out = bytes(self._buf[:n])
+        del self._buf[:n]
+        return out

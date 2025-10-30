@@ -7,7 +7,7 @@ import ijson  # type: ignore[import-untyped]
 import aiofiles
 import base64
 import uuid
-from port_ocean.core.integrations.mixins.utils import _AiterReader
+from gitlab.helpers.utils import _AiterReader
 import os
 
 from gitlab.clients.auth_client import AuthClient
@@ -116,14 +116,14 @@ class HTTPBaseClient:
                 "GET", url, params=params, headers=self._headers
             ) as r:
                 r.raise_for_status()
-                reader = _AiterReader(r.iter_bytes())
-                # ijson can parse from an async byte iterator via ijson.asyncio
-                parser = ijson.items(reader, content_key)
+                reader = _AiterReader(r.aiter_bytes())
+                # ijson can parse from an async byte iterator via ijson.items_async
+                parser = ijson.items_async(reader, content_key)
                 os.makedirs("/tmp/ocean", exist_ok=True)
                 out_path = f"/tmp/ocean/bulk_{uuid.uuid4()}.json"
                 try:
                     async with aiofiles.open(out_path, "wb") as f:
-                        for content_b64 in parser:
+                        async for content_b64 in parser:
                             # For very long base64, decode in chunks:
                             for i in range(0, len(content_b64), 4 * 1024 * 1024):
                                 chunk = content_b64[i : i + 4 * 1024 * 1024]
