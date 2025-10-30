@@ -414,13 +414,27 @@ class TestHarborClientUsers:
     @pytest.mark.asyncio
     async def test_get_all_users(self, harbor_client: Any, sample_user_data: Dict[str, Any]) -> None:
         """Test fetching all users"""
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json = Mock(return_value=[sample_user_data])
-        mock_response.content = b'[{}]'
-        mock_response.raise_for_status = Mock()
-
-        harbor_client.client.request.return_value = mock_response
+        
+        current_user_response = Mock()
+        current_user_response.status_code = 200
+        current_user_response.json = Mock(return_value={
+            "user_id": 1,
+            "username": "admin",
+            "sysadmin_flag": True
+        })
+        current_user_response.content = b'{}'
+        current_user_response.raise_for_status = Mock()
+    
+        users_response = Mock()
+        users_response.status_code = 200
+        users_response.json = Mock(return_value=[sample_user_data])
+        users_response.content = b'[{}]'
+        users_response.raise_for_status = Mock()
+        
+        harbor_client.client.request.side_effect = [
+            current_user_response,
+            users_response
+        ]
 
         users = []
         async for batch in harbor_client.get_paginated_users({"page_size": 100}):
@@ -455,13 +469,26 @@ class TestHarborClientUsers:
             {"username": "user2", "email": "user2@example.com"}
         ]
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json = Mock(return_value=users)
-        mock_response.content = b'[{}]'
-        mock_response.raise_for_status = Mock()
+        current_user_response = Mock()
+        current_user_response.status_code = 200
+        current_user_response.json = Mock(return_value={
+            "user_id": 1,
+            "username": "admin",
+            "sysadmin_flag": True
+        })
+        current_user_response.content = b'{}'
+        current_user_response.raise_for_status = Mock()
 
-        harbor_client.client.request.return_value = mock_response
+        search_response = Mock()
+        search_response.status_code = 200
+        search_response.json = Mock(return_value=users)
+        search_response.content = b'[{}]'
+        search_response.raise_for_status = Mock()
+
+        harbor_client.client.request.side_effect = [
+            current_user_response,
+            search_response
+        ]
 
         results = []
         async for batch in harbor_client.get_paginated_users({"page_size": 100, "q": "user"}):
