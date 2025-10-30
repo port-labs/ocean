@@ -34,3 +34,31 @@ configurations:
     type: boolean
     description: Whether the Bitbucket Server version is 8.7 or older
     required: false
+  - name: bitbucketRateLimit
+    type: integer
+    default: "1000"
+    description: Maximum number of API requests allowed within the rate limit window. Default is 1000 requests per hour.
+    required: false
+  - name: bitbucketRateLimitWindow
+    type: integer
+    default: "3600"
+    description: Time window in seconds for rate limiting. Default is 3600 seconds (1 hour).
+    required: false
+  - name: bitbucketPageSize
+    type: integer
+    default: "25"
+    description: Number of items per page for paginated API requests. Default is 25. Recommended 50-100 for better performance.
+    required: false
+  - name: bitbucketMaxConcurrentRequests
+    type: integer
+    default: "10"
+    description: Maximum number of concurrent repository pull request requests. Default is 10. Increase for faster sync at the cost of higher API load.
+    required: false
+  - name: bitbucketProjectsFilterRegex
+    type: string
+    description: Optional regex pattern to filter project keys (e.g., "^PROJ-.*" to include only projects starting with "PROJ-")
+    required: false
+  - name: bitbucketProjectsFilterSuffix
+    type: string
+    description: Optional suffix pattern to filter project keys (e.g., "-PROD" to include only projects ending with "-PROD")
+    required: false
