@@ -30,7 +30,7 @@ class HarborClientFactory:
         if not all([harbor_url, harbor_username, harbor_password]):
             raise ValueError("Missing required Harbor configuration")
 
-        logger.info(f"Initializing Harbor client for {harbor_url}")
+        logger.info(f"harbor_ocean::factory::Initializing Harbor client for {harbor_url}")
         return HarborClient(
             base_url=harbor_url,
             username=harbor_username,

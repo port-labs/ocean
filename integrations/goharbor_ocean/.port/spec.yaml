@@ -26,3 +26,8 @@ configurations:
     type: string
     description: "Harbor robot account token or password"
     sensitive: true
+  - name: webhookUrl
+    required: false
+    type: url
+    description: "Public URL where through which integration receives webhooks from Harbor"
+    sensitive: false

@@ -98,7 +98,7 @@ class HarborClient:
         # to help us control batch requests
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
         logger.info(
-            f"[Ocean][Harbor] Initialized client for {self.base_url} "
+            f"harbor_ocean::client::Initialized client for {self.base_url} "
             f"(verify_ssl={self.verify_ssl})"
         )
 
@@ -136,7 +136,7 @@ class HarborClient:
 
         try:
             async with self._semaphore:
-                logger.debug(f"{method} {url} with params={params}")
+                logger.debug(f"harbor_ocean::client::{method} {url} with params={params}")
 
                 request_headers = self.auth_headers.copy()
 
@@ -156,27 +156,27 @@ class HarborClient:
 
             match status_code:
                 case 401:
-                    logger.error(f"Authentication failed for {url}")
+                    logger.error(f"harbor_ocean::client::Authentication failed for {url}")
                     raise UnauthorizedError(
                         "Authentication failed. Check your Harbor credentials"
-                    )
+                    ) from e
 
                 case 403:
-                    logger.error(f"Permission denied for {url}")
+                    logger.error(f"harbor_ocean::client::Permission denied for {url}")
                     raise ForbiddenError(
                         "Permission denied. Check your Harbor user permissions"
-                    )
+                    ) from e
 
                 case 404:
                     resource = endpoint.split("/")[-1] if "/" in endpoint else endpoint
-                    logger.warning(f"Resource not found: {url}")
-                    raise NotFoundError(resource)
+                    logger.warning(f"harbor_ocean::client::Resource not found: {url}")
+                    raise NotFoundError(resource) from e
 
                 case 429:
                     # we're been throttled - retry after specified time
                     retry_after = int(e.response.headers.get("Retry-After", "60"))
                     logger.warning(
-                        f"Rate limited. Retrying after {retry_after} seconds"
+                        f"harbor_ocean::client::Rate limited. Retrying after {retry_after} seconds"
                     )
 
                     await asyncio.sleep(retry_after)
@@ -185,13 +185,13 @@ class HarborClient:
                     )
 
                 case _ if status_code >= 500:
-                    logger.error(f"Harbor server error ({status_code}) for {url}")
+                    logger.error(f"harbor_ocean::client::Harbor server error ({status_code}) for {url}")
                     raise ServerError(
                         f"Harbor server error: {status_code}", status_code
-                    )
+                    ) from e
 
                 case _:
-                    logger.error(f"Harbor API error ({status_code}) for {url}")
+                    logger.error(f"harbor_ocean::client::Harbor API error ({status_code}) for {url}")
                     raise HarborAPIError(f"API error: {status_code}", status_code)
 
     def _build_endpoint_url(
@@ -276,7 +276,7 @@ class HarborClient:
         total_fetched = 0
 
         logger.info(
-            f'[Ocean][Harbor] Starting paginated fetch for {kind} '
+            f'harbor_ocean::client::Starting paginated fetch for {kind} '
                 f'(project={project_name}, repo={repository_name})'
         )
 
@@ -294,14 +294,14 @@ class HarborClient:
 
                 if not items:
                     logger.info(
-                        f"[Ocean][Harbor] Completed pagination for {kind}. "
+                        f"harbor_ocean::client::Completed pagination for {kind}. "
                         f"Total fetched: {total_fetched}"
                     )
                     break
 
                 total_fetched += len(items)
                 logger.debug(
-                    f"[Ocean][Harbor] Fetched page {page} for {kind}: {len(items)} items "
+                    f"harbor_ocean::client::Fetched page {page} for {kind}: {len(items)} items "
                     f"(total so far: {total_fetched})"
                 )
 
@@ -309,7 +309,7 @@ class HarborClient:
                 page += 1
 
             except Exception as e:
-                logger.error(f"Error fetching {kind} page {page}: {e}")
+                logger.error(f"harbor_ocean::client::Error fetching {kind} page {page}: {e}")
                 raise
 
 

@@ -38,7 +38,7 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
         event_type = payload.get("type")
         project_name, repo_name = extract_repository_info(payload)
 
-        logger.info(f"Processing {event_type} for {repo_name}")
+        logger.info(f"harbor_ocean::webhooks::Processing {event_type} for {repo_name}")
 
         if event_type == events.DELETE_ARTIFACT:
             deleted_resources = extract_deleted_resources(payload)
@@ -49,7 +49,7 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
 
         # Handle push/scan - fetch fresh data
         if not project_name or not repo_name:
-            logger.warning("Missing repository information in webhook payload")
+            logger.warning("harbor_ocean::webhooks::Missing repository information in webhook payload")
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
@@ -70,7 +70,7 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
         has_required_fields = "type" in payload and "event_data" in payload
 
         if not has_required_fields:
-            logger.warning("Invalid webhook payload: missing required fields")
+            logger.warning("harbor_ocean::webhooks::Invalid webhook payload: missing required fields")
 
         return has_required_fields
 
@@ -94,10 +94,10 @@ class RepositoryWebhookProcessor(AbstractWebhookProcessor):
         event_type = payload.get("type")
         project_name, repo_name = extract_repository_info(payload)
 
-        logger.info(f"Processing {event_type} for repository: {repo_name}")
+        logger.info(f"harbor_ocean::webhooks::Processing {event_type} for repository: {repo_name}")
 
         if not project_name or not repo_name:
-            logger.warning("Missing repository information in webhook payload")
+            logger.warning("harbor_ocean::webhooks::Missing repository information in webhook payload")
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
@@ -116,6 +116,6 @@ class RepositoryWebhookProcessor(AbstractWebhookProcessor):
         has_required_fields = "type" in payload and "event_data" in payload
 
         if not has_required_fields:
-            logger.warning("Invalid webhook payload: missing required fields")
+            logger.warning("harbor_ocean::webhooks::Invalid webhook payload: missing required fields")
 
         return has_required_fields
