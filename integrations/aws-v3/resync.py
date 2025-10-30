@@ -21,8 +21,7 @@ from abc import ABC, abstractmethod
 if TYPE_CHECKING:
     from aws.core.interfaces.exporter import IResourceExporter
 
-_MAX_CONCURRENT_REGIONS = 10
-_MAX_CONCURRENT_ACCOUNTS = 5
+_MAX_CONCURRENT_REGIONS = 5
 
 
 async def safe_iterate(
@@ -80,7 +79,7 @@ class RegionalResyncStrategy(ResyncStrategy):
         logger.info(
             f"Processing {self.kind} across {len(regions)} regions for account {self.account_id}"
         )
-        semaphore = asyncio.Semaphore(self.max_concurrent)
+        semaphore = asyncio.BoundedSemaphore(self.max_concurrent)
 
         tasks = [
             safe_iterate(
@@ -111,6 +110,9 @@ class GlobalResyncStrategy(ResyncStrategy):
                 options = self.options_factory(region)
                 async for batch in self.exporter.get_paginated_resources(options):
                     yield batch
+                logger.info(
+                    f"Successfully fetched global resource {self.kind} for account {self.account_id} in region {region}"
+                )
                 return  # Success in one region → stop
             except Exception as e:
                 if is_access_denied_exception(e):
@@ -141,10 +143,7 @@ class ResyncAWSService:
 
         self.aws_resource_config = cast(AWSResourceConfig, event.resource_config)
         self.include_actions = self.aws_resource_config.selector.include_actions
-        self.max_concurrent_accounts = (
-            self.aws_resource_config.selector.max_concurrent_accounts
-            or _MAX_CONCURRENT_ACCOUNTS
-        )
+        self.max_concurrent_accounts = self.aws_resource_config.selector.max_concurrent_accounts
 
     def _create_options_factory(self, account_id: str) -> Callable[[str], Any]:
         def options_factory(region: str) -> Any:
@@ -182,10 +181,12 @@ class ResyncAWSService:
 
         async for batch in strategy.run(regions):
             yield batch
+            gc.collect()
+        del exporter, options_factory, strategy
 
     async def __aiter__(self) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        semaphore = asyncio.Semaphore(self.max_concurrent_accounts)
         tasks: List[AsyncIterator[List[Dict[Any, Any]]]] = []
+        semaphore = asyncio.BoundedSemaphore(self.max_concurrent_accounts)
 
         logger.info(f"Starting account discovery for {self.kind}")
 
@@ -241,3 +242,59 @@ class ResyncAWSService:
         async for batch in stream_async_iterators_tasks(*tasks):
             if batch:
                 yield batch
+
+
+
+    # async def __aiter__(self) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    #     tasks: List[AsyncIterator[List[Dict[Any, Any]]]] = []
+
+    #     logger.info(f"Starting account discovery for {self.kind}")
+
+    #     async for account, session in get_all_account_sessions():
+    #         account_id = account["Id"]
+    #         logger.info(f"Processing account {account_id}")
+
+    #         try:
+    #             logger.debug(f"Retrieving allowed regions for account {account_id}")
+    #             regions = await get_allowed_regions(
+    #                 session, self.aws_resource_config.selector
+    #             )
+
+    #             if not regions:
+    #                 logger.warning(
+    #                     f"No regions discovered in account {account_id}, skipping"
+    #                 )
+    #                 continue
+
+    #             logger.info(
+    #                 f"Discovered {len(regions)} regions in account {account_id}"
+    #             )
+
+    #             tasks.append(
+    #                 safe_iterate(
+    #                     self._account_resync_generator(
+    #                         account,
+    #                         session=session,
+    #                         regions=regions,
+    #                     ),
+    #                     account_id,
+    #                     self.kind,
+    #                 )
+    #             )
+    #             if len(tasks) >= self.max_concurrent_accounts:
+    #                 logger.warning(f"Max concurrent accounts {self.max_concurrent_accounts} reached, waiting for tasks to complete...")
+    #                 async for batch in stream_async_iterators_tasks(*tasks):
+    #                     if batch:
+    #                         yield batch
+    #                 tasks.clear()
+
+    #         except Exception as e:
+    #             logger.error(
+    #                 f"Failed to get regions for account {account_id}: {e}, skipping"
+    #             )
+    #             continue
+
+    #     if tasks:
+    #         async for batch in stream_async_iterators_tasks(*tasks):
+    #             if batch:
+    #                 yield batch
