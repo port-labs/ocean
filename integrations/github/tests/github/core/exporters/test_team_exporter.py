@@ -1,11 +1,10 @@
 import copy
 from typing import Any, AsyncGenerator, Dict, Iterator
 from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
+    ResourceConfig,
 )
 import pytest
 from unittest.mock import AsyncMock, patch
@@ -17,7 +16,7 @@ from github.core.exporters.team_exporter import (
     GraphQLTeamMembersAndReposExporter,
 )
 from github.core.options import ListTeamOptions
-from integration import GithubPortAppConfig
+from integration import GithubPortAppConfig, RepoSearchSelector
 from port_ocean.context.event import event_context
 from github.core.options import SingleTeamOptions
 
@@ -52,7 +51,7 @@ def mock_port_app_config() -> GithubPortAppConfig:
         resources=[
             ResourceConfig(
                 kind="team",
-                selector=Selector(query="true"),
+                selector=RepoSearchSelector(query="true"),
                 port=PortResourceConfig(
                     entity=MappingsConfig(
                         mappings=EntityMapping(
@@ -298,7 +297,6 @@ class TestGraphQLTeamExporter:
     async def test_get_resource_no_member_pagination(
         self, graphql_client: GithubGraphQLClient
     ) -> None:
-
         mock_response_data = copy.deepcopy(
             {"data": {"organization": {"team": TEAM_BETA_INITIAL}}}
         )
@@ -378,7 +376,6 @@ class TestGraphQLTeamExporter:
 
 
 class TestGraphQLTeamMembersAndReposExporter:
-
     @pytest.fixture(autouse=True)
     def patch_page_size(self) -> Iterator[None]:
         with patch.object(

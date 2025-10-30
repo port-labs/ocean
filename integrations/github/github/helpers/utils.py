@@ -66,7 +66,7 @@ def enrich_with_repository(
 
 
 def parse_github_options(
-    params: dict[str, Any]
+    params: dict[str, Any],
 ) -> tuple[str | None, str, dict[str, Any]]:
     """Extract the repository name and other parameters from the options."""
     organization = params.pop("organization")
