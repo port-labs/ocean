@@ -75,9 +75,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
         if search_params:
-            search_query = (
-                f"org:{organization} {search_params.query if search_params else ' '}"
-            )
+            search_query = f"org:{organization} {search_params.query}"
             query = {"q": search_query, **params}
             url = f"{self.client.base_url}/search/repositories"
             async for search_results in self.client.send_paginated_request(url, query):
