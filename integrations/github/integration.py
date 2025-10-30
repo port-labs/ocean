@@ -210,7 +210,7 @@ class GithubBranchConfig(ResourceConfig):
     selector: GithubBranchSelector
 
 
-class GithubGeneralConfig(ResourceConfig):
+class GithubRepoSearchConfig(ResourceConfig):
     selector: RepoSearchSelector
 
 
@@ -235,7 +235,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFileResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
-        | GithubGeneralConfig
+        | GithubRepoSearchConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

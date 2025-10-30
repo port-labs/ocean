@@ -3,13 +3,14 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
+    ResourceConfig,
 )
 import copy
 import pytest
 from unittest.mock import patch
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.user_exporter import GraphQLUserExporter
-from integration import GithubGeneralConfig, GithubPortAppConfig, RepoSearchSelector
+from integration import GithubPortAppConfig, RepoSearchSelector
 from port_ocean.context.event import event_context
 from github.core.options import SingleUserOptions, ListUserOptions
 from github.helpers.gql_queries import (
@@ -45,7 +46,7 @@ def mock_port_app_config() -> GithubPortAppConfig:
         delete_dependent_entities=True,
         create_missing_related_entities=False,
         resources=[
-            GithubGeneralConfig(
+            ResourceConfig(
                 kind="user",
                 selector=RepoSearchSelector(query="true"),
                 port=PortResourceConfig(

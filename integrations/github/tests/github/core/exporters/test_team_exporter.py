@@ -4,6 +4,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
+    ResourceConfig,
 )
 import pytest
 from unittest.mock import AsyncMock, patch
@@ -15,7 +16,7 @@ from github.core.exporters.team_exporter import (
     GraphQLTeamMembersAndReposExporter,
 )
 from github.core.options import ListTeamOptions
-from integration import GithubGeneralConfig, GithubPortAppConfig, RepoSearchSelector
+from integration import GithubPortAppConfig, RepoSearchSelector
 from port_ocean.context.event import event_context
 from github.core.options import SingleTeamOptions
 
@@ -48,7 +49,7 @@ def mock_port_app_config() -> GithubPortAppConfig:
         delete_dependent_entities=True,
         create_missing_related_entities=False,
         resources=[
-            GithubGeneralConfig(
+            ResourceConfig(
                 kind="team",
                 selector=RepoSearchSelector(query="true"),
                 port=PortResourceConfig(
