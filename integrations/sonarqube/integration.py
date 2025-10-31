@@ -89,17 +89,11 @@ class SonarQubeGAProjectAPIFilter(BaseSonarQubeApiFilter):
         description="To retrieve projects on provisioned only",
     )
     projects: list[str] | None = Field(description="List of projects")
-    qualifiers: list[Literal["TRK", "APP"]] | None = Field(
-        description="List of qualifiers", alias="qualifier"
-    )
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
         if self.projects:
             value["projects"] = ",".join(self.projects)
-
-        if self.qualifiers:
-            value["qualifiers"] = ",".join(self.qualifiers)
 
         return value
 
