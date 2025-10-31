@@ -19,6 +19,8 @@ class FailedToWriteHybridCacheError(FailedToWriteCacheError):
 
 
 DEFAULT_CACHE_FILE = "/tmp/ocean/.ocean_cache/smart_cache.pkl"
+DEFAULT_CACHE_TTL = 3600
+DEFAULT_CACHE_MAX_SIZE = 100
 
 
 class HybridCacheProvider(CacheProvider):
@@ -26,8 +28,8 @@ class HybridCacheProvider(CacheProvider):
 
     def __init__(
         self,
-        max_size: int = 100,
-        default_ttl: int = None,
+        max_size: int = DEFAULT_CACHE_MAX_SIZE,
+        default_ttl: int = DEFAULT_CACHE_TTL,
         cache_file: str = DEFAULT_CACHE_FILE,
     ) -> None:
         """
@@ -35,8 +37,9 @@ class HybridCacheProvider(CacheProvider):
         - max_size: Maximum number of entries before eviction (LRU).
         - default_ttl: Default time-to-live in seconds (None means no expiration).
         - cache_file: Path to pickle file for disk fallback (None disables persistence).
+        - cache: An ordered dictionary to store the cache (default is an empty OrderedDict).
         """
-        self.cache = OrderedDict()
+        self.cache: OrderedDict[str, tuple[Any, float, Optional[int]]] = OrderedDict()
         self.max_size = max_size
         self.default_ttl = default_ttl
         self.cache_file = cache_file

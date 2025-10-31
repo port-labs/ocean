@@ -127,7 +127,7 @@ async def test_hybrid_cache_default_ttl(temp_cache_file: str) -> None:
 async def test_hybrid_cache_no_ttl(temp_cache_file: str) -> None:
     """Test that entries without TTL don't expire."""
     cache = HybridCacheProvider(
-        max_size=100, default_ttl=None, cache_file=temp_cache_file
+        max_size=100, default_ttl=60, cache_file=temp_cache_file
     )
 
     await cache.set("key_no_ttl", "value")
@@ -161,9 +161,7 @@ async def test_hybrid_cache_override_default_ttl(temp_cache_file: str) -> None:
 @pytest.mark.asyncio
 async def test_hybrid_cache_lru_eviction(temp_cache_file: str) -> None:
     """Test that LRU eviction works when cache exceeds max size."""
-    cache = HybridCacheProvider(
-        max_size=3, default_ttl=None, cache_file=temp_cache_file
-    )
+    cache = HybridCacheProvider(max_size=3, default_ttl=60, cache_file=temp_cache_file)
 
     # Add 3 items (at max capacity)
     await cache.set("key1", "value1")
@@ -187,9 +185,7 @@ async def test_hybrid_cache_lru_eviction(temp_cache_file: str) -> None:
 @pytest.mark.asyncio
 async def test_hybrid_cache_lru_order_on_access(temp_cache_file: str) -> None:
     """Test that accessing a key moves it to the end (most recently used)."""
-    cache = HybridCacheProvider(
-        max_size=3, default_ttl=None, cache_file=temp_cache_file
-    )
+    cache = HybridCacheProvider(max_size=3, default_ttl=60, cache_file=temp_cache_file)
 
     await cache.set("key1", "value1")
     await cache.set("key2", "value2")
@@ -210,9 +206,7 @@ async def test_hybrid_cache_lru_order_on_access(temp_cache_file: str) -> None:
 @pytest.mark.asyncio
 async def test_hybrid_cache_lru_order_on_update(temp_cache_file: str) -> None:
     """Test that updating a key moves it to the end (most recently used)."""
-    cache = HybridCacheProvider(
-        max_size=3, default_ttl=None, cache_file=temp_cache_file
-    )
+    cache = HybridCacheProvider(max_size=3, default_ttl=60, cache_file=temp_cache_file)
 
     await cache.set("key1", "value1")
     await cache.set("key2", "value2")
@@ -238,14 +232,14 @@ async def test_hybrid_cache_persistence_across_instances(temp_cache_file: str) -
     """Test that cache persists across different instances."""
     # Create first instance and add data
     cache1 = HybridCacheProvider(
-        max_size=100, default_ttl=None, cache_file=temp_cache_file
+        max_size=100, default_ttl=60, cache_file=temp_cache_file
     )
     await cache1.set("key1", "value1")
     await cache1.set("key2", {"data": "value2"})
 
     # Create second instance - should load from disk
     cache2 = HybridCacheProvider(
-        max_size=100, default_ttl=None, cache_file=temp_cache_file
+        max_size=100, default_ttl=60, cache_file=temp_cache_file
     )
 
     assert await cache2.get("key1") == "value1"
@@ -259,7 +253,7 @@ async def test_hybrid_cache_expired_entries_cleaned_on_load(
     """Test that expired entries are removed when loading from disk."""
     # Create first instance with short TTL
     cache1 = HybridCacheProvider(
-        max_size=100, default_ttl=None, cache_file=temp_cache_file
+        max_size=100, default_ttl=60, cache_file=temp_cache_file
     )
     await cache1.set("key1", "value1", ttl=1)
     await cache1.set("key2", "value2", ttl=None)  # No expiration
@@ -269,7 +263,7 @@ async def test_hybrid_cache_expired_entries_cleaned_on_load(
 
     # Create second instance - should clean expired entries on load
     cache2 = HybridCacheProvider(
-        max_size=100, default_ttl=None, cache_file=temp_cache_file
+        max_size=100, default_ttl=60, cache_file=temp_cache_file
     )
 
     assert await cache2.get("key1") is None  # Expired and cleaned
@@ -281,14 +275,14 @@ async def test_hybrid_cache_clear_persists_to_disk(temp_cache_file: str) -> None
     """Test that clearing cache is persisted to disk."""
     # Create first instance and add data
     cache1 = HybridCacheProvider(
-        max_size=100, default_ttl=None, cache_file=temp_cache_file
+        max_size=100, default_ttl=60, cache_file=temp_cache_file
     )
     await cache1.set("key1", "value1")
     await cache1.clear()
 
     # Create second instance - should load empty cache
     cache2 = HybridCacheProvider(
-        max_size=100, default_ttl=None, cache_file=temp_cache_file
+        max_size=100, default_ttl=60, cache_file=temp_cache_file
     )
 
     assert await cache2.get("key1") is None
@@ -297,7 +291,7 @@ async def test_hybrid_cache_clear_persists_to_disk(temp_cache_file: str) -> None
 @pytest.mark.asyncio
 async def test_hybrid_cache_no_disk_file(tmp_path: Path) -> None:
     """Test that cache works without disk persistence when cache_file is None."""
-    cache = HybridCacheProvider(max_size=100, default_ttl=None, cache_file=None)
+    cache = HybridCacheProvider(max_size=100, default_ttl=60, cache_file="")
 
     await cache.set("key1", "value1")
     assert await cache.get("key1") == "value1"
@@ -314,7 +308,7 @@ async def test_hybrid_cache_nonexistent_file_on_init(temp_cache_file: str) -> No
         os.remove(temp_cache_file)
 
     cache = HybridCacheProvider(
-        max_size=100, default_ttl=None, cache_file=temp_cache_file
+        max_size=100, default_ttl=60, cache_file=temp_cache_file
     )
 
     await cache.set("key1", "value1")
@@ -334,7 +328,7 @@ async def test_hybrid_cache_corrupted_pickle_file(temp_cache_file: str) -> None:
 
     # Should raise FailedToReadHybridCacheError
     with pytest.raises(FailedToReadHybridCacheError):
-        HybridCacheProvider(max_size=100, default_ttl=None, cache_file=temp_cache_file)
+        HybridCacheProvider(max_size=100, default_ttl=60, cache_file=temp_cache_file)
 
 
 @pytest.mark.asyncio
@@ -347,7 +341,7 @@ async def test_hybrid_cache_invalid_cache_format(temp_cache_file: str) -> None:
 
     # Should initialize with empty cache (warning logged)
     cache = HybridCacheProvider(
-        max_size=100, default_ttl=None, cache_file=temp_cache_file
+        max_size=100, default_ttl=60, cache_file=temp_cache_file
     )
 
     # Cache should be empty after handling invalid format
@@ -358,7 +352,7 @@ async def test_hybrid_cache_invalid_cache_format(temp_cache_file: str) -> None:
 async def test_hybrid_cache_write_error(temp_cache_file: str) -> None:
     """Test handling of write errors when saving to disk."""
     cache = HybridCacheProvider(
-        max_size=100, default_ttl=None, cache_file=temp_cache_file
+        max_size=100, default_ttl=60, cache_file=temp_cache_file
     )
 
     # Make directory read-only to cause write error
@@ -379,7 +373,7 @@ async def test_hybrid_cache_write_error(temp_cache_file: str) -> None:
 async def test_hybrid_cache_atomic_write(temp_cache_file: str) -> None:
     """Test that writes use atomic operations with temporary file."""
     cache = HybridCacheProvider(
-        max_size=100, default_ttl=None, cache_file=temp_cache_file
+        max_size=100, default_ttl=60, cache_file=temp_cache_file
     )
 
     await cache.set("key1", "value1")
@@ -434,9 +428,7 @@ async def test_hybrid_cache_special_characters_in_key(
 @pytest.mark.asyncio
 async def test_hybrid_cache_zero_max_size(temp_cache_file: str) -> None:
     """Test cache behavior with max_size=0 (immediate eviction)."""
-    cache = HybridCacheProvider(
-        max_size=0, default_ttl=None, cache_file=temp_cache_file
-    )
+    cache = HybridCacheProvider(max_size=0, default_ttl=60, cache_file=temp_cache_file)
 
     await cache.set("key1", "value1")
     # With max_size=0, nothing should stay in cache
@@ -446,9 +438,7 @@ async def test_hybrid_cache_zero_max_size(temp_cache_file: str) -> None:
 @pytest.mark.asyncio
 async def test_hybrid_cache_max_size_one(temp_cache_file: str) -> None:
     """Test cache behavior with max_size=1."""
-    cache = HybridCacheProvider(
-        max_size=1, default_ttl=None, cache_file=temp_cache_file
-    )
+    cache = HybridCacheProvider(max_size=1, default_ttl=60, cache_file=temp_cache_file)
 
     await cache.set("key1", "value1")
     assert await cache.get("key1") == "value1"
