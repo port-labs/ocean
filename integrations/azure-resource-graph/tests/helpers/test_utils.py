@@ -1,4 +1,4 @@
-from azure_integration.helpers.utils import format_query
+from azure_integration.helpers.http import format_query
 
 
 def test_format_query_strips_quotes_and_whitespace() -> None:

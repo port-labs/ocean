@@ -7,6 +7,7 @@ from azure_integration.clients.rest.rest_client import AzureRestClient
 from azure_integration.clients.base import AzureRequest
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
+from azure_integration.helpers.http import DEFAULT_HTTP_REQUEST_TIMEOUT
 
 
 class AzureResourceGraphClient(AzureRestClient):
@@ -19,9 +20,14 @@ class AzureResourceGraphClient(AzureRestClient):
                 "Retry-After",
                 "x-ms-user-quota-resets-after",
             ],
-            retryable_methods=["GET", "POST"],
+            retryable_methods=[
+                "POST",
+                "GET",
+            ],
         )
-        return OceanAsyncClient(retry_config=retry_config)
+        return OceanAsyncClient(
+            retry_config=retry_config, timeout=DEFAULT_HTTP_REQUEST_TIMEOUT
+        )
 
     async def make_paginated_request(
         self,
