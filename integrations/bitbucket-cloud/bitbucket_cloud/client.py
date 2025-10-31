@@ -26,6 +26,8 @@ class BitbucketClient:
         host: str,
         username: Optional[str] = None,
         app_password: Optional[str] = None,
+        user_email: Optional[str] = None,
+        user_scoped_token: Optional[str] = None,
         workspace_token: Optional[str] = None,
     ) -> None:
         self.base_url = host
@@ -37,6 +39,8 @@ class BitbucketClient:
             username=username,
             app_password=app_password,
             workspace_token=workspace_token,
+            user_email=user_email,
+            user_scoped_token=user_scoped_token,
         )
 
         # Set headers from authentication
@@ -75,6 +79,10 @@ class BitbucketClient:
             host=ocean.integration_config["bitbucket_host_url"],
             username=ocean.integration_config.get("bitbucket_username"),
             app_password=ocean.integration_config.get("bitbucket_app_password"),
+            user_email=ocean.integration_config.get("bitbucket_user_email"),
+            user_scoped_token=ocean.integration_config.get(
+                "bitbucket_user_scoped_token"
+            ),
             workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
         )
 

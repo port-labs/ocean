@@ -25,7 +25,14 @@ configurations:
   - name: bitbucketAppPassword
     type: string
     sensitive: true
-    description: Bitbucket app password. Required if using username/app password authentication instead of workspace token. Can be created in the <a href="https://bitbucket.org/account/settings/app-passwords/" target="_blank">Bitbucket personal account settings</a>
+    description: To be deprecated in favor of User Scoped Token! Bitbucket app password. Required if using username/app password authentication instead of workspace token. Can be created in the <a href="https://bitbucket.org/account/settings/app-passwords/" target="_blank">Bitbucket personal account settings</a>
+  - name: bitbucketUserEmail
+    type: string
+    description: The email address of the Bitbucket user. Required if using user scoped token authentication. You can find your email address on your <a href="https://bitbucket.org/account/settings/" target="_blank">account settings</a> page.
+  - name: bitbucketUserScopedToken
+    type: string
+    sensitive: true
+    description: A secure token for accessing Bitbucket APIs on behalf of a specific user. Create one from the user settings. This is required if using email and user scoped token authentication.
   - name: bitbucketHostUrl
     type: string
     description: The root URL for Bitbucket’s REST API. Must include protocol and version (e.g. <a href="https://api.bitbucket.org/2.0" target="_blank">https://api.bitbucket.org/2.0</a>).
