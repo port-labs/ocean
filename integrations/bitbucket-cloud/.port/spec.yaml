@@ -32,7 +32,7 @@ configurations:
   - name: bitbucketUserScopedToken
     type: string
     sensitive: true
-    description: A secure token for accessing Bitbucket APIs on behalf of a specific user. Recommended for Bitbucket Cloud Premium users. Create one from the user settings. Refer to <a href="https://support.atlassian.com/bitbucket-cloud/docs/create-a-user-scoped-access-token/" target="_blank">this guide</a>. You can also provide multiple tokens separated by commas to rotate between them when rate limits are hit.
+    description: A secure token for accessing Bitbucket APIs on behalf of a specific user. Create one from the user settings. This is required if using email and user scoped token authentication.
   - name: bitbucketHostUrl
     type: string
     description: The root URL for Bitbucket’s REST API. Must include protocol and version (e.g. <a href="https://api.bitbucket.org/2.0" target="_blank">https://api.bitbucket.org/2.0</a>).
