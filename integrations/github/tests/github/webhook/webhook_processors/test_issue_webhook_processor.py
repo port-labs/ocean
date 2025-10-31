@@ -24,7 +24,7 @@ from github.core.options import SingleIssueOptions
 @pytest.fixture
 def resource_config() -> GithubIssueConfig:
     return GithubIssueConfig(
-        kind=ObjectKind.ISSUE,
+        kind="issue",
         selector=GithubIssueSelector(query=".pull_request == null", state="open"),
         port=PortResourceConfig(
             entity=MappingsConfig(

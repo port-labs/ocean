@@ -30,7 +30,7 @@ def pull_request_webhook_processor(
 @pytest.fixture
 def resource_config() -> GithubPullRequestConfig:
     return GithubPullRequestConfig(
-        kind=ObjectKind.PULL_REQUEST,
+        kind="pull-request",
         selector=GithubPullRequestSelector(
             query="true",
             states=["open"],

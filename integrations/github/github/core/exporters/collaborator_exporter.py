@@ -3,7 +3,6 @@ from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import (
     enrich_with_repository,
     parse_github_options,
-    sanitize_login,
 )
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
@@ -31,7 +30,6 @@ class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
         collaborator = response["user"]
-        collaborator["login"] = sanitize_login(collaborator["login"])
         return enrich_with_repository(collaborator, cast(str, repo_name))
 
     async def get_paginated_resources[
@@ -48,11 +46,6 @@ class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
             logger.info(
                 f"Fetched batch of {len(collaborators)} collaborators from repository {repo_name} from {organization}"
             )
-            # Sanitize login fields for all collaborators
-            collaborators = [
-                {**collaborator, "login": sanitize_login(collaborator["login"])}
-                for collaborator in collaborators
-            ]
 
             batch = [
                 enrich_with_repository(collaborator, cast(str, repo_name))

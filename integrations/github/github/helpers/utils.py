@@ -10,7 +10,6 @@ from typing import (
     Set,
     Tuple,
 )
-import re
 from loguru import logger
 from typing import TYPE_CHECKING
 
@@ -201,12 +200,3 @@ class IgnoredError(NamedTuple):
     status: int | str
     message: Optional[str] = None
     type: Optional[str] = None
-
-
-# sanitize .login fields containing [ or ] by replacing them with - when ingesting GitHub data.
-def sanitize_login(login: str) -> str:
-    sanitized = re.sub(r"\]\[", "-", login)
-    sanitized = re.sub(r"\[", "-", sanitized)
-    sanitized = re.sub(r"\](?=.)", "-", sanitized)
-    sanitized = re.sub(r"\]$", "", sanitized)
-    return sanitized

@@ -18,11 +18,9 @@ query OrgMemberQuery(
         after: $after
       ) {{
         nodes {{
-          ... on User {{
-            login
-            email
-            name
-          }}
+          login
+          email
+          name
         }}
         pageInfo {{
         ...PageInfoFields
@@ -32,7 +30,7 @@ query OrgMemberQuery(
 }}
 """
 
-LIST_ORG_MEMBER_WITH_BOTS_GQL = f"""
+LIST_ORG_MEMBER_WITHOUT_BOTS_GQL = f"""
 {PAGE_INFO_FRAGMENT}
 query OrgMemberQuery(
   $organization: String!
@@ -45,10 +43,11 @@ query OrgMemberQuery(
         after: $after
       ) {{
         nodes {{
-            __typename
-            login
-            email
-            name
+            ... on User {{
+              login
+              email
+              name
+            }}
         }}
         pageInfo {{
         ...PageInfoFields
