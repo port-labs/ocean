@@ -39,6 +39,8 @@ async def on_resync_subscription(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for subscriptions in subscription_exporter.get_paginated_resources(
         exporter_options
     ):
+        for sub in subscriptions:
+            logger.info(f"found resource {kind} with id {sub['id']}")
         yield subscriptions
 
 
@@ -76,7 +78,7 @@ async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if len(tasks) >= MAX_CONCURRENT_REQUESTS:
             async for results in stream_async_iterators_tasks(*tasks):
                 for result in results:
-                    logger.debug(f"found resource {kind} with id {result['id']}")
+                    logger.info(f"found resource {kind} with id {result['id']}")
                 yield results
             tasks.clear()
     if tasks:
