@@ -25,7 +25,10 @@ class HybridCacheProvider(CacheProvider):
     STORAGE_TYPE = CachingStorageMode.hybrid
 
     def __init__(
-        self, max_size=100, default_ttl=None, cache_file=DEFAULT_CACHE_FILE
+        self,
+        max_size: int = 100,
+        default_ttl: int = None,
+        cache_file: str = DEFAULT_CACHE_FILE,
     ) -> None:
         """
         Initialize the cache with optional disk persistence.
@@ -39,7 +42,7 @@ class HybridCacheProvider(CacheProvider):
         self.cache_file = cache_file
         self._load_from_disk()
 
-    def _load_from_disk(self):
+    def _load_from_disk(self) -> None:
         """Load cache from pickle file if it exists and is valid."""
         if not self.cache_file or not os.path.exists(self.cache_file):
             return
@@ -77,7 +80,7 @@ class HybridCacheProvider(CacheProvider):
                 f"Unexpected error loading cache: {e}. Starting fresh."
             )
 
-    def _save_to_disk(self):
+    def _save_to_disk(self) -> None:
         """Save cache to pickle file."""
         if not self.cache_file:
             return
@@ -117,10 +120,12 @@ class HybridCacheProvider(CacheProvider):
         self.cache.move_to_end(key)
         return value
 
-    async def set(self, key: str, value: Any) -> None:
+    async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
         """Set value with optional TTL. Evict least recently used if cache exceeds max_size."""
         timestamp = time.time()
-        self.cache[key] = (value, timestamp, self.default_ttl)
+        if ttl is None:
+            ttl = self.default_ttl
+        self.cache[key] = (value, timestamp, ttl)
         self.cache.move_to_end(key)
         if len(self.cache) > self.max_size:
             self.cache.popitem(last=False)
