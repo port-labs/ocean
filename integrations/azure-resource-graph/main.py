@@ -44,7 +44,6 @@ async def on_resync_subscription(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync()
 async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     if kind in KindWithSpecialHandling:
         return
 
@@ -76,6 +75,8 @@ async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         tasks.append(resource_graph_exporter.get_paginated_resources(exporter_options))
         if len(tasks) >= MAX_CONCURRENT_REQUESTS:
             async for results in stream_async_iterators_tasks(*tasks):
+                for result in results:
+                    logger.debug(f"found resource {kind} with id {result['id']}")
                 yield results
             tasks.clear()
     if tasks:
