@@ -24,6 +24,7 @@ from github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_p
 from github.webhook.webhook_processors.check_runs.file_validation import (
     ResourceConfigToPatternMapping,
 )
+from github.helpers.utils import ObjectKind
 
 
 class MockAsyncGenerator:
@@ -51,7 +52,7 @@ def checkrun_validator_webhook_processor(
 @pytest.fixture
 def pull_request_resource_config() -> GithubPullRequestConfig:
     return GithubPullRequestConfig(
-        kind="pull-request",
+        kind=ObjectKind.PULL_REQUEST,
         selector=GithubPullRequestSelector(
             query="true",
             states=["open"],

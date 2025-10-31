@@ -30,6 +30,33 @@ query OrgMemberQuery(
 }}
 """
 
+LIST_ORG_MEMBER_WITHOUT_BOTS_GQL = f"""
+{PAGE_INFO_FRAGMENT}
+query OrgMemberQuery(
+  $organization: String!
+  $first: Int = 25
+  $after: String
+) {{
+    organization(login: $organization) {{
+      membersWithRole(
+        first: $first
+        after: $after
+      ) {{
+        nodes {{
+            ... on User {{
+              login
+              email
+              name
+            }}
+        }}
+        pageInfo {{
+        ...PageInfoFields
+        }}
+      }}
+    }}
+}}
+"""
+
 FETCH_GITHUB_USER_GQL = """
         query ($login: String!) {
             user(login: $login) {

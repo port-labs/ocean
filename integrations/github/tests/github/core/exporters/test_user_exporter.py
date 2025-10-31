@@ -165,7 +165,6 @@ class TestGraphQLUserExporter:
             },
             {
                 "login": "user2",
-                "email": "user2@email.com",
             },
         ]
 
@@ -182,7 +181,7 @@ class TestGraphQLUserExporter:
 
                 users: list[list[dict[str, Any]]] = []
                 async for batch in exporter.get_paginated_resources(
-                    ListUserOptions(organization="test-org")
+                    ListUserOptions(organization="test-org", include_bots=True)
                 ):
                     users.append(batch)
 
