@@ -14,8 +14,6 @@ from port_ocean.log.sensetive import sensitive_log_filter
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
-
-ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG = "USE_PROVISIONED_DEFAULTS"
 INTEGRATION_POLLING_INTERVAL_INITIAL_SECONDS = 3
 INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR = 1.55
 INTEGRATION_POLLING_RETRY_LIMIT = 30
@@ -153,6 +151,7 @@ class IntegrationClientMixin:
         changelog_destination: dict[str, Any],
         port_app_config: Optional["PortAppConfig"] = None,
         create_port_resources_origin_in_port: Optional[bool] = False,
+        actions_processing_enabled: Optional[bool] = False,
     ) -> Dict[str, Any]:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
@@ -162,6 +161,7 @@ class IntegrationClientMixin:
             "version": self.integration_version,
             "changelogDestination": changelog_destination,
             "config": {},
+            "actionsProcessingEnabled": actions_processing_enabled,
         }
 
         query_params = {}
@@ -190,6 +190,7 @@ class IntegrationClientMixin:
         _type: str | None = None,
         changelog_destination: dict[str, Any] | None = None,
         port_app_config: Optional["PortAppConfig"] = None,
+        actions_processing_enabled: Optional[bool] = False,
     ) -> dict:
         logger.info(f"Updating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
@@ -200,6 +201,8 @@ class IntegrationClientMixin:
             json["changelogDestination"] = changelog_destination
         if port_app_config:
             json["config"] = port_app_config.to_request()
+
+        json["actionsProcessingEnabled"] = actions_processing_enabled
         json["version"] = self.integration_version
 
         response = await self.client.patch(
