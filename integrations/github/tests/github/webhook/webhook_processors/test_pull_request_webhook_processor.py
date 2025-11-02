@@ -31,7 +31,10 @@ def pull_request_webhook_processor(
 def resource_config() -> GithubPullRequestConfig:
     return GithubPullRequestConfig(
         kind="pull-request",
-        selector=GithubPullRequestSelector(query="true", state="open"),
+        selector=GithubPullRequestSelector(
+            query="true",
+            states=["open"],
+        ),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -110,44 +113,41 @@ class TestPullRequestWebhookProcessor:
         assert await pull_request_webhook_processor._validate_payload(payload) is False
 
     @pytest.mark.parametrize(
-        "selector_state,action,expected_update,expected_delete",
+        "selector_states,action,expected_update,expected_delete",
         [
-            ("open", "opened", True, False),
-            ("open", "closed", False, True),
-            ("closed", "opened", True, False),
-            ("closed", "closed", True, False),
-            ("all", "opened", True, False),
-            ("all", "closed", True, False),
+            (["open"], "opened", True, False),  # open allowed
+            (["open"], "closed", False, True),  # closed not in states → delete
+            (["closed"], "opened", True, False),  # still update if opened
+            (["closed"], "closed", True, False),  # closed allowed → update
+            (["open", "closed"], "closed", True, False),  # both allowed → update
         ],
     )
-    async def test_handle_event_with_selector_state(
+    async def test_handle_event_with_selector_states(
         self,
-        selector_state: Literal["open", "closed", "all"],
+        selector_states: list[Literal["open", "closed"]],
         action: str,
         expected_update: bool,
         expected_delete: bool,
         resource_config: GithubPullRequestConfig,
         pull_request_webhook_processor: PullRequestWebhookProcessor,
     ) -> None:
-        # Configure resource_config with the specified selector state
-        resource_config.selector.state = selector_state
+        resource_config.selector.states = selector_states
 
-        # Test pull request data
         pr_data = {
             "id": 1,
             "number": 101,
             "title": "Test PR",
             "state": "open" if action == "opened" else "closed",
         }
-
         repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
+        payload = {
+            "action": action,
+            "pull_request": pr_data,
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
 
-        payload = {"action": action, "pull_request": pr_data, "repository": repo_data}
-
-        # Create updated PR data that would be returned by the exporter
         updated_pr_data = {**pr_data, "additional_data": "from_api"}
-
-        # Mock the exporter
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = updated_pr_data
 
@@ -159,17 +159,17 @@ class TestPullRequestWebhookProcessor:
                 payload, resource_config
             )
 
-            # Verify results based on expected behavior
             assert isinstance(result, WebhookEventRawResults)
 
             if expected_update:
                 assert result.updated_raw_results == [updated_pr_data]
                 assert result.deleted_raw_results == []
                 mock_exporter.get_resource.assert_called_once_with(
-                    SinglePullRequestOptions(repo_name="test-repo", pr_number=101)
+                    SinglePullRequestOptions(
+                        organization="test-org", repo_name="test-repo", pr_number=101
+                    )
                 )
             elif expected_delete:
                 assert result.updated_raw_results == []
                 assert result.deleted_raw_results == [pr_data]
-                # Should not call get_resource when deleting
                 mock_exporter.get_resource.assert_not_called()

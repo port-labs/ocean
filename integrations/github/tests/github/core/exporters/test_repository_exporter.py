@@ -26,6 +26,19 @@ TEST_REPOS = [
     },
 ]
 
+TEST_COLLABORATORS = [
+    {
+        "id": 101,
+        "login": "user1",
+        "type": "User",
+    },
+    {
+        "id": 102,
+        "login": "user2",
+        "type": "User",
+    },
+]
+
 
 @pytest.mark.asyncio
 class TestRestRepositoryExporter:
@@ -41,12 +54,14 @@ class TestRestRepositoryExporter:
             rest_client, "send_api_request", new_callable=AsyncMock
         ) as mock_request:
             mock_request.return_value = mock_response.json()
-            repo = await exporter.get_resource(SingleRepositoryOptions(name="repo1"))
+            repo = await exporter.get_resource(
+                SingleRepositoryOptions(organization="test-org", name="repo1")
+            )
 
             assert repo == TEST_REPOS[0]
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1"
+                f"{rest_client.base_url}/repos/test-org/repo1"
             )
 
     async def test_get_paginated_resources(
@@ -63,7 +78,7 @@ class TestRestRepositoryExporter:
         ) as mock_request:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
-                    type=mock_port_app_config.repository_type
+                    organization="test-org", type=mock_port_app_config.repository_type
                 )
                 exporter = RestRepositoryExporter(rest_client)
 
@@ -76,6 +91,69 @@ class TestRestRepositoryExporter:
                 assert repos[0] == TEST_REPOS
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/orgs/{rest_client.organization}/repos",
+                    f"{rest_client.base_url}/orgs/test-org/repos",
                     {"type": "all"},
                 )
+
+    async def test_get_paginated_resources_with_included_relationships(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        # Create a mock that returns different data based on the URL
+        async def mock_paginated_request(
+            url: str, *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            if "collaborators" in url:
+                yield TEST_COLLABORATORS
+            else:
+                yield TEST_REPOS
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    type=mock_port_app_config.repository_type,
+                    included_relationships=["collaborators"],
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(repos) == 1
+                assert len(repos[0]) == 2
+
+                # Verify that repositories are enriched with collaborators
+                for repo in repos[0]:
+                    assert "__collaborators" in repo
+                    assert repo["__collaborators"] == TEST_COLLABORATORS
+                    # Verify original repository data is preserved
+                    assert "id" in repo
+                    assert "name" in repo
+                    assert "full_name" in repo
+                    assert "description" in repo
+
+                # Verify the main repository request was called
+                mock_request.assert_any_call(
+                    f"{rest_client.base_url}/orgs/test-org/repos",
+                    {"type": "all", "included_relationships": ["collaborators"]},
+                )
+
+                # Verify collaborator requests were called for each repository
+                expected_collaborator_calls: list[tuple[str, dict[str, Any]]] = [
+                    (
+                        f"{rest_client.base_url}/repos/test-org/repo1/collaborators",
+                        {},
+                    ),
+                    (
+                        f"{rest_client.base_url}/repos/test-org/repo2/collaborators",
+                        {},
+                    ),
+                ]
+
+                # Should have 3 total calls: 1 for repositories + 2 for collaborators
+                assert mock_request.call_count == 3
+                mock_request.assert_any_call(*expected_collaborator_calls[0])
+                mock_request.assert_any_call(*expected_collaborator_calls[1])

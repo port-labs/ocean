@@ -20,6 +20,7 @@ query OrgMemberQuery(
         nodes {{
           login
           email
+          name
         }}
         pageInfo {{
         ...PageInfoFields
@@ -34,6 +35,7 @@ FETCH_GITHUB_USER_GQL = """
             user(login: $login) {
                 login
                 email
+                name
             }
         }
         """
@@ -61,6 +63,8 @@ query getTeamMembers(
         members(first: $memberFirst, after: $memberAfter){{
           nodes{{
             login
+            name
+            email
             isSiteAdmin
           }}
 
@@ -77,36 +81,57 @@ query getTeamMembers(
 }}
 """
 
+
+TEAM_FIELDS_FRAGMENT = """
+fragment TeamFields on Team {
+  slug
+  id
+  name
+  description
+  privacy
+  notificationSetting
+  url
+}
+"""
+
+
+TEAM_MEMBER_FRAGMENT = """
+fragment TeamMemberFields on Team {
+  members(first: $memberFirst, after: $memberAfter) {
+    nodes {
+      id
+      login
+      name
+      isSiteAdmin
+    }
+    pageInfo {
+      ...PageInfoFields
+    }
+  }
+}
+"""
+
+
 FETCH_TEAM_WITH_MEMBERS_GQL = f"""
 {PAGE_INFO_FRAGMENT}
+{TEAM_FIELDS_FRAGMENT}
+{TEAM_MEMBER_FRAGMENT}
+
 query getTeam(
-    $organization: String!,
-    $slug: String!,
-    $memberFirst: Int = 25,
-    $memberAfter: String
+  $organization: String!,
+  $slug: String!,
+  $memberFirst: Int = 25,
+  $memberAfter: String
 ) {{
   organization(login: $organization) {{
     team(slug: $slug) {{
-      slug
-      id
-      name
-      description
-      privacy
-      notificationSetting
-      url
-      members(first: $memberFirst, after: $memberAfter) {{
-        nodes {{
-          login
-          isSiteAdmin
-        }}
-        pageInfo {{
-          ...PageInfoFields
-        }}
-      }}
+      ...TeamFields
+      ...TeamMemberFields
     }}
   }}
 }}
 """
+
 
 LIST_EXTERNAL_IDENTITIES_GQL = f"""
     {PAGE_INFO_FRAGMENT}
@@ -138,4 +163,61 @@ LIST_EXTERNAL_IDENTITIES_GQL = f"""
         }}
       }}
     }}
+"""
+
+REPOSITORY_FRAGMENT = """
+fragment RepositoryFields on Repository {
+  id
+  name
+  nameWithOwner
+  description
+  url
+  homepageUrl
+  isPrivate
+  createdAt
+  updatedAt
+  pushedAt
+  defaultBranchRef { name }
+  primaryLanguage { name }
+  visibility
+}
+"""
+
+
+TEAM_REPOSITORY_FRAGMENT = """
+fragment TeamRepositoryFields on Team {
+  repositories(first: $repoFirst, after: $repoAfter) {
+    nodes {
+      ...RepositoryFields
+    }
+    pageInfo {
+      ...PageInfoFields
+    }
+  }
+}
+"""
+
+SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL = f"""
+{PAGE_INFO_FRAGMENT}
+{TEAM_FIELDS_FRAGMENT}
+{TEAM_MEMBER_FRAGMENT}
+{REPOSITORY_FRAGMENT}
+{TEAM_REPOSITORY_FRAGMENT}
+
+query getTeamWithMembersAndRepos(
+  $organization: String!,
+  $slug: String!,
+  $memberFirst: Int = 50,
+  $memberAfter: String,
+  $repoFirst: Int = 25,
+  $repoAfter: String
+) {{
+  organization(login: $organization) {{
+    team(slug: $slug) {{
+      ...TeamFields
+      ...TeamMemberFields
+      ...TeamRepositoryFields
+    }}
+  }}
+}}
 """

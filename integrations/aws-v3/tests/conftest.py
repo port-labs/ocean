@@ -126,7 +126,7 @@ def mock_aws_config() -> Dict[str, Any]:
 def mock_multi_account_config() -> Dict[str, Any]:
     """Mocks multi-account AWS configuration."""
     return {
-        "account_role_arn": [
+        "account_role_arns": [
             "arn:aws:iam::123456789012:role/test-role-1",
             "arn:aws:iam::987654321098:role/test-role-2",
         ],

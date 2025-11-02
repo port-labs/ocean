@@ -1,5 +1,5 @@
 import copy
-from typing import Any, AsyncGenerator, Iterator
+from typing import Any, AsyncGenerator, Dict, Iterator
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
@@ -14,7 +14,9 @@ from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.team_exporter import (
     RestTeamExporter,
     GraphQLTeamWithMembersExporter,
+    GraphQLTeamMembersAndReposExporter,
 )
+from github.core.options import ListTeamOptions
 from integration import GithubPortAppConfig
 from port_ocean.context.event import event_context
 from github.core.options import SingleTeamOptions
@@ -22,6 +24,7 @@ from github.core.options import SingleTeamOptions
 from github.helpers.gql_queries import (
     LIST_TEAM_MEMBERS_GQL,
     FETCH_TEAM_WITH_MEMBERS_GQL,
+    SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL,
 )
 
 
@@ -73,12 +76,14 @@ class TestRestTeamExporter:
         with patch.object(
             rest_client, "send_api_request", return_value=TEST_TEAMS[0]
         ) as mock_request:
-            team = await exporter.get_resource(SingleTeamOptions(slug="team-alpha"))
+            team = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-alpha")
+            )
 
             assert team == TEST_TEAMS[0]
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/orgs/{rest_client.organization}/teams/team-alpha"
+                f"{rest_client.base_url}/orgs/test-org/teams/team-alpha"
             )
 
     async def test_get_paginated_resources(self, rest_client: GithubRestClient) -> None:
@@ -95,7 +100,10 @@ class TestRestTeamExporter:
                 exporter = RestTeamExporter(rest_client)
 
                 teams: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources()
+                    batch
+                    async for batch in exporter.get_paginated_resources(
+                        ListTeamOptions(organization="test-org")
+                    )
                 ]
 
                 assert len(teams) == 1
@@ -103,7 +111,7 @@ class TestRestTeamExporter:
                 assert teams[0] == TEST_TEAMS
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/orgs/{rest_client.organization}/teams"
+                    f"{rest_client.base_url}/orgs/test-org/teams"
                 )
 
 
@@ -111,6 +119,7 @@ MEMBER_PAGE_SIZE_IN_EXPORTER = 10
 
 TEAM_ALPHA_MEMBERS_PAGE1_NODES = [
     {
+        "id": f"MEMBER_ALPHA_{i + 1}",
         "login": f"member_alpha_{i + 1}",
         "email": f"member_alpha_{i + 1}@example.com",
         "isSiteAdmin": False,
@@ -124,6 +133,7 @@ TEAM_ALPHA_MEMBERS_PAGE1_PAGEINFO = {
 
 TEAM_ALPHA_MEMBERS_PAGE2_NODES = [
     {
+        "id": "MEMBER_ALPHA_LAST",
         "login": "member_alpha_last",
         "email": "member_alpha_last@example.com",
         "isSiteAdmin": False,
@@ -167,6 +177,7 @@ TEAM_ALPHA_RESOLVED = {
 # Team Beta - No member pagination needed for this example
 TEAM_BETA_MEMBER_NODES = [
     {
+        "id": "MEMBER_BETA_1",
         "login": "member_beta_1",
         "email": "member_beta_1@example.com",
         "isSiteAdmin": True,
@@ -249,7 +260,9 @@ class TestGraphQLTeamExporter:
         with patch.object(
             graphql_client, "send_api_request", new=mock_send_api_request
         ):
-            team = await exporter.get_resource(SingleTeamOptions(slug="team-alpha"))
+            team = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-alpha")
+            )
 
             assert team == TEAM_ALPHA_RESOLVED
             assert mock_send_api_request.call_count == 2
@@ -257,7 +270,7 @@ class TestGraphQLTeamExporter:
             call_args_initial = mock_send_api_request.call_args_list[0]
             expected_variables_initial = {
                 "slug": "team-alpha",
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
             }
             expected_payload_initial = graphql_client.build_graphql_payload(
@@ -271,7 +284,7 @@ class TestGraphQLTeamExporter:
             call_args_page2 = mock_send_api_request.call_args_list[1]
             expected_variables_page2 = {
                 "slug": "team-alpha",
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
                 "memberAfter": TEAM_ALPHA_MEMBERS_PAGE1_PAGEINFO["endCursor"],
             }
@@ -296,7 +309,9 @@ class TestGraphQLTeamExporter:
             "send_api_request",
             new=AsyncMock(return_value=mock_response_data),
         ) as mock_request:
-            team = await exporter.get_resource(SingleTeamOptions(slug="team-beta"))
+            team = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-beta")
+            )
 
             assert team == TEAM_BETA_RESOLVED
             mock_request.assert_called_once()
@@ -330,7 +345,10 @@ class TestGraphQLTeamExporter:
             ) as mock_exporter_fetch_members,
         ):
             result_batches: list[list[dict[str, Any]]] = [
-                batch async for batch in exporter.get_paginated_resources()
+                batch
+                async for batch in exporter.get_paginated_resources(
+                    ListTeamOptions(organization="test-org")
+                )
             ]
 
             assert len(result_batches) == 1
@@ -341,7 +359,7 @@ class TestGraphQLTeamExporter:
 
             # Assert send_paginated_request (for teams) was called correctly
             expected_variables_for_teams_fetch = {
-                "organization": graphql_client.organization,
+                "organization": "test-org",
                 "__path": "organization.teams",
                 "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
             }
@@ -351,8 +369,713 @@ class TestGraphQLTeamExporter:
 
             # Assert fetch_other_members was called for Team Alpha
             mock_exporter_fetch_members.assert_called_once_with(
+                organization="test-org",
                 team_slug="team-alpha",
                 initial_members_page_info=TEAM_ALPHA_MEMBERS_PAGE1_PAGEINFO,
                 initial_member_nodes=TEAM_ALPHA_MEMBERS_PAGE1_NODES,
                 member_page_size=MEMBER_PAGE_SIZE_IN_EXPORTER,
             )
+
+
+class TestGraphQLTeamMembersAndReposExporter:
+
+    @pytest.fixture(autouse=True)
+    def patch_page_size(self) -> Iterator[None]:
+        with patch.object(
+            GraphQLTeamMembersAndReposExporter,
+            "PAGE_SIZE",
+            MEMBER_PAGE_SIZE_IN_EXPORTER,
+        ):
+            yield
+
+    async def test_get_team_member_repositories_no_pagination(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        """Test get_team_member_repositories when no pagination is needed."""
+        team_with_members_and_repos: Dict[str, Any] = {
+            "id": "T_GAMMA",
+            "slug": "team-gamma",
+            "name": "Team Gamma",
+            "description": "Gamma team with members and repos",
+            "privacy": "VISIBLE",
+            "notificationSetting": "NOTIFICATIONS_ENABLED",
+            "url": "https://github.com/org/test-org/teams/team-gamma",
+            "members": {
+                "nodes": [
+                    {
+                        "id": "MEMBER_GAMMA_1",
+                        "login": "member_gamma_1",
+                        "email": "member_gamma_1@example.com",
+                        "isSiteAdmin": False,
+                    }
+                ],
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+            },
+            "repositories": {
+                "nodes": [
+                    {
+                        "id": "R_GAMMA_1",
+                        "name": "repo-gamma-1",
+                        "nameWithOwner": "test-org/repo-gamma-1",
+                        "description": "First gamma repository",
+                        "url": "https://github.com/test-org/repo-gamma-1",
+                        "homepageUrl": None,
+                        "isPrivate": False,
+                        "createdAt": "2023-01-01T00:00:00Z",
+                        "updatedAt": "2023-01-02T00:00:00Z",
+                        "pushedAt": "2023-01-03T00:00:00Z",
+                        "defaultBranchRef": {"name": "main"},
+                        "primaryLanguage": {"name": "Python"},
+                        "visibility": "PUBLIC",
+                    }
+                ],
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+            },
+        }
+
+        expected_result = {
+            "id": "T_GAMMA",
+            "slug": "team-gamma",
+            "name": "Team Gamma",
+            "description": "Gamma team with members and repos",
+            "privacy": "VISIBLE",
+            "notificationSetting": "NOTIFICATIONS_ENABLED",
+            "url": "https://github.com/org/test-org/teams/team-gamma",
+            "members": {"nodes": team_with_members_and_repos["members"]["nodes"]},
+            "repositories": {
+                "nodes": team_with_members_and_repos["repositories"]["nodes"]
+            },
+        }
+
+        mock_response_data = copy.deepcopy(
+            {"data": {"organization": {"team": team_with_members_and_repos}}}
+        )
+
+        exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
+        with patch.object(
+            graphql_client,
+            "send_api_request",
+            new=AsyncMock(return_value=mock_response_data),
+        ) as mock_request:
+            result = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-gamma")
+            )
+
+            assert result == expected_result
+            mock_request.assert_called_once()
+
+            # Verify the GraphQL payload
+            call_args = mock_request.call_args
+            expected_variables = {
+                "slug": "team-gamma",
+                "organization": "test-org",
+                "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "memberAfter": None,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "repoAfter": None,
+            }
+            expected_payload = graphql_client.build_graphql_payload(
+                query=SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL,
+                variables=expected_variables,
+            )
+            assert call_args[0][0] == graphql_client.base_url
+            assert call_args[1]["method"] == "POST"
+            assert call_args[1]["json_data"] == expected_payload
+
+    async def test_get_team_member_repositories_with_member_pagination(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        """Test get_team_member_repositories when member pagination is needed."""
+        # First page response
+        team_page1: Dict[str, Any] = {
+            "id": "T_DELTA",
+            "slug": "team-delta",
+            "name": "Team Delta",
+            "description": "Delta team with paginated members",
+            "privacy": "SECRET",
+            "notificationSetting": "NOTIFICATIONS_DISABLED",
+            "url": "https://github.com/org/test-org/teams/team-delta",
+            "members": {
+                "nodes": [
+                    {
+                        "id": f"MEMBER_DELTA_{i + 1}",
+                        "login": f"member_delta_{i + 1}",
+                        "email": f"member_delta_{i + 1}@example.com",
+                        "isSiteAdmin": False,
+                    }
+                    for i in range(MEMBER_PAGE_SIZE_IN_EXPORTER)
+                ],
+                "pageInfo": {
+                    "hasNextPage": True,
+                    "endCursor": "cursor_delta_members_p1",
+                },
+            },
+            "repositories": {
+                "nodes": [
+                    {
+                        "id": "R_DELTA_1",
+                        "name": "repo-delta-1",
+                        "nameWithOwner": "test-org/repo-delta-1",
+                        "description": "First delta repository",
+                        "url": "https://github.com/test-org/repo-delta-1",
+                        "homepageUrl": None,
+                        "isPrivate": True,
+                        "createdAt": "2023-01-01T00:00:00Z",
+                        "updatedAt": "2023-01-02T00:00:00Z",
+                        "pushedAt": "2023-01-03T00:00:00Z",
+                        "defaultBranchRef": {"name": "main"},
+                        "primaryLanguage": {"name": "JavaScript"},
+                        "visibility": "PRIVATE",
+                    }
+                ],
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+            },
+        }
+
+        # Second page response (only members part is crucial)
+        team_page2: Dict[str, Any] = {
+            "id": "T_DELTA",
+            "slug": "team-delta",
+            "name": "Team Delta",
+            "description": "Delta team with paginated members",
+            "privacy": "SECRET",
+            "notificationSetting": "NOTIFICATIONS_DISABLED",
+            "url": "https://github.com/org/test-org/teams/team-delta",
+            "members": {
+                "nodes": [
+                    {
+                        "id": "MEMBER_DELTA_LAST",
+                        "login": "member_delta_last",
+                        "email": "member_delta_last@example.com",
+                        "isSiteAdmin": True,
+                    }
+                ],
+                "pageInfo": {
+                    "hasNextPage": False,
+                    "endCursor": "cursor_delta_members_p2",
+                },
+            },
+            "repositories": {
+                "nodes": [],
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+            },
+        }
+
+        all_members = list(team_page1["members"]["nodes"]) + list(
+            team_page2["members"]["nodes"]
+        )
+        all_repos = list(team_page1["repositories"]["nodes"])
+
+        expected_result = {
+            "id": "T_DELTA",
+            "slug": "team-delta",
+            "name": "Team Delta",
+            "description": "Delta team with paginated members",
+            "privacy": "SECRET",
+            "notificationSetting": "NOTIFICATIONS_DISABLED",
+            "url": "https://github.com/org/test-org/teams/team-delta",
+            "members": {"nodes": all_members},
+            "repositories": {"nodes": all_repos},
+        }
+
+        mock_send_api_request = AsyncMock(
+            side_effect=[
+                copy.deepcopy({"data": {"organization": {"team": team_page1}}}),
+                copy.deepcopy({"data": {"organization": {"team": team_page2}}}),
+            ]
+        )
+
+        exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
+        with patch.object(
+            graphql_client, "send_api_request", new=mock_send_api_request
+        ):
+            result = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-delta")
+            )
+
+            assert result == expected_result
+            assert mock_send_api_request.call_count == 2
+
+            # Verify first call
+            call_args_1 = mock_send_api_request.call_args_list[0]
+            expected_variables_1 = {
+                "slug": "team-delta",
+                "organization": "test-org",
+                "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "memberAfter": None,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "repoAfter": None,
+            }
+            expected_payload_1 = graphql_client.build_graphql_payload(
+                query=SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL,
+                variables=expected_variables_1,
+            )
+            assert call_args_1[0][0] == graphql_client.base_url
+            assert call_args_1[1]["method"] == "POST"
+            assert call_args_1[1]["json_data"] == expected_payload_1
+
+            # Verify second call
+            call_args_2 = mock_send_api_request.call_args_list[1]
+            expected_variables_2 = {
+                "slug": "team-delta",
+                "organization": "test-org",
+                "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "memberAfter": "cursor_delta_members_p1",
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "repoAfter": None,
+            }
+            expected_payload_2 = graphql_client.build_graphql_payload(
+                query=SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL,
+                variables=expected_variables_2,
+            )
+            assert call_args_2[0][0] == graphql_client.base_url
+            assert call_args_2[1]["method"] == "POST"
+            assert call_args_2[1]["json_data"] == expected_payload_2
+
+    async def test_get_team_member_repositories_with_repo_pagination(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        """Test get_team_member_repositories when repository pagination is needed."""
+        # First page response
+        team_page1: Dict[str, Any] = {
+            "id": "T_EPSILON",
+            "slug": "team-epsilon",
+            "name": "Team Epsilon",
+            "description": "Epsilon team with paginated repos",
+            "privacy": "VISIBLE",
+            "notificationSetting": "NOTIFICATIONS_ENABLED",
+            "url": "https://github.com/org/test-org/teams/team-epsilon",
+            "members": {
+                "nodes": [
+                    {
+                        "id": "MEMBER_EPSILON_1",
+                        "login": "member_epsilon_1",
+                        "email": "member_epsilon_1@example.com",
+                        "isSiteAdmin": False,
+                    }
+                ],
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+            },
+            "repositories": {
+                "nodes": [
+                    {
+                        "id": "R_EPSILON_1",
+                        "name": "repo-epsilon-1",
+                        "nameWithOwner": "test-org/repo-epsilon-1",
+                        "description": "First epsilon repository",
+                        "url": "https://github.com/test-org/repo-epsilon-1",
+                        "homepageUrl": None,
+                        "isPrivate": False,
+                        "createdAt": "2023-01-01T00:00:00Z",
+                        "updatedAt": "2023-01-02T00:00:00Z",
+                        "pushedAt": "2023-01-03T00:00:00Z",
+                        "defaultBranchRef": {"name": "main"},
+                        "primaryLanguage": {"name": "Python"},
+                        "visibility": "PUBLIC",
+                    },
+                    {
+                        "id": "R_EPSILON_2",
+                        "name": "repo-epsilon-2",
+                        "nameWithOwner": "test-org/repo-epsilon-2",
+                        "description": "Second epsilon repository",
+                        "url": "https://github.com/test-org/repo-epsilon-2",
+                        "homepageUrl": None,
+                        "isPrivate": True,
+                        "createdAt": "2023-01-04T00:00:00Z",
+                        "updatedAt": "2023-01-05T00:00:00Z",
+                        "pushedAt": "2023-01-06T00:00:00Z",
+                        "defaultBranchRef": {"name": "develop"},
+                        "primaryLanguage": {"name": "TypeScript"},
+                        "visibility": "PRIVATE",
+                    },
+                ],
+                "pageInfo": {
+                    "hasNextPage": True,
+                    "endCursor": "cursor_epsilon_repos_p1",
+                },
+            },
+        }
+
+        # Second page response (only repos part is crucial)
+        team_page2: Dict[str, Any] = {
+            "id": "T_EPSILON",
+            "slug": "team-epsilon",
+            "name": "Team Epsilon",
+            "description": "Epsilon team with paginated repos",
+            "privacy": "VISIBLE",
+            "notificationSetting": "NOTIFICATIONS_ENABLED",
+            "url": "https://github.com/org/test-org/teams/team-epsilon",
+            "members": {
+                "nodes": [
+                    {
+                        "id": "MEMBER_EPSILON_1",
+                        "login": "member_epsilon_1",
+                        "email": "member_epsilon_1@example.com",
+                        "isSiteAdmin": False,
+                    }
+                ],
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+            },
+            "repositories": {
+                "nodes": [
+                    {
+                        "id": "R_EPSILON_3",
+                        "name": "repo-epsilon-3",
+                        "nameWithOwner": "test-org/repo-epsilon-3",
+                        "description": "Third epsilon repository",
+                        "url": "https://github.com/test-org/repo-epsilon-3",
+                        "homepageUrl": None,
+                        "isPrivate": False,
+                        "createdAt": "2023-01-07T00:00:00Z",
+                        "updatedAt": "2023-01-08T00:00:00Z",
+                        "pushedAt": "2023-01-09T00:00:00Z",
+                        "defaultBranchRef": {"name": "main"},
+                        "primaryLanguage": {"name": "Go"},
+                        "visibility": "PUBLIC",
+                    }
+                ],
+                "pageInfo": {
+                    "hasNextPage": False,
+                    "endCursor": "cursor_epsilon_repos_p2",
+                },
+            },
+        }
+
+        all_members = list(team_page1["members"]["nodes"])
+        all_repos = list(team_page1["repositories"]["nodes"]) + list(
+            team_page2["repositories"]["nodes"]
+        )
+
+        expected_result = {
+            "id": "T_EPSILON",
+            "slug": "team-epsilon",
+            "name": "Team Epsilon",
+            "description": "Epsilon team with paginated repos",
+            "privacy": "VISIBLE",
+            "notificationSetting": "NOTIFICATIONS_ENABLED",
+            "url": "https://github.com/org/test-org/teams/team-epsilon",
+            "members": {"nodes": all_members},
+            "repositories": {"nodes": all_repos},
+        }
+
+        mock_send_api_request = AsyncMock(
+            side_effect=[
+                copy.deepcopy({"data": {"organization": {"team": team_page1}}}),
+                copy.deepcopy({"data": {"organization": {"team": team_page2}}}),
+            ]
+        )
+
+        exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
+        with patch.object(
+            graphql_client, "send_api_request", new=mock_send_api_request
+        ):
+            result = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-epsilon")
+            )
+
+            assert result == expected_result
+            assert mock_send_api_request.call_count == 2
+
+            # Verify first call
+            call_args_1 = mock_send_api_request.call_args_list[0]
+            expected_variables_1 = {
+                "slug": "team-epsilon",
+                "organization": "test-org",
+                "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "memberAfter": None,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "repoAfter": None,
+            }
+            expected_payload_1 = graphql_client.build_graphql_payload(
+                query=SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL,
+                variables=expected_variables_1,
+            )
+            assert call_args_1[0][0] == graphql_client.base_url
+            assert call_args_1[1]["method"] == "POST"
+            assert call_args_1[1]["json_data"] == expected_payload_1
+
+            # Verify second call
+            call_args_2 = mock_send_api_request.call_args_list[1]
+            expected_variables_2 = {
+                "slug": "team-epsilon",
+                "organization": "test-org",
+                "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "memberAfter": None,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "repoAfter": "cursor_epsilon_repos_p1",
+            }
+            expected_payload_2 = graphql_client.build_graphql_payload(
+                query=SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL,
+                variables=expected_variables_2,
+            )
+            assert call_args_2[0][0] == graphql_client.base_url
+            assert call_args_2[1]["method"] == "POST"
+            assert call_args_2[1]["json_data"] == expected_payload_2
+
+    async def test_get_team_member_repositories_with_both_paginations(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        """Test get_team_member_repositories when both member and repo pagination are needed."""
+        # First page response
+        team_page1: Dict[str, Any] = {
+            "id": "T_ZETA",
+            "slug": "team-zeta",
+            "name": "Team Zeta",
+            "description": "Zeta team with both paginations",
+            "privacy": "SECRET",
+            "notificationSetting": "NOTIFICATIONS_DISABLED",
+            "url": "https://github.com/org/test-org/teams/team-zeta",
+            "members": {
+                "nodes": [
+                    {
+                        "id": f"MEMBER_ZETA_{i + 1}",
+                        "login": f"member_zeta_{i + 1}",
+                        "email": f"member_zeta_{i + 1}@example.com",
+                        "isSiteAdmin": False,
+                    }
+                    for i in range(MEMBER_PAGE_SIZE_IN_EXPORTER)
+                ],
+                "pageInfo": {
+                    "hasNextPage": True,
+                    "endCursor": "cursor_zeta_members_p1",
+                },
+            },
+            "repositories": {
+                "nodes": [
+                    {
+                        "id": "R_ZETA_1",
+                        "name": "repo-zeta-1",
+                        "nameWithOwner": "test-org/repo-zeta-1",
+                        "description": "First zeta repository",
+                        "url": "https://github.com/test-org/repo-zeta-1",
+                        "homepageUrl": None,
+                        "isPrivate": False,
+                        "createdAt": "2023-01-01T00:00:00Z",
+                        "updatedAt": "2023-01-02T00:00:00Z",
+                        "pushedAt": "2023-01-03T00:00:00Z",
+                        "defaultBranchRef": {"name": "main"},
+                        "primaryLanguage": {"name": "Python"},
+                        "visibility": "PUBLIC",
+                    },
+                    {
+                        "id": "R_ZETA_2",
+                        "name": "repo-zeta-2",
+                        "nameWithOwner": "test-org/repo-zeta-2",
+                        "description": "Second zeta repository",
+                        "url": "https://github.com/test-org/repo-zeta-2",
+                        "homepageUrl": None,
+                        "isPrivate": True,
+                        "createdAt": "2023-01-04T00:00:00Z",
+                        "updatedAt": "2023-01-05T00:00:00Z",
+                        "pushedAt": "2023-01-06T00:00:00Z",
+                        "defaultBranchRef": {"name": "develop"},
+                        "primaryLanguage": {"name": "TypeScript"},
+                        "visibility": "PRIVATE",
+                    },
+                ],
+                "pageInfo": {"hasNextPage": True, "endCursor": "cursor_zeta_repos_p1"},
+            },
+        }
+
+        # Second page response (continue with member pagination)
+        team_page2: Dict[str, Any] = {
+            "id": "T_ZETA",
+            "slug": "team-zeta",
+            "name": "Team Zeta",
+            "description": "Zeta team with both paginations",
+            "privacy": "SECRET",
+            "notificationSetting": "NOTIFICATIONS_DISABLED",
+            "url": "https://github.com/org/test-org/teams/team-zeta",
+            "members": {
+                "nodes": [
+                    {
+                        "id": "MEMBER_ZETA_LAST",
+                        "login": "member_zeta_last",
+                        "email": "member_zeta_last@example.com",
+                        "isSiteAdmin": True,
+                    }
+                ],
+                "pageInfo": {
+                    "hasNextPage": False,
+                    "endCursor": "cursor_zeta_members_p2",
+                },
+            },
+            "repositories": {
+                "nodes": [],
+                "pageInfo": {"hasNextPage": True, "endCursor": "cursor_zeta_repos_p1"},
+            },
+        }
+
+        # Third page response (continue with repo pagination)
+        team_page3: Dict[str, Any] = {
+            "id": "T_ZETA",
+            "slug": "team-zeta",
+            "name": "Team Zeta",
+            "description": "Zeta team with both paginations",
+            "privacy": "SECRET",
+            "notificationSetting": "NOTIFICATIONS_DISABLED",
+            "url": "https://github.com/org/test-org/teams/team-zeta",
+            "members": {
+                "nodes": [
+                    {
+                        "id": "MEMBER_ZETA_LAST",
+                        "login": "member_zeta_last",
+                        "email": "member_zeta_last@example.com",
+                        "isSiteAdmin": True,
+                    }
+                ],
+                "pageInfo": {
+                    "hasNextPage": False,
+                    "endCursor": "cursor_zeta_members_p2",
+                },
+            },
+            "repositories": {
+                "nodes": [
+                    {
+                        "id": "R_ZETA_3",
+                        "name": "repo-zeta-3",
+                        "nameWithOwner": "test-org/repo-zeta-3",
+                        "description": "Third zeta repository",
+                        "url": "https://github.com/test-org/repo-zeta-3",
+                        "homepageUrl": None,
+                        "isPrivate": False,
+                        "createdAt": "2023-01-07T00:00:00Z",
+                        "updatedAt": "2023-01-08T00:00:00Z",
+                        "pushedAt": "2023-01-09T00:00:00Z",
+                        "defaultBranchRef": {"name": "main"},
+                        "primaryLanguage": {"name": "Go"},
+                        "visibility": "PUBLIC",
+                    }
+                ],
+                "pageInfo": {"hasNextPage": False, "endCursor": "cursor_zeta_repos_p2"},
+            },
+        }
+
+        all_members = list(team_page1["members"]["nodes"]) + list(
+            team_page2["members"]["nodes"]
+        )
+        all_repos = list(team_page1["repositories"]["nodes"]) + list(
+            team_page3["repositories"]["nodes"]
+        )
+
+        expected_result = {
+            "id": "T_ZETA",
+            "slug": "team-zeta",
+            "name": "Team Zeta",
+            "description": "Zeta team with both paginations",
+            "privacy": "SECRET",
+            "notificationSetting": "NOTIFICATIONS_DISABLED",
+            "url": "https://github.com/org/test-org/teams/team-zeta",
+            "members": {"nodes": all_members},
+            "repositories": {"nodes": all_repos},
+        }
+
+        mock_send_api_request = AsyncMock(
+            side_effect=[
+                copy.deepcopy({"data": {"organization": {"team": team_page1}}}),
+                copy.deepcopy({"data": {"organization": {"team": team_page2}}}),
+                copy.deepcopy({"data": {"organization": {"team": team_page3}}}),
+            ]
+        )
+
+        exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
+        with patch.object(
+            graphql_client, "send_api_request", new=mock_send_api_request
+        ):
+            result = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-zeta")
+            )
+
+            assert result == expected_result
+            assert mock_send_api_request.call_count == 3
+
+            # Verify first call
+            call_args_1 = mock_send_api_request.call_args_list[0]
+            expected_variables_1 = {
+                "slug": "team-zeta",
+                "organization": "test-org",
+                "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "memberAfter": None,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "repoAfter": None,
+            }
+            expected_payload_1 = graphql_client.build_graphql_payload(
+                query=SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL,
+                variables=expected_variables_1,
+            )
+            assert call_args_1[0][0] == graphql_client.base_url
+            assert call_args_1[1]["method"] == "POST"
+            assert call_args_1[1]["json_data"] == expected_payload_1
+
+            # Verify second call (member pagination)
+            call_args_2 = mock_send_api_request.call_args_list[1]
+            expected_variables_2 = {
+                "slug": "team-zeta",
+                "organization": "test-org",
+                "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "memberAfter": "cursor_zeta_members_p1",
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "repoAfter": None,
+            }
+            expected_payload_2 = graphql_client.build_graphql_payload(
+                query=SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL,
+                variables=expected_variables_2,
+            )
+            assert call_args_2[0][0] == graphql_client.base_url
+            assert call_args_2[1]["method"] == "POST"
+            assert call_args_2[1]["json_data"] == expected_payload_2
+
+            # Verify third call (repo pagination)
+            call_args_3 = mock_send_api_request.call_args_list[2]
+            expected_variables_3 = {
+                "slug": "team-zeta",
+                "organization": "test-org",
+                "memberFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "memberAfter": None,
+                "repoFirst": MEMBER_PAGE_SIZE_IN_EXPORTER,
+                "repoAfter": "cursor_zeta_repos_p1",
+            }
+            expected_payload_3 = graphql_client.build_graphql_payload(
+                query=SINGLE_TEAM_WITH_MEMBERS_AND_REPOS_GQL,
+                variables=expected_variables_3,
+            )
+            assert call_args_3[0][0] == graphql_client.base_url
+            assert call_args_3[1]["method"] == "POST"
+            assert call_args_3[1]["json_data"] == expected_payload_3
+
+    async def test_get_team_member_repositories_empty_response(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        """Test get_team_member_repositories when the API returns an empty response."""
+        exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
+        with patch.object(
+            graphql_client,
+            "send_api_request",
+            new=AsyncMock(return_value=None),
+        ) as mock_request:
+            result = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-empty")
+            )
+
+            assert result == {}
+            mock_request.assert_called_once()
+
+    async def test_get_team_member_repositories_team_not_found(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        """Test get_team_member_repositories when the team is not found."""
+        mock_response_data = {"data": {"organization": {"team": None}}}
+
+        exporter = GraphQLTeamMembersAndReposExporter(graphql_client)
+        with patch.object(
+            graphql_client,
+            "send_api_request",
+            new=AsyncMock(return_value=mock_response_data),
+        ) as mock_request:
+            result = await exporter.get_resource(
+                SingleTeamOptions(organization="test-org", slug="team-not-found")
+            )
+
+            # The method should handle None team gracefully
+            assert result == {}
+            mock_request.assert_called_once()

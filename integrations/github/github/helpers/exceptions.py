@@ -25,3 +25,15 @@ class GraphQLErrorGroup(Exception):
 
     def _format_message(self) -> str:
         return "GraphQL errors occurred:\n" + "\n".join(f"- {e}" for e in self.errors)
+
+
+class CheckRunsException(Exception):
+    """Exception for check runs errors."""
+
+
+class OrganizationRequiredException(Exception):
+    """Exception for organization required."""
+
+
+class OrganizationConflictError(Exception):
+    """Raised when both github_organization and github_multi_organizations are provided."""

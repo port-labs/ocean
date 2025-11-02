@@ -18,7 +18,7 @@ configurations:
   - name: bitbucketWorkspaceToken
     type: string
     sensitive: true
-    description: A secure token for accessing Bitbucket APIs on behalf of the workspace. Recommended for Bitbucket Cloud Premium users. Create one from the workspace settings. Refer to <a href="https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/" target="_blank">this guide</a>.
+    description: A secure token for accessing Bitbucket APIs on behalf of the workspace. Recommended for Bitbucket Cloud Premium users. Create one from the workspace settings. Refer to <a href="https://support.atlassian.com/bitbucket-cloud/docs/create-a-workspace-access-token/" target="_blank">this guide</a>. You can also provide multiple tokens separated by commas to rotate between them when rate limits are hit.
   - name: bitbucketUsername
     type: string
     description: Your Bitbucket account username. Required only if you use username and app password for authentication, which is common for non-premium users. You can find your username on your <a href="https://bitbucket.org/account/settings/" target="_blank">account settings</a> page.
@@ -41,3 +41,20 @@ saas:
   enabled: true
   liveEvents:
     enabled: true
+installationDocs:
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: false
+  githubWorkflow:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/bitbucket/bitbucket-cloud/?installation-methods=one-time-ci&cicd-method=github#setup
+  gitlabCI:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/bitbucket/bitbucket-cloud/?installation-methods=one-time-ci&cicd-method=gitlab#setup
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/bitbucket/bitbucket-cloud/?installation-methods=real-time-self-hosted#setup
+  docker:
+    enabled: false

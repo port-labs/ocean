@@ -62,7 +62,7 @@ class MemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
             )
 
         group_member = await self._gitlab_webhook_client.get_group_member(
-            group_id, user_id
+            group_id, user_id, selector.include_inherited_members
         )
 
         if not group_member:  # 404 not found

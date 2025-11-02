@@ -6,6 +6,224 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.28.18 (2025-10-27)
+
+### Bug fixes
+
+- Fix logging exception on process finish
+- Fixed serialization issue caused by Decimal objects returned from ijson.items_coro during jq transformation when yield_items_to_parse is enabled
+
+## 0.28.17 (2025-10-26)
+
+### Bug fixes
+
+- Prevent StreamConsumed error when there is no content-length header on response
+
+## 0.28.16 (2025-10-21)
+
+### Bug fixes
+
+- Add pagination to search entities API call
+
+## 0.28.15 (2025-10-20)
+
+### Bug fixes
+
+- Fix examples construction on items_to_parse (extra nesting removed)
+- Fix onload process from fs in items_to_parse with no yield_items_to_parse branch
+
+## 0.28.14 (2025-10-15)
+
+### Bug fixes
+
+- Fix items_to_parse without yield_items_to_parse bug on array data type
+- Fix items_to_parse group_complex_mapping_value bug
+
+## 0.28.13 (2025-10-03)
+
+### Improvements
+
+- Improved cache key generation for instance/class methods in Ocean's caching utilities
+- Added comprehensive test coverage for cache decorators on instance/class/static methods
+
+## 0.28.12 (2025-09-30)
+
+### Bug fixes
+
+- Change raw data timestamp from to int with miliseconds
+
+## 0.28.11 (2025-09-28)
+
+### Bug fixes
+
+- Change raw data timestamp from sting to int
+
+## 0.28.10 (2025-09-26)
+
+### Bug fixes
+
+- Convert Entity dictionary identifiers to consistent json representation
+- Fix buggy check in EntityMapping that always resolves to False
+
+
+## 0.28.9 (2025-09-21)
+
+### Bug Fixes
+
+- revert memory optimization commit
+
+## 0.28.8 (2025-09-21)
+
+### Improvements
+
+- added extractionTimestamp to post_integration_raw_data
+
+
+## 0.28.7 (2025-09-16)
+
+### Improvements
+
+- Support for events which their payload offloaded to the fs
+- Memory optimizations of itemstoparse feature
+
+## 0.28.6 (2025-09-16)
+
+### Improvements
+- Add secrets to github ocean secrets
+
+## 0.28.5 (2025-09-16)
+
+### Bug Fixes
+- Fix user ocean permissions on `/etc/ssl/certs`
+
+## 0.28.4 (2025-09-10)
+
+### Bug Fixes
+- Using `spawn` startup method in the mutliprocessing module for windows machines that doesn't support `fork`
+
+## 0.28.3 (2025-08-28)
+
+### Improvements
+
+- Never send empty eventId
+
+## 0.28.2 (2025-08-28)
+
+### Improvements
+
+- Added integration status report on sigterm
+
+## 0.28.1 (2025-08-27)
+
+### Improvements
+
+- Fixed wrong filtered out metric calculation
+
+## 0.28.0 (2025-08-19)
+
+### Improvements
+
+- Made HTTP retry config extensible with new RetryConfig class and callback to apply per-integration policies without code changes.
+- Added rate-limit aware retries through configurable retry-after headers (e.g., X-RateLimit-Reset) and additional retry status codes that extend safe defaults.
+- Control max_attempts/base_delay/jitter_ratio/max_backoff_wait and override retryable_methods via callback.
+
+## 0.27.10 (2025-08-24)
+
+### Improvements
+
+- Added ingest url support
+
+## 0.27.9 (2025-08-20)
+
+### Improvements
+
+- Fixed reconciliation metrics not updating properly during sync
+- Removed premature cleanup of Prometheus metrics after subprocess finish to fix reconciliation stuck on pending
+- Enhanced sync state tracking across different phases
+
+## 0.27.8 (2025-08-18)
+
+### Improvements
+
+- added more logs to sync metrics in order to investigate reconciliation pending bug
+
+## 0.27.7 (2025-08-15)
+
+### Improvements
+
+- fixed log level in ingest logs
+
+## 0.27.6 (2025-08-13)
+
+### Improvements
+
+- Add streaming requests.
+
+## 0.27.5 (2024-08-13)
+
+
+### Improvements
+
+- Bump fastapi to version 0.116.0 - fix Starlette has possible denial-of-service vector when parsing large files in multipart forms (< 0.47.2)
+
+## 0.27.4 (2025-08-12)
+### Bug Fixes
+
+- Fix kafka broker list for Terraform
+
+## 0.27.3 (2025-08-11)
+
+### Bug Fixes
+
+- Items to parse can be set when there is an item object on the root level by set the itemsToParseName param
+
+## 0.27.2 (2025-08-07)
+
+### Bug Fixes
+
+- Move the items to parse logic to be yielded from the generator to support ocean's logic.
+
+## 0.27.1 (2025-08-10)
+
+### Bug Fixes
+
+- Ensure deletion metrics always being sent on reconceliation
+
+## 0.27.0 (2025-08-03)
+
+### Improvements
+
+- Enhanced webhook event processing with GroupQueue implementation
+
+Introduced GroupQueue to ensure exclusive processing per group while allowing parallel processing across different groups
+Multiple workers can now process webhook events from different groups concurrently, improving throughput
+FIFO ordering is maintained within each group to preserve event sequence integrity
+Added automatic lock timeout mechanism to recover from frozen or hung workers
+Implemented context-based group tracking using ContextVar for cleaner worker-to-group association
+
+- Performance optimizations
+Configurable number of workers per webhook path (event_workers_count)
+Reduced contention by allowing concurrent processing of independent groups
+Improved resource cleanup and state management after processing
+
+## 0.26.3 (2025-08-04)
+
+### Bug Fixes
+
+- Added permissions for the ocean user to access and write to the /app/.config directory for OAuth configuration.
+
+## 0.26.2 (2025-08-03)
+
+### Improvements
+
+- Add posting integration raw data to lakehouse
+
+## 0.26.1 (2025-07-20)
+
+### Improvements
+
+- Added limited sudo permissions for Ocean user to execute update-ca-certificates command
+
 ## 0.26.0 (2025-07-16)
 
 ### Improvements

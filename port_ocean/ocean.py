@@ -1,21 +1,18 @@
 import asyncio
 import sys
-from contextlib import asynccontextmanager
 import threading
+from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Callable, Dict, Type
 
-from port_ocean.cache.base import CacheProvider
-from port_ocean.cache.disk import DiskCacheProvider
-from port_ocean.cache.memory import InMemoryCacheProvider
-from port_ocean.core.models import ProcessExecutionMode
-import port_ocean.helpers.metric.metric
-
-from fastapi import FastAPI, APIRouter
-
+from fastapi import APIRouter, FastAPI
 from loguru import logger
 from pydantic import BaseModel
 from starlette.types import Receive, Scope, Send
 
+import port_ocean.helpers.metric.metric
+from port_ocean.cache.base import CacheProvider
+from port_ocean.cache.disk import DiskCacheProvider
+from port_ocean.cache.memory import InMemoryCacheProvider
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import (
     IntegrationConfiguration,
@@ -26,16 +23,17 @@ from port_ocean.context.ocean import (
     ocean,
 )
 from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
+from port_ocean.core.handlers.webhook.processor_manager import (
+    LiveEventsProcessorManager,
+)
 from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.core.models import ProcessExecutionMode
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
-from port_ocean.core.handlers.webhook.processor_manager import (
-    LiveEventsProcessorManager,
-)
 
 
 class Ocean:
@@ -69,6 +67,7 @@ class Ocean:
             integration_identifier=self.config.integration.identifier,
             integration_type=self.config.integration.type,
             integration_version=__integration_version__,
+            ingest_url=self.config.port.ingest_url,
         )
         self.cache_provider: CacheProvider = self._get_caching_provider()
         self.process_execution_mode: ProcessExecutionMode = (
@@ -97,6 +96,22 @@ class Ocean:
             self.port_client, self.config.scheduled_resync_interval
         )
         self.app_initialized = False
+
+        signal_handler.register(self._report_resync_aborted)
+
+    async def _report_resync_aborted(self) -> None:
+        """
+        Report resync status as aborted when the app receives a kill signal.
+        This ensures Port is notified that the integration was interrupted.
+        """
+        try:
+            if self.metrics.event_id.find("-done") == -1:
+                await self.resync_state_updater.update_after_resync(
+                    IntegrationStateStatus.Aborted
+                )
+                logger.info("Resync status reported as aborted due to app shutdown")
+        except Exception as e:
+            logger.warning(f"Failed to report resync status on shutdown: {e}")
 
     def _get_process_execution_mode(self) -> ProcessExecutionMode:
         if self.config.process_execution_mode:

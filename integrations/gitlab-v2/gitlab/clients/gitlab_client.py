@@ -18,14 +18,22 @@ PARSEABLE_EXTENSIONS = (".json", ".yaml", ".yml")
 
 
 class GitLabClient:
-    DEFAULT_MIN_ACCESS_LEVEL = 30
     DEFAULT_PARAMS: dict[str, Any] = {
-        "min_access_level": DEFAULT_MIN_ACCESS_LEVEL,  # Minimum access level to fetch groups
-        "all_available": True,  # Fetch all groups accessible to the user
+        "all_available": True,  # Fetch all resources accessible to the user
     }
 
     def __init__(self, base_url: str, token: str) -> None:
         self.rest = RestClient(base_url, token, endpoint="api/v4")
+
+    async def get_tag(self, project_id: int, tag_name: str) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/repository/tags/{tag_name}"
+        )
+
+    async def get_release(self, project_id: int, tag_name: str) -> dict[str, Any]:
+        return await self.rest.send_api_request(
+            "GET", f"projects/{project_id}/releases/{tag_name}"
+        )
 
     async def get_project(self, project_path: str | int) -> dict[str, Any]:
         encoded_path = quote(str(project_path), safe="")
@@ -56,9 +64,12 @@ class GitLabClient:
             "GET", f"projects/{project_id}/jobs/{job_id}"
         )
 
-    async def get_group_member(self, group_id: int, member_id: int) -> dict[str, Any]:
+    async def get_group_member(
+        self, group_id: int, member_id: int, include_inherited_members: bool = False
+    ) -> dict[str, Any]:
+        members_api = "members/all" if include_inherited_members else "members"
         return await self.rest.send_api_request(
-            "GET", f"groups/{group_id}/members/{member_id}"
+            "GET", f"groups/{group_id}/{members_api}/{member_id}"
         )
 
     async def get_projects(
@@ -67,8 +78,17 @@ class GitLabClient:
         max_concurrent: int = 10,
         include_languages: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch projects and optionally enrich with languages and/or labels."""
-        request_params = self.DEFAULT_PARAMS | (params or {})
+        """Fetch all projects accessible to the user.
+
+        Args:
+            params: Optional parameters to pass to the GitLab API (e.g., min_access_level)
+            max_concurrent: Maximum number of concurrent requests
+            include_languages: Whether to enrich projects with language information
+        """
+        request_params = {**self.DEFAULT_PARAMS}
+        if params:
+            request_params.update(params)
+
         async for projects_batch in self.rest.get_paginated_resource(
             "projects", params=request_params
         ):
@@ -83,16 +103,104 @@ class GitLabClient:
             yield enriched_batch
 
     async def get_groups(
-        self, owned: bool = False
+        self,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all groups accessible to the user.
 
         Args:
-            owned: If True, only fetch groups owned by the authenticated user
+            params: Optional parameters to pass to the GitLab API (e.g., min_access_level)
         """
-        params = {**self.DEFAULT_PARAMS, "owned": owned}
-        async for batch in self.rest.get_paginated_resource("groups", params=params):
-            yield batch
+        request_params = {**self.DEFAULT_PARAMS}
+        if params:
+            request_params.update(params)
+
+        async for groups_batch in self.rest.get_paginated_resource(
+            "groups", params=request_params
+        ):
+            logger.info(f"Received batch with {len(groups_batch)} groups")
+            yield groups_batch
+
+    async def get_tags(
+        self,
+        projects_batch: list[dict[str, Any]],
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch tags for each project in the batch.
+
+        Args:
+            projects_batch: List of projects to fetch tags for
+            max_concurrent: Maximum number of concurrent requests
+        """
+        async for tags_batch in self.get_projects_resource_with_enrichment(
+            projects_batch, "repository/tags", max_concurrent
+        ):
+            logger.info(f"Received batch with {len(tags_batch)} tags")
+            yield tags_batch
+
+    async def get_releases(
+        self,
+        projects_batch: list[dict[str, Any]],
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Fetch releases for each project in the batch.
+
+        Args:
+            projects_batch: List of projects to fetch releases for
+            max_concurrent: Maximum number of concurrent requests
+        """
+        async for releases_batch in self.get_projects_resource_with_enrichment(
+            projects_batch, "releases", max_concurrent
+        ):
+            logger.info(f"Received batch with {len(releases_batch)} releases")
+            yield releases_batch
+
+    async def _enrich_project_resources(
+        self,
+        project: dict[str, Any],
+        resource_iterator: AsyncIterator[list[dict[str, Any]]],
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        """Enrich resources with project information as they are fetched."""
+        async for batch in resource_iterator:
+            if batch:
+                yield [
+                    self.enrich_with_project_path(
+                        resource, project["path_with_namespace"]
+                    )
+                    for resource in batch
+                ]
+
+    def enrich_with_project_path(
+        self, resource: dict[str, Any], project_path: str
+    ) -> dict[str, Any]:
+        return {**resource, "__project": {"path_with_namespace": project_path}}
+
+    async def get_projects_resource_with_enrichment(
+        self,
+        projects_batch: list[dict[str, Any]],
+        resource_type: str,
+        max_concurrent: int = 10,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        tasks = [
+            semaphore_async_iterator(
+                semaphore,
+                partial(
+                    self._enrich_project_resources,
+                    project,
+                    self.rest.get_paginated_project_resource(
+                        str(project["id"]),
+                        resource_type,
+                    ),
+                ),
+            )
+            for project in projects_batch
+        ]
+
+        async for batch in stream_async_iterators_tasks(*tasks):
+            if batch:
+                yield batch
 
     async def get_projects_resource(
         self,
@@ -191,12 +299,15 @@ class GitLabClient:
         return bool(response)
 
     async def get_parent_groups(
-        self, owned: bool = False
+        self,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         all_group_ids = set()
         top_level_groups = []
 
-        async for group_batch in self.get_groups(owned=owned):
+        async for group_batch in self.get_groups(
+            params=params,
+        ):
             group_ids_in_batch = {group["id"] for group in group_batch}
             for group in group_batch:
                 parent_id = group.get("parent_id")
@@ -217,6 +328,7 @@ class GitLabClient:
         path: str,
         repositories: list[str] | None = None,
         skip_parsing: bool = False,
+        params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         search_query = f"path:{path}"
         logger.info(f"Starting file search with path pattern: '{path}'")
@@ -231,7 +343,9 @@ class GitLabClient:
                     yield batch
         else:
             logger.info("Searching across groups")
-            async for top_level_groups in self.get_parent_groups():
+            async for top_level_groups in self.get_parent_groups(
+                params=params,
+            ):
                 logger.info(
                     f"Found {len(top_level_groups)} top-level searchable groups"
                 )
@@ -299,7 +413,12 @@ class GitLabClient:
     ) -> dict[str, Any]:
 
         repo = await self.get_project(file["project_id"])
-        return {"file": file, "repo": repo}
+        return {
+            "file": file,
+            "__type": "path" if file["content"].get("path") is not None else "content",
+            "repo": repo,
+            "__base_jq": ".file.content",
+        }
 
     async def _enrich_files_with_repos(
         self,
@@ -322,9 +441,13 @@ class GitLabClient:
         return project
 
     async def get_group_members(
-        self, group_id: str, include_bot_members: bool
+        self, group_id: str, include_bot_members: bool, include_inherited_members: bool
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        async for batch in self.rest.get_paginated_group_resource(group_id, "members"):
+        members_api = "members/all" if include_inherited_members else "members"
+        logger.info(f"Fetching members for group {group_id} with {members_api} API")
+        async for batch in self.rest.get_paginated_group_resource(
+            group_id, members_api
+        ):
             if batch:
                 filtered_batch = batch
                 if not include_bot_members:
@@ -334,17 +457,20 @@ class GitLabClient:
                         if "bot" not in member["username"].lower()
                     ]
                 logger.info(
-                    f"Received batch of {len(filtered_batch)} members for group {group_id}"
+                    f"Fetched {len(filtered_batch)} member(s) from '{members_api}' for group '{group_id}' after bot filtering"
                 )
                 yield filtered_batch
 
     async def enrich_group_with_members(
-        self, group: dict[str, Any], include_bot_members: bool
+        self,
+        group: dict[str, Any],
+        include_bot_members: bool,
+        include_inherited_members: bool,
     ) -> dict[str, Any]:
         logger.info(f"Enriching group {group['id']} with members")
         members = []
         async for members_batch in self.get_group_members(
-            group["id"], include_bot_members
+            group["id"], include_bot_members, include_inherited_members
         ):
             for member in members_batch:
                 members.append(
@@ -377,11 +503,19 @@ class GitLabClient:
             parsed_content = await anyio.to_thread.run_sync(
                 parse_file_content, file_data["content"], file_path, context
             )
-            parsed_content = await self._resolve_file_references(
-                parsed_content, project_id, ref
+            if parsed_content.get("should_resolve_references", False):
+                file_resolved_content = await self._resolve_file_references(
+                    parsed_content.get("content"), project_id, ref
+                )
+                parsed_content["content"] = file_resolved_content
+            file_data["content"] = (
+                parsed_content
+                if not parsed_content.get("content")
+                else parsed_content["content"]
             )
-            file_data["content"] = parsed_content
 
+        if isinstance(file_data["content"], str):
+            file_data["content"] = {"content": file_data["content"]}
         return file_data
 
     async def _process_file_batch(

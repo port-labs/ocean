@@ -179,15 +179,15 @@ async def test_search_entities_uses_datasource_route_when_query_is_none(
 ) -> None:
     """Test that search_entities uses datasource route when query is None"""
     mock_response = MagicMock()
-    mock_response.json.return_value = {"entities": []}
+    mock_response.json.return_value = {"entities": [], "next": None}
     mock_response.is_error = False
     mock_response.status_code = 200
     mock_response.headers = {}
-    entity_client.client.post = AsyncMock(return_value=mock_response)
-
-    entity_client.auth.headers = AsyncMock(
+    entity_client.client.post = AsyncMock(return_value=mock_response)  # type: ignore
+    entity_client.auth.headers = AsyncMock(  # type: ignore
         return_value={"Authorization": "Bearer test"}
     )
+
     entity_client.auth.integration_type = "test-integration"
     entity_client.auth.integration_identifier = "test-identifier"
     entity_client.auth.api_url = "https://api.getport.io/v1"
@@ -208,8 +208,74 @@ async def test_search_entities_uses_datasource_route_when_query_is_none(
         == "https://api.getport.io/v1/blueprints/entities/datasource-entities"
     )
 
-    expected_json = {
-        "datasource_prefix": "port-ocean/test-integration/",
-        "datasource_suffix": "/test-identifier/sync",
+    sent_json = call_args[1]["json"]
+    assert sent_json["datasource_prefix"] == "port-ocean/test-integration/"
+    assert sent_json["datasource_suffix"] == "/test-identifier/sync"
+
+
+async def test_search_entities_uses_datasource_route_when_query_is_none_two_pages(
+    entity_client: EntityClientMixin,
+) -> None:
+    """Test that search_entities uses datasource route when query is None"""
+    # First response with pagination token
+    mock_response_first = MagicMock()
+    mock_response_first.json.return_value = {
+        "entities": [
+            Entity(identifier="entity_1", blueprint="entity_1"),
+            Entity(identifier="entity_2", blueprint="entity_2"),
+        ],
+        "next": "next_page_token",
     }
-    assert call_args[1]["json"] == expected_json
+    mock_response_first.is_error = False
+    mock_response_first.status_code = 200
+    mock_response_first.headers = {}
+
+    # Second response without pagination token (end of pagination)
+    mock_response_second = MagicMock()
+    mock_response_second.json.return_value = {
+        "entities": [Entity(identifier="entity_3", blueprint="entity_3")],
+        "next": None,
+    }
+    mock_response_second.is_error = False
+    mock_response_second.status_code = 200
+    mock_response_second.headers = {}
+
+    # Mock the client to return different responses for each call
+    entity_client.client.post = AsyncMock(side_effect=[mock_response_first, mock_response_second])  # type: ignore
+    entity_client.auth.headers = AsyncMock(return_value={"Authorization": "Bearer test"})  # type: ignore
+
+    entity_client.auth.integration_type = "test-integration"
+    entity_client.auth.integration_identifier = "test-identifier"
+    entity_client.auth.api_url = "https://api.getport.io/v1"
+
+    mock_user_agent_type = MagicMock()
+    mock_user_agent_type.value = "sync"
+
+    entities = await entity_client.search_entities(
+        user_agent_type=mock_user_agent_type,
+        query=None,
+    )
+
+    # Should call the datasource-entities endpoint exactly twice for pagination
+    assert entity_client.client.post.await_count == 2
+    assert len(entities) == 3
+
+    # Check first call
+    first_call_args = entity_client.client.post.call_args_list[0]
+    assert (
+        first_call_args[0][0]
+        == "https://api.getport.io/v1/blueprints/entities/datasource-entities"
+    )
+    first_sent_json = first_call_args[1]["json"]
+    assert first_sent_json["datasource_prefix"] == "port-ocean/test-integration/"
+    assert first_sent_json["datasource_suffix"] == "/test-identifier/sync"
+
+    # Check second call
+    second_call_args = entity_client.client.post.call_args_list[1]
+    assert (
+        second_call_args[0][0]
+        == "https://api.getport.io/v1/blueprints/entities/datasource-entities"
+    )
+    second_sent_json = second_call_args[1]["json"]
+    assert second_sent_json["datasource_prefix"] == "port-ocean/test-integration/"
+    assert second_sent_json["datasource_suffix"] == "/test-identifier/sync"

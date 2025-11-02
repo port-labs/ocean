@@ -1,9 +1,11 @@
+from typing import cast
 from loguru import logger
 from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
 )
+from integration import GithubBranchConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -42,9 +44,10 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         branch_name = ref.replace("refs/heads/", "")
         repo_name = repo["name"]
+        organization = payload["organization"]["login"]
 
         logger.info(
-            f"Processing branch event: {self._event_type} for branch {branch_name} in {repo_name}"
+            f"Processing branch event: {self._event_type} for branch {branch_name} in {repo_name} from {organization}"
         )
 
         if self._event_type == "delete":
@@ -55,9 +58,15 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         rest_client = create_github_client()
         exporter = RestBranchExporter(rest_client)
+        selector = cast(GithubBranchConfig, resource_config).selector
 
         data_to_upsert = await exporter.get_resource(
-            SingleBranchOptions(repo_name=repo_name, branch_name=branch_name)
+            SingleBranchOptions(
+                organization=organization,
+                repo_name=repo_name,
+                branch_name=branch_name,
+                protection_rules=selector.protection_rules,
+            )
         )
 
         return WebhookEventRawResults(

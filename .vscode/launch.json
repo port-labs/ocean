@@ -128,6 +128,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/aws-v3",
+      "envFile": "${workspaceFolder}/integrations/aws-v3/.env",
+      "justMyCode": false,
+      "name": "Run AWS-v3 integration",
+      "program": "${workspaceFolder}/integrations/aws-v3/debug.py",
+      "python": "${workspaceFolder}/integrations/aws-v3/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/test-integration",
       "envFile": "${workspaceFolder}/integrations/test-integration/.env",
       "justMyCode": true,
@@ -213,6 +224,116 @@
       "name": "Run komodor integration",
       "program": "${workspaceFolder}/integrations/komodor/debug.py",
       "python": "${workspaceFolder}/integrations/komodor/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/checkmarx-one",
+      "envFile": "${workspaceFolder}/integrations/checkmarx-one/.env",
+      "justMyCode": true,
+      "name": "Run checkmarx_one integration",
+      "program": "${workspaceFolder}/integrations/checkmarx-one/debug.py",
+      "python": "${workspaceFolder}/integrations/checkmarx-one/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/aikido",
+      "envFile": "${workspaceFolder}/integrations/aikido/.env",
+      "justMyCode": true,
+      "name": "Run aikido integration",
+      "program": "${workspaceFolder}/integrations/aikido/debug.py",
+      "python": "${workspaceFolder}/integrations/aikido/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/okta",
+      "envFile": "${workspaceFolder}/integrations/okta/.env",
+      "justMyCode": true,
+      "name": "Run okta integration",
+      "program": "${workspaceFolder}/integrations/okta/debug.py",
+      "python": "${workspaceFolder}/integrations/okta/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/armorcode",
+      "envFile": "${workspaceFolder}/integrations/armorcode/.env",
+      "justMyCode": true,
+      "name": "Run armorcode integration",
+      "program": "${workspaceFolder}/integrations/armorcode/debug.py",
+      "python": "${workspaceFolder}/integrations/armorcode/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/bitbucket-server",
+      "envFile": "${workspaceFolder}/integrations/bitbucket-server/.env",
+      "justMyCode": true,
+      "name": "Run bitbucket-server integration",
+      "program": "${workspaceFolder}/integrations/bitbucket-server/debug.py",
+      "python": "${workspaceFolder}/integrations/bitbucket-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/jenkins",
+      "envFile": "${workspaceFolder}/integrations/jenkins/.env",
+      "justMyCode": true,
+      "name": "Run jenkins integration",
+      "program": "${workspaceFolder}/integrations/jenkins/debug.py",
+      "python": "${workspaceFolder}/integrations/jenkins/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/generic-http",
+      "envFile": "${workspaceFolder}/integrations/generic-http/examples/config-no-auth.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - No Auth",
+      "program": "${workspaceFolder}/integrations/generic-http/debug.py",
+      "python": "${workspaceFolder}/integrations/generic-http/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/generic-http",
+      "envFile": "${workspaceFolder}/integrations/generic-http/examples/config-bearer-token.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - Bearer Token",
+      "program": "${workspaceFolder}/integrations/generic-http/debug.py",
+      "python": "${workspaceFolder}/integrations/generic-http/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/generic-http",
+      "envFile": "${workspaceFolder}/integrations/generic-http/examples/config-basic-auth.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - Basic Auth",
+      "program": "${workspaceFolder}/integrations/generic-http/debug.py",
+      "python": "${workspaceFolder}/integrations/generic-http/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/generic-http",
+      "envFile": "${workspaceFolder}/integrations/generic-http/examples/config-api-key.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - API Key",
+      "program": "${workspaceFolder}/integrations/generic-http/debug.py",
+      "python": "${workspaceFolder}/integrations/generic-http/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     }

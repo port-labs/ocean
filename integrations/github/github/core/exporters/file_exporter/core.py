@@ -2,7 +2,7 @@ from typing import AsyncGenerator, Dict, List, Any, Tuple, cast
 from urllib.parse import quote
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client
-from github.helpers.utils import GithubClientType
+from github.helpers.utils import GithubClientType, IgnoredError
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_ITEM,
@@ -30,15 +30,22 @@ from github.core.exporters.file_exporter.file_processor import FileProcessor
 
 
 class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
+    _IGNORED_ERRORS = [
+        IgnoredError(status=409, message="empty repository"),
+    ]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.file_processor = FileProcessor(self)
 
     @cache.cache_coroutine_result()
-    async def get_repository_metadata(self, repo_name: str) -> Dict[str, Any]:
-        url = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}"
-        logger.info(f"Fetching metadata for repository: {repo_name}")
+    async def get_repository_metadata(
+        self, organization: str, repo_name: str
+    ) -> Dict[str, Any]:
+        url = f"{self.client.base_url}/repos/{organization}/{repo_name}"
+        logger.info(
+            f"Fetching metadata for repository: {repo_name} from {organization}"
+        )
 
         return await self.client.send_api_request(url)
 
@@ -48,16 +55,21 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         """
         Fetch the content of a file from a repository using the Contents API.
         """
+        organization = options["organization"]
         repo_name = options["repo_name"]
         file_path = options["file_path"]
         branch = options.get("branch")
 
-        resource = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/contents/{quote(file_path)}"
-        logger.info(f"Fetching file: {file_path} from {repo_name}@{branch}")
+        resource = f"{self.client.base_url}/repos/{organization}/{repo_name}/contents/{quote(file_path)}"
+        logger.info(
+            f"Fetching file: {file_path} from {repo_name}@{branch} from {organization}"
+        )
 
         response = await self.client.send_api_request(resource, params={"ref": branch})
         if not response:
-            logger.warning(f"File {file_path} not found in {repo_name}@{branch}")
+            logger.warning(
+                f"File {file_path} not found in {repo_name}@{branch} from {organization}"
+            )
             return {}
 
         response_size = response["size"]
@@ -69,7 +81,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             )
         else:
             logger.warning(
-                f"File {file_path} exceeds size limit ({response_size} bytes > {MAX_FILE_SIZE}), skipping content processing"
+                f"File {file_path} exceeds size limit ({response_size} bytes > {MAX_FILE_SIZE}), skipping content processing from {organization}"
             )
 
         return {**response, "content": content}
@@ -112,20 +124,20 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         for spec in file_patterns:
             pattern = spec["path"]
             skip_parsing = spec["skip_parsing"]
+            organization = spec["organization"]
 
-            repo_obj = await self.get_repository_metadata(repo_name)
+            repo_obj = await self.get_repository_metadata(organization, repo_name)
             branch = spec.get("branch") or repo_obj["default_branch"]
 
             logger.debug(
-                f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name}"
+                f"Processing pattern '{pattern}' on branch '{branch}' for {repo_name} from {organization}"
             )
-            tree_sha = await self.get_branch_tree_sha(repo_name, branch)
-            tree = await self.get_tree_recursive(repo_name, tree_sha)
+            tree = await self.get_tree_recursive(organization, repo_name, branch)
 
             matched = filter_github_tree_entries_by_pattern(tree, pattern)
 
             logger.info(
-                f"Matched {len(matched)} files in {repo_name} with pattern '{pattern}'"
+                f"Matched {len(matched)} files in {repo_name} with pattern '{pattern}' from {organization}"
             )
 
             for match in matched:
@@ -133,13 +145,16 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 fetch_method = match["fetch_method"]
 
                 file_info = {
+                    "organization": organization,
                     "repo_name": repo_name,
                     "file_path": path,
                     "skip_parsing": skip_parsing,
                     "branch": branch,
                 }
 
-                logger.debug(f"File {path} will be fetched via {fetch_method}")
+                logger.debug(
+                    f"File {path} will be fetched via {fetch_method} from {organization}"
+                )
 
                 if fetch_method == GithubClientType.GRAPHQL:
                     graphql_files.append(file_info)
@@ -153,6 +168,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         batch_files = []
         for file_entry in files:
+            organization = file_entry["organization"]
             repo_name = file_entry["repo_name"]
             file_path = file_entry["file_path"]
             skip_parsing = file_entry["skip_parsing"]
@@ -160,6 +176,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
             file_data = await self.get_resource(
                 FileContentOptions(
+                    organization=organization,
                     repo_name=repo_name,
                     file_path=file_path,
                     branch=branch,
@@ -168,12 +185,13 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
             decoded_content = file_data.pop("content", None)
             if decoded_content is None:
-                logger.warning(f"File {file_path} has no content")
+                logger.warning(f"File {file_path} has no content from {organization}")
                 continue
 
-            repository = await self.get_repository_metadata(repo_name)
+            repository = await self.get_repository_metadata(organization, repo_name)
 
             file_obj = await self.file_processor.process_file(
+                organization=organization,
                 content=decoded_content,
                 repository=repository,
                 file_path=file_path,
@@ -183,7 +201,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             )
 
             batch_files.append(dict(file_obj))
-            logger.debug(f"Successfully processed REST file: {file_path}")
+            logger.debug(
+                f"Successfully processed REST file: {file_path} from {organization}"
+            )
 
         yield batch_files
 
@@ -191,18 +211,24 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         self, files: List[Dict[str, Any]]
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for batch_result in self.process_files_in_batches(files):
+            organization = batch_result["organization"]
             repo_name = batch_result["repo"]
             branch = batch_result["branch"]
             retrieved_files = batch_result["file_data"]["repository"]
-            repository_metadata = await self.get_repository_metadata(repo_name)
+            repository_metadata = await self.get_repository_metadata(
+                organization, repo_name
+            )
 
-            logger.debug(f"Retrieved {len(retrieved_files)} files from GraphQL batch")
+            logger.debug(
+                f"Retrieved {len(retrieved_files)} files from GraphQL batch from {organization}"
+            )
 
             file_paths, file_metadata = extract_file_paths_and_metadata(
                 batch_result["batch_files"]
             )
 
             batch_files = await self._process_retrieved_graphql_files(
+                organization,
                 retrieved_files,
                 file_paths,
                 file_metadata,
@@ -224,12 +250,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         client = create_github_client(client_type=GithubClientType.GRAPHQL)
 
-        grouped: Dict[Tuple[str, str], List[Dict[str, Any]]] = defaultdict(list)
+        grouped: Dict[Tuple[str, str, str], List[Dict[str, Any]]] = defaultdict(list)
         for entry in matched_file_entries:
-            key = (entry["repo_name"], entry["branch"])
+            key = (entry["organization"], entry["repo_name"], entry["branch"])
             grouped[key].append(entry)
 
-        for (repo_name, branch), entries in grouped.items():
+        for (organization, repo_name, branch), entries in grouped.items():
             for i in range(0, len(entries), batch_size):
                 batch_files = entries[i : i + batch_size]
                 logger.debug(
@@ -239,7 +265,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 batch_file_paths = [entry["file_path"] for entry in batch_files]
 
                 query_payload = build_batch_file_query(
-                    repo_name, client.organization, branch, batch_file_paths
+                    repo_name, organization, branch, batch_file_paths
                 )
 
                 response = await client.send_api_request(
@@ -247,10 +273,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 )
 
                 logger.info(
-                    f"Fetched {len(batch_files)} files from {repo_name}:{branch}"
+                    f"Fetched {len(batch_files)} files from {repo_name}:{branch} from {organization}"
                 )
 
                 yield {
+                    "organization": organization,
                     "repo": repo_name,
                     "branch": branch,
                     "file_data": response["data"],
@@ -259,6 +286,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def _process_retrieved_graphql_files(
         self,
+        organization: str,
         retrieved_files: Dict[str, Any],
         file_paths: List[str],
         file_metadata: Dict[str, bool],
@@ -273,7 +301,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
             if file_index is None or file_index >= len(file_paths):
                 logger.warning(
-                    f"Unexpected field name format: '{field_name}' in {repo_name}@{branch}"
+                    f"Unexpected field name format: '{field_name}' in {repo_name}@{branch} from {organization}"
                 )
                 continue
 
@@ -283,10 +311,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             skip_parsing = file_metadata.get(file_path, False)
 
             if not content:
-                logger.warning(f"File {file_path} has no content")
+                logger.warning(f"File {file_path} has no content from {organization}")
                 continue
 
             file_obj = await self.file_processor.process_file(
+                organization=organization,
                 content=content,
                 repository=repository_metadata,
                 file_path=file_path,
@@ -294,7 +323,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 branch=branch,
                 metadata=get_graphql_file_metadata(
                     self.client.base_url,
-                    self.client.organization,
+                    organization,
                     repo_name,
                     branch,
                     file_path,
@@ -307,35 +336,38 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         return batch_files
 
     async def fetch_commit_diff(
-        self, repo_name: str, before_sha: str, after_sha: str
+        self, organization: str, repo_name: str, before_sha: str, after_sha: str
     ) -> Dict[str, Any]:
         """
         Fetch the commit comparison data from GitHub API.
         """
 
-        resource = f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/compare/{before_sha}...{after_sha}"
+        resource = f"{self.client.base_url}/repos/{organization}/{repo_name}/compare/{before_sha}...{after_sha}"
         response = await self.client.send_api_request(resource)
 
-        logger.info(f"Found {len(response['files'])} files in commit diff")
+        logger.info(
+            f"Found {len(response['files'])} files in commit diff from {organization}"
+        )
 
         return response
 
-    async def get_branch_tree_sha(self, repo: str, branch: str) -> str:
+    async def get_tree_recursive(
+        self, organization: str, repo: str, branch: str
+    ) -> List[Dict[str, Any]]:
         """Retrieve the full recursive tree for a given branch."""
-        commit_url = f"{self.client.base_url}/repos/{self.client.organization}/{repo}/commits/{branch}"
-        response = await self.client.send_api_request(commit_url)
-
-        tree_sha = response["commit"]["tree"]["sha"]
-        logger.info(f"Retrieved branch tree sha for {repo}@{branch}: {tree_sha[:8]}")
-
-        return tree_sha
-
-    async def get_tree_recursive(self, repo: str, sha: str) -> List[Dict[str, Any]]:
-        """Retrieve the full recursive tree for a given branch."""
-        tree_url = f"{self.client.base_url}/repos/{self.client.organization}/{repo}/git/trees/{sha}?recursive=1"
-        response = await self.client.send_api_request(tree_url)
+        tree_url = f"{self.client.base_url}/repos/{organization}/{repo}/git/trees/{branch}?recursive=1"
+        response = await self.client.send_api_request(
+            tree_url, ignored_errors=self._IGNORED_ERRORS
+        )
+        if not response:
+            logger.warning(
+                f"Did not retrieve tree from {repo}@{branch} from {organization}"
+            )
+            return []
 
         tree_items = response["tree"]
-        logger.info(f"Retrieved tree for {repo}@{sha[:8]}: {len(tree_items)} items")
+        logger.info(
+            f"Retrieved tree for {repo}@{branch}: {len(tree_items)} items from {organization}"
+        )
 
         return tree_items

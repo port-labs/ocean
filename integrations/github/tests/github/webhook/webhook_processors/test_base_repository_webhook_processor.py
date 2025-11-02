@@ -41,18 +41,31 @@ class TestBaseRepositoryWebhookProcessor:
             # Test with missing repository
             ({}, "all", False),
             # Test with missing repository name
-            ({"repository": {}}, "all", False),
+            ({"repository": {}, "organization": {"login": "test-org"}}, "all", False),
             # Test with valid repository and "all" visibility
-            ({"repository": {"name": "test-repo"}}, "all", True),
+            (
+                {
+                    "repository": {"name": "test-repo"},
+                    "organization": {"login": "test-org"},
+                },
+                "all",
+                True,
+            ),
             # Test with matching visibility
             (
-                {"repository": {"name": "test-repo", "visibility": "private"}},
+                {
+                    "repository": {"name": "test-repo", "visibility": "private"},
+                    "organization": {"login": "test-org"},
+                },
                 "private",
                 True,
             ),
             # Test with non-matching visibility
             (
-                {"repository": {"name": "test-repo", "visibility": "public"}},
+                {
+                    "repository": {"name": "test-repo", "visibility": "public"},
+                    "organization": {"login": "test-org"},
+                },
                 "private",
                 False,
             ),
