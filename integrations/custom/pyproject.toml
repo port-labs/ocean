@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "generic-http"
+name = "custom"
 version = "0.1.5-dev"
-description = "Generic HTTP Integration for Ocean"
+description = "Ocean Custom Integration"
 authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]

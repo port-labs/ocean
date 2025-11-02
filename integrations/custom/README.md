@@ -1,6 +1,6 @@
-# Generic HTTP Integration
+# Ocean Custom Integration
 
-A generic Ocean integration that can connect to any HTTP REST API with configurable authentication, pagination, and data mapping.
+An Ocean integration that can connect to any HTTP REST API with configurable authentication, pagination, and data mapping.
 
 ## Overview
 
@@ -19,7 +19,7 @@ docker run -d \
   -e OCEAN__INTEGRATION__CONFIG__AUTH_TYPE="bearer_token" \
   -e OCEAN__INTEGRATION__CONFIG__API_TOKEN="your-api-token" \
   -e OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE="offset" \
-  ghcr.io/port-labs/port-ocean-http-server:latest
+  ghcr.io/port-labs/port-ocean-custom:0.1.5-dev
 ```
 
 ### 2. Configure Your Endpoints

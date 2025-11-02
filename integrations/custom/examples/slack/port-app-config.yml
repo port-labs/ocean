@@ -1,0 +1,72 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+
+resources:
+  - kind: /api/users.list
+    selector:
+      query: 'true'
+      method: GET
+      query_params:
+        limit: '100'
+      data_path: .members
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .real_name // .name
+          blueprint: '"ocean_slackUser"'
+          properties:
+            real_name: .real_name
+            display_name: .profile.display_name
+            email: .profile.email
+            is_admin: .is_admin
+            is_bot: .is_bot
+            status_text: .profile.status_text
+            status_emoji: .profile.status_emoji
+            timezone: .tz
+            profile_image: .profile.image_512
+
+  - kind: /api/conversations.list
+    selector:
+      query: 'true'
+      method: GET
+      query_params:
+        limit: '100'
+        types: public_channel
+      data_path: .channels
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"ocean_slackChannel"'
+          properties:
+            description: .purpose.value // ""
+            is_private: .is_private
+            is_archived: .is_archived
+            member_count: .num_members
+            created_at: .created
+            topic: .topic.value // ""
+            purpose: .purpose.value // ""
+            last_activity: .updated
+          relations:
+            creator: .creator
+            slack_workspace: .context_team_id
+
+  - kind: /api/team.info
+    selector:
+      query: 'true'
+      method: GET
+      data_path: .team
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"ocean_slackWorkspace"'
+          properties:
+            domain: .domain
+            email_domain: .email_domain
+            icon: .icon.image_132 // ""
+
+

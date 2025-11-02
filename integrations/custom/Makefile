@@ -1,4 +1,4 @@
-# Generic HTTP Integration Makefile
+# Ocean Custom Integration Makefile
 
 define check_integration_env
 	@if [ -z "$(INTEGRATION_PATH)" ]; then \
@@ -8,7 +8,7 @@ define check_integration_env
 endef
 
 # Default values
-INTEGRATION_PATH := integrations/generic-http
+INTEGRATION_PATH := integrations/custom
 VERSION := $(shell grep version pyproject.toml | head -1 | cut -d '"' -f 2)
 
 # Install dependencies
