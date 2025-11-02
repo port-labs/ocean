@@ -16,6 +16,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug fixes
 
+- Remove assume length by reading the response for logging
+- Fixed publish core image Github action
+
+## 0.28.18 (2025-10-27)
+
+### Bug fixes
+
 - Fix logging exception on process finish
 - Fixed serialization issue caused by Decimal objects returned from ijson.items_coro during jq transformation when yield_items_to_parse is enabled
 
