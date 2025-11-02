@@ -250,9 +250,10 @@ class LiveEventsProcessorManager(LiveEventsMixin, EventsMixin):
         while True:
             try:
                 webhook_event_raw_results = await processor.handle_event(
-                    payload, resource
+                    payload, resource  # type: ignore[arg-type]
                 )
-                webhook_event_raw_results.resource = resource
+                if resource is not None:
+                    webhook_event_raw_results.resource = resource
                 break
 
             except Exception as e:

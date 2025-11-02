@@ -94,6 +94,9 @@ class PortAuthentication:
     async def is_machine_user(self) -> bool:
         # Ensure self.last_token_object is populated
         await self.token
+        if not self.last_token_object:
+            raise ValueError("No token found")
+
         payload: dict[str, Any] = jwt.decode(
             self.last_token_object.access_token, options={"verify_signature": False}
         )

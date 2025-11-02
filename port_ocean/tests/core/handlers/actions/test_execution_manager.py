@@ -706,7 +706,9 @@ class TestExecutionManager:
 
         poll_count = 0
 
-        async def claim_runs_with_errors(limit, visibility_timeout_ms):
+        async def claim_runs_with_errors(
+            limit: int, visibility_timeout_ms: int
+        ) -> list[ActionRun]:
             nonlocal poll_count
             poll_count += 1
             # Fail on first and third attempts, succeed on second and fourth
@@ -803,7 +805,9 @@ class TestExecutionManager:
         # First call succeeds, second call fails, third call succeeds again
         call_count = 0
 
-        async def claim_runs_side_effect(limit, visibility_timeout_ms):
+        async def claim_runs_side_effect(
+            limit: int, visibility_timeout_ms: int
+        ) -> list[ActionRun]:
             nonlocal call_count
             call_count += 1
             if call_count == 2:
