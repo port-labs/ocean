@@ -16,7 +16,9 @@ class RateLimitInfo:
 
     @property
     def utilization_percentage(self) -> float:
-        return ((self.limit - self.remaining) / self.limit) * 100
+        return (
+            0 if self.limit == 0 else ((self.limit - self.remaining) / self.limit) * 100
+        )
 
 
 @dataclass

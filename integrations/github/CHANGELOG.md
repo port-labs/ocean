@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Bumped ocean version to ^0.28.16
+- Bumped ocean version to ^0.28.17
 
 
 ## 3.0.1-beta (2025-10-21)

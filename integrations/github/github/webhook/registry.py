@@ -34,7 +34,7 @@ from github.webhook.webhook_processors.team_webhook_processor import (
 from github.webhook.webhook_processors.user_webhook_processor import (
     UserWebhookProcessor,
 )
-from github.webhook.webhook_processors.workflow_run_webhook_processor import (
+from github.webhook.webhook_processors.workflow_run.workflow_run_webhook_processor import (
     WorkflowRunWebhookProcessor,
 )
 from github.webhook.webhook_processors.workflow_webhook_processor import (
@@ -62,6 +62,7 @@ from github.webhook.webhook_processors.secret_scanning_alert_webhook_processor i
 )
 
 WEBHOOK_PATH = "/webhook"
+
 
 def register_live_events_webhooks() -> None:
     """Register all live event webhook processors."""

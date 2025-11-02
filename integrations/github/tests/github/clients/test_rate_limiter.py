@@ -112,7 +112,7 @@ class TestRateLimiter:
         assert exc.value.response.status_code == 429
 
         # No headers were parsed; limiter has no info and did not sleep.
-        assert client.rate_limiter._rate_limit_info is None
+        assert client.rate_limiter.rate_limit_info is None
         mock_sleep.assert_not_called()
 
     @pytest.mark.asyncio
@@ -130,7 +130,7 @@ class TestRateLimiter:
         info = RateLimitInfo(
             limit=1000, remaining=1, reset_time=int(time.time()) + reset_in
         )
-        client.rate_limiter._rate_limit_info = (
+        client.rate_limiter.rate_limit_info = (
             info  # trusted internal seed for the test
         )
 
@@ -217,7 +217,7 @@ class TestRateLimiter:
         async def task_a() -> None:
             order.append("A-enter")
             # Seed limiter so that __aenter__ will sleep
-            limiter._rate_limit_info = RateLimitInfo(
+            limiter.rate_limit_info = RateLimitInfo(
                 remaining=0, limit=1000, reset_time=int(time.time()) + 5
             )
             async with limiter:
