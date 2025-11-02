@@ -7,6 +7,7 @@ from fastapi import APIRouter, FastAPI
 from loguru import logger
 from pydantic import BaseModel
 import pytest
+import httpx
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.client import PortClient
 from port_ocean.context.ocean import PortOceanContext
@@ -656,6 +657,177 @@ class TestExecutionManager:
         await execution_manager._execute_run(run)
 
         # Assert
-        mock_port_client.patch_run.assert_called_once_with(
-            run.id, {"summary": error_msg, "status": RunStatus.FAILURE}
+        assert mock_port_client.patch_run.call_count == 1
+        called_args, _ = mock_port_client.patch_run.call_args
+        assert called_args[0] == run.id
+        patch_data = called_args[1]
+        assert error_msg in patch_data["summary"]
+        assert patch_data["status"] == RunStatus.FAILURE
+
+    @pytest.mark.asyncio
+    async def test_execute_run_handles_acknowledge_run_api_error(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+    ) -> None:
+        # Arrange
+        run = generate_mock_action_run()
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        http_error = httpx.HTTPStatusError(
+            "500 Internal Server Error",
+            request=MagicMock(),
+            response=mock_response,
         )
+        mock_port_client.acknowledge_run.side_effect = http_error
+
+        # Act
+        await execution_manager._execute_run(run)
+
+        # Assert
+        assert mock_port_client.patch_run.call_count == 1
+        called_args, _ = mock_port_client.patch_run.call_args
+        assert called_args[0] == run.id
+        patch_data = called_args[1]
+        patch_data["summary"] == "Failed to trigger run execution"
+        assert patch_data["status"] == RunStatus.FAILURE
+
+    @pytest.mark.asyncio
+    async def test_polling_continues_after_api_errors(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+    ) -> None:
+        """Verify that polling loop continues running even after multiple API errors"""
+        # Arrange
+        execution_manager._high_watermark = 10
+        execution_manager._poll_check_interval_seconds = 0
+
+        poll_count = 0
+
+        async def claim_runs_with_errors(limit, visibility_timeout_ms):
+            nonlocal poll_count
+            poll_count += 1
+            # Fail on first and third attempts, succeed on second and fourth
+            if poll_count in [1, 3]:
+                mock_response = MagicMock(spec=httpx.Response)
+                mock_response.status_code = 500
+                raise httpx.HTTPStatusError(
+                    "500 Internal Server Error",
+                    request=MagicMock(),
+                    response=mock_response,
+                )
+            return [generate_mock_action_run()]
+
+        mock_port_client.claim_pending_runs.side_effect = claim_runs_with_errors
+
+        # Act
+        polling_task: asyncio.Task[None] = asyncio.create_task(
+            execution_manager._poll_action_runs()
+        )
+        await asyncio.sleep(0.2)
+        await execution_manager._gracefully_cancel_task(polling_task)
+
+        # Assert
+        # Polling should have continued through errors
+        assert poll_count >= 4
+        assert mock_port_client.claim_pending_runs.call_count >= 4
+        # Should have successfully processed runs from successful polls
+        assert await execution_manager._get_queues_size() > 0
+
+    @pytest.mark.asyncio
+    async def test_process_actions_runs_handles_exceptions_gracefully(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+        mock_test_executor: MagicMock,
+    ) -> None:
+        """Verify that _process_actions_runs catches exceptions and doesn't crash the worker"""
+        # Arrange
+        run = generate_mock_action_run()
+
+        # Make execute raise an exception, and patch_run also fail
+        mock_test_executor.execute.side_effect = Exception("Execution failed")
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 503
+        patch_error = httpx.HTTPStatusError(
+            "503 Service Unavailable",
+            request=MagicMock(),
+            response=mock_response,
+        )
+        mock_port_client.patch_run.side_effect = patch_error
+
+        # Add run to queue
+        await execution_manager._add_run_to_queue(run, GLOBAL_SOURCE)
+
+        # Act
+        # Start worker loop which should handle exceptions gracefully
+        worker_task = asyncio.create_task(execution_manager._process_actions_runs())
+
+        # Wait for worker to process the run
+        await asyncio.sleep(0.1)
+
+        # Signal shutdown - worker should still be running (not crashed)
+        execution_manager._is_shutting_down.set()
+
+        # Wait a bit more to ensure worker handles shutdown
+        await asyncio.sleep(0.1)
+
+        # Cancel worker
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
+
+        # Assert
+        # Exception should have been caught by worker loop, not crashed
+        # Run should have been acknowledged before execution failed
+        mock_port_client.acknowledge_run.assert_called_once_with(run.id)
+        # patch_run should have been attempted (even if it failed)
+        mock_port_client.patch_run.assert_called_once()
+        # Worker task should have completed (either naturally or cancelled), not crashed
+        assert worker_task.done()
+
+    @pytest.mark.asyncio
+    async def test_poll_action_runs_continues_after_error_handling_runs(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+    ) -> None:
+        # Arrange
+        execution_manager._high_watermark = 10
+        execution_manager._poll_check_interval_seconds = 0
+
+        # First call succeeds, second call fails, third call succeeds again
+        call_count = 0
+
+        async def claim_runs_side_effect(limit, visibility_timeout_ms):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 2:
+                mock_response = MagicMock(spec=httpx.Response)
+                mock_response.status_code = 500
+                mock_response.text = "Internal Server Error"
+                raise httpx.HTTPStatusError(
+                    "500 Internal Server Error",
+                    request=MagicMock(),
+                    response=mock_response,
+                )
+            return [generate_mock_action_run()]
+
+        mock_port_client.claim_pending_runs.side_effect = claim_runs_side_effect
+
+        # Act
+        polling_task: asyncio.Task[None] = asyncio.create_task(
+            execution_manager._poll_action_runs()
+        )
+        await asyncio.sleep(0.15)  # Allow multiple poll attempts
+        await execution_manager._gracefully_cancel_task(polling_task)
+
+        # Assert
+        # Should have attempted to poll multiple times, handling the error gracefully
+        assert mock_port_client.claim_pending_runs.call_count >= 2
+        # Should have successfully added runs from successful polls
+        assert await execution_manager._get_queues_size() > 0

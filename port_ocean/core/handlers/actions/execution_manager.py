@@ -339,6 +339,7 @@ class ExecutionManager:
         with logger.contextualize(
             run_id=run.id, action=run.payload.integrationActionType
         ):
+            error_summary: str | None = None
             try:
                 executor = self._actions_executors[run.payload.integrationActionType]
                 while (
@@ -363,12 +364,6 @@ class ExecutionManager:
 
                 await ocean.port_client.acknowledge_run(run.id)
                 logger.debug("Run acknowledged successfully")
-                start_time = time.monotonic()
-                await executor.execute(run)
-                logger.info(
-                    "Run executed successfully",
-                    elapsed_ms=(time.monotonic() - start_time) * 1000,
-                )
             except RunAlreadyAcknowledgedError:
                 logger.warning(
                     "Run already being processed by another worker, skipping execution",
@@ -376,11 +371,30 @@ class ExecutionManager:
                 return
             except Exception as e:
                 logger.error(
-                    "Error executing run",
+                    "Error occurred while trying to trigger run execution",
                     error=e,
                 )
+                error_summary = "Failed to trigger run execution"
+
+            try:
+                start_time = time.monotonic()
+                await executor.execute(run)
+                logger.info(
+                    "Run executed successfully",
+                    elapsed_ms=(time.monotonic() - start_time) * 1000,
+                )
+            except Exception as e:
+                logger.exception("Error executing run", error=e)
+                error_summary = f"Failed to execute run: {str(e)}"
+
+            if error_summary:
                 await ocean.port_client.patch_run(
-                    run.id, {"summary": str(e), "status": RunStatus.FAILURE}
+                    run.id,
+                    {
+                        "summary": error_summary,
+                        "status": RunStatus.FAILURE,
+                    },
+                    should_raise=False,
                 )
 
     async def _gracefully_cancel_task(self, task: asyncio.Task[None] | None) -> None:

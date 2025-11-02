@@ -40,7 +40,11 @@ class ActionsClientMixin:
                 "visibilityTimeoutMs": visibility_timeout_ms,
             },
         )
-        handle_port_status_code(response)
+        response.raise_for_status()
+        if response.is_error:
+            logger.error("Error claiming pending runs", error=response.text)
+            return []
+
         return [ActionRun.parse_obj(run) for run in response.json().get("runs", [])]
 
     async def get_run_by_external_id(self, external_id: str) -> ActionRun | None:
@@ -56,13 +60,14 @@ class ActionsClientMixin:
         self,
         run_id: str,
         run: ActionRun | dict[str, Any],
+        should_raise: bool = True,
     ) -> None:
         response = await self.client.patch(
             f"{self.auth.api_url}/actions/runs/{run_id}",
             headers=await self.auth.headers(),
             json=run.dict() if isinstance(run, ActionRun) else run,
         )
-        handle_port_status_code(response)
+        handle_port_status_code(response, should_raise=should_raise)
 
     async def acknowledge_run(self, run_id: str) -> None:
         try:
@@ -86,4 +91,4 @@ class ActionsClientMixin:
             headers=await self.auth.headers(),
             json={"message": message},
         )
-        handle_port_status_code(response)
+        handle_port_status_code(response, should_raise=False)
