@@ -11,6 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug fixes
 
 - Remove assume length by reading the response for logging
+- Fixed publish core image Github action
 
 ## 0.28.18 (2025-10-27)
 
