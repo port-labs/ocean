@@ -47,11 +47,9 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     params = {}
     config = typing.cast(JiraIssueConfig, event.resource_config)
 
-    if config.selector.jql:
-        params["jql"] = config.selector.jql
-        logger.info(
-            f"Found JQL filter: {config.selector.jql}... Adding to request param"
-        )
+    jql = config.selector.jql.strip() if config.selector.jql else ""
+    params["jql"] = jql
+    logger.info(f"Using JQL filter: {jql}")
 
     if config.selector.fields:
         params["fields"] = config.selector.fields
