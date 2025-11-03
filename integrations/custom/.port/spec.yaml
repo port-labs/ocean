@@ -112,3 +112,8 @@ saas:
   enabled: false
   liveEvents:
     enabled: false
+deploymentMethodOverride:
+  - type: helm
+  - type: docker
+  - type: githubWorkflow
+  - type: gitlabCI
