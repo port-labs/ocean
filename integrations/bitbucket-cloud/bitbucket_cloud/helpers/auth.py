@@ -154,6 +154,9 @@ class BitbucketAuthFacade:
             else:
                 return SingleTokenAuth(tokens[0])
         elif app_password and username:
+            logger.warning(
+                "Username and app password authentication will be deprecated in favor of user scoped token authentication in the future. Please provide a user scoped token and email."
+            )
             return BasicAuth(username, app_password)
         elif user_scoped_token and user_email:
             return BasicAuth(user_email, user_scoped_token)
