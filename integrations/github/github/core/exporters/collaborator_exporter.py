@@ -43,6 +43,7 @@ class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
             logger.info(
                 f"Fetched batch of {len(collaborators)} collaborators from repository {repo_name} from {organization}"
             )
+
             batch = [
                 enrich_with_repository(collaborator, cast(str, repo_name))
                 for collaborator in collaborators

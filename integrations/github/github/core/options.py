@@ -75,6 +75,8 @@ class SingleUserOptions(SingleOrganizationOptions):
 class ListUserOptions(SingleOrganizationOptions):
     """Options for listing users."""
 
+    include_bots: Required[bool]
+
 
 class SingleTeamOptions(SingleOrganizationOptions):
     slug: Required[str]

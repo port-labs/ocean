@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for ingesting repositories using Github search API
 
 
+## 3.0.5-beta (2025-11-03)
+
+
+### Features
+
+- Added bot filtering option for GitHub user sync
+
+
 ## 3.0.4-beta (2025-11-02)
 
 

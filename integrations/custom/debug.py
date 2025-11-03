@@ -1,4 +1,4 @@
-"""Debug entry point for the Generic HTTP integration.
+"""Debug entry point for the Ocean Custom integration.
 
 This file is used by VS Code launch configurations to run the integration
 with debugging support.
