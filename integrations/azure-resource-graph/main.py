@@ -83,6 +83,8 @@ async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             tasks.clear()
     if tasks:
         async for results in stream_async_iterators_tasks(*tasks):
+            for result in results:
+                logger.info(f"found resource {kind} with id {result['id']}")
             yield results
 
 
