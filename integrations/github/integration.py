@@ -27,13 +27,18 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from typing import Any, Dict, List, Optional, Type, Literal
 from loguru import logger
 from port_ocean.utils.signal import signal_handler
+from github.helpers.models import RepoSearchParams
 from github.helpers.utils import ObjectKind
 from github.webhook.live_event_group_selector import get_primary_id
 
 FILE_PROPERTY_PREFIX = "file://"
 
 
-class GithubRepositorySelector(Selector):
+class RepoSearchSelector(Selector):
+    repo_search: Optional[RepoSearchParams] = None
+
+
+class GithubRepositorySelector(RepoSearchSelector):
     include: Optional[List[Literal["collaborators", "teams"]]] = Field(
         default_factory=list,
         description="Specify the relationships to include in the repository",
@@ -83,7 +88,7 @@ class GithubFolderResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.FOLDER]
 
 
-class GithubPullRequestSelector(Selector):
+class GithubPullRequestSelector(RepoSearchSelector):
     states: list[Literal["open", "closed"]] = Field(
         default=["open"],
         description="Filter by pull request state (e.g., open, closed)",
@@ -108,7 +113,7 @@ class GithubPullRequestConfig(ResourceConfig):
     kind: Literal["pull-request"]
 
 
-class GithubIssueSelector(Selector):
+class GithubIssueSelector(RepoSearchSelector):
     state: Literal["open", "closed", "all"] = Field(
         default="open",
         description="Filter by issue state (open, closed, all)",
@@ -129,7 +134,7 @@ class GithubTeamConfig(ResourceConfig):
     kind: Literal[ObjectKind.TEAM]
 
 
-class GithubDependabotAlertSelector(Selector):
+class GithubDependabotAlertSelector(RepoSearchSelector):
     states: list[Literal["auto_dismissed", "dismissed", "fixed", "open"]] = Field(
         default=["open"],
         description="Filter alerts by state (auto_dismissed, dismissed, fixed, open)",
@@ -141,7 +146,7 @@ class GithubDependabotAlertConfig(ResourceConfig):
     kind: Literal["dependabot-alert"]
 
 
-class GithubCodeScanningAlertSelector(Selector):
+class GithubCodeScanningAlertSelector(RepoSearchSelector):
     state: Literal["open", "closed", "dismissed", "fixed"] = Field(
         default="open",
         description="Filter alerts by state (open, closed, dismissed, fixed)",
@@ -153,7 +158,7 @@ class GithubCodeScanningAlertConfig(ResourceConfig):
     kind: Literal["code-scanning-alerts"]
 
 
-class GithubSecretScanningAlertSelector(Selector):
+class GithubSecretScanningAlertSelector(RepoSearchSelector):
     state: Literal["open", "resolved", "all"] = Field(
         default="open",
         description="Filter alerts by state (open, resolved, all)",
@@ -202,7 +207,7 @@ class GithubFileResourceConfig(ResourceConfig):
     selector: GithubFileSelector
 
 
-class GithubBranchSelector(Selector):
+class GithubBranchSelector(RepoSearchSelector):
     detailed: bool = Field(
         default=False, description="Include extra details about the branch"
     )
@@ -216,6 +221,10 @@ class GithubBranchSelector(Selector):
 class GithubBranchConfig(ResourceConfig):
     kind: Literal["branch"]
     selector: GithubBranchSelector
+
+
+class GithubRepoSearchConfig(ResourceConfig):
+    selector: RepoSearchSelector
 
 
 class GithubPortAppConfig(PortAppConfig):
@@ -240,6 +249,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | GithubUserConfig
+        | GithubRepoSearchConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
