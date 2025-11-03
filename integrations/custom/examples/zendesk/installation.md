@@ -1,6 +1,6 @@
 # Zendesk Integration Installation Examples
 
-This example demonstrates how to set up the Generic HTTP integration with Zendesk using cursor pagination and path parameters.
+This example demonstrates how to set up the Ocean Custom integration with Zendesk using cursor pagination and path parameters.
 
 ## Prerequisites
 
