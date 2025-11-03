@@ -306,7 +306,7 @@
     },
     {
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/integrations/generic-http",
+      "cwd": "${workspaceFolder}/integrations/custom",
       "envFile": "${workspaceFolder}/integrations/custom/examples/config-bearer-token.env",
       "justMyCode": true,
       "name": "Generic HTTP - Bearer Token",
@@ -317,7 +317,7 @@
     },
     {
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/integrations/generic-http",
+      "cwd": "${workspaceFolder}/integrations/custom",
       "envFile": "${workspaceFolder}/integrations/custom/examples/config-basic-auth.env",
       "justMyCode": true,
       "name": "Generic HTTP - Basic Auth",
@@ -328,7 +328,7 @@
     },
     {
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/integrations/generic-http",
+      "cwd": "${workspaceFolder}/integrations/custom",
       "envFile": "${workspaceFolder}/integrations/custom/examples/config-api-key.env",
       "justMyCode": true,
       "name": "Generic HTTP - API Key",
