@@ -97,14 +97,17 @@ installationDocs:
     - name: Saas
       enabled: false
   githubWorkflow:
-    enabled: false
+    enabled: true
+    docs: build-your-software-catalog/custom-integration/ocean-custom-integration/build-your-integration
   gitlabCI:
-    enabled: false
+    enabled: true
+    docs: build-your-software-catalog/custom-integration/ocean-custom-integration/build-your-integration
   helm:
     enabled: true
     docs: build-your-software-catalog/custom-integration/ocean-custom-integration/build-your-integration
   docker:
-    enabled: false
+    enabled: true
+    docs: build-your-software-catalog/custom-integration/ocean-custom-integration/build-your-integration
 saas:
   enabled: false
   liveEvents:

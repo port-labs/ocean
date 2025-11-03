@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "custom"
-version = "0.2.0-beta"
+version = "0.2.1-beta"
 description = "Ocean Custom Integration"
 authors = ["Port Team <support@getport.io>"]
 
@@ -114,5 +114,3 @@ exclude = '''
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-vv -n auto ./tests"
-
-
