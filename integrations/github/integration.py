@@ -67,7 +67,7 @@ class GithubFolderSelector(Selector):
 
 class GithubUserSelector(Selector):
     include_bots: bool = Field(
-        default=False,
+        default=True,
         alias="includeBots",
         description="Include bots in the list of users",
     )
