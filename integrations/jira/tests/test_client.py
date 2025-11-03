@@ -7,6 +7,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from jira.client import PAGE_SIZE, WEBHOOK_EVENTS, OAUTH2_WEBHOOK_EVENTS, JiraClient
+from jira.overrides import JiraIssueSelector
 
 
 @pytest.fixture(autouse=True)
@@ -195,7 +196,7 @@ async def test_get_paginated_issues_without_jql_param(
 ) -> None:
     """Test get_paginated_issues without JQL parameter - should use default JQL"""
     issues_data = {"issues": [{"key": "TEST-1"}, {"key": "TEST-2"}], "total": 2}
-    default_jql = "project is not EMPTY ORDER BY created DESC"
+    default_jql = "(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)"
 
     with patch.object(
         mock_jira_client, "_send_api_request", new_callable=AsyncMock
@@ -483,3 +484,19 @@ async def test_create_events_webhook_oauth(mock_jira_client: JiraClient) -> None
 
         await mock_jira_client.create_webhooks(app_host)
         mock_request.assert_called_once()  # Only checks for existence
+
+
+def test_jira_issue_selector_default_jql() -> None:
+    """Test that JiraIssueSelector uses the correct default JQL when not provided"""
+    selector = JiraIssueSelector(query="true")
+
+    expected_default_jql = (
+        "(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)"
+    )
+    assert (
+        selector.jql == expected_default_jql
+    ), f"Expected default JQL to be '{expected_default_jql}', but got '{selector.jql}'"
+
+    assert (
+        selector.fields == "*all"
+    ), f"Expected default fields to be '*all', but got '{selector.fields}'"
