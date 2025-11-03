@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.1-beta (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 0.1.0-beta (2025-10-27)
+
+
+### Features
+
+- Beta release of the Okta integration
+
+
+## 0.1.7-dev (2025-10-29)
+
+
+### Improvements
+
+- Added manager to default user fields
+- Added Okta icon to group and user blueprints
+- Added installation docs for Okta integration
+
+
 ## 0.1.6-dev (2025-10-27)
 
 

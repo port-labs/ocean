@@ -24,3 +24,24 @@ configurations:
     type: string
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from Okta are accepted.
     sensitive: true
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
+installationDocs:
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: true
+      docs: build-your-software-catalog/sync-data-to-catalog/other/okta?installation-methods=hosted-by-port
+  githubWorkflow:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/other/okta?installation-methods=one-time-ci&cicd-method=github
+  gitlabCI:
+    enabled: false
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/other/okta?installation-methods=real-time-self-hosted
+  docker:
+    enabled: false
