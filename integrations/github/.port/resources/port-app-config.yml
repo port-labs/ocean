@@ -54,8 +54,8 @@ resources:
           blueprint: '"githubPullRequest"'
           properties:
             creator: (.user.login | gsub("\\["; "-") | gsub("\\](?=[^$])"; "-") | gsub("\\]$"; ""))
-            assignees: "[.assignees[].login | gsub(\"\\](?=[^$])\"; \"-\") | gsub(\"\\]$\"; \"\")]"
-            reviewers: "[.requested_reviewers[].login | gsub(\"\\](?=[^$])\"; \"-\") | gsub(\"\\]$\"; \"\")]"
+            assignees: '[.assignees[].login | gsub("\\](?=[^$])"; "-") | gsub("\\]$"; "")]'
+            reviewers: '[.requested_reviewers[].login | gsub("\\](?=[^$])"; "-") | gsub("\\]$"; "")]'
             status: ".state"
             closedAt: ".closed_at"
             updatedAt: ".updated_at"
