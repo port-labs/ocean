@@ -105,7 +105,7 @@ class GithubPullRequestSelector(GithubUserSelector):
 
 class GithubPullRequestConfig(ResourceConfig):
     selector: GithubPullRequestSelector
-    kind: Literal[ObjectKind.PULL_REQUEST]
+    kind: Literal["pull-request"]
 
 
 class GithubIssueSelector(Selector):
@@ -117,7 +117,7 @@ class GithubIssueSelector(Selector):
 
 class GithubIssueConfig(ResourceConfig):
     selector: GithubIssueSelector
-    kind: Literal[ObjectKind.ISSUE]
+    kind: Literal["issue"]
 
 
 class GithubTeamSector(Selector):
@@ -138,7 +138,7 @@ class GithubDependabotAlertSelector(Selector):
 
 class GithubDependabotAlertConfig(ResourceConfig):
     selector: GithubDependabotAlertSelector
-    kind: Literal[ObjectKind.DEPENDABOT_ALERT]
+    kind: Literal["dependabot-alert"]
 
 
 class GithubCodeScanningAlertSelector(Selector):
@@ -150,7 +150,7 @@ class GithubCodeScanningAlertSelector(Selector):
 
 class GithubCodeScanningAlertConfig(ResourceConfig):
     selector: GithubCodeScanningAlertSelector
-    kind: Literal[ObjectKind.CODE_SCANNING_ALERT]
+    kind: Literal["code-scanning-alerts"]
 
 
 class GithubSecretScanningAlertSelector(Selector):
