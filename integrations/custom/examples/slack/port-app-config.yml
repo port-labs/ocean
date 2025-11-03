@@ -68,5 +68,3 @@ resources:
             domain: .domain
             email_domain: .email_domain
             icon: .icon.image_132 // ""
-
-
