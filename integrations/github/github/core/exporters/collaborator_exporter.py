@@ -1,9 +1,6 @@
 from typing import cast
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.helpers.utils import (
-    enrich_with_repository,
-    parse_github_options,
-)
+from github.helpers.utils import enrich_with_repository, parse_github_options
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import ListCollaboratorOptions, SingleCollaboratorOptions
