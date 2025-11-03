@@ -32,8 +32,3 @@ scheduledResyncInterval: 1440
 #   envsubst < integrations/custom/examples/slack/helm-values.yaml > /tmp/slack-values.yaml
 #   helm upgrade --install port-ocean-slack port-labs/port-ocean \
 #     -n port-ocean --create-namespace -f /tmp/slack-values.yaml
-
-
-
-
-

@@ -33,8 +33,3 @@ scheduledResyncInterval: 1440
 #   envsubst < integrations/custom/examples/hubspot/helm-values.yaml > /tmp/hubspot-values.yaml
 #   helm upgrade --install port-ocean-hubspot port-labs/port-ocean \
 #     -n port-ocean --create-namespace -f /tmp/hubspot-values.yaml
-
-
-
-
-
