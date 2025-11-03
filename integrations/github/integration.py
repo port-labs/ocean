@@ -65,6 +65,19 @@ class GithubFolderSelector(Selector):
     folders: list[FolderSelector]
 
 
+class GithubUserSelector(Selector):
+    include_bots: bool = Field(
+        default=True,
+        alias="includeBots",
+        description="Include bots in the list of users",
+    )
+
+
+class GithubUserConfig(ResourceConfig):
+    selector: GithubUserSelector
+    kind: Literal[ObjectKind.USER]
+
+
 class GithubFolderResourceConfig(ResourceConfig):
     selector: GithubFolderSelector
     kind: Literal[ObjectKind.FOLDER]
@@ -226,6 +239,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubFileResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
+        | GithubUserConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
