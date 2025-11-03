@@ -165,6 +165,7 @@ class TestGraphQLUserExporter:
             },
             {
                 "login": "user2",
+                "email": "user2@email.com",
             },
         ]
 

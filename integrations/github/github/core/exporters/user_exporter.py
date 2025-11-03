@@ -49,7 +49,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
             users_with_no_email = {
                 (idx, user["login"]): user
                 for idx, user in enumerate(users)
-                if not user.get("email") and not include_bots
+                if not user.get("email")
             }
 
             if users_with_no_email:
