@@ -257,7 +257,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             else:
                 response = await transport.handle_async_request(request)
 
-            await self._log_response_size_async(request, response)
+            self._log_response_size(request, response)
 
             return response
         except Exception as e:
@@ -345,35 +345,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             return int(content_length)
         return None
 
-    async def _log_response_size_async(
-        self, request: httpx.Request, response: httpx.Response
-    ) -> None:
-        """Log the size of the response."""
-        if not self._should_log_response_size(request):
-            return
-
-        # Try to get content length from headers first
-        content_length = self._get_content_length(response)
-        if content_length is not None:
-            size_info = content_length
-        else:
-            # If no Content-Length header, try to get actual content size
-            try:
-                content = await response.aread()
-                actual_size = len(content)
-                size_info = actual_size
-                # Restore the cached body so downstream code can still use .json()/.text/.content
-                response._content = content  # httpx convention
-            except Exception as e:
-                cast(logging.Logger, self._logger).error(
-                    f"Error getting response size: {e}"
-                )
-                return
-
-        cast(logging.Logger, self._logger).info(
-            f"Response for {request.method} {request.url} - Size: {size_info} bytes"
-        )
-
     def _log_response_size(
         self, request: httpx.Request, response: httpx.Response
     ) -> None:
@@ -381,24 +352,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             return
 
         content_length = self._get_content_length(response)
-        if content_length is not None:
-            size_info = content_length
-        else:
-            # If no Content-Length header, try to get actual content size
-            try:
-                content = response.read()
-                actual_size = len(content)
-                size_info = actual_size
-                # Restore the cached body so downstream code can still use .json()/.text/.content
-                response._content = content  # httpx convention
-            except Exception as e:
-                cast(logging.Logger, self._logger).error(
-                    f"Error getting response size: {e}"
-                )
-                return
+        if content_length is None:
+            return
 
         cast(logging.Logger, self._logger).info(
-            f"Response for {request.method} {request.url} - Size: {size_info} bytes"
+            f"Response for {request.method} {request.url} - Size: {content_length} bytes"
         )
 
     async def _should_retry_async(self, response: httpx.Response) -> bool:
