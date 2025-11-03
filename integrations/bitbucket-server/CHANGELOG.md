@@ -7,12 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.63-beta (2025-10-30)
+
+## 0.1.64-beta (2025-11-03)
 
 
 ### Bug fix
 
 - Fixed bug Bitbucket-server integration causing unnecessary exceptions in deployment logs
+
+
+## 0.1.63-beta (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
 
 
 ## 0.1.62-beta (2025-10-27)

@@ -303,24 +303,23 @@ class GitLabClient:
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         all_group_ids = set()
-        top_level_groups = []
+        groups_by_id = {}
 
-        async for group_batch in self.get_groups(
-            params=params,
-        ):
-            group_ids_in_batch = {group["id"] for group in group_batch}
+        async for group_batch in self.get_groups(params=params):
             for group in group_batch:
-                parent_id = group.get("parent_id")
-                if (
-                    parent_id not in all_group_ids
-                    and parent_id not in group_ids_in_batch
-                ):
-                    top_level_groups.append(group)
-                all_group_ids.add(group["id"])
+                group_id = group["id"]
+                all_group_ids.add(group_id)
+                groups_by_id[group_id] = group
 
-            if top_level_groups:
-                yield top_level_groups
-                top_level_groups = []
+        top_level_groups = [
+            group
+            for group in groups_by_id.values()
+            if group.get("parent_id") is None
+            or group.get("parent_id") not in all_group_ids
+        ]
+
+        if top_level_groups:
+            yield top_level_groups
 
     async def search_files(
         self,
