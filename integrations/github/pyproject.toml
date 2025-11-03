@@ -2,7 +2,7 @@
 name = "github-ocean"
 version = "3.0.5-beta"
 description = "This integration ingest data from github"
-authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>", "Melody Anyaegbulam <melodyogonna@gmail.com>", "Michael Armah <mikeyarmah@gmail.com>", "Dennis Bilson <quabynahdennis@gmail.com>"]
+authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>", "Melody Anyaegbulam <melodyogonna@gmail.com>", "Michael Armah <mikeyarmah@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
