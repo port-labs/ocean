@@ -40,7 +40,6 @@ class ActionsClientMixin:
                 "visibilityTimeoutMs": visibility_timeout_ms,
             },
         )
-        response.raise_for_status()
         if response.is_error:
             logger.error("Error claiming pending runs", error=response.text)
             return []
