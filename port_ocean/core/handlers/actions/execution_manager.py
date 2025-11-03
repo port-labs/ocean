@@ -163,7 +163,7 @@ class ExecutionManager:
                 await asyncio.sleep(0)
                 queues_size = await self._get_queues_size()
                 if queues_size >= self._high_watermark:
-                    logger.warning(
+                    logger.info(
                         "Queue size at high watermark, waiting for processing to catch up",
                         current_size=queues_size,
                         high_watermark=self._high_watermark,
@@ -178,7 +178,7 @@ class ExecutionManager:
                 )
 
                 if not runs:
-                    logger.info(
+                    logger.debug(
                         "No runs to process, waiting for next poll",
                         current_size=queues_size,
                         high_watermark=self._high_watermark,
