@@ -1,7 +1,7 @@
 title: Ocean Custom
 description: Universal HTTP REST API integration with dynamic path parameters and flexible authentication
 icon: RestAPI
-docs: https://docs.port.io/build-your-software-catalog/custom-integration/ocean-custom
+docs: https://docs.port.io/build-your-software-catalog/custom-integration/ocean-custom-integration
 features:
   - type: exporter
     section: Other
@@ -90,6 +90,21 @@ configurations:
     type: string
     default: "10"
     description: "Maximum concurrent API requests (uses Ocean's built-in rate limiting and caching)"
+installationDocs:
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: false
+  githubWorkflow:
+    enabled: false
+  gitlabCI:
+    enabled: false
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/custom-integration/ocean-custom-integration/overview
+  docker:
+    enabled: false
 saas:
   enabled: false
   liveEvents:
