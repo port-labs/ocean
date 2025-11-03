@@ -91,6 +91,6 @@ configurations:
     default: "10"
     description: "Maximum concurrent API requests (uses Ocean's built-in rate limiting and caching)"
 saas:
-  enabled: true
+  enabled: false
   liveEvents:
     enabled: false
