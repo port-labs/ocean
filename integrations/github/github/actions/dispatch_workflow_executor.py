@@ -15,12 +15,12 @@ from github.core.options import SingleRepositoryOptions
 from github.webhook.registry import (
     WEBHOOK_PATH as DISPATCH_WEBHOOK_PATH,
 )
-from integrations.github.github.helpers.exceptions import (
+from github.helpers.exceptions import (
     InvalidActionParametersException,
     NoWorkflowRunsFoundException,
     RepositoryDefaultBranchNotFoundException,
 )
-from integrations.github.github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_processor import (
+from github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_processor import (
     DispatchWorkflowWebhookProcessor,
 )
 from port_ocean.context.ocean import ocean

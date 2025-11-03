@@ -1,6 +1,6 @@
-from integrations.github.github.actions.utils import build_external_id
-from integrations.github.github.context.auth import get_authenticated_user
-from integrations.github.github.webhook.webhook_processors.workflow_run.base_workflow_run_webhook_processor import (
+from github.actions.utils import build_external_id
+from github.context.auth import get_authenticated_user
+from github.webhook.webhook_processors.workflow_run.base_workflow_run_webhook_processor import (
     BaseWorkflowRunWebhookProcessor,
 )
 from port_ocean.context.ocean import ocean
