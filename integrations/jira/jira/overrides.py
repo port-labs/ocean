@@ -23,7 +23,7 @@ class TeamResourceConfig(ResourceConfig):
 
 class JiraIssueSelector(Selector):
     jql: str = Field(
-        default="project is not EMPTY ORDER BY created DESC",
+        default="(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)",
         description="JQL query to filter issues. Defaults to fetching all issues across all projects.",
     )
     fields: str | None = Field(
