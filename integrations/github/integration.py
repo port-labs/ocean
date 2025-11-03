@@ -83,7 +83,7 @@ class GithubFolderResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.FOLDER]
 
 
-class GithubPullRequestSelector(GithubUserSelector):
+class GithubPullRequestSelector(Selector):
     states: list[Literal["open", "closed"]] = Field(
         default=["open"],
         description="Filter by pull request state (e.g., open, closed)",
