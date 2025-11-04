@@ -50,7 +50,6 @@ class AzureResourceGraphClient(AzureRestClient):
             "api-version": request.api_version,
         }
         while True:
-
             response = await self.make_request(
                 AzureRequest(
                     endpoint=next_url,

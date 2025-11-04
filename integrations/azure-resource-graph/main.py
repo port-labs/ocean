@@ -18,9 +18,6 @@ from integration import (
     AzureSubscriptionResourceConfig,
 )
 from azure_integration.factory import AzureClientType
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-
-MAX_CONCURRENT_REQUESTS = 10
 
 
 class KindWithSpecialHandling(StrEnum):
@@ -39,8 +36,6 @@ async def on_resync_subscription(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for subscriptions in subscription_exporter.get_paginated_resources(
         exporter_options
     ):
-        for sub in subscriptions:
-            logger.info(f"found resource {kind} with id {sub['id']}")
         yield subscriptions
 
 
@@ -57,7 +52,6 @@ async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     resource_graph_exporter = ResourceGraphExporter(azure_resource_graph_client)
     subscription_exporter = SubscriptionExporter(azure_resource_manager_client)
-    tasks = []
     async for subscriptions in subscription_exporter.get_paginated_resources(
         SubscriptionExporterOptions(
             api_version=selectors.subscription.api_params.version
@@ -74,17 +68,9 @@ async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             query=selectors.graph_query,
             subscriptions=subscription_ids,
         )
-        tasks.append(resource_graph_exporter.get_paginated_resources(exporter_options))
-        if len(tasks) >= MAX_CONCURRENT_REQUESTS:
-            async for results in stream_async_iterators_tasks(*tasks):
-                for result in results:
-                    logger.info(f"found resource {kind} with id {result['id']}")
-                yield results
-            tasks.clear()
-    if tasks:
-        async for results in stream_async_iterators_tasks(*tasks):
-            for result in results:
-                logger.info(f"found resource {kind} with id {result['id']}")
+        async for results in resource_graph_exporter.get_paginated_resources(
+            exporter_options
+        ):
             yield results
 
 
