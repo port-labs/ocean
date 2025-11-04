@@ -125,7 +125,7 @@ class TestWorkflowRunWebhookProcessor:
             mock_exporter.get_resource.return_value = workflow_run
 
             with patch(
-                "github.webhook.webhook_processors.workflow_run_webhook_processor.RestWorkflowRunExporter",
+                "github.webhook.webhook_processors.workflow_run.workflow_run_webhook_processor.RestWorkflowRunExporter",
                 return_value=mock_exporter,
             ):
                 result = await workflow_webhook_processor.handle_event(
