@@ -130,9 +130,7 @@ class TestRateLimiter:
         info = RateLimitInfo(
             limit=1000, remaining=1, reset_time=int(time.time()) + reset_in
         )
-        client.rate_limiter.rate_limit_info = (
-            info  # trusted internal seed for the test
-        )
+        client.rate_limiter.rate_limit_info = info  # trusted internal seed for the test
 
         # This call should sleep on __aenter__
         mock_sleep.reset_mock()

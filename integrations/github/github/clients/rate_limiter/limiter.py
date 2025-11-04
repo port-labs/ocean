@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, Optional, Dict, Any, Type
+from typing import List, Optional, Any, Type
 import httpx
 from loguru import logger
 from github.clients.rate_limiter.utils import (

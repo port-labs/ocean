@@ -16,7 +16,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 from github.helpers.utils import ObjectKind
-from github.webhook.webhook_processors.workflow_run_webhook_processor import (
+from github.webhook.webhook_processors.workflow_run.workflow_run_webhook_processor import (
     WorkflowRunWebhookProcessor,
 )
 
