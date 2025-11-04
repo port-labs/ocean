@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 1.4.12-beta (2025-11-02)
+
+
+### Improvements
+
+- Updated default resources to include the following kinds, aligning integration defaults with product requirements:
+  - AWS::Account::Info
+  - AWS::S3::Bucket
+  - AWS::EC2::Instance
+  - AWS::ECS::Cluster
+
+- Updated action names and definitions to align more closely with AWS standards for easier identification and clarity.
+
 ## 1.4.11-beta (2025-11-02)
 
 
