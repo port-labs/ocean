@@ -29,6 +29,7 @@ class HarborClient:
         self._base_url = harbor_host.rstrip("/")
         self.api_url = f"{self._base_url}/api/v2.0"
         self.client = self._authenticator.client
+        self._csrf_token: Optional[str] = None
 
         logger.info(f"Harbor client initialized for {harbor_host}")
 
@@ -39,6 +40,23 @@ class HarborClient:
     def _get_next_link(self, link_header: str) -> Optional[str]:
         match = self.NEXT_PATTERN.search(link_header)
         return match.group(1) if match else None
+
+    def _extract_csrf_token_from_response(self, response: httpx.Response) -> None:
+        """Extract and cache CSRF token from response headers if present."""
+        csrf_token = response.headers.get("X-Harbor-CSRF-Token", "")
+        self._csrf_token = csrf_token
+
+    async def _fetch_csrf_token(self) -> Optional[str]:
+        """Fetch CSRF token from Harbor systeminfo endpoint.
+        Returns the cached token if available, otherwise fetches from /systeminfo.
+        Returns None if fetch fails or token is not available.
+        """
+        if self._csrf_token:
+            return self._csrf_token
+
+        logger.debug("Fetching CSRF token from Harbor systeminfo endpoint")
+        await self.make_request("/systeminfo", method="GET")
+        return self._csrf_token
 
     def _should_ignore_error(
         self,
@@ -65,7 +83,9 @@ class HarborClient:
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[Any]] = None,
     ) -> httpx.Response:
-        """Make a request to the Harbor API with authentication and error handling."""
+        """
+        Make a request to the Harbor API with authentication and error handling.
+        """
         url = urljoin(self.api_url + "/", resource.lstrip("/"))
 
         headers = await self._authenticator.get_headers()
@@ -73,18 +93,15 @@ class HarborClient:
 
         logger.debug(f"Harbor API {method} {url} with params: {params}")
 
-        # Harbor's API issues a session ID cookie (`sid`) during GET requests,
-        # which is meant for UI sessions (the Harbor web interface) and enforces CSRF checks
-        # on subsequent modifying requests (POST, PUT, PATCH).
-        #
-        # When we authenticate using Basic Auth programmatically (like in our Ocean client),
-        # these cookies are unnecessary and can cause CSRF validation errors:
-        #     {"code": "FORBIDDEN", "message": "CSRF token not found in request"}
-        #
-        # To avoid this, we clear cookies before any write operation so the request behaves
-        # like a stateless API call.
-        if method in ["POST", "PUT", "PATCH"]:
-            self.client.cookies.clear()
+        is_write_operation = method in ["POST", "PUT", "PATCH", "DELETE"]
+
+        if is_write_operation:
+            csrf_token = await self._fetch_csrf_token()
+            if not csrf_token:
+                raise ValueError("CSRF token not found")
+
+            headers_dict["X-Harbor-CSRF-Token"] = csrf_token
+            logger.debug("Added CSRF token to write request headers")
 
         try:
             response = await self.client.request(
@@ -95,6 +112,9 @@ class HarborClient:
                 headers=headers_dict,
             )
             response.raise_for_status()
+
+            if method == "GET":
+                self._extract_csrf_token_from_response(response)
 
             logger.debug(f"Successfully fetched {method} {url}")
             return response

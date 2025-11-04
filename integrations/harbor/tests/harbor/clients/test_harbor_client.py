@@ -239,6 +239,7 @@ class TestHarborClient:
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
         mock_response.json.return_value = {"data": "test"}
+        mock_response.headers = {"X-Harbor-CSRF-Token": "test-token"}
 
         # Mock the authenticator's get_headers method
         mock_headers = MagicMock()
@@ -271,6 +272,11 @@ class TestHarborClient:
         self, harbor_client: HarborClient
     ) -> None:
         """Test make_request with JSON data."""
+        mock_systeminfo_response = MagicMock(spec=httpx.Response)
+        mock_systeminfo_response.status_code = 200
+        mock_systeminfo_response.json.return_value = {}
+        mock_systeminfo_response.headers = {"X-Harbor-CSRF-Token": "test-csrf-token"}
+
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 200
         mock_response.json.return_value = {"data": "created"}
@@ -288,13 +294,21 @@ class TestHarborClient:
             json_data = {"name": "new-project", "public": True}
 
             with patch.object(
-                harbor_client.client, "request", AsyncMock(return_value=mock_response)
+                harbor_client.client,
+                "request",
+                AsyncMock(side_effect=[mock_systeminfo_response, mock_response]),
             ) as mock_request:
                 await harbor_client.make_request(
                     "/projects", method="POST", json_data=json_data
                 )
 
-                mock_request.assert_called_once()
-                call_args = mock_request.call_args
-                assert call_args[1]["json"] == json_data
-                assert call_args[1]["method"] == "POST"
+                assert mock_request.call_count == 2
+                calls = mock_request.call_args_list
+                assert calls[0][1]["method"] == "GET"
+                assert "systeminfo" in calls[0][1]["url"]
+                assert calls[1][1]["json"] == json_data
+                assert calls[1][1]["method"] == "POST"
+                assert "X-Harbor-CSRF-Token" in calls[1][1]["headers"]
+                assert (
+                    calls[1][1]["headers"]["X-Harbor-CSRF-Token"] == "test-csrf-token"
+                )

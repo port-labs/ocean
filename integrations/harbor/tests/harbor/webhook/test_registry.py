@@ -11,6 +11,8 @@ class TestHarborWebhookRegistry:
     @patch("harbor.webhook.registry.ocean")
     def test_register_harbor_webhooks(self, mock_ocean: MagicMock) -> None:
         """Test webhook registration registers both processors."""
+        mock_ocean.add_webhook_processor = MagicMock()
+
         register_harbor_webhooks(path="/test/webhook")
 
         # Verify both artifact and repository processors are registered
