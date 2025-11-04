@@ -13,6 +13,7 @@ import port_ocean.helpers.metric.metric
 from port_ocean.cache.base import CacheProvider
 from port_ocean.cache.disk import DiskCacheProvider
 from port_ocean.cache.memory import InMemoryCacheProvider
+from port_ocean.cache.hybrid import HybridCacheProvider
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import (
     IntegrationConfiguration,
@@ -123,12 +124,13 @@ class Ocean:
             caching_type_to_provider = {
                 DiskCacheProvider.STORAGE_TYPE: DiskCacheProvider,
                 InMemoryCacheProvider.STORAGE_TYPE: InMemoryCacheProvider,
+                HybridCacheProvider.STORAGE_TYPE: HybridCacheProvider,
             }
             if self.config.caching_storage_mode in caching_type_to_provider:
                 return caching_type_to_provider[self.config.caching_storage_mode]()
 
         if self.config.process_execution_mode == ProcessExecutionMode.multi_process:
-            return DiskCacheProvider()
+            return HybridCacheProvider()
         return InMemoryCacheProvider()
 
     def is_saas(self) -> bool:
