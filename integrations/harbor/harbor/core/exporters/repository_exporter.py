@@ -35,30 +35,13 @@ class HarborRepositoryExporter(AbstractHarborExporter[HarborClient]):
         logger.info("Starting Harbor repositories export")
 
         params = build_repository_params(options)
-
-        if not hasattr(self, "_projects_map"):
-            self._projects_map = {}
-            async for projects_page in self.client.send_paginated_request("/projects"):
-                for project in projects_page:
-                    self._projects_map[project["project_id"]] = project["name"]
+        project_name = options["project_name"]
 
         async for repositories_page in self.client.send_paginated_request(
-            "/repositories", params=params
+            f"/projects/{project_name}/repositories", params=params
         ):
             for repository in repositories_page:
-                project_id = repository.get("project_id")
-                if project_id in self._projects_map:
-                    repository["project_name"] = self._projects_map[project_id]
-                    logger.info(
-                        f"Enriched repository {repository['name']} with project_name: {repository['project_name']}"
-                    )
-                else:
-                    repository["project_name"] = f"project-{project_id}"
-                    logger.warning(
-                        f"Could not find project name for project_id {project_id}, using fallback"
-                    )
-
-                logger.info(f"Repository data: {repository}")
+                repository["project_name"] = project_name
 
             logger.info(f"Fetched {len(repositories_page)} repositories")
             yield repositories_page

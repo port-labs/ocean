@@ -81,7 +81,6 @@ class TestRepositoryWebhookProcessor:
                 "harbor.webhook.webhook_processors.repository_webhook_processor.HarborRepositoryExporter"
             ) as mock_exporter_class,
         ):
-
             mock_client = AsyncMock()
             mock_init_client.return_value = mock_client
 

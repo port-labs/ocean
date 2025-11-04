@@ -43,7 +43,8 @@ class HarborWebhookClient:
                 (
                     webhook
                     for webhook in webhook_policies
-                    if webhook["targets"][0]["address"] == webhook_url
+                    if webhook.get("targets")
+                    and webhook["targets"][0]["address"] == webhook_url
                 ),
                 None,
             )

@@ -41,6 +41,7 @@ class ListRepositoryOptions(TypedDict):
 
     q: NotRequired[Optional[str]]
     sort: NotRequired[Optional[str]]
+    project_name: Required[str]
 
 
 class SingleArtifactOptions(TypedDict):

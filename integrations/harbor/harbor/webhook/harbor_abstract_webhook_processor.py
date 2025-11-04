@@ -4,7 +4,6 @@ from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import EventHeaders, EventPayload
-import hmac
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -32,15 +31,7 @@ class HarborAbstractWebhookProcessor(AbstractWebhookProcessor):
             )
             return False
 
-        logger.debug(
-            "Validating Harbor webhook token...",
-            extra={
-                "received_token_prefix": received_token[:10] + "...",
-                "expected_token_prefix": secret[:10] + "...",
-            },
-        )
-
-        return hmac.compare_digest(received_token, secret)
+        return received_token == secret
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         """Determine if this event should be processed. Always return True since authentication is handled in authenticate method."""

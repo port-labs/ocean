@@ -82,7 +82,6 @@ class TestArtifactWebhookProcessor:
                 "harbor.webhook.webhook_processors.artifact_webhook_processor.HarborArtifactExporter"
             ) as mock_exporter_class,
         ):
-
             mock_client = AsyncMock()
             mock_init_client.return_value = mock_client
 

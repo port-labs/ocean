@@ -73,16 +73,23 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     client = init_client()
-    exporter = HarborRepositoryExporter(client)
+    project_exporter = HarborProjectExporter(client)
+    repository_exporter = HarborRepositoryExporter(client)
     config = cast(HarborRepositoriesConfig, event.resource_config)
 
-    options = ListRepositoryOptions(
-        q=config.selector.q,
-        sort=config.selector.sort,
-    )
+    project_options = ListProjectOptions()
+    selector = getattr(config, "selector", {})
 
-    async for repositories in exporter.get_paginated_resources(options):
-        yield repositories
+    async for projects in project_exporter.get_paginated_resources(project_options):
+        for project in projects:
+            async for repositories in repository_exporter.get_paginated_resources(
+                ListRepositoryOptions(
+                    project_name=project["name"],
+                    q=getattr(selector, "q", None),
+                    sort=getattr(selector, "sort", None),
+                )
+            ):
+                yield repositories
 
 
 @ocean.on_resync(ObjectKind.ARTIFACTS)
@@ -91,41 +98,50 @@ async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     client = init_client()
+    project_exporter = HarborProjectExporter(client)
     repository_exporter = HarborRepositoryExporter(client)
     artifact_exporter = HarborArtifactExporter(client)
     config = cast(HarborArtifactsConfig, event.resource_config)
 
-    repository_options = ListRepositoryOptions()
-
+    project_options = ListProjectOptions()
     selector = getattr(config, "selector", {})
 
-    async for repositories in repository_exporter.get_paginated_resources(
-        repository_options
-    ):
-        tasks = [
-            artifact_exporter.get_paginated_resources(
-                ListArtifactOptions(
-                    project_name=repository.get("project_name"),
-                    repository_name=repository["name"],
+    async for projects in project_exporter.get_paginated_resources(project_options):
+        for project in projects:
+            async for repositories in repository_exporter.get_paginated_resources(
+                ListRepositoryOptions(
+                    project_name=project["name"],
                     q=getattr(selector, "q", None),
                     sort=getattr(selector, "sort", None),
-                    with_tag=getattr(selector, "with_tag", None),
-                    with_label=getattr(selector, "with_label", None),
-                    with_scan_overview=getattr(selector, "with_scan_overview", None),
-                    with_sbom_overview=getattr(selector, "with_sbom_overview", None),
-                    with_signature=getattr(selector, "with_signature", None),
-                    with_immutable_status=getattr(
-                        selector, "with_immutable_status", None
-                    ),
-                    with_accessory=getattr(selector, "with_accessory", None),
                 )
-            )
-            for repository in repositories
-        ]
+            ):
+                tasks = [
+                    artifact_exporter.get_paginated_resources(
+                        ListArtifactOptions(
+                            project_name=repository.get("project_name"),
+                            repository_name=repository["name"],
+                            q=getattr(selector, "q", None),
+                            sort=getattr(selector, "sort", None),
+                            with_tag=getattr(selector, "with_tag", None),
+                            with_label=getattr(selector, "with_label", None),
+                            with_scan_overview=getattr(
+                                selector, "with_scan_overview", None
+                            ),
+                            with_sbom_overview=getattr(
+                                selector, "with_sbom_overview", None
+                            ),
+                            with_signature=getattr(selector, "with_signature", None),
+                            with_immutable_status=getattr(
+                                selector, "with_immutable_status", None
+                            ),
+                            with_accessory=getattr(selector, "with_accessory", None),
+                        )
+                    )
+                    for repository in repositories
+                ]
 
-        logger.info(f"Fetching artifacts from {len(tasks)} repositories")
-        async for artifacts in stream_async_iterators_tasks(*tasks):
-            yield artifacts
+                async for artifacts in stream_async_iterators_tasks(*tasks):
+                    yield artifacts
 
 
 @ocean.on_start()
