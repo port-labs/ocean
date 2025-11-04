@@ -98,16 +98,16 @@ installationDocs:
       enabled: false
   githubWorkflow:
     enabled: true
-    docs: build-your-software-catalog/custom-integration/ocean-custom-integration/build-your-integration
+    docs: build-your-software-catalog/custom-integration/ocean-custom-integration/overview
   gitlabCI:
     enabled: true
-    docs: build-your-software-catalog/custom-integration/ocean-custom-integration/build-your-integration
+    docs: build-your-software-catalog/custom-integration/ocean-custom-integration/overview
   helm:
     enabled: true
-    docs: build-your-software-catalog/custom-integration/ocean-custom-integration/build-your-integration
+    docs: build-your-software-catalog/custom-integration/ocean-custom-integration/overview
   docker:
     enabled: true
-    docs: build-your-software-catalog/custom-integration/ocean-custom-integration/build-your-integration
+    docs: build-your-software-catalog/custom-integration/ocean-custom-integration/overview
 saas:
   enabled: false
   liveEvents:
