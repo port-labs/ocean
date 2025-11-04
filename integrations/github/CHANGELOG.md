@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Add alias to repo_search selector.
+- Update `repo_search` selector to use `repoSearch` alias for camelCase consistency.
 
 
 ## 3.1.0-beta (2025-11-03)
