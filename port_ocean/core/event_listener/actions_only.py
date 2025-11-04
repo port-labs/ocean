@@ -9,34 +9,34 @@ from port_ocean.core.event_listener.base import (
 from port_ocean.core.models import EventListenerType
 
 
-class WebhooksOnlyEventListenerSettings(EventListenerSettings):
+class ActionsOnlyEventListenerSettings(EventListenerSettings):
     """
     This class inherits from `EventListenerSettings`, which provides a foundation for creating event listener settings.
     """
 
-    type: Literal[EventListenerType.WEBHOOKS_ONLY]
+    type: Literal[EventListenerType.ACTIONS_ONLY]
     should_resync: bool = False
-    should_run_actions: bool = False
+    should_process_webhooks: bool = False
 
 
-class WebhooksOnlyEventListener(BaseEventListener):
+class ActionsOnlyEventListener(BaseEventListener):
     """
     No resync event listener.
 
-    It is used to handle events exclusively through webhooks without supporting resync events.
+    It is used to handle events exclusively through actions without supporting resync events.
 
     Parameters:
         events (EventListenerEvents): A dictionary containing event types and their corresponding event handlers.
-        event_listener_config (OnceEventListenerSettings): The event listener configuration settings.
+        event_listener_config (ActionsOnlyEventListenerSettings): The event listener configuration settings.
     """
 
     def __init__(
         self,
         events: EventListenerEvents,
-        event_listener_config: WebhooksOnlyEventListenerSettings,
+        event_listener_config: ActionsOnlyEventListenerSettings,
     ):
         super().__init__(events)
         self.event_listener_config = event_listener_config
 
     async def _start(self) -> None:
-        logger.info("Starting Webhooks-only event listener")
+        logger.info("Starting Actions-only event listener")
