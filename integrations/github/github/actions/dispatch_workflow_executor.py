@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 import json
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -152,11 +153,11 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
 
     async def _get_workflow_run(
         self, organization: str, repo: str, ref: str, isoDate: str
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Get the workflow run for a given workflow.
         """
-        workflow_runs = []
+        workflow_runs: list[dict[str, Any]] = []
         authenticated_user = await get_authenticated_user()
         attempts_made = 0
         while len(workflow_runs) == 0 and attempts_made < MAX_WORKFLOW_POLL_ATTEMPTS:

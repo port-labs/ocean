@@ -4,6 +4,6 @@ from github.actions.dispatch_workflow_executor import (
 )
 
 
-def register_actions_executors():
+def register_actions_executors() -> None:
     """Register all actions executors."""
     ocean.register_action_executor(DispatchWorkflowExecutor())
