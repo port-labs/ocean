@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.8 (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 0.3.7 (2025-11-02)
+
+
+### Bug Fixes
+
+- Fix pagination bug in get_parent_groups that was creating duplicate webhooks for child groups
+
+
+
+## 0.3.6 (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
 ## 0.3.5 (2025-10-27)
 
 

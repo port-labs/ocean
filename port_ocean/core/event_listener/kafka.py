@@ -17,6 +17,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerSettings,
 )
 from pydantic import validator
+from port_ocean.core.models import EventListenerType
 
 
 class KafkaEventListenerSettings(EventListenerSettings):
@@ -25,7 +26,7 @@ class KafkaEventListenerSettings(EventListenerSettings):
     The `KafkaEventListenerSettings` specifically includes settings related to the Kafka event listener.
 
     Attributes:
-        type (Literal["KAFKA"]): A literal indicating the type of the event listener, which is set to "KAFKA" for this class.
+        type (EventListenerType): A literal indicating the type of the event listener, which is set to "KAFKA" for this class.
         brokers (str): The comma-separated list of Kafka broker URLs to connect to.
         security_protocol (str): The security protocol used for communication with Kafka brokers.
                                  The default value is "SASL_SSL".
@@ -38,7 +39,7 @@ class KafkaEventListenerSettings(EventListenerSettings):
                                      The default value is 1 second.
     """
 
-    type: Literal["KAFKA"]
+    type: Literal[EventListenerType.KAFKA]
     brokers: str = (
         "b-1-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196,b-2-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196,b-3-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196"
     )

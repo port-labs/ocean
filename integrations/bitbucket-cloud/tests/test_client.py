@@ -81,7 +81,7 @@ async def test_client_init_no_auth() -> None:
         with pytest.raises(MissingIntegrationCredentialException) as exc_info:
             BitbucketClient.create_from_ocean_config()
         assert (
-            "Either workspace token or both username and app password must be provided"
+            "Either workspace token, both username and app password, or both user_email and user_scoped_token must be provided"
             in str(exc_info.value)
         )
 
@@ -470,7 +470,7 @@ async def test_client_init_with_invalid_workspace_tokens() -> None:
     # Test with empty string (should hit the general auth error, not token validation)
     with pytest.raises(
         MissingIntegrationCredentialException,
-        match="Either workspace token or both username and app password must be provided",
+        match="Either workspace token, both username and app password, or both user_email and user_scoped_token must be provided",
     ):
         BitbucketClient(
             workspace="test-workspace",
