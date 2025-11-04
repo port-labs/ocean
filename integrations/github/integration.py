@@ -35,7 +35,7 @@ FILE_PROPERTY_PREFIX = "file://"
 
 
 class RepoSearchSelector(Selector):
-    repo_search: Optional[RepoSearchParams] = None
+    repo_search: Optional[RepoSearchParams] = Field(default=None, alias="repoSearch")
 
 
 class GithubRepositorySelector(RepoSearchSelector):
