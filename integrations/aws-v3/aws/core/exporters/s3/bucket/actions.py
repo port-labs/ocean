@@ -172,5 +172,5 @@ class S3BucketActionsMap(ActionMap):
         GetPublicAccessBlockAction,
         GetBucketOwnershipControlsAction,
         GetBucketEncryptionAction,
-        GetBucketLocationAction
+        GetBucketLocationAction,
     ]
