@@ -4,7 +4,11 @@ from loguru import logger
 
 from github.clients.client_factory import create_github_client
 from github.core.exporters.folder_exporter import RestFolderExporter
-from github.core.options import ListFolderOptions, SingleRepositoryOptions
+from github.core.options import (
+    FolderSearchOptions,
+    ListFolderOptions,
+    SingleRepositoryOptions,
+)
 from github.helpers.utils import ObjectKind, extract_changed_files, fetch_commit_diff
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
@@ -141,10 +145,18 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
             logger.debug(
                 f"Fetching folders for path '{pattern.path}' in {repository['name']} of organization: {organization} on branch {branch}"
             )
-            repo_mapping = {
-                organization: {repository["name"]: {branch: [pattern.path]}}
-            }
-            options = ListFolderOptions(repo_mapping=repo_mapping)
+
+            options = [
+                ListFolderOptions(
+                    organization=organization,
+                    repo_name=repository["name"],
+                    folders=[
+                        FolderSearchOptions(
+                            path=pattern.path, branch=branch, repo=repository
+                        )
+                    ],
+                )
+            ]
 
             async for folder_batch in exporter.get_paginated_resources(options):
                 changed_folders.extend(

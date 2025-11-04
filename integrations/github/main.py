@@ -52,7 +52,6 @@ from github.core.options import (
     ListBranchOptions,
     ListDeploymentsOptions,
     ListEnvironmentsOptions,
-    ListFolderOptions,
     ListIssueOptions,
     ListPullRequestOptions,
     ListRepositoryOptions,
@@ -732,15 +731,17 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     folder_exporter = RestFolderExporter(rest_client)
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
-    if not selector.folders:
-        logger.info(
-            "Skipping folder kind resync because required selectors are missing"
-        )
-        return
 
-    repo_path_map = create_path_mapping(selector.folders)
-    folder_options = ListFolderOptions(repo_mapping=repo_path_map)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
+    app_config = cast(GithubPortAppConfig, event.port_app_config)
 
+    folder_options = await create_path_mapping(
+        selector.folders,
+        org_exporter,
+        repo_exporter,
+        app_config.repository_type,
+    )
     async for folders in folder_exporter.get_paginated_resources(folder_options):
         yield folders
 
@@ -751,6 +752,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     rest_client = create_github_client()
+    org_exporter = RestOrganizationExporter(rest_client)
     file_exporter = RestFileExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
 
@@ -760,6 +762,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     repo_path_map = await group_file_patterns_by_repositories_in_selector(
         files_pattern,
+        org_exporter,
         repo_exporter,
         app_config.repository_type,
     )
