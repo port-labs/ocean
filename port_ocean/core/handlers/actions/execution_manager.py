@@ -350,6 +350,10 @@ class ExecutionManager:
                         RATE_LIMIT_MAX_BACKOFF_SECONDS,
                         await executor.get_remaining_seconds_until_rate_limit(),
                     )
+                    logger.info(
+                        "Encountered rate limit, will attempt to re-run in {backoff_seconds} seconds",
+                        backoff_seconds=backoff_seconds,
+                    )
                     await ocean.port_client.post_run_log(
                         run.id,
                         f"Delayed due to low remaining rate limit. Will attempt to re-run in {backoff_seconds} seconds",
