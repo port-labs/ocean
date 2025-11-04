@@ -1,5 +1,6 @@
 from typing import cast
 
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 
 from client import (
@@ -20,15 +21,12 @@ def initialize_client() -> BitbucketClient:
         config.get("bitbucket_rate_limit_window", DEFAULT_BITBUCKET_RATE_LIMIT_WINDOW)
     )
 
-    # Extract pagination and concurrency configuration
-    page_size = int(config.get("bitbucket_page_size", DEFAULT_PAGE_SIZE))
-    max_concurrent_requests = int(
-        config.get("bitbucket_max_concurrent_requests", DEFAULT_MAX_CONCURRENT_REQUESTS)
-    )
-
-    # Extract project filtering configuration
-    projects_filter_regex = config.get("bitbucket_projects_filter_regex")
-    projects_filter_suffix = config.get("bitbucket_projects_filter_suffix")
+    # Extract project filtering configuration from selector
+    project_filter_regex = None
+    if event.resource_config and hasattr(event.resource_config, "selector"):
+        project_filter_regex = getattr(
+            event.resource_config.selector, "projectFilterRegex", None
+        )
 
     return BitbucketClient(
         username=config["bitbucket_username"],
@@ -42,8 +40,7 @@ def initialize_client() -> BitbucketClient:
         ),
         rate_limit=rate_limit,
         rate_limit_window=rate_limit_window,
-        page_size=page_size,
-        max_concurrent_requests=max_concurrent_requests,
-        projects_filter_regex=projects_filter_regex,
-        projects_filter_suffix=projects_filter_suffix,
+        page_size=DEFAULT_PAGE_SIZE,
+        max_concurrent_requests=DEFAULT_MAX_CONCURRENT_REQUESTS,
+        project_filter_regex=project_filter_regex,
     )

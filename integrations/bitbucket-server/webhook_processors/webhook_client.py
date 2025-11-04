@@ -7,7 +7,7 @@ from fastapi import Request
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
-from client import BitbucketClient
+from client import BitbucketClient, DEFAULT_PAGE_SIZE, DEFAULT_MAX_CONCURRENT_REQUESTS
 
 PROJECT_WEBHOOK_EVENTS = [
     "project:modified",
@@ -332,13 +332,8 @@ def initialize_client() -> BitbucketServerWebhookClient:
     rate_limit = int(config.get("bitbucket_rate_limit", 1000))
     rate_limit_window = int(config.get("bitbucket_rate_limit_window", 3600))
 
-    # Extract pagination and concurrency configuration
-    page_size = int(config.get("bitbucket_page_size", 25))
-    max_concurrent_requests = int(config.get("bitbucket_max_concurrent_requests", 10))
-
-    # Extract project filtering configuration
-    projects_filter_regex = config.get("bitbucket_projects_filter_regex")
-    projects_filter_suffix = config.get("bitbucket_projects_filter_suffix")
+    # Webhook client does not use project filtering
+    project_filter_regex = None
 
     return BitbucketServerWebhookClient(
         username=config["bitbucket_username"],
@@ -352,8 +347,7 @@ def initialize_client() -> BitbucketServerWebhookClient:
         ),
         rate_limit=rate_limit,
         rate_limit_window=rate_limit_window,
-        page_size=page_size,
-        max_concurrent_requests=max_concurrent_requests,
-        projects_filter_regex=projects_filter_regex,
-        projects_filter_suffix=projects_filter_suffix,
+        page_size=DEFAULT_PAGE_SIZE,
+        max_concurrent_requests=DEFAULT_MAX_CONCURRENT_REQUESTS,
+        project_filter_regex=project_filter_regex,
     )

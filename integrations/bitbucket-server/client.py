@@ -17,8 +17,8 @@ from port_ocean.utils.cache import cache_iterator_result
 # Rate limit docs: https://support.atlassian.com/bitbucket-cloud/docs/api-request-limits/
 DEFAULT_BITBUCKET_RATE_LIMIT = 1000  # requests per hour
 DEFAULT_BITBUCKET_RATE_LIMIT_WINDOW = 3600  # 1 hour
-DEFAULT_PAGE_SIZE = 25  # items per page
-DEFAULT_MAX_CONCURRENT_REQUESTS = 10  # concurrent repository PR requests
+DEFAULT_PAGE_SIZE = 100  # items per page
+DEFAULT_MAX_CONCURRENT_REQUESTS = 50  # concurrent repository PR requests
 
 
 class BitbucketClient:
@@ -39,8 +39,7 @@ class BitbucketClient:
         rate_limit_window: int = DEFAULT_BITBUCKET_RATE_LIMIT_WINDOW,
         page_size: int = DEFAULT_PAGE_SIZE,
         max_concurrent_requests: int = DEFAULT_MAX_CONCURRENT_REQUESTS,
-        projects_filter_regex: str | None = None,
-        projects_filter_suffix: str | None = None,
+        project_filter_regex: str | None = None,
     ):
         """
         Initialize the Bitbucket client with authentication and configuration.
@@ -56,8 +55,7 @@ class BitbucketClient:
             rate_limit_window: Time window in seconds for rate limiting (default: 3600 = 1 hour)
             page_size: Number of items per page for paginated requests (default: 25)
             max_concurrent_requests: Maximum number of concurrent repository PR requests (default: 10)
-            projects_filter_regex: Optional regex pattern to filter project keys (e.g., "^PROJ-.*")
-            projects_filter_suffix: Optional suffix pattern to filter project keys (e.g., "-PROD")
+            project_filter_regex: Optional regex pattern to filter project keys (e.g., "^PROJ-.*" for prefix or ".*-PROD$" for suffix)
         """
         self.username = username
         self.password = password
@@ -72,10 +70,9 @@ class BitbucketClient:
         self.page_size = page_size
         self.max_concurrent_requests = max_concurrent_requests
 
-        self.projects_filter_regex = (
-            re.compile(projects_filter_regex) if projects_filter_regex else None
+        self.project_filter_regex = (
+            re.compile(project_filter_regex) if project_filter_regex else None
         )
-        self.projects_filter_suffix = projects_filter_suffix
 
         # Despite this, being the rate limits, we do not reduce to the lowest common factor because we want to allow as much
         # concurrency as possible. This is because we expect most users to have resources
@@ -136,20 +133,11 @@ class BitbucketClient:
             True if the project should be included, False otherwise
         """
         # If no filters are set, include all projects
-        if not self.projects_filter_regex and not self.projects_filter_suffix:
+        if not self.project_filter_regex:
             return True
 
         # Check regex filter
-        if self.projects_filter_regex:
-            if not self.projects_filter_regex.match(project_key):
-                return False
-
-        # Check suffix filter
-        if self.projects_filter_suffix:
-            if not project_key.endswith(self.projects_filter_suffix):
-                return False
-
-        return True
+        return bool(self.project_filter_regex.match(project_key))
 
     async def get_paginated_resource(
         self,
@@ -246,7 +234,7 @@ class BitbucketClient:
         """
         logger.info(
             f"Getting projects with filter: {projects_filter}, "
-            f"regex: {self.projects_filter_regex}, suffix: {self.projects_filter_suffix}"
+            f"regex: {self.project_filter_regex}"
         )
         if projects_filter:
             filtered_projects = await self._get_projects_with_filter(projects_filter)

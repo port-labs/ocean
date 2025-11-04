@@ -198,13 +198,13 @@ async def test_default_concurrency() -> None:
 
 
 @pytest.mark.asyncio
-async def test_project_filtering_with_regex() -> None:
-    """Test project filtering with regex pattern."""
+async def test_project_filtering_with_prefix_regex() -> None:
+    """Test project filtering with prefix regex pattern."""
     client = BitbucketClient(
         base_url="https://bitbucket.example.com",
         username="test-user",
         password="test-password",
-        projects_filter_regex="^PROD-.*",
+        project_filter_regex="^PROD-.*",
     )
 
     assert client._should_include_project("PROD-123") is True
@@ -214,13 +214,13 @@ async def test_project_filtering_with_regex() -> None:
 
 
 @pytest.mark.asyncio
-async def test_project_filtering_with_suffix() -> None:
-    """Test project filtering with suffix pattern."""
+async def test_project_filtering_with_suffix_regex() -> None:
+    """Test project filtering with suffix regex pattern."""
     client = BitbucketClient(
         base_url="https://bitbucket.example.com",
         username="test-user",
         password="test-password",
-        projects_filter_suffix="-PROD",
+        project_filter_regex=".*-PROD$",
     )
 
     assert client._should_include_project("PROJECT-PROD") is True
@@ -230,14 +230,13 @@ async def test_project_filtering_with_suffix() -> None:
 
 
 @pytest.mark.asyncio
-async def test_project_filtering_with_both_regex_and_suffix() -> None:
-    """Test both regex and suffix filters must match (AND logic)."""
+async def test_project_filtering_with_combined_regex() -> None:
+    """Test project filtering with combined prefix and suffix regex."""
     client = BitbucketClient(
         base_url="https://bitbucket.example.com",
         username="test-user",
         password="test-password",
-        projects_filter_regex="^TEAM-.*",
-        projects_filter_suffix="-PROD",
+        project_filter_regex="^TEAM-.*-PROD$",
     )
 
     assert client._should_include_project("TEAM-APP-PROD") is True
@@ -268,7 +267,7 @@ async def test_project_filtering_logic_with_regex() -> None:
         base_url="https://bitbucket.example.com",
         username="test-user",
         password="test-password",
-        projects_filter_regex="^PROD-.*",
+        project_filter_regex="^PROD-.*",
     )
 
     test_projects = [
