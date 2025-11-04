@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.1.1-beta (2025-11-04)
+
+
+### Improvements
+
+- Add alias to repo_search selector.
+
+
 ## 3.1.0-beta (2025-11-03)
 
 
