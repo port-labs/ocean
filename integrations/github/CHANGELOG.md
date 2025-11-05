@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# 3.2.0-beta (2025-11-04)
+
+
+### Improvements
+
+- Added support for running github workflows as part of Port actions
+
+
+## 3.1.2-beta (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 3.1.1-beta (2025-11-04)
+
+
+### Improvements
+
+- Update `repo_search` selector to use `repoSearch` alias for camelCase consistency.
+
+
+## 3.1.0-beta (2025-11-03)
+
+
+### Features
+
+- Added support for ingesting repositories using Github search API
+
+
+## 3.0.5-beta (2025-11-03)
+
+
+### Features
+
+- Added bot filtering option for GitHub user sync
+
+
 ## 3.0.4-beta (2025-11-02)
 
 

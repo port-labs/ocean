@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.87 (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 0.1.86 (2025-11-03)
+
+
+### Improvements
+
+- Added support for user scoped token authentication for Bitbucket Cloud
+
+
 ## 0.1.85 (2025-11-02)
 
 
