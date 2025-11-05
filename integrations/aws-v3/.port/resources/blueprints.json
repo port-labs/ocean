@@ -23,11 +23,6 @@
           "title": "ARN",
           "description": "The Amazon Resource Name (ARN) of the bucket"
         },
-        "region": {
-          "type": "string",
-          "title": "Region",
-          "description": "Geographic AWS Region where a bucket is created and stored"
-        },
         "creationDate": {
           "type": "string",
           "title": "Creation Date",
