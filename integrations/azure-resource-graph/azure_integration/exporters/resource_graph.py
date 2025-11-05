@@ -11,7 +11,7 @@ from azure_integration.clients.base import AzureRequest
 
 
 _SUBCRIPTION_BATCH_SIZE = 100
-MAX_CONCURRENT_REQUESTS = 10
+_MAX_CONCURRENT_REQUESTS = 10
 
 
 class ResourceGraphExporter(BaseExporter):
@@ -38,7 +38,7 @@ class ResourceGraphExporter(BaseExporter):
             )
 
             tasks.append(self.client.make_paginated_request(request))
-            if len(tasks) >= MAX_CONCURRENT_REQUESTS:
+            if len(tasks) >= _MAX_CONCURRENT_REQUESTS:
                 async for results in stream_async_iterators_tasks(*tasks):
                     logger.info(
                         f"Received batch of {len(results)} results from resource graph"
