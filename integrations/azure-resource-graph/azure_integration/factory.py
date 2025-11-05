@@ -12,7 +12,11 @@ from azure_integration.clients.rest.resource_graph_client import (
     AzureResourceGraphClient,
 )
 from azure_integration.helpers.exceptions import MissingAzureCredentials
-from azure_integration.helpers.rate_limiter import AdaptiveTokenBucketRateLimiter
+from azure_integration.helpers.rate_limiter import (
+    AdaptiveTokenBucketRateLimiter,
+    AZURERM_BUCKET_REFILL_RATE,
+    AZURERM_RATELIMIT_CAPACITY,
+)
 
 
 class AzureClientType(StrEnum):
@@ -52,8 +56,8 @@ class AzureClientFactory:
                 client_secret=ocean.integration_config["azure_client_secret"],
             )
             rate_limiter = AdaptiveTokenBucketRateLimiter(
-                capacity=250,
-                refill_rate=25,
+                capacity=AZURERM_RATELIMIT_CAPACITY,
+                refill_rate=AZURERM_BUCKET_REFILL_RATE,
             )
             self._instances[client_type] = self._clients[client_type](
                 credential=credential, base_url=base_url, rate_limiter=rate_limiter

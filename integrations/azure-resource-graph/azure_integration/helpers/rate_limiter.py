@@ -8,6 +8,9 @@ from contextlib import asynccontextmanager
 _DEFAULT_MAX_WAIT: int = 30
 _DEFAULT_BACKOFF: int = 1
 
+AZURERM_RATELIMIT_CAPACITY = 250
+AZURERM_BUCKET_REFILL_RATE = 25
+
 
 class TokenBucketRateLimiter:
     """
