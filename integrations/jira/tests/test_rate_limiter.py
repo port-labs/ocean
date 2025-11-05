@@ -72,11 +72,11 @@ class TestJiraRateLimiter:
 
         headers = httpx.Headers(
             {
-                "X-RateLimit-Limit": "100",
-                "X-RateLimit-Remaining": "50",
-                "X-RateLimit-NearLimit": "false",
-                "X-RateLimit-Reset": reset_time_iso,
-                "Retry-After": "30",
+                "x-ratelimit-limit": "100",
+                "x-ratelimit-remaining": "50",
+                "x-ratelimit-nearlimit": "false",
+                "x-ratelimit-reset": reset_time_iso,
+                "retry-after": "30",
             }
         )
 
@@ -99,11 +99,11 @@ class TestJiraRateLimiter:
 
         headers = httpx.Headers(
             {
-                "X-Beta-RateLimit-Limit": "200",
-                "X-Beta-RateLimit-Remaining": "25",
-                "X-Beta-RateLimit-NearLimit": "true",
-                "X-Beta-RateLimit-Reset": reset_time_iso,
-                "Beta-Retry-After": "60",
+                "x-beta-ratelimit-limit": "200",
+                "x-beta-ratelimit-remaining": "25",
+                "x-beta-ratelimit-nearlimit": "true",
+                "x-beta-ratelimit-reset": reset_time_iso,
+                "beta-retry-after": "60",
             }
         )
 
@@ -121,10 +121,10 @@ class TestJiraRateLimiter:
 
         headers = httpx.Headers(
             {
-                "X-RateLimit-Limit": "100",
-                "X-Beta-RateLimit-Limit": "200",
-                "X-Beta-RateLimit-Remaining": "25",
-                "X-RateLimit-NearLimit": "false",
+                "x-ratelimit-limit": "100",
+                "x-beta-ratelimit-limit": "200",
+                "x-beta-ratelimit-remaining": "25",
+                "x-ratelimit-nearlimit": "false",
             }
         )
 
@@ -144,12 +144,12 @@ class TestJiraRateLimiter:
 
         headers = httpx.Headers(
             {
-                "X-RateLimit-Limit": "100",
-                "X-RateLimit-Remaining": "0",
-                "X-RateLimit-NearLimit": "true",
-                "X-RateLimit-Reset": "2024-01-01T12:00:00Z",
-                "RateLimit-Reason": "jira-quota-based",
-                "Retry-After": "30",
+                "x-ratelimit-limit": "100",
+                "x-ratelimit-remaining": "0",
+                "x-ratelimit-nearlimit": "true",
+                "x-ratelimit-reset": "2024-01-01T12:00:00Z",
+                "ratelimit-reason": "jira-quota-based",
+                "retry-after": "30",
             }
         )
 
@@ -171,8 +171,8 @@ class TestJiraRateLimiter:
         # Headers with invalid values that will cause parsing errors
         headers = httpx.Headers(
             {
-                "X-RateLimit-Limit": "invalid_number",
-                "X-RateLimit-Remaining": "also_invalid",
+                "x-ratelimit-limit": "invalid_number",
+                "x-ratelimit-remaining": "also_invalid",
             }
         )
 
@@ -325,11 +325,11 @@ class TestJiraRateLimiter:
         # Test with Z suffix
         headers_z = httpx.Headers(
             {
-                "X-RateLimit-Reset": "2024-01-01T12:00:00Z",
-                "X-RateLimit-Limit": "100",
-                "X-RateLimit-Remaining": "50",
-                "X-RateLimit-NearLimit": "false",
-                "Retry-After": "30",
+                "x-ratelimit-reset": "2024-01-01T12:00:00Z",
+                "x-ratelimit-limit": "100",
+                "x-ratelimit-remaining": "50",
+                "x-ratelimit-nearlimit": "false",
+                "retry-after": "30",
             }
         )
 
@@ -345,11 +345,11 @@ class TestJiraRateLimiter:
         # Test with +00:00 suffix
         headers_offset = httpx.Headers(
             {
-                "X-RateLimit-Reset": "2024-01-01T12:00:00+00:00",
-                "X-RateLimit-Limit": "100",
-                "X-RateLimit-Remaining": "50",
-                "X-RateLimit-NearLimit": "false",
-                "Retry-After": "30",
+                "x-ratelimit-reset": "2024-01-01T12:00:00+00:00",
+                "x-ratelimit-limit": "100",
+                "x-ratelimit-remaining": "50",
+                "x-ratelimit-nearlimit": "false",
+                "retry-after": "30",
             }
         )
 
