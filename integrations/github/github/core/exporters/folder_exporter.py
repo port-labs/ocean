@@ -1,4 +1,3 @@
-from collections import defaultdict
 from typing import Any, List
 
 from loguru import logger
@@ -12,56 +11,7 @@ from github.core.options import (
     ListFolderOptions,
     SingleFolderOptions,
 )
-from github.helpers.utils import (
-    IgnoredError,
-    get_repos_and_branches_for_selector,
-)
-from integration import FolderSelector
-
-# default key in path mapping when branch is not passed
-_DEFAULT_BRANCH = "hard_to_replicate_name"
-
-
-async def create_path_mapping(
-    folders: list[FolderSelector],
-    org_exporter: "AbstractGithubExporter[Any]",
-    repo_exporter: "AbstractGithubExporter[Any]",
-    repo_type: str,
-) -> List[ListFolderOptions]:
-    """
-    Build a flat list of folder search options:
-    organization -> repo_name -> [FolderSearchOptions].
-    Resolves exact and glob repositories per folder selector.
-    """
-    repo_map: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
-
-    logger.info(
-        f"Grouping folder patterns for {len(folders)} patterns using repo_type '{repo_type}'..."
-    )
-    for folder_selector in folders:
-        path = folder_selector.path
-
-        async for (
-            repo_name,
-            branch,
-            org,
-            repo_obj,
-        ) in get_repos_and_branches_for_selector(
-            folder_selector, org_exporter, repo_exporter, repo_type
-        ):
-            repo_map[(org, repo_name)].append(
-                {
-                    "organization": org,
-                    "branch": branch,
-                    "path": path,
-                    "repo": repo_obj,
-                }
-            )
-
-    return [
-        ListFolderOptions(organization=org, repo_name=repo, folders=items)
-        for (org, repo), items in repo_map.items()
-    ]
+from github.helpers.utils import IgnoredError, _DEFAULT_BRANCH
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):

@@ -42,10 +42,7 @@ from github.core.exporters.secret_scanning_alert_exporter import (
     RestSecretScanningAlertExporter,
 )
 from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
-from github.core.exporters.folder_exporter import (
-    RestFolderExporter,
-    create_path_mapping,
-)
+from github.core.exporters.folder_exporter import RestFolderExporter
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.core.exporters.organization_exporter import RestOrganizationExporter
 
@@ -67,7 +64,7 @@ from github.core.options import (
     ListCollaboratorOptions,
     ListSecretScanningAlertOptions,
 )
-from github.helpers.utils import ObjectKind, GithubClientType
+from github.helpers.utils import ObjectKind, GithubClientType, create_path_mapping
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_client import GithubWebhookClient
 

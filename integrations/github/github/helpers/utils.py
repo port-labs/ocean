@@ -1,3 +1,4 @@
+from collections import defaultdict
 from functools import lru_cache
 from enum import StrEnum
 import re
@@ -11,30 +12,35 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    TYPE_CHECKING,
 )
 
 from pydantic import BaseModel
 from loguru import logger
-from typing import TYPE_CHECKING
+from wcmatch import glob
 
 from port_ocean.utils import cache
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
 from github.core.options import (
+    ListFolderOptions,
     ListOrganizationOptions,
     ListRepositoryOptions,
 )
-from wcmatch import glob
 
 
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
     from integration import RepositoryBranchMapping
     from github.core.exporters.abstract_exporter import AbstractGithubExporter
+    from integration import FolderSelector
 
 
 GLOB_COMPILE_FLAGS = glob.EXTGLOB | glob.BRACE | glob.DOTMATCH | glob.IGNORECASE
 GLOB_SPLIT_RE = re.compile(r"[*?\[\]\{\}\(\)\|@]")
+
+# default key in path mapping when branch is not passed
+_DEFAULT_BRANCH = "hard_to_replicate_name"
 
 
 class GithubClientType(StrEnum):
@@ -340,3 +346,45 @@ async def get_repos_and_branches_for_selector(
 
         async for item in stream_async_iterators_tasks(*tasks):
             yield item
+
+
+async def create_path_mapping(
+    folders: list["FolderSelector"],
+    org_exporter: "AbstractGithubExporter[Any]",
+    repo_exporter: "AbstractGithubExporter[Any]",
+    repo_type: str,
+) -> List[ListFolderOptions]:
+    """
+    Build a flat list of folder search options:
+    organization -> repo_name -> [FolderSearchOptions].
+    Resolves exact and glob repositories per folder selector.
+    """
+    repo_map: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+
+    logger.info(
+        f"Grouping folder patterns for {len(folders)} patterns using repo_type '{repo_type}'..."
+    )
+    for folder_selector in folders:
+        path = folder_selector.path
+
+        async for (
+            repo_name,
+            branch,
+            org,
+            repo_obj,
+        ) in get_repos_and_branches_for_selector(
+            folder_selector, org_exporter, repo_exporter, repo_type
+        ):
+            repo_map[(org, repo_name)].append(
+                {
+                    "organization": org,
+                    "branch": branch,
+                    "path": path,
+                    "repo": repo_obj,
+                }
+            )
+
+    return [
+        ListFolderOptions(organization=org, repo_name=repo, folders=items)
+        for (org, repo), items in repo_map.items()
+    ]
