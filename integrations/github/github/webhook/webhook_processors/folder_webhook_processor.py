@@ -72,6 +72,9 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         """
         Checks if the provided repository and branch match the conditions specified in the pattern.
         """
+        if not pattern.repos:
+            return False
+
         for selector_repo in pattern.repos:
             if selector_repo.name == repository["name"] and (
                 not selector_repo.branch or selector_repo.branch == branch
@@ -152,7 +155,10 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
                     repo_name=repository["name"],
                     folders=[
                         FolderSearchOptions(
-                            path=pattern.path, branch=branch, repo=repository
+                            organization=organization,
+                            path=pattern.path,
+                            branch=branch,
+                            repo=repository,
                         )
                     ],
                 )

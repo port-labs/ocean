@@ -21,8 +21,12 @@ from loguru import logger
 from wcmatch import glob
 
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.options import ListFileSearchOptions
-from github.helpers.utils import GithubClientType, get_repos_and_branches_for_selector
+from github.core.options import FileSearchOptions, ListFileSearchOptions
+from github.helpers.utils import GithubClientType
+from github.helpers.repo_selectors import (
+    CompositeRepositorySelector,
+    OrganizationIterator,
+)
 
 if TYPE_CHECKING:
     from integration import GithubFilePattern
@@ -113,38 +117,46 @@ def is_matching_file(files: List[Dict[str, Any]], filenames: List[str]) -> bool:
     return False
 
 
-async def group_file_patterns_by_repositories_in_selector(
-    files: List["GithubFilePattern"],
-    org_exporter: "AbstractGithubExporter[Any]",
-    repo_exporter: "AbstractGithubExporter[Any]",
-    repo_type: str,
-) -> List[ListFileSearchOptions]:
+class FilePatternMappingBuilder:
+    def __init__(
+        self,
+        org_exporter: AbstractGithubExporter[Any],
+        repo_exporter: AbstractGithubExporter[Any],
+        repo_type: str,
+    ):
+        self.org_iterator = OrganizationIterator(org_exporter)
+        self.repo_selector = CompositeRepositorySelector(repo_type)
+        self.repo_exporter = repo_exporter
 
-    repo_map: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    async def build(
+        self, files: List["GithubFilePattern"]
+    ) -> List[ListFileSearchOptions]:
+        repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
 
-    logger.info(
-        f"Grouping file patterns for {len(files)} patterns using repo_type '{repo_type}'..."
-    )
-    for file_selector in files:
-        path = file_selector.path
-        skip_parsing = file_selector.skip_parsing
+        logger.info(f"Building path mapping for {len(files)} file selectors...")
 
-        async for repo_name, branch, org, _ in get_repos_and_branches_for_selector(
-            file_selector, org_exporter, repo_exporter, repo_type
-        ):
-            repo_map[(org, repo_name)].append(
-                {
-                    "organization": org,
-                    "path": path,
-                    "skip_parsing": skip_parsing,
-                    "branch": branch,
-                }
+        for file_sel in files:
+            async for org_login in self.org_iterator.iter_orgs(file_sel.organization):
+                async for repo_name, branch, _ in self.repo_selector.select_repos(
+                    file_sel, self.repo_exporter, org_login
+                ):
+                    repo_map[(org_login, repo_name)].append(
+                        FileSearchOptions(
+                            organization=org_login,
+                            path=file_sel.path,
+                            skip_parsing=file_sel.skip_parsing,
+                            branch=branch,
+                        )
+                    )
+
+        return [
+            ListFileSearchOptions(
+                organization=org,
+                repo_name=repo,
+                files=items,
             )
-
-    return [
-        ListFileSearchOptions(organization=org, repo_name=repo, files=items)
-        for (org, repo), items in repo_map.items()
-    ]
+            for (org, repo), items in repo_map.items()
+        ]
 
 
 def match_file_path_against_glob_pattern(path: str, pattern: str) -> bool:

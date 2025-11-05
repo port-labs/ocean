@@ -2,10 +2,10 @@ import pytest
 from typing import Any, Dict
 
 from github.helpers.utils import (
-    create_search_params,
     enrich_with_repository,
     parse_github_options,
 )
+from github.helpers.repo_selectors import create_search_params
 
 
 class TestEnrichWithRepository:
