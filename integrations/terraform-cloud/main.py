@@ -111,7 +111,7 @@ async def on_create_webhook_resync(kind: str) -> RAW_RESULT:
         return []
 
     if base_url := ocean.app.base_url:
-        logger.warning(f"Creating webhooks for base URL: {base_url}")
+        logger.info(f"Creating webhooks for base URL: {base_url}")
         config = ocean.integration_config
         webhook_client = TerraformWebhookClient(
             config["terraform_cloud_host"],
