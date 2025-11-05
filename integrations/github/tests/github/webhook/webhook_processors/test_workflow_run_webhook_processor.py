@@ -16,7 +16,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 from github.helpers.utils import ObjectKind
-from github.webhook.webhook_processors.workflow_run_webhook_processor import (
+from github.webhook.webhook_processors.workflow_run.workflow_run_webhook_processor import (
     WorkflowRunWebhookProcessor,
 )
 
@@ -125,7 +125,7 @@ class TestWorkflowRunWebhookProcessor:
             mock_exporter.get_resource.return_value = workflow_run
 
             with patch(
-                "github.webhook.webhook_processors.workflow_run_webhook_processor.RestWorkflowRunExporter",
+                "github.webhook.webhook_processors.workflow_run.workflow_run_webhook_processor.RestWorkflowRunExporter",
                 return_value=mock_exporter,
             ):
                 result = await workflow_webhook_processor.handle_event(

@@ -26,6 +26,7 @@ from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
+from port_ocean.core.handlers.actions.execution_manager import ExecutionManager
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.models import ProcessExecutionMode
 from port_ocean.log.sensetive import sensitive_log_filter
@@ -85,6 +86,16 @@ class Ocean:
             self.integration_router,
             signal_handler,
             max_event_processing_seconds=self.config.max_event_processing_seconds,
+            max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
+        )
+
+        self.execution_manager = ExecutionManager(
+            webhook_manager=self.webhook_manager,
+            signal_handler=signal_handler,
+            workers_count=self.config.actions_processor.workers_count,
+            runs_buffer_high_watermark=self.config.actions_processor.runs_buffer_high_watermark,
+            poll_check_interval_seconds=self.config.actions_processor.poll_check_interval_seconds,
+            visibility_timeout_ms=self.config.actions_processor.visibility_timeout_ms,
             max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
         )
 
@@ -200,6 +211,24 @@ class Ocean:
                 )
         return None
 
+    async def _register_addons(self) -> None:
+        if self.base_url and self.config.event_listener.should_process_webhooks:
+            await self.webhook_manager.start_processing_event_messages()
+        else:
+            logger.warning(
+                "No base URL provided, or webhook processing is disabled is this event listener, skipping webhook processing"
+            )
+
+        if (
+            self.config.actions_processor.enabled
+            and self.config.event_listener.should_run_actions
+        ):
+            await self.execution_manager.start_processing_action_runs()
+        else:
+            logger.warning(
+                "Execution agent is not enabled, or actions processing is disabled in this event listener, skipping execution agent setup"
+            )
+
     def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
         self.fast_api_app.include_router(
@@ -210,10 +239,7 @@ class Ocean:
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 await self.integration.start()
-                if self.base_url:
-                    await self.webhook_manager.start_processing_event_messages()
-                else:
-                    logger.warning("No base URL provided, skipping webhook processing")
+                await self._register_addons()
                 await self._setup_scheduled_resync()
                 yield None
             except Exception:
