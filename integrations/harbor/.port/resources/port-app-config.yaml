@@ -1,0 +1,91 @@
+resources:
+  - kind: project
+    selector:
+      query: "true"
+      # Example filters (uncomment to use):
+      # visibility: "public"  # Filter by visibility: public/private
+      # namePrefix: "prod-"   # Filter by name prefix
+      # nameRegex: "^(prod|staging)-.*"  # Filter by regex pattern
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: harborProject
+          properties:
+            public: .metadata.public == "true"
+            repoCount: .repo_count
+            creationTime: .creation_time
+            updateTime: .update_time
+
+  - kind: user
+    selector:
+      query: "true"
+      # Example filters (uncomment to use):
+      # adminOnly: true       # Only sync admin users
+      # emailDomain: "company.com"  # Filter by email domain
+    port:
+      entity:
+        mappings:
+          identifier: .username
+          title: .username
+          blueprint: harborUser
+          properties:
+            email: .email
+            realname: .realname
+            adminRole: .sysadmin_flag
+            creationTime: .creation_time
+
+  - kind: repository
+    selector:
+      query: "true"
+      # Example filters (uncomment to use):
+      # projectName: "opensource"  # Filter by specific project
+      # nameContains: "nginx"     # Filter by name pattern
+      # nameStartsWith: "app-"    # Filter by name prefix
+      # minArtifactCount: 1       # Minimum artifact count
+      # minPullCount: 10          # Minimum pull count
+    port:
+      entity:
+        mappings:
+          identifier: .name | gsub("/"; "_")
+          title: .name
+          blueprint: harborRepository
+          properties:
+            artifactCount: .artifact_count
+            pullCount: .pull_count
+            creationTime: .creation_time
+            updateTime: .update_time
+          relations:
+            project: .project_name
+
+  - kind: artifact
+    selector:
+      query: "true"
+      # Example filters (uncomment to use):
+      # projectName: "opensource"     # Filter by specific project
+      # repositoryName: "nginx"       # Filter by specific repository
+      # tagPattern: "^v\\d+\\.\\d+"      # Filter by tag regex (version tags)
+      # createdSince: "2024-01-01T00:00:00Z"  # Filter by creation date
+      # mediaType: "application/vnd.docker.distribution.manifest.v2+json"
+      # withScanResults: true         # Only artifacts with scan results
+      # minSeverity: "medium"         # Minimum vulnerability severity
+      # maxSizeMb: 1000              # Maximum size in MB
+    port:
+      entity:
+        mappings:
+          identifier: .project_name + "_" + .repository_name + "_" + .digest[7:19]
+          title: (.tags[0].name // "untagged") + "@" + .digest[7:19]
+          blueprint: harborArtifact
+          properties:
+            type: .type
+            mediaType: .media_type
+            manifestMediaType: .manifest_media_type
+            size: .size
+            pushTime: .push_time
+            pullTime: .pull_time
+            tags: [.tags[]?.name] | map(select(. != null))
+            # Vulnerability scan data (if available)
+            scanOverview: .scan_overview
+          relations:
+            repository: .project_name + "/" + .repository_name | gsub("/"; "_")

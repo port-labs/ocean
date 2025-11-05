@@ -1,0 +1,69 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"harborProject"'
+          properties:
+            public: .metadata.public == "true"
+            repoCount: .repo_count
+            creationTime: .creation_time
+            updateTime: .update_time
+
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .username
+          title: .username
+          blueprint: '"harborUser"'
+          properties:
+            email: .email
+            realname: .realname
+            adminRole: .sysadmin_flag
+            creationTime: .creation_time
+
+  - kind: repository
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name | split("/") | .[1]
+          blueprint: '"harborRepository"'
+          properties:
+            artifactCount: .artifact_count
+            pullCount: .pull_count
+            creationTime: .creation_time
+            updateTime: .update_time
+          relations:
+            project: .name | split("/") | .[0]
+
+  - kind: artifact
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .digest
+          title: (.tags[0].name // "untagged") + "@" + (.digest | split(":")[1][:12])
+          blueprint: '"harborArtifact"'
+          properties:
+            type: .type
+            mediaType: .media_type
+            manifestMediaType: .manifest_media_type
+            size: .size
+            pushTime: .push_time
+            pullTime: .pull_time
+            tags: [.tags[].name]
+          relations:
+            repository: .repository_name

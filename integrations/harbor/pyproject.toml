@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "harbor"
+version = "0.1.0"
+description = "Port Ocean Harbor Integration"
+authors = ["Port Team <support@getport.io>"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+port-ocean = {path = "../../", develop = true}
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0"
+pytest-asyncio = "^0.21.0"
+aioresponses = "^0.7.4"
+pytest-cov = "^4.0"
+pytest-mock = "^3.10"
+black = "^23.0"
+isort = "^5.12"
+flake8 = "^6.0"
+mypy = "^1.0"
+pre-commit = "^3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

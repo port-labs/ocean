@@ -1,0 +1,135 @@
+[
+  {
+    "identifier": "harborProject",
+    "title": "Harbor Project",
+    "icon": "Harbor",
+    "schema": {
+      "properties": {
+        "public": {
+          "type": "boolean",
+          "title": "Public"
+        },
+        "repoCount": {
+          "type": "number",
+          "title": "Repository Count"
+        },
+        "creationTime": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Creation Time"
+        },
+        "updateTime": {
+          "type": "string", 
+          "format": "date-time",
+          "title": "Update Time"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "harborUser",
+    "title": "Harbor User", 
+    "icon": "User",
+    "schema": {
+      "properties": {
+        "email": {
+          "type": "string",
+          "title": "Email"
+        },
+        "realname": {
+          "type": "string",
+          "title": "Real Name"
+        },
+        "adminRole": {
+          "type": "boolean",
+          "title": "Admin Role"
+        },
+        "creationTime": {
+          "type": "string",
+          "format": "date-time", 
+          "title": "Creation Time"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "harborRepository",
+    "title": "Harbor Repository",
+    "icon": "Package",
+    "schema": {
+      "properties": {
+        "artifactCount": {
+          "type": "number",
+          "title": "Artifact Count"
+        },
+        "pullCount": {
+          "type": "number",
+          "title": "Pull Count"
+        },
+        "creationTime": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Creation Time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time", 
+          "title": "Update Time"
+        }
+      }
+    },
+    "relations": {
+      "project": {
+        "target": "harborProject",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "harborArtifact", 
+    "title": "Harbor Artifact",
+    "icon": "Docker",
+    "schema": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type"
+        },
+        "mediaType": {
+          "type": "string", 
+          "title": "Media Type"
+        },
+        "manifestMediaType": {
+          "type": "string",
+          "title": "Manifest Media Type"
+        },
+        "size": {
+          "type": "number",
+          "title": "Size"
+        },
+        "pushTime": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Push Time"
+        },
+        "pullTime": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Pull Time"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        }
+      }
+    },
+    "relations": {
+      "repository": {
+        "target": "harborRepository", 
+        "required": true,
+        "many": false
+      }
+    }
+  }
+]

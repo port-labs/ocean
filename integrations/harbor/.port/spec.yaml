@@ -1,0 +1,57 @@
+description: Harbor container registry integration for Port
+icon: Harbor
+docs: https://docs.getport.io/integrations/harbor
+features:
+  - type: exporter
+    section: Container Registry
+    resources:
+      - kind: project
+      - kind: user  
+      - kind: repository
+      - kind: artifact
+  - type: webhook
+    section: Container Registry
+    resources:
+      - kind: project
+      - kind: repository
+      - kind: artifact
+
+configurations:
+  - name: harborUrl
+    required: true
+    type: string
+    description: Harbor instance URL (e.g., http://localhost:8081)
+  - name: username
+    required: true
+    type: string
+    description: Harbor username (admin or robot account)
+  - name: password
+    required: true
+    type: string
+    sensitive: true
+    description: Harbor password or robot token
+  - name: maxConcurrentRequests
+    required: false
+    type: integer
+    default: 10
+    description: Maximum concurrent API requests
+  - name: requestTimeout
+    required: false
+    type: integer
+    default: 30
+    description: Request timeout in seconds
+  - name: rateLimitDelay
+    required: false
+    type: integer
+    default: 1
+    description: Delay between requests in seconds
+  - name: verifySsl
+    required: false
+    type: boolean
+    default: true
+    description: Verify SSL certificates
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+    description: Harbor webhook secret for signature validation
