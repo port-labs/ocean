@@ -62,7 +62,7 @@ class AzureResourceManagerClient(AzureRestClient):
                 batch.append(item)
                 if len(batch) == page_size:
                     yield batch
-                    batch = []
+                    batch.clear()
 
             if not (next_link := response.get("nextLink")):
                 break

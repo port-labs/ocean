@@ -70,7 +70,7 @@ class AzureResourceGraphClient(AzureRestClient):
                 batch.append(item)
                 if len(batch) == page_size:
                     yield batch
-                    batch = []
+                    batch.clear()
 
             if not skipToken:
                 break
