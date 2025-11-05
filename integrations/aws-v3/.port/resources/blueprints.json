@@ -40,6 +40,7 @@
       },
       "required": []
     },
+    "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
@@ -66,7 +67,14 @@
           "type": "string",
           "title": "State",
           "description": "The current state of the instance",
-          "enum": ["pending", "running", "shutting-down", "terminated", "stopping", "stopped"]
+          "enum": [
+            "pending",
+            "running",
+            "shutting-down",
+            "terminated",
+            "stopping",
+            "stopped"
+          ]
         },
         "publicIpAddress": {
           "type": "string",
@@ -94,7 +102,9 @@
       },
       "required": []
     },
+    "mirrorProperties": {},
     "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {
       "account": {
         "title": "Account",
@@ -132,7 +142,7 @@
         },
         "registeredContainerInstancesCount": {
           "type": "number",
-          "title": "Reg Container Instances Count",
+          "title": "Registered Container Instances Count",
           "description": "The number of registered container instances in the cluster"
         },
         "capacityProviders": {
