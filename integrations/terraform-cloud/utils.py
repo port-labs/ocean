@@ -15,7 +15,7 @@ class ObjectKind(StrEnum):
 
 def init_terraform_client() -> TerraformClient:
     """
-    Intialize Terraform Client
+    Initialize Terraform Client
     """
     config = ocean.integration_config
 
