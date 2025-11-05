@@ -1240,13 +1240,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.28.16"
+version = "0.29.0"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.28.16-py3-none-any.whl", hash = "sha256:d49db68f570367e05ab5e4fd3b20a9df98e2257c3ebe961a5b9a288ff44259b1"},
-    {file = "port_ocean-0.28.16.tar.gz", hash = "sha256:3c7f0a7af6160ddf05f1149b553bdb97b10f94ca21c463454258bac7ee061b85"},
+    {file = "port_ocean-0.29.0-py3-none-any.whl", hash = "sha256:8e3f55689577193aaf47792601c9ffdf2784e43e64ca6bebf69c64a4c3b26e71"},
+    {file = "port_ocean-0.29.0.tar.gz", hash = "sha256:ccbfbf602b8a4e6da6f25fe4bda2d8948f0022b7fb961570322f34f1282f0c6f"},
 ]
 
 [package.dependencies]
@@ -1267,6 +1267,7 @@ prometheus-client = ">=0.21.1,<0.22.0"
 pydantic = {version = ">=1.10.8,<2.0.0", extras = ["dotenv"]}
 pydispatcher = ">=2.0.7,<3.0.0"
 pyhumps = ">=3.8.0,<4.0.0"
+pyjwt = ">=2.10.1,<3.0.0"
 pytest-cov = ">=6.0.0,<7.0.0"
 python-dateutil = ">=2.9.0.post0,<3.0.0"
 pyyaml = ">=6.0,<7.0"
@@ -1410,6 +1411,23 @@ files = [
     {file = "pyhumps-3.8.0-py3-none-any.whl", hash = "sha256:060e1954d9069f428232a1adda165db0b9d8dfdce1d265d36df7fbff540acfd6"},
     {file = "pyhumps-3.8.0.tar.gz", hash = "sha256:498026258f7ee1a8e447c2e28526c0bea9407f9a59c03260aee4bd6c04d681a3"},
 ]
+
+[[package]]
+name = "pyjwt"
+version = "2.10.1"
+description = "JSON Web Token implementation in Python"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "PyJWT-2.10.1-py3-none-any.whl", hash = "sha256:dcdd193e30abefd5debf142f9adfcdd2b58004e644f25406ffaebd50bd98dacb"},
+    {file = "pyjwt-2.10.1.tar.gz", hash = "sha256:3cc5772eb20009233caf06e9d8a0577824723b44e6648ee0a2aedb6cf9381953"},
+]
+
+[package.extras]
+crypto = ["cryptography (>=3.4.0)"]
+dev = ["coverage[toml] (==5.0.4)", "cryptography (>=3.4.0)", "pre-commit", "pytest (>=6.0.0,<7.0.0)", "sphinx", "sphinx-rtd-theme", "zope.interface"]
+docs = ["sphinx", "sphinx-rtd-theme", "zope.interface"]
+tests = ["coverage[toml] (==5.0.4)", "pytest (>=6.0.0,<7.0.0)"]
 
 [[package]]
 name = "pylint"
@@ -1936,4 +1954,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "456976d56a303b836601bdf695188b451a5c74db9409e05b2d8507cbfcca05bd"
+content-hash = "9bf602873509c2d59939135ee88ed0e088c1de5e00849cdcaa9f5c3e1fbde587"

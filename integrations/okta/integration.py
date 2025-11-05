@@ -30,7 +30,7 @@ def get_default_user_fields() -> str:
     return (
         "id,status,created,activated,lastLogin,lastUpdated,"
         "profile:(login,firstName,lastName,displayName,email,title,department,"
-        "employeeNumber,mobilePhone,primaryPhone,streetAddress,city,state,zipCode,countryCode)"
+        "employeeNumber,mobilePhone,primaryPhone,streetAddress,city,state,zipCode,countryCode,managerId,manager)"
     )
 
 
