@@ -7,6 +7,7 @@ import httpx
 import pytest
 from jira.rate_limiter import JiraRateLimiter
 
+
 @pytest.fixture
 def mock_client() -> AsyncMock:
     """Provides a mock httpx.AsyncClient."""
@@ -84,7 +85,10 @@ class TestJiraRateLimiter:
         assert rate_limiter._limit == 100
         assert rate_limiter._remaining == 50
         assert rate_limiter._near_limit is False
-        assert abs(rate_limiter._reset_time - expected_timestamp) < 0.01
+        assert (
+            rate_limiter._reset_time
+            and abs(rate_limiter._reset_time - expected_timestamp) < 0.01
+        )
         assert rate_limiter._retry_after == 30.0
 
     @pytest.mark.asyncio
@@ -132,7 +136,9 @@ class TestJiraRateLimiter:
 
     @pytest.mark.asyncio
     @patch("jira.rate_limiter.logger")
-    async def test_update_rate_limit_headers_with_reason(self, mock_logger) -> None:
+    async def test_update_rate_limit_headers_with_reason(
+        self, mock_logger: AsyncMock
+    ) -> None:
         """Tests update_rate_limit_headers logs rate limit reason when present."""
         rate_limiter = JiraRateLimiter()
 
@@ -142,7 +148,7 @@ class TestJiraRateLimiter:
                 "X-RateLimit-Remaining": "0",
                 "X-RateLimit-NearLimit": "true",
                 "X-RateLimit-Reset": "2024-01-01T12:00:00Z",
-                "RateLimit-Reason": "Too many requests",
+                "RateLimit-Reason": "jira-quota-based",
                 "Retry-After": "30",
             }
         )
@@ -151,13 +157,13 @@ class TestJiraRateLimiter:
 
         # The rate limiter always calls warning if the reason_key exists (which it always does)
         mock_logger.warning.assert_called_once_with(
-            "Rate limit breached for this reason: Too many requests"
+            "Rate limit breached for this reason: jira-quota-based"
         )
 
     @pytest.mark.asyncio
     @patch("jira.rate_limiter.logger")
     async def test_update_rate_limit_headers_handles_exceptions(
-        self, mock_logger
+        self, mock_logger: AsyncMock
     ) -> None:
         """Tests update_rate_limit_headers handles parsing exceptions gracefully."""
         rate_limiter = JiraRateLimiter()
@@ -331,7 +337,10 @@ class TestJiraRateLimiter:
         expected_timestamp = datetime(
             2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc
         ).timestamp()
-        assert abs(rate_limiter._reset_time - expected_timestamp) < 0.01
+        assert (
+            rate_limiter._reset_time
+            and abs(rate_limiter._reset_time - expected_timestamp) < 0.01
+        )
 
         # Test with +00:00 suffix
         headers_offset = httpx.Headers(
@@ -345,4 +354,7 @@ class TestJiraRateLimiter:
         )
 
         await rate_limiter.update_rate_limit_headers(headers_offset)
-        assert abs(rate_limiter._reset_time - expected_timestamp) < 0.01
+        assert (
+            rate_limiter._reset_time
+            and abs(rate_limiter._reset_time - expected_timestamp) < 0.01
+        )
