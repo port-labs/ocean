@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 1.4.12-beta (2025-11-02)
+## 2.0.0-beta (2025-11-05)
 
 
 ### Improvements
@@ -17,8 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - AWS::S3::Bucket
   - AWS::EC2::Instance
   - AWS::ECS::Cluster
-
 - Updated action names and definitions to align more closely with AWS standards for easier identification and clarity.
+
+
+## 1.4.12-beta (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
 
 ## 1.4.11-beta (2025-11-02)
 
