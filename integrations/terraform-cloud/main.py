@@ -1,90 +1,24 @@
-from asyncio import gather
 import asyncio
-from enum import StrEnum
 from typing import Any, List
 from loguru import logger
 
-from client import TerraformClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
-
-
-class ObjectKind(StrEnum):
-    WORKSPACE = "workspace"
-    RUN = "run"
-    STATE_VERSION = "state-version"
-    STATE_FILE = "state-file"
-    PROJECT = "project"
-    ORGANIZATION = "organization"
+from utils import ObjectKind, init_terraform_client
+from enrich import (
+    enrich_state_versions_with_output_data,
+    enrich_workspaces_with_tags,
+)
+from webhook_processors.run_webhook_processor import RunWebhookProcessor
+from webhook_processors.workspace_webhook_processor import WorkspaceWebhookProcessor
+from webhook_processors.state_version_webhook_processor import (
+    StateVersionWebhookProcessor,
+)
+from webhook_processors.state_file_webhook_processor import StateFileWebhookProcessor
+from webhook_processors.webhook_client import TerraformWebhookClient
 
 
 SKIP_WEBHOOK_CREATION = False
-
-
-def init_terraform_client() -> TerraformClient:
-    """
-    Intialize Terraform Client
-    """
-    config = ocean.integration_config
-
-    terraform_client = TerraformClient(
-        config["terraform_cloud_host"],
-        config["terraform_cloud_token"],
-    )
-
-    return terraform_client
-
-
-## Enriches the state version with output
-async def enrich_state_versions_with_output_data(
-    http_client: TerraformClient, state_versions: List[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    async def fetch_output(state_version: dict[str, Any]) -> dict[str, Any]:
-        try:
-            output = await http_client.get_state_version_output(state_version["id"])
-            return {**state_version, "__output": output}
-        except Exception as e:
-            logger.warning(
-                f"Failed to fetch output for state version {state_version['id']}: {e}"
-            )
-            return {**state_version, "__output": {}}
-
-    enriched_versions = await gather(
-        *[fetch_output(state_version) for state_version in state_versions]
-    )
-    return list(enriched_versions)
-
-
-async def enrich_workspaces_with_tags(
-    http_client: TerraformClient, workspaces: List[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    async def get_tags_for_workspace(workspace: dict[str, Any]) -> dict[str, Any]:
-        try:
-            tags = []
-            async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
-                tags.extend(tag_batch)
-            return {**workspace, "__tags": tags}
-        except Exception as e:
-            logger.warning(f"Failed to fetch tags for workspace {workspace['id']}: {e}")
-            return {**workspace, "__tags": []}
-
-    enriched_workspaces = await gather(
-        *[get_tags_for_workspace(workspace) for workspace in workspaces]
-    )
-    return list(enriched_workspaces)
-
-
-async def enrich_workspace_with_tags(
-    http_client: TerraformClient, workspace: dict[str, Any]
-) -> dict[str, Any]:
-    try:
-        tags = []
-        async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
-            tags.extend(tag_batch)
-        return {**workspace, "__tags": tags}
-    except Exception as e:
-        logger.warning(f"Failed to fetch tags for workspace {workspace['id']}: {e}")
-        return {**workspace, "__tags": []}
 
 
 @ocean.on_resync(ObjectKind.ORGANIZATION)
@@ -160,8 +94,7 @@ async def resync_state_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
 
     async for state_files_batch in terraform_client.get_paginated_state_files():
-        logger.info(f"Received batch with {len(state_files_batch)} {kind}")
-
+        logger.info(f"Received batch of {len(state_files_batch)} {kind}")
         yield state_files_batch
 
 
@@ -177,51 +110,32 @@ async def on_create_webhook_resync(kind: str) -> RAW_RESULT:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return []
 
-    terraform_client = init_terraform_client()
-    if app_host := ocean.integration_config.get("app_host"):
-        await terraform_client.create_workspace_webhook(app_host=app_host)
+    if base_url := ocean.app.base_url:
+        logger.warning(f"Creating webhooks for base URL: {base_url}")
+        config = ocean.integration_config
+        webhook_client = TerraformWebhookClient(
+            config["terraform_cloud_host"],
+            config["terraform_cloud_token"],
+        )
+        await webhook_client.ensure_workspace_webhooks(base_url=base_url)
 
     SKIP_WEBHOOK_CREATION = True
     return []
-
-
-@ocean.router.post("/webhook")
-async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    for notifications in data["notifications"]:
-        if notifications["trigger"] == "verification":
-            logger.info("Webhook verification challenge accepted")
-            return {"ok": True}
-
-    terraform_client = init_terraform_client()
-
-    run_id = data["run_id"]
-    logger.info(f"Processing Terraform run event for run: {run_id}")
-
-    workspace_id = data["workspace_id"]
-    logger.info(f"Processing Terraform run event for workspace: {workspace_id}")
-
-    run, workspace = await gather(
-        terraform_client.get_single_run(run_id),
-        terraform_client.get_single_workspace(workspace_id),
-    )
-
-    enriched_workspace = await enrich_workspace_with_tags(terraform_client, workspace)
-
-    await gather(
-        ocean.register_raw(ObjectKind.RUN, [run]),
-        ocean.register_raw(ObjectKind.WORKSPACE, [enriched_workspace]),
-    )
-
-    logger.info("Terraform webhook event processed")
-    return {"ok": True}
 
 
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean Terraform integration")
 
-    if not ocean.integration_config.get("app_host"):
+    if not ocean.app.base_url:
         logger.warning(
-            "No app host provided, skipping webhook creation. "
+            "No base URL configured, skipping webhook creation. "
             "Without setting up the webhook, the integration will not export live changes from Terraform"
         )
+
+
+# Register webhook processors
+ocean.add_webhook_processor("/webhook", RunWebhookProcessor)
+ocean.add_webhook_processor("/webhook", WorkspaceWebhookProcessor)
+ocean.add_webhook_processor("/webhook", StateVersionWebhookProcessor)
+ocean.add_webhook_processor("/webhook", StateFileWebhookProcessor)

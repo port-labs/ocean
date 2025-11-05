@@ -23,7 +23,8 @@ configurations:
     required: true
     sensitive: true
     description: Terraform Cloud API token. To create an API token, see the <a target="_blank" href="https://www.terraform.io/docs/cloud/users-teams-organizations/api-tokens.html">Terraform Documentation</a>
-  - name: appHost
-    type: url
+  - name: webhookSecret
+    type: string
     required: false
-    description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for webhooks created in Terraform
+    sensitive: true
+    description: The secret used to verify webhook signatures from Terraform Cloud (optional). If not provided, webhook signature verification will be skipped. To learn more, see the <a target="_blank" href="https://developer.hashicorp.com/terraform/cloud-docs/api-docs/notification-configurations#notification-authenticity">Terraform documentation</a>
