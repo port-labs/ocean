@@ -33,17 +33,17 @@ class _CapturingClient(AbstractAzureClient):
     "subscriptions, expected_batches",
     [
         ([], 0),
-        (["s1"], 1),
-        (["s1", "s2"], 1),
-        ([f"s{i}" for i in range(100)], 1),
-        ([f"s{i}" for i in range(101)], 2),
-        ([f"s{i}" for i in range(250)], 3),
-        ([f"s{i}" for i in range(1000)], 10),  # Test concurrency limit exactly
-        ([f"s{i}" for i in range(1001)], 11),  # Test concurrency limit + remainder
+        ([{"subscriptionId": "s1"}], 1),
+        ([{"subscriptionId": "s1"}, {"subscriptionId": "s2"}], 1),
+        ([{"subscriptionId": f"s{i}"} for i in range(100)], 1),
+        ([{"subscriptionId": f"s{i}"} for i in range(101)], 2),
+        ([{"subscriptionId": f"s{i}"} for i in range(250)], 3),
+        ([{"subscriptionId": f"s{i}"} for i in range(1000)], 10),
+        ([{"subscriptionId": f"s{i}"} for i in range(1001)], 11),
     ],
 )
 async def test_resource_graph_exporter_batches_subscriptions(
-    subscriptions: List[str], expected_batches: int
+    subscriptions: List[Dict[str, Any]], expected_batches: int
 ) -> None:
     client = _CapturingClient()
     exporter = ResourceGraphExporter(client=client)
@@ -69,7 +69,9 @@ async def test_resource_graph_exporter_batches_subscriptions(
         assert req.json_body["query"] == "Resources | project id"
         all_subscriptions_in_requests.extend(req.json_body["subscriptions"])
 
-    assert sorted(all_subscriptions_in_requests) == sorted(subscriptions)
+    assert sorted(all_subscriptions_in_requests) == sorted(
+        [sub["subscriptionId"] for sub in subscriptions]
+    )
 
 
 @pytest.mark.asyncio
@@ -80,7 +82,7 @@ async def test_resource_graph_exporter_builds_request_and_streams() -> None:
     opts = ResourceGraphExporterOptions(
         api_version="2024-04-01",
         query="Resources | project id",
-        subscriptions=["s1", "s2"],
+        subscriptions=[{"subscriptionId": "s1"}, {"subscriptionId": "s2"}],
     )
 
     output: List[List[Dict[str, Any]]] = []
