@@ -1,0 +1,107 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+
+resources:
+  - kind: /boards/list
+    selector:
+      query: "true"
+      method: POST
+      data_path: .boards
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"ocean_cannyBoard"'
+          properties:
+            name: .name
+            url: .url
+            postCount: .postCount
+            isPrivate: .isPrivate
+            token: .token
+            created: .created
+
+  - kind: /categories/list
+    selector:
+      query: "true"
+      method: POST
+      data_path: .categories
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"ocean_cannyCategory"'
+          properties:
+            name: .name
+            url: .url
+            postCount: .postCount
+            created: .created
+          relations:
+            board: .board.id
+
+  - kind: /posts/list
+    selector:
+      query: "true"
+      method: POST
+      data_path: .posts
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"ocean_cannyPost"'
+          properties:
+            title: .title
+            details: .details
+            url: .url
+            score: .score
+            status: .status
+            commentCount: .commentCount
+            voteCount: .score
+            created: .created
+            eta: .eta
+            imageURLs: .imageURLs
+            authorEmail: .author.email
+            authorName: .author.name
+            ownerName: .owner.name
+            ownerEmail: .owner.email
+            tags: '[.tags[].name]'
+          relations:
+            board: .board.id
+            category: .category.id
+
+  - kind: /companies/list
+    selector:
+      query: "true"
+      method: POST
+      data_path: .companies
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"ocean_cannyCompany"'
+          properties:
+            name: .name
+            created: .created
+            customFields: .customFields
+            monthlySpend: .monthlySpend
+
+  - kind: /votes/list
+    selector:
+      query: "true"
+      method: POST
+      data_path: .votes
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .voter.name + " voted"
+          blueprint: '"ocean_cannyVote"'
+          properties:
+            voterEmail: .voter.email
+            voterName: .voter.name
+            created: .created
+          relations:
+            post: .post.id
