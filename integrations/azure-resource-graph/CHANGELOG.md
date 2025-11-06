@@ -25,6 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed mapping to follow standard conventions
 
 
+## 0.1.8-beta (2025-11-06)
+
+
+## Bug Fixes
+
+- Bumped ocean version to ^0.29.1
+
+
 ## 0.1.7-beta (2025-11-04)
 
 
