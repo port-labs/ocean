@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List
 from pydantic import BaseModel
 
 
@@ -12,7 +12,7 @@ class AzureAPIOptions(BaseModel):
 
 class ResourceGraphExporterOptions(AzureAPIOptions):
     query: str
-    subscriptions: List[str]
+    subscriptions: List[dict[str, Any]]
 
 
 class SubscriptionExporterOptions(AzureAPIOptions): ...

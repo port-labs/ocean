@@ -7,7 +7,6 @@ from loguru import logger
 
 
 class SubscriptionExporter(BaseExporter):
-
     @cache_iterator_result()
     async def get_paginated_resources(
         self, options: SubscriptionExporterOptions
