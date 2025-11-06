@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from enum import StrEnum
 from loguru import logger
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -10,6 +11,17 @@ from .webhook_event import (
     EventHeaders,
     WebhookEventRawResults,
 )
+
+
+class WebhookProcessorType(StrEnum):
+    """Type of webhook processor"""
+
+    # For action-related webhooks
+    # (e.g. update finished action using the workflow runs webhook)
+    ACTION = "action"
+    # For regular webhooks
+    # (e.g. repository events that should be reflected as Entities in Port)
+    WEBHOOK = "webhook"
 
 
 class AbstractWebhookProcessor(ABC):
@@ -46,6 +58,10 @@ class AbstractWebhookProcessor(ABC):
     def __init__(self, event: WebhookEvent) -> None:
         self.event = event
         self.retry_count = 0
+
+    @classmethod
+    def get_processor_type(cls) -> WebhookProcessorType:
+        return WebhookProcessorType.WEBHOOK
 
     async def on_error(self, error: Exception) -> None:
         """Hook to handle errors during processing. Override if needed"""

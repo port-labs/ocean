@@ -37,3 +37,15 @@ class OrganizationRequiredException(Exception):
 
 class OrganizationConflictError(Exception):
     """Raised when both github_organization and github_multi_organizations are provided."""
+
+
+class RepositoryDefaultBranchNotFoundException(Exception):
+    """Exception for default branch not found."""
+
+
+class InvalidActionParametersException(Exception):
+    """Exception for invalid action parameters."""
+
+
+class NoWorkflowRunsFoundException(Exception):
+    """Exception for no workflow runs found."""
