@@ -1,4 +1,5 @@
 import asyncio
+import signal
 from inspect import getmembers
 from typing import Dict, Any, Type
 
@@ -12,8 +13,39 @@ from port_ocean.core.defaults.initialize import initialize_defaults
 from port_ocean.core.utils.utils import validate_integration_runtime
 from port_ocean.log.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
-from port_ocean.utils.misc import get_spec_file, load_module
-from port_ocean.utils.signal import init_signal_handler
+from port_ocean.utils.misc import get_spec_file, load_module, IntegrationStateStatus
+from port_ocean.utils.signal import init_signal_handler, signal_handler
+
+
+def _create_graceful_shutdown_handler(app: Ocean):
+    """Create a handler that gracefully shuts down the sync by setting state to aborted"""
+
+    async def graceful_shutdown():
+        try:
+            from port_ocean.context.ocean import ocean
+
+            if ocean.app.resync_state_updater:
+                await ocean.app.resync_state_updater.update_after_resync(
+                    status=IntegrationStateStatus.Aborted
+                )
+            print("Graceful shutdown completed - sync state set to aborted")
+        except Exception as e:
+            print(f"Error during graceful shutdown: {e}")
+
+    return graceful_shutdown
+
+
+def _setup_system_signal_handlers(app: Ocean):
+    """Setup system signal handlers to trigger graceful shutdown"""
+
+    def handle_signal(signum, frame):
+        print(f"Received signal {signum}, triggering graceful shutdown...")
+        # Run the graceful shutdown handler
+        asyncio.create_task(signal_handler.exit())
+
+    # Register for SIGTERM and SIGINT
+    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, handle_signal)
 
 
 def _get_default_config_factory() -> None | Type[BaseModel]:
@@ -57,5 +89,10 @@ def run(
     if initialize_port_resources is not None:
         app.config.initialize_port_resources = initialize_port_resources
     initialize_defaults(app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config)
+
+    # Setup graceful shutdown handling
+    graceful_shutdown_handler = _create_graceful_shutdown_handler(app)
+    signal_handler.register(graceful_shutdown_handler, priority=100)  # High priority
+    _setup_system_signal_handlers(app)
 
     uvicorn.run(app, host="0.0.0.0", port=application_settings.port)
