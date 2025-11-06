@@ -135,6 +135,12 @@ async def search_for_repositories(
 
 
 class RepositorySelectorStrategy(ABC):
+    """Strategy interface for resolving repositories for a selector.
+
+    Implementations yield tuples of (repo_name, branch, repo_obj) for an
+    organization login and a given selector configuration.
+    """
+
     @abstractmethod
     def select_repos(
         self,
@@ -147,6 +153,8 @@ class RepositorySelectorStrategy(ABC):
 
 
 class AllRepositorySelector(RepositorySelectorStrategy):
+    """Select all repositories of the provided repo_type within an organization."""
+
     def __init__(self, repo_type: str):
         self.repo_type = repo_type
 
@@ -169,6 +177,12 @@ class AllRepositorySelector(RepositorySelectorStrategy):
 
 
 class ExactRepositorySelector(RepositorySelectorStrategy):
+    """Select only explicitly listed repositories (non-glob entries).
+
+    For each explicit repository, repository metadata is fetched to determine a
+    branch fallback when the selector omits a branch.
+    """
+
     async def select_repos(
         self,
         selector: RepoListSelector,
@@ -189,6 +203,12 @@ class ExactRepositorySelector(RepositorySelectorStrategy):
 
 
 class GlobRepositorySelector(RepositorySelectorStrategy):
+    """Resolve repositories via glob patterns.
+
+    Performs a repository search per organization, matches names against the
+    compiled glob patterns, and yields each matched repository at most once.
+    """
+
     async def select_repos(
         self,
         selector: RepoListSelector,
@@ -227,8 +247,14 @@ class GlobRepositorySelector(RepositorySelectorStrategy):
 
 
 class CompositeRepositorySelector(RepositorySelectorStrategy):
+    """Composite that orchestrates repository selection strategies.
+
+    When the selector has no explicit repos, it uses the implicit (all) strategy.
+    Otherwise, it combines exact and glob strategies.
+    """
+
     def __init__(self, repo_type: str):
-        self.all_strategies: List[RepositorySelectorStrategy] = [
+        self.implicit_strategies: List[RepositorySelectorStrategy] = [
             AllRepositorySelector(repo_type)
         ]
         self.explicit_strategies: List[RepositorySelectorStrategy] = [
@@ -244,7 +270,7 @@ class CompositeRepositorySelector(RepositorySelectorStrategy):
     ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
         has_repos = selector.repos is not None
         active_strategies = (
-            self.explicit_strategies if has_repos else self.all_strategies
+            self.explicit_strategies if has_repos else self.implicit_strategies
         )
         for strategy in active_strategies:
             async for result in strategy.select_repos(
@@ -254,6 +280,12 @@ class CompositeRepositorySelector(RepositorySelectorStrategy):
 
 
 class OrganizationIterator:
+    """Helper to iterate organizations for a selector.
+
+    Wraps the exporter pagination to yield organization logins for a specific
+    organization or for all accessible organizations when not provided.
+    """
+
     def __init__(self, org_exporter: AbstractGithubExporter[Any]):
         self.org_exporter = org_exporter
 
