@@ -1,3 +1,5 @@
+from itertools import batched
+
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
@@ -19,20 +21,19 @@ class ResourceGraphExporter(BaseExporter):
         self, options: ResourceGraphExporterOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         query = format_query(options.query)
-        logger.info(
-            f"Exporting graph resources for {len(options.subscriptions)} subscriptions with query: {query}"
-        )
         tasks = []
-        for current_index in range(
-            0, len(options.subscriptions), _SUBCRIPTION_BATCH_SIZE
+        for subscription_batch in batched(
+            options.subscriptions, _SUBCRIPTION_BATCH_SIZE
         ):
+            subscription_ids = [sub["subscriptionId"] for sub in subscription_batch]
+            logger.info(
+                f"Fetching graph resources from a batch of {len(subscription_ids)} subscriptions"
+            )
             request = AzureRequest(
                 endpoint="providers/Microsoft.ResourceGraph/resources",
                 json_body={
                     "query": query,
-                    "subscriptions": options.subscriptions[
-                        current_index : current_index + _SUBCRIPTION_BATCH_SIZE
-                    ],
+                    "subscriptions": subscription_ids,
                 },
                 method="POST",
             )
