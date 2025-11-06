@@ -116,11 +116,30 @@ class Ocean:
         This ensures Port is notified that the integration was interrupted.
         """
         try:
+            # Check if resync has already completed (event_id has "-done" suffix)
             if self.metrics.event_id.find("-done") == -1:
-                await self.resync_state_updater.update_after_resync(
-                    IntegrationStateStatus.Aborted
+                # Double-check the current status to avoid overriding completed status
+                current_integration = await self.port_client.get_current_integration()
+                current_status = (
+                    current_integration.get("resyncState", {}).get("status")
+                    if current_integration
+                    else None
                 )
-                logger.info("Resync status reported as aborted due to app shutdown")
+
+                # Only set to aborted if not already completed
+                if current_status != "completed":
+                    await self.resync_state_updater.update_after_resync(
+                        IntegrationStateStatus.Aborted
+                    )
+                    logger.info("Resync status reported as aborted due to app shutdown")
+                else:
+                    logger.info(
+                        "Resync was already completed, status unchanged on shutdown"
+                    )
+            else:
+                logger.info(
+                    "Resync has already finished, no status update needed on shutdown"
+                )
         except Exception as e:
             logger.warning(f"Failed to report resync status on shutdown: {e}")
 

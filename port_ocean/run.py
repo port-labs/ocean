@@ -18,17 +18,33 @@ from port_ocean.utils.signal import init_signal_handler, signal_handler
 
 
 def _create_graceful_shutdown_handler(app: Ocean) -> Callable[[], Awaitable[None]]:
-    """Create a handler that gracefully shuts down the sync by setting state to aborted"""
+    """Create a handler that gracefully shuts down the sync by setting state to aborted if not already completed"""
 
     async def graceful_shutdown() -> None:
         try:
             from port_ocean.context.ocean import ocean
 
             if ocean.app.resync_state_updater:
-                await ocean.app.resync_state_updater.update_after_resync(
-                    status=IntegrationStateStatus.Aborted
+                # Check current integration state to avoid overriding completed status
+                current_integration = (
+                    await ocean.app.port_client.get_current_integration()
                 )
-            print("Graceful shutdown completed - sync state set to aborted")
+                current_status = (
+                    current_integration.get("resyncState", {}).get("status")
+                    if current_integration
+                    else None
+                )
+
+                # Only set to aborted if not already completed
+                if current_status != "completed":
+                    await ocean.app.resync_state_updater.update_after_resync(
+                        status=IntegrationStateStatus.Aborted
+                    )
+                    print("Graceful shutdown completed - sync state set to aborted")
+                else:
+                    print(
+                        "Graceful shutdown completed - sync was already completed, status unchanged"
+                    )
         except Exception as e:
             print(f"Error during graceful shutdown: {e}")
 
