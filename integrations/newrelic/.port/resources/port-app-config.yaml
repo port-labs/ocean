@@ -90,6 +90,30 @@ resources:
             tags: .tags
           relations:
             newRelicService: .serviceLevel.indicators[0].guid
+  - kind: newRelicAlertCondition
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"newRelicAlertCondition"'
+          identifier: .id | tostring
+          title: .name
+          properties:
+            name: .name
+            enabled: .enabled
+            policy_id: .policy_id
+            type: .type
+            value_function: .value_function
+            violation_time_limit_seconds: .violation_time_limit_seconds
+            terms: .terms
+            signal: .signal
+            expiration: .expiration
+            nrql: .nrql.query
+            title_template: .title_template
+            data_account_id: .data_account_id
+            tags: .tags
+            entity_guid: .entity_guid
   - kind: entity
     selector:
       query: 'true'
