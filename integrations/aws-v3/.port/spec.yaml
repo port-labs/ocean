@@ -16,6 +16,7 @@ features:
       - kind: AWS::ECS::Service
       - kind: AWS::Organizations::Account
       - kind: AWS::SQS::Queue
+      - kind: AWS::ApiGateway::RestApi
 configurations:
   - name: accountRoleArn
     required: false
