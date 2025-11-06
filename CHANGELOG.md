@@ -10,7 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Resolved dependabot alerts
+- Resolved Dependabot alerts
 
 ## 0.29.0 (2025-11-04)
 
