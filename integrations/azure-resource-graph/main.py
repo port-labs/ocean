@@ -36,6 +36,8 @@ async def on_resync_subscription(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for subscriptions in subscription_exporter.get_paginated_resources(
         exporter_options
     ):
+        for subscription in subscriptions:
+            logger.info(f"found {kind} with id {subscription['id']}")
         yield subscriptions
 
 
@@ -71,6 +73,8 @@ async def on_resync_resource_graph(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for results in resource_graph_exporter.get_paginated_resources(
             exporter_options
         ):
+            for result in results:
+                logger.info(f"found {kind} with id {result['id']}")
             yield results
 
 
