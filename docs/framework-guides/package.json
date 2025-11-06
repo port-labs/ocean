@@ -62,6 +62,6 @@
   },
   "overrides": {
     "redoc": "2.4.0",
-    "image-size": "1.2.1"
+    "image-size": "^2.0.0"
   }
 }
