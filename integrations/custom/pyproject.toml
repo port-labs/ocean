@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "custom"
-version = "0.2.3-beta"
+version = "0.2.4-beta"
 description = "Ocean Custom Integration"
 authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.29.0", extras = ["cli"]}
+port_ocean = {version = "^0.29.1", extras = ["cli"]}
 httpx = "^0.28.1"
 pydantic = "^1.10.8"
 
