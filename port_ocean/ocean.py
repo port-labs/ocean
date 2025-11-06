@@ -117,19 +117,13 @@ class Ocean:
         """
         try:
             if self.resync_state_updater:
-                # Check current integration state to avoid overriding completed status
                 current_integration = await self.port_client.get_current_integration()
                 current_status = (
                     current_integration.get("resyncState", {}).get("status")
                     if current_integration
                     else None
                 )
-
-                # Only set to aborted if not already completed
-                if current_status in [
-                    IntegrationStateStatus.Aborted.value,
-                    IntegrationStateStatus.Running.value,
-                ]:
+                if current_status == IntegrationStateStatus.Running.value:
                     await self.resync_state_updater.update_after_resync(
                         status=IntegrationStateStatus.Aborted
                     )
