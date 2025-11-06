@@ -25,7 +25,7 @@ from github.core.options import FileSearchOptions, ListFileSearchOptions
 from github.helpers.utils import GithubClientType
 from github.helpers.repo_selectors import (
     CompositeRepositorySelector,
-    OrganizationIterator,
+    OrganizationLoginGenerator,
 )
 
 if TYPE_CHECKING:
@@ -124,7 +124,7 @@ class FilePatternMappingBuilder:
         repo_exporter: AbstractGithubExporter[Any],
         repo_type: str,
     ):
-        self.org_iterator = OrganizationIterator(org_exporter)
+        self.generate_org_logins = OrganizationLoginGenerator(org_exporter)
         self.repo_selector = CompositeRepositorySelector(repo_type)
         self.repo_exporter = repo_exporter
 
@@ -136,7 +136,7 @@ class FilePatternMappingBuilder:
         logger.info(f"Building path mapping for {len(files)} file selectors...")
 
         for file_sel in files:
-            async for org_login in self.org_iterator.iter_orgs(file_sel.organization):
+            async for org_login in self.generate_org_logins(file_sel.organization):
                 async for repo_name, branch, _ in self.repo_selector.select_repos(
                     file_sel, self.repo_exporter, org_login
                 ):

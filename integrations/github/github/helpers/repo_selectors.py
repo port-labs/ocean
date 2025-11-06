@@ -268,9 +268,8 @@ class CompositeRepositorySelector(RepositorySelectorStrategy):
         repo_exporter: AbstractGithubExporter[Any],
         org_login: str,
     ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
-        has_repos = selector.repos is not None
         active_strategies = (
-            self.explicit_strategies if has_repos else self.implicit_strategies
+            self.explicit_strategies if selector.repos else self.implicit_strategies
         )
         for strategy in active_strategies:
             async for result in strategy.select_repos(
@@ -279,7 +278,7 @@ class CompositeRepositorySelector(RepositorySelectorStrategy):
                 yield result
 
 
-class OrganizationIterator:
+class OrganizationLoginGenerator:
     """Helper to iterate organizations for a selector.
 
     Wraps the exporter pagination to yield organization logins for a specific
@@ -289,11 +288,13 @@ class OrganizationIterator:
     def __init__(self, org_exporter: AbstractGithubExporter[Any]):
         self.org_exporter = org_exporter
 
-    async def iter_orgs(self, organization: Optional[str]) -> AsyncGenerator[str, None]:
-        options: ListOrganizationOptions = {
-            **({"organization": organization} if organization else {})
-        }
-        async for batch in self.org_exporter.get_paginated_resources(options):
+    async def __call__(self, organization: Optional[str]) -> AsyncGenerator[str, None]:
+        org_options: ListOrganizationOptions
+        if organization:
+            org_options = {"organization": organization}
+        else:
+            org_options = {}
+        async for batch in self.org_exporter.get_paginated_resources(org_options):
             for org in batch:
                 org_login = org["login"]
                 yield org_login
