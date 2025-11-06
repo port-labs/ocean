@@ -267,15 +267,58 @@
           "type": "number",
           "title": "Policy ID"
         },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "The type of alert condition (e.g., static, baseline)"
+        },
+        "value_function": {
+          "type": "string",
+          "title": "Value Function",
+          "description": "The value function used for the condition (e.g., single_value, sum)"
+        },
+        "violation_time_limit_seconds": {
+          "type": "number",
+          "title": "Violation Time Limit (seconds)",
+          "description": "The time limit in seconds for violations"
+        },
+        "terms": {
+          "type": "array",
+          "title": "Terms",
+          "description": "Alert condition terms defining thresholds and priorities",
+          "items": {
+            "type": "object"
+          }
+        },
+        "signal": {
+          "type": "object",
+          "title": "Signal",
+          "description": "Signal aggregation configuration"
+        },
+        "expiration": {
+          "type": "object",
+          "title": "Expiration",
+          "description": "Expiration configuration for the alert condition"
+        },
+        "nrql": {
+          "type": "string",
+          "title": "NRQL",
+          "description": "NRQL query configuration"
+        },
+        "title_template": {
+          "type": "string",
+          "title": "Title Template",
+          "description": "Template for the alert condition title"
+        },
+        "data_account_id": {
+          "type": "number",
+          "title": "Data Account ID",
+          "description": "The account ID where the data is stored"
+        },
         "tags": {
           "type": "object",
           "title": "Tags",
           "description": "Tags associated with the alert condition"
-        },
-        "nrql": {
-          "type": "object",
-          "title": "NRQL",
-          "description": "NRQL query configuration"
         },
         "entity_guid": {
           "type": "string",

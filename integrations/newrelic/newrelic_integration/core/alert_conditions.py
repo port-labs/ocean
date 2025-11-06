@@ -16,7 +16,6 @@ class AlertConditionsHandler:
             str,
             ocean.integration_config.get("new_relic_rest_api_url"),
         )
-        logger.info(f"New Relic REST API URL: {self.base_url}")
         self.api_key = cast(str, ocean.integration_config.get("new_relic_api_key"))
 
     async def fetch_tags_for_entity(self, entity_guid: str) -> list[dict[str, Any]]:
