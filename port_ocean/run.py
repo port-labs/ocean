@@ -15,6 +15,7 @@ from port_ocean.log.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_spec_file, load_module, IntegrationStateStatus
 from port_ocean.utils.signal import init_signal_handler, signal_handler
+from port_ocean.context.ocean import ocean
 
 
 def _create_graceful_shutdown_handler(app: Ocean) -> Callable[[], Awaitable[None]]:
@@ -22,8 +23,6 @@ def _create_graceful_shutdown_handler(app: Ocean) -> Callable[[], Awaitable[None
 
     async def graceful_shutdown() -> None:
         try:
-            from port_ocean.context.ocean import ocean
-
             if ocean.app.resync_state_updater:
                 # Check current integration state to avoid overriding completed status
                 current_integration = (
@@ -37,8 +36,8 @@ def _create_graceful_shutdown_handler(app: Ocean) -> Callable[[], Awaitable[None
 
                 # Only set to aborted if not already completed
                 if current_status in [
-                    IntegrationStateStatus.Aborted,
-                    IntegrationStateStatus.Running,
+                    IntegrationStateStatus.Aborted.value,
+                    IntegrationStateStatus.Running.value,
                 ]:
                     await ocean.app.resync_state_updater.update_after_resync(
                         status=IntegrationStateStatus.Aborted
