@@ -116,9 +116,7 @@ class Ocean:
         This ensures Port is notified that the integration was interrupted.
         """
         try:
-            # Check if resync has already completed (event_id has "-done" suffix)
             if self.metrics.event_id.find("-done") == -1:
-                # Double-check the current status to avoid overriding completed status
                 current_integration = await self.port_client.get_current_integration()
                 current_status = (
                     current_integration.get("resyncState", {}).get("status")
@@ -126,8 +124,10 @@ class Ocean:
                     else None
                 )
 
-                # Only set to aborted if not already completed
-                if current_status != "completed":
+                if current_status in [
+                    IntegrationStateStatus.Aborted,
+                    IntegrationStateStatus.Running,
+                ]:
                     await self.resync_state_updater.update_after_resync(
                         IntegrationStateStatus.Aborted
                     )

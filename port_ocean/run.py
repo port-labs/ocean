@@ -36,7 +36,10 @@ def _create_graceful_shutdown_handler(app: Ocean) -> Callable[[], Awaitable[None
                 )
 
                 # Only set to aborted if not already completed
-                if current_status != "completed":
+                if current_status in [
+                    IntegrationStateStatus.Aborted,
+                    IntegrationStateStatus.Running,
+                ]:
                     await ocean.app.resync_state_updater.update_after_resync(
                         status=IntegrationStateStatus.Aborted
                     )
@@ -59,7 +62,6 @@ def _setup_system_signal_handlers(app: Ocean) -> None:
         # Run the graceful shutdown handler
         asyncio.create_task(signal_handler.exit())
 
-    # Register for SIGTERM and SIGINT
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
 
