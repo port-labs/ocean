@@ -95,33 +95,26 @@ class TerraformBaseWebhookProcessor(AbstractWebhookProcessor):
         if not isinstance(payload, dict):
             return False
 
-        # Validate notifications array exists and has content
         notifications = payload.get("notifications")
-        if not isinstance(notifications, list) or len(notifications) == 0:
+        if not isinstance(notifications, list) or not notifications:
             logger.error("Webhook payload missing required 'notifications' array")
             return False
 
-        # Validate notification structure
         first_notification = notifications[0]
         if not isinstance(first_notification, dict):
             logger.error("Invalid notification structure")
             return False
 
-        if "trigger" not in first_notification:
-            logger.error("Webhook notification missing required 'trigger' field")
-            return False
+        # Schema: (data_source, required_fields, context)
+        validation_schema = (
+            (first_notification, ("trigger", "run_status"), "notification"),
+            (payload, ("run_id", "workspace_id"), "payload"),
+        )
 
-        if "run_status" not in first_notification:
-            logger.error("Webhook notification missing required 'run_status' field")
-            return False
-
-        # Validate root level fields
-        if "run_id" not in payload:
-            logger.error("Webhook payload missing required 'run_id' field")
-            return False
-
-        if "workspace_id" not in payload:
-            logger.error("Webhook payload missing required 'workspace_id' field")
-            return False
-
-        return True
+        valid = True
+        for data, fields, context in validation_schema:
+            for field in fields:
+                if field not in data:
+                    logger.error(f"Webhook {context} missing required '{field}' field")
+                    valid = False
+        return valid

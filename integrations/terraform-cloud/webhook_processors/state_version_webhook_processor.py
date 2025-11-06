@@ -32,18 +32,15 @@ class StateVersionWebhookProcessor(TerraformBaseWebhookProcessor):
             state_version["__output"] = {}
         return state_version
 
-    async def _should_process_state(self, payload: EventPayload) -> bool:
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Check if the run has a state file change."""
-        notifications = payload["notifications"]
+        notifications = event.payload["notifications"]
         for notification in notifications:
             run_status = notification["run_status"]
             # Only process state when run has applied changes
             if run_status == "applied":
                 return True
         return False
-
-    async def _should_process_event(self, event: WebhookEvent) -> bool:
-        return await self._should_process_state(event.payload)
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
