@@ -1,7 +1,7 @@
 import asyncio
 import signal
 from inspect import getmembers
-from typing import Dict, Any, Type, Callable, Awaitable
+from typing import Dict, Any, Type
 
 import uvicorn
 from pydantic import BaseModel
@@ -13,44 +13,8 @@ from port_ocean.core.defaults.initialize import initialize_defaults
 from port_ocean.core.utils.utils import validate_integration_runtime
 from port_ocean.log.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
-from port_ocean.utils.misc import get_spec_file, load_module, IntegrationStateStatus
+from port_ocean.utils.misc import get_spec_file, load_module
 from port_ocean.utils.signal import init_signal_handler, signal_handler
-from port_ocean.context.ocean import ocean
-
-
-def _create_graceful_shutdown_handler(app: Ocean) -> Callable[[], Awaitable[None]]:
-    """Create a handler that gracefully shuts down the sync by setting state to aborted if not already completed"""
-
-    async def graceful_shutdown() -> None:
-        try:
-            if ocean.app.resync_state_updater:
-                # Check current integration state to avoid overriding completed status
-                current_integration = (
-                    await ocean.app.port_client.get_current_integration()
-                )
-                current_status = (
-                    current_integration.get("resyncState", {}).get("status")
-                    if current_integration
-                    else None
-                )
-
-                # Only set to aborted if not already completed
-                if current_status in [
-                    IntegrationStateStatus.Aborted.value,
-                    IntegrationStateStatus.Running.value,
-                ]:
-                    await ocean.app.resync_state_updater.update_after_resync(
-                        status=IntegrationStateStatus.Aborted
-                    )
-                    print("Graceful shutdown completed - sync state set to aborted")
-                else:
-                    print(
-                        "Graceful shutdown completed - sync was already completed, status unchanged"
-                    )
-        except Exception as e:
-            print(f"Error during graceful shutdown: {e}")
-
-    return graceful_shutdown
 
 
 def _setup_system_signal_handlers(app: Ocean) -> None:
@@ -107,9 +71,7 @@ def run(
         app.config.initialize_port_resources = initialize_port_resources
     initialize_defaults(app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config)
 
-    # Setup graceful shutdown handling
-    graceful_shutdown_handler = _create_graceful_shutdown_handler(app)
-    signal_handler.register(graceful_shutdown_handler, priority=100)  # High priority
+    # Setup system signal handlers
     _setup_system_signal_handlers(app)
 
     uvicorn.run(app, host="0.0.0.0", port=application_settings.port)

@@ -108,7 +108,7 @@ class Ocean:
         )
         self.app_initialized = False
 
-        signal_handler.register(self._report_resync_aborted)
+        signal_handler.register(self._report_resync_aborted, priority=100)
 
     async def _report_resync_aborted(self) -> None:
         """
@@ -116,7 +116,8 @@ class Ocean:
         This ensures Port is notified that the integration was interrupted.
         """
         try:
-            if self.metrics.event_id.find("-done") == -1:
+            if self.resync_state_updater:
+                # Check current integration state to avoid overriding completed status
                 current_integration = await self.port_client.get_current_integration()
                 current_status = (
                     current_integration.get("resyncState", {}).get("status")
@@ -124,24 +125,23 @@ class Ocean:
                     else None
                 )
 
+                # Only set to aborted if not already completed
                 if current_status in [
-                    IntegrationStateStatus.Aborted,
-                    IntegrationStateStatus.Running,
+                    IntegrationStateStatus.Aborted.value,
+                    IntegrationStateStatus.Running.value,
                 ]:
                     await self.resync_state_updater.update_after_resync(
-                        IntegrationStateStatus.Aborted
+                        status=IntegrationStateStatus.Aborted
                     )
-                    logger.info("Resync status reported as aborted due to app shutdown")
+                    logger.info(
+                        "Graceful shutdown completed - sync state set to aborted"
+                    )
                 else:
                     logger.info(
-                        "Resync was already completed, status unchanged on shutdown"
+                        "Graceful shutdown completed - sync was already completed, status unchanged"
                     )
-            else:
-                logger.info(
-                    "Resync has already finished, no status update needed on shutdown"
-                )
         except Exception as e:
-            logger.warning(f"Failed to report resync status on shutdown: {e}")
+            logger.warning(f"Error during graceful shutdown: {e}")
 
     def _get_process_execution_mode(self) -> ProcessExecutionMode:
         if self.config.process_execution_mode:
@@ -179,7 +179,10 @@ class Ocean:
                 )
             except asyncio.CancelledError:
                 logger.warning(
-                    "resync was cancelled by the scheduled resync, skipping state update"
+                    "resync was cancelled by the scheduled resync, updating state to aborted"
+                )
+                await self.resync_state_updater.update_after_resync(
+                    IntegrationStateStatus.Aborted
                 )
             except Exception as e:
                 await self.resync_state_updater.update_after_resync(
