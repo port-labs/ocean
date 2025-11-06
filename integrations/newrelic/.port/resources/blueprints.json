@@ -247,5 +247,46 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {}
+  },
+  {
+    "identifier": "newRelicAlertCondition",
+    "description": "This blueprint represents a New Relic alert condition in our software catalog",
+    "title": "New Relic Alert Condition",
+    "icon": "NewRelic",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "enabled": {
+          "type": "boolean",
+          "title": "Enabled"
+        },
+        "policy_id": {
+          "type": "number",
+          "title": "Policy ID"
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags",
+          "description": "Tags associated with the alert condition"
+        },
+        "nrql": {
+          "type": "object",
+          "title": "NRQL",
+          "description": "NRQL query configuration"
+        },
+        "entity_guid": {
+          "type": "string",
+          "title": "Entity GUID",
+          "description": "The GUID of the entity associated with this condition"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
   }
 ]
