@@ -23,10 +23,16 @@ class RepositoryWebhookProcessor(BaseWebhookProcessorMixin):
     async def handle_event(
         self, payload: EventPayload, resource: ResourceConfig
     ) -> WebhookEventRawResults:
-        repository_slug = payload["new"]["slug"]
-        project_key = payload["new"]["project"]["key"]
+        event_key = payload.get("eventKey", "")
+        if event_key == "repo:refs_changed":
+            repository_slug = payload["repository"]["slug"]
+            project_key = payload["repository"]["project"]["key"]
+        else:
+            repository_slug = payload["new"]["slug"]
+            project_key = payload["new"]["project"]["key"]
+
         logger.info(
-            f"Handling repository webhook event for project: {project_key} and repository: {repository_slug}"
+            f"Handling repository webhook event ({event_key}) for project: {project_key} and repository: {repository_slug}"
         )
 
         repository = await self._client.get_single_repository(

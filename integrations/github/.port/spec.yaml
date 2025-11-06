@@ -1,10 +1,11 @@
 description: GitHub integration for Port Ocean
-icon: github
+icon: Github
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github/
 features:
   - type: exporter
     section: Git
     resources:
+      - kind: organization
       - kind: repository
       - kind: folder
       - kind: user
@@ -44,9 +45,9 @@ configurations:
     sensitive: true
     description: If App ID is passed, then app private key is required.
   - name: githubOrganization
-    required: true
+    required: false
     type: string
-    description: GitHub organization name
+    description: Optional GitHub organization name for GitHub App or Fine-grained PAT authentication.
   - name: webhookSecret
     type: string
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from GitHub are accepted.
@@ -65,3 +66,24 @@ saas:
       integrationSpec:
         githubAppId: .oauthData.additionalData.appId
         githubOrganization: .oauthData.additionalData.githubOrganization
+actionsProcessingEnabled: true
+actions:
+  - name: dispatch_github_workflow
+    icon: GithubActions
+    description: Dispatch a GitHub workflow
+    inputs:
+      - name: repo
+        type: string
+        description: The name of the GitHub repository that contains the target workflow
+        required: true
+      - name: workflow
+        type: string
+        description: The name of the file (under /.github/workflows/) that defines the target workflow, for example - deploy.yml
+        required: true
+      - name: workflowInputs
+        type: jqObject
+        description: 'The following values will be sent upon the action invocation. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. You can reference secrets using {{ .secrets["secret-name"] }}. <a href="https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload" target="_blank">Learn more</a>'
+      - name: reportWorkflowStatus
+        type: boolean
+        description: Whether to report the workflow status
+        default: true

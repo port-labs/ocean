@@ -257,7 +257,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             else:
                 response = await transport.handle_async_request(request)
 
-            await self._log_response_size_async(request, response)
+            self._log_response_size(request, response)
 
             return response
         except Exception as e:
@@ -356,8 +356,8 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         if content_length is None:
             # If Content-Length is missing, skip logging size to avoid reading the body
             return
-        size_info = content_length
 
+        size_info = content_length
         cast(logging.Logger, self._logger).info(
             f"Response for {request.method} {request.url} - Size: {size_info} bytes"
         )
@@ -372,8 +372,8 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         if content_length is None:
             # If Content-Length is missing, skip logging size to avoid reading the body
             return
-        size_info = content_length
 
+        size_info = content_length
         cast(logging.Logger, self._logger).info(
             f"Response for {request.method} {request.url} - Size: {size_info} bytes"
         )

@@ -118,6 +118,7 @@ class TestTagWebhookProcessor:
             "ref": tag_ref,
             "ref_type": "tag",
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         tag_webhook_processor._event_type = event_type
@@ -139,7 +140,9 @@ class TestTagWebhookProcessor:
 
             # Verify exporter was called with correct options
             mock_exporter.get_resource.assert_called_once_with(
-                SingleTagOptions(repo_name="test-repo", tag_name=tag_ref)
+                SingleTagOptions(
+                    organization="test-org", repo_name="test-repo", tag_name=tag_ref
+                )
             )
 
         assert isinstance(result, WebhookEventRawResults)

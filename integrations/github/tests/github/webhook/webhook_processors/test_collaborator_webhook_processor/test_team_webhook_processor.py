@@ -253,7 +253,7 @@ class TestCollaboratorTeamWebhookProcessor:
 
                     # Verify team exporter was called
                     mock_graphql_team_exporter.get_resource.assert_called_once_with(
-                        {"slug": "test-team"}
+                        {"organization": "test-org", "slug": "test-team"}
                     )
                 else:
                     # For unsupported events, no exporters should be called

@@ -7,12 +7,70 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.28.13 (2025-10-08)
+## 0.29.2 (2025-11-06)
 
 ### Bug fixes
 
 - Fix StreamConsumed error caused by response stream consumption in RetryTransport
 
+## 0.29.1 (2025-11-06)
+
+### Improvements
+
+- Resolved Dependabot alerts
+
+## 0.29.0 (2025-11-04)
+
+### Improvements
+
+- Add capability of running an execution agent
+
+## 0.28.18 (2025-10-27)
+
+### Bug fixes
+
+- Remove assume length by reading the response for logging
+- Fixed publish core image Github action
+
+## 0.28.18 (2025-10-27)
+
+### Bug fixes
+
+- Fix logging exception on process finish
+- Fixed serialization issue caused by Decimal objects returned from ijson.items_coro during jq transformation when yield_items_to_parse is enabled
+
+## 0.28.17 (2025-10-26)
+
+### Bug fixes
+
+- Prevent StreamConsumed error when there is no content-length header on response
+
+## 0.28.16 (2025-10-21)
+
+### Bug fixes
+
+- Add pagination to search entities API call
+
+## 0.28.15 (2025-10-20)
+
+### Bug fixes
+
+- Fix examples construction on items_to_parse (extra nesting removed)
+- Fix onload process from fs in items_to_parse with no yield_items_to_parse branch
+
+## 0.28.14 (2025-10-15)
+
+### Bug fixes
+
+- Fix items_to_parse without yield_items_to_parse bug on array data type
+- Fix items_to_parse group_complex_mapping_value bug
+
+## 0.28.13 (2025-10-03)
+
+### Improvements
+
+- Improved cache key generation for instance/class methods in Ocean's caching utilities
+- Added comprehensive test coverage for cache decorators on instance/class/static methods
 
 ## 0.28.12 (2025-09-30)
 
@@ -39,7 +97,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - revert memory optimization commit
-
 
 ## 0.28.8 (2025-09-21)
 

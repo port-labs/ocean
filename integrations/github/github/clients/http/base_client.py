@@ -8,7 +8,7 @@ from loguru import logger
 
 from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.limiter import GitHubRateLimiter
-from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
+from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 
 
@@ -21,12 +21,10 @@ if TYPE_CHECKING:
 class AbstractGithubClient(ABC):
     def __init__(
         self,
-        organization: str,
         github_host: str,
         authenticator: "AbstractGitHubAuthenticator",
         **kwargs: Any,
     ) -> None:
-        self.organization = organization
         self.github_host = github_host
         self.authenticator = authenticator
         self.kwargs = kwargs
@@ -72,8 +70,11 @@ class AbstractGithubClient(ABC):
         error: httpx.HTTPStatusError,
         resource: str,
         ignored_errors: Optional[List[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
     ) -> bool:
-        all_ignored_errors = (ignored_errors or []) + self._DEFAULT_IGNORED_ERRORS
+        all_ignored_errors = (ignored_errors or []) + (
+            self._DEFAULT_IGNORED_ERRORS if ignore_default_errors else []
+        )
         status_code = error.response.status_code
 
         for ignored_error in all_ignored_errors:
@@ -91,6 +92,7 @@ class AbstractGithubClient(ABC):
         method: str = "GET",
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
     ) -> Response:
         """Make a request to the GitHub API with GitHub rate limiting and error handling."""
 
@@ -112,7 +114,9 @@ class AbstractGithubClient(ABC):
                 response = e.response
 
                 if not self.rate_limiter.is_rate_limit_response(response):
-                    if self._should_ignore_error(e, resource, ignored_errors):
+                    if self._should_ignore_error(
+                        e, resource, ignored_errors, ignore_default_errors
+                    ):
                         return Response(200, content=b"{}")
 
                 logger.error(
@@ -137,17 +141,18 @@ class AbstractGithubClient(ABC):
         method: str = "GET",
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
     ) -> Dict[str, Any]:
         """Send request to GitHub API with error handling and rate limiting."""
 
         response = await self.make_request(
-            resource, params, method, json_data, ignored_errors
+            resource, params, method, json_data, ignored_errors, ignore_default_errors
         )
         return response.json()
 
-    def get_rate_limit_status(self) -> Dict[str, Any]:
+    def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
         """Get current rate limit status for monitoring."""
-        return self.rate_limiter.get_rate_limit_status()
+        return self.rate_limiter.rate_limit_info
 
     def log_rate_limit_status(self) -> None:
         """Log current rate limit status for debugging."""

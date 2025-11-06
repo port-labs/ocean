@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "github-ocean"
-version = "1.5.10-beta"
+version = "3.2.0-beta"
 description = "This integration ingest data from github"
 authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>", "Melody Anyaegbulam <melodyogonna@gmail.com>", "Michael Armah <mikeyarmah@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
 pyjwt = {extras = ["crypto"], version = "^2.10.1"}
-port_ocean = {version = "^0.28.12", extras = ["cli"]}
+port_ocean = {version = "^0.29.0", extras = ["cli"]}
 wcmatch = "^10.1"
 types-pyyaml = "^6.0.12.20250516"
 

@@ -16,7 +16,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 from github.helpers.utils import ObjectKind
-from github.webhook.webhook_processors.workflow_run_webhook_processor import (
+from github.webhook.webhook_processors.workflow_run.workflow_run_webhook_processor import (
     WorkflowRunWebhookProcessor,
 )
 
@@ -112,6 +112,7 @@ class TestWorkflowRunWebhookProcessor:
             "action": action,
             "repository": repo_data,
             "workflow_run": workflow_run,
+            "organization": {"login": "test-org"},
         }
 
         if is_deletion:
@@ -124,16 +125,16 @@ class TestWorkflowRunWebhookProcessor:
             mock_exporter.get_resource.return_value = workflow_run
 
             with patch(
-                "github.webhook.webhook_processors.workflow_run_webhook_processor.RestWorkflowRunExporter",
+                "github.webhook.webhook_processors.workflow_run.workflow_run_webhook_processor.RestWorkflowRunExporter",
                 return_value=mock_exporter,
             ):
                 result = await workflow_webhook_processor.handle_event(
                     payload, resource_config
                 )
 
-            # Verify exporter was called with correct repo name
+            # Verify exporter was called with correct parameters
             mock_exporter.get_resource.assert_called_once_with(
-                {"repo_name": "test-repo", "run_id": 1}
+                {"organization": "test-org", "repo_name": "test-repo", "run_id": 1}
             )
 
         assert isinstance(result, WebhookEventRawResults)
@@ -154,6 +155,7 @@ class TestWorkflowRunWebhookProcessor:
                     "action": WORKFLOW_UPSERT_EVENTS[0],
                     "repository": {"name": "repo1"},
                     "workflow_run": {"id": 1, "name": "test"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -162,6 +164,7 @@ class TestWorkflowRunWebhookProcessor:
                     "action": WORKFLOW_DELETE_EVENTS[0],
                     "repository": {"name": "repo2"},
                     "workflow_run": {"id": 2, "name": "test 2"},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -169,6 +172,7 @@ class TestWorkflowRunWebhookProcessor:
                 {
                     "action": WORKFLOW_DELETE_EVENTS[0],
                     "repository": {"name": "repo2"},
+                    "organization": {"login": "test-org"},
                 },
                 False,
             ),  # missing workflow_run
@@ -177,6 +181,7 @@ class TestWorkflowRunWebhookProcessor:
                     "action": WORKFLOW_DELETE_EVENTS[0],
                     "repository": {"name": "repo2"},
                     "workflow_run": {},
+                    "organization": {"login": "test-org"},
                 },
                 False,
             ),  # missing workflow_run id
@@ -186,6 +191,7 @@ class TestWorkflowRunWebhookProcessor:
                 {
                     "action": WORKFLOW_UPSERT_EVENTS[0],
                     "repository": {},
+                    "organization": {"login": "test-org"},
                 },  # no repository name
                 False,
             ),

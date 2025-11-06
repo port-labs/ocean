@@ -19,7 +19,7 @@
     "@docusaurus/plugin-client-redirects": "^3.7.0",
     "@docusaurus/plugin-content-blog": "^3.7.0",
     "@docusaurus/plugin-content-docs": "^3.7.0",
-    "@docusaurus/plugin-ideal-image": "^3.7.0",
+    "@docusaurus/plugin-ideal-image": "^3.9.2",
     "@docusaurus/preset-classic": "^3.7.0",
     "@docusaurus/theme-common": "^3.7.0",
     "@docusaurus/theme-live-codeblock": "^3.7.0",
@@ -62,6 +62,6 @@
   },
   "overrides": {
     "redoc": "2.4.0",
-    "image-size": "1.2.1"
+    "image-size": "^2.0.0"
   }
 }

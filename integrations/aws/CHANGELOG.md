@@ -7,6 +7,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.191 (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 0.2.190 (2025-11-02)
+
+
+### Improvements
+
+- Renaming from on-premise to self hosted
+
+## 0.2.189 (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 0.2.188 (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+## 0.2.187 (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 0.2.186 (2025-10-22)
+
+
+### Bug Fixes
+
+- Fix resync failures caused by known GeneralServiceException errors from CloudControl API that wrap underlying ResourceNotFoundException or AccessDenied errors in error messages.
+
+
+## 0.2.185-post (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 0.2.184-post (2025-10-21)
+
+### Improvements
+
+- Deprecate aws v2 integration
+
+
+## 0.2.184 (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 0.2.183 (2025-10-16)
+
+### Improvements
+
+- Added missing docs url on spec
+
+
+## 0.2.182 (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
 ## 0.2.181 (2025-09-30)
 
 

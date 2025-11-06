@@ -7,7 +7,115 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 1.5.10-beta (2025-09-30)
+# 3.2.0-beta (2025-11-04)
+
+
+### Improvements
+
+- Added support for running github workflows as part of Port actions
+
+
+## 3.1.2-beta (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 3.1.1-beta (2025-11-04)
+
+
+### Improvements
+
+- Update `repo_search` selector to use `repoSearch` alias for camelCase consistency.
+
+
+## 3.1.0-beta (2025-11-03)
+
+
+### Features
+
+- Added support for ingesting repositories using Github search API
+
+
+## 3.0.5-beta (2025-11-03)
+
+
+### Features
+
+- Added bot filtering option for GitHub user sync
+
+
+## 3.0.4-beta (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 3.0.3-beta (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+## 3.0.2-beta (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 3.0.1-beta (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 3.0.0-beta (2025-10-20)
+
+
+### Features
+
+- Added multi-organization support for GitHub integration
+- Updated all resync functions to iterate through multiple organizations
+- Modified webhook processors to include organization context
+- Updated exporters to support organization parameters
+- Added `organization` as a new resource kind
+
+
+## 2.0.3-beta (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 2.0.2-beta (2025-10-15)
+
+
+### Bug Fixes
+
+- Updated Closed Pull Request Tests with Mocked Datetime
+
+
+## 2.0.1-beta (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+## 2.0.0-beta (2025-09-30)
 
 
 ### Improvements
