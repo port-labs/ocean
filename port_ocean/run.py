@@ -1,5 +1,4 @@
 import asyncio
-import signal
 from inspect import getmembers
 from typing import Dict, Any, Type
 
@@ -14,19 +13,7 @@ from port_ocean.core.utils.utils import validate_integration_runtime
 from port_ocean.log.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_spec_file, load_module
-from port_ocean.utils.signal import init_signal_handler, signal_handler
-
-
-def _setup_system_signal_handlers(app: Ocean) -> None:
-    """Setup system signal handlers to trigger graceful shutdown"""
-
-    def handle_signal(signum: int, frame: Any) -> None:
-        print(f"Received signal {signum}, triggering graceful shutdown...")
-        # Run the graceful shutdown handler
-        asyncio.create_task(signal_handler.exit())
-
-    signal.signal(signal.SIGTERM, handle_signal)
-    signal.signal(signal.SIGINT, handle_signal)
+from port_ocean.utils.signal import init_signal_handler
 
 
 def _get_default_config_factory() -> None | Type[BaseModel]:
@@ -70,8 +57,5 @@ def run(
     if initialize_port_resources is not None:
         app.config.initialize_port_resources = initialize_port_resources
     initialize_defaults(app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config)
-
-    # Setup system signal handlers
-    _setup_system_signal_handlers(app)
 
     uvicorn.run(app, host="0.0.0.0", port=application_settings.port)
