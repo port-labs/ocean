@@ -1,7 +1,7 @@
 import asyncio
 import signal
 from inspect import getmembers
-from typing import Dict, Any, Type
+from typing import Dict, Any, Type, Callable, Awaitable
 
 import uvicorn
 from pydantic import BaseModel
@@ -17,10 +17,10 @@ from port_ocean.utils.misc import get_spec_file, load_module, IntegrationStateSt
 from port_ocean.utils.signal import init_signal_handler, signal_handler
 
 
-def _create_graceful_shutdown_handler(app: Ocean):
+def _create_graceful_shutdown_handler(app: Ocean) -> Callable[[], Awaitable[None]]:
     """Create a handler that gracefully shuts down the sync by setting state to aborted"""
 
-    async def graceful_shutdown():
+    async def graceful_shutdown() -> None:
         try:
             from port_ocean.context.ocean import ocean
 
@@ -35,10 +35,10 @@ def _create_graceful_shutdown_handler(app: Ocean):
     return graceful_shutdown
 
 
-def _setup_system_signal_handlers(app: Ocean):
+def _setup_system_signal_handlers(app: Ocean) -> None:
     """Setup system signal handlers to trigger graceful shutdown"""
 
-    def handle_signal(signum, frame):
+    def handle_signal(signum: int, frame: Any) -> None:
         print(f"Received signal {signum}, triggering graceful shutdown...")
         # Run the graceful shutdown handler
         asyncio.create_task(signal_handler.exit())
