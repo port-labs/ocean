@@ -15,6 +15,9 @@ class RunWebhookProcessor(TerraformBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.RUN]
 
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        return True
+
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:

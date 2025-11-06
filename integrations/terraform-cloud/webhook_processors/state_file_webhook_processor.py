@@ -1,4 +1,3 @@
-from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from utils import ObjectKind, init_terraform_client
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -25,17 +24,12 @@ class StateFileWebhookProcessor(TerraformBaseWebhookProcessor):
                 return True
         return False
 
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        return await self._should_process_state(event.payload)
+
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        if not await self._should_process_state(payload):
-            logger.info(
-                "Run not in applied state, skipping state file webhook processing"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
         workspace_name = payload["workspace_name"]
         organization_name = payload["organization_name"]
 

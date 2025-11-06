@@ -42,17 +42,12 @@ class StateVersionWebhookProcessor(TerraformBaseWebhookProcessor):
                 return True
         return False
 
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        return await self._should_process_state(event.payload)
+
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        if not await self._should_process_state(payload):
-            logger.info(
-                "Run not in applied state, skipping state version webhook processing"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
         # Extract workspace and organization info directly from payload
         workspace_name = payload["workspace_name"]
         organization_name = payload["organization_name"]
