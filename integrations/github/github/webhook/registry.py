@@ -34,7 +34,7 @@ from github.webhook.webhook_processors.team_webhook_processor import (
 from github.webhook.webhook_processors.user_webhook_processor import (
     UserWebhookProcessor,
 )
-from github.webhook.webhook_processors.workflow_run_webhook_processor import (
+from github.webhook.webhook_processors.workflow_run.workflow_run_webhook_processor import (
     WorkflowRunWebhookProcessor,
 )
 from github.webhook.webhook_processors.workflow_webhook_processor import (
@@ -61,28 +61,30 @@ from github.webhook.webhook_processors.secret_scanning_alert_webhook_processor i
     SecretScanningAlertWebhookProcessor,
 )
 
+WEBHOOK_PATH = "/webhook"
 
-def register_live_events_webhooks(path: str = "/webhook") -> None:
+
+def register_live_events_webhooks() -> None:
     """Register all live event webhook processors."""
-    ocean.add_webhook_processor(path, RepositoryWebhookProcessor)
-    ocean.add_webhook_processor(path, PullRequestWebhookProcessor)
-    ocean.add_webhook_processor(path, IssueWebhookProcessor)
-    ocean.add_webhook_processor(path, ReleaseWebhookProcessor)
-    ocean.add_webhook_processor(path, TagWebhookProcessor)
-    ocean.add_webhook_processor(path, BranchWebhookProcessor)
-    ocean.add_webhook_processor(path, EnvironmentWebhookProcessor)
-    ocean.add_webhook_processor(path, DeploymentWebhookProcessor)
-    ocean.add_webhook_processor(path, WorkflowRunWebhookProcessor)
-    ocean.add_webhook_processor(path, WorkflowWebhookProcessor)
-    ocean.add_webhook_processor(path, DependabotAlertWebhookProcessor)
-    ocean.add_webhook_processor(path, CodeScanningAlertWebhookProcessor)
-    ocean.add_webhook_processor(path, FolderWebhookProcessor)
-    ocean.add_webhook_processor(path, TeamWebhookProcessor)
-    ocean.add_webhook_processor(path, TeamMemberWebhookProcessor)
-    ocean.add_webhook_processor(path, UserWebhookProcessor)
-    ocean.add_webhook_processor(path, FileWebhookProcessor)
-    ocean.add_webhook_processor(path, CollaboratorMemberWebhookProcessor)
-    ocean.add_webhook_processor(path, CollaboratorMembershipWebhookProcessor)
-    ocean.add_webhook_processor(path, CollaboratorTeamWebhookProcessor)
-    ocean.add_webhook_processor(path, CheckRunValidatorWebhookProcessor)
-    ocean.add_webhook_processor(path, SecretScanningAlertWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, RepositoryWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, PullRequestWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, IssueWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, ReleaseWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, TagWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, BranchWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, EnvironmentWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, DeploymentWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, WorkflowRunWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, WorkflowWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, DependabotAlertWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, CodeScanningAlertWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, FolderWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, TeamWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, TeamMemberWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, UserWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, FileWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, CollaboratorMemberWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, CollaboratorMembershipWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, CollaboratorTeamWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, CheckRunValidatorWebhookProcessor)
+    ocean.add_webhook_processor(WEBHOOK_PATH, SecretScanningAlertWebhookProcessor)

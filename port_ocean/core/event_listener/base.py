@@ -4,6 +4,7 @@ from typing import TypedDict, Callable, Any, Awaitable
 from pydantic import Extra
 
 from port_ocean.config.base import BaseOceanModel
+from port_ocean.core.models import EventListenerType
 from port_ocean.utils.signal import signal_handler
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.misc import IntegrationStateStatus
@@ -78,8 +79,10 @@ class BaseEventListener:
 
 
 class EventListenerSettings(BaseOceanModel, extra=Extra.allow):
-    type: str
+    type: EventListenerType
     should_resync: bool = True
+    should_process_webhooks: bool = True
+    should_run_actions: bool = True
 
     def get_changelog_destination_details(self) -> dict[str, Any]:
         """

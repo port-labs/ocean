@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "komodor"
-version = "0.1.72"
+version = "0.1.74"
 description = "Komodor Ocean Integration"
 authors = ["Yotam Dekel <yotam@komodor.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.28.19", extras = ["cli"]}
+port_ocean = {version = "^0.29.1", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
