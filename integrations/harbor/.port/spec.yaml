@@ -1,0 +1,55 @@
+title: Harbor
+description: Harbor container registry integration for Port Ocean
+icon: Harbor
+docs: https://goharbor.io/docs
+features:
+  - type: exporter
+    section: Container Registry
+    resources:
+      - kind: project
+      - kind: user
+      - kind: repository
+      - kind: artifact
+configurations:
+  - name: harbor_url
+    required: true
+    type: string
+    description: The base URL of your Harbor instance (e.g., https://harbor.example.com)
+  - name: harbor_username
+    required: true
+    type: string
+    description: Harbor username or robot account name
+  - name: harbor_password
+    required: true
+    type: string
+    sensitive: true
+    description: Harbor password or robot account token
+  - name: harbor_verify_ssl
+    type: boolean
+    required: false
+    description: Whether to verify SSL certificates
+    default: true
+  - name: project_name_prefix
+    type: string
+    required: false
+    description: Filter projects by name prefix
+  - name: include_public_projects
+    type: boolean
+    required: false
+    description: Include public projects
+    default: true
+  - name: include_private_projects
+    type: boolean
+    required: false
+    description: Include private projects
+    default: true
+  - name: min_vulnerability_severity
+    type: string
+    required: false
+    description: Minimum vulnerability severity to include artifacts
+    enum: ["Critical", "High", "Medium", "Low", "None"]
+  - name: webhook_secret
+    type: string
+    required: false
+    sensitive: true
+    description: Secret used to validate incoming Harbor webhooks
