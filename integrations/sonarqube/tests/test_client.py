@@ -203,7 +203,6 @@ async def test_pagination_with_large_dataset(
     ]
 
     async with event_context("test_event"):
-
         monkeypatch.setattr(
             sonarqube_client, "get_single_project", mock_get_single_project
         )
