@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import Annotated, Any, Literal, Union
 
+from loguru import logger
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -75,7 +76,10 @@ class SonarQubeProjectApiFilter(BaseSonarQubeApiFilter):
             value["filter"] = filter_instance.generate_search_filters()
         if s := value.pop("s", None):
             value["s"] = s
-
+        logger.warning(
+            "The 'qualifiers' parameter has been deprecated and will not have any effect. "
+            "This parameter will be ignored in API requests."
+        )
         return value
 
 
@@ -241,7 +245,8 @@ class SonarQubeIssueResourceConfig(CustomResourceConfig):
     selector: SonarQubeIssueSelector
 
 
-class SonarQubeOnPremAnalysisSelector(SonarQubeMetricsSelector): ...
+class SonarQubeOnPremAnalysisSelector(SonarQubeMetricsSelector):
+    ...
 
 
 class SonarQubeOnPremAnalysisResourceConfig(CustomResourceConfig):

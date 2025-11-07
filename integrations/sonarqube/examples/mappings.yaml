@@ -3,6 +3,9 @@ deleteDependentEntities: true
 resources:
   - kind: projects_ga
     selector:
+      apiFilters:
+        qualifier:
+          - TRK
       query: 'true'
       metrics:
         - code_smells
