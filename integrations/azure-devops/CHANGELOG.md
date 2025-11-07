@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.24 (2025-11-07)
+
+
+### Improvements
+
+- Removed extra metadata from itemsbatch endpoint
+
+
 ## 0.4.23 (2025-11-06)
 
 
