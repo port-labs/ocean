@@ -11,6 +11,7 @@ from azure_integration.helpers.http import (
     parse_url_components,
     DEFAULT_HTTP_REQUEST_TIMEOUT,
 )
+from itertools import batched
 
 
 class AzureResourceManagerClient(AzureRestClient):
@@ -33,7 +34,6 @@ class AzureResourceManagerClient(AzureRestClient):
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Stream paginated Azure API responses efficiently in fixed-size batches."""
         next_url = request.endpoint
-        batch: List[Dict[str, Any]] = []
         page_size = request.page_size
 
         params = {
@@ -58,11 +58,11 @@ class AzureResourceManagerClient(AzureRestClient):
                 f"Retrieved batch of {len(response[request.data_key])} items from {next_url} before buffering"
             )
 
-            for item in response[request.data_key]:
-                batch.append(item)
-                if len(batch) == page_size:
-                    yield batch
-                    batch.clear()
+            for item in batched(response[request.data_key], page_size):
+                logger.debug(
+                    f"Yielding a buffered batch of {len(item)} records from {next_url}"
+                )
+                yield list(item)
 
             if not (next_link := response.get("nextLink")):
                 break
@@ -70,6 +70,3 @@ class AzureResourceManagerClient(AzureRestClient):
             if "api-version" not in params:
                 params["api-version"] = request.api_version
             logger.debug(f"Next URL: {next_url}, Params: {params}")
-
-        if batch:
-            yield batch

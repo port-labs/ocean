@@ -8,6 +8,7 @@ from azure_integration.clients.base import AzureRequest
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
 from azure_integration.helpers.http import DEFAULT_HTTP_REQUEST_TIMEOUT
+from itertools import batched
 
 
 class AzureResourceGraphClient(AzureRestClient):
@@ -35,9 +36,10 @@ class AzureResourceGraphClient(AzureRestClient):
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Stream paginated Azure API responses efficiently in fixed-size batches."""
         next_url = request.endpoint
-        batch: List[Dict[str, Any]] = []
         page_size = request.page_size
         skipToken = None
+        page = 1
+        total_fetched = 0
 
         json = {
             **request.json_body,
@@ -64,16 +66,23 @@ class AzureResourceGraphClient(AzureRestClient):
             json["options"]["$skipToken"] = skipToken
 
             logger.info(
-                f"Retrieved batch of {len(response[request.data_key])} items from {next_url} before buffering"
+                f"Retrieved batch of {response['count']} out of {response['totalRecords']} total records from page {page} of {next_url} before buffering"
             )
-            for item in response[request.data_key]:
-                batch.append(item)
-                if len(batch) == page_size:
-                    yield batch
-                    batch.clear()
+            total_fetched += response["count"]
+            for item in batched(response[request.data_key], page_size):
+                logger.debug(
+                    f"Yielding a buffered batch of {len(item)}/{response['count']} retrieved records from page {page} of {next_url}"
+                )
+                yield list(item)
 
+            logger.debug(
+                f"Fetched {total_fetched} out of {response['totalRecords']} total records so far from {next_url}."
+            )
             if not skipToken:
                 break
 
-        if batch:
-            yield batch
+            page += 1
+
+        logger.info(
+            f"Retrieved all {total_fetched}/{response['totalRecords']} total records from {next_url}"
+        )
