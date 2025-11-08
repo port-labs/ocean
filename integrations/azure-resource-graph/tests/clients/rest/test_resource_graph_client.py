@@ -26,12 +26,18 @@ async def test_make_paginated_request_with_skiptoken(
     mock_response_1.json.return_value = {
         "data": [{"id": "resource1"}],
         "$skipToken": skip_token,
+        "totalRecords": 2,
+        "count": 1,
     }
     mock_response_1.headers = {}
     mock_response_1.raise_for_status.return_value = None
 
     mock_response_2 = MagicMock()
-    mock_response_2.json.return_value = {"data": [{"id": "resource2"}]}
+    mock_response_2.json.return_value = {
+        "data": [{"id": "resource2"}],
+        "totalRecords": 2,
+        "count": 1,
+    }
     mock_response_2.headers = {}
     mock_response_2.raise_for_status.return_value = None
 
@@ -78,7 +84,11 @@ async def test_make_paginated_request_without_skiptoken(
 
     # Mock response
     mock_response = MagicMock()
-    mock_response.json.return_value = {"data": [{"id": "resource1"}]}
+    mock_response.json.return_value = {
+        "data": [{"id": "resource1"}],
+        "totalRecords": 1,
+        "count": 1,
+    }
     mock_response.headers = {}
     mock_response.raise_for_status.return_value = None
     mock_httpx_client.request.return_value = mock_response
