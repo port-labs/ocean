@@ -1,6 +1,7 @@
 title: Harbor
 description: Harbor container registry integration for Port Ocean
 icon: Harbor
+version: 0.1.1
 docs: https://goharbor.io/docs
 features:
   - type: exporter

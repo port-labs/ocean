@@ -3,12 +3,11 @@
 from typing import List, Dict, Any, AsyncGenerator
 
 from ..client import HarborClient
-from ..config import HarborConfig
 from ..core.models import HarborRepository
 
 
 async def get_repositories(
-    client: HarborClient, config: HarborConfig
+    client: HarborClient,
 ) -> AsyncGenerator[List[Dict[str, Any]], None]:
     """
     Retrieve and filter Harbor project repositories based on configuration.
@@ -27,16 +26,14 @@ async def get_repositories(
                 batch_entities = []
                 for repo_data in repo_batch:
                     repository = HarborRepository(**repo_data)
-                    entity = _map_repository_to_entity(repository, project_name)
+                    entity = _map_repository_to_entity(repository)
                     batch_entities.append(entity)
 
                 if batch_entities:
                     yield batch_entities
 
 
-def _map_repository_to_entity(
-    repository: HarborRepository, project_name: str
-) -> Dict[str, Any]:
+def _map_repository_to_entity(repository: HarborRepository) -> Dict[str, Any]:
     repo_short_name = (
         repository.name.split("/")[-1] if "/" in repository.name else repository.name
     )
@@ -44,16 +41,16 @@ def _map_repository_to_entity(
     return {
         "id": repository.id,
         "name": repo_short_name,
-        "fullName": repository.name,
-        "projectId": repository.project_id,
-        "projectName": project_name,
+        "full_name": repository.full_name,
+        "project_id": repository.project_id,
         "description": repository.description,
-        "artifactCount": repository.artifact_count,
-        "pullCount": repository.pull_count,
-        "creationTime": repository.creation_time.isoformat()
+        "artifact_count": repository.artifact_count,
+        "pull_count": repository.pull_count,
+        "creation_time": repository.creation_time.isoformat()
         if repository.creation_time
         else None,
-        "updateTime": repository.update_time.isoformat()
+        "update_time": repository.update_time.isoformat()
         if repository.update_time
         else None,
+        "project": repository.project_id,
     }

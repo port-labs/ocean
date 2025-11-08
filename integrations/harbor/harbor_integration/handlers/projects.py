@@ -62,18 +62,20 @@ def _map_project_to_entity(project: HarborProject) -> Dict[str, Any]:
         Dict[str, Any]
     """
 
-    is_public = project.metadata and project.metadata.get("public") == "true"
-
     return {
-        "projectId": project.project_id,
+        "project_id": project.project_id,
         "name": project.name,
-        "ownerName": project.owner_name,
-        "creationTime": project.creation_time.isoformat()
+        "owner_id": project.owner_id,
+        "owner_name": project.owner_name,
+        "registry_id": project.registry_id,
+        "repo_count": project.repo_count,
+        "is_public": project.is_public,
+        "togglable": project.togglable,
+        "deleted": project.deleted,
+        "creation_time": project.creation_time.isoformat()
         if project.creation_time
         else None,
-        "updatedTime": project.update_time.isoformat() if project.update_time else None,
-        "repoCount": project.repo_count,
-        "isPublic": is_public,
-        "deleted": project.deleted,
-        "metadata": project.metadata,
+        "update_time": project.update_time.isoformat()
+        if project.update_time
+        else None,
     }

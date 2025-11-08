@@ -9,13 +9,66 @@ resources:
           title: .name
           blueprint: '"harborProject"'
           properties:
+            projectId: .project_id
+            registryId: .registry_id
             name: .name
+            ownerId: .owner_id
             ownerName: .owner_name
             creationTime: .creation_time
             updateTime: .update_time
             repoCount: .repo_count
             isPublic: .metadata.public == "true"
+            togglable: .togglable
             deleted: .deleted
+
+  - kind: repository
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name | split("/") | last
+          blueprint: '"harborRepository"'
+          properties:
+            id: .id
+            name: .name | split("/") | last
+            fullName: .name
+            projectId: .project_id
+            description: .description
+            artifactCount: .artifact_count
+            pullCount: .pull_count
+            creationTime: .creation_time
+            updateTime: .update_time
+          relations:
+            project: .project_id | tostring
+
+  - kind: artifact
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .digest
+          title: '(.repository_name | split("/") | last) + ":" + (if .tags and (.tags | length) > 0 then .tags[0].name else .digest[7:19] end)'
+          blueprint: '"harborArtifact"'
+          properties:
+            id: .id
+            digest: .digest
+            size: .size
+            mediaType: .media_type
+            manifestMediaType: .manifest_media_type
+            pushTime: .push_time
+            pullTime: .pull_time
+            tags: .tags[].name
+            latestTag: .tags[0].name
+            maxSeverity: '.scan_overview | to_entries | map(.value.severity) | max // "None"'
+            totalVulnerabilities: ".scan_overview | to_entries | map(.value.summary.total) | add // 0"
+            scanners: ".scan_overview | keys"
+            type: .type
+            icon: .icon
+          relations:
+            repository: .repository_id | tostring
 
   - kind: user
     selector:
@@ -32,53 +85,6 @@ resources:
             realname: .realname
             creationTime: .creation_time
             updateTime: .update_time
-            sysadmin: .sysadmin_flag
-            adminRole: .admin_role
-
-  - kind: repository
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id | tostring
-          title: .name | split("/") | last
-          blueprint: '"harborRepository"'
-          properties:
-            name: .name | split("/") | last
-            fullName: .name
-            projectId: .project_id
-            description: .description
-            artifactCount: .artifact_count
-            pullCount: .pull_count
-            creationTime: .creation_time
-            updateTime: .update_time
-          relations:
-            harborProject: ".projectId | tostring"
-
-  - kind: artifact
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .digest
-          title: '(.repositoryName | split("/") | last) + ":" + (if .tags and (.tags | length) > 0 then .tags[0].name else .digest[7:19] end)'
-          blueprint: '"harborArtifact"'
-          properties:
-            digest: .digest
-            size: .size
-            mediaType: .media_type
-            manifestMediaType: .manifest_media_type
-            pushTime: .push_time
-            pullTime: .pull_time
-            tags: .tags[].name
-            latestTag: .tags[0].name
-            vulnerabilitySeverity: '.scan_overview | to_entries | map(.value.severity) | max // "None"'
-            totalVulnerabilities: ".scan_overview | to_entries | map(.value.summary.total) | add // 0"
-            scanners: ".scan_overview | keys"
-            type: .type
-            icon: .icon
-          relations:
-            harborRepository: ".repository_id | tostring"
-            harborProject: ".projectId | tostring"
+            sysadminFlag: .sysadmin_flag
+            adminRoleInAuth: .admin_role_in_auth
+            comment: .comment

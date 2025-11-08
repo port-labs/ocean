@@ -156,7 +156,7 @@ resource "port_blueprint" "artifact" {
       type  = "string"
       title = "Manifest Media Type"
     }
-    
+
     size = {
       type  = "number"
       title = "Size (bytes)"
@@ -171,14 +171,14 @@ resource "port_blueprint" "artifact" {
       type  = "date-time"
       title = "Push Time"
     }
-    
-    total_vulnerabilities = { 
-      type = "number", 
-      title = "Total Vulnerabilities" 
+
+    total_vulnerabilities = {
+      type = "number",
+      title = "Total Vulnerabilities"
     }
-    
-    scanners = { 
-      type = "array", 
+
+    scanners = {
+      type = "array",
       title = "Scanners",
       items = { type = "string" }
     }

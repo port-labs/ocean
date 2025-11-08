@@ -37,9 +37,7 @@ async def get_artifacts(
                             if not _should_include_artifact(artifact, config):
                                 continue
 
-                            entity = _map_artifact_to_entity(
-                                artifact, project_name, repo_name
-                            )
+                            entity = _map_artifact_to_entity(artifact)
                             batch_entities.append(entity)
 
                     if batch_entities:
@@ -66,9 +64,7 @@ def _should_include_artifact(artifact: HarborArtifact, config: HarborConfig) -> 
     return artifact_severity_idx >= min_severity_idx
 
 
-def _map_artifact_to_entity(
-    artifact: HarborArtifact, project_name: str, repository_name: str
-) -> Dict[str, Any]:
+def _map_artifact_to_entity(artifact: HarborArtifact) -> Dict[str, Any]:
     """
     Map a HarborArtifact to a generic Entity.
     Args:
@@ -78,26 +74,21 @@ def _map_artifact_to_entity(
     Returns:
         Dict[str, Any]
     """
-    repo_short_name = (
-        repository_name.split("/")[-1] if "/" in repository_name else repository_name
-    )
 
     return {
         "id": artifact.id,
         "digest": artifact.digest,
         "size": artifact.size,
-        "mediaType": artifact.media_type,
-        "manifestMediaType": artifact.manifest_media_type,
-        "pushTime": artifact.push_time.isoformat(),
-        "pullTime": artifact.pull_time.isoformat(),
+        "media_type": artifact.media_type,
+        "manifest_media_type": artifact.manifest_media_type,
+        "push_time": artifact.push_time.isoformat(),
+        "pull_time": artifact.pull_time.isoformat(),
         "tags": artifact.tag_names,
-        "latestTag": artifact.latest_tag,
-        "vulnerabilitySeverity": artifact.max_severity,
-        "totalVulnerabilities": artifact.total_vulnerabilities,
+        "latest_tag": artifact.latest_tag,
+        "max_severity": artifact.max_severity,
+        "total_vulnerabilities": artifact.total_vulnerabilities,
         "scanners": artifact.scanner_names,
         "type": artifact.type,
         "icon": artifact.icon,
-        "repositoryId": artifact.repository_id,
-        "projectName": project_name,
-        "repositoryName": repo_short_name,
+        "repository": artifact.repository_id,
     }

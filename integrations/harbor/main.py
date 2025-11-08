@@ -20,7 +20,11 @@ logger = logging.getLogger(__name__)
 
 def initialize_client() -> HarborClient:
     """Initialize Harbor client."""
-    config = HarborConfig(**ocean.integration_config["harbor"])
+    config = HarborConfig(
+        harbor_url=ocean.integration_config["harbor_url"],
+        username=ocean.integration_config["harbor_username"],
+        password=ocean.integration_config["harbor_password"],
+    )
     return HarborClient(config)
 
 
@@ -38,7 +42,7 @@ async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync Harbor repositories."""
 
     harbor_client = initialize_client()
-    async for repositories in get_repositories(harbor_client, harbor_client.config):
+    async for repositories in get_repositories(harbor_client):
         yield repositories
 
 

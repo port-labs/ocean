@@ -5,6 +5,10 @@
     "icon": "Project",
     "schema": {
       "properties": {
+        "projectId": {
+          "type": "number",
+          "title": "Project ID"
+        },
         "name": {
           "type": "string",
           "title": "Project Name"
@@ -12,6 +16,14 @@
         "ownerName": {
           "type": "string",
           "title": "Owner Name"
+        },
+        "ownerId": {
+          "type": "number",
+          "title": "Owner ID"
+        },
+        "registryId": {
+          "type": "number",
+          "title": "Registry ID"
         },
         "creationTime": {
           "type": "string",
@@ -31,60 +43,16 @@
           "type": "boolean",
           "title": "Is Public"
         },
+        "togglable": {
+          "type": "boolean",
+          "title": "Togglable"
+        },
         "deleted": {
           "type": "boolean",
           "title": "Deleted"
         }
       },
       "required": ["name"]
-    },
-    "relations": {
-      "harborRepository": {
-        "title": "Repositories",
-        "target": "harborRepository",
-        "required": false,
-        "many": true
-      }
-    }
-  },
-  {
-    "identifier": "harborUser",
-    "title": "Harbor User",
-    "icon": "User",
-    "schema": {
-      "properties": {
-        "username": {
-          "type": "string",
-          "title": "Username"
-        },
-        "email": {
-          "type": "string",
-          "title": "Email"
-        },
-        "realname": {
-          "type": "string",
-          "title": "Real Name"
-        },
-        "creationTime": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Creation Time"
-        },
-        "updateTime": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Update Time"
-        },
-        "sysadmin": {
-          "type": "boolean",
-          "title": "System Administrator"
-        },
-        "adminRole": {
-          "type": "boolean",
-          "title": "Admin Role"
-        }
-      },
-      "required": ["username"]
     },
     "relations": {}
   },
@@ -94,6 +62,10 @@
     "icon": "Repository",
     "schema": {
       "properties": {
+        "id": {
+          "type": "number",
+          "title": "Repository ID"
+        },
         "name": {
           "type": "string",
           "title": "Repository Name"
@@ -129,20 +101,14 @@
           "title": "Update Time"
         }
       },
-      "required": ["name", "projectId"]
+      "required": ["name"]
     },
     "relations": {
-      "harborProject": {
+      "project": {
         "title": "Project",
         "target": "harborProject",
         "required": true,
         "many": false
-      },
-      "harborArtifact": {
-        "title": "Artifacts",
-        "target": "harborArtifact",
-        "required": false,
-        "many": true
       }
     }
   },
@@ -152,6 +118,10 @@
     "icon": "Docker",
     "schema": {
       "properties": {
+        "id": {
+          "type": "number",
+          "title": "Artifact ID"
+        },
         "digest": {
           "type": "string",
           "title": "Digest"
@@ -189,7 +159,7 @@
           "type": "string",
           "title": "Latest Tag"
         },
-        "vulnerabilitySeverity": {
+        "maxSeverity": {
           "type": "string",
           "title": "Vulnerability Severity",
           "enum": ["Critical", "High", "Medium", "Low", "None"]
@@ -217,18 +187,61 @@
       "required": ["digest"]
     },
     "relations": {
-      "harborRepository": {
+      "repository": {
         "title": "Repository",
         "target": "harborRepository",
         "required": true,
         "many": false
-      },
-      "harborProject": {
-        "title": "Project",
-        "target": "harborProject",
-        "required": true,
-        "many": false
       }
     }
+  },
+  {
+    "identifier": "harborUser",
+    "title": "Harbor User",
+    "icon": "User",
+    "schema": {
+      "properties": {
+        "userId": {
+          "type": "number",
+          "title": "User ID"
+        },
+        "username": {
+          "type": "string",
+          "title": "Username"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email"
+        },
+        "realname": {
+          "type": "string",
+          "title": "Real Name"
+        },
+        "creationTime": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Creation Time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Update Time"
+        },
+        "sysadminFlag": {
+          "type": "boolean",
+          "title": "System Administrator"
+        },
+        "adminRoleInAuth": {
+          "type": "boolean",
+          "title": "Admin Role"
+        },
+        "comment": {
+          "type": "string",
+          "title": "Comment"
+        }
+      },
+      "required": ["username"]
+    },
+    "relations": {}
   }
 ]

@@ -31,6 +31,21 @@ class HarborProject(BaseModel):
     repo_count: int = 0
     metadata: Optional[Dict[str, Any]] = None
 
+    @property
+    def is_public(self) -> bool:
+        """Check if the project is public"""
+        return bool(self.metadata and self.metadata.get("public") == "true")
+
+    @property
+    def registry_id(self) -> Optional[int]:
+        """Get the registry ID for the project"""
+        return None
+
+    @property
+    def togglable(self) -> bool:
+        """Check if the project is togglable"""
+        return False  # Or compute from API if available
+
 
 class HarborUser(BaseModel):
     """Harbor user model"""
@@ -42,7 +57,8 @@ class HarborUser(BaseModel):
     creation_time: Optional[datetime] = None
     update_time: Optional[datetime] = None
     sysadmin_flag: bool = False
-    admin_role: bool = False
+    admin_role_in_auth: bool = False
+    comment: Optional[str] = None
 
 
 class HarborRepository(BaseModel):
@@ -56,6 +72,11 @@ class HarborRepository(BaseModel):
     pull_count: int = 0
     creation_time: Optional[datetime] = None
     update_time: Optional[datetime] = None
+
+    @property
+    def full_name(self) -> str:
+        """Get the full name of the repository"""
+        return self.name
 
 
 class HarborPlatform(BaseModel):
@@ -249,3 +270,18 @@ class HarborArtifact(BaseModel):
         if not self.scan_overview:
             return []
         return list(self.scan_overview.keys())
+
+    @property
+    def has_references(self) -> bool:
+        """Check if the artifact has references"""
+        return bool(self.references)
+
+    @property
+    def has_labels(self) -> bool:
+        """Check if the artifact has labels"""
+        return bool(self.labels)
+
+    @property
+    def label_count(self) -> int:
+        """Get the number of labels for the artifact"""
+        return len(self.labels) if self.labels else 0

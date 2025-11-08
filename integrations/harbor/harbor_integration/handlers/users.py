@@ -36,12 +36,13 @@ def _map_user_to_entity(user: HarborUser) -> Dict[str, Any]:
     """
 
     return {
-        "userId": user.user_id,
+        "user_id": user.user_id,
         "username": user.username,
         "email": user.email,
         "realname": user.realname,
-        "creationTime": user.creation_time.isoformat() if user.creation_time else None,
-        "updateTime": user.update_time.isoformat() if user.update_time else None,
-        "sysadmin": user.sysadmin_flag,
-        "adminRole": user.admin_role,
+        "creation_time": user.creation_time.isoformat() if user.creation_time else None,
+        "update_time": user.update_time.isoformat() if user.update_time else None,
+        "sysadmin_flag": user.sysadmin_flag,
+        "admin_role_in_auth": user.admin_role_in_auth,
+        "comment": user.comment,
     }
