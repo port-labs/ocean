@@ -5,25 +5,66 @@ resource "port_blueprint" "project" {
   icon       = "Project"
 
   properties = {
-    name = {
-      type  = "string"
-      title = "Name"
-    }
-    visibility = {
-      type  = "string"
-      title = "Visibility"
-      enum  = ["public", "private"]
-    }
-    creation_time = {
-      type  = "date-time"
-      title = "Creation Time"
-    }
     project_id = {
       type  = "number"
       title = "Project ID"
     }
+
+    name = {
+      type  = "string"
+      title = "Name"
+    }
+
+    owner_id = {
+      type  = "number"
+      title = "Owner ID"
+    }
+
+
+    owner_name = {
+      type  = "string"
+      title = "Owner Name"
+    }
+
+    registry_id = {
+      type  = "number"
+      title = "Registry ID"
+    }
+
+    creation_time = {
+      type  = "date-time"
+      title = "Creation Time"
+    }
+
+    update_time = {
+      type  = "date-time"
+      title = "Update Time"
+    }
+
+    repo_count = {
+      type  = "number"
+      title = "Repository Count"
+    }
+
+    is_public = {
+      type  = "boolean"
+      title = "Is Public"
+    }
+
+    togglable = {
+      type  = "boolean"
+      title = "Togglable"
+    }
+
+    deleted = {
+      type  = "boolean"
+      title = "Deleted"
+    }
   }
-}
+
+  relations = {
+    }
+  }
 
 # Harbor Repository
 resource "port_blueprint" "repository" {
@@ -32,14 +73,35 @@ resource "port_blueprint" "repository" {
   icon       = "Repository"
 
   properties = {
+    id = {
+      type  = "number"
+      title = "ID"
+    }
     name = {
       type  = "string"
       title = "Name"
     }
-    project_name = {
+
+    full_name = {
       type  = "string"
-      title = "Project Name"
+      title = "Full Name"
     }
+
+    project_id = {
+      type  = "number"
+      title = "Project ID"
+    }
+
+    description = {
+      type  = "string"
+      title = "Description"
+    }
+
+    artifact_count = {
+      type  = "number"
+      title = "Artifact Count"
+    }
+
     pull_count = {
       type  = "number"
       title = "Pull Count"
@@ -47,6 +109,11 @@ resource "port_blueprint" "repository" {
     creation_time = {
       type  = "date-time"
       title = "Creation Time"
+    }
+
+    update_time = {
+      type  = "date-time"
+      title = "Update Time"
     }
   }
 
@@ -68,6 +135,10 @@ resource "port_blueprint" "artifact" {
   icon       = "Docker"
 
   properties = {
+    id = {
+      type  = "number"
+      title = "ID"
+    }
     digest = {
       type  = "string"
       title = "Digest"
@@ -81,22 +152,56 @@ resource "port_blueprint" "artifact" {
       type  = "string"
       title = "Media Type"
     }
+    manifest_media_type = {
+      type  = "string"
+      title = "Manifest Media Type"
+    }
+    
     size = {
       type  = "number"
       title = "Size (bytes)"
     }
+
+    pull_time = {
+      type  = "date-time"
+      title = "Pull Time"
+    }
+
     push_time = {
       type  = "date-time"
       title = "Push Time"
     }
-    vulnerability_summary = {
-      type  = "object"
-      title = "Vulnerability Summary"
+    
+    total_vulnerabilities = { 
+      type = "number", 
+      title = "Total Vulnerabilities" 
     }
-    severity = {
+    
+    scanners = { 
+      type = "array", 
+      title = "Scanners",
+      items = { type = "string" }
+    }
+
+    max_severity = {
       type  = "string"
       title = "Max Severity"
       enum  = ["none", "unknown", "negligible", "low", "medium", "high", "critical"]
+    }
+
+    type = {
+      type  = "string"
+      title = "Type"
+    }
+
+    icon = {
+      type  = "string"
+      title = "Icon"
+    }
+
+    latest_tag = {
+      type  = "string"
+      title = "Latest Tag"
     }
   }
 
@@ -122,13 +227,45 @@ resource "port_blueprint" "user" {
       type  = "string"
       title = "Username"
     }
+
     email = {
       type  = "string"
       title = "Email"
     }
+
     user_id = {
       type  = "number"
       title = "User ID"
+    }
+
+    realname = {
+      type  = "string"
+      title = "Real Name"
+    }
+
+    sysadmin_flag = {
+      type  = "boolean"
+      title = "Sysadmin Flag"
+    }
+
+    admin_role_in_auth = {
+      type  = "boolean"
+      title = "Admin Role In Auth"
+    }
+
+    creation_time = {
+      type  = "date-time"
+      title = "Creation Time"
+    }
+
+    comment = {
+      type  = "string"
+      title = "Comment"
+    }
+
+    update_time = {
+      type  = "date-time"
+      title = "Update Time"
     }
   }
 }
