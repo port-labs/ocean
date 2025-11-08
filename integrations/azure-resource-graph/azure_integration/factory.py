@@ -49,21 +49,27 @@ class AzureClientFactory:
             if client_type not in AzureClientType:
                 raise ValueError(f"Invalid client type: {client_type}")
 
-            base_url = ocean.integration_config["azure_base_url"]
-            credential = AzureAuthenticatorFactory.create(
-                tenant_id=ocean.integration_config["azure_tenant_id"],
-                client_id=ocean.integration_config["azure_client_id"],
-                client_secret=ocean.integration_config["azure_client_secret"],
-            )
-            rate_limiter = AdaptiveTokenBucketRateLimiter(
-                capacity=AZURERM_RATELIMIT_CAPACITY,
-                refill_rate=AZURERM_BUCKET_REFILL_RATE,
-            )
-            self._instances[client_type] = self._clients[client_type](
-                credential=credential, base_url=base_url, rate_limiter=rate_limiter
-            )
+            self._instances[client_type] = self.create_client(client_type)
             logger.info(f"Created new Azure {client_type} client")
         return self._instances[client_type]
+
+    def create_client(self, client_type: AzureClientType) -> AbstractAzureClient:
+        """
+        Initialize a new Azure client.
+        """
+        base_url = ocean.integration_config["azure_base_url"]
+        credential = AzureAuthenticatorFactory.create(
+            tenant_id=ocean.integration_config["azure_tenant_id"],
+            client_id=ocean.integration_config["azure_client_id"],
+            client_secret=ocean.integration_config["azure_client_secret"],
+        )
+        rate_limiter = AdaptiveTokenBucketRateLimiter(
+            capacity=AZURERM_RATELIMIT_CAPACITY,
+            refill_rate=AZURERM_BUCKET_REFILL_RATE,
+        )
+        return self._clients[client_type](
+            credential=credential, base_url=base_url, rate_limiter=rate_limiter
+        )
 
 
 class AzureAuthenticatorFactory:
