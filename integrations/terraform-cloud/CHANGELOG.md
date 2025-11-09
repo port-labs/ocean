@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.202 (2025-11-06)
+
+
+### Improvements
+
+- Added support for state file kind
+- Added support for state version kind
+- Refactored webhook to use the new webhook processor architecture
+- Added test coverage for the entire integration
+
+
 ## 0.1.201 (2025-11-06)
 
 

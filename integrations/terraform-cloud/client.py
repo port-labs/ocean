@@ -1,9 +1,12 @@
+import asyncio
 from enum import StrEnum
+from urllib.parse import urlparse
 from typing import Any, AsyncGenerator, Optional
 from aiolimiter import AsyncLimiter
 from loguru import logger
 
 from port_ocean.context.event import event
+from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils import http_async_client
 
 TERRAFORM_WEBHOOK_EVENTS = [
@@ -44,8 +47,9 @@ class TerraformClient:
         method: str = "GET",
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
+        follow_redirects: bool = False,
     ) -> dict[str, Any]:
-        url = f"{self.api_url}/{endpoint}"
+        url = endpoint if urlparse(endpoint).scheme else f"{self.api_url}/{endpoint}"
 
         try:
             async with self.rate_limiter:
@@ -58,6 +62,7 @@ class TerraformClient:
                     url=url,
                     params=query_params,
                     json=json_data,
+                    follow_redirects=follow_redirects,
                 )
 
                 response.raise_for_status()
@@ -208,6 +213,21 @@ class TerraformClient:
         async for runs in self.get_paginated_resources(endpoint):
             yield runs
 
+    @cache_iterator_result()
+    async def get_state_versions_for_single_workspace(
+        self, workspace_name: str, organization_name: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(f"Fetching state versions for workspace {workspace_name}")
+        filter_params = {
+            "filter[workspace][name]": workspace_name,
+            "filter[organization][name]": organization_name,
+        }
+        async for state_versions in self.get_paginated_resources(
+            "state-versions", filter_params
+        ):
+            yield state_versions
+
+    @cache_iterator_result()
     async def get_paginated_state_versions(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -229,37 +249,33 @@ class TerraformClient:
                 ):
                     yield state_versions
 
-    async def create_workspace_webhook(self, app_host: str) -> None:
-        webhook_target_url = f"{app_host}/integration/webhook"
-        async for workspaces in self.get_paginated_workspaces():
-            for workspace in workspaces:
-                workspace_id = workspace["id"]
-                endpoint = f"workspaces/{workspace_id}/notification-configurations"
-                notifications_response = await self.send_api_request(endpoint=endpoint)
-                existing_configs = notifications_response.get("data", [])
-
-                webhook_exists = any(
-                    config["attributes"]["url"] == webhook_target_url
-                    for config in existing_configs
+    async def get_paginated_state_files(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for state_version_batch in self.get_paginated_state_versions():
+            tasks = [
+                self.send_api_request(
+                    state_version["attributes"]["hosted-state-download-url"],
+                    follow_redirects=True,
                 )
-                if webhook_exists:
-                    logger.info(f"Webhook already exists for workspace {workspace_id}")
-                else:
-                    webhook_body = {
-                        "data": {
-                            "type": "notification-configurations",
-                            "attributes": {
-                                "destination-type": "generic",
-                                "enabled": True,
-                                "name": "port integration webhook",
-                                "url": webhook_target_url,
-                                "triggers": TERRAFORM_WEBHOOK_EVENTS,
-                            },
-                        }
-                    }
-                    await self.send_api_request(
-                        endpoint=endpoint, method="POST", json_data=webhook_body
-                    )
-                    logger.info(
-                        f"Webhook created for Terraform workspace {workspace_id}"
-                    )
+                for state_version in state_version_batch
+            ]
+            yield list(await asyncio.gather(*tasks))
+
+    async def get_state_file_for_single_workspace(
+        self, workspace_name: str, organization_name: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(
+            f"Fetching state files for workspace {workspace_name} in organization {organization_name}"
+        )
+        async for state_versions in self.get_state_versions_for_single_workspace(
+            workspace_name, organization_name
+        ):
+            tasks = [
+                self.send_api_request(
+                    state_version["attributes"]["hosted-state-download-url"],
+                    follow_redirects=True,
+                )
+                for state_version in state_versions
+            ]
+            yield list(await asyncio.gather(*tasks))
