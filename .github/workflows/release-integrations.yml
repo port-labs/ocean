@@ -92,17 +92,17 @@ jobs:
             echo "Version is pre-release (excluding beta). Building without 'latest' tag."
           fi
 
-      - name: Build Docker Image
-        uses: ./.github/workflows/actions/build-docker-image
-        with:
-          dockerfile: ${{ steps.prepare_tags.outputs.dockerfile_path }}
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.prepare_tags.outputs.tags }}
-          build-args: |
-            BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
-            INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
-          docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
-          docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+      # - name: Build Docker Image
+      #   uses: ./.github/workflows/actions/build-docker-image
+      #   with:
+      #     dockerfile: ${{ steps.prepare_tags.outputs.dockerfile_path }}
+      #     platforms: linux/amd64,linux/arm64
+      #     tags: ${{ steps.prepare_tags.outputs.tags }}
+      #     build-args: |
+      #       BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
+      #       INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
+      #     docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
+      #     docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
 
       - name: Configure AWS Credentials 🔒
         if: steps.prepare_tags.outputs.is_dev_version == 'false'
@@ -110,13 +110,13 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.MAIN_ACCOUNT_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.MAIN_ACCOUNT_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ vars.ECR_PULL_THROUGH_CACHE_AWS_REGION }}
 
       - name: Delete ECR pull through cache repository
         if: steps.prepare_tags.outputs.is_dev_version == 'false'
         run: |
           repository_name="github/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}"
-          aws_region="${{ secrets.AWS_REGION }}"
+          aws_region="${{ vars.ECR_PULL_THROUGH_CACHE_AWS_REGION }}"
           
           echo "Attempting to delete ECR pull through cache repository: $repository_name"
           
