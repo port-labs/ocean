@@ -127,6 +127,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             organization = spec["organization"]
 
             repo_obj = await self.get_repository_metadata(organization, repo_name)
+            if not repo_obj:
+                logger.warning(f"Repository {repo_name} not found in {organization}")
+                continue
+
             branch = spec.get("branch") or repo_obj["default_branch"]
 
             logger.debug(
