@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped starlette version to 0.49.3
+- Bumped aiohttp version to 3.13.2
 
 0.1.229 (2025-11-09)
 
