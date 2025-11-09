@@ -40,7 +40,6 @@ jobs:
           echo $(echo ${integrations_to_release[@]} | jq -R -c 'split(" ")')
           echo "INTEGRATIONS_MATRIX=$(echo ${integrations_to_release[@]} | jq -R -c 'split(" ")')" >> $GITHUB_OUTPUT
 
-
   release-integration:
     runs-on: ubuntu-latest
     if: needs.prepare-matrix.outputs.matrix != '[]'
@@ -71,6 +70,7 @@ jobs:
           version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
           type=$(grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
           echo "version=$version" >> $GITHUB_OUTPUT
+          echo "type=$type" >> $GITHUB_OUTPUT
 
           dockerfile_path=integrations/_infra/Dockerfile
           if test -e $folder/../Dockerfile; then
@@ -103,6 +103,34 @@ jobs:
             INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+
+      - name: Configure AWS Credentials 🔒
+        if: steps.prepare_tags.outputs.is_dev_version == 'false'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Delete ECR pull through cache repository
+        if: steps.prepare_tags.outputs.is_dev_version == 'false'
+        run: |
+          repository_name="github/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}"
+          aws_region="${{ secrets.AWS_REGION }}"
+          
+          echo "Attempting to delete ECR pull through cache repository: $repository_name"
+          
+          # Check if repository exists
+          if aws ecr describe-repositories --repository-names "$repository_name" --region "$aws_region" 2>/dev/null; then
+            # Delete the entire repository
+            aws ecr delete-repository \
+              --repository-name "$repository_name" \
+              --region "$aws_region" \
+              --force || echo "Failed to delete ECR repository (may not exist or already deleted)"
+            echo "Successfully deleted ECR pull through cache repository"
+          else
+            echo "Repository does not exist in ECR, skipping deletion"
+          fi
 
   upload-specs:
     runs-on: ubuntu-latest
