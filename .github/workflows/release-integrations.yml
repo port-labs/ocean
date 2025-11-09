@@ -108,9 +108,8 @@ jobs:
         if: steps.prepare_tags.outputs.is_dev_version == 'false'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.MAIN_ACCOUNT_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.MAIN_ACCOUNT_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.ECR_PULL_THROUGH_CACHE_AWS_REGION }}
+          role-to-assume: ${{ vars.ECR_PULL_THROUGH_CACHE_DELETE_ROLE_ARN }}
 
       - name: Login to ECR
         if: steps.prepare_tags.outputs.is_dev_version == 'false'
