@@ -141,92 +141,92 @@ jobs:
             exit 1
           fi
 
-  upload-specs:
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write
-      contents: read
-    needs: release-integration
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v5
-      - name: Configure AWS Credentials 🔒
-        id: aws-credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-      - name: Upload specifications to s3
-        run: |
-          # Temporary file
-          temp_file="temp.yaml"
+  # upload-specs:
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     packages: write
+  #     contents: read
+  #   needs: release-integration
+  #   steps:
+  #     - name: Check out code
+  #       uses: actions/checkout@v5
+  #     - name: Configure AWS Credentials 🔒
+  #       id: aws-credentials
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: ${{ secrets.AWS_REGION }}
+  #     - name: Upload specifications to s3
+  #       run: |
+  #         # Temporary file
+  #         temp_file="temp.yaml"
 
-          # Output file name
-          index_file="index.json"
+  #         # Output file name
+  #         index_file="index.json"
 
-          # AWS S3 bucket details
-          aws_s3_bucket="ocean-registry"
+  #         # AWS S3 bucket details
+  #         aws_s3_bucket="ocean-registry"
 
-          # Fetch existing index file or create empty one of not exists
-          if aws s3 ls "s3://$aws_s3_bucket/$index_file" >/dev/null 2>&1; then
-              aws s3 cp "s3://$aws_s3_bucket/$index_file" $index_file
-              echo "Successfully fetched global index file from s3 bucket."
-          else
-              echo "Index file does not exist in the S3 bucket, Creating new one..."
-              echo "[]" >"$index_file"
-          fi
+  #         # Fetch existing index file or create empty one of not exists
+  #         if aws s3 ls "s3://$aws_s3_bucket/$index_file" >/dev/null 2>&1; then
+  #             aws s3 cp "s3://$aws_s3_bucket/$index_file" $index_file
+  #             echo "Successfully fetched global index file from s3 bucket."
+  #         else
+  #             echo "Index file does not exist in the S3 bucket, Creating new one..."
+  #             echo "[]" >"$index_file"
+  #         fi
 
-          # Find all ocean-spec.yaml files under the specified directory
-          find integrations/*/.port -type f -name "spec.yaml" >file_list.txt
+  #         # Find all ocean-spec.yaml files under the specified directory
+  #         find integrations/*/.port -type f -name "spec.yaml" >file_list.txt
 
-          while IFS= read -r file; do
-              integration_dir=$(dirname "$file")
-              integration_name=$(echo "$integration_dir" | awk -F'/' '{print $2}')
+  #         while IFS= read -r file; do
+  #             integration_dir=$(dirname "$file")
+  #             integration_name=$(echo "$integration_dir" | awk -F'/' '{print $2}')
 
-              # Extract the type for pyproject.toml
-              type=$(grep -E '^name = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
+  #             # Extract the type for pyproject.toml
+  #             type=$(grep -E '^name = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
-              # Extract the version from pyproject.toml
-              version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
+  #             # Extract the version from pyproject.toml
+  #             version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
-              integration_spec="$integration_name-$version.json"
-              integration_dest="$integration_name/$integration_spec"
-              integration_legacy_dest="$integration_name.json" # TODO: legacy support, remove once not in use
+  #             integration_spec="$integration_name-$version.json"
+  #             integration_dest="$integration_name/$integration_spec"
+  #             integration_legacy_dest="$integration_name.json" # TODO: legacy support, remove once not in use
 
-              # Convert YAML to JSON
-              yq -o json "$file" >"$temp_file"
+  #             # Convert YAML to JSON
+  #             yq -o json "$file" >"$temp_file"
 
-              # Add version attribute
-              jq --arg type "$type" --arg version "$version" '. + {type: $type, version: $version}' "$temp_file" >"$integration_spec"
+  #             # Add version attribute
+  #             jq --arg type "$type" --arg version "$version" '. + {type: $type, version: $version}' "$temp_file" >"$integration_spec"
 
-              if [[ ! ${version} =~ ^.+-dev$ ]]; then
-                  # Upload integration's version manifest to s3
-                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_dest"
-                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_legacy_dest" # TODO: legacy support, remove once not in use
-                  echo "Successfully uploaded $integration_spec to s3 bucket."
+  #             if [[ ! ${version} =~ ^.+-dev$ ]]; then
+  #                 # Upload integration's version manifest to s3
+  #                 aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_dest"
+  #                 aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_legacy_dest" # TODO: legacy support, remove once not in use
+  #                 echo "Successfully uploaded $integration_spec to s3 bucket."
 
-                  # Get the latest version of the current integration
-                  latest_version=$(jq --arg type "$type" -r '.[] | select(.type == $type) | .version' "$index_file")
+  #                 # Get the latest version of the current integration
+  #                 latest_version=$(jq --arg type "$type" -r '.[] | select(.type == $type) | .version' "$index_file")
 
-                  # Add integration's spec to global index file
-                  regexp="^([0-9.]+|[0-9.]+[.-]post[0-9]+)$"
-                  if [[ ! "$latest_version" ]]; then
-                      # Add new integration spec if latest tag doesn't exist
-                      jq --argjson new_spec "[$(cat "$integration_spec")]" '. += $new_spec' "$index_file" >"$temp_file"
-                      mv "$temp_file" "$index_file"
-                  elif [[ ! "$latest_version" =~ $regexp ]] || [[ "$version" =~ $regexp ]]; then
-                      # Override global index file if released non-dev version or integration doesn't have non-dev latest tag
-                      jq --argjson updated_spec "$(cat "$integration_spec")" --arg type "$type" \
-                          'map(if .type == $type then $updated_spec else . end)' "$index_file" >"$temp_file"
-                      mv "$temp_file" "$index_file"
-                  fi
+  #                 # Add integration's spec to global index file
+  #                 regexp="^([0-9.]+|[0-9.]+[.-]post[0-9]+)$"
+  #                 if [[ ! "$latest_version" ]]; then
+  #                     # Add new integration spec if latest tag doesn't exist
+  #                     jq --argjson new_spec "[$(cat "$integration_spec")]" '. += $new_spec' "$index_file" >"$temp_file"
+  #                     mv "$temp_file" "$index_file"
+  #                 elif [[ ! "$latest_version" =~ $regexp ]] || [[ "$version" =~ $regexp ]]; then
+  #                     # Override global index file if released non-dev version or integration doesn't have non-dev latest tag
+  #                     jq --argjson updated_spec "$(cat "$integration_spec")" --arg type "$type" \
+  #                         'map(if .type == $type then $updated_spec else . end)' "$index_file" >"$temp_file"
+  #                     mv "$temp_file" "$index_file"
+  #                 fi
 
-                  # Upload global index file to s3
-                  aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
-                  echo "Successfully uploaded $index_file to s3 bucket."
-              else
-                  echo "Did not upload integration spec since the version was in development ('${version}')"
-              fi
+  #                 # Upload global index file to s3
+  #                 aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
+  #                 echo "Successfully uploaded $index_file to s3 bucket."
+  #             else
+  #                 echo "Did not upload integration spec since the version was in development ('${version}')"
+  #             fi
 
-          done <file_list.txt
+  #         done <file_list.txt
