@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import Annotated, Any, Literal, Union
 
+from loguru import logger
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -75,7 +76,10 @@ class SonarQubeProjectApiFilter(BaseSonarQubeApiFilter):
             value["filter"] = filter_instance.generate_search_filters()
         if s := value.pop("s", None):
             value["s"] = s
-
+        logger.warning(
+            "The 'qualifiers' parameter has been deprecated and will not have any effect. "
+            "This parameter will be ignored in API requests."
+        )
         return value
 
 
@@ -89,17 +93,11 @@ class SonarQubeGAProjectAPIFilter(BaseSonarQubeApiFilter):
         description="To retrieve projects on provisioned only",
     )
     projects: list[str] | None = Field(description="List of projects")
-    qualifiers: list[Literal["TRK", "APP"]] | None = Field(
-        description="List of qualifiers", alias="qualifier"
-    )
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
         if self.projects:
             value["projects"] = ",".join(self.projects)
-
-        if self.qualifiers:
-            value["qualifiers"] = ",".join(self.qualifiers)
 
         return value
 

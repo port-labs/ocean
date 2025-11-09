@@ -3,10 +3,10 @@ deleteDependentEntities: true
 resources:
   - kind: projects_ga
     selector:
-      query: 'true'
       apiFilters:
         qualifier:
           - TRK
+      query: 'true'
       metrics:
         - code_smells
         - coverage
