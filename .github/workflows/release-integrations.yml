@@ -5,6 +5,10 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   prepare-matrix:
     runs-on: ubuntu-latest
