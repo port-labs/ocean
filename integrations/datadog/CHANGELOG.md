@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.36 (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
 ## 0.3.35 (2025-11-09)
 
 

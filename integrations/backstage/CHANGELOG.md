@@ -1,3 +1,10 @@
+## 0.1.135-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
 ## 0.1.134-beta (2025-11-09)
 
 
