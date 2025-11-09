@@ -112,6 +112,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.MAIN_ACCOUNT_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.ECR_PULL_THROUGH_CACHE_AWS_REGION }}
 
+      - name: Login to ECR
+        if: steps.prepare_tags.outputs.is_dev_version == 'false'
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          mask-password: 'true'
+
       - name: Delete ECR pull through cache repository
         if: steps.prepare_tags.outputs.is_dev_version == 'false'
         run: |
