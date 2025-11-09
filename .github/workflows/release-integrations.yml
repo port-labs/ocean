@@ -121,15 +121,24 @@ jobs:
           echo "Attempting to delete ECR pull through cache repository: $repository_name"
           
           # Check if repository exists
-          if aws ecr describe-repositories --repository-names "$repository_name" --region "$aws_region" 2>/dev/null; then
-            # Delete the entire repository
-            aws ecr delete-repository \
-              --repository-name "$repository_name" \
-              --region "$aws_region" \
-              --force || echo "Failed to delete ECR repository (may not exist or already deleted)"
-            echo "Successfully deleted ECR pull through cache repository"
+          if ! aws ecr describe-repositories \
+            --repository-names "$repository_name" \
+            --region "$aws_region" \
+            >/dev/null 2>&1; then
+            echo "Repository does not exist in ECR, skipping deletion: $repository_name"
+            exit 0
+          fi
+          
+          # Delete the entire repository
+          if aws ecr delete-repository \
+            --repository-name "$repository_name" \
+            --region "$aws_region" \
+            --force \
+            >/dev/null 2>&1; then
+            echo "Successfully deleted ECR pull through cache repository: $repository_name"
           else
-            echo "Repository does not exist in ECR, skipping deletion"
+            echo "Failed to delete ECR repository: $repository_name"
+            exit 1
           fi
 
   upload-specs:
