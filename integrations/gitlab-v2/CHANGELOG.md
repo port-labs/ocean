@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.11 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+
+
+## 0.3.10 (2025-11-06)
+
+
+### Bug Fixes
+
+- Fix async stream tried to be read in a sync context in file kind
+
+## 0.3.9 (2025-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.1
+
+
 ## 0.3.8 (2025-11-04)
 
 
