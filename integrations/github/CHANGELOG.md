@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.2.4-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+## 3.2.3-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+
 ## 3.2.2-beta (2025-11-09)
 
 
