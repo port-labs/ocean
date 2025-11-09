@@ -105,7 +105,7 @@ jobs:
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
 
       - name: Configure AWS Credentials 🔒
-        # if: steps.prepare_tags.outputs.is_dev_version == 'false'
+        if: steps.prepare_tags.outputs.is_dev_version == 'false'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.MAIN_ACCOUNT_ACCESS_KEY_ID }}
@@ -113,7 +113,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Delete ECR pull through cache repository
-        # if: steps.prepare_tags.outputs.is_dev_version == 'false'
+        if: steps.prepare_tags.outputs.is_dev_version == 'false'
         run: |
           repository_name="github/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}"
           aws_region="${{ secrets.AWS_REGION }}"
