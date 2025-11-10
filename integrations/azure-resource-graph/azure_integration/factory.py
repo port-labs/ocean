@@ -1,19 +1,98 @@
 from port_ocean.context.ocean import ocean
-from azure_integration.clients.client import SDKClient
-from azure_integration.helpers.rate_limiter import TokenBucketRateLimiter
-from azure_integration.helpers.subscription import SubscriptionManager
-from azure_integration.models import AuthCredentials
+from azure.core.credentials_async import AsyncTokenCredential
+from azure.identity.aio import ClientSecretCredential
+from azure_integration.clients.base import AbstractAzureClient
+from enum import StrEnum
+from loguru import logger
+from typing import Dict, Type
+from azure_integration.clients.rest.resource_management_client import (
+    AzureResourceManagerClient,
+)
+from azure_integration.clients.rest.resource_graph_client import (
+    AzureResourceGraphClient,
+)
+from azure_integration.helpers.exceptions import MissingAzureCredentials
+from azure_integration.helpers.rate_limiter import (
+    AdaptiveTokenBucketRateLimiter,
+    AZURERM_BUCKET_REFILL_RATE,
+    AZURERM_RATELIMIT_CAPACITY,
+)
 
 
-def init_client_and_sub_manager() -> tuple[SDKClient, SubscriptionManager]:
-    batch_size = ocean.integration_config["subscription_batch_size"]
-    credentials = AuthCredentials(
-        tenant_id=ocean.integration_config["azure_tenant_id"],
-        client_id=ocean.integration_config["azure_client_id"],
-        client_secret=ocean.integration_config["azure_client_secret"],
-    )
-    # https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/request-limits-and-throttling#migrating-to-regional-throttling-and-token-bucket-algorithm
-    rate_limitter = TokenBucketRateLimiter(capacity=250, refill_rate=25)
-    client = SDKClient(credentials, rate_limitter)
-    sub_manager = SubscriptionManager(credentials, rate_limitter, int(batch_size))
-    return client, sub_manager
+class AzureClientType(StrEnum):
+    RESOURCE_MANAGER = "resource_manager"
+    RESOURCE_GRAPH = "resource_graph"
+
+
+class AzureClientFactory:
+    _instance = None
+    _clients: Dict[AzureClientType, Type[AbstractAzureClient]] = {
+        AzureClientType.RESOURCE_MANAGER: AzureResourceManagerClient,
+        AzureClientType.RESOURCE_GRAPH: AzureResourceGraphClient,
+    }
+    _instances: Dict[AzureClientType, AbstractAzureClient] = {}
+
+    def __new__(cls) -> "AzureClientFactory":
+        if cls._instance is None:
+            cls._instance = super(AzureClientFactory, cls).__new__(cls)
+        return cls._instance
+
+    def get_client(self, client_type: AzureClientType) -> AbstractAzureClient:
+        """
+        Get or create AzureClient instances from Ocean configuration.
+
+        Returns:
+            AbstractAzureClient
+        """
+        logger.info(f"Getting Azure {client_type.value} client")
+        if client_type not in self._instances:
+            if client_type not in AzureClientType:
+                raise ValueError(f"Invalid client type: {client_type}")
+
+            self._instances[client_type] = self.create_client(client_type)
+            logger.info(f"Created new Azure {client_type} client")
+        return self._instances[client_type]
+
+    def create_client(self, client_type: AzureClientType) -> AbstractAzureClient:
+        """
+        Initialize a new Azure client.
+        """
+        base_url = ocean.integration_config["azure_base_url"]
+        credential = AzureAuthenticatorFactory.create(
+            tenant_id=ocean.integration_config["azure_tenant_id"],
+            client_id=ocean.integration_config["azure_client_id"],
+            client_secret=ocean.integration_config["azure_client_secret"],
+        )
+        rate_limiter = AdaptiveTokenBucketRateLimiter(
+            capacity=AZURERM_RATELIMIT_CAPACITY,
+            refill_rate=AZURERM_BUCKET_REFILL_RATE,
+        )
+        return self._clients[client_type](
+            credential=credential, base_url=base_url, rate_limiter=rate_limiter
+        )
+
+
+class AzureAuthenticatorFactory:
+    @staticmethod
+    def create(
+        tenant_id: str,
+        client_id: str,
+        client_secret: str,
+    ) -> AsyncTokenCredential:
+        if not (tenant_id and client_id and client_secret):
+            raise MissingAzureCredentials(
+                "Missing Azure credentials: tenant_id, client_id, and client_secret are required."
+            )
+
+        return ClientSecretCredential(
+            tenant_id=tenant_id,
+            client_id=client_id,
+            client_secret=client_secret,
+        )
+
+
+def create_azure_client(
+    client_type: AzureClientType = AzureClientType.RESOURCE_MANAGER,
+) -> AbstractAzureClient:
+    factory = AzureClientFactory()
+    return factory.get_client(client_type)
