@@ -2248,14 +2248,14 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.29.1"
+version = "0.29.3"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "port_ocean-0.29.1-py3-none-any.whl", hash = "sha256:8561ef3e98eb2ae8a4d5db831fa7e09a123ae695ec16ce5896d7223abe0c8893"},
-    {file = "port_ocean-0.29.1.tar.gz", hash = "sha256:83ea99aa4c36f933b4efcea899a31c37aa3012133d7752bb7c533e51f759efc9"},
+    {file = "port_ocean-0.29.3-py3-none-any.whl", hash = "sha256:7bad6d016bf46171cda0ce9a4105d67a6e353835b32b6805f0c3df5781b585f4"},
+    {file = "port_ocean-0.29.3.tar.gz", hash = "sha256:27e2202f77fc361f68ae7b2ab4f2a42208184757756484fa74f2e3af7b6ae8ce"},
 ]
 
 [package.dependencies]
@@ -2925,14 +2925,14 @@ files = [
 
 [[package]]
 name = "starlette"
-version = "0.47.2"
+version = "0.49.3"
 description = "The little ASGI library that shines."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "starlette-0.47.2-py3-none-any.whl", hash = "sha256:c5847e96134e5c5371ee9fac6fdf1a67336d5815e09eb2a01fdb57a351ef915b"},
-    {file = "starlette-0.47.2.tar.gz", hash = "sha256:6ae9aa5db235e4846decc1e7b79c4f346adf41e9777aebeb49dfd09bbd7023d8"},
+    {file = "starlette-0.49.3-py3-none-any.whl", hash = "sha256:b579b99715fdc2980cf88c8ec96d3bf1ce16f5a8051a7c2b84ef9b1cdecaea2f"},
+    {file = "starlette-0.49.3.tar.gz", hash = "sha256:1c14546f299b5901a1ea0e34410575bc33bbd741377a10484a54445588d00284"},
 ]
 
 [package.dependencies]
@@ -3837,4 +3837,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "97bf9b8659dc819b4cffef03a7701b50c6d135a49edd9c9a1a31b37b9060b5f5"
+content-hash = "852db6a23b224360d83c7570a253bae0c71cd3e6e606a874d8b3e992a43e0375"

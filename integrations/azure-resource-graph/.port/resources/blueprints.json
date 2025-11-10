@@ -5,16 +5,19 @@
     "icon": "Azure",
     "schema": {
       "properties": {
-        "subscriptionId": {
-          "title": "Subscription ID",
-          "type": "string"
-        },
         "tags": {
           "title": "Tags",
           "type": "object"
+        },
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
+        "subscriptionPolicies": {
+          "title": "Subscription Policies",
+          "type": "object"
         }
-      },
-      "required": []
+      }
     },
     "mirrorProperties": {},
     "calculationProperties": {},
@@ -52,9 +55,9 @@
     }
   },
   {
-    "identifier": "azureCloudResources",
-    "description": "This blueprint represents an AzureCloud Resource in our software catalog",
-    "title": "Azure Cloud Resources",
+    "identifier": "azureResource",
+    "description": "This blueprint represents an Azure Resource in our software catalog",
+    "title": "Azure Resource",
     "icon": "Azure",
     "schema": {
       "properties": {
