@@ -5,6 +5,8 @@ from typing import List, Dict, Any, AsyncGenerator
 from ..client import HarborClient
 from ..core.models import HarborUser
 
+from ..core.logger import logger
+
 
 async def get_users(client: HarborClient) -> AsyncGenerator[List[Dict[str, Any]], None]:
     """
@@ -23,6 +25,7 @@ async def get_users(client: HarborClient) -> AsyncGenerator[List[Dict[str, Any]]
             batch_entities.append(entity_dict)
 
         if batch_entities:
+            logger.debug("user_batch: {}", batch_entities)
             yield batch_entities
 
 
@@ -34,6 +37,7 @@ def _map_user_to_entity(user: HarborUser) -> Dict[str, Any]:
     Returns:
         Entity: The mapped entity.
     """
+    logger.debug("Mapping user to entity: {}", user)
 
     return {
         "user_id": user.user_id,

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def initialize_client() -> HarborClient:
     """Initialize Harbor client."""
     config = HarborConfig(
-        harbor_url=ocean.integration_config["harbor_url"],
+        base_url=ocean.integration_config["harbor_url"],
         username=ocean.integration_config["harbor_username"],
         password=ocean.integration_config["harbor_password"],
     )

@@ -23,7 +23,7 @@ class HarborClient:
         """
 
         self.config = config
-        self.base_url = f"{config.harbor_url.rstrip('/')}/api/v2.0"
+        self.base_url = f"{config.base_url.rstrip('/')}/api/v2.0"
         self.auth_header = self._create_auth_header()
 
     def _create_auth_header(self) -> Dict[str, str]:

@@ -5,6 +5,7 @@ from typing import List, Dict, Any, AsyncGenerator
 from ..client import HarborClient
 from ..core.models import HarborRepository
 
+from ..core.logger import logger
 
 async def get_repositories(
     client: HarborClient,
@@ -30,6 +31,7 @@ async def get_repositories(
                     batch_entities.append(entity)
 
                 if batch_entities:
+                    logger.debug("repository_batch: {}", batch_entities)
                     yield batch_entities
 
 
@@ -37,6 +39,8 @@ def _map_repository_to_entity(repository: HarborRepository) -> Dict[str, Any]:
     repo_short_name = (
         repository.name.split("/")[-1] if "/" in repository.name else repository.name
     )
+
+    logger.debug("Mapping repository to entity: {}", repository)
 
     return {
         "id": repository.id,
@@ -52,5 +56,4 @@ def _map_repository_to_entity(repository: HarborRepository) -> Dict[str, Any]:
         "update_time": repository.update_time.isoformat()
         if repository.update_time
         else None,
-        "project": repository.project_id,
     }

@@ -6,6 +6,8 @@ from ..client import HarborClient
 from ..config import HarborConfig
 from ..core.models import HarborProject
 
+from ..core.logger import logger
+
 
 async def get_projects(
     client: HarborClient, config: HarborConfig
@@ -28,6 +30,7 @@ async def get_projects(
             batch_entities.append(_map_project_to_entity(project))
 
         if batch_entities:
+            logger.debug("project_batch: {}", batch_entities)
             yield batch_entities
 
 
@@ -61,6 +64,7 @@ def _map_project_to_entity(project: HarborProject) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]
     """
+    logger.debug("Mapping project to entity: {}", project)
 
     return {
         "project_id": project.project_id,
@@ -75,7 +79,5 @@ def _map_project_to_entity(project: HarborProject) -> Dict[str, Any]:
         "creation_time": project.creation_time.isoformat()
         if project.creation_time
         else None,
-        "update_time": project.update_time.isoformat()
-        if project.update_time
-        else None,
+        "update_time": project.update_time.isoformat() if project.update_time else None,
     }

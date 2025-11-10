@@ -1,9 +1,10 @@
 """Handler for retrieving and filtering Harbor artifacts."""
 
-from typing import List, Dict, Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Dict, List
 
 from ..client import HarborClient
 from ..config import HarborConfig
+from ..core.logger import logger
 from ..core.models import HarborArtifact
 
 
@@ -41,6 +42,7 @@ async def get_artifacts(
                             batch_entities.append(entity)
 
                     if batch_entities:
+                        logger.debug("Mapping artifacts to entity: {}", batch_entities)
                         yield batch_entities
 
 
@@ -74,6 +76,8 @@ def _map_artifact_to_entity(artifact: HarborArtifact) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]
     """
+
+    logger.debug("Mapping artifact to entity: {}", artifact)
 
     return {
         "id": artifact.id,

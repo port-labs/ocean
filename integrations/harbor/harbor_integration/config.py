@@ -6,7 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 class HarborConfig(BaseModel):
     """Configuration for Harbor integration"""
 
-    harbor_url: str
+    base_url: str
     username: str
     password: str
     project_name_prefix: Optional[str] = None

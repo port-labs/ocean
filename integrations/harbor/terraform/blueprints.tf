@@ -5,7 +5,7 @@ resource "port_blueprint" "project" {
   icon       = "Project"
 
   properties = {
-    project_id = {
+    projectId = {
       type  = "number"
       title = "Project ID"
     }
@@ -15,38 +15,38 @@ resource "port_blueprint" "project" {
       title = "Name"
     }
 
-    owner_id = {
+    ownerId = {
       type  = "number"
       title = "Owner ID"
     }
 
 
-    owner_name = {
+    ownerName = {
       type  = "string"
       title = "Owner Name"
     }
 
-    registry_id = {
+    registryId = {
       type  = "number"
       title = "Registry ID"
     }
 
-    creation_time = {
+    creationTime = {
       type  = "date-time"
       title = "Creation Time"
     }
 
-    update_time = {
+    updateTime = {
       type  = "date-time"
       title = "Update Time"
     }
 
-    repo_count = {
+    repoCount = {
       type  = "number"
       title = "Repository Count"
     }
 
-    is_public = {
+    isPublic = {
       type  = "boolean"
       title = "Is Public"
     }
@@ -63,8 +63,8 @@ resource "port_blueprint" "project" {
   }
 
   relations = {
-    }
   }
+}
 
 # Harbor Repository
 resource "port_blueprint" "repository" {
@@ -87,7 +87,7 @@ resource "port_blueprint" "repository" {
       title = "Full Name"
     }
 
-    project_id = {
+    projectId = {
       type  = "number"
       title = "Project ID"
     }
@@ -97,28 +97,28 @@ resource "port_blueprint" "repository" {
       title = "Description"
     }
 
-    artifact_count = {
+    artifactCount = {
       type  = "number"
       title = "Artifact Count"
     }
 
-    pull_count = {
+    pullCount = {
       type  = "number"
       title = "Pull Count"
     }
-    creation_time = {
+    creationTime = {
       type  = "date-time"
       title = "Creation Time"
     }
 
-    update_time = {
+    updateTime = {
       type  = "date-time"
       title = "Update Time"
     }
   }
 
   relations = {
-    project = {
+    harborProject = {
       title  = "Project"
       target = "harborProject"
       many   = false
@@ -148,11 +148,11 @@ resource "port_blueprint" "artifact" {
       title = "Tags"
       items = { type = "string" }
     }
-    media_type = {
+    mediaType = {
       type  = "string"
       title = "Media Type"
     }
-    manifest_media_type = {
+    manifestMediaType = {
       type  = "string"
       title = "Manifest Media Type"
     }
@@ -162,17 +162,17 @@ resource "port_blueprint" "artifact" {
       title = "Size (bytes)"
     }
 
-    pull_time = {
+    pullTime = {
       type  = "date-time"
       title = "Pull Time"
     }
 
-    push_time = {
+    pushTime = {
       type  = "date-time"
       title = "Push Time"
     }
 
-    total_vulnerabilities = {
+    totalVulnerabilities = {
       type = "number",
       title = "Total Vulnerabilities"
     }
@@ -183,7 +183,7 @@ resource "port_blueprint" "artifact" {
       items = { type = "string" }
     }
 
-    max_severity = {
+    maxSeverity = {
       type  = "string"
       title = "Max Severity"
       enum  = ["none", "unknown", "negligible", "low", "medium", "high", "critical"]
@@ -206,7 +206,7 @@ resource "port_blueprint" "artifact" {
   }
 
   relations = {
-    repository = {
+    harborRepository = {
       title  = "Repository"
       target = "harborRepository"
       many   = false
@@ -233,7 +233,7 @@ resource "port_blueprint" "user" {
       title = "Email"
     }
 
-    user_id = {
+    userId = {
       type  = "number"
       title = "User ID"
     }
@@ -243,17 +243,17 @@ resource "port_blueprint" "user" {
       title = "Real Name"
     }
 
-    sysadmin_flag = {
+    sysadminFlag = {
       type  = "boolean"
       title = "Sysadmin Flag"
     }
 
-    admin_role_in_auth = {
+    adminRoleInAuth = {
       type  = "boolean"
       title = "Admin Role In Auth"
     }
 
-    creation_time = {
+    creationTime = {
       type  = "date-time"
       title = "Creation Time"
     }
@@ -263,7 +263,7 @@ resource "port_blueprint" "user" {
       title = "Comment"
     }
 
-    update_time = {
+    updateTime = {
       type  = "date-time"
       title = "Update Time"
     }

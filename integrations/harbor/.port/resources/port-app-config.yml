@@ -17,7 +17,7 @@ resources:
             creationTime: .creation_time
             updateTime: .update_time
             repoCount: .repo_count
-            isPublic: .metadata.public == "true"
+            isPublic: .is_public
             togglable: .togglable
             deleted: .deleted
 
@@ -41,7 +41,7 @@ resources:
             creationTime: .creation_time
             updateTime: .update_time
           relations:
-            project: .project_id | tostring
+            harborProject: .project_id | tostring
 
   - kind: artifact
     selector:
@@ -68,7 +68,7 @@ resources:
             type: .type
             icon: .icon
           relations:
-            repository: .repository_id | tostring
+            harborRepository: .repository_id | tostring
 
   - kind: user
     selector:
