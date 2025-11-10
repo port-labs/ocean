@@ -1,43 +1,68 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+enableMergeEntity: true
 resources:
-  - kind: resource
+  - kind: subscription
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: '.id | gsub(" ";"_")'
+          identifier: .subscriptionId
+          title: .displayName
+          blueprint: '"azureSubscription"'
+          properties:
+            tags: .tags
+            state: .state
+            subscriptionPolicies: .subscriptionPolicies
+  - kind: resourceContainer
+    selector:
+      query: 'true'
+      graphQuery: >-
+        "
+        resourcecontainers
+        | where type =~ 'microsoft.resources/subscriptions/resourcegroups'
+        | project id, type, name, location, tags, subscriptionId, resourceGroup
+        | extend resourceGroup=tolower(resourceGroup)
+        | extend type=tolower(type)
+        "
+    port:
+      entity:
+        mappings:
+          identifier: .id | gsub(" ";"_")
           title: .name
-          blueprint: '"azureCloudResources"'
+          blueprint: '"azureResourceGroup"'
           properties:
             tags: .tags
             type: .type
             location: .location
           relations:
-            resource_group: >-
-              ("/subscriptions/" + .subscriptionId + "/resourceGroups/"  + .resourceGroup) | gsub(" ";"_")
-  - kind: resourceContainer
+            subscription: ("/subscriptions/" + .subscriptionId) | gsub(" ";"_")
+  - kind: resource
     selector:
-      query: .type == "microsoft.resources/subscriptions"
+      query: 'true'
+      graphQuery: >-
+        "
+        resources
+        | project id, type, name, location, tags, subscriptionId, resourceGroup
+        | extend resourceGroup=tolower(resourceGroup)
+        | extend type=tolower(type)
+        | join kind=leftouter (
+            resourcecontainers
+            | where type =~ 'microsoft.resources/subscriptions/resourcegroups'
+            | project rgName=tolower(name), rgTags=tags, rgSubscriptionId=subscriptionId
+        ) on $left.subscriptionId == $right.rgSubscriptionId and $left.resourceGroup == $right.rgName
+        | project id, type, name, location, tags, subscriptionId, resourceGroup, rgTags
+        "
     port:
       entity:
         mappings:
-          identifier: '.id | gsub(" ";"_")'
+          identifier: .id | gsub(" ";"_")
           title: .name
-          blueprint: '"azureSubscription"'
-          properties:
-            subscriptionId: .subscriptionId
-            location: .location
-  - kind: resourceContainer
-    selector:
-      query: .type == "microsoft.resources/subscriptions/resourcegroups"
-    port:
-      entity:
-        mappings:
-          identifier: '.id | gsub(" ";"_")'
-          title: .name
-          blueprint: '"azureResourceGroup"'
+          blueprint: '"azureResource"'
           properties:
             tags: .tags
             location: .location
           relations:
-            subscription: '("/subscriptions/" + .subscriptionId) | gsub(" ";"_")'
+            resource_group: >-
+              ("/subscriptions/" + .subscriptionId + "/resourceGroups/"  + .resourceGroup) | gsub(" ";"_")

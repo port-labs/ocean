@@ -735,10 +735,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 self._register_in_batches(resource, user_agent_type)
             )
             event.on_abort(lambda: task.cancel())
-            kind_results: tuple[list[Entity], list[Exception]] = await task
 
-            if ocean.metrics.sync_state != SyncState.FAILED:
-                ocean.metrics.sync_state = SyncState.COMPLETED
+            try:
+                kind_results: tuple[list[Entity], list[Exception]] = await task
+                if ocean.metrics.sync_state != SyncState.FAILED:
+                    ocean.metrics.sync_state = SyncState.COMPLETED
+            except asyncio.CancelledError:
+                logger.warning(f"Resource {resource.kind} processing was aborted")
+                ocean.metrics.sync_state = SyncState.ABORTED
+                raise
 
             await ocean.metrics.send_metrics_to_webhook(kind=resource_kind_id)
             await ocean.metrics.report_kind_sync_metrics(
@@ -1022,7 +1027,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
 
                 async with metric_resource_context(MetricResourceKind.RUNTIME):
-                    ocean.metrics.sync_state = SyncState.FAILED
+                    ocean.metrics.sync_state = SyncState.ABORTED
                     await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RUNTIME)
                     await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RUNTIME])
                 raise
