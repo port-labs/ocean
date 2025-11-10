@@ -5,7 +5,11 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
-from jira.rate_limiter import JiraRateLimiter
+from jira.rate_limiter import (
+    JiraRateLimiter,
+    MAX_CONCURRENT_REQUESTS,
+    MINIMUM_LIMIT_REMAINING,
+)
 
 
 @pytest.fixture
@@ -21,9 +25,11 @@ class TestJiraRateLimiter:
         """Tests that JiraRateLimiter initializes with correct default values."""
         rate_limiter = JiraRateLimiter()
 
-        assert rate_limiter._semaphore._value == 5  # default max_concurrent
         assert (
-            rate_limiter._minimum_limit_remaining == 1
+            rate_limiter._semaphore._value == MAX_CONCURRENT_REQUESTS
+        )  # default max_concurrent
+        assert (
+            rate_limiter._minimum_limit_remaining == MINIMUM_LIMIT_REMAINING
         )  # default minimum_limit_remaining
         assert rate_limiter._limit is None
         assert rate_limiter._remaining is None
