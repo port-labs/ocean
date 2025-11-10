@@ -117,7 +117,6 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             repo_obj = await get_repository_metadata(
                 self.client, organization, repo_name
             )
-
             branch = spec.get("branch") or repo_obj["default_branch"]
 
             logger.debug(
