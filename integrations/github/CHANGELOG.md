@@ -7,13 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# 3.2.3-beta (2025-11-10)
+## 3.2.5-beta (2025-11-10)
 
 
 ### Bug Fixes
 
 - Fixed GraphQL base URL for GitHub Enterprise Server, ensuring compatibility with GHES.
 - Skipped and added warning log when a repository is not found during file export.
+
+
+## 3.2.4-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+## 3.2.3-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
 
 
 ## 3.2.2-beta (2025-11-09)

@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "armorcode"
-version = "0.1.9-beta"
+version = "0.1.11-beta"
 description = "Armorcode Ocean Integration"
 authors = ["Habib Nuhu <habib.nuhu@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.29.2", extras = ["cli"]}
+port_ocean = {version = "^0.29.3", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
