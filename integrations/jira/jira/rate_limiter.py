@@ -5,6 +5,9 @@ from datetime import datetime
 import httpx
 from loguru import logger
 
+MAX_CONCURRENT_REQUESTS = 10
+MINIMUM_LIMIT_REMAINING = 1
+
 
 class JiraRateLimiter:
     """
@@ -16,8 +19,8 @@ class JiraRateLimiter:
 
     def __init__(
         self,
-        max_concurrent: int = 5,
-        minimum_limit_remaining: int = 1,
+        max_concurrent: int = MAX_CONCURRENT_REQUESTS,
+        minimum_limit_remaining: int = MINIMUM_LIMIT_REMAINING,
     ) -> None:
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._lock = asyncio.Lock()
