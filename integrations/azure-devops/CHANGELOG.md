@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Removed extra metadata from itemsbatch endpoint
+- Align itemsBatch payload with API to reduce payload size and prevent validation errors during resync.
 
 
 ## 0.4.26 (2025-11-09)
