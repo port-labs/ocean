@@ -6,7 +6,6 @@ from pathlib import Path
 import re
 from typing import (
     Any,
-    AsyncGenerator,
     DefaultDict,
     Dict,
     List,
@@ -19,16 +18,15 @@ from typing import (
 
 import yaml
 from loguru import logger
-from github.clients.utils import get_mono_repo_organization
 from wcmatch import glob
 
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.options import (
-    FileSearchOptions,
-    ListFileSearchOptions,
-    ListRepositoryOptions,
-)
+from github.core.options import FileSearchOptions, ListFileSearchOptions
 from github.helpers.utils import GithubClientType
+from github.helpers.repo_selectors import (
+    CompositeRepositorySelector,
+    OrganizationLoginGenerator,
+)
 
 if TYPE_CHECKING:
     from integration import GithubFilePattern
@@ -119,70 +117,46 @@ def is_matching_file(files: List[Dict[str, Any]], filenames: List[str]) -> bool:
     return False
 
 
-async def group_file_patterns_by_repositories_in_selector(
-    files: List["GithubFilePattern"],
-    repo_exporter: "AbstractGithubExporter[Any]",
-    repo_type: str,
-) -> List[ListFileSearchOptions]:
-    """
-    Group file patterns by repository to enable batch processing.
+class FilePatternMappingBuilder:
+    def __init__(
+        self,
+        org_exporter: AbstractGithubExporter[Any],
+        repo_exporter: AbstractGithubExporter[Any],
+        repo_type: str,
+    ):
+        self.generate_org_logins = OrganizationLoginGenerator(org_exporter)
+        self.repo_selector = CompositeRepositorySelector(repo_type)
+        self.repo_exporter = repo_exporter
 
-    Takes a list of file patterns with repository mappings and organizes them
-    by repository name for efficient batch file fetching. If no repo is specified, fetch the relevant file for every repository
-    """
-    logger.info(
-        f"Grouping file patterns by repository and organization for batch processing from {len(files)} file patterns."
-    )
+    async def build(
+        self, files: List["GithubFilePattern"]
+    ) -> List[ListFileSearchOptions]:
+        repo_map: Dict[Tuple[str, str], List[FileSearchOptions]] = defaultdict(list)
 
-    repo_map: Dict[str, List[FileSearchOptions]] = defaultdict(list)
+        logger.info(f"Building path mapping for {len(files)} file selectors...")
 
-    async def _get_repos_and_branches_for_selector(
-        selector: "GithubFilePattern", path: str
-    ) -> AsyncGenerator[Tuple[str, Optional[str]], None]:
-        organization = get_mono_repo_organization(selector.organization)
-        if selector.repos is None:
-            logger.info(
-                f"No repositories specified for file pattern '{path}'. Fetching from '{repo_type}' repositories from {organization}."
+        for file_sel in files:
+            async for org_login in self.generate_org_logins(file_sel.organization):
+                async for repo_name, branch, _ in self.repo_selector.select_repos(
+                    file_sel, self.repo_exporter, org_login
+                ):
+                    repo_map[(org_login, repo_name)].append(
+                        FileSearchOptions(
+                            organization=org_login,
+                            path=file_sel.path,
+                            skip_parsing=file_sel.skip_parsing,
+                            branch=branch,
+                        )
+                    )
+
+        return [
+            ListFileSearchOptions(
+                organization=org,
+                repo_name=repo,
+                files=items,
             )
-            repo_option = ListRepositoryOptions(
-                organization=organization,
-                type=repo_type,
-            )
-            async for repo_batch in repo_exporter.get_paginated_resources(repo_option):
-                for repository in repo_batch:
-                    yield repository["name"], repository["default_branch"]
-        else:
-            logger.info(
-                f"Fetching file pattern '{path}' from specified repositories from {organization}."
-            )
-            for repo_branch_mapping in selector.repos:
-                yield repo_branch_mapping.name, repo_branch_mapping.branch
-
-    for file_selector in files:
-        path = file_selector.path
-        skip_parsing = file_selector.skip_parsing
-        organization = get_mono_repo_organization(file_selector.organization)
-
-        async for repo, branch in _get_repos_and_branches_for_selector(
-            file_selector, path
-        ):
-            repo_map[repo].append(
-                {
-                    "organization": organization,
-                    "path": path,
-                    "skip_parsing": skip_parsing,
-                    "branch": branch,
-                }
-            )
-
-    logger.info(
-        f"Repository path map built for {len(repo_map)} repositories from {len(files)} file patterns."
-    )
-
-    return [
-        ListFileSearchOptions(organization=organization, repo_name=repo, files=files)
-        for repo, files in repo_map.items()
-    ]
+            for (org, repo), items in repo_map.items()
+        ]
 
 
 def match_file_path_against_glob_pattern(path: str, pattern: str) -> bool:
