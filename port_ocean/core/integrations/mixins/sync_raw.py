@@ -1042,6 +1042,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             blueprint=pending_resource.port.entity.mappings.blueprint,
                         )
 
+                async with metric_resource_context(MetricResourceKind.RECONCILIATION):
+                    ocean.metrics.sync_state = SyncState.ABORTED
+                    ocean.metrics.set_metric(
+                        name=MetricType.SUCCESS_NAME,
+                        labels=[MetricResourceKind.RECONCILIATION, MetricPhase.RESYNC],
+                        value=0,
+                    )
+                    await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RECONCILIATION)
+                    await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
                 raise
             else:
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):
