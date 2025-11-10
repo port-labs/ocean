@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.4.27 (2025-11-10)
+## 0.4.28 (2025-11-10)
 
 
 ### Improvements
 
 - Align itemsBatch payload with API to reduce payload size and prevent validation errors during resync.
+
+
+## 0.4.27 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
 
 
 ## 0.4.26 (2025-11-09)
