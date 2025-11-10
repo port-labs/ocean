@@ -1,5 +1,4 @@
 from enum import StrEnum
-import re
 from typing import (
     Any,
     Dict,
@@ -12,20 +11,12 @@ from typing import (
 )
 
 from loguru import logger
-from wcmatch import glob
 
 from port_ocean.utils import cache
 
 
 if TYPE_CHECKING:
     from github.clients.http.base_client import AbstractGithubClient
-
-
-GLOB_COMPILE_FLAGS = glob.EXTGLOB | glob.BRACE | glob.DOTMATCH | glob.IGNORECASE
-GLOB_SPLIT_RE = re.compile(r"[*?\[\]\{\}\(\)\|@]")
-
-# default key in path mapping when branch is not passed
-_DEFAULT_BRANCH = "hard_to_replicate_name"
 
 
 class GithubClientType(StrEnum):

@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import re
 from typing import (
     Any,
     AsyncGenerator,
@@ -14,8 +13,6 @@ from typing import (
 
 from loguru import logger
 
-from wcmatch import glob
-
 
 from github.core.options import (
     ListOrganizationOptions,
@@ -26,9 +23,6 @@ from github.helpers.utils import get_repository_metadata
 
 if TYPE_CHECKING:
     from integration import RepositoryBranchMapping
-
-GLOB_COMPILE_FLAGS = glob.EXTGLOB | glob.BRACE | glob.DOTMATCH | glob.IGNORECASE
-GLOB_SPLIT_RE = re.compile(r"[*?\[\]\{\}\(\)\|@]")
 
 
 class RepoListSelector(Protocol):
@@ -154,6 +148,8 @@ class OrganizationLoginGenerator:
         else:
             org_options = {}
         async for batch in self.org_exporter.get_paginated_resources(org_options):
+            if not batch or not any(batch):
+                continue
             for org in batch:
                 org_login = org["login"]
                 yield org_login

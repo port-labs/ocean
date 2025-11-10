@@ -5,7 +5,6 @@ from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.folder_exporter import (
     RestFolderExporter,
 )
-from github.helpers.utils import _DEFAULT_BRANCH
 from github.core.options import ListFolderOptions, SingleFolderOptions
 
 TEST_FILE = {
@@ -206,7 +205,7 @@ class TestRestFolderExporter:
                     {
                         "organization": "test-org",
                         "path": "docs",
-                        "branch": _DEFAULT_BRANCH,
+                        "branch": TEST_REPO_INFO["default_branch"],
                         "repo": TEST_REPO_INFO,
                     },
                 ],

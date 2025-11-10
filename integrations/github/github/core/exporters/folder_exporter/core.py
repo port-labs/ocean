@@ -11,7 +11,7 @@ from github.core.options import (
     ListFolderOptions,
     SingleFolderOptions,
 )
-from github.helpers.utils import IgnoredError, _DEFAULT_BRANCH
+from github.helpers.utils import IgnoredError
 
 
 class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
@@ -49,13 +49,10 @@ class RestFolderExporter(AbstractGithubExporter[GithubRestClient]):
 
             for folder in folders_patterns:
                 path = folder["path"]
-                branch = folder.get("branch") or _DEFAULT_BRANCH
                 repo = folder["repo"]
-                branch_ref = (
-                    branch if branch != _DEFAULT_BRANCH else repo.get("default_branch")
-                )
+                branch = folder.get("branch") or repo["default_branch"]
 
-                url = f"{self.client.base_url}/repos/{organization}/{repo_name}/git/trees/{branch_ref}"
+                url = f"{self.client.base_url}/repos/{organization}/{repo_name}/git/trees/{branch}"
                 is_recursive_api_call = self._needs_recursive_search(path)
                 tree = await self._get_tree(url, recursive=is_recursive_api_call)
                 folders = self._retrieve_relevant_tree(
