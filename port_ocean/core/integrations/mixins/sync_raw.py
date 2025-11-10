@@ -1030,6 +1030,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     ocean.metrics.sync_state = SyncState.ABORTED
                     await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RUNTIME)
                     await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RUNTIME])
+
+                for pending_index in range(len(creation_results), len(app_config.resources)):
+                    pending_resource = app_config.resources[pending_index]
+                    pending_kind_id = f"{pending_resource.kind}-{pending_index}"
+                    async with metric_resource_context(pending_kind_id):
+                        ocean.metrics.sync_state = SyncState.ABORTED
+                        await ocean.metrics.send_metrics_to_webhook(kind=pending_kind_id)
+                        await ocean.metrics.report_kind_sync_metrics(
+                            kind=pending_kind_id,
+                            blueprint=pending_resource.port.entity.mappings.blueprint,
+                        )
+
                 raise
             else:
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):
