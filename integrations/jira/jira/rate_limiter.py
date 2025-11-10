@@ -39,33 +39,33 @@ class JiraRateLimiter:
         Prefers standard headers over beta-prefixed ones.
         """
         match header_type:
-            case "limit":
+            case "x-ratelimit-limit":
                 return (
                     "x-ratelimit-limit"
                     if "x-ratelimit-limit" in headers
                     else "x-beta-ratelimit-limit"
                 )
-            case "remaining":
+            case "x-ratelimit-remaining":
                 return (
                     "x-ratelimit-remaining"
                     if "x-ratelimit-remaining" in headers
                     else "x-beta-ratelimit-remaining"
                 )
-            case "near_limit":
+            case "x-ratelimit-nearlimit":
                 return (
                     "x-ratelimit-nearlimit"
                     if "x-ratelimit-nearlimit" in headers
                     else "x-beta-ratelimit-nearlimit"
                 )
-            case "reset":
+            case "x-ratelimit-reset":
                 return (
                     "x-ratelimit-reset"
                     if "x-ratelimit-reset" in headers
                     else "x-beta-ratelimit-reset"
                 )
-            case "retry_after":
+            case "retry-after":
                 return "retry-after" if "retry-after" in headers else "beta-retry-after"
-            case "reason":
+            case "ratelimit-reason":
                 return (
                     "ratelimit-reason"
                     if "ratelimit-reason" in headers
@@ -92,11 +92,11 @@ class JiraRateLimiter:
         """
         async with self._lock:
             try:
-                limit_key = self._get_header_key(headers, "limit")
-                remaining_key = self._get_header_key(headers, "remaining")
-                near_limit_key = self._get_header_key(headers, "near_limit")
-                reset_key = self._get_header_key(headers, "reset")
-                retry_after_key = self._get_header_key(headers, "retry_after")
+                limit_key = self._get_header_key(headers, "x-ratelimit-limit")
+                remaining_key = self._get_header_key(headers, "x-ratelimit-remaining")
+                near_limit_key = self._get_header_key(headers, "x-ratelimit-nearlimit")
+                reset_key = self._get_header_key(headers, "x-ratelimit-reset")
+                retry_after_key = self._get_header_key(headers, "retry-after")
 
                 self._limit = int(headers.get(limit_key))
                 self._remaining = int(headers.get(remaining_key))
@@ -108,7 +108,7 @@ class JiraRateLimiter:
                     dt = datetime.fromisoformat(reset_time_str.replace("Z", "+00:00"))
                     self._reset_time = dt.timestamp()
 
-                reason_key = self._get_header_key(headers, "reason")
+                reason_key = self._get_header_key(headers, "ratelimit-reason")
                 if headers.get(reason_key):
                     logger.warning(
                         f"Rate limit breached for this reason: {headers.get(reason_key)}"
