@@ -13,9 +13,7 @@ from github.core.exporters.team_exporter import (
 )
 from github.core.exporters.user_exporter import GraphQLUserExporter
 from github.webhook.registry import register_live_events_webhooks
-from github.core.exporters.file_exporter.utils import (
-    group_file_patterns_by_repositories_in_selector,
-)
+from github.core.exporters.file_exporter.utils import FilePatternMappingBuilder
 from github.clients.client_factory import (
     GitHubAuthenticatorFactory,
     create_github_client,
@@ -44,7 +42,7 @@ from github.core.exporters.secret_scanning_alert_exporter import (
 from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
 from github.core.exporters.folder_exporter import (
     RestFolderExporter,
-    create_path_mapping,
+    FolderPatternMappingBuilder,
 )
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.core.exporters.organization_exporter import RestOrganizationExporter
@@ -53,7 +51,6 @@ from github.core.options import (
     ListBranchOptions,
     ListDeploymentsOptions,
     ListEnvironmentsOptions,
-    ListFolderOptions,
     ListIssueOptions,
     ListPullRequestOptions,
     ListRepositoryOptions,
@@ -743,16 +740,19 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     folder_exporter = RestFolderExporter(rest_client)
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
-    if not selector.folders:
-        logger.info(
-            "Skipping folder kind resync because required selectors are missing"
-        )
-        return
 
-    repo_path_map = create_path_mapping(selector.folders)
-    folder_options = ListFolderOptions(repo_mapping=repo_path_map)
+    org_exporter = RestOrganizationExporter(rest_client)
+    repo_exporter = RestRepositoryExporter(rest_client)
+    app_config = cast(GithubPortAppConfig, event.port_app_config)
 
-    async for folders in folder_exporter.get_paginated_resources(folder_options):
+    pattern_builder = FolderPatternMappingBuilder(
+        org_exporter=org_exporter,
+        repo_exporter=repo_exporter,
+        repo_type=app_config.repository_type,
+    )
+    repo_path_map = await pattern_builder.build(selector.folders)
+
+    async for folders in folder_exporter.get_paginated_resources(repo_path_map):
         yield folders
 
 
@@ -762,18 +762,19 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     rest_client = create_github_client()
+    org_exporter = RestOrganizationExporter(rest_client)
     file_exporter = RestFileExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
 
     config = cast(GithubFileResourceConfig, event.resource_config)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
-    files_pattern = config.selector.files
 
-    repo_path_map = await group_file_patterns_by_repositories_in_selector(
-        files_pattern,
-        repo_exporter,
-        app_config.repository_type,
+    pattern_builder = FilePatternMappingBuilder(
+        org_exporter=org_exporter,
+        repo_exporter=repo_exporter,
+        repo_type=app_config.repository_type,
     )
+    repo_path_map = await pattern_builder.build(config.selector.files)
 
     async for file_results in file_exporter.get_paginated_resources(repo_path_map):
         yield file_results
