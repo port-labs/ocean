@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update folder options shape to grouped per-repo entries
 
 
+## 3.2.5-beta (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
 ## 3.2.4-beta (2025-11-09)
 
 
