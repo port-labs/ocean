@@ -4,16 +4,16 @@ from aws.core.modeling.resource_models import ResourceModel, ResourceRequestMode
 
 
 class RepositoryProperties(BaseModel):
-    repositoryName: str = Field(default_factory=str)
-    repositoryArn: str = Field(default_factory=str)
-    repositoryUri: str = Field(default_factory=str)
-    registryId: Optional[str] = None
-    createdAt: Optional[str] = None
-    imageTagMutability: Optional[str] = None
-    imageScanningConfiguration: Optional[Dict[str, Any]] = None
-    encryptionConfiguration: Optional[Dict[str, Any]] = None
-    lifecyclePolicy: Optional[str] = None
-    repositoryPolicy: Optional[str] = None
+    RepositoryName: str = Field(default_factory=str, alias="repositoryName")
+    RepositoryArn: str = Field(default_factory=str, alias="repositoryArn")
+    RepositoryUri: str = Field(default_factory=str, alias="repositoryUri")
+    RegistryId: Optional[str] = Field(default=None, alias="registryId")
+    CreatedAt: Optional[str] = Field(default=None, alias="createdAt")
+    ImageTagMutability: Optional[str] = Field(default=None, alias="imageTagMutability")
+    ImageScanningConfiguration: Optional[Dict[str, Any]] = Field(default=None, alias="imageScanningConfiguration")
+    EncryptionConfiguration: Optional[Dict[str, Any]] = Field(default=None, alias="encryptionConfiguration")
+    LifecyclePolicy: Optional[str] = Field(default=None, alias="lifecyclePolicy")
+    RepositoryPolicy: Optional[str] = Field(default=None, alias="repositoryPolicy")
     Tags: List[Dict[str, str]] = Field(default_factory=list)
 
     class Config:

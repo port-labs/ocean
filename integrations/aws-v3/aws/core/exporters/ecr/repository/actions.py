@@ -5,47 +5,6 @@ from loguru import logger
 import asyncio
 
 
-class GetRepositoryDetailsAction(Action):
-    """Fetches detailed information about ECR repositories."""
-
-    async def _execute(self, repositories: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        if not repositories:
-            return []
-
-        # ECR supports batch operations for describing repositories
-        repository_names = [repo["repositoryName"] for repo in repositories]
-        
-        try:
-            response = await self.client.describe_repositories(
-                repositoryNames=repository_names
-            )
-            
-            results = []
-            for repo in response.get("repositories", []):
-                repo_data = {
-                    "repositoryName": repo.get("repositoryName", ""),
-                    "repositoryArn": repo.get("repositoryArn", ""),
-                    "repositoryUri": repo.get("repositoryUri", ""),
-                    "registryId": repo.get("registryId"),
-                    "createdAt": repo.get("createdAt").isoformat() if repo.get("createdAt") else None,
-                    "imageTagMutability": repo.get("imageTagMutability"),
-                    "imageScanningConfiguration": repo.get("imageScanningConfiguration"),
-                    "encryptionConfiguration": repo.get("encryptionConfiguration"),
-                }
-                results.append(repo_data)
-            
-            logger.info(f"Successfully fetched details for {len(results)} ECR repositories")
-            return results
-            
-        except Exception as e:
-            if is_recoverable_aws_exception(e):
-                logger.warning(f"Skipping repository details: {e}")
-                return []
-            else:
-                logger.error(f"Error fetching repository details: {e}")
-                raise e
-
-
 class GetRepositoryPolicyAction(Action):
     """Fetches repository policy for ECR repositories."""
 
@@ -82,12 +41,9 @@ class GetRepositoryPolicyAction(Action):
             response = await self.client.get_repository_policy(
                 repositoryName=repository["repositoryName"]
             )
-            return {"repositoryPolicy": response.get("policyText")}
+            return {"repositoryPolicy": response["policyText"]}
         except self.client.exceptions.RepositoryPolicyNotFoundException:
             return {"repositoryPolicy": None}
-        except Exception as e:
-            logger.error(f"Error fetching policy for repository {repository['repositoryName']}: {e}")
-            raise
 
 
 class GetRepositoryLifecyclePolicyAction(Action):
@@ -126,12 +82,9 @@ class GetRepositoryLifecyclePolicyAction(Action):
             response = await self.client.get_lifecycle_policy(
                 repositoryName=repository["repositoryName"]
             )
-            return {"lifecyclePolicy": response.get("lifecyclePolicyText")}
+            return {"lifecyclePolicy": response["lifecyclePolicyText"]}
         except self.client.exceptions.LifecyclePolicyNotFoundException:
             return {"lifecyclePolicy": None}
-        except Exception as e:
-            logger.error(f"Error fetching lifecycle policy for repository {repository['repositoryName']}: {e}")
-            raise
 
 
 class ListRepositoryTagsAction(Action):
@@ -164,31 +117,19 @@ class ListRepositoryTagsAction(Action):
         return results
 
     async def _fetch_repository_tags(self, repository: dict[str, Any]) -> dict[str, Any]:
-        try:
-            response = await self.client.list_tags_for_resource(
-                resourceArn=repository["repositoryArn"]
-            )
-            tags = response.get("tags", [])
-            return {"Tags": tags}
-        except Exception as e:
-            logger.error(f"Error fetching tags for repository {repository['repositoryName']}: {e}")
-            raise
+        response = await self.client.list_tags_for_resource(
+            resourceArn=repository["repositoryArn"]
+        )
+        tags = response["tags"]
+        return {"Tags": tags}
 
 
 class ListRepositoriesAction(Action):
     """Process the initial list of repositories from AWS."""
 
     async def _execute(self, repositories: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Return repositories wrapped in the expected format"""
-        results = []
-        for repo in repositories:
-            data = {
-                "repositoryName": repo.get("repositoryName", ""),
-                "repositoryArn": repo.get("repositoryArn", ""),
-                "repositoryUri": repo.get("repositoryUri", ""),
-            }
-            results.append(data)
-        return results
+        """Return repositories as-is"""
+        return repositories
 
 
 class EcrRepositoryActionsMap(ActionMap):
@@ -196,7 +137,6 @@ class EcrRepositoryActionsMap(ActionMap):
 
     defaults: list[Type[Action]] = [
         ListRepositoriesAction,
-        GetRepositoryDetailsAction,
     ]
     options: list[Type[Action]] = [
         GetRepositoryPolicyAction,
