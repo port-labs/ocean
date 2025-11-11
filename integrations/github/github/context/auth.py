@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from github.clients.client_factory import create_github_client
-from port_ocean.context import ocean
+from port_ocean.context.ocean import ocean
 
 
 class BaseAuthContext(BaseModel):
