@@ -64,5 +64,5 @@ async def get_authenticated_user() -> UserAuthContext:
 
 async def get_authenticated_actor() -> str:
     if ocean.integration_config.get("github_app_id"):
-        return f"{await get_authenticated_app().slug}[bot]"
-    return await get_authenticated_user().login
+        return f"{(await get_authenticated_app()).slug}[bot]"
+    return (await get_authenticated_user()).login
