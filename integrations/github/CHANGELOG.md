@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.3.3-beta (2025-11-11)
+
+
+### Bug Fixes
+
+- Get actor for github installation that uses an app
+
+
 ## 3.3.2-beta (2025-11-11)
 
 

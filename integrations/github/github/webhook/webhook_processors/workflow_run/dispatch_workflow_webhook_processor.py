@@ -1,5 +1,5 @@
 from github.actions.utils import build_external_id
-from github.context.auth import get_authenticated_user
+from github.context.auth import get_authenticated_actor
 from github.webhook.webhook_processors.workflow_run.base_workflow_run_webhook_processor import (
     BaseWorkflowRunWebhookProcessor,
 )
@@ -52,10 +52,10 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
             return False
 
         workflow_run = event.payload["workflow_run"]
-        authenticated_user = await get_authenticated_user()
+        actor = await get_authenticated_actor()
         should_process = (
             workflow_run["status"] == "completed"
-            and workflow_run["actor"]["login"] == authenticated_user.login
+            and workflow_run["actor"]["login"] == actor
         )
 
         return should_process
