@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.29.5 (2025-11-10)
+
+### Bug fixes
+
+- Update unprocessed kinds metrics to have 'aborted' status when a resync is aborted
+
 ## 0.29.4 (2025-11-10)
 
 ### Bug fixes
