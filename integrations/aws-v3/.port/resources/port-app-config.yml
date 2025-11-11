@@ -63,3 +63,22 @@ resources:
             tags: .Properties.Tags
           relations:
             account: .__ExtraContext.AccountId
+  - kind: AWS::ECR::Repository
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.repositoryArn
+          title: .Properties.repositoryName
+          blueprint: '"ecrRepository"'
+          properties:
+            repositoryUri: .Properties.repositoryUri
+            arn: .Properties.repositoryArn
+            createdAt: .Properties.createdAt
+            imageTagMutability: .Properties.imageTagMutability
+            imageScanningEnabled: .Properties.imageScanningConfiguration.scanOnPush
+            encryptionType: .Properties.encryptionConfiguration.encryptionType
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId
