@@ -1,0 +1,102 @@
+identifier: harborArtifact
+title: Harbor Artifact
+icon: Package
+schema:
+  properties:
+    project_name:
+      type: string
+      title: Project Name
+      description: Harbor project that contains the artifact
+    repository:
+      type: string
+      title: Repository
+      description: Repository short name for the artifact
+    repository_path:
+      type: string
+      title: Repository Path
+      description: Full Harbor path of the artifact's repository
+    digest:
+      type: string
+      title: Digest
+      description: Content digest that uniquely identifies the artifact
+    artifact_type:
+      type: string
+      title: Artifact Type
+      description: Harbor reported artifact type (image, helm-chart, osv, ...)
+    media_type:
+      type: string
+      title: Media Type
+      description: Artifact media type from Harbor metadata
+    tag_count:
+      type: integer
+      title: Tag Count
+      description: Number of tags attached to the artifact
+    primary_tag:
+      type: string
+      title: Primary Tag
+      description: Primary tag selected for the artifact
+    labels:
+      type: array
+      title: Labels
+      description: Harbor labels assigned to the artifact
+      items:
+        type: string
+    created_at:
+      type: string
+      format: date-time
+      title: Created At
+      description: Timestamp when the artifact was created
+    pushed_at:
+      type: string
+      format: date-time
+      title: Pushed At
+      description: Timestamp when the artifact was pushed to the registry
+    vulnerability_severity:
+      type: string
+      title: Vulnerability Severity
+      description: Highest vulnerability severity detected for the artifact
+    critical_vulnerability_count:
+      type: integer
+      title: Critical Vulnerabilities
+      description: Count of critical vulnerabilities reported by Harbor
+    high_vulnerability_count:
+      type: integer
+      title: High Vulnerabilities
+      description: Count of high severity vulnerabilities
+    medium_vulnerability_count:
+      type: integer
+      title: Medium Vulnerabilities
+      description: Count of medium severity vulnerabilities
+    low_vulnerability_count:
+      type: integer
+      title: Low Vulnerabilities
+      description: Count of low severity vulnerabilities
+    negligible_vulnerability_count:
+      type: integer
+      title: Negligible Vulnerabilities
+      description: Count of negligible severity vulnerabilities
+    scan_completed_at:
+      type: string
+      format: date-time
+      title: Scan Completed At
+      description: Timestamp when the most recent vulnerability scan finished
+  required:
+    - project_name
+    - repository_path
+    - digest
+mirrorProperties: {}
+calculationProperties: {}
+aggregationProperties: {}
+relations:
+  repository:
+    target: harborRepository
+    title: Repository
+    description: Repository containing this artifact
+    many: false
+    required: true
+  project:
+    target: harborProject
+    title: Project
+    description: Harbor project owning the artifact
+    many: false
+    required: true
