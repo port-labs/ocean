@@ -94,6 +94,7 @@ class ExactRepositorySelector(RepositorySelectorStrategy):
                 repo_exporter.client, org_login, repo_sel.name
             )
             if not repo_obj:
+                logger.warning(f"Repository {repo_sel.name} not found in {org_login}")
                 continue
 
             branch = repo_sel.branch or repo_obj["default_branch"]
