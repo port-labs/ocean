@@ -1,5 +1,5 @@
 from datetime import UTC, datetime, timedelta
-from typing import Any, cast
+from typing import Any, Dict, cast
 from github.helpers.utils import enrich_with_repository, parse_github_options
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
@@ -25,7 +25,9 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched pull request with identifier: {repo_name}/{pr_number} from {organization}"
         )
 
-        return enrich_with_repository(response, cast(str, repo_name))
+        return self._enrich_pull_request_with_organization(
+            enrich_with_repository(response, cast(str, repo_name)), organization
+        )
 
     async def get_paginated_resources[
         ExporterOptionsT: ListPullRequestOptions
@@ -67,7 +69,12 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             logger.info(
                 f"Fetched batch of {len(pull_requests)} open pull requests from repository {repo_name} from {organization}"
             )
-            batch = [enrich_with_repository(pr, repo_name) for pr in pull_requests]
+            batch = [
+                self._enrich_pull_request_with_organization(
+                    enrich_with_repository(pr, repo_name), organization
+                )
+                for pr in pull_requests
+            ]
             yield batch
 
     async def _fetch_closed_pull_requests(
@@ -106,10 +113,15 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
                 f"(total so far: {total_count + batch_count}/{max_results})"
             )
 
-            yield [
-                enrich_with_repository(pr, repo_name)
+            enriched_batch = [
+                self._enrich_pull_request_with_organization(
+                    enrich_with_repository(pr, repo_name), organization
+                )
                 for pr in self._filter_prs_by_updated_at(limited_batch, since)
             ]
+
+            yield enriched_batch
+
             total_count += batch_count
 
     def _filter_prs_by_updated_at(
@@ -125,3 +137,12 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             )
             >= cutoff
         ]
+
+    def _enrich_pull_request_with_organization(
+        self, pr: Dict[str, Any], organization: str
+    ) -> Dict[str, Any]:
+        """Enrich a pull request with the organization."""
+        return {
+            **pr,
+            "__organization": organization,
+        }
