@@ -1,6 +1,10 @@
 from datetime import UTC, datetime, timedelta
-from typing import Any, Dict, cast
-from github.helpers.utils import enrich_with_repository, parse_github_options
+from typing import Any, cast
+from github.helpers.utils import (
+    enrich_with_organization,
+    enrich_with_repository,
+    parse_github_options,
+)
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import SinglePullRequestOptions, ListPullRequestOptions
@@ -25,7 +29,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched pull request with identifier: {repo_name}/{pr_number} from {organization}"
         )
 
-        return self._enrich_pull_request_with_organization(
+        return enrich_with_organization(
             enrich_with_repository(response, cast(str, repo_name)), organization
         )
 
@@ -70,7 +74,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched batch of {len(pull_requests)} open pull requests from repository {repo_name} from {organization}"
             )
             batch = [
-                self._enrich_pull_request_with_organization(
+                enrich_with_organization(
                     enrich_with_repository(pr, repo_name), organization
                 )
                 for pr in pull_requests
@@ -114,7 +118,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             )
 
             enriched_batch = [
-                self._enrich_pull_request_with_organization(
+                enrich_with_organization(
                     enrich_with_repository(pr, repo_name), organization
                 )
                 for pr in self._filter_prs_by_updated_at(limited_batch, since)
@@ -137,12 +141,3 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             )
             >= cutoff
         ]
-
-    def _enrich_pull_request_with_organization(
-        self, pr: Dict[str, Any], organization: str
-    ) -> Dict[str, Any]:
-        """Enrich a pull request with the organization."""
-        return {
-            **pr,
-            "__organization": organization,
-        }
