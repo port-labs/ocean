@@ -9,7 +9,6 @@ from aws.core.exporters.ecr.repository.models import (
 from aws.core.helpers.types import SupportedServices
 from aws.core.interfaces.exporter import IResourceExporter
 from aws.core.modeling.resource_inspector import ResourceInspector
-from loguru import logger
 
 
 class EcrRepositoryExporter(IResourceExporter):
