@@ -10,8 +10,12 @@ class RepositoryProperties(BaseModel):
     RegistryId: Optional[str] = Field(default=None, alias="registryId")
     CreatedAt: Optional[str] = Field(default=None, alias="createdAt")
     ImageTagMutability: Optional[str] = Field(default=None, alias="imageTagMutability")
-    ImageScanningConfiguration: Optional[Dict[str, Any]] = Field(default=None, alias="imageScanningConfiguration")
-    EncryptionConfiguration: Optional[Dict[str, Any]] = Field(default=None, alias="encryptionConfiguration")
+    ImageScanningConfiguration: Optional[Dict[str, Any]] = Field(
+        default=None, alias="imageScanningConfiguration"
+    )
+    EncryptionConfiguration: Optional[Dict[str, Any]] = Field(
+        default=None, alias="encryptionConfiguration"
+    )
     LifecyclePolicy: Optional[str] = Field(default=None, alias="lifecyclePolicy")
     RepositoryPolicy: Optional[str] = Field(default=None, alias="repositoryPolicy")
     Tags: List[Dict[str, str]] = Field(default_factory=list)
@@ -28,9 +32,13 @@ class Repository(ResourceModel[RepositoryProperties]):
 
 class SingleRepositoryRequest(ResourceRequestModel):
     """Options for exporting a single ECR repository."""
-    repository_name: str = Field(..., description="The name of the ECR repository to export")
+
+    repository_name: str = Field(
+        ..., description="The name of the ECR repository to export"
+    )
 
 
 class PaginatedRepositoryRequest(ResourceRequestModel):
     """Options for exporting all ECR repositories in a region."""
+
     pass

@@ -8,7 +8,9 @@ import asyncio
 class GetRepositoryPolicyAction(Action):
     """Fetches repository policy for ECR repositories."""
 
-    async def _execute(self, repositories: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    async def _execute(
+        self, repositories: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         if not repositories:
             return []
 
@@ -32,11 +34,15 @@ class GetRepositoryPolicyAction(Action):
                     )
                     raise policy_result
             results.append(cast(dict[str, Any], policy_result))
-        
-        logger.info(f"Successfully fetched policies for {len(results)} ECR repositories")
+
+        logger.info(
+            f"Successfully fetched policies for {len(results)} ECR repositories"
+        )
         return results
 
-    async def _fetch_repository_policy(self, repository: dict[str, Any]) -> dict[str, Any]:
+    async def _fetch_repository_policy(
+        self, repository: dict[str, Any]
+    ) -> dict[str, Any]:
         try:
             response = await self.client.get_repository_policy(
                 repositoryName=repository["repositoryName"]
@@ -49,7 +55,9 @@ class GetRepositoryPolicyAction(Action):
 class GetRepositoryLifecyclePolicyAction(Action):
     """Fetches lifecycle policy for ECR repositories."""
 
-    async def _execute(self, repositories: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    async def _execute(
+        self, repositories: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         if not repositories:
             return []
 
@@ -73,11 +81,15 @@ class GetRepositoryLifecyclePolicyAction(Action):
                     )
                     raise policy_result
             results.append(cast(dict[str, Any], policy_result))
-        
-        logger.info(f"Successfully fetched lifecycle policies for {len(results)} ECR repositories")
+
+        logger.info(
+            f"Successfully fetched lifecycle policies for {len(results)} ECR repositories"
+        )
         return results
 
-    async def _fetch_lifecycle_policy(self, repository: dict[str, Any]) -> dict[str, Any]:
+    async def _fetch_lifecycle_policy(
+        self, repository: dict[str, Any]
+    ) -> dict[str, Any]:
         try:
             response = await self.client.get_lifecycle_policy(
                 repositoryName=repository["repositoryName"]
@@ -90,7 +102,9 @@ class GetRepositoryLifecyclePolicyAction(Action):
 class ListRepositoryTagsAction(Action):
     """Fetches tags for ECR repositories."""
 
-    async def _execute(self, repositories: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    async def _execute(
+        self, repositories: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         if not repositories:
             return []
 
@@ -109,14 +123,18 @@ class ListRepositoryTagsAction(Action):
                     )
                     continue
                 else:
-                    logger.error(f"Error fetching tags for repository '{repository_name}'")
+                    logger.error(
+                        f"Error fetching tags for repository '{repository_name}'"
+                    )
                     raise tag_result
             results.append(cast(dict[str, Any], tag_result))
-        
+
         logger.info(f"Successfully fetched tags for {len(results)} ECR repositories")
         return results
 
-    async def _fetch_repository_tags(self, repository: dict[str, Any]) -> dict[str, Any]:
+    async def _fetch_repository_tags(
+        self, repository: dict[str, Any]
+    ) -> dict[str, Any]:
         response = await self.client.list_tags_for_resource(
             resourceArn=repository["repositoryArn"]
         )
@@ -127,7 +145,9 @@ class ListRepositoryTagsAction(Action):
 class ListRepositoriesAction(Action):
     """Process the initial list of repositories from AWS."""
 
-    async def _execute(self, repositories: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    async def _execute(
+        self, repositories: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """Return repositories as-is"""
         return repositories
 

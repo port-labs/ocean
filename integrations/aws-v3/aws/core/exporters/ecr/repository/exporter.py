@@ -46,7 +46,7 @@ class EcrRepositoryExporter(IResourceExporter):
             inspector = ResourceInspector(
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
-            
+
             paginator = proxy.get_paginator("describe_repositories", "repositories")
 
             async for repositories in paginator.paginate():
