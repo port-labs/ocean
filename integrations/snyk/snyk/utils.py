@@ -18,3 +18,5 @@ def get_matching_organization(
     for org in orgs:
         if org["id"] == org_id:
             return org
+
+    return None
