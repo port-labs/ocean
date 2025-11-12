@@ -164,7 +164,9 @@ def match_file_path_against_glob_pattern(path: str, pattern: str) -> bool:
     Match file path against a glob pattern using wcmatch's globmatch.
     Supports ** and other extended glob syntax.
     """
-    return glob.globmatch(path, pattern, flags=glob.GLOBSTAR | glob.IGNORECASE)
+    return glob.globmatch(
+        path, pattern, flags=glob.GLOBSTAR | glob.IGNORECASE | glob.DOTGLOB
+    )
 
 
 def determine_api_client_type_by_file_size(size: int) -> GithubClientType:
