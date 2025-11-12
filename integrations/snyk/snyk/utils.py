@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 
 def enrich_batch_with_org(
@@ -10,3 +10,11 @@ def enrich_batch_with_org(
         item[enricment_key] = enrichment_data
 
     return batch
+
+
+def get_matching_organization(
+    orgs: list[dict[str, Any]], org_id: str
+) -> Optional[dict[str, Any]]:
+    for org in orgs:
+        if org["id"] == org_id:
+            return org
