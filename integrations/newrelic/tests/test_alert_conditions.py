@@ -281,11 +281,13 @@ class TestAlertConditionsHandler:
         first_page_response = MagicMock()
         first_page_response.status_code = 200
         first_page_headers = MagicMock()
+
         # Make headers.get return the Link header for "Link" or "link", None otherwise
         def first_page_headers_get(key: str) -> Optional[str]:
             if key.lower() == "link":
                 return '<https://api.newrelic.com/v2/alerts_nrql_conditions.json?policy_id=123&page=2>; rel="next"'
             return None
+
         first_page_headers.get.side_effect = first_page_headers_get
         first_page_response.headers = first_page_headers
         first_page_response.json.return_value = {

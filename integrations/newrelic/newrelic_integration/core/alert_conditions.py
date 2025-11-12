@@ -65,15 +65,17 @@ class AlertConditionsHandler:
         policies = data.get("policies", [])
         return [policy["id"] for policy in policies]
 
-    def _extract_next_url_from_link_header(self, link_header: Optional[str]) -> Optional[str]:
+    def _extract_next_url_from_link_header(
+        self, link_header: Optional[str]
+    ) -> Optional[str]:
         """Extract the next page URL from the Link header.
-        
+
         The Link header format is: <url>; rel="next" or <url>; rel='next'
         Returns the URL if rel="next" is found, None otherwise.
         """
         if not link_header:
             return None
-        
+
         # Pattern to match: <url>; rel="next" or <url>; rel='next' (case-insensitive)
         # The pattern handles both single and double quotes, and case-insensitive matching
         pattern = r'<([^>]+)>;\s*rel=["\']?next["\']?'
@@ -90,7 +92,9 @@ class AlertConditionsHandler:
             )
         return str(error_data)
 
-    def _extract_conditions_from_response(self, data: dict[str, Any]) -> list[dict[str, Any]]:
+    def _extract_conditions_from_response(
+        self, data: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Extract conditions from API response, handling both response formats."""
         return data.get("nrql_conditions") or data.get("conditions") or []
 
@@ -106,7 +110,7 @@ class AlertConditionsHandler:
         self, url: str, policy_id: int, params: Optional[dict[str, Any]] = None
     ) -> tuple[list[dict[str, Any]], Optional[str]]:
         """Fetch a single page of alert conditions.
-        
+
         Returns:
             Tuple of (conditions_list, next_page_url). next_page_url is None if no more pages.
         """
@@ -137,10 +141,10 @@ class AlertConditionsHandler:
             return [], None
 
         conditions = self._extract_conditions_from_response(data)
-        
+
         link_header = response.headers.get("Link") or response.headers.get("link")
         next_url = self._extract_next_url_from_link_header(link_header)
-        
+
         if next_url:
             next_url = self._normalize_next_url(next_url)
             logger.debug(
@@ -155,15 +159,17 @@ class AlertConditionsHandler:
         """Fetch NRQL alert conditions for a specific policy using REST API with pagination support."""
         all_conditions: list[dict[str, Any]] = []
         url: Optional[str] = f"{self.base_url}/v2/alerts_nrql_conditions.json"
-        params = {"policy_id": policy_id}
-        
+        params: Optional[dict[str, Any]] = {"policy_id": policy_id}
+
         while url:
-            conditions, next_url = await self._fetch_conditions_page(url, policy_id, params)
+            conditions, next_url = await self._fetch_conditions_page(
+                url, policy_id, params
+            )
             all_conditions.extend(conditions)
             url = next_url
             # Clear params for subsequent requests since the URL already contains them
             params = None
-        
+
         logger.debug(
             f"Fetched {len(all_conditions)} total conditions for policy {policy_id}"
         )
