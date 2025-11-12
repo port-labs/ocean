@@ -25,7 +25,7 @@ class EcrRepositoryExporter(IResourceExporter):
                 proxy.client, self._actions_map(), lambda: self._model_cls()
             )
 
-            response = await proxy.client.describe_repositories(
+            response = await proxy.client.describe_repositories(  # type: ignore[attr-defined]
                 repositoryNames=[options.repository_name]
             )
             repositories = response["repositories"]

@@ -23,7 +23,7 @@ class RepositoryProperties(BaseModel):
 
     class Config:
         extra = "forbid"
-        populate_by_name = True
+        allow_population_by_field_name = True
 
 
 class Repository(ResourceModel[RepositoryProperties]):
