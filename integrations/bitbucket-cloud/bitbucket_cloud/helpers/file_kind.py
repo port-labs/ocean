@@ -13,6 +13,7 @@ from bitbucket_cloud.helpers.file_kind_live_event import (
 
 JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
+GLOBAL_PATHS = ["*/", "*", "**/*", "**"]
 
 
 def build_search_terms(
@@ -55,11 +56,10 @@ async def process_file_patterns(
         f"Searching for files in {len(file_pattern.repos) if file_pattern.repos else 'all'} repositories with pattern: {file_pattern.path}"
     )
 
+    path_to_search = file_pattern.path
+
     if not file_pattern.repos:
         logger.warning("No repositories provided, searching entire workspace")
-    if not file_pattern.path:
-        logger.info("Path is required, skipping file search")
-        return
     if not file_pattern.filenames:
         logger.info("No filenames provided, skipping file search")
         return
@@ -68,8 +68,8 @@ async def process_file_patterns(
         search_query = build_search_terms(
             filename=filename,
             repos=file_pattern.repos,
-            path=file_pattern.path,
-            extension=filename.split(".")[-1],
+            path=path_to_search if path_to_search not in GLOBAL_PATHS else "/",
+            extension=filename.split(".")[-1] if "." in filename else "",
         )
         logger.debug(f"Constructed search query: {search_query}")
         bitbucket_client = init_client()
@@ -146,6 +146,9 @@ def validate_file_match(file_path: str, filename: str, expected_path: str) -> bo
 
     if (not expected_path or expected_path == "/") and file_path == filename:
         return True
+
+    if expected_path in GLOBAL_PATHS:
+        expected_path = "*/"
 
     dir_path = file_path[: -len(filename)]
     dir_path = dir_path.rstrip("/")

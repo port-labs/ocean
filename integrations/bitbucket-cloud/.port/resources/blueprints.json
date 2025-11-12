@@ -135,5 +135,39 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "bitbucketCodeowners",
+    "description": "This blueprint represents a CODEOWNERS file in a Bitbucket repository",
+    "title": "Bitbucket Codeowners",
+    "icon": "BitBucket",
+    "schema": {
+      "properties": {
+        "location": {
+          "type": "string",
+          "title": "File location",
+          "description": "File path to CODEOWNERS file"
+        },
+        "scope": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Scope",
+          "description": "The scope which the user/team owns"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "repository": {
+        "title": "Repository",
+        "description": "The repository which the CODEOWNERS file resides in",
+        "target": "bitbucketRepository",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
