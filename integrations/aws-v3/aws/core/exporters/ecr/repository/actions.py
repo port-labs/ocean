@@ -52,7 +52,7 @@ class GetRepositoryPolicyAction(Action):
             return {"repositoryPolicy": None}
 
 
-class GetRepositoryLifecyclePolicyAction(Action):
+class GetLifecyclePolicyAction(Action):
     """Fetches lifecycle policy for ECR repositories."""
 
     async def _execute(
@@ -99,7 +99,7 @@ class GetRepositoryLifecyclePolicyAction(Action):
             return {"lifecyclePolicy": None}
 
 
-class ListRepositoryTagsAction(Action):
+class ListTagsForResourceAction(Action):
     """Fetches tags for ECR repositories."""
 
     async def _execute(
@@ -142,7 +142,7 @@ class ListRepositoryTagsAction(Action):
         return {"Tags": tags}
 
 
-class ListRepositoriesAction(Action):
+class DescribeRepositoriesAction(Action):
     """Process the initial list of repositories from AWS."""
 
     async def _execute(
@@ -156,10 +156,10 @@ class EcrRepositoryActionsMap(ActionMap):
     """Groups all actions for ECR repositories."""
 
     defaults: list[Type[Action]] = [
-        ListRepositoriesAction,
+        DescribeRepositoriesAction,
     ]
     options: list[Type[Action]] = [
         GetRepositoryPolicyAction,
-        GetRepositoryLifecyclePolicyAction,
-        ListRepositoryTagsAction,
+        GetLifecyclePolicyAction,
+        ListTagsForResourceAction,
     ]

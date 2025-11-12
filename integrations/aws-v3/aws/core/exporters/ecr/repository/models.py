@@ -1,4 +1,5 @@
 from typing import Optional, Dict, Any, List
+from datetime import datetime
 from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
@@ -8,7 +9,7 @@ class RepositoryProperties(BaseModel):
     RepositoryArn: str = Field(default_factory=str, alias="repositoryArn")
     RepositoryUri: str = Field(default_factory=str, alias="repositoryUri")
     RegistryId: Optional[str] = Field(default=None, alias="registryId")
-    CreatedAt: Optional[str] = Field(default=None, alias="createdAt")
+    CreatedAt: Optional[datetime] = Field(default=None, alias="createdAt")
     ImageTagMutability: Optional[str] = Field(default=None, alias="imageTagMutability")
     ImageScanningConfiguration: Optional[Dict[str, Any]] = Field(
         default=None, alias="imageScanningConfiguration"
