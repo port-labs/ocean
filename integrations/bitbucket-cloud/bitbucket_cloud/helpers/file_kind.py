@@ -13,7 +13,7 @@ from bitbucket_cloud.helpers.file_kind_live_event import (
 
 JSON_FILE_SUFFIX = ".json"
 YAML_FILE_SUFFIX = (".yaml", ".yml")
-GLOBAL_PATHS = ["*/", "*", "**/*", "**"]
+GLOBAL_PATHS = ["*/", "*", "**/*", "**", ""]
 
 
 def build_search_terms(

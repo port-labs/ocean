@@ -39,7 +39,7 @@ class RepositoryBranchMapping(BaseModel):
 
 class FolderPattern(BaseModel):
     path: str = Field(
-        default="*/",
+        default="",
         alias="path",
         description="Specify the repositories and folders to include under this relative path",
     )
@@ -67,7 +67,7 @@ class BitbucketFolderResourceConfig(ResourceConfig):
 
 class BitbucketFilePattern(BaseModel):
     path: str = Field(
-        default="",
+        default="*/",
         alias="path",
         description="Specify the path to match files from",
     )
