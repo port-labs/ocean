@@ -1,7 +1,6 @@
 from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock
 import pytest
-import json
 
 from aws.core.exporters.ecr.repository.actions import (
     DescribeRepositoriesAction,
