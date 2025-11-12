@@ -92,7 +92,7 @@ class AbstractGithubClient(ABC):
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[IgnoredError]] = None,
         ignore_default_errors: bool = True,
-        authenticator_headers_params: Optional[Dict[str, Any]] = {},
+        authenticator_headers_params: Optional[Dict[str, Any]] = None,
     ) -> Response:
         """Make a request to the GitHub API with GitHub rate limiting and error handling."""
 
@@ -103,7 +103,7 @@ class AbstractGithubClient(ABC):
                     url=resource,
                     params=params,
                     json=json_data,
-                    headers=await self.headers(**authenticator_headers_params),
+                    headers=await self.headers(**(authenticator_headers_params or {})),
                 )
                 response.raise_for_status()
 
