@@ -65,7 +65,6 @@ resources:
                 identifier: ($tokens[0]
                           | gsub("\\*\\*"; "doublestar")
                           | gsub("\\*"; "star")),
-                owners: ($tokens[1:] | map(gsub("@" ; ""))),
                 repoName: $root.repo.name,
                 filePath: $root.metadata.path
             }
