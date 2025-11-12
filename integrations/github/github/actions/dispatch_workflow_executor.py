@@ -7,7 +7,7 @@ import httpx
 from loguru import logger
 from github.actions.utils import build_external_id
 from github.context.auth import (
-    get_authenticated_user,
+    get_authenticated_actor,
 )
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
@@ -158,13 +158,13 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         Get the workflow run for a given workflow.
         """
         workflow_runs: list[dict[str, Any]] = []
-        authenticated_user = await get_authenticated_user()
+        actor = await get_authenticated_actor()
         attempts_made = 0
         while len(workflow_runs) == 0 and attempts_made < MAX_WORKFLOW_POLL_ATTEMPTS:
             response = await self.rest_client.send_api_request(
                 f"{self.rest_client.base_url}/repos/{organization}/{repo}/actions/runs",
                 params={
-                    "actor": authenticated_user.login,
+                    "actor": actor,
                     "event": "workflow_dispatch",
                     "created": f">{isoDate}",
                     "exclude_pull_requests": True,

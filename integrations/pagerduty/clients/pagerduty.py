@@ -1,4 +1,5 @@
 import asyncio
+from http import HTTPStatus
 from typing import Any, AsyncGenerator, Dict, Optional
 
 import httpx
@@ -7,7 +8,8 @@ from consts import ALL_EVENTS
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
-from port_ocean.utils import http_async_client
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
 
 from .utils import get_date_range_for_last_n_months
 
@@ -24,7 +26,12 @@ class PagerDutyClient(OAuthClient):
         self.token = token
         self.api_url = api_url
         self.app_host = app_host
-        self.http_client = http_async_client
+        self.http_client = OceanAsyncClient(
+            retry_config=RetryConfig(
+                additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
+            ),
+            timeout=ocean.config.client_timeout,
+        )
         self.http_client.headers.update(self.headers)
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
