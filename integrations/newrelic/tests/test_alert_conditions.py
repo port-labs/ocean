@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -173,6 +173,8 @@ class TestAlertConditionsHandler:
         """Test successful retrieval of alert conditions for a policy."""
         mock_response = MagicMock()
         mock_response.status_code = 200
+        mock_response.headers = MagicMock()
+        mock_response.headers.get.return_value = None
         mock_response.json.return_value = {
             "nrql_conditions": [
                 {
@@ -212,6 +214,8 @@ class TestAlertConditionsHandler:
         """Test handling of alternative response format (conditions instead of nrql_conditions)."""
         mock_response = MagicMock()
         mock_response.status_code = 200
+        mock_response.headers = MagicMock()
+        mock_response.headers.get.return_value = None
         mock_response.json.return_value = {
             "conditions": [{"id": 999, "name": "Condition Alternative Format"}]
         }
@@ -232,6 +236,8 @@ class TestAlertConditionsHandler:
         """Test handling of error response from API."""
         mock_response = MagicMock()
         mock_response.status_code = 404
+        mock_response.headers = MagicMock()
+        mock_response.headers.get.return_value = None
         mock_response.json.return_value = {
             "error": {
                 "title": "Policy not found",
@@ -254,6 +260,8 @@ class TestAlertConditionsHandler:
         """Test when no conditions are returned."""
         mock_response = MagicMock()
         mock_response.status_code = 200
+        mock_response.headers = MagicMock()
+        mock_response.headers.get.return_value = None
         mock_response.json.return_value = {}
         mock_http_client.get.return_value = mock_response
 
@@ -262,6 +270,58 @@ class TestAlertConditionsHandler:
         )
 
         assert conditions == []
+
+    async def test_list_alert_conditions_for_policy_with_pagination(
+        self,
+        alert_conditions_handler: AlertConditionsHandler,
+        mock_http_client: AsyncMock,
+    ) -> None:
+        """Test pagination handling when multiple pages are returned."""
+        # First page response
+        first_page_response = MagicMock()
+        first_page_response.status_code = 200
+        first_page_headers = MagicMock()
+
+        # Make headers.get return the Link header for "Link" or "link", None otherwise
+        def first_page_headers_get(key: str) -> Optional[str]:
+            if key.lower() == "link":
+                return '<https://api.newrelic.com/v2/alerts_nrql_conditions.json?policy_id=123&page=2>; rel="next"'
+            return None
+
+        first_page_headers.get.side_effect = first_page_headers_get
+        first_page_response.headers = first_page_headers
+        first_page_response.json.return_value = {
+            "nrql_conditions": [
+                {"id": 1, "name": "Condition 1"},
+                {"id": 2, "name": "Condition 2"},
+            ]
+        }
+
+        # Second page response (last page)
+        second_page_response = MagicMock()
+        second_page_response.status_code = 200
+        second_page_headers = MagicMock()
+        second_page_headers.get.return_value = None  # No next page
+        second_page_response.headers = second_page_headers
+        second_page_response.json.return_value = {
+            "nrql_conditions": [
+                {"id": 3, "name": "Condition 3"},
+            ]
+        }
+
+        # Mock the get method to return different responses for different calls
+        mock_http_client.get.side_effect = [first_page_response, second_page_response]
+
+        conditions = await alert_conditions_handler.list_alert_conditions_for_policy(
+            123
+        )
+
+        assert len(conditions) == 3
+        assert conditions[0]["id"] == 1
+        assert conditions[1]["id"] == 2
+        assert conditions[2]["id"] == 3
+        # Verify that get was called twice (once for each page)
+        assert mock_http_client.get.call_count == 2
 
     async def test_enrich_condition_with_tags_with_entity_guid(
         self,

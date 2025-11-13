@@ -20,6 +20,7 @@ import yaml
 from loguru import logger
 from wcmatch import glob
 
+from github.clients.utils import get_mono_repo_organization
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import FileSearchOptions, ListFileSearchOptions
 from github.helpers.utils import GithubClientType
@@ -136,7 +137,8 @@ class FilePatternMappingBuilder:
         logger.info(f"Building path mapping for {len(files)} file selectors...")
 
         for file_sel in files:
-            async for org_login in self.generate_org_logins(file_sel.organization):
+            organization = get_mono_repo_organization(file_sel.organization)
+            async for org_login in self.generate_org_logins(organization):
                 async for repo_name, branch, _ in self.repo_selector.select_repos(
                     file_sel, self.repo_exporter, org_login
                 ):

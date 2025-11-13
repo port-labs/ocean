@@ -76,6 +76,7 @@ class GithubGraphQLClient(AbstractGithubClient):
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[IgnoredError]] = None,
         ignore_default_errors: bool = True,
+        authenticator_headers_params: Optional[Dict[str, Any]] = {},
     ) -> Dict[str, Any]:
         response = await super().send_api_request(
             resource=resource,
@@ -83,6 +84,7 @@ class GithubGraphQLClient(AbstractGithubClient):
             method=method,
             json_data=json_data,
             ignored_errors=ignored_errors,
+            authenticator_headers_params=authenticator_headers_params,
         )
         response = self._handle_graphql_errors(response, ignored_errors)
         return response
