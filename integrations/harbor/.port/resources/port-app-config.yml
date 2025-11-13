@@ -1,0 +1,130 @@
+resources:
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .project_id | tostring
+          title: .name
+          blueprint: '"harborProject"'
+          properties:
+            projectId: .project_id
+            public: .metadata.public == "true"
+            ownerId: .owner_id
+            ownerName: .owner_name
+            creationTime: .creation_time
+            updateTime: .update_time
+            repoCount: .repo_count
+            chartCount: .chart_count
+            storageLimit: .metadata.storage_limit // null
+            registryId: .registry_id
+            cveSeverity: .metadata.severity // "none"
+            memberCount: .members | length
+
+  - kind: user
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .user_id | tostring
+          title: .username
+          blueprint: '"harborUser"'
+          properties:
+            userId: .user_id
+            username: .username
+            email: .email
+            realname: .realname
+            comment: .comment
+            adminRoleInAuth: .admin_role_in_auth
+            creationTime: .creation_time
+            updateTime: .update_time
+            sysadminFlag: .sysadmin_flag
+
+  - kind: repository
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"harborRepository"'
+          properties:
+            repositoryId: .id
+            name: .name
+            projectId: .project_id
+            description: .description
+            artifactCount: .artifact_count
+            pullCount: .pull_count
+            creationTime: .creation_time
+            updateTime: .update_time
+          relations:
+            project: .project_id | tostring
+
+  - kind: artifact
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            .project_id + "_" + (.repository_name | split("/") | last) + "_" + (.digest | split(":") | last)
+          title: >-
+            (.repository_name | split("/") | last) + ":" + (if .tags | length > 0 then .tags[0].name else (.digest | split(":") | last | .[0:12]) end)
+          blueprint: '"harborArtifact"'
+          properties:
+            digest: .digest
+            size: .size
+            pushTime: .push_time
+            pullTime: .pull_time
+            type: .type
+            tags: '[.tags[]?.name]'
+            vulnerabilities: >-
+              if .scan_overview then
+                .scan_overview | to_entries | map({scanner: .key, summary: .value.summary}) | INDEX(.scanner)
+              else
+                null
+              end
+            scanStatus: >-
+              if .scan_overview then
+                .scan_overview | to_entries | .[0].value.scan_status
+              else
+                "Not Scanned"
+              end
+            severity: >-
+              if .scan_overview then
+                .scan_overview | to_entries | .[0].value.severity // "Unknown"
+              else
+                "Unknown"
+              end
+            criticalCount: >-
+              if .scan_overview then
+                .scan_overview | to_entries | .[0].value.summary.total // 0
+              else
+                0
+              end
+            highCount: >-
+              if .scan_overview then
+                .scan_overview | to_entries | .[0].value.summary.total // 0
+              else
+                0
+              end
+            mediumCount: >-
+              if .scan_overview then
+                .scan_overview | to_entries | .[0].value.summary.total // 0
+              else
+                0
+              end
+            lowCount: >-
+              if .scan_overview then
+                .scan_overview | to_entries | .[0].value.summary.total // 0
+              else
+                0
+              end
+            labels: '[.labels[]?.name]'
+          relations:
+            repository: >-
+              (.repository_name | split("/") | join("_")) + "_repo"
+            project: .project_id | tostring
