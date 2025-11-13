@@ -11,6 +11,12 @@ features:
       - kind: AWS::EC2::Instance
       - kind: AWS::ECS::Cluster
 configurations:
+  - name: CredentialProviderPriority
+    required: false
+    type: string
+    sensitive: false
+    default: "AssumeRoleWithWebIdentity,StaticCredential,AssumeRole"
+    description: The priority of the credential providers. The providers will be tried in the order of the priority. The first provider that is applicable will be used. The default value is "AssumeRoleWithWebIdentity,StaticCredential,AssumeRole".
   - name: accountRoleArn
     required: false
     type: string
