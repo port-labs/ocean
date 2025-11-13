@@ -4,6 +4,8 @@ import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 
+PAGE_SIZE = 100
+
 
 class ResourceKey(StrEnum):
     PROJECTS = "projects"
@@ -116,19 +118,79 @@ class JiraServerClient:
         ):
             yield issues
 
-    async def get_paginated_users(
-        self, username: str | None = None
+    async def _get_cursor_paginated_data(
+        self, url: str, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
-        Get users from Jira Server with pagination.
-        The API endpoint is `/user/search` and accepts a 'username' query parameter.
+        Generic cursor-based pagination handler for Jira REST APIs that return:
+        {
+          "values": [...],
+          "nextCursor": "<string>",
+          "isLast": true/false
+        }
         """
-        if not username:
-            # This is a workaround for Jira Server's API to get all users
-            username = "''"
-        logger.info("Getting users from Jira Server (paginated)")
-        initial_params = {"username": username}
-        async for users in self._get_paginated_data(
-            f"{self.api_url}/user/search", None, initial_params
-        ):
+        params = params or {}
+        cursor = None
+
+        while True:
+            effective_params = {**params}
+            if cursor:
+                effective_params["cursor"] = cursor
+
+            response = await self._send_api_request("GET", url, params=effective_params)
+            values = response["values"]
+            if not values:
+                break
+
+            yield values
+
+            cursor = response.get("nextCursor")
+            if not cursor or response["isLast"]:
+                break
+
+    async def get_paginated_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Get all users from Jira Server or Data Center.
+        - Tries /user/list (cursor-based, Jira ≥ 10)
+        - Falls back to /user/search (legacy, Jira < 10)
+        """
+        try:
+            async for users in self._fetch_users_via_list():
+                logger.info(
+                    f"Successfully fetched batch of {len(users)} users via /user/list"
+                )
+                yield users
+
+            return
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning("/user/list unsupported, falling back to /user/search")
+            else:
+                raise
+
+        async for users in self._fetch_users_via_search():
+            logger.info(
+                f"Fetched batch of {len(users)} users via /user/search fallback"
+            )
+            yield users
+
+    async def _fetch_users_via_search(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch users using the legacy /user/search endpoint (Jira < 10)."""
+        url = f"{self.api_url}/user/search"
+        # This is a workaround for Jira Server's API to get all users
+        params = {"username": "''", "maxResults": PAGE_SIZE}
+
+        logger.debug("Fetching users via /user/search")
+        async for users in self._get_paginated_data(url=url, initial_params=params):
+            yield users
+
+    async def _fetch_users_via_list(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch users using the modern /user/list endpoint (Jira ≥ 10)."""
+        url = f"{self.api_url}/user/list"
+        params = {"maxResults": PAGE_SIZE}
+
+        logger.debug("Fetching users via /user/list (cursor-based pagination)")
+        async for users in self._get_cursor_paginated_data(url, params):
             yield users
