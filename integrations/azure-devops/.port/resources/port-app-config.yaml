@@ -125,3 +125,35 @@ resources:
             link: ._links.web.href | gsub("_release?releaseId="; "")
           relations:
             project: .projectReference.id | gsub(" "; "")
+  - kind: file
+    selector:
+      query: 'true'
+      files:
+        path: '**/CODEOWNERS'
+    port:
+      itemsToParse: >-
+        (. as $root | .file.content.raw | split("\n") |
+        map(gsub("^[[:space:]]+|[[:space:]]+$"; "")) |
+        map(select((test("^[[:space:]]*#") | not) and (length > 0))) | map(
+            (split(" ") | map(select(length > 0))) as $tokens
+            | {
+                scope: ($tokens[0]),
+                identifier: ($tokens[0]
+                          | gsub("\\*\\*"; "doublestar")
+                          | gsub("\\*"; "star")),
+                repoName: $root.repo.name,
+                projectName: $root.repo.project.name,
+                filePath: $root.file.path
+            }
+          )
+        )
+      entity:
+        mappings:
+          identifier: (.item.projectName | ascii_downcase | gsub("[ ();]"; "")) + "/" + (.item.repoName | ascii_downcase | gsub("[ ();]"; "")) + "_" + .item.identifier + "_codeowners"
+          title: .item.scope + " codeowners"
+          blueprint: '"azureDevopsCodeowners"'
+          properties:
+            scope: .item.scope
+            location: .item.filePath
+          relations:
+            service: (.item.projectName | ascii_downcase | gsub("[ ();]"; "")) + "/" + (.item.repoName | ascii_downcase | gsub("[ ();]"; ""))
