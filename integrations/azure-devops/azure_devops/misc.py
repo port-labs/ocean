@@ -37,10 +37,12 @@ PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [
     {"searchCriteria.status": "active"},
     {
         "searchCriteria.status": "abandoned",
+        "searchCriteria.queryTimeRangeType": "closed",
         "searchCriteria.minTime": datetime.now() - timedelta(days=7),
     },
     {
         "searchCriteria.status": "completed",
+        "searchCriteria.queryTimeRangeType": "closed",
         "searchCriteria.minTime": datetime.now() - timedelta(days=7),
     },
 ]
