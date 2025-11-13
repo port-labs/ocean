@@ -365,5 +365,43 @@
         "many": true
       }
     }
+  },
+  {
+    "identifier": "opsGenieComment",
+    "description": "This blueprint represents an OpsGenie alert comment in our software catalog",
+    "title": "OpsGenie Comment",
+    "icon": "OpsGenie",
+    "schema": {
+      "properties": {
+        "source": {
+          "type": "string",
+          "title": "Source",
+          "description": "The source of the comment"
+        },
+        "message": {
+          "type": "string",
+          "title": "Message",
+          "description": "The comment message"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time",
+          "description": "When the comment was created"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "alert": {
+        "title": "Alert",
+        "target": "opsGenieAlert",
+        "required": true,
+        "many": false
+      }
+    }
   }
 ]
