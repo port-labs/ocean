@@ -11,7 +11,7 @@ features:
       - kind: AWS::EC2::Instance
       - kind: AWS::ECS::Cluster
 configurations:
-  - name: CredentialProviderPriority
+  - name: credentialProviderPriority
     required: false
     type: string
     sensitive: false
