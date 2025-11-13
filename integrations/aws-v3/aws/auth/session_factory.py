@@ -70,38 +70,15 @@ class AccountStrategyFactory:
     @staticmethod
     def _provider_is_applicable(provider_name: str, config: dict[str, Any]) -> bool:
         """Determine if a provider is applicable given the current environment and config."""
-        if provider_name == "assume_role_with_web_identity":
+        if provider_name == "AssumeRoleWithWebIdentity":
             return bool(os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"))
-        if provider_name == "static":
+        if provider_name == "StaticCredential":
             return bool(
                 config.get("aws_access_key_id") and config.get("aws_secret_access_key")
             )
-        if provider_name == "assume_role":
+        if provider_name == "AssumeRole":
             return True  # Always valid fallback
         return False
-
-    # @classmethod
-    # def _detect_provider_type(cls, config: dict[str, Any]) -> CredentialProvider:
-    #     """
-    #     Detect the appropriate provider type based on environment variables and config.
-    #     Returns a tuple of (provider_instance, provider_type_name, strategy_class)
-    #     """
-
-    #     # Check for web identity token first (highest priority)
-    #     if os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"):
-    #         logger.info(
-    #             "[AccountStrategyFactory] Using AssumeRoleWithWebIdentityProvider (found AWS_WEB_IDENTITY_TOKEN_FILE)"
-    #         )
-    #         return AssumeRoleWithWebIdentityProvider(config=config)
-
-    #     if config.get("aws_access_key_id") and config.get("aws_secret_access_key"):
-    #         logger.info(
-    #             "[AccountStrategyFactory] Using StaticCredentialProvider (found aws_access_key_id and aws_secret_access_key)"
-    #         )
-    #         return StaticCredentialProvider(config=config)
-
-    #     logger.info("[AccountStrategyFactory] Using AssumeRoleProvider")
-    #     return AssumeRoleProvider(config=config)
 
     @classmethod
     def _detect_strategy_type(cls, config: dict[str, Any]) -> type[StrategyType]:
