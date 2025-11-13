@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.91 (2025-11-13)
+
+
+### Bug fixes
+
+- Correct badly constructed urls in default mapping
+
+### Improvements
+
+- Enrich project, issues, and vulnerability kinds with organization
+
+
 ## 0.2.90 (2025-11-10)
 
 
