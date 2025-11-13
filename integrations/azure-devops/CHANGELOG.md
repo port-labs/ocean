@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.4.30 (2025-11-13)
+
+
+### Bug Fixes
+
+- Updated `PULL_REQUEST_SEARCH_CRITERIA` so that filters for both "abandoned" and "completed" pull requests now include a closed time range to improve query accuracy.
+- Added new tests to validate that "abandoned" and "completed" pull request filters correctly utilize the "closed" time range.
+
 
 ## 0.4.29 (2025-11-10)
 
