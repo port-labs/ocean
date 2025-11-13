@@ -1,8 +1,54 @@
-from unittest.mock import MagicMock
+from contextlib import asynccontextmanager
+from typing import Any, AsyncGenerator
+from unittest.mock import MagicMock, AsyncMock
 
 import pytest
+from azure.core.credentials import AccessToken
+from azure.core.credentials_async import AsyncTokenCredential
+
+from azure_integration.helpers.rate_limiter import AdaptiveTokenBucketRateLimiter
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+
+
+class _DummyCredential(AsyncTokenCredential):
+    async def get_token(self, *scopes: str, **kwargs: Any) -> AccessToken:
+        return AccessToken("dummy-token", 9999999999)
+
+    async def close(self) -> None:
+        pass
+
+    async def __aexit__(self, *args: Any) -> None:
+        pass
+
+
+class _NoOpRateLimiter(AdaptiveTokenBucketRateLimiter):
+    def __init__(self) -> None:
+        pass
+
+    @asynccontextmanager
+    async def limit(self, tokens: float = 1.0) -> AsyncGenerator[None, None]:
+        yield
+
+    def adjust_from_headers(self, headers: dict[str, str]) -> None:
+        pass
+
+
+@pytest.fixture
+def dummy_credential() -> _DummyCredential:
+    return _DummyCredential()
+
+
+@pytest.fixture
+def noop_rate_limiter() -> _NoOpRateLimiter:
+    return _NoOpRateLimiter()
+
+
+@pytest.fixture
+def mock_httpx_client() -> AsyncMock:
+    """Fixture for a mocked httpx.AsyncClient."""
+    mock_client = AsyncMock()
+    return mock_client
 
 
 @pytest.fixture(autouse=True)
@@ -13,50 +59,37 @@ def mock_ocean_context() -> None:
             "azure_client_id": "123",
             "azure_client_secret": "secret",
             "azure_tenant_id": "123",
+            "azure_base_url": "https://management.azure.com",
         }
         mock_ocean_app.config.resources = [
             {
-                "kind": "resourceContainer",
+                "kind": "graphResource",
                 "selector": {
-                    "types": ["Microsoft.Resources/subscriptions/resourceGroups"],
-                    "tags": {},
-                },
-                "port": {
-                    "entity": {
-                        "mappings": {
-                            "identifier": ".name",
-                            "title": ".name",
-                            "blueprint": "'resourceGroup'",
-                            "properties": {"tags": ".tags"},
-                        }
-                    }
-                },
-            },
-            {
-                "kind": "resource",
-                "selector": {
-                    "types": ["Microsoft.Compute/virtualMachines"],
-                    "tags": {},
+                    "graphQuery": "Resources | limit 1",
                 },
                 "port": {
                     "entity": {
                         "mappings": {
                             "identifier": ".id",
                             "title": ".name",
-                            "blueprint": "'virtualMachine'",
-                            "properties": {"tags": ".tags"},
+                            "blueprint": "'resource'",
                         }
                     }
                 },
-            },
+            }
         ]
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
+        # Provide an awaitable cache provider for cache_iterator_result decorator
+        mock_cache = MagicMock()
+        mock_cache.get = AsyncMock(return_value=None)
+        mock_cache.set = AsyncMock(return_value=None)
+        mock_ocean_app.cache_provider = mock_cache
 
-        # We also need to mock the integration class on the app, so that the correct AppConfigHandlerClass is used
-        from integration import AzureIntegration
+        # Use the integration class defined by this integration package
+        from integration import AzureResourceGraphIntegration
 
-        mock_ocean_app.integration = AzureIntegration(mock_ocean_app)
+        mock_ocean_app.integration = AzureResourceGraphIntegration(mock_ocean_app)
 
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:

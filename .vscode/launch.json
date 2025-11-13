@@ -1,6 +1,7 @@
 {
   "version": "0.2.0",
   "configurations": [
+
     {
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/jira",
@@ -207,6 +208,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/azure-resource-graph",
+      "envFile": "${workspaceFolder}/integrations/azure-resource-graph/.env",
+      "justMyCode": true,
+      "name": "Run Azure Resource Graph integration",
+      "program": "${workspaceFolder}/integrations/azure-resource-graph/debug.py",
+      "python": "${workspaceFolder}/integrations/azure-resource-graph/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/jira-server",
       "envFile": "${workspaceFolder}/integrations/jira-server/.env",
       "justMyCode": true,
@@ -279,6 +291,17 @@
       "name": "Run bitbucket-server integration",
       "program": "${workspaceFolder}/integrations/bitbucket-server/debug.py",
       "python": "${workspaceFolder}/integrations/bitbucket-server/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/github",
+      "envFile": "${workspaceFolder}/integrations/github/.env",
+      "justMyCode": true,
+      "name": "Run Github integration",
+      "program": "${workspaceFolder}/integrations/github/debug.py",
+      "python": "${workspaceFolder}/integrations/github/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },

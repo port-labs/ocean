@@ -1,5 +1,4 @@
 from typing import Any, AsyncGenerator, Dict, List, Optional
-from urllib.parse import urljoin
 
 from loguru import logger
 
@@ -7,6 +6,7 @@ from github.clients.http.base_client import AbstractGithubClient
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
+from urllib.parse import urlparse, urlunparse
 
 PAGE_SIZE = 25
 
@@ -14,9 +14,25 @@ PAGE_SIZE = 25
 class GithubGraphQLClient(AbstractGithubClient):
     """GraphQL API implementation of GitHub client."""
 
+    def __init__(
+        self,
+        github_host: str,
+        authenticator: Any,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(github_host=github_host, authenticator=authenticator, **kwargs)
+        self._graphql_url = self._compute_graphql_base_url(self.github_host)
+
+    def _compute_graphql_base_url(self, github_host: str) -> str:
+        parsed = urlparse(github_host.rstrip("/"))
+        graphql_path = "/api/graphql" if parsed.path.startswith("/api/") else "/graphql"
+        return urlunparse(
+            parsed._replace(path=graphql_path, params="", query="", fragment="")
+        )
+
     @property
     def base_url(self) -> str:
-        return urljoin(self.github_host, "/graphql")
+        return self._graphql_url
 
     @property
     def rate_limiter_config(self) -> GitHubRateLimiterConfig:
@@ -59,6 +75,8 @@ class GithubGraphQLClient(AbstractGithubClient):
         method: str = "POST",
         json_data: Optional[Dict[str, Any]] = None,
         ignored_errors: Optional[List[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
+        authenticator_headers_params: Optional[Dict[str, Any]] = {},
     ) -> Dict[str, Any]:
         response = await super().send_api_request(
             resource=resource,
@@ -66,6 +84,7 @@ class GithubGraphQLClient(AbstractGithubClient):
             method=method,
             json_data=json_data,
             ignored_errors=ignored_errors,
+            authenticator_headers_params=authenticator_headers_params,
         )
         response = self._handle_graphql_errors(response, ignored_errors)
         return response

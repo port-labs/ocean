@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.29.5 (2025-11-10)
+
+### Bug fixes
+
+- Update unprocessed kinds metrics to have 'aborted' status when a resync is aborted
+
+## 0.29.4 (2025-11-10)
+
+### Bug fixes
+
+- Fix graceful shutdown handling (SIGTERM handling)
+
+## 0.29.3 (2025-11-09)
+
+### Improvements
+
+- Updated starlette dependency
+
+## 0.29.2 (2025-11-09)
+
+### Bug fixes
+
+- Avoid waiting for empty task queues to release queue lock
+
+## 0.29.1 (2025-11-06)
+
+### Improvements
+
+- Resolved Dependabot alerts
+
+## 0.29.0 (2025-11-04)
+
+### Improvements
+
+- Add capability of running an execution agent
+
 ## 0.28.18 (2025-10-27)
 
 ### Bug fixes

@@ -26,6 +26,7 @@ from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
+from port_ocean.core.handlers.actions.execution_manager import ExecutionManager
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.models import ProcessExecutionMode
 from port_ocean.log.sensetive import sensitive_log_filter
@@ -88,6 +89,16 @@ class Ocean:
             max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
         )
 
+        self.execution_manager = ExecutionManager(
+            webhook_manager=self.webhook_manager,
+            signal_handler=signal_handler,
+            workers_count=self.config.actions_processor.workers_count,
+            runs_buffer_high_watermark=self.config.actions_processor.runs_buffer_high_watermark,
+            poll_check_interval_seconds=self.config.actions_processor.poll_check_interval_seconds,
+            visibility_timeout_ms=self.config.actions_processor.visibility_timeout_ms,
+            max_wait_seconds_before_shutdown=self.config.max_wait_seconds_before_shutdown,
+        )
+
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
         )
@@ -97,7 +108,7 @@ class Ocean:
         )
         self.app_initialized = False
 
-        signal_handler.register(self._report_resync_aborted)
+        signal_handler.register(self._report_resync_aborted, priority=100)
 
     async def _report_resync_aborted(self) -> None:
         """
@@ -105,13 +116,26 @@ class Ocean:
         This ensures Port is notified that the integration was interrupted.
         """
         try:
-            if self.metrics.event_id.find("-done") == -1:
-                await self.resync_state_updater.update_after_resync(
-                    IntegrationStateStatus.Aborted
+            if self.resync_state_updater:
+                current_integration = await self.port_client.get_current_integration()
+                current_status = (
+                    current_integration.get("resyncState", {}).get("status")
+                    if current_integration
+                    else None
                 )
-                logger.info("Resync status reported as aborted due to app shutdown")
+                if current_status == IntegrationStateStatus.Running.value:
+                    await self.resync_state_updater.update_after_resync(
+                        status=IntegrationStateStatus.Aborted
+                    )
+                    logger.info(
+                        "Graceful shutdown completed - sync state set to aborted"
+                    )
+                else:
+                    logger.info(
+                        "Graceful shutdown completed - sync was already completed, status unchanged"
+                    )
         except Exception as e:
-            logger.warning(f"Failed to report resync status on shutdown: {e}")
+            logger.warning(f"Error during graceful shutdown: {e}")
 
     def _get_process_execution_mode(self) -> ProcessExecutionMode:
         if self.config.process_execution_mode:
@@ -149,7 +173,10 @@ class Ocean:
                 )
             except asyncio.CancelledError:
                 logger.warning(
-                    "resync was cancelled by the scheduled resync, skipping state update"
+                    "resync was cancelled by the scheduled resync, updating state to aborted"
+                )
+                await self.resync_state_updater.update_after_resync(
+                    IntegrationStateStatus.Aborted
                 )
             except Exception as e:
                 await self.resync_state_updater.update_after_resync(
@@ -200,6 +227,24 @@ class Ocean:
                 )
         return None
 
+    async def _register_addons(self) -> None:
+        if self.base_url and self.config.event_listener.should_process_webhooks:
+            await self.webhook_manager.start_processing_event_messages()
+        else:
+            logger.warning(
+                "No base URL provided, or webhook processing is disabled is this event listener, skipping webhook processing"
+            )
+
+        if (
+            self.config.actions_processor.enabled
+            and self.config.event_listener.should_run_actions
+        ):
+            await self.execution_manager.start_processing_action_runs()
+        else:
+            logger.warning(
+                "Execution agent is not enabled, or actions processing is disabled in this event listener, skipping execution agent setup"
+            )
+
     def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
         self.fast_api_app.include_router(
@@ -210,10 +255,7 @@ class Ocean:
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 await self.integration.start()
-                if self.base_url:
-                    await self.webhook_manager.start_processing_event_messages()
-                else:
-                    logger.warning("No base URL provided, skipping webhook processing")
+                await self._register_addons()
                 await self._setup_scheduled_resync()
                 yield None
             except Exception:
