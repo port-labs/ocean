@@ -35,15 +35,12 @@ class AccountStrategyFactory:
         """
         priority_str = config["credential_provider_priority"]
         if not priority_str:
-
             priority_str = "AssumeRoleWithWebIdentity,StaticCredential,AssumeRole"
-        logger.error(f"priority_str: {priority_str}")
         priority_list = [
             provider_name.strip()
             for provider_name in priority_str.split(",")
             if provider_name.strip()
         ]
-        logger.error(f"priority_list: {priority_list}")
         return priority_list
 
     @classmethod
