@@ -9,6 +9,9 @@ from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
 from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 from aws.auth.strategies.organizations_strategy import OrganizationsStrategy
+from aws.auth.providers.assume_role_with_web_identity_provider import (
+    AssumeRoleWithWebIdentityProvider,
+)
 
 from aws.auth.utils import AWSSessionError
 
@@ -126,6 +129,76 @@ class TestAccountStrategyFactory:
                 with pytest.raises(Exception, match="Health check failed"):
                     async for _ in strategy.get_account_sessions():
                         break
+
+    @pytest.mark.asyncio
+    async def test_provider_priority_default_prefers_web_identity(
+        self,
+        mock_single_account_config: dict[str, object],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """When both web identity and static creds exist, default priority picks web identity first."""
+        config = mock_single_account_config.copy()
+        # Ensure web identity provider can initialize by providing a role ARN
+        config["account_role_arn"] = (
+            "arn:aws:iam::111122223333:role/test-web-identity-role"
+        )
+        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+            mock_ocean.integration_config = config
+            monkeypatch.setenv("AWS_WEB_IDENTITY_TOKEN_FILE", "/tmp/token")
+
+            strategy = await AccountStrategyFactory.create()
+            assert isinstance(strategy.provider, AssumeRoleWithWebIdentityProvider)
+
+    @pytest.mark.asyncio
+    async def test_provider_priority_custom_prefers_static_over_web_identity(
+        self,
+        mock_single_account_config: dict[str, object],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Custom priority should choose StaticCredential before web identity when both applicable."""
+        config = mock_single_account_config.copy()
+        # Ensure web identity is applicable but lower priority than static
+        config["account_role_arn"] = (
+            "arn:aws:iam::111122223333:role/test-web-identity-role"
+        )
+        config["credential_provider_priority"] = (
+            "StaticCredential,AssumeRoleWithWebIdentity,AssumeRole"
+        )
+        with patch("aws.auth.session_factory.ocean") as mock_ocean:
+            mock_ocean.integration_config = config
+            monkeypatch.setenv("AWS_WEB_IDENTITY_TOKEN_FILE", "/tmp/token")
+
+            strategy = await AccountStrategyFactory.create()
+            assert isinstance(strategy.provider, StaticCredentialProvider)
+
+    @pytest.mark.asyncio
+    async def test_provider_priority_unknown_and_not_applicable_fallbacks_to_assume_role(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Unknown providers are skipped; if none applicable, fallback to AssumeRoleProvider."""
+        config: dict[str, object] = {
+            "aws_access_key_id": None,
+            "aws_secret_access_key": None,
+            "aws_session_token": None,
+            "region": None,
+            "account_role_arn": None,
+            "account_role_arns": [],
+            "external_id": None,
+            "credential_provider_priority": "UnknownProvider,StaticCredential",
+        }
+        monkeypatch.delenv("AWS_WEB_IDENTITY_TOKEN_FILE", raising=False)
+        with (
+            patch("aws.auth.session_factory.ocean") as mock_ocean,
+            patch("aws.auth.session_factory.logger") as mock_logger,
+        ):
+            mock_ocean.integration_config = config
+
+            strategy = await AccountStrategyFactory.create()
+
+            assert isinstance(strategy.provider, AssumeRoleProvider)
+            mock_logger.warning.assert_any_call(
+                "[AccountStrategyFactory] Unknown provider 'UnknownProvider', skipping..."
+            )
 
     @pytest.mark.asyncio
     async def test_create_with_empty_config(self) -> None:

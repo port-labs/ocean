@@ -15,6 +15,8 @@ import os
 
 StrategyType = SingleAccountStrategy | MultiAccountStrategy | OrganizationsStrategy
 
+DEFAULT_PROVIDER_PRIORITY: str = "AssumeRoleWithWebIdentity,StaticCredential,AssumeRole"
+
 
 class AccountStrategyFactory:
     """A factory for creating account strategies based on the global configuration."""
@@ -30,18 +32,15 @@ class AccountStrategyFactory:
     @classmethod
     def _get_provider_priority(cls, config: dict[str, Any]) -> list[str]:
         """
-        Reads provider priority from the environment variable, or defaults to a predefined order.
-        Example: CREDENTIAL_PROVIDER_PRIORITY="assume_role_with_web_identity,static,assume_role"
+        Returns the credential provider priority list, falling back to DEFAULT_PROVIDER_PRIORITY if not provided.
+        Example: "AssumeRoleWithWebIdentity,StaticCredential,AssumeRole"
         """
-        priority_str = config["credential_provider_priority"]
-        if not priority_str:
-            priority_str = "AssumeRoleWithWebIdentity,StaticCredential,AssumeRole"
-        priority_list = [
-            provider_name.strip()
-            for provider_name in priority_str.split(",")
-            if provider_name.strip()
+        priority_str = (
+            config.get("credential_provider_priority") or DEFAULT_PROVIDER_PRIORITY
+        )
+        return [
+            provider.strip() for provider in priority_str.split(",") if provider.strip()
         ]
-        return priority_list
 
     @classmethod
     def _detect_provider_type(cls, config: dict[str, Any]) -> CredentialProvider:
