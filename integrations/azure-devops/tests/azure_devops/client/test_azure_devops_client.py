@@ -2533,20 +2533,23 @@ async def test_generate_files_with_multiple_glob_patterns_different_recursion() 
     async for batch in client.generate_files(paths):
         results.extend(batch)
 
-    # The actual behavior shows that only 3 files are returned:
+    # With multiple patterns sharing the same base path, all patterns should be processed:
     # - src/main.js (matches src/*.js)
+    # - src/components/Button.ts (matches src/**/*.ts)
+    # - src/utils/helper.ts (matches src/**/*.ts)
     # - docs/README.md (matches docs/**/*.md)
     # - docs/api/reference.md (matches docs/**/*.md)
     #
-    # The TypeScript files and other JavaScript files are not being matched
-    # This suggests the glob filtering might not be working as expected
-    assert len(results) == 3
+    # Note: src/components/Button.js does NOT match any pattern (src/*.js only matches one level)
+    assert len(results) == 5
 
     # Check what we actually got
     paths_returned = [r["file"]["path"] for r in results]
 
     # Check that we got the expected files
     assert "src/main.js" in paths_returned
+    assert "src/components/Button.ts" in paths_returned
+    assert "src/utils/helper.ts" in paths_returned
     assert "docs/README.md" in paths_returned
     assert "docs/api/reference.md" in paths_returned
 
