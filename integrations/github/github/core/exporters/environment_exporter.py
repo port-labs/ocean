@@ -1,7 +1,11 @@
 from typing import Any, cast
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.helpers.utils import enrich_with_repository, parse_github_options
+from github.helpers.utils import (
+    enrich_with_repository,
+    parse_github_options,
+    enrich_with_organization,
+)
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import ListEnvironmentsOptions, SingleEnvironmentOptions
@@ -23,7 +27,9 @@ class RestEnvironmentExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched environment with identifier {name} from repository {repo_name} from {organization}"
         )
 
-        return enrich_with_repository(response, cast(str, repo_name))
+        return enrich_with_organization(
+            enrich_with_repository(response, cast(str, repo_name)), organization
+        )
 
     async def get_paginated_resources[
         ExporterOptionsT: ListEnvironmentsOptions
@@ -43,7 +49,10 @@ class RestEnvironmentExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched batch of {len(environments)} environments from repository {repo_name} from {organization}"
             )
             batch = [
-                enrich_with_repository(environment, cast(str, repo_name))
+                enrich_with_organization(
+                    enrich_with_repository(environment, cast(str, repo_name)),
+                    organization,
+                )
                 for environment in environments
             ]
             yield batch
