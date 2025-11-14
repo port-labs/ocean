@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.3.5-beta (2025-11-13)
+
+
+### Improvements
+
+- Enriched pull request export with organization context across REST exporter responses and batches.
+
+
 ## 3.3.4-beta (2025-11-12)
 
 

@@ -7,7 +7,7 @@ from github.core.exporters.abstract_exporter import (
     AbstractGithubExporter,
 )
 from github.core.options import ListWorkflowOptions, SingleWorkflowOptions
-from github.helpers.utils import enrich_with_repository
+from github.helpers.utils import enrich_with_repository, enrich_with_organization
 
 
 class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
@@ -18,7 +18,9 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
         endpoint = f"{self.client.base_url}/repos/{organization}/{options['repo_name']}/actions/workflows/{options['workflow_id']}"
 
         response = await self.client.send_api_request(endpoint)
-        workflow = enrich_with_repository(response, options["repo_name"])
+        workflow = enrich_with_organization(
+            enrich_with_repository(response, options["repo_name"]), organization
+        )
         logger.info(
             f"Fetched workflow {options['workflow_id']} from {options['repo_name']} from {organization}"
         )
@@ -40,7 +42,9 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched batch of {len(workflow_batch['workflows'])} workflows from {repo_name} from {organization}"
             )
             batch = [
-                enrich_with_repository(workflow, repo_name)
+                enrich_with_organization(
+                    enrich_with_repository(workflow, repo_name), organization
+                )
                 for workflow in workflow_batch["workflows"]
             ]
             yield batch
