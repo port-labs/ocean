@@ -67,7 +67,7 @@ class BitbucketFolderResourceConfig(ResourceConfig):
 
 class BitbucketFilePattern(BaseModel):
     path: str = Field(
-        default="",
+        default="*/",
         alias="path",
         description="Specify the path to match files from",
     )
