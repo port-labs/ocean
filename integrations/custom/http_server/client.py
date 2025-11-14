@@ -45,15 +45,19 @@ class HttpServerClient:
         # Use Ocean's built-in HTTP client with retry and rate limiting
         # If SSL verification is disabled, create a custom client
         if not verify_ssl:
-            logger.warning("SSL verification is disabled - not recommended for production")
+            logger.warning(
+                "SSL verification is disabled - not recommended for production"
+            )
             self.client = httpx.AsyncClient(verify=False)
         else:
             self.client = http_async_client
-        
+
         self.client.headers["User-Agent"] = "Port-Ocean-HTTP-Integration/1.0"
 
         # Configure authentication using handler pattern
-        self.auth_handler = get_auth_handler(self.auth_type, self.client, self.auth_config)
+        self.auth_handler = get_auth_handler(
+            self.auth_type, self.client, self.auth_config
+        )
         self.auth_handler.setup()
 
         # Concurrency control
@@ -143,7 +147,7 @@ class HttpServerClient:
         # Merge global custom headers with per-endpoint headers
         # Per-endpoint headers override global headers (same key)
         merged_headers = {**self.custom_headers, **headers}
-        
+
         try:
             response = await self.client.request(
                 method=method,

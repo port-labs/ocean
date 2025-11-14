@@ -40,7 +40,7 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     # Call each resolved endpoint
     for endpoint, path_params in endpoints:
         logger.info(f"Fetching data from: {method} {endpoint}")
-        
+
         # Extract data_path per endpoint (may be auto-detected from first batch)
         data_path = getattr(selector, "data_path", None)
 

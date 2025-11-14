@@ -57,9 +57,9 @@ class TestHttpServerClient:
             auth_config={},
             pagination_config={"pagination_type": "none"},
         )
-        
+
         captured_url = None
-        
+
         async def mock_make_request(url, method, params, headers):
             nonlocal captured_url
             captured_url = url
@@ -67,11 +67,11 @@ class TestHttpServerClient:
             response.json = AsyncMock(return_value={"data": []})
             response.raise_for_status = lambda: None
             return response
-        
+
         client._make_request = mock_make_request
-        
+
         await client.fetch_paginated_data(endpoint="/v1/users").__anext__()
-        
+
         assert captured_url == "https://api.example.com/v1/users"
 
     async def test_url_construction_base_with_path_component(self) -> None:
@@ -82,9 +82,9 @@ class TestHttpServerClient:
             auth_config={},
             pagination_config={"pagination_type": "none"},
         )
-        
+
         captured_url = None
-        
+
         async def mock_make_request(url, method, params, headers):
             nonlocal captured_url
             captured_url = url
@@ -92,11 +92,11 @@ class TestHttpServerClient:
             response.json = AsyncMock(return_value={"data": []})
             response.raise_for_status = lambda: None
             return response
-        
+
         client._make_request = mock_make_request
-        
+
         await client.fetch_paginated_data(endpoint="/v2/sit/export").__anext__()
-        
+
         assert captured_url == "https://rackview-api.dc.adform.zone/api/v2/sit/export"
 
     async def test_url_construction_base_with_path_and_trailing_slash(self) -> None:
@@ -107,9 +107,9 @@ class TestHttpServerClient:
             auth_config={},
             pagination_config={"pagination_type": "none"},
         )
-        
+
         captured_url = None
-        
+
         async def mock_make_request(url, method, params, headers):
             nonlocal captured_url
             captured_url = url
@@ -117,11 +117,11 @@ class TestHttpServerClient:
             response.json = AsyncMock(return_value={"data": []})
             response.raise_for_status = lambda: None
             return response
-        
+
         client._make_request = mock_make_request
-        
+
         await client.fetch_paginated_data(endpoint="/users.list").__anext__()
-        
+
         assert captured_url == "https://slack.com/api/users.list"
 
     async def test_url_construction_endpoint_without_leading_slash(self) -> None:
@@ -132,9 +132,9 @@ class TestHttpServerClient:
             auth_config={},
             pagination_config={"pagination_type": "none"},
         )
-        
+
         captured_url = None
-        
+
         async def mock_make_request(url, method, params, headers):
             nonlocal captured_url
             captured_url = url
@@ -142,11 +142,11 @@ class TestHttpServerClient:
             response.json = AsyncMock(return_value={"data": []})
             response.raise_for_status = lambda: None
             return response
-        
+
         client._make_request = mock_make_request
-        
+
         await client.fetch_paginated_data(endpoint="v1/users").__anext__()
-        
+
         assert captured_url == "https://api.example.com/v1/users"
 
     async def test_url_construction_multiple_trailing_slashes(self) -> None:
@@ -157,9 +157,9 @@ class TestHttpServerClient:
             auth_config={},
             pagination_config={"pagination_type": "none"},
         )
-        
+
         captured_url = None
-        
+
         async def mock_make_request(url, method, params, headers):
             nonlocal captured_url
             captured_url = url
@@ -167,11 +167,11 @@ class TestHttpServerClient:
             response.json = AsyncMock(return_value={"data": []})
             response.raise_for_status = lambda: None
             return response
-        
+
         client._make_request = mock_make_request
-        
+
         await client.fetch_paginated_data(endpoint="/v1/users").__anext__()
-        
+
         assert captured_url == "https://api.example.com/v1/users"
 
     async def test_url_construction_multiple_leading_slashes(self) -> None:
@@ -182,9 +182,9 @@ class TestHttpServerClient:
             auth_config={},
             pagination_config={"pagination_type": "none"},
         )
-        
+
         captured_url = None
-        
+
         async def mock_make_request(url, method, params, headers):
             nonlocal captured_url
             captured_url = url
@@ -192,11 +192,11 @@ class TestHttpServerClient:
             response.json = AsyncMock(return_value={"data": []})
             response.raise_for_status = lambda: None
             return response
-        
+
         client._make_request = mock_make_request
-        
+
         await client.fetch_paginated_data(endpoint="///v1/users").__anext__()
-        
+
         assert captured_url == "https://api.example.com/v1/users"
 
     async def test_url_construction_with_port_number(self) -> None:
@@ -207,9 +207,9 @@ class TestHttpServerClient:
             auth_config={},
             pagination_config={"pagination_type": "none"},
         )
-        
+
         captured_url = None
-        
+
         async def mock_make_request(url, method, params, headers):
             nonlocal captured_url
             captured_url = url
@@ -217,11 +217,11 @@ class TestHttpServerClient:
             response.json = AsyncMock(return_value={"data": []})
             response.raise_for_status = lambda: None
             return response
-        
+
         client._make_request = mock_make_request
-        
+
         await client.fetch_paginated_data(endpoint="/api/v1/users").__anext__()
-        
+
         assert captured_url == "http://localhost:8080/api/v1/users"
 
     async def test_url_construction_deep_path(self) -> None:
@@ -232,9 +232,9 @@ class TestHttpServerClient:
             auth_config={},
             pagination_config={"pagination_type": "none"},
         )
-        
+
         captured_url = None
-        
+
         async def mock_make_request(url, method, params, headers):
             nonlocal captured_url
             captured_url = url
@@ -242,11 +242,11 @@ class TestHttpServerClient:
             response.json = AsyncMock(return_value={"data": []})
             response.raise_for_status = lambda: None
             return response
-        
+
         client._make_request = mock_make_request
-        
+
         await client.fetch_paginated_data(endpoint="/resources/users").__anext__()
-        
+
         assert captured_url == "https://api.example.com/v1/tenant/12345/resources/users"
 
     async def test_url_construction_empty_base_url_raises_error(self) -> None:
@@ -257,7 +257,7 @@ class TestHttpServerClient:
             auth_config={},
             pagination_config={"pagination_type": "none"},
         )
-        
+
         with pytest.raises(ValueError, match="base_url cannot be empty"):
             await client.fetch_paginated_data(endpoint="/users").__anext__()
 
@@ -269,7 +269,7 @@ class TestHttpServerClient:
             auth_config={},
             pagination_config={"pagination_type": "none"},
         )
-        
+
         with pytest.raises(ValueError, match="endpoint cannot be empty"):
             await client.fetch_paginated_data(endpoint="").__anext__()
 
@@ -281,7 +281,7 @@ class TestHttpServerClient:
             auth_config={},
             pagination_config={"pagination_type": "none"},
         )
-        
+
         with pytest.raises(ValueError, match="endpoint cannot be empty"):
             await client.fetch_paginated_data(endpoint="/").__anext__()
 
@@ -294,9 +294,9 @@ class TestHttpServerClient:
             pagination_config={"pagination_type": "none"},
             custom_headers={"X-Version": "v2", "Accept": "application/json"},
         )
-        
+
         captured_headers = None
-        
+
         async def mock_make_request(url, method, params, headers):
             nonlocal captured_headers
             captured_headers = headers
@@ -304,19 +304,21 @@ class TestHttpServerClient:
             response.json = AsyncMock(return_value={"data": []})
             response.raise_for_status = lambda: None
             return response
-        
+
         # Patch the method on the instance
-        with patch.object(client, '_make_request', mock_make_request):
+        with patch.object(client, "_make_request", mock_make_request):
             # Call with per-endpoint headers
             await client.fetch_paginated_data(
                 endpoint="/api/v1/users",
-                headers={"Accept": "application/vnd.api+json", "X-Custom": "endpoint"}
+                headers={"Accept": "application/vnd.api+json", "X-Custom": "endpoint"},
             ).__anext__()
-        
+
         # Verify merged headers: global + endpoint (endpoint overrides global)
         assert captured_headers is not None
         assert captured_headers["X-Version"] == "v2"  # From global
-        assert captured_headers["Accept"] == "application/vnd.api+json"  # Overridden by endpoint
+        assert (
+            captured_headers["Accept"] == "application/vnd.api+json"
+        )  # Overridden by endpoint
         assert captured_headers["X-Custom"] == "endpoint"  # From endpoint
 
     async def test_custom_headers_only_global(self) -> None:
@@ -328,9 +330,9 @@ class TestHttpServerClient:
             pagination_config={"pagination_type": "none"},
             custom_headers={"X-Version": "v2", "Accept": "application/json"},
         )
-        
+
         captured_headers = None
-        
+
         async def mock_make_request(url, method, params, headers):
             nonlocal captured_headers
             captured_headers = headers
@@ -338,12 +340,12 @@ class TestHttpServerClient:
             response.json = AsyncMock(return_value={"data": []})
             response.raise_for_status = lambda: None
             return response
-        
+
         # Patch the method on the instance
-        with patch.object(client, '_make_request', mock_make_request):
+        with patch.object(client, "_make_request", mock_make_request):
             # Call without per-endpoint headers
             await client.fetch_paginated_data(endpoint="/api/v1/users").__anext__()
-        
+
         # Verify global headers are applied
         assert captured_headers is not None
         assert captured_headers["X-Version"] == "v2"
@@ -357,5 +359,5 @@ class TestHttpServerClient:
             auth_config={},
             pagination_config={"pagination_type": "none"},
         )
-        
+
         assert client.custom_headers == {}

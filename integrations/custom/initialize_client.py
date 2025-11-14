@@ -16,22 +16,23 @@ from port_ocean.context.ocean import ocean
 
 def _resolve_env_vars(value: str) -> str:
     """Resolve environment variable references in string (e.g., ${VAR_NAME})"""
+
     def replace_env(match):
         var_name = match.group(1)
         return os.getenv(var_name, match.group(0))  # Return original if not found
-    
-    return re.sub(r'\$\{([^}]+)\}', replace_env, value)
+
+    return re.sub(r"\$\{([^}]+)\}", replace_env, value)
 
 
 def _parse_custom_headers(headers_config: Optional[str]) -> Dict[str, str]:
     """Parse custom headers JSON using Ocean's Pydantic utilities and resolve environment variable references"""
     if not headers_config:
         return {}
-    
+
     try:
         # Use Ocean's Pydantic parse_raw_as (same as used in Ocean's config parsing)
         headers_dict = parse_raw_as(Dict[str, Any], headers_config)
-        
+
         # Resolve environment variable references in values
         resolved_headers = {}
         for key, value in headers_dict.items():
@@ -39,7 +40,7 @@ def _parse_custom_headers(headers_config: Optional[str]) -> Dict[str, str]:
                 resolved_headers[key] = _resolve_env_vars(value)
             else:
                 resolved_headers[key] = str(value)
-        
+
         return resolved_headers
     except Exception as e:
         raise ValueError(f"Invalid custom_headers JSON: {e}")
