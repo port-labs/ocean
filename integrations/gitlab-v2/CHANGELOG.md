@@ -144,9 +144,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.38 (2025-10-15)
 
 
-### Improvements
+### Breaking change
 
-- Add memory optimizations for file kind
+- Add memory optimizations and alignment with itemsToParse streaming for file kind
+- File kind mappings which previously assumed an object shape for file content, now to be updated to account for an array. See the updated examples for guidance - [GitLab v2 — Files and file contents](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab-v2/examples#files-and-file-contents)
 
 
 ## 0.2.37 (2025-10-15)
