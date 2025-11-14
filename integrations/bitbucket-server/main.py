@@ -8,6 +8,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from integration import (
     BitbucketGenericResourceConfig,
     BitbucketPullRequestResourceConfig,
+    BitbucketServerFolderResourceConfig,
+    BitbucketServerFileResourceConfig,
     ObjectKind,
 )
 from utils import initialize_client
@@ -15,6 +17,8 @@ from webhook_processors.processors import (
     ProjectWebhookProcessor,
     PullRequestWebhookProcessor,
     RepositoryWebhookProcessor,
+    FilePatternWebhookProcessor,
+    FolderPatternWebhookProcessor,
 )
 from webhook_processors.webhook_client import (
     initialize_client as initialize_webhook_client,
@@ -62,6 +66,30 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield user_batch
 
 
+@ocean.on_resync(ObjectKind.FOLDER)
+async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    config = cast(BitbucketServerFolderResourceConfig, event.resource_config)
+    selector = config.selector
+    logger.info(f"Resyncing folders with filter: {selector.folders}")
+    client = initialize_client()
+
+    async for matching_folders in client.get_folders_by_patterns(selector.folders):
+        logger.info(f"Received {len(matching_folders)} folders")
+        yield matching_folders
+
+
+@ocean.on_resync(ObjectKind.FILE)
+async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    config = cast(BitbucketServerFileResourceConfig, event.resource_config)
+    selector = config.selector
+    logger.info(f"Resyncing files with filter: {selector.files}")
+    client = initialize_client()
+
+    async for file_result in client.get_files_by_patterns(selector.files):
+        logger.info(f"Received {len(file_result)} files")
+        yield file_result
+
+
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Bitbucket Server integration")
@@ -79,3 +107,5 @@ async def on_start() -> None:
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", FilePatternWebhookProcessor)
+ocean.add_webhook_processor("/webhook", FolderPatternWebhookProcessor)
