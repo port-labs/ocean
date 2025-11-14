@@ -71,3 +71,31 @@ resources:
             reviewers: .reviewers | map(.name)
           relations:
             project: .references.full | gsub("!.+"; "")
+  - kind: file
+    selector:
+      query: 'true'
+      files:
+        path: CODEOWNERS
+        skipParsing: 'true'
+    port:
+      itemsToParseName: data
+      itemsToParse: >-
+        .file.content.content | split("\n") |
+        map(gsub("^[[:space:]]+|[[:space:]]+$"; "")) |
+        map(select((test("^[[:space:]]*#") | not) and (length > 0))) |
+        map(split(" ") | map(select(length > 0)) | .[0]) | map({
+          scope: .,
+          identifier: (. | gsub("\\*\\*"; "doublestar") | gsub("\\*"; "star"))
+        })
+      entity:
+        mappings:
+          identifier: >-
+            (.file.content.repo.path_with_namespace | gsub(" "; "")) + "_" +
+            .data.identifier + "_codeowners"
+          title: .data.scope + " codeowners"
+          blueprint: '"gitlabCodeowners"'
+          properties:
+            scope: .data.scope
+            location: .file.path
+          relations:
+            project: .file.content.repo.path_with_namespace | gsub(" "; "")
