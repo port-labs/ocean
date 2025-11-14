@@ -87,10 +87,8 @@ async def query_api_for_parameters(param_config: ApiPathParameter) -> List[str]:
                 items_to_process = []
                 if param_config.data_path:
                     try:
-                        extracted_data = (
-                            await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
-                                response_item, param_config.data_path
-                            )
+                        extracted_data = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
+                            response_item, param_config.data_path
                         )
                         if isinstance(extracted_data, list):
                             items_to_process = extracted_data
@@ -109,10 +107,8 @@ async def query_api_for_parameters(param_config: ApiPathParameter) -> List[str]:
                 for item in items_to_process:
                     try:
                         # Use Ocean's built-in JQ processor
-                        extracted_value = (
-                            await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
-                                item, param_config.field
-                            )
+                        extracted_value = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
+                            item, param_config.field
                         )
                         if extracted_value is not None:
                             # Apply optional filter
