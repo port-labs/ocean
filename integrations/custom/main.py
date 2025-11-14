@@ -32,15 +32,17 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     logger.info(f"Resolved {len(endpoints)} endpoints to call for kind: {kind}")
 
-    # Extract method, query_params, headers, data_path from selector
+    # Extract method, query_params, headers from selector
     method = getattr(selector, "method", "GET")
     query_params = getattr(selector, "query_params", None) or {}
     headers = getattr(selector, "headers", None) or {}
-    data_path = getattr(selector, "data_path", None)
 
     # Call each resolved endpoint
     for endpoint, path_params in endpoints:
         logger.info(f"Fetching data from: {method} {endpoint}")
+        
+        # Extract data_path per endpoint (may be auto-detected from first batch)
+        data_path = getattr(selector, "data_path", None)
 
         try:
             async for batch in http_client.fetch_paginated_data(
@@ -50,6 +52,25 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 headers=headers,
             ):
                 logger.info(f"Received {len(batch)} records from {endpoint}")
+
+                # Auto-detect list responses and default data_path to '.' if missing
+                # This fixes the issue where direct list responses fail validation
+                # Pagination handlers yield [response_data], so batch[0] is the raw response
+                if data_path is None and batch:
+                    response_data = batch[0]
+                    if isinstance(response_data, list):
+                        # Auto-detect direct list responses
+                        data_path = "."
+                        logger.info("Auto-detected list response, using data_path: '.'")
+                    else:
+                        # Not a list and no data_path specified - log error and continue
+                        # Let Ocean's validation handle it downstream
+                        logger.error(
+                            f"Response from {endpoint} is not a list and 'data_path' is not specified. "
+                            f"Yielding response as-is. If mapping fails, please specify 'data_path' in your selector "
+                            f"(e.g., data_path: '.data'). Response type: {type(response_data).__name__}"
+                        )
+                        # Continue without setting data_path - will yield batch as-is
 
                 # If data_path is specified, extract the array from each response
                 if data_path:
