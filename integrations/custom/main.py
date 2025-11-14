@@ -78,8 +78,10 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     for item in batch:
                         try:
                             # Use Ocean's built-in JQ processor
-                            extracted_data = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
-                                item, data_path
+                            extracted_data = (
+                                await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
+                                    item, data_path
+                                )
                             )
                             if isinstance(extracted_data, list):
                                 # Inject path parameters into each extracted item
