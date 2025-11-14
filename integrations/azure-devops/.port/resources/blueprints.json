@@ -333,5 +333,39 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "azureDevopsCodeowners",
+    "description": "This blueprint represents a CODEOWNERS file in an Azure DevOps repository",
+    "title": "Azure DevOps Codeowners",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "location": {
+          "type": "string",
+          "title": "File location",
+          "description": "File path to CODEOWNERS file"
+        },
+        "scope": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Scope",
+          "description": "The scope which the user/team owns"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "service": {
+        "title": "Service",
+        "description": "The repository which the CODEOWNERS file resides in",
+        "target": "service",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
