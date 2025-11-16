@@ -1,5 +1,6 @@
 """Tests for main resync function"""
 
+from typing import Any
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
@@ -42,7 +43,7 @@ class TestListResponseHandling:
                 {"id": 2, "name": "Bob"},
             ]
 
-            async def mock_fetch_paginated_data(*args, **kwargs):
+            async def mock_fetch_paginated_data(*args: Any, **kwargs: Any) -> Any:
                 yield [direct_list_response]  # Wrap in list as pagination handlers do
 
             mock_client.fetch_paginated_data = mock_fetch_paginated_data
@@ -52,20 +53,25 @@ class TestListResponseHandling:
                 return_value=direct_list_response
             )
 
+            # Mock event
+            mock_event = MagicMock()
+            mock_event.resource_config = mock_resource_config
+
             # Call resync_resources
-            result = resync_resources("/api/v1/users")
+            with patch("main.event", mock_event):
+                result = resync_resources("/api/v1/users")
 
-            # Get first batch
-            batch = await result.__anext__()
+                # Get first batch
+                batch = await result.__anext__()
 
-            # Verify that data_path was auto-detected and used
-            # The batch should contain the extracted items
-            assert len(batch) == 2
-            assert batch[0]["id"] == 1
-            assert batch[1]["id"] == 2
+                # Verify that data_path was auto-detected and used
+                # The batch should contain the extracted items
+                assert len(batch) == 2
+                assert batch[0]["id"] == 1
+                assert batch[1]["id"] == 2
 
-            # Verify that _search was called with data_path '.'
-            mock_ocean.app.integration.entity_processor._search.assert_called()
+                # Verify that _search was called with data_path '.'
+                mock_ocean.app.integration.entity_processor._search.assert_called()
 
     @pytest.mark.asyncio
     async def test_error_logged_when_not_list_and_no_data_path(self) -> None:
@@ -97,25 +103,30 @@ class TestListResponseHandling:
             # Pagination handlers yield [response_data], so batch[0] is the raw response
             object_response = {"data": [{"id": 1, "name": "Alice"}]}
 
-            async def mock_fetch_paginated_data(*args, **kwargs):
+            async def mock_fetch_paginated_data(*args: Any, **kwargs: Any) -> Any:
                 yield [object_response]  # Wrap in list as pagination handlers do
 
             mock_client.fetch_paginated_data = mock_fetch_paginated_data
 
+            # Mock event
+            mock_event = MagicMock()
+            mock_event.resource_config = mock_resource_config
+
             # Call resync_resources
-            result = resync_resources("/api/v1/users")
+            with patch("main.event", mock_event):
+                result = resync_resources("/api/v1/users")
 
-            # Get first batch
-            batch = await result.__anext__()
+                # Get first batch
+                batch = await result.__anext__()
 
-            # Verify error was logged
-            mock_logger.error.assert_called()
-            error_call = mock_logger.error.call_args[0][0]
-            assert "not a list" in error_call
-            assert "data_path" in error_call
+                # Verify error was logged
+                mock_logger.error.assert_called()
+                error_call = mock_logger.error.call_args[0][0]
+                assert "not a list" in error_call
+                assert "data_path" in error_call
 
-            # Verify batch was yielded as-is (it's wrapped in a list by pagination handler)
-            assert batch == [object_response]
+                # Verify batch was yielded as-is (it's wrapped in a list by pagination handler)
+                assert batch == [object_response]
 
     @pytest.mark.asyncio
     async def test_explicit_data_path_used_when_provided(self) -> None:
@@ -147,7 +158,7 @@ class TestListResponseHandling:
             # Pagination handlers yield [response_data], so batch[0] is the raw response
             object_response = {"data": {"users": [{"id": 1, "name": "Alice"}]}}
 
-            async def mock_fetch_paginated_data(*args, **kwargs):
+            async def mock_fetch_paginated_data(*args: Any, **kwargs: Any) -> Any:
                 yield [object_response]  # Wrap in list as pagination handlers do
 
             mock_client.fetch_paginated_data = mock_fetch_paginated_data
@@ -158,17 +169,22 @@ class TestListResponseHandling:
                 return_value=extracted_users
             )
 
+            # Mock event
+            mock_event = MagicMock()
+            mock_event.resource_config = mock_resource_config
+
             # Call resync_resources
-            result = resync_resources("/api/v1/users")
+            with patch("main.event", mock_event):
+                result = resync_resources("/api/v1/users")
 
-            # Get first batch
-            batch = await result.__anext__()
+                # Get first batch
+                batch = await result.__anext__()
 
-            # Verify that explicit data_path was used
-            mock_ocean.app.integration.entity_processor._search.assert_called_with(
-                object_response, ".data.users"
-            )
+                # Verify that explicit data_path was used
+                mock_ocean.app.integration.entity_processor._search.assert_called_with(
+                    object_response, ".data.users"
+                )
 
-            # Verify batch contains extracted items
-            assert len(batch) == 1
-            assert batch[0]["id"] == 1
+                # Verify batch contains extracted items
+                assert len(batch) == 1
+                assert batch[0]["id"] == 1
