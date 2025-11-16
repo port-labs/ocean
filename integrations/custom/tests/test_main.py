@@ -33,6 +33,7 @@ class TestListResponseHandling:
             patch("main.resolve_dynamic_endpoints") as mock_resolve,
             patch("main.ocean") as mock_ocean,
             patch("main.cast", return_value=mock_resource_config),
+            patch("main.event") as mock_event,
         ):
             mock_resolve.return_value = [("/api/v1/users", {})]
 
@@ -54,24 +55,25 @@ class TestListResponseHandling:
             )
 
             # Mock event
-            mock_event = MagicMock()
             mock_event.resource_config = mock_resource_config
 
-            # Call resync_resources
-            with patch("main.event", mock_event):
-                result = resync_resources("/api/v1/users")
+            # Import the actual function (not the decorated wrapper)
+            from main import resync_resources
+            # The decorator wraps it, so we need to get the actual function
+            # resync_resources is the decorated function, which when called returns the generator
+            result = resync_resources("/api/v1/users")
 
-                # Get first batch
-                batch = await result.__anext__()
+            # Get first batch
+            batch = await result.__anext__()
 
-                # Verify that data_path was auto-detected and used
-                # The batch should contain the extracted items
-                assert len(batch) == 2
-                assert batch[0]["id"] == 1
-                assert batch[1]["id"] == 2
+            # Verify that data_path was auto-detected and used
+            # The batch should contain the extracted items
+            assert len(batch) == 2
+            assert batch[0]["id"] == 1
+            assert batch[1]["id"] == 2
 
-                # Verify that _search was called with data_path '.'
-                mock_ocean.app.integration.entity_processor._search.assert_called()
+            # Verify that _search was called with data_path '.'
+            mock_ocean.app.integration.entity_processor._search.assert_called()
 
     @pytest.mark.asyncio
     async def test_error_logged_when_not_list_and_no_data_path(self) -> None:
@@ -96,6 +98,7 @@ class TestListResponseHandling:
             patch("main.resolve_dynamic_endpoints") as mock_resolve,
             patch("main.logger") as mock_logger,
             patch("main.cast", return_value=mock_resource_config),
+            patch("main.event") as mock_event,
         ):
             mock_resolve.return_value = [("/api/v1/users", {})]
 
@@ -109,24 +112,22 @@ class TestListResponseHandling:
             mock_client.fetch_paginated_data = mock_fetch_paginated_data
 
             # Mock event
-            mock_event = MagicMock()
             mock_event.resource_config = mock_resource_config
 
             # Call resync_resources
-            with patch("main.event", mock_event):
-                result = resync_resources("/api/v1/users")
+            result = resync_resources("/api/v1/users")
 
-                # Get first batch
-                batch = await result.__anext__()
+            # Get first batch
+            batch = await result.__anext__()
 
-                # Verify error was logged
-                mock_logger.error.assert_called()
-                error_call = mock_logger.error.call_args[0][0]
-                assert "not a list" in error_call
-                assert "data_path" in error_call
+            # Verify error was logged
+            mock_logger.error.assert_called()
+            error_call = mock_logger.error.call_args[0][0]
+            assert "not a list" in error_call
+            assert "data_path" in error_call
 
-                # Verify batch was yielded as-is (it's wrapped in a list by pagination handler)
-                assert batch == [object_response]
+            # Verify batch was yielded as-is (it's wrapped in a list by pagination handler)
+            assert batch == [object_response]
 
     @pytest.mark.asyncio
     async def test_explicit_data_path_used_when_provided(self) -> None:
@@ -151,6 +152,7 @@ class TestListResponseHandling:
             patch("main.resolve_dynamic_endpoints") as mock_resolve,
             patch("main.ocean") as mock_ocean,
             patch("main.cast", return_value=mock_resource_config),
+            patch("main.event") as mock_event,
         ):
             mock_resolve.return_value = [("/api/v1/users", {})]
 
@@ -170,21 +172,20 @@ class TestListResponseHandling:
             )
 
             # Mock event
-            mock_event = MagicMock()
             mock_event.resource_config = mock_resource_config
 
             # Call resync_resources
-            with patch("main.event", mock_event):
-                result = resync_resources("/api/v1/users")
+            result = resync_resources("/api/v1/users")
 
-                # Get first batch
-                batch = await result.__anext__()
+            # Get first batch
+            batch = await result.__anext__()
 
-                # Verify that explicit data_path was used
-                mock_ocean.app.integration.entity_processor._search.assert_called_with(
-                    object_response, ".data.users"
-                )
+            # Verify that explicit data_path was used
+            mock_ocean.app.integration.entity_processor._search.assert_called_with(
+                object_response, ".data.users"
+            )
 
-                # Verify batch contains extracted items
-                assert len(batch) == 1
-                assert batch[0]["id"] == 1
+            # Verify batch contains extracted items
+            assert len(batch) == 1
+            assert batch[0]["id"] == 1
+Wha

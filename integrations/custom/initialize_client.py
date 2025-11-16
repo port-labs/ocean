@@ -14,7 +14,7 @@ from http_server.client import HttpServerClient
 from port_ocean.context.ocean import ocean
 
 
-def _resolve_env_vars(value: str) -> str:
+def _resolve_env_vars(value: str) -> str:  # type: ignore[no-untyped-def]
     """Resolve environment variable references in string (e.g., ${VAR_NAME})"""
 
     def replace_env(match):

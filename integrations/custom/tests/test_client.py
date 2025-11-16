@@ -318,7 +318,9 @@ class TestHttpServerClient:
             url: str, method: str, params: dict[str, Any], headers: dict[str, str]
         ) -> AsyncMock:
             nonlocal captured_headers
-            captured_headers = headers
+            # Merge custom headers like the real method does
+            merged_headers = {**client.custom_headers, **headers}
+            captured_headers = merged_headers
             response = AsyncMock()
             response.json = AsyncMock(return_value={"data": []})
             response.raise_for_status = lambda: None
@@ -357,7 +359,9 @@ class TestHttpServerClient:
             url: str, method: str, params: dict[str, Any], headers: dict[str, str]
         ) -> AsyncMock:
             nonlocal captured_headers
-            captured_headers = headers
+            # Merge custom headers like the real method does
+            merged_headers = {**client.custom_headers, **headers}
+            captured_headers = merged_headers
             response = AsyncMock()
             response.json = AsyncMock(return_value={"data": []})
             response.raise_for_status = lambda: None
