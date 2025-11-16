@@ -5,6 +5,7 @@ from github.helpers.utils import (
     enrich_with_tag_name,
     enrich_with_commit,
     parse_github_options,
+    enrich_with_organization,
 )
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
@@ -15,9 +16,11 @@ from github.clients.http.rest_client import GithubRestClient
 class RestTagExporter(AbstractGithubExporter[GithubRestClient]):
 
     def _enrich_tag(
-        self, response: Dict[str, Any], repo_name: str, tag_name: str
+        self, response: Dict[str, Any], repo_name: str, tag_name: str, organization: str
     ) -> Dict[str, Any]:
-        response = enrich_with_repository(response, repo_name)
+        response = enrich_with_organization(
+            enrich_with_repository(response, repo_name), organization
+        )
         response = enrich_with_tag_name(response, tag_name)
 
         return enrich_with_commit(response, response["object"])
@@ -35,7 +38,7 @@ class RestTagExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched tag: {tag_name} for repo: {repo_name} from {organization}"
         )
 
-        return self._enrich_tag(response, cast(str, repo_name), tag_name)
+        return self._enrich_tag(response, cast(str, repo_name), tag_name, organization)
 
     async def get_paginated_resources[
         ExporterOptionsT: ListTagOptions
@@ -52,6 +55,9 @@ class RestTagExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched batch of {len(tags)} tags from repository {repo_name} from {organization}"
             )
             batch_data = [
-                enrich_with_repository(tag, cast(str, repo_name)) for tag in tags
+                enrich_with_organization(
+                    enrich_with_repository(tag, cast(str, repo_name)), organization
+                )
+                for tag in tags
             ]
             yield batch_data
