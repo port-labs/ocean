@@ -318,7 +318,6 @@ class TestHttpServerClient:
             url: str, method: str, params: dict[str, Any], headers: dict[str, str]
         ) -> AsyncMock:
             nonlocal captured_headers
-            # Merge custom headers like the real method does
             merged_headers = {**client.custom_headers, **headers}
             captured_headers = merged_headers
             response = AsyncMock()
@@ -326,7 +325,6 @@ class TestHttpServerClient:
             response.raise_for_status = lambda: None
             return response
 
-        # Patch the method on the instance before calling fetch_paginated_data
         with patch.object(client, "_make_request", mock_make_request):
             # Call with per-endpoint headers
             async for _ in client.fetch_paginated_data(
@@ -359,7 +357,6 @@ class TestHttpServerClient:
             url: str, method: str, params: dict[str, Any], headers: dict[str, str]
         ) -> AsyncMock:
             nonlocal captured_headers
-            # Merge custom headers like the real method does
             merged_headers = {**client.custom_headers, **headers}
             captured_headers = merged_headers
             response = AsyncMock()
@@ -367,7 +364,6 @@ class TestHttpServerClient:
             response.raise_for_status = lambda: None
             return response
 
-        # Patch the method on the instance before calling fetch_paginated_data
         with patch.object(client, "_make_request", mock_make_request):
             # Call without per-endpoint headers
             async for _ in client.fetch_paginated_data(endpoint="/api/v1/users"):
