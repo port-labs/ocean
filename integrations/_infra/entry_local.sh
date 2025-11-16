@@ -4,6 +4,9 @@ if [ -z "$BUILD_CONTEXT" ]; then
     exit 1
 fi
 
+# Sync CA certificates to unprivileged user directory
+source /app/_infra/sync_ca_certs.sh
+
 if [ ! -d ".venv-docker" ]; then
     /usr/bin/python3 -m venv .venv-docker
     source .venv-docker/bin/activate

@@ -7,7 +7,10 @@ ARG BUILD_CONTEXT
 ARG BUILDPLATFORM
 
 ENV LIBRDKAFKA_VERSION=2.8.2 \
-    PYTHONUNBUFFERED=1 \
+ENV SSL_CERT_DIR=/home/ocean/.local/share/ca-certificates
+ENV SSL_CERT_FILE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt
+ENV CURL_CA_BUNDLE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt
+ENV REQUESTS_CA_BUNDLE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt    PYTHONUNBUFFERED=1 \
     POETRY_VIRTUALENVS_IN_PROJECT=1 \
     PIP_ROOT_USER_ACTION=ignore
 
@@ -18,7 +21,7 @@ COPY ./${BUILD_CONTEXT}/pyproject.toml ./${BUILD_CONTEXT}/poetry.lock /app/
 RUN poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
 
 FROM ${BASE_RUNNER_PYTHON_IMAGE} AS prod
-ARG OCEAN_USER_ID=999
+ARG OCEAN_USER_ID=1001
 
 RUN groupadd -r appgroup && useradd -r -g appgroup -m -u ${OCEAN_USER_ID} ocean
 
@@ -31,7 +34,10 @@ ARG OAUTH_CONFIG_DIR=/app/.config
 ARG STREAMING_LOCATION=/tmp/ocean/streaming
 
 ENV LIBRDKAFKA_VERSION=2.8.2 \
-    PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR} \
+ENV SSL_CERT_DIR=/home/ocean/.local/share/ca-certificates
+ENV SSL_CERT_FILE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt
+ENV CURL_CA_BUNDLE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt
+ENV REQUESTS_CA_BUNDLE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt    PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR} \
     STREAMING_LOCATION=${STREAMING_LOCATION}
 
 RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
@@ -47,7 +53,7 @@ RUN apt-get update \
         openssl \
         curl \
         acl \
-        sudo \
+
         jq \
     && apt-get clean
 
@@ -75,15 +81,19 @@ USER root
 RUN chmod a+x /app/.venv/bin/ocean
 
 RUN chmod a+x /app/init.sh
-RUN ln -s /app/.venv/bin/ocean /usr/bin/ocean
+RUN chmod +x /app/integrations/_infra/sync_ca_certs.shRUN ln -s /app/.venv/bin/ocean /usr/bin/ocean
 
 # Add ocean user to ssl certs group
+# Copy CA certificates to user-accessible location for unprivileged access
+RUN mkdir -p /home/ocean/.local/share/ca-certificates \
+    && cp -r /etc/ssl/certs/* /home/ocean/.local/share/ca-certificates/ 2>/dev/null || true \
+    && chown -R ocean:appgroup /home/ocean/.local/share/ca-certificates \
+    && chmod -R 644 /home/ocean/.local/share/ca-certificates \
+    && echo "export SSL_CERT_DIR=/home/ocean/.local/share/ca-certificates" >> /home/ocean/.bashrc \
+    && echo "export SSL_CERT_FILE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt" >> /home/ocean/.bashrc
 RUN setfacl -R -m u:ocean:rwX /etc/ssl/certs \
     && setfacl -d -m u:ocean:rwX /etc/ssl/certs
 
-# Allow ocean user to run update-ca-certificates without password (secure, limited sudo)
-RUN echo "ocean ALL=(root) NOPASSWD: /usr/sbin/update-ca-certificates" >> /etc/sudoers.d/ocean-certs \
-    && chmod 440 /etc/sudoers.d/ocean-certs
 
 USER ocean
 
