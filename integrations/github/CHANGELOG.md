@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.3.6-beta (2025-11-16)
+
+
+### Improvements
+
+- Revise OAuth configuration spec
+
+
 ## 3.3.5-beta (2025-11-13)
 
 

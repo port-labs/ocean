@@ -60,12 +60,13 @@ saas:
   oauthConfiguration:
     requiredSecrets:
       - name: githubAppPrivateKey
-        value: .oauthData.additionalData.pem
+        value: .oauthData.pem
         description: '"Private key in PEM format for GitHub App authentication and API access"'
     valuesOverride:
       integrationSpec:
-        githubAppId: .oauthData.additionalData.appId
-        githubOrganization: .oauthData.additionalData.githubOrganization
+        githubHost: "'https://api.github.com'"
+        githubAppId: .oauthData.appId
+        githubOrganization: .oauthData.githubOrganization
 actionsProcessingEnabled: true
 actions:
   - name: dispatch_github_workflow
