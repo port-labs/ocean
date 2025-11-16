@@ -6,7 +6,8 @@ sidebar_label: 🌊 Overview
 ---
 
 import OceanExporterArchSvg from '../static/img/ExportArchitecture.svg'
-import OceanRealTimeArchSvg from '../static/img/RealTimeUpdatesArchitecture.svg'
+import OceanRealTimeArchSvg from
+  '!@svgr/webpack?-svgo!../static/img/RealTimeUpdatesArchitecture.svg';
 
 # Overview
 
