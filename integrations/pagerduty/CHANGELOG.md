@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.95 (2025-11-11)
+
+
+### Improvements
+
+- Retries on 500 status from pagerduty api
+
 ## 0.3.94 (2025-11-10)
 
 

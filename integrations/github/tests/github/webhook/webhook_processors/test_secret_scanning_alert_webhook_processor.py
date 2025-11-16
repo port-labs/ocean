@@ -268,7 +268,11 @@ class TestSecretScanningAlertWebhookProcessor:
         assert isinstance(result, WebhookEventRawResults)
         assert len(result.updated_raw_results) == 0
         assert len(result.deleted_raw_results) == 1
-        assert result.deleted_raw_results[0] == alert_data
+        assert result.deleted_raw_results[0] == {
+            **alert_data,
+            "__repository": "test-repo",
+            "__organization": "test-org",
+        }
 
     async def test_handle_event_unknown_action(
         self,

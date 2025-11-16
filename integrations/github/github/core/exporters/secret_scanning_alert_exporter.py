@@ -1,6 +1,10 @@
 from typing import cast
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.helpers.utils import enrich_with_repository, parse_github_options
+from github.helpers.utils import (
+    enrich_with_repository,
+    parse_github_options,
+    enrich_with_organization,
+)
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import (
@@ -26,7 +30,9 @@ class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched secret scanning alert with number: {alert_number} for repo: {repo_name} from {organization}"
         )
 
-        return enrich_with_repository(response, cast(str, repo_name))
+        return enrich_with_organization(
+            enrich_with_repository(response, cast(str, repo_name)), organization
+        )
 
     async def get_paginated_resources[
         ExporterOptionsT: ListSecretScanningAlertOptions
@@ -45,6 +51,9 @@ class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched batch of {len(alerts)} secret scanning alerts from repository {repo_name} from {organization}"
             )
             batch_data = [
-                enrich_with_repository(alert, cast(str, repo_name)) for alert in alerts
+                enrich_with_organization(
+                    enrich_with_repository(alert, cast(str, repo_name)), organization
+                )
+                for alert in alerts
             ]
             yield batch_data

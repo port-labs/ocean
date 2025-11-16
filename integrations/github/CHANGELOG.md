@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.3.6-beta (2025-11-16)
+
+
+### Improvements
+
+- Revise OAuth configuration spec
+
+
+## 3.3.5-beta (2025-11-13)
+
+
+### Improvements
+
+- Enriched pull request export with organization context across REST exporter responses and batches.
+
+
+## 3.3.4-beta (2025-11-12)
+
+
+### Bug Fixes
+
+- Authenticate throw app jwt token in auth context request
+
+
+## 3.3.3-beta (2025-11-11)
+
+
+### Bug Fixes
+
+- Get actor for github installation that uses an app
+
+
+## 3.3.2-beta (2025-11-11)
+
+
+### Bug Fixes
+
+- Fixed GraphQL base URL for GitHub Enterprise Server, ensuring compatibility with GHES.
+- Skipped and added warning log when a repository is not found during file export.
+
+
 ## 3.3.1-beta (2025-11-10)
 
 

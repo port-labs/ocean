@@ -45,6 +45,7 @@ def mock_ocean_context() -> None:
             "token": TEST_INTEGRATION_CONFIG["token"],
             "api_url": TEST_INTEGRATION_CONFIG["api_url"],
         }
+        mock_ocean_app.config.client_timeout = 30.0
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
         mock_ocean_app.base_url = TEST_INTEGRATION_CONFIG["app_host"]
@@ -84,9 +85,7 @@ class TestPagerDutyClient:
             MagicMock(json=lambda: {"users": TEST_DATA["users"][1:], "more": False}),
         ]
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", side_effect=mock_responses
-        ):
+        with patch.object(client.http_client, "request", side_effect=mock_responses):
             collected_data: list[dict[str, Any]] = []
             async for page in client.paginate_request_to_pager_duty("users"):
                 collected_data.extend(page)
@@ -97,9 +96,7 @@ class TestPagerDutyClient:
         mock_response = MagicMock()
         mock_response.json.return_value = {"user": TEST_DATA["users"][0]}
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
-        ):
+        with patch.object(client.http_client, "request", return_value=mock_response):
             result = await client.get_single_resource("users", "PU123")
             assert result == {"user": TEST_DATA["users"][0]}
 
@@ -116,8 +113,9 @@ class TestPagerDutyClient:
             "webhook_subscription": {"id": "new-webhook"}
         }
 
-        with patch(
-            "port_ocean.utils.http_async_client.request",
+        with patch.object(
+            client.http_client,
+            "request",
             side_effect=[no_webhook_response, create_webhook_response],
         ):
             await client.create_webhooks_if_not_exists()
@@ -136,8 +134,9 @@ class TestPagerDutyClient:
             "more": False,
         }
 
-        with patch(
-            "port_ocean.utils.http_async_client.request",
+        with patch.object(
+            client.http_client,
+            "request",
             return_value=existing_webhook_response,
         ):
             await client.create_webhooks_if_not_exists()
@@ -157,9 +156,7 @@ class TestPagerDutyClient:
             "more": False,
         }
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
-        ):
+        with patch.object(client.http_client, "request", return_value=mock_response):
             result = await client.get_oncall_user("PE123", "PE456")
             assert result == TEST_DATA["oncalls"]
 
@@ -170,9 +167,7 @@ class TestPagerDutyClient:
             "more": False,
         }
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
-        ):
+        with patch.object(client.http_client, "request", return_value=mock_response):
             services: list[dict[str, Any]] = TEST_DATA["services"].copy()
             updated = await client.update_oncall_users(services)
 
@@ -195,9 +190,7 @@ class TestPagerDutyClient:
         }
         mock_response.json.return_value = expected_analytics
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
-        ):
+        with patch.object(client.http_client, "request", return_value=mock_response):
             result = await client.get_incident_analytics("INCIDENT123")
             assert result == expected_analytics
 
@@ -210,9 +203,7 @@ class TestPagerDutyClient:
         ]
         mock_response.json.return_value = {"data": analytics_response}
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
-        ):
+        with patch.object(client.http_client, "request", return_value=mock_response):
             result = await client.get_service_analytics(["SERVICE123", "SERVICE456"])
             assert result == analytics_response
 
@@ -222,9 +213,7 @@ class TestPagerDutyClient:
         mock_response.json.return_value = {"result": "success"}
         mock_response.raise_for_status.return_value = None
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
-        ):
+        with patch.object(client.http_client, "request", return_value=mock_response):
             result = await client.send_api_request("test/endpoint")
             assert result == {"result": "success"}
 
@@ -236,8 +225,9 @@ class TestPagerDutyClient:
             "Not Found", request=MagicMock(), response=not_found_response
         )
 
-        with patch(
-            "port_ocean.utils.http_async_client.request",
+        with patch.object(
+            client.http_client,
+            "request",
             return_value=not_found_response,
         ):
             result = await client.send_api_request("nonexistent/endpoint")
