@@ -57,10 +57,7 @@ class TestListResponseHandling:
             # Mock event
             mock_event.resource_config = mock_resource_config
 
-            # Import the actual function (not the decorated wrapper)
-            from main import resync_resources
-            # The decorator wraps it, so we need to get the actual function
-            # resync_resources is the decorated function, which when called returns the generator
+            # Call resync_resources (already imported at top of test)
             result = resync_resources("/api/v1/users")
 
             # Get first batch
