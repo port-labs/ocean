@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed bug where `LambdaFunctionProperties.Tags` was incorrectly defined as a list of dictionaries. It is now a dictionary type, which correctly represents AWS Lambda Tags structure.
 
 
+## 2.0.6-beta (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
 ## 2.0.5-beta (2025-11-10)
 
 
