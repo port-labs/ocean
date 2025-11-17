@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added new tests to validate that "abandoned" and "completed" pull request filters correctly utilize the "closed" time range.
 
 
+## 0.4.30 (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
 ## 0.4.29 (2025-11-10)
 
 
