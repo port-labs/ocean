@@ -1,4 +1,4 @@
-from typing import Union, cast
+from typing import Union, cast, Any
 
 from loguru import logger
 
@@ -24,6 +24,8 @@ from integration import (
     BitbucketFolderSelector,
     BitbucketFileResourceConfig,
     BitbucketFileSelector,
+    BitbucketRepositoryResourceConfig,
+    BitbucketRepositorySelector,
 )
 from bitbucket_cloud.helpers.folder import (
     process_folder_patterns,
@@ -59,7 +61,18 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the workspace."""
     client = init_client()
-    async for repositories in client.get_repositories():
+    config = cast(
+        Union[ResourceConfig, BitbucketRepositoryResourceConfig], event.resource_config
+    )
+    selector = cast(BitbucketRepositorySelector, config.selector)
+    params: dict[str, Any] = {}
+    if selector.role:
+        params["role"] = selector.role
+    if selector.q:
+        params["q"] = selector.q
+    if selector.sort:
+        params["sort"] = selector.sort
+    async for repositories in client.get_repositories(params=params):
         yield repositories
 
 

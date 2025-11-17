@@ -97,9 +97,36 @@ class BitbucketFileResourceConfig(ResourceConfig):
     selector: BitbucketFileSelector
 
 
+class BitbucketRepositorySelector(Selector):
+    role: str = Field(
+        default="",
+        alias="role",
+        description="Optional. Filter repositories by authenticated user's role: member, contributor, admin, or owner",
+    )
+    q: str = Field(
+        default="",
+        alias="q",
+        description='Optional. Query string to narrow repositories as per Bitbucket filtering (e.g., name="my-repo")',
+    )
+    sort: str = Field(
+        default="",
+        alias="sort",
+        description='Optional. Sort field, e.g., "-updated_on" or "name", as per Bitbucket sorting',
+    )
+
+
+class BitbucketRepositoryResourceConfig(ResourceConfig):
+    kind: Literal["repository"]
+    selector: BitbucketRepositorySelector
+    port: PortResourceConfig
+
+
 class BitbucketAppConfig(PortAppConfig):
     resources: list[
-        BitbucketFolderResourceConfig | BitbucketFileResourceConfig | ResourceConfig
+        BitbucketFolderResourceConfig
+        | BitbucketFileResourceConfig
+        | BitbucketRepositoryResourceConfig
+        | ResourceConfig
     ] = Field(
         default_factory=list,
         alias="resources",
