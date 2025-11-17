@@ -132,6 +132,7 @@ class TestRestCodeScanningAlertExporter:
             expected_alert = {
                 **TEST_CODE_SCANNING_ALERTS[0],
                 "__repository": "test-repo",
+                "__organization": "test-org",
             }
             assert alert == expected_alert
 
@@ -167,6 +168,7 @@ class TestRestCodeScanningAlertExporter:
 
             assert len(alerts) == 2
             assert all(alert["__repository"] == "test-repo" for alert in alerts)
+            assert all(alert["__organization"] == "test-org" for alert in alerts)
 
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/test-repo/code-scanning/alerts",
@@ -223,6 +225,7 @@ class TestRestCodeScanningAlertExporter:
             expected_alert = {
                 **TEST_CODE_SCANNING_ALERTS[1],
                 "__repository": "test-repo",
+                "__organization": "test-org",
             }
             assert alert == expected_alert
             assert alert["state"] == "dismissed"
@@ -259,7 +262,7 @@ class TestRestCodeScanningAlertExporter:
                     organization="test-org", repo_name="test-repo", alert_number="43"
                 )
             )
-            assert result == {"__repository": "test-repo"}
+            assert result == {"__repository": "test-repo", "__organization": "test-org"}
 
     async def test_handle_request_paginated_with_advanced_security_disabled_error(
         self, rest_client: GithubRestClient

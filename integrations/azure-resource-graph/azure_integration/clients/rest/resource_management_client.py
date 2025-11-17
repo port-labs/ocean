@@ -1,0 +1,72 @@
+from typing import Any, Dict, List, AsyncGenerator
+
+import httpx
+from loguru import logger
+
+from azure_integration.clients.rest.rest_client import AzureRestClient
+from azure_integration.clients.base import AzureRequest
+from port_ocean.helpers.retry import RetryConfig
+from port_ocean.helpers.async_client import OceanAsyncClient
+from azure_integration.helpers.http import (
+    parse_url_components,
+    DEFAULT_HTTP_REQUEST_TIMEOUT,
+)
+from itertools import batched
+
+
+class AzureResourceManagerClient(AzureRestClient):
+    """Base async Azure Resource Management client with built-in auth, rate limiting, and pagination."""
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        retry_config = RetryConfig(
+            retry_after_headers=[
+                "Retry-After",
+            ],
+        )
+        return OceanAsyncClient(
+            retry_config=retry_config, timeout=DEFAULT_HTTP_REQUEST_TIMEOUT
+        )
+
+    async def make_paginated_request(
+        self,
+        request: AzureRequest,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Stream paginated Azure API responses efficiently in fixed-size batches."""
+        next_url = request.endpoint
+        page_size = request.page_size
+
+        params = {
+            **request.params,
+            "api-version": request.api_version,
+        }
+
+        while next_url:
+            response = await self.make_request(
+                AzureRequest(
+                    endpoint=next_url,
+                    method=request.method,
+                    params=params,
+                    json_body=request.json_body,
+                    ignored_errors=request.ignored_errors,
+                )
+            )
+            if not response:
+                break
+
+            logger.info(
+                f"Retrieved batch of {len(response[request.data_key])} items from {next_url} before buffering"
+            )
+
+            for item in batched(response[request.data_key], page_size):
+                logger.debug(
+                    f"Yielding a buffered batch of {len(item)} records from {next_url}"
+                )
+                yield list(item)
+
+            if not (next_link := response.get("nextLink")):
+                break
+            next_url, params = parse_url_components(next_link)
+            if "api-version" not in params:
+                params["api-version"] = request.api_version
+            logger.debug(f"Next URL: {next_url}, Params: {params}")

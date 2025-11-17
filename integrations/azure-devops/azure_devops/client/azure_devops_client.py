@@ -1057,12 +1057,11 @@ class AzureDevopsClient(HTTPBaseClient):
                 {
                     "path": d.base_path,
                     "recursionLevel": d.recursion,
-                    "versionDescriptor": {"version": branch, "versionType": "branch"},
+                    "version": branch,
+                    "versionType": "branch",
                 }
                 for d in descriptors
-            ],
-            "includeContentMetadata": True,
-            "latestProcessedChange": True,
+            ]
         }
 
         timeout_retries = 0

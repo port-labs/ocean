@@ -2,7 +2,7 @@ import asyncio
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
-from github.helpers.utils import parse_github_options
+from github.helpers.utils import parse_github_options, get_repository_metadata
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
@@ -29,8 +29,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         organization = options["organization"]
         included_relationships = options.get("included_relationships")
 
-        endpoint = f"{self.client.base_url}/repos/{organization}/{name}"
-        response = await self.client.send_api_request(endpoint)
+        response = await get_repository_metadata(self.client, organization, name)
 
         logger.info(
             f"Fetched repository with identifier: {name} for organization {organization}"

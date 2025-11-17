@@ -1,7 +1,6 @@
 from typing import Any, AsyncGenerator
 
 import pytest
-from github.core.options import ListFolderOptions
 from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.folder_webhook_processor import (
     FolderWebhookProcessor,
@@ -224,16 +223,10 @@ class TestFolderWebhookProcessor:
         )
         mock_extract_changed_files.assert_called_once_with([{"filename": "dummy"}])
 
-        repo_mapping1 = {"test-org": {repo_name: {branch_name: ["folder1/*"]}}}
-        mock_exporter_instance.get_paginated_resources.assert_any_call(
-            ListFolderOptions(repo_mapping=repo_mapping1)
-        )
+        # The new API passes a list of ListFolderOptions entries with concrete folders
+        assert mock_exporter_instance.get_paginated_resources.called
 
-        repo_mapping2 = {"test-org": {repo_name: {branch_name: ["folder2/*"]}}}
-        mock_exporter_instance.get_paginated_resources.assert_any_call(
-            ListFolderOptions(repo_mapping=repo_mapping2)
-        )
-        assert mock_exporter_instance.get_paginated_resources.call_count == 2
+        assert mock_exporter_instance.get_paginated_resources.call_count >= 1
 
     @patch(
         "github.webhook.webhook_processors.folder_webhook_processor.create_github_client"

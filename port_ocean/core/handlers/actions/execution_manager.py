@@ -22,6 +22,7 @@ from port_ocean.exceptions.execution_manager import (
 from port_ocean.utils.signal import SignalHandler
 
 RATE_LIMIT_MAX_BACKOFF_SECONDS = 10
+QUEUE_GET_TIMEOUT_SECONDS = 1
 GLOBAL_SOURCE = "__global__"
 
 
@@ -86,12 +87,12 @@ class ExecutionManager:
     ):
         self._webhook_manager = webhook_manager
         self._polling_task: asyncio.Task[None] | None = None
-        self._workers_pool: set[asyncio.Task[None]] = set()
+        self._workers_pool: set[asyncio.Task[None]] = set[asyncio.Task[None]]()
         self._actions_executors: Dict[str, AbstractExecutor] = {}
         self._is_shutting_down = asyncio.Event()
         self._global_queue = LocalQueue[ActionRun]()
         self._partition_queues: Dict[str, AbstractQueue[ActionRun]] = {}
-        self._deduplication_set: Set[str] = set()
+        self._deduplication_set: Set[str] = set[str]()
         self._queues_locks: Dict[str, asyncio.Lock] = {GLOBAL_SOURCE: asyncio.Lock()}
         self._active_sources: AbstractQueue[str] = LocalQueue[str]()
         self._workers_count: int = workers_count
@@ -186,6 +187,7 @@ class ExecutionManager:
                     await asyncio.sleep(self._poll_check_interval_seconds)
                     continue
 
+                logger.info(f"Adding {len(runs)} runs to queues", runs_count=len(runs))
                 for run in runs:
                     try:
                         action_type = run.payload.integrationActionType
@@ -253,7 +255,7 @@ class ExecutionManager:
         Add a run to the queue, if the queue is empty, add the source to the active sources.
         """
         if queue_name != GLOBAL_SOURCE and queue_name not in self._partition_queues:
-            self._partition_queues[queue_name] = LocalQueue()
+            self._partition_queues[queue_name] = LocalQueue[ActionRun]()
             self._queues_locks[queue_name] = asyncio.Lock()
 
         queue = (
@@ -265,7 +267,11 @@ class ExecutionManager:
             if await queue.size() == 0:
                 await self._active_sources.put(queue_name)
                 self._deduplication_set.add(run.id)
-            logger.info(f"Adding run to queue {queue_name}", run_id=run.id)
+            logger.info(
+                f"Adding run to queue {queue_name}",
+                run_id=run.id,
+                queue_name=queue_name,
+            )
             await queue.put(run)
 
     async def _add_source_if_not_empty(self, source_name: str) -> None:
@@ -278,7 +284,14 @@ class ExecutionManager:
                 if source_name == GLOBAL_SOURCE
                 else self._partition_queues[source_name]
             )
-            if await queue.size() > 0:
+
+            queue_size = await queue.size()
+            if queue_size > 0:
+                logger.debug(
+                    f"Adding source {source_name} back to active sources as it's not empty",
+                    source_name=source_name,
+                    queue_size=queue_size,
+                )
                 await self._active_sources.put(source_name)
 
     async def _process_actions_runs(self) -> None:
@@ -294,6 +307,10 @@ class ExecutionManager:
                         self._active_sources.get(),
                         timeout=self._max_wait_seconds_before_shutdown / 3,
                     )
+                    logger.debug(
+                        f"Processing run from {source} queue",
+                        queue_size=await self._get_queues_size(),
+                    )
                 except asyncio.TimeoutError:
                     continue
 
@@ -305,9 +322,20 @@ class ExecutionManager:
                 logger.exception("Worker processing error", source=source, error=e)
 
     async def _handle_global_queue_once(self) -> None:
+        """
+        Try to process a single run from the global queue.
+        """
         try:
             async with self._queues_locks[GLOBAL_SOURCE]:
-                run = await self._global_queue.get()
+                try:
+                    logger.debug("Handling run from global queue")
+                    run = await asyncio.wait_for(
+                        self._global_queue.get(), timeout=QUEUE_GET_TIMEOUT_SECONDS
+                    )
+                except asyncio.TimeoutError:
+                    logger.debug("Global queue is empty, skipping")
+                    return
+
                 if run.id in self._deduplication_set:
                     self._deduplication_set.remove(run.id)
 
@@ -319,14 +347,21 @@ class ExecutionManager:
     async def _handle_partition_queue_once(self, partition_name: str) -> None:
         """
         Try to process a single run from the given partition queue.
-        Returns True if work was done, False otherwise.
         """
         queue = self._partition_queues[partition_name]
         try:
             async with self._queues_locks[partition_name]:
-                run = await queue.get()
-                if run.id in self._deduplication_set:
-                    self._deduplication_set.remove(run.id)
+                try:
+                    logger.debug(f"Handling run from {partition_name} queue")
+                    run = await asyncio.wait_for(
+                        queue.get(), timeout=QUEUE_GET_TIMEOUT_SECONDS
+                    )
+                    if run.id in self._deduplication_set:
+                        self._deduplication_set.remove(run.id)
+                except asyncio.TimeoutError:
+                    logger.debug(f"Partition queue {partition_name} is empty, skipping")
+                    return
+
             await self._execute_run(run)
         finally:
             await queue.commit()
@@ -367,7 +402,7 @@ class ExecutionManager:
                     return
 
                 await ocean.port_client.acknowledge_run(run.id)
-                logger.debug("Run acknowledged successfully")
+                logger.info("Run acknowledged successfully")
             except RunAlreadyAcknowledgedError:
                 logger.warning(
                     "Run already being processed by another worker, skipping execution",

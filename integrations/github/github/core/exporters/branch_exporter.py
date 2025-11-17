@@ -5,7 +5,11 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import ListBranchOptions, SingleBranchOptions
 from github.clients.http.rest_client import GithubRestClient
-from github.helpers.utils import enrich_with_repository, parse_github_options
+from github.helpers.utils import (
+    enrich_with_repository,
+    parse_github_options,
+    enrich_with_organization,
+)
 
 
 class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
@@ -37,7 +41,9 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched branch: {branch_name} for repo: {repo_name} from {organization}"
         )
 
-        return enrich_with_repository(response, repo_name)
+        return enrich_with_organization(
+            enrich_with_repository(response, repo_name), organization
+        )
 
     async def get_paginated_resources[
         ExporterOptionsT: ListBranchOptions
@@ -89,7 +95,9 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
                 repo_name, branch, organization
             )
 
-        return enrich_with_repository(branch, repo_name)
+        return enrich_with_organization(
+            enrich_with_repository(branch, repo_name), organization
+        )
 
     async def _enrich_branch_with_protection_rules(
         self, repo_name: str, branch: dict[str, Any], organization: str
