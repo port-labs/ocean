@@ -81,6 +81,7 @@ class TestRestCollaboratorExporter:
             # The exporter enriches the data with repository info
             expected_collaborator = TEST_COLLABORATORS[0].copy()
             expected_collaborator["__repository"] = "test-repo"
+            expected_collaborator["__organization"] = "test-org"
             assert collaborator == expected_collaborator
 
             mock_request.assert_called_once_with(
@@ -114,7 +115,11 @@ class TestRestCollaboratorExporter:
 
                 # Create expected enriched collaborators with __repository field
                 expected_collaborators = [
-                    {**collaborator, "__repository": "test-repo"}
+                    {
+                        **collaborator,
+                        "__repository": "test-repo",
+                        "__organization": "test-org",
+                    }
                     for collaborator in TEST_COLLABORATORS
                 ]
                 assert collaborators[0] == expected_collaborators

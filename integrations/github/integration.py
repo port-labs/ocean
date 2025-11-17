@@ -63,7 +63,10 @@ class RepositoryBranchMapping(BaseModel):
 class FolderSelector(BaseModel):
     organization: Optional[str] = Field(default=None)
     path: str = Field(default="*")
-    repos: list[RepositoryBranchMapping]
+    repos: Optional[list[RepositoryBranchMapping]] = Field(
+        description="Specify the repositories and branches to fetch files from",
+        default=None,
+    )
 
 
 class GithubFolderSelector(Selector):

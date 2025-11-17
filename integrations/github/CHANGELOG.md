@@ -7,6 +7,105 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 3.3.6-beta (2025-11-16)
+
+
+### Improvements
+
+- Revise OAuth configuration spec
+
+
+## 3.3.5-beta (2025-11-13)
+
+
+### Improvements
+
+- Enriched pull request export with organization context across REST exporter responses and batches.
+
+
+## 3.3.4-beta (2025-11-12)
+
+
+### Bug Fixes
+
+- Authenticate throw app jwt token in auth context request
+
+
+## 3.3.3-beta (2025-11-11)
+
+
+### Bug Fixes
+
+- Get actor for github installation that uses an app
+
+
+## 3.3.2-beta (2025-11-11)
+
+
+### Bug Fixes
+
+- Fixed GraphQL base URL for GitHub Enterprise Server, ensuring compatibility with GHES.
+- Skipped and added warning log when a repository is not found during file export.
+
+
+## 3.3.1-beta (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+## 3.3.0-beta (2025-11-10)
+
+
+### Improvements
+
+- Allow file/folder selectors to target all repositories when `repos` is omitted (supports exact and glob patterns)
+- Centralize repository metadata retrieval and reuse across exporters
+- Use shared resolver for repo/branch selection with consistent branch fallback
+- Update folder options shape to grouped per-repo entries
+
+
+## 3.2.5-beta (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
+## 3.2.4-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+## 3.2.3-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+
+## 3.2.2-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+
+
+## 3.2.1-beta (2025-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.1
+
+
 # 3.2.0-beta (2025-11-04)
 
 

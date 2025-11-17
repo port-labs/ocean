@@ -3,7 +3,11 @@ from loguru import logger
 from github.webhook.events import (
     CODE_SCANNING_ALERT_ACTION_TO_STATE,
 )
-from github.helpers.utils import ObjectKind, enrich_with_repository
+from github.helpers.utils import (
+    ObjectKind,
+    enrich_with_repository,
+    enrich_with_organization,
+)
 from github.clients.client_factory import create_github_client
 from integration import GithubCodeScanningAlertConfig
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
@@ -61,7 +65,9 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
                 f"The action {action} is not allowed for code scanning alert {alert_number} in {repo_name} from {organization}. Deleting resource."
             )
 
-            alert = enrich_with_repository(alert, repo_name)
+            alert = enrich_with_organization(
+                enrich_with_repository(alert, repo_name), organization
+            )
 
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[alert]

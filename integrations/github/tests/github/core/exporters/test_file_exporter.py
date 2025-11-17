@@ -3,6 +3,7 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import base64
 from github.core.exporters.file_exporter.core import RestFileExporter
+import github.helpers.utils as helpers_utils
 from github.core.exporters.file_exporter.utils import (
     decode_content,
     parse_content,
@@ -11,9 +12,9 @@ from github.core.exporters.file_exporter.utils import (
     get_graphql_file_metadata,
     build_batch_file_query,
     match_file_path_against_glob_pattern,
-    group_file_patterns_by_repositories_in_selector,
     MAX_FILE_SIZE,
     GRAPHQL_MAX_FILE_SIZE,
+    FilePatternMappingBuilder,
 )
 from github.clients.http.rest_client import GithubRestClient
 from github.core.options import (
@@ -170,9 +171,8 @@ class TestRestFileExporter:
             patch.object(
                 exporter, "collect_matched_files", AsyncMock(return_value=([], []))
             ),
-            patch.object(
-                exporter,
-                "get_repository_metadata",
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
                 AsyncMock(return_value=TEST_REPO_METADATA),
             ),
             patch.object(
@@ -234,9 +234,8 @@ class TestRestFileExporter:
             patch.object(
                 exporter, "collect_matched_files", AsyncMock(return_value=([], []))
             ),
-            patch.object(
-                exporter,
-                "get_repository_metadata",
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
                 AsyncMock(return_value=TEST_REPO_METADATA),
             ),
             patch.object(
@@ -255,17 +254,16 @@ class TestRestFileExporter:
                 assert results == ["file1", "file2"]
 
     async def test_get_repository_metadata(self, rest_client: GithubRestClient) -> None:
-        exporter = RestFileExporter(rest_client)
-
-        with patch.object(
-            rest_client, "send_api_request", AsyncMock(return_value=TEST_REPO_METADATA)
-        ) as mock_request:
-            metadata = await exporter.get_repository_metadata("test-org", "repo1")
+        with patch(
+            "github.helpers.utils.get_repository_metadata",
+            AsyncMock(return_value=TEST_REPO_METADATA),
+        ) as mock_get:
+            metadata = await helpers_utils.get_repository_metadata(
+                rest_client, "test-org", "repo1"
+            )
 
             assert metadata == TEST_REPO_METADATA
-            mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/test-org/repo1"
-            )
+            mock_get.assert_called_once()
 
     async def test_collect_matched_files(self, rest_client: GithubRestClient) -> None:
         exporter = RestFileExporter(rest_client)
@@ -276,9 +274,8 @@ class TestRestFileExporter:
                 "get_tree_recursive",
                 AsyncMock(return_value=TEST_TREE_ENTRIES),
             ),
-            patch.object(
-                exporter,
-                "get_repository_metadata",
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
                 AsyncMock(return_value=TEST_REPO_METADATA),
             ),
         ):
@@ -343,9 +340,8 @@ class TestRestFileExporter:
                 "get_tree_recursive",
                 AsyncMock(return_value=tree_entries_with_sizes),
             ),
-            patch.object(
-                exporter,
-                "get_repository_metadata",
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
                 AsyncMock(return_value=TEST_REPO_METADATA),
             ),
         ):
@@ -383,9 +379,8 @@ class TestRestFileExporter:
                 "get_tree_recursive",
                 AsyncMock(return_value=TEST_TREE_ENTRIES),
             ),
-            patch.object(
-                exporter,
-                "get_repository_metadata",
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
                 AsyncMock(return_value=TEST_REPO_METADATA),
             ),
         ):
@@ -412,9 +407,8 @@ class TestRestFileExporter:
             patch.object(
                 exporter, "get_resource", AsyncMock(return_value=TEST_FILE_RESPONSE)
             ),
-            patch.object(
-                exporter,
-                "get_repository_metadata",
+            patch(
+                "github.core.exporters.file_exporter.core.get_repository_metadata",
                 AsyncMock(return_value=TEST_REPO_METADATA),
             ),
             patch.object(
@@ -543,6 +537,7 @@ class TestFileExporterUtils:
         files = [mock_file_pattern]
 
         repo_exporter = MagicMock()
+        org_exporter = MagicMock()
 
         async def mock_paginated_resources(
             *args: Any, **kwargs: Any
@@ -554,12 +549,18 @@ class TestFileExporterUtils:
 
         repo_exporter.get_paginated_resources = mock_paginated_resources
 
+        async def mock_orgs(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield [{"login": "test-org"}]
+
+        org_exporter.get_paginated_resources = mock_orgs
+
         repo_type = "private"
 
         # Act
-        result = await group_file_patterns_by_repositories_in_selector(
-            files, repo_exporter, repo_type
-        )
+        builder = FilePatternMappingBuilder(org_exporter, repo_exporter, repo_type)
+        result = await builder.build(files)
 
         # Assert
         assert len(result) == 2
@@ -596,12 +597,25 @@ class TestFileExporterUtils:
         files = [mock_file_pattern]
 
         repo_exporter = MagicMock()  # This should not be used
+        # Ensure exact selector path can fetch repo metadata
+        repo_exporter.client = MagicMock()
+        repo_exporter.client.base_url = "https://api.github.com"
+        repo_exporter.client.send_api_request = AsyncMock(
+            return_value={"default_branch": "dev"}
+        )
+        org_exporter = MagicMock()
         repo_type = "private"
 
         # Act
-        result = await group_file_patterns_by_repositories_in_selector(
-            files, repo_exporter, repo_type
-        )
+        async def mock_orgs(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield [{"login": "test-org"}]
+
+        org_exporter.get_paginated_resources = mock_orgs
+
+        builder = FilePatternMappingBuilder(org_exporter, repo_exporter, repo_type)
+        result = await builder.build(files)
 
         # Assert
         assert len(result) == 2

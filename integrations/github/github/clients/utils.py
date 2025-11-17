@@ -1,6 +1,5 @@
 from typing import Any, Dict, cast, TYPE_CHECKING
 from github.core.options import ListOrganizationOptions
-from github.helpers.exceptions import OrganizationRequiredException
 from port_ocean.context.ocean import ocean
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
@@ -28,9 +27,6 @@ def get_github_organizations() -> ListOrganizationOptions:
     )
 
 
-def get_mono_repo_organization(organization: str | None) -> str:
+def get_mono_repo_organization(organization: str | None) -> str | None:
     """Get the organization for a monorepo."""
-    organization = organization or ocean.integration_config["github_organization"]
-    if not organization:
-        raise OrganizationRequiredException("Organization is required")
-    return organization
+    return organization or ocean.integration_config["github_organization"]

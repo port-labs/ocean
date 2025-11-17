@@ -7,6 +7,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from snyk.overrides import ProjectResourceConfig
+from snyk.utils import enrich_batch_with_org
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.target_webhook_processor import TargetWebhookProcessor
@@ -16,12 +17,17 @@ CONCURRENT_REQUESTS = 20
 
 
 async def process_project_issues(
-    semaphore: asyncio.Semaphore, project: dict[str, Any]
+    semaphore: asyncio.BoundedSemaphore,
+    project: dict[str, Any],
+    enrich_with_org: bool = False,
 ) -> list[dict[str, Any]]:
     snyk_client = init_client()
     async with semaphore:
         organization_id = project["relationships"]["organization"]["data"]["id"]
-        return await snyk_client.get_issues(organization_id, project["id"])
+        issues = await snyk_client.get_issues(organization_id, project["id"])
+        if not enrich_with_org:
+            return issues
+        return enrich_batch_with_org(issues, project["__organization"])
 
 
 @ocean.on_resync(IntegrationKind.ORGANIZATION)
@@ -42,7 +48,7 @@ async def on_targets_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_projects_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     snyk_client = init_client()
 
-    semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
+    semaphore = asyncio.BoundedSemaphore(CONCURRENT_REQUESTS)
     async for projects in snyk_client.get_paginated_projects():
         logger.debug(f"Received batch with {len(projects)} projects")
 
@@ -71,13 +77,16 @@ async def on_issues_resync(kind: str) -> list[dict[str, Any]]:
         "This kind will be deprecated at the end of Q3, in favour of our new data model for Snyk resources. This change is necessary because Snyk has announced a migration and end of life of their v1 API to focus on their REST API. Refer to our documentation for more information: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/snyk/#issue"
     )
 
-    semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
+    semaphore = asyncio.BoundedSemaphore(CONCURRENT_REQUESTS)
 
     async for projects in snyk_client.get_paginated_projects():
         logger.debug(
             f"Received batch with {len(projects)} projects, getting their issues parallelled"
         )
-        tasks = [process_project_issues(semaphore, project) for project in projects]
+        tasks = [
+            process_project_issues(semaphore, project, enrich_with_org=True)
+            for project in projects
+        ]
         project_issues_list = await asyncio.gather(*tasks)
         logger.info("Gathered all project issues of projects in batch")
         all_issues.extend(sum(project_issues_list, []))

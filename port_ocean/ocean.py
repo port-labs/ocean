@@ -108,7 +108,7 @@ class Ocean:
         )
         self.app_initialized = False
 
-        signal_handler.register(self._report_resync_aborted)
+        signal_handler.register(self._report_resync_aborted, priority=100)
 
     async def _report_resync_aborted(self) -> None:
         """
@@ -116,13 +116,26 @@ class Ocean:
         This ensures Port is notified that the integration was interrupted.
         """
         try:
-            if self.metrics.event_id.find("-done") == -1:
-                await self.resync_state_updater.update_after_resync(
-                    IntegrationStateStatus.Aborted
+            if self.resync_state_updater:
+                current_integration = await self.port_client.get_current_integration()
+                current_status = (
+                    current_integration.get("resyncState", {}).get("status")
+                    if current_integration
+                    else None
                 )
-                logger.info("Resync status reported as aborted due to app shutdown")
+                if current_status == IntegrationStateStatus.Running.value:
+                    await self.resync_state_updater.update_after_resync(
+                        status=IntegrationStateStatus.Aborted
+                    )
+                    logger.info(
+                        "Graceful shutdown completed - sync state set to aborted"
+                    )
+                else:
+                    logger.info(
+                        "Graceful shutdown completed - sync was already completed, status unchanged"
+                    )
         except Exception as e:
-            logger.warning(f"Failed to report resync status on shutdown: {e}")
+            logger.warning(f"Error during graceful shutdown: {e}")
 
     def _get_process_execution_mode(self) -> ProcessExecutionMode:
         if self.config.process_execution_mode:
@@ -160,7 +173,10 @@ class Ocean:
                 )
             except asyncio.CancelledError:
                 logger.warning(
-                    "resync was cancelled by the scheduled resync, skipping state update"
+                    "resync was cancelled by the scheduled resync, updating state to aborted"
+                )
+                await self.resync_state_updater.update_after_resync(
+                    IntegrationStateStatus.Aborted
                 )
             except Exception as e:
                 await self.resync_state_updater.update_after_resync(
