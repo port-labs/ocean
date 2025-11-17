@@ -10,7 +10,7 @@ resources:
         mappings:
           identifier: .login
           title: .login
-          blueprint: '''githubOrganization'''
+          blueprint: '"githubOrganization"'
           properties:
             login: .login
             id: .id
@@ -72,3 +72,38 @@ resources:
                 (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
           relations:
             repository: .__repository
+  - kind: file
+    selector:
+      query: 'true'
+      files:
+        - path: '**/CODEOWNERS'
+          organization: Chukwuemeka-Test-Org
+          skipParsing: true
+          repos:
+            - name: ocean
+    port:
+      itemsToParse: >-
+        (. as $root | .content | split("\n") |
+        map(gsub("^[[:space:]]+|[[:space:]]+$"; "")) |
+        map(select((test("^[[:space:]]*#") | not) and (length > 0))) | map(
+            (split(" ") | map(select(length > 0))) as $tokens
+            | {
+                scope: ($tokens[0]),
+                identifier: ($tokens[0]
+                          | gsub("\\*\\*"; "doublestar")
+                          | gsub("\\*"; "star")),
+                repoName: $root.repository.name,
+                filePath: $root.metadata.path
+            }
+          )
+        )
+      entity:
+        mappings:
+          identifier: .item.repoName + "_" + .item.identifier + "_codeowners"
+          title: .item.scope + " codeowners"
+          blueprint: '"githubCodeowners"'
+          properties:
+            scope: .item.scope
+            location: .item.filePath
+          relations:
+            repository: .item.repoName
