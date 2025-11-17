@@ -56,7 +56,11 @@ class TestRestDeploymentExporter:
                 )
             )
 
-            assert deployment == {**TEST_DEPLOYMENTS[0], "__repository": "test-repo"}
+            assert deployment == {
+                **TEST_DEPLOYMENTS[0],
+                "__repository": "test-repo",
+                "__organization": "test-org",
+            }
 
             mock_request.assert_called_once_with(
                 f"{rest_client.base_url}/repos/test-org/test-repo/deployments/123"
@@ -91,6 +95,10 @@ class TestRestDeploymentExporter:
                 )
                 assert all(
                     deployment["__repository"] == "test-repo"
+                    for deployment in deployments[0]
+                )
+                assert all(
+                    deployment["__organization"] == "test-org"
                     for deployment in deployments[0]
                 )
 

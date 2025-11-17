@@ -45,7 +45,10 @@ async def get_authenticated_app() -> AppAuthContext:
 
     async with _auth_lock:
         client = create_github_client()
-        response = await client.send_api_request(f"{client.base_url}/app")
+        response = await client.send_api_request(
+            resource=f"{client.base_url}/app",
+            authenticator_headers_params={"return_jwt": True},
+        )
         _app_auth_context = AppAuthContext.parse_obj(response)
         return _app_auth_context
 

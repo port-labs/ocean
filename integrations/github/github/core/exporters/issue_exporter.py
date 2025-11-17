@@ -1,5 +1,9 @@
 from typing import cast
-from github.helpers.utils import enrich_with_repository, parse_github_options
+from github.helpers.utils import (
+    enrich_with_repository,
+    parse_github_options,
+    enrich_with_organization,
+)
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
@@ -22,7 +26,9 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
             f"Fetched issue {issue_number} from {repo_name} from {organization}"
         )
 
-        return enrich_with_repository(response, cast(str, repo_name))
+        return enrich_with_organization(
+            enrich_with_repository(response, cast(str, repo_name)), organization
+        )
 
     async def get_paginated_resources[
         ExporterOptionsT: ListIssueOptions
@@ -38,6 +44,9 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
                 f"Fetched batch of {len(issues)} issues from repository {repo_name} from {organization}"
             )
             batch = [
-                enrich_with_repository(issue, cast(str, repo_name)) for issue in issues
+                enrich_with_organization(
+                    enrich_with_repository(issue, cast(str, repo_name)), organization
+                )
+                for issue in issues
             ]
             yield batch

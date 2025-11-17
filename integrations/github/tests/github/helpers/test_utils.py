@@ -2,6 +2,7 @@ import pytest
 from typing import Any, Dict
 
 from github.helpers.utils import (
+    enrich_with_organization,
     enrich_with_repository,
     parse_github_options,
 )
@@ -158,3 +159,17 @@ class TestExtractRepoParams:
         assert repo_name is None
         assert organization == "test-org"
         assert remaining_params == {"other_param": "value"}
+
+
+class TestEnrichWithOrganization:
+    """Tests for enrich_with_organization function."""
+
+    def test_enrich_with_organization(self) -> None:
+        """Test enriching response with organization."""
+        response = {"data": "test"}
+        organization = "test-org"
+
+        result = enrich_with_organization(response, organization)
+
+        assert result["__organization"] == organization
+        assert result["data"] == "test"

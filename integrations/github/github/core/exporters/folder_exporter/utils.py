@@ -1,6 +1,7 @@
 from collections import defaultdict
 from typing import Any, Dict, List, Tuple
 from loguru import logger
+from github.clients.utils import get_mono_repo_organization
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import FolderSearchOptions, ListFolderOptions
 from github.helpers.repo_selectors import (
@@ -27,7 +28,8 @@ class FolderPatternMappingBuilder:
         logger.info(f"Building path mapping for {len(folders)} folder selectors...")
 
         for folder_sel in folders:
-            async for org_login in self.generate_org_logins(folder_sel.organization):
+            organization = get_mono_repo_organization(folder_sel.organization)
+            async for org_login in self.generate_org_logins(organization):
                 async for (
                     repo_name,
                     branch,

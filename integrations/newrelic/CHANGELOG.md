@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.228 (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 0.1.227 (2025-11-13)
+
+### Improvements
+
+- Improved code readability and formatting in alert_conditions.py (#2)
+
+### Bug Fixes
+
+- Added pagination for the alerts condition API (#1)
+
 ## 0.1.226 (2025-11-10)
 
 

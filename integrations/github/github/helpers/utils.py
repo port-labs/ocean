@@ -48,6 +48,19 @@ class ObjectKind(StrEnum):
     COLLABORATOR = "collaborator"
 
 
+def enrich_with_organization(
+    response: Dict[str, Any], organization: str
+) -> Dict[str, Any]:
+    """Helper function to enrich response with organization information.
+    Args:
+        response: The response to enrich
+        organization: The name of the organization
+    Returns:
+        The enriched response
+    """
+    return {**response, "__organization": organization}
+
+
 def enrich_with_repository(
     response: Dict[str, Any], repo_name: str, key: str = "__repository"
 ) -> Dict[str, Any]:

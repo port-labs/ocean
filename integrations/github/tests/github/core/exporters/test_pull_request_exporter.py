@@ -57,7 +57,11 @@ class TestPullRequestExporter:
                 )
             )
 
-            expected_pr = {**TEST_PULL_REQUESTS[0], "__repository": "repo1"}
+            expected_pr = {
+                **TEST_PULL_REQUESTS[0],
+                "__repository": "repo1",
+                "__organization": "test-org",
+            }
             assert pr == expected_pr
 
             mock_request.assert_called_once_with(
@@ -109,7 +113,10 @@ class TestPullRequestExporter:
 
             # Ensure enriched data
             expected_batches = [
-                [{**pr, "__repository": "repo1"} for pr in TEST_PULL_REQUESTS]
+                [
+                    {**pr, "__repository": "repo1", "__organization": "test-org"}
+                    for pr in TEST_PULL_REQUESTS
+                ]
                 for _ in expected_calls
             ]
             assert results == expected_batches
@@ -170,7 +177,10 @@ class TestPullRequestExporter:
 
         flat_results = [pr for batch in results for pr in batch]
         assert len(flat_results) == 5
-        assert flat_results == [{**pr, "__repository": "repo1"} for pr in many_prs[:5]]
+        assert flat_results == [
+            {**pr, "__repository": "repo1", "__organization": "test-org"}
+            for pr in many_prs[:5]
+        ]
 
         # --- Case 2: multiple batches ---
         with patch.object(
@@ -194,7 +204,10 @@ class TestPullRequestExporter:
         assert len(flat_results) == 5
         # Should be first 3 from batch1 + first 2 from batch2
         expected_prs = many_prs[:3] + many_prs[3:5]
-        assert flat_results == [{**pr, "__repository": "repo1"} for pr in expected_prs]
+        assert flat_results == [
+            {**pr, "__repository": "repo1", "__organization": "test-org"}
+            for pr in expected_prs
+        ]
 
     async def test_since_parameter_filters_closed_prs(
         self, rest_client: GithubRestClient, mock_datetime: datetime
