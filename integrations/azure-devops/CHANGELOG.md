@@ -32,6 +32,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.29.6
 
 
+## 0.4.30 (2025-11-14)
+
+
+### Bug Fixes
+
+- Fixed file pattern processing to handle multiple glob patterns with the same base path instead of only processing the first pattern
+
+
 ## 0.4.29 (2025-11-10)
 
 
