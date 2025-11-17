@@ -67,8 +67,8 @@ def client() -> PagerDutyClient:
     return PagerDutyClient(**TEST_INTEGRATION_CONFIG)
 
 
-@pytest.mark.asyncio
 class TestPagerDutyClient:
+    @pytest.mark.asyncio
     async def test_paginate_request_to_pager_duty(
         self, client: PagerDutyClient
     ) -> None:
@@ -92,6 +92,7 @@ class TestPagerDutyClient:
 
             assert collected_data == TEST_DATA["users"]
 
+    @pytest.mark.asyncio
     async def test_get_single_resource(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         mock_response.json.return_value = {"user": TEST_DATA["users"][0]}
@@ -100,6 +101,7 @@ class TestPagerDutyClient:
             result = await client.get_single_resource("users", "PU123")
             assert result == {"user": TEST_DATA["users"][0]}
 
+    @pytest.mark.asyncio
     async def test_create_webhooks_if_not_exists(self, client: PagerDutyClient) -> None:
         # Scenario 1: No existing webhooks
         no_webhook_response = MagicMock()
@@ -149,6 +151,7 @@ class TestPagerDutyClient:
         )
         await client_no_host.create_webhooks_if_not_exists()
 
+    @pytest.mark.asyncio
     async def test_get_oncall_user(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -160,6 +163,7 @@ class TestPagerDutyClient:
             result = await client.get_oncall_user("PE123", "PE456")
             assert result == TEST_DATA["oncalls"]
 
+    @pytest.mark.asyncio
     async def test_update_oncall_users(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -182,6 +186,7 @@ class TestPagerDutyClient:
                 ]
                 assert service["__oncall_user"] == matching_oncalls
 
+    @pytest.mark.asyncio
     async def test_get_incident_analytics(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         expected_analytics: dict[str, int] = {
@@ -194,6 +199,7 @@ class TestPagerDutyClient:
             result = await client.get_incident_analytics("INCIDENT123")
             assert result == expected_analytics
 
+    @pytest.mark.asyncio
     async def test_get_service_analytics(self, client: PagerDutyClient) -> None:
         # Scenario 1: Successful data retrieval
         mock_response = MagicMock()
@@ -207,6 +213,7 @@ class TestPagerDutyClient:
             result = await client.get_service_analytics(["SERVICE123", "SERVICE456"])
             assert result == analytics_response
 
+    @pytest.mark.asyncio
     async def test_send_api_request(self, client: PagerDutyClient) -> None:
         # Successful request
         mock_response = MagicMock()
@@ -233,6 +240,7 @@ class TestPagerDutyClient:
             result = await client.send_api_request("nonexistent/endpoint")
             assert result == {}
 
+    @pytest.mark.asyncio
     async def test_transform_user_ids_to_emails(self, client: PagerDutyClient) -> None:
         # Mock the fetch_and_cache_users method to populate user cache
         async def mock_fetch_and_cache_users() -> None:
@@ -305,6 +313,7 @@ class TestPagerDutyClient:
         assert regular_headers["Authorization"] == "Token token=test_token"
         assert "Accept" not in regular_headers
 
+    @pytest.mark.asyncio
     async def test_refresh_request_auth_creds_fallback_to_token(
         self, client: PagerDutyClient
     ) -> None:
