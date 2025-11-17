@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.17 (2025-11-12)
+## 0.4.0 (2025-11-17)
+
+
+### Bug fixes
+
+- Added support for ingesting CODEOWNERS files in the default mapping
+
+
+## 0.3.17 (2025-11-17)
 
 
 ### Improvements
 
-- Added support for ingesting CODEOWNERS files in the default mapping
+- Bumped ocean version to ^0.29.6
 
 
 ## 0.3.16 (2025-11-10)
