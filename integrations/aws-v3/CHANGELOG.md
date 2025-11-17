@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 2.0.5-beta (2025-11-17)
+
+### Bug Fixes
+
+- Fixed bug where `LambdaFunctionProperties.Tags` was incorrectly defined as a list of dictionaries. It is now a dictionary type, which correctly represents AWS Lambda Tags structure.
+
 
 ## 2.0.5-beta (2025-11-10)
 

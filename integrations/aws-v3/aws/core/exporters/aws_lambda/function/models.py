@@ -36,7 +36,7 @@ class LambdaFunctionProperties(BaseModel):
     State: str = Field(default_factory=str)
     StateReason: Optional[str] = None
     StateReasonCode: Optional[str] = None
-    Tags: list[dict[str, Any]] = Field(default_factory=list)
+    Tags: dict[str, Any] = Field(default_factory=dict)
     Timeout: int = Field(default=3)
     TracingConfig: Optional[dict[str, Any]] = None
     Version: str = Field(default_factory=str)
