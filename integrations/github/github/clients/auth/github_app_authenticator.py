@@ -21,12 +21,14 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
         private_key: str,
         organization: str,
         github_host: str,
+        installation_id: Optional[int] = None,
     ):
         self.app_id = app_id
         self.private_key = private_key
         self.organization = organization
         self.github_host = github_host.rstrip("/")
-        self.installation_id: Optional[int] = None
+        self.installation_id: Optional[int] = installation_id
+        self.is_personal_org: Optional[bool] = None
         self.cached_installation_token: Optional[GitHubToken] = None
         self.installation_token_lock = asyncio.Lock()
 
@@ -61,9 +63,26 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             X_GitHub_Api_Version="2022-11-28",
         )
 
+    async def _is_personal_org(self) -> bool:
+        try:
+            url = f"{self.github_host}/users/{self.organization}"
+            response = await self.client.get(url)
+            response.raise_for_status()
+            user_data = response.json()
+            return user_data["type"] == "User"
+        except Exception:
+            logger.exception(
+                f"Failed to check if organization is personal, assuming it is not a personal org"
+            )
+            return False
+
     async def _fetch_installation_id(self, jwt_token: str) -> int:
         try:
-            url = f"{self.github_host}/orgs/{self.organization}/installation"
+            if self.is_personal_org is None:
+                self.is_personal_org = await self._is_personal_org()
+
+            url_path = "users" if self.is_personal_org else "orgs"
+            url = f"{self.github_host}/{url_path}/{self.organization}/installation"
             headers = {"Authorization": f"Bearer {jwt_token}"}
             response = await self.client.get(url, headers=headers)
             response.raise_for_status()

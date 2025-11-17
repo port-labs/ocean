@@ -44,6 +44,11 @@ configurations:
     type: string
     sensitive: true
     description: If App ID is passed, then app private key is required.
+  - name: githubAppInstallationId
+    type: integer
+    required: false
+    sensitive: false
+    description: Installation ID if you want the integration to interact with Github as an app. This is mandatory if githubAppId is passed in.
   - name: githubOrganization
     required: false
     type: string
