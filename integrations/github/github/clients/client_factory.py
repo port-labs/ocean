@@ -24,7 +24,6 @@ class GitHubAuthenticatorFactory:
         token: Optional[str] = None,
         app_id: Optional[str] = None,
         private_key: Optional[str] = None,
-        installation_id: Optional[int] = None,
     ) -> AbstractGitHubAuthenticator:
         if token:
             logger.debug(
@@ -41,7 +40,6 @@ class GitHubAuthenticatorFactory:
                 private_key=private_key,
                 organization=organization,
                 github_host=github_host,
-                installation_id=installation_id,
             )
 
         raise MissingCredentials("No valid GitHub credentials provided.")
@@ -85,7 +83,6 @@ class GithubClientFactory:
                 token=ocean.integration_config.get("github_token"),
                 app_id=ocean.integration_config.get("github_app_id"),
                 private_key=ocean.integration_config.get("github_app_private_key"),
-                installation_id=ocean.integration_config.get("github_app_installation_id"),
             )
 
             self._instances[client_type] = self._clients[client_type](
