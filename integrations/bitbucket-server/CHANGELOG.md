@@ -9,10 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.71-beta (2025-11-17)
 
-
 ### Bug Fixes
 
 - Fixed Integration takes a long time before completing resync
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
 
 
 ## 0.1.70-beta (2025-11-10)
