@@ -4,7 +4,6 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from httpx import URL, Timeout
 from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from aiolimiter import AsyncLimiter
