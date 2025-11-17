@@ -12,9 +12,14 @@ class TestListResponseHandling:
     """Test cases for list response auto-detection"""
 
     @pytest.mark.asyncio
-    async def test_auto_detect_list_response(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_auto_detect_list_response(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test that direct list responses are auto-detected and data_path is set to '.'"""
-        with patch("port_ocean.context.ocean.ocean.integration.on_resync", lambda fn, kind=None: fn):
+        with patch(
+            "port_ocean.context.ocean.ocean.integration.on_resync",
+            lambda fn, kind=None: fn,
+        ):
             import main
 
             mock_client = AsyncMock()
@@ -27,7 +32,9 @@ class TestListResponseHandling:
             mock_selector.data_path = None
             mock_resource_config.selector = mock_selector
 
-            monkeypatch.setattr(main, "event", SimpleNamespace(resource_config=mock_resource_config))
+            monkeypatch.setattr(
+                main, "event", SimpleNamespace(resource_config=mock_resource_config)
+            )
 
             with (
                 patch("main.init_client", return_value=mock_client),
@@ -61,9 +68,14 @@ class TestListResponseHandling:
                 mock_ocean.app.integration.entity_processor._search.assert_called()
 
     @pytest.mark.asyncio
-    async def test_error_logged_when_not_list_and_no_data_path(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_error_logged_when_not_list_and_no_data_path(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test that error is logged when response is not a list and data_path is missing"""
-        with patch("port_ocean.context.ocean.ocean.integration.on_resync", lambda fn, kind=None: fn):
+        with patch(
+            "port_ocean.context.ocean.ocean.integration.on_resync",
+            lambda fn, kind=None: fn,
+        ):
             import main
 
             mock_client = AsyncMock()
@@ -76,7 +88,9 @@ class TestListResponseHandling:
             mock_selector.data_path = None
             mock_resource_config.selector = mock_selector
 
-            monkeypatch.setattr(main, "event", SimpleNamespace(resource_config=mock_resource_config))
+            monkeypatch.setattr(
+                main, "event", SimpleNamespace(resource_config=mock_resource_config)
+            )
 
             with (
                 patch("main.init_client", return_value=mock_client),
@@ -104,9 +118,14 @@ class TestListResponseHandling:
                 assert batch == [object_response]
 
     @pytest.mark.asyncio
-    async def test_explicit_data_path_used_when_provided(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_explicit_data_path_used_when_provided(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test that explicit data_path is used when provided (no auto-detection)"""
-        with patch("port_ocean.context.ocean.ocean.integration.on_resync", lambda fn, kind=None: fn):
+        with patch(
+            "port_ocean.context.ocean.ocean.integration.on_resync",
+            lambda fn, kind=None: fn,
+        ):
             import main
 
             mock_client = AsyncMock()
@@ -119,7 +138,9 @@ class TestListResponseHandling:
             mock_selector.data_path = ".data.users"
             mock_resource_config.selector = mock_selector
 
-            monkeypatch.setattr(main, "event", SimpleNamespace(resource_config=mock_resource_config))
+            monkeypatch.setattr(
+                main, "event", SimpleNamespace(resource_config=mock_resource_config)
+            )
 
             with (
                 patch("main.init_client", return_value=mock_client),

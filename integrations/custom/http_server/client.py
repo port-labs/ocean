@@ -11,7 +11,9 @@ from typing import AsyncGenerator, List, Dict, Any, Optional
 import httpx
 from loguru import logger
 
-from port_ocean.utils.async_http import http_async_client
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryTransport
 from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
@@ -43,14 +45,15 @@ class HttpServerClient:
         self.custom_headers = custom_headers or {}
 
         # Use Ocean's built-in HTTP client with retry and rate limiting
-        # If SSL verification is disabled, create a custom client
         if not verify_ssl:
             logger.warning(
                 "SSL verification is disabled - not recommended for production"
             )
-            self.client = httpx.AsyncClient(verify=False)
-        else:
-            self.client = http_async_client
+        self.client = OceanAsyncClient(
+            RetryTransport,
+            timeout=ocean.config.client_timeout,
+            verify=verify_ssl,
+        )
 
         self.client.headers["User-Agent"] = "Port-Ocean-HTTP-Integration/1.0"
 
@@ -90,9 +93,6 @@ class HttpServerClient:
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch data with pagination handling using handler pattern"""
 
-        # Fix: Preserve full base URL path when combining with endpoint
-        # urljoin removes last path component if endpoint starts with /
-        # So we manually construct the URL to preserve the full path
         base_url = self.base_url.rstrip("/")
         endpoint_path = endpoint.lstrip("/")
 
@@ -144,8 +144,6 @@ class HttpServerClient:
         headers: Dict[str, str],
     ) -> httpx.Response:
         """Make HTTP request using Ocean's built-in client with retry and rate limiting"""
-        # Merge global custom headers with per-endpoint headers
-        # Per-endpoint headers override global headers (same key)
         merged_headers = {**self.custom_headers, **headers}
 
         try:
