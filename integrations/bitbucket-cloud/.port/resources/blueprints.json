@@ -149,7 +149,7 @@
           "description": "File path to CODEOWNERS file"
         },
         "scope": {
-          "icon": "DefaultProperty",
+          "icon": "BitBucket",
           "type": "string",
           "title": "Scope",
           "description": "The scope which the user/team owns"
