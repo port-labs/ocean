@@ -18,6 +18,7 @@ class ObjectKind(StrEnum):
     DEPLOYMENT = "deployment"
     RELEASE = "release"
     MACHINE = "machine"
+    RUNBOOK = "runbook"
 
 
 class OctopusClient:
@@ -96,6 +97,15 @@ class OctopusClient:
         """Get all spaces in the Octopus instance."""
         async for spaces in self.get_paginated_resources(ObjectKind.SPACE):
             yield spaces
+
+    async def get_all_runbooks(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get all runbooks in the Octopus instance."""
+        async for runbooks in self.get_paginated_resources(ObjectKind.RUNBOOK):
+            yield runbooks
+
+    async def get_single_runbook(self, runbook_id: str) -> dict[str, Any]:
+        """Get a single runbook by ID."""
+        return await self._send_api_request(f"{ObjectKind.RUNBOOK}s/{runbook_id}")
 
     async def _create_subscription(
         self, space_id: str, app_host: str

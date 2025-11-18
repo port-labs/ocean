@@ -90,6 +90,14 @@ async def resync_spaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield spaces
 
 
+@ocean.on_resync(ObjectKind.RUNBOOK)
+async def resync_runbooks(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    octopus_client = await init_client()
+    async for runbooks in octopus_client.get_all_runbooks():
+        logger.info(f"Received batch {len(runbooks)} runbooks")
+        yield runbooks
+
+
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -113,16 +121,23 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
             logger.info(f"Received webhook event with ID: {resource_id}")
             resource_prefix = resource_id.split("-")[0].lower()
             if resource_prefix in TRACKED_EVENTS:
-                if resource_prefix == ObjectKind.SPACE:
-                    await client.get_single_space(space_id)
-                    return {"ok": True}
-                kind = ObjectKind(resource_prefix.rstrip("s"))
-                try:
-                    resource_data = await client.get_single_resource(
-                        resource_prefix, resource_id, space_id
-                    )
-                    await ocean.register_raw(kind, [resource_data])
-                except Exception as e:
-                    logger.error(f"Failed to process resource {resource_id}: {e}")
+                match resource_prefix:
+                    case ObjectKind.SPACE:
+                        await client.get_single_space(space_id)
+                        return {"ok": True}
+                    case ObjectKind.RUNBOOK:
+                        await client.get_single_runbook(resource_id)
+                        return {"ok": True}
+                    case _:
+                        kind = ObjectKind(resource_prefix.rstrip("s"))
+                        try:
+                            resource_data = await client.get_single_resource(
+                                resource_prefix, resource_id, space_id
+                            )
+                            await ocean.register_raw(kind, [resource_data])
+                        except Exception as e:
+                            logger.error(
+                                f"Failed to process resource {resource_id}: {e}"
+                            )
     logger.info("Webhook event processed")
     return {"ok": True}
