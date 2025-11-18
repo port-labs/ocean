@@ -1,7 +1,7 @@
 """Tests for main resync function"""
 
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, AsyncIterator, cast
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
@@ -57,9 +57,11 @@ class TestListResponseHandling:
                     return_value=direct_list_response
                 )
 
+                assert main.resync_resources is not None
                 result = main.resync_resources("/api/v1/users")
+                result_iter = cast(AsyncIterator[list[dict[str, Any]]], result)
 
-                batch = await result.__anext__()
+                batch = await result_iter.__anext__()
 
                 assert len(batch) == 2
                 assert batch[0]["id"] == 1
@@ -106,9 +108,11 @@ class TestListResponseHandling:
 
                 mock_client.fetch_paginated_data = mock_fetch_paginated_data
 
+                assert main.resync_resources is not None
                 result = main.resync_resources("/api/v1/users")
+                result_iter = cast(AsyncIterator[list[dict[str, Any]]], result)
 
-                batch = await result.__anext__()
+                batch = await result_iter.__anext__()
 
                 mock_logger.error.assert_called()
                 error_call = mock_logger.error.call_args[0][0]
@@ -161,9 +165,11 @@ class TestListResponseHandling:
                     return_value=extracted_users
                 )
 
+                assert main.resync_resources is not None
                 result = main.resync_resources("/api/v1/users")
+                result_iter = cast(AsyncIterator[list[dict[str, Any]]], result)
 
-                batch = await result.__anext__()
+                batch = await result_iter.__anext__()
 
                 mock_ocean.app.integration.entity_processor._search.assert_called_with(
                     object_response, ".data.users"

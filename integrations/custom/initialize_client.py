@@ -14,10 +14,10 @@ from http_server.client import HttpServerClient
 from port_ocean.context.ocean import ocean
 
 
-def _resolve_env_vars(value: str) -> str:  # type: ignore[no-untyped-def]
+def _resolve_env_vars(value: str) -> str:
     """Resolve environment variable references in string (e.g., ${VAR_NAME})"""
 
-    def replace_env(match):
+    def replace_env(match: re.Match[str]) -> str:
         var_name = match.group(1)
         return os.getenv(var_name, match.group(0))  # Return original if not found
 
