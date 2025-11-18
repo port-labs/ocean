@@ -29,7 +29,7 @@ class TestListResponseHandling:
             mock_selector.method = "GET"
             mock_selector.query_params = {}
             mock_selector.headers = {}
-            mock_selector.data_path = None
+            # data_path not set - will default to '.'
             mock_resource_config.selector = mock_selector
 
             monkeypatch.setattr(
@@ -85,7 +85,7 @@ class TestListResponseHandling:
             mock_selector.method = "GET"
             mock_selector.query_params = {}
             mock_selector.headers = {}
-            mock_selector.data_path = None
+            # data_path not set - will default to '.'
             mock_resource_config.selector = mock_selector
 
             monkeypatch.setattr(

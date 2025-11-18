@@ -55,8 +55,6 @@ class HttpServerClient:
             verify=verify_ssl,
         )
 
-        self.client.headers["User-Agent"] = "Port-Ocean-HTTP-Integration/1.0"
-
         # Configure authentication using handler pattern
         self.auth_handler = get_auth_handler(
             self.auth_type, self.client, self.auth_config
@@ -144,7 +142,11 @@ class HttpServerClient:
         headers: Dict[str, str],
     ) -> httpx.Response:
         """Make HTTP request using Ocean's built-in client with retry and rate limiting"""
-        merged_headers = {**self.custom_headers, **headers}
+        merged_headers = {
+            "User-Agent": "Port-Ocean-HTTP-Integration/1.0",
+            **self.custom_headers,
+            **headers,
+        }
 
         try:
             response = await self.client.request(

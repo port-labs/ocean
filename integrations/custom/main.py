@@ -41,8 +41,8 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for endpoint, path_params in endpoints:
         logger.info(f"Fetching data from: {method} {endpoint}")
 
-        # Extract data_path per endpoint (may be auto-detected from first batch)
-        data_path = getattr(selector, "data_path", None)
+        # Extract data_path per endpoint, defaulting to '.' if not specified or None
+        data_path = getattr(selector, "data_path", None) or "."
 
         try:
             async for batch in http_client.fetch_paginated_data(
@@ -53,57 +53,51 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 logger.info(f"Received {len(batch)} records from {endpoint}")
 
-                # Auto-detect list responses and default data_path to '.' if missing
-                if data_path is None and batch:
-                    response_data = batch[0]
-                    if isinstance(response_data, list):
-                        data_path = "."
-                        logger.info("Auto-detected list response, using data_path: '.'")
-                    else:
-                        logger.error(
-                            f"Response from {endpoint} is not a list and 'data_path' is not specified. "
-                            f"Yielding response as-is. If mapping fails, please specify 'data_path' in your selector "
-                            f"(e.g., data_path: '.data'). Response type: {type(response_data).__name__}"
-                        )
-
-                # If data_path is specified, extract the array from each response
-                if data_path:
-                    processed_batch = []
-                    for item in batch:
-                        try:
-                            # Use Ocean's built-in JQ processor
-                            extracted_data = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
-                                item, data_path
-                            )
-                            if isinstance(extracted_data, list):
-                                # Inject path parameters into each extracted item
-                                for entity in extracted_data:
-                                    if isinstance(entity, dict) and path_params:
-                                        for (
-                                            param_name,
-                                            param_value,
-                                        ) in path_params.items():
-                                            entity[f"__{param_name}"] = param_value
-                                processed_batch.extend(extracted_data)
-                            elif extracted_data is not None:
-                                # Inject path parameters for single item
-                                if isinstance(extracted_data, dict) and path_params:
-                                    for param_name, param_value in path_params.items():
-                                        extracted_data[f"__{param_name}"] = param_value
-                                processed_batch.append(extracted_data)
-                        except Exception as e:
-                            logger.error(
-                                f"Error extracting data with JQ path '{data_path}': {e}"
-                            )
-                            continue
-
-                    if processed_batch:
-                        logger.info(
-                            f"Extracted {len(processed_batch)} items using data_path: {data_path}"
-                        )
-                        yield processed_batch
-                else:
+                # If data_path is default ('.') and batch[0] is not a list, yield as-is
+                if data_path == "." and batch and not isinstance(batch[0], list):
+                    logger.error(
+                        f"Response from {endpoint} is not a list and 'data_path' is not specified. "
+                        f"Yielding response as-is. If mapping fails, please specify 'data_path' in your selector "
+                        f"(e.g., data_path: '.data'). Response type: {type(batch[0]).__name__}"
+                    )
                     yield batch
+                    continue
+
+                # Extract the array from each response using data_path
+                processed_batch = []
+                for item in batch:
+                    try:
+                        # Use Ocean's built-in JQ processor
+                        extracted_data = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
+                            item, data_path
+                        )
+                        if isinstance(extracted_data, list):
+                            # Inject path parameters into each extracted item
+                            for entity in extracted_data:
+                                if isinstance(entity, dict) and path_params:
+                                    for (
+                                        param_name,
+                                        param_value,
+                                    ) in path_params.items():
+                                        entity[f"__{param_name}"] = param_value
+                            processed_batch.extend(extracted_data)
+                        elif extracted_data is not None:
+                            # Inject path parameters for single item
+                            if isinstance(extracted_data, dict) and path_params:
+                                for param_name, param_value in path_params.items():
+                                    extracted_data[f"__{param_name}"] = param_value
+                            processed_batch.append(extracted_data)
+                    except Exception as e:
+                        logger.error(
+                            f"Error extracting data with JQ path '{data_path}': {e}"
+                        )
+                        continue
+
+                if processed_batch:
+                    logger.info(
+                        f"Extracted {len(processed_batch)} items using data_path: {data_path}"
+                    )
+                    yield processed_batch
 
         except Exception as e:
             logger.error(f"Error fetching data from {endpoint}: {str(e)}")
