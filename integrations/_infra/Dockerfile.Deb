@@ -6,13 +6,7 @@ FROM ${BASE_BUILDER_PYTHON_IMAGE} AS base
 ARG BUILD_CONTEXT
 ARG BUILDPLATFORM
 
-ENV LIBRDKAFKA_VERSION=2.8.2 \
-ENV SSL_CERT_DIR=/home/ocean/.local/share/ca-certificates
-ENV SSL_CERT_FILE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt
-ENV CURL_CA_BUNDLE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt
-ENV REQUESTS_CA_BUNDLE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt    PYTHONUNBUFFERED=1 \
-    POETRY_VIRTUALENVS_IN_PROJECT=1 \
-    PIP_ROOT_USER_ACTION=ignore
+ENV LIBRDKAFKA_VERSION=2.8.2
 
 WORKDIR /app
 
@@ -33,11 +27,8 @@ ARG PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
 ARG OAUTH_CONFIG_DIR=/app/.config
 ARG STREAMING_LOCATION=/tmp/ocean/streaming
 
-ENV LIBRDKAFKA_VERSION=2.8.2 \
-ENV SSL_CERT_DIR=/home/ocean/.local/share/ca-certificates
-ENV SSL_CERT_FILE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt
-ENV CURL_CA_BUNDLE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt
-ENV REQUESTS_CA_BUNDLE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt    PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR} \
+ENV LIBRDKAFKA_VERSION=2.8.2
+ENV PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR} \
     STREAMING_LOCATION=${STREAMING_LOCATION}
 
 RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
@@ -53,7 +44,6 @@ RUN apt-get update \
         openssl \
         curl \
         acl \
-
         jq \
     && apt-get clean
 
@@ -73,6 +63,8 @@ COPY ./${BUILD_CONTEXT} /app
 # Copy dependencies from the build stage
 COPY --from=base /app/.venv /app/.venv
 
+COPY ./integrations/_infra/sync_ca_certs.sh /app/sync_ca_certs.sh
+
 COPY ./integrations/_infra/init.sh /app/init.sh
 
 USER root
@@ -81,7 +73,8 @@ USER root
 RUN chmod a+x /app/.venv/bin/ocean
 
 RUN chmod a+x /app/init.sh
-RUN chmod +x /app/integrations/_infra/sync_ca_certs.shRUN ln -s /app/.venv/bin/ocean /usr/bin/ocean
+RUN chmod +x /app/sync_ca_certs.sh
+RUN ln -s /app/.venv/bin/ocean /usr/bin/ocean
 
 # Add ocean user to ssl certs group
 # Copy CA certificates to user-accessible location for unprivileged access
