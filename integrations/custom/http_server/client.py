@@ -31,7 +31,6 @@ class HttpServerClient:
         auth_type: str,
         auth_config: Dict[str, Any],
         pagination_config: Dict[str, Any],
-        timeout: int = 30,
         verify_ssl: bool = True,
         max_concurrent_requests: int = 10,
         custom_headers: Optional[Dict[str, str]] = None,
@@ -40,18 +39,18 @@ class HttpServerClient:
         self.auth_type = auth_type
         self.auth_config = auth_config
         self.pagination_config = pagination_config
-        self.timeout = timeout
         self.verify_ssl = verify_ssl
         self.custom_headers = custom_headers or {}
 
         # Use Ocean's built-in HTTP client with retry and rate limiting
+        # Leverage Ocean's core client_timeout capability
         if not verify_ssl:
             logger.warning(
                 "SSL verification is disabled - not recommended for production"
             )
         self.client = OceanAsyncClient(
             RetryTransport,
-            timeout=httpx.Timeout(self.timeout),
+            timeout=ocean.config.client_timeout,
             verify=verify_ssl,
         )
 
