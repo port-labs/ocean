@@ -16,9 +16,9 @@ def initialize_client() -> BitbucketClient:
     config = ocean.integration_config
 
     # Extract rate limiting configuration
-    rate_limit = int(config.get("bitbucket_rate_limit", DEFAULT_BITBUCKET_RATE_LIMIT))
+    rate_limit = int(config["bitbucket_rate_limit"])
     rate_limit_window = int(
-        config.get("bitbucket_rate_limit_window", DEFAULT_BITBUCKET_RATE_LIMIT_WINDOW)
+        config["bitbucket_rate_limit_window"])
     )
 
     # Extract project filtering configuration from selector
