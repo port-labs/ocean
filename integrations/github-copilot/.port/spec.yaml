@@ -1,5 +1,6 @@
 description: github-copilot integration for Port Ocean
 icon: GithubCopilot
+recommendedInstallationMethod: Saas
 features:
   - type: exporter
     section: AI Agents

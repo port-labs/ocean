@@ -1,0 +1,142 @@
+{
+  "Type": "AWS::RDS::DBInstance",
+  "Properties": {
+    "ActivityStreamStatus": null,
+    "AllocatedStorage": 100,
+    "AssociatedRoles": [],
+    "AutoMinorVersionUpgrade": true,
+    "AvailabilityZone": "us-east-1b",
+    "BackupRetentionPeriod": 7,
+    "BackupTarget": null,
+    "CACertificateIdentifier": "rds-ca-2015",
+    "CertificateDetails": null,
+    "CharacterSetName": null,
+    "CopyTagsToSnapshot": false,
+    "CustomerOwnedIpEnabled": false,
+    "DBInstanceArn": "arn:aws:rds:us-east-1:1234567890:db:mysqldb",
+    "DBInstanceClass": "db.m4.xlarge",
+    "DBInstanceIdentifier": "mysqldb",
+    "DBInstanceStatus": "available",
+    "DBName": null,
+    "DBParameterGroups": [
+      {
+        "DBParameterGroupName": "default.mysql5.6",
+        "ParameterApplyStatus": "in-sync"
+      }
+    ],
+    "DBSecurityGroups": [],
+    "DBSubnetGroup": {
+      "VpcId": "vpc-########",
+      "Subnets": [
+        {
+          "SubnetIdentifier": "subnet-########",
+          "SubnetStatus": "Active",
+          "SubnetAvailabilityZone": {
+            "Name": "us-east-1e"
+          }
+        },
+        {
+          "SubnetIdentifier": "subnet-########",
+          "SubnetStatus": "Active",
+          "SubnetAvailabilityZone": {
+            "Name": "us-east-1d"
+          }
+        },
+        {
+          "SubnetIdentifier": "subnet-########",
+          "SubnetStatus": "Active",
+          "SubnetAvailabilityZone": {
+            "Name": "us-east-1c"
+          }
+        },
+        {
+          "SubnetIdentifier": "subnet-########",
+          "SubnetStatus": "Active",
+          "SubnetAvailabilityZone": {
+            "Name": "us-east-1f"
+          }
+        },
+        {
+          "SubnetIdentifier": "subnet-########",
+          "SubnetStatus": "Active",
+          "SubnetAvailabilityZone": {
+            "Name": "us-east-1a"
+          }
+        },
+        {
+          "SubnetIdentifier": "subnet-########",
+          "SubnetStatus": "Active",
+          "SubnetAvailabilityZone": {
+            "Name": "us-east-1b"
+          }
+        }
+      ],
+      "SubnetGroupStatus": "Complete",
+      "DBSubnetGroupDescription": "default",
+      "DBSubnetGroupName": "default"
+    },
+    "DbiResourceId": "db-IXRXA2XS7KFFA6JWYYWFZEBJDE",
+    "DatabaseInsightsMode": null,
+    "DedicatedLogVolume": false,
+    "DeletionProtection": false,
+    "DomainMemberships": [],
+    "IAMDatabaseAuthenticationEnabled": false,
+    "PerformanceInsightsEnabled": false,
+    "Endpoint": {
+      "HostedZoneId": "Z2R2ITUGPM61AM",
+      "Address": "mysqldb.########.us-east-1.rds.amazonaws.com",
+      "Port": 3306
+    },
+    "Engine": "mysql",
+    "EngineLifecycleSupport": null,
+    "EngineVersion": "5.6.39",
+    "EnhancedMonitoringResourceArn": "arn:aws:logs:us-east-1:1234567890:log-group:RDSOSMetrics:log-stream:db-IXRXA2XS7KFFA6JWYYWFZEBJDE",
+    "InstanceCreateTime": "2018-03-28T19:54:07.871Z",
+    "Iops": 1000,
+    "IsStorageConfigUpgradeAvailable": false,
+    "KmsKeyId": "arn:aws:kms:us-east-1:1234567890:key/######################",
+    "LatestRestorableTime": "2018-03-28T20:10:00Z",
+    "LicenseModel": "general-public-license",
+    "MasterUsername": "mysqldbadmin",
+    "MonitoringInterval": 60,
+    "MonitoringRoleArn": "arn:aws:iam::1234567890:role/rds-monitoring-role",
+    "MultiAZ": true,
+    "NetworkType": null,
+    "OptionGroupMemberships": [
+      {
+        "OptionGroupName": "default:mysql-5-6",
+        "Status": "in-sync"
+      }
+    ],
+    "PendingModifiedValues": {},
+    "DbInstancePort": 0,
+    "PreferredBackupWindow": "05:27-05:57",
+    "PreferredMaintenanceWindow": "fri:05:57-fri:06:27",
+    "PubliclyAccessible": true,
+    "ReadReplicaDBInstanceIdentifiers": [],
+    "SecondaryAvailabilityZone": "us-east-1a",
+    "StorageEncrypted": true,
+    "StorageThroughput": null,
+    "StorageType": "io1",
+    "Tags": [
+      {
+        "Key": "Environment",
+        "Value": "production"
+      },
+      {
+        "Key": "Team",
+        "Value": "database"
+      },
+      {
+        "Key": "Application",
+        "Value": "web-app"
+      }
+    ],
+    "VpcSecurityGroups": [
+      {
+        "VpcSecurityGroupId": "sg-########",
+        "Status": "active"
+      }
+    ]
+  }
+}

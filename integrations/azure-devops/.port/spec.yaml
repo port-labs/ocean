@@ -43,3 +43,23 @@ saas:
   enabled: true
   liveEvents:
     enabled: true
+installationDocs:
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: false
+  githubWorkflow:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/azure-devops/?installation-methods=one-time-ci&cicd-method=github#setup
+  gitlabCI:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/azure-devops/?installation-methods=one-time-ci&cicd-method=gitlab#setup
+  azurePipeline:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/azure-devops/?installation-methods=one-time-ci&cicd-method=azure#setup
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/azure-devops/?installation-methods=real-time-self-hosted#setup
+  docker:
+    enabled: false

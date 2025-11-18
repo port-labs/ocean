@@ -2,7 +2,11 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from client import ArgocdClient, ObjectKind
+from client import (
+    ArgocdClient,
+    ClusterState,
+    ObjectKind,
+)
 
 
 @pytest.fixture
@@ -16,22 +20,14 @@ def mock_argocd_client() -> ArgocdClient:
 
 
 @pytest.mark.asyncio
-async def test_get_resources(mock_argocd_client: ArgocdClient) -> None:
-    kinds = [ObjectKind.CLUSTER, ObjectKind.PROJECT, ObjectKind.APPLICATION]
+async def test_get_resources_for_available_clusters(
+    mock_argocd_client: ArgocdClient,
+) -> None:
+    kinds = [ObjectKind.PROJECT, ObjectKind.APPLICATION]
 
     for kind in kinds:
         response_data = {}
-        if kind == ObjectKind.CLUSTER:
-            response_data = {
-                "items": [
-                    {
-                        "server": "test-server",
-                        "name": "test-cluster",
-                        "connectionState": {"status": "Successful"},
-                    }
-                ]
-            }
-        elif kind == ObjectKind.PROJECT:
+        if kind == ObjectKind.PROJECT:
             response_data = {
                 "items": [
                     {
@@ -57,13 +53,31 @@ async def test_get_resources(mock_argocd_client: ArgocdClient) -> None:
                     }
                 ]
             }
+
         with patch.object(
-            mock_argocd_client, "_send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            mock_request.return_value = response_data
-            resources = await mock_argocd_client.get_resources(resource_kind=kind)
-            assert resources == response_data["items"]
-            mock_request.assert_called_with(url=f"{mock_argocd_client.api_url}/{kind}s")
+            mock_argocd_client, "get_available_clusters", new_callable=AsyncMock
+        ) as mock_clusters:
+            mock_clusters.return_value = [
+                {
+                    "name": "test-cluster",
+                    "connectionState": {"status": ClusterState.AVAILABLE.value},
+                }
+            ]
+            with patch.object(
+                mock_argocd_client, "_send_api_request", new_callable=AsyncMock
+            ) as mock_request:
+                mock_request.return_value = response_data
+                resources = (
+                    await mock_argocd_client.get_resources_for_available_clusters(
+                        resource_kind=kind
+                    )
+                )
+                assert resources == response_data["items"]
+                mock_request.assert_called_with(
+                    url=f"{mock_argocd_client.api_url}/{kind}s",
+                    query_params={"cluster": "test-cluster"},
+                )
+            mock_clusters.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -125,7 +139,9 @@ async def test_get_deployment_history(mock_argocd_client: ArgocdClient) -> None:
         ]
     }
     with patch.object(
-        mock_argocd_client, "get_resources", new_callable=AsyncMock
+        mock_argocd_client,
+        "get_resources_for_available_clusters",
+        new_callable=AsyncMock,
     ) as mock_request:
         mock_request.return_value = response_data["items"]
         kind = ObjectKind.APPLICATION
@@ -156,7 +172,9 @@ async def test_get_deployment_history_without_history_data(
         ]
     }
     with patch.object(
-        mock_argocd_client, "get_resources", new_callable=AsyncMock
+        mock_argocd_client,
+        "get_resources_for_available_clusters",
+        new_callable=AsyncMock,
     ) as mock_request:
         mock_request.return_value = response_data["items"]
         kind = ObjectKind.APPLICATION
@@ -196,7 +214,9 @@ async def test_get_kubernetes_resource(mock_argocd_client: ArgocdClient) -> None
         ]
     }
     with patch.object(
-        mock_argocd_client, "get_resources", new_callable=AsyncMock
+        mock_argocd_client,
+        "get_resources_for_available_clusters",
+        new_callable=AsyncMock,
     ) as mock_request:
         mock_request.return_value = response_data["items"]
         kind = ObjectKind.APPLICATION
@@ -227,7 +247,9 @@ async def test_get_kubernetes_resource_without_resource_data(
         ]
     }
     with patch.object(
-        mock_argocd_client, "get_resources", new_callable=AsyncMock
+        mock_argocd_client,
+        "get_resources_for_available_clusters",
+        new_callable=AsyncMock,
     ) as mock_request:
         mock_request.return_value = response_data["items"]
         async for resources in mock_argocd_client.get_kubernetes_resource():
@@ -269,3 +291,101 @@ async def test_get_managed_resources(
                 mock_request.assert_called_with(
                     url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
                 )
+
+
+@pytest.mark.asyncio
+async def test_get_clusters_with_only_available_clusters(
+    mock_argocd_client: ArgocdClient,
+) -> None:
+    """Test that get_clusters yields only available clusters."""
+    response_data = {
+        "items": [
+            {
+                "server": "https://cluster1.example.com",
+                "name": "cluster-1",
+                "connectionState": {"status": "Successful"},
+            },
+            {
+                "server": "https://cluster2.example.com",
+                "name": "cluster-2",
+                "connectionState": {"status": "Successful"},
+            },
+            {
+                "server": "https://cluster3.example.com",
+                "name": "cluster-3",
+                "connectionState": {"status": "Successful"},
+            },
+        ]
+    }
+    with patch.object(
+        mock_argocd_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = response_data
+
+        all_clusters = []
+        async for cluster_batch in mock_argocd_client.get_clusters():
+            all_clusters.extend(cluster_batch)
+
+        assert len(all_clusters) == 3
+        assert all(
+            cluster["connectionState"]["status"] == ClusterState.AVAILABLE.value
+            for cluster in all_clusters
+        )
+        mock_request.assert_called_with(url=f"{mock_argocd_client.api_url}/clusters")
+
+
+@pytest.mark.asyncio
+async def test_get_clusters_filters_unavailable_clusters(
+    mock_argocd_client: ArgocdClient,
+) -> None:
+    """Test that get_clusters filters out unavailable clusters."""
+    response_data = {
+        "items": [
+            {
+                "server": "https://cluster1.example.com",
+                "name": "cluster-1",
+                "connectionState": {"status": "Successful"},
+            },
+            {
+                "server": "https://cluster2.example.com",
+                "name": "cluster-2",
+                "connectionState": {"status": "Failed"},
+            },
+            {
+                "server": "https://cluster3.example.com",
+                "name": "cluster-3",
+                "connectionState": {"status": "Successful"},
+            },
+            {
+                "server": "https://cluster4.example.com",
+                "name": "cluster-4",
+                "connectionState": {"status": "Unknown"},
+            },
+            {
+                "server": "https://cluster5.example.com",
+                "name": "cluster-5",
+                "connectionState": {"status": "Successful"},
+            },
+        ]
+    }
+    with patch.object(
+        mock_argocd_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = response_data
+
+        all_clusters = []
+        async for cluster_batch in mock_argocd_client.get_clusters(
+            skip_unavailable_clusters=True
+        ):
+            all_clusters.extend(cluster_batch)
+
+        # Only 3 out of 5 clusters have "Successful" status
+        assert len(all_clusters) == 3
+        assert all(
+            cluster["connectionState"]["status"] == ClusterState.AVAILABLE.value
+            for cluster in all_clusters
+        )
+        # Verify the correct clusters were included
+        cluster_names = [cluster["name"] for cluster in all_clusters]
+        assert cluster_names == ["cluster-1", "cluster-3", "cluster-5"]
+        mock_request.assert_called_with(url=f"{mock_argocd_client.api_url}/clusters")

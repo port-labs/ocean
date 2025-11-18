@@ -7,6 +7,302 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.31 (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 0.4.30 (2025-11-13)
+
+
+### Bug Fixes
+
+- Updated `PULL_REQUEST_SEARCH_CRITERIA` so that filters for both "abandoned" and "completed" pull requests now include a closed time range to improve query accuracy.
+- Added new tests to validate that "abandoned" and "completed" pull request filters correctly utilize the "closed" time range.
+
+
+## 0.4.30 (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 0.4.30 (2025-11-14)
+
+
+### Bug Fixes
+
+- Fixed file pattern processing to handle multiple glob patterns with the same base path instead of only processing the first pattern
+
+
+## 0.4.29 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+## 0.4.28 (2025-11-10)
+
+
+### Improvements
+
+- Align itemsBatch payload with API to reduce payload size and prevent validation errors during resync.
+
+
+## 0.4.27 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
+## 0.4.26 (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+## 0.4.25 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+
+## 0.4.24 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+
+
+## 0.4.23 (2025-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.1
+
+
+## 0.4.22 (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 0.4.21 (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 0.4.20 (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+## 0.4.19 (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 0.4.18 (2025-10-22)
+
+
+### Bug Fix
+
+- Increase timeout for itemsbatch
+
+## 0.4.17 (2025-10-22)
+
+
+### Improvements
+
+- Added live events support for branch kind
+
+
+## 0.4.16 (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 0.4.16 (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 0.4.15 (2025-10-20)
+
+
+### Features
+
+- Added support for branch kind
+
+
+## 0.4.14 (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+## 0.4.13 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.4.12 (2025-09-30)
+
+
+### Improvements
+
+- Updated spec file of Azure DevOps to support docs
+
+
+## 0.4.11 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.4.10 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.4.9 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+## 0.4.8 (2025-09-25)
+
+
+### Bug fixes
+
+- Handle request timeouts introduced by throttling delays.
+- Change expected headers to lowercase
+
+
+## 0.4.7 (2025-09-24)
+
+
+### Features
+
+- Added support for Iteration kind
+
+
+## 0.4.6 (2025-09-22)
+
+
+### Improvements
+
+- Added code coverage support for test runs in Azure DevOps integration
+- Added `codeCoverage` selector option to include coverage data with test runs
+- Enhanced test runs enrichment with configurable coverage flags
+- Optimized async processing for test results and coverage data fetching
+
+
+## 0.4.5 (2025-09-18)
+
+
+### Features
+
+- Added support for build kind
+- Added support for pipeline stage kind
+- Added support for pipeline runs kind
+
+
+## 0.4.4 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.4.3 (2025-09-16)
+
+
+### Features
+
+- Added support for test-run kind in Azure DevOps integration
+- Added enrichment to include test results
+
+
+## 0.4.2 (2025-09-16)
+
+
+### Features
+
+- Added support for envrionments kind in Azure DevOps integration
+- Added support for release_deployment kind in Azure DevOps integration
+- Added support for pipeline_deployment kind in Azure DevOps integration
+
+
+## 0.4.1 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
+## 0.4.0 (2025-09-11)
+
+
+### Improvements
+
+- Implemented rate limiter to handle both `X-RateLimit-Reset` and `Retry-After` headers
+
+
+## 0.3.12 (2025-09-11)
+
+
+### Improvements
+
+- Enhanced payload validation for file, folder, and pull request event kinds.
+- Improved error handling and schema checks to ensure consistent processing and reduced failed syncs.
+
+
 ## 0.3.11 (2025-09-10)
 
 

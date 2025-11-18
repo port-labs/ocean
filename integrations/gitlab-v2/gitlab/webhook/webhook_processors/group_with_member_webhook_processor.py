@@ -52,11 +52,14 @@ class GroupWithMemberWebhookProcessor(_GitlabAbstractWebhookProcessor):
 
         selector = typing.cast(GitlabMemberSelector, resource_config.selector)
         include_bot_members = bool(selector.include_bot_members)
+        include_inherited_members = selector.include_inherited_members
 
         group = await self._gitlab_webhook_client.get_group(group_id)
         if group:
             group = await self._gitlab_webhook_client.enrich_group_with_members(
-                group, include_bot_members=include_bot_members
+                group,
+                include_bot_members=include_bot_members,
+                include_inherited_members=include_inherited_members,
             )
         else:
             logger.warning(f"Group with ID '{group_id}' not found")

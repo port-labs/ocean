@@ -1,0 +1,49 @@
+# Example: Dynamic path parameters with API-discovered values
+# This demonstrates how to use path parameters that are resolved by querying another endpoint
+
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+
+resources:
+  # First, fetch all teams
+  - kind: /api/v1/teams
+    selector:
+      query: 'true'
+      method: GET
+      data_path: '.teams'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"team"'
+          properties:
+            description: .description
+            member_count: .member_count
+
+  # Then, fetch team members for each team using dynamic path parameters
+  - kind: /api/v1/teams/{team_id}/members
+    selector:
+      query: 'true'
+      method: GET
+      path_parameters:
+        team_id:
+          # Query the teams endpoint to get all team IDs
+          endpoint: /api/v1/teams
+          method: GET
+          field: '.id'  # Extract the 'id' field from each team
+          # Optional: filter to only active teams
+          filter: '.status == "active"'
+      data_path: '.members'
+    port:
+      entity:
+        mappings:
+          identifier: .user_id
+          title: .name
+          blueprint: '"team_member"'
+          properties:
+            email: .email
+            role: .role
+            team_id: .team_id
+          relations:
+            team: .team_id

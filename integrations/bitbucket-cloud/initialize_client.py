@@ -27,5 +27,7 @@ def init_webhook_client() -> BitbucketWebhookClient:
         host=ocean.integration_config["bitbucket_host_url"],
         username=ocean.integration_config.get("bitbucket_username"),
         app_password=ocean.integration_config.get("bitbucket_app_password"),
+        user_email=ocean.integration_config.get("bitbucket_user_email"),
+        user_scoped_token=ocean.integration_config.get("bitbucket_user_scoped_token"),
         workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
     )

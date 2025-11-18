@@ -57,6 +57,7 @@ class SyncState:
     COMPLETED = "completed"
     PENDING = "pending"
     FAILED = "failed"
+    ABORTED = "aborted"
 
 
 class MetricResourceKind:

@@ -39,13 +39,19 @@ class TestIssueExporter:
         ) as mock_request:
             # Test with options
             issue = await exporter.get_resource(
-                SingleIssueOptions(repo_name="repo1", issue_number=101)
+                SingleIssueOptions(
+                    organization="test-org", repo_name="repo1", issue_number=101
+                )
             )
 
-            assert issue == {**TEST_ISSUES[0], "__repository": "repo1"}
+            assert issue == {
+                **TEST_ISSUES[0],
+                "__repository": "repo1",
+                "__organization": "test-org",
+            }
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/issues/101"
+                f"{rest_client.base_url}/repos/test-org/repo1/issues/101"
             )
 
     async def test_get_paginated_resources(self, rest_client: GithubRestClient) -> None:
@@ -62,23 +68,27 @@ class TestIssueExporter:
         ) as mock_paginated:
             issues = []
             async for batch in exporter.get_paginated_resources(
-                ListIssueOptions(repo_name="repo1", state="open")
+                ListIssueOptions(
+                    organization="test-org", repo_name="repo1", state="open"
+                )
             ):
                 issues.extend(batch)
 
             # Assert we received all issues with repository added
             assert len(issues) == 2
             assert all(issue["__repository"] == "repo1" for issue in issues)
+            assert all(issue["__organization"] == "test-org" for issue in issues)
 
             # Verify specific values
             expected_issues = [
-                {**issue, "__repository": "repo1"} for issue in TEST_ISSUES
+                {**issue, "__repository": "repo1", "__organization": "test-org"}
+                for issue in TEST_ISSUES
             ]
             assert issues == expected_issues
 
             # Verify the API was called correctly
             mock_paginated.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/issues",
+                f"{rest_client.base_url}/repos/test-org/repo1/issues",
                 {"state": "open"},
             )
 
@@ -98,12 +108,14 @@ class TestIssueExporter:
         ) as mock_paginated:
             issues = []
             async for batch in exporter.get_paginated_resources(
-                ListIssueOptions(repo_name="repo1", state="closed")
+                ListIssueOptions(
+                    organization="test-org", repo_name="repo1", state="closed"
+                )
             ):
                 issues.extend(batch)
 
             # Verify closed state was passed in parameters
             mock_paginated.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/repo1/issues",
+                f"{rest_client.base_url}/repos/test-org/repo1/issues",
                 {"state": "closed"},
             )

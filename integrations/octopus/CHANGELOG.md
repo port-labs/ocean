@@ -7,12 +7,164 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.153 (2025-11-18)
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+# Port_Ocean 0.1.152 (2025-11-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+# Port_Ocean 0.1.151 (2025-11-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+# Port_Ocean 0.1.150 (2025-11-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
+# Port_Ocean 0.1.149 (2025-11-09)
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+# Port_Ocean 0.1.148 (2025-11-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+
+# Port_Ocean 0.1.147 (2025-11-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+
+
+# Port_Ocean 0.1.146 (2025-11-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.29.1
+
+
+# Port_Ocean 0.1.145 (2025-11-04)
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+# Port_Ocean 0.1.144 (2025-11-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+# Port_Ocean 0.1.143 (2025-10-27)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+# Port_Ocean 0.1.142 (2025-10-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+# Port_Ocean 0.1.141 (2025-10-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+# Port_Ocean 0.1.140 (2025-10-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+# Port_Ocean 0.1.139 (2025-10-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+# Port_Ocean 0.1.138 (2025-09-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+# Port_Ocean 0.1.137 (2025-09-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+# Port_Ocean 0.1.136 (2025-09-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+# Port_Ocean 0.1.135 (2025-09-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+# Port_Ocean 0.1.134 (2025-09-22)
+
+### Improvements
+
+- Added recommendedInstallationMethod: Saas to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
+
+
+# Port_Ocean 0.1.133 (2025-09-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+# Port_Ocean 0.1.132 (2025-09-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
 # Port_Ocean 0.1.131 (2025-09-10)
 
 ### Improvements
 
 - Bumped ocean version to ^0.28.4
-
 
 # Port_Ocean 0.1.130 (2025-09-08)
 

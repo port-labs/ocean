@@ -1,0 +1,1 @@
+# SQS exporter tests

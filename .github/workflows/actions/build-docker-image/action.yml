@@ -35,7 +35,7 @@ inputs:
   skip-push:
     required: false
     description: Optionally skip push
-    default: ''
+    default: 'false'
   load-created-image:
     required: false
     description: Optionally load created docker image
@@ -70,7 +70,7 @@ runs:
         context: .
         file: ${{ inputs.dockerfile }}
         platforms: ${{ inputs.platforms }}
-        push: ${{ inputs.skip-push == '' }}
+        push: ${{ inputs.skip-push == 'false' }}
         load: ${{ inputs.test != '' || inputs.load-created-image != '' }}
         tags: ${{ inputs.tags }}
         build-args: |

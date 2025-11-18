@@ -63,6 +63,7 @@ class TestGroupWithMemberWebhookProcessor:
         resource_config = MagicMock()
         resource_config.selector = MagicMock()
         resource_config.selector.include_bot_members = True
+        resource_config.selector.include_inherited_members = False
 
         group_id = group_payload["group_id"]
         expected_group = {
@@ -97,6 +98,7 @@ class TestGroupWithMemberWebhookProcessor:
                 "path": group_payload["path"],
             },
             include_bot_members=True,
+            include_inherited_members=False,
         )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == expected_group

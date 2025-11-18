@@ -1,0 +1,39 @@
+{
+  "identifier": "arn:aws:sqs:us-east-1:123456789012:my-production-queue",
+  "title": "my-production-queue",
+  "blueprint": "sqsQueue",
+  "properties": {
+    "arn": "arn:aws:sqs:us-east-1:123456789012:my-production-queue",
+    "region": "us-east-1",
+    "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/my-production-queue",
+    "approximateNumberOfMessages": 5,
+    "visibilityTimeout": 60,
+    "messageRetentionPeriod": 1209600,
+    "sqsManagedSseEnabled": true,
+    "approximateNumberOfMessagesNotVisible": 2,
+    "approximateNumberOfMessagesDelayed": 0,
+    "createdTimestamp": "1676665337",
+    "lastModifiedTimestamp": "1677096375",
+    "maximumMessageSize": 262144,
+    "delaySeconds": 0,
+    "receiveMessageWaitTimeSeconds": 2,
+    "policy": "{\"Version\":\"2012-10-17\",\"Id\":\"Policy1677095510157\",\"Statement\":[{\"Sid\":\"Stmt1677095506939\",\"Effect\":\"Allow\",\"Principal\":\"*\",\"Action\":\"sqs:ReceiveMessage\",\"Resource\":\"arn:aws:sqs:us-east-1:123456789012:my-production-queue\"}]}",
+    "redrivePolicy": "{\"deadLetterTargetArn\":\"arn:aws:sqs:us-east-1:123456789012:my-production-queue-dlq\",\"maxReceiveCount\":3}",
+    "redriveAllowPolicy": "{\"redrivePermission\":\"allowAll\"}",
+    "kmsMasterKeyId": "alias/aws/sqs",
+    "kmsDataKeyReusePeriodSeconds": 300,
+    "fifoQueue": false,
+    "contentBasedDeduplication": false,
+    "deduplicationScope": "queue",
+    "fifoThroughputLimit": "perQueue",
+    "tags": {
+      "Environment": "production",
+      "Team": "platform",
+      "CostCenter": "engineering",
+      "Application": "order-processing"
+    }
+  },
+  "relations": {
+    "account": "123456789012"
+  }
+}

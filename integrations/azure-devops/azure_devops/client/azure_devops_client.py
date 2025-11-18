@@ -1,8 +1,8 @@
 import asyncio
 import functools
 import json
-from typing import Any, AsyncGenerator, Optional, Callable
-from httpx import HTTPStatusError
+from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
+from httpx import HTTPStatusError, ReadTimeout
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -11,7 +11,7 @@ from port_ocean.utils.cache import cache_iterator_result
 from azure_devops.webhooks.webhook_event import WebhookSubscription
 from azure_devops.webhooks.events import RepositoryEvents, PullRequestEvents, PushEvents
 
-from azure_devops.client.base_client import HTTPBaseClient
+from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 from azure_devops.client.base_client import PAGE_SIZE
 
@@ -31,8 +31,11 @@ from port_ocean.utils.async_iterators import (
 )
 from port_ocean.utils.queue_utils import process_in_queue
 from urllib.parse import urlparse
+from typing import TYPE_CHECKING
 import fnmatch
 
+if TYPE_CHECKING:
+    from integration import CodeCoverageConfig
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
@@ -218,6 +221,76 @@ class AzureDevopsClient(HTTPBaseClient):
                         if self._repository_is_healthy(repo)
                     ]
 
+    async def generate_branches(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate branches for all repositories in all projects.
+
+        API: GET {org}/{project}/_apis/git/repositories/{repoId}/refs?filter=heads/
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/refs/list?view=azure-devops-rest-7.1
+        """
+        async for repositories in self.generate_repositories(
+            include_disabled_repositories=False
+        ):
+            semaphore = asyncio.BoundedSemaphore(
+                MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING
+            )
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._get_branches_for_repository,
+                        repository,
+                    ),
+                )
+                for repository in repositories
+            ]
+            async for branches in stream_async_iterators_tasks(*tasks):
+                yield branches
+
+    async def _get_branches_for_repository(
+        self, repository: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get branches for a single repository."""
+        project_id = repository["project"]["id"]
+        repository_id = repository["id"]
+        repository_name = repository["name"]
+
+        branches_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repository_id}/refs"
+        params = {
+            "filter": "heads/",
+        }
+
+        try:
+            async for refs in self._get_paginated_by_top_and_continuation_token(
+                branches_url, additional_params=params
+            ):
+                enriched_branches = []
+                for ref in refs:
+                    ref_name = ref["name"]
+                    if ref_name.startswith("refs/heads/"):
+                        branch_name = ref_name.replace("refs/heads/", "")
+
+                        enriched_branch = {
+                            "name": branch_name,
+                            "refName": ref_name,
+                            "objectId": ref["objectId"],
+                            "__repository": repository,
+                        }
+                        enriched_branches.append(enriched_branch)
+
+                if enriched_branches:
+                    logger.info(
+                        f"Found {len(enriched_branches)} branches for repository {repository_name}"
+                    )
+                    yield enriched_branches
+
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch branches for repository {repository_name} in project {project_id}: {str(e)}"
+            )
+
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
@@ -261,6 +334,287 @@ class AzureDevopsClient(HTTPBaseClient):
                     releases_url
                 ):
                     yield releases
+
+    async def generate_pipeline_runs(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate pipeline runs for all pipelines in all projects.
+
+        API: GET {org}/{project}/_apis/pipelines/{pipelineId}/runs
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/pipelines/runs/list
+        """
+        async for projects in self.generate_projects():
+            project_tasks = [self._runs_for_project(project) for project in projects]
+            async for batch in stream_async_iterators_tasks(*project_tasks):
+                yield batch
+
+    async def _runs_for_project(
+        self, project: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield runs (in batches) for every pipeline in a given project."""
+        async for pipelines in self._paginate_pipelines(project_id=project["id"]):
+            if not pipelines:
+                continue
+            pipeline_tasks = [
+                self._paginate_pipeline_runs(project, pipeline)
+                for pipeline in pipelines
+            ]
+            async for batch in stream_async_iterators_tasks(*pipeline_tasks):
+                yield batch
+
+    async def _paginate_pipelines(
+        self, project_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Paginate pipelines for a project, yielding pipeline batches."""
+        pipelines_url = (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/pipelines"
+        )
+        async for pipelines in self._get_paginated_by_top_and_continuation_token(
+            pipelines_url
+        ):
+            yield pipelines
+
+    async def _paginate_pipeline_runs(
+        self, project: dict[str, Any], pipeline: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Paginate runs for a specific pipeline, annotate each run
+        with project/pipeline context, and yield batches.
+        """
+        runs_url = (
+            f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}"
+            f"/pipelines/{pipeline['id']}/runs"
+        )
+        async for runs in self._get_paginated_by_top_and_continuation_token(
+            runs_url, data_key="value"
+        ):
+            if not runs:
+                continue
+            self._annotate_runs(runs, project=project, pipeline=pipeline)
+            yield runs
+
+    @staticmethod
+    def _annotate_runs(
+        runs: Iterable[dict[str, Any]],
+        project: dict[str, Any],
+        pipeline: dict[str, Any],
+    ) -> None:
+        """Mutate each run to include project/pipeline metadata."""
+        for run in runs:
+            run["__project"] = project
+            run["__pipeline"] = pipeline
+
+    async def _fetch_stages_for_build(
+        self, project: dict[str, Any], build: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Fetch and process stage records for a specific build.
+
+        Returns a list of stage records enriched with project and build context.
+        Returns empty list if timeline fetch fails.
+        """
+        timeline_url = (
+            f"{self._organization_base_url}/{project['id']}/"
+            f"{API_URL_PREFIX}/build/builds/{build['id']}/timeline"
+        )
+        try:
+            response = await self.send_request("GET", timeline_url)
+            if not response:
+                return []
+
+            records = response.json().get("records", [])
+            project_ref, build_ref = project, build
+
+            stage_records = [
+                {**record, "__project": project_ref, "__build": build_ref}
+                for record in records
+                if record.get("type") == "Stage"
+            ]
+            return stage_records
+
+        except Exception as e:
+            logger.warning(f"Failed to fetch timeline for build {build['id']}: {e}")
+            return []
+
+    def _enrich_builds_with_project_data(
+        self,
+        builds: list[dict[str, Any]],
+        project: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        enriched: list[dict[str, Any]] = []
+        for build in builds:
+            b = dict(build)
+            b["__projectId"] = project["id"]
+            b["__project"] = project
+            enriched.append(b)
+        return enriched
+
+    async def _generate_builds_for_project(
+        self,
+        project: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield paginated builds for a single project, enriched with project data."""
+        builds_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds"
+        async for builds in self._get_paginated_by_top_and_continuation_token(
+            builds_url
+        ):
+            yield self._enrich_builds_with_project_data(builds, project)
+
+    async def generate_builds(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generate builds across all projects in the organization.
+
+        Uses continuation token pagination as per Azure DevOps Builds API.
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/build/builds/list?view=azure-devops-rest-7.1
+        """
+        async for projects in self.generate_projects():
+            tasks = [self._generate_builds_for_project(project) for project in projects]
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+
+    async def generate_pipeline_stages(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generate pipeline stages across all builds in the organization.
+
+        Uses the Build Timeline API to fetch stage information for each build.
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/build/timeline/get?view=azure-devops-rest-7.1
+        """
+        async for projects in self.generate_projects():
+            for project in projects:
+                async for builds_batch in self._generate_builds_for_project(project):
+                    stage_tasks = [
+                        self._fetch_stages_for_build(project, build)
+                        for build in builds_batch
+                    ]
+                    stage_results = await asyncio.gather(
+                        *stage_tasks, return_exceptions=True
+                    )
+
+                    stages: list[dict[str, Any]] = []
+                    for stage_records in stage_results:
+                        if isinstance(stage_records, Exception):
+                            logger.warning(f"Failed to fetch stages: {stage_records}")
+                            continue
+                        if stage_records and isinstance(stage_records, list):
+                            stages.extend(stage_records)
+
+                    if stages:
+                        yield stages
+
+    async def generate_iterations(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate iterations for all projects in the organization.
+
+        API: GET {org}/{project}/_apis/wit/classificationnodes/iterations?$depth=2
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/classification-nodes/list?view=azure-devops-rest-7.1
+        """
+        async for projects in self.generate_projects():
+            project_tasks = [
+                self._iterations_for_project(project) for project in projects
+            ]
+            async for batch in stream_async_iterators_tasks(*project_tasks):
+                yield batch
+
+    async def _iterations_for_project(
+        self, project: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield iterations (in batches) for a specific project."""
+        project_id = project["id"]
+
+        # Get teams for the project
+        teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
+
+        try:
+            teams_response = await self.send_request("GET", teams_url)
+            if not teams_response:
+                return
+
+            teams = teams_response.json()["value"]
+
+            # Process teams concurrently
+            team_tasks = [
+                self._get_iterations_for_team(project, team) for team in teams
+            ]
+
+            if team_tasks:
+                team_results = await asyncio.gather(*team_tasks, return_exceptions=True)
+
+                for result in team_results:
+                    if isinstance(result, Exception):
+                        logger.error(f"Failed to fetch team iterations: {result}")
+                        continue
+                    if result and isinstance(result, list):
+                        yield result
+
+        except Exception as e:
+            logger.error(f"Failed to fetch teams for project {project_id}: {str(e)}")
+
+    async def _get_iterations_for_team(
+        self, project: dict[str, Any], team: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Get iterations for a specific team."""
+        project_id = project["id"]
+        team_id = team["id"]
+        iterations_url = f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/teamsettings/iterations"
+
+        params = {"api-version": "7.1"}
+
+        try:
+            response = await self.send_request("GET", iterations_url, params=params)
+            if not response:
+                return []
+
+            iterations_data = response.json()
+            iterations = iterations_data.get("value", [])
+
+            # Process and enrich iterations
+            enriched_iterations = [
+                {**iteration, "__project": project, "__team": team}
+                for iteration in iterations
+            ]
+
+            return enriched_iterations
+
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch iterations for team {team_id} in project {project_id}: {str(e)}"
+            )
+            return []
+
+    @cache_iterator_result()
+    async def generate_environments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            for project in projects:
+                environments_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/distributedtask/environments"
+                async for (
+                    environments
+                ) in self._get_paginated_by_top_and_continuation_token(
+                    environments_url
+                ):
+                    yield environments
+
+    async def generate_release_deployments(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            for project in projects:
+                deployments_url = (
+                    self._format_service_url("vsrm")
+                    + f"/{project['id']}/{API_URL_PREFIX}/release/deployments"
+                )
+                async for (
+                    deployments
+                ) in self._get_paginated_by_top_and_continuation_token(deployments_url):
+                    yield deployments
+
+    async def generate_pipeline_deployments(
+        self, project_id: str, environment_id: int
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        deployments_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/distributedtask/environments/{environment_id}/environmentdeploymentrecords"
+        async for deployments in self._get_paginated_by_top_and_continuation_token(
+            deployments_url
+        ):
+            yield deployments
 
     async def generate_repository_policies(
         self,
@@ -644,18 +998,21 @@ class AzureDevopsClient(HTTPBaseClient):
 
             for base_path, group in grouped.items():
                 recursion = sorted({d.recursion for d in group}, key=get_priority)[-1]
-                descriptor = [
-                    PathDescriptor(
-                        base_path=base_path,
-                        recursion=recursion,
-                        pattern=group[0].pattern,
-                    )
-                ]
-                raw_files = await self._get_files_by_descriptors(
-                    repository, descriptor, branch
+
+                # Fetch files once for the base path with the highest recursion level
+                descriptor = PathDescriptor(
+                    base_path=base_path,
+                    recursion=recursion,
+                    pattern=group[0].pattern,
                 )
-                matched = filter_files_by_glob(raw_files, descriptor[0])
-                files += matched
+                raw_files = await self._get_files_by_descriptors(
+                    repository, [descriptor], branch
+                )
+
+                # Match files against all patterns in the group
+                for pattern_desc in group:
+                    matched = filter_files_by_glob(raw_files, pattern_desc)
+                    files += matched
 
         logger.info(f"Found {len(files)} files in repository {repository['name']}")
 
@@ -703,46 +1060,74 @@ class AzureDevopsClient(HTTPBaseClient):
                 {
                     "path": d.base_path,
                     "recursionLevel": d.recursion,
-                    "versionDescriptor": {"version": branch, "versionType": "branch"},
+                    "version": branch,
+                    "versionType": "branch",
                 }
                 for d in descriptors
-            ],
-            "includeContentMetadata": True,
-            "latestProcessedChange": True,
+            ]
         }
 
-        try:
-            response = await self.send_request(
-                "POST",
-                items_batch_url,
-                params=API_PARAMS,
-                data=json.dumps(request_data),
-                headers={"Content-Type": "application/json"},
-            )
-            if not response or response.status_code >= 400:
-                logger.warning(f"Failed to fetch items from {items_batch_url}")
-                return []
-
-            batch_results = response.json()
-            return [
-                file for sublist in batch_results.get("value", []) for file in sublist
-            ]
-
-        except HTTPStatusError as e:
-            logger.error(e.response.status_code)
-            logger.error(e.response.text)
-            if e.response.status_code == 400:
-                logger.warning(
-                    f"None of the paths {', '.join([d.pattern for d in descriptors])} were found in repository {repository['name']}"
+        timeout_retries = 0
+        while timeout_retries <= MAX_TIMEMOUT_RETRIES:
+            try:
+                response = await self.send_request(
+                    "POST",
+                    items_batch_url,
+                    params=API_PARAMS,
+                    data=json.dumps(request_data),
+                    headers={"Content-Type": "application/json"},
+                    timeout=30,
                 )
-                return []
-            else:
+                if not response or response.status_code >= 400:
+                    logger.warning(f"Failed to fetch items from {items_batch_url}")
+                    return []
+
+                batch_results = response.json()
+                return [
+                    file
+                    for sublist in batch_results.get("value", [])
+                    for file in sublist
+                ]
+
+            except ReadTimeout:
+                timeout_retries += 1
+                if timeout_retries <= MAX_TIMEMOUT_RETRIES:
+                    logger.warning(
+                        f"Request timeout while fetching items for repository {repository['name']} "
+                        f"(attempt {timeout_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
+                    )
+                    await asyncio.sleep(2 ** (timeout_retries - 1))
+                    continue
+                else:
+                    logger.error(
+                        f"Request timeout while fetching items for repository {repository['name']} "
+                        f"after {MAX_TIMEMOUT_RETRIES + 1} attempts. Skipping repository update to prevent "
+                        f"false deletions. This should be reported as a bug for further investigation."
+                    )
+                    raise TimeoutError(
+                        f"Persistent timeout fetching files for repository {repository['name']}. "
+                        f"Skipping update to prevent false entity deletions."
+                    )
+
+            except HTTPStatusError as e:
+                logger.error(e.response.status_code)
+                logger.error(e.response.text)
+                if e.response.status_code == 400:
+                    logger.warning(
+                        f"None of the paths {', '.join([d.pattern for d in descriptors])} were found in repository {repository['name']}"
+                    )
+                    return []
+                else:
+                    raise
+            except Exception as e:
+                logger.error(
+                    f"Unexpected error processing files in {repository['name']}: {e}"
+                )
                 raise
-        except Exception as e:
-            logger.error(
-                f"Unexpected error processing files in {repository['name']}: {e}"
-            )
-            raise
+
+        raise RuntimeError(
+            f"Failed to fetch files for repository {repository['name']} after all retry attempts"
+        )
 
     async def download_single_file(
         self, file: dict[str, Any], repository: dict[str, Any], branch: str
@@ -901,7 +1286,6 @@ class AzureDevopsClient(HTTPBaseClient):
         repository_id: str,
         pattern: str,
     ) -> Callable[[], AsyncGenerator[list[dict[str, Any]], None]]:
-
         # Get the base path (everything before the first wildcard)
         parts = pattern.split("/")
         base_parts = []
@@ -1085,3 +1469,115 @@ class AzureDevopsClient(HTTPBaseClient):
             enriched.append(pipeline)
 
         return enriched
+
+    async def fetch_test_runs(
+        self,
+        include_results: bool,
+        coverage_config: Optional["CodeCoverageConfig"] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(
+            f"Starting to fetch test runs with include_results={include_results}"
+        )
+
+        params = {"includeRunDetails": True}
+        async for projects in self.generate_projects():
+            for project in projects:
+                project_id = project["id"]
+                url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs"
+                async for runs in self._get_paginated_by_top_and_continuation_token(
+                    url, additional_params=params
+                ):
+                    yield await self._enrich_test_runs(
+                        runs, project_id, include_results, coverage_config
+                    )
+
+    async def _attach_async_results(
+        self,
+        runs: list[dict[str, Any]],
+        tasks: list[Awaitable[Any]],
+        field_name: str,
+        default_value: Any,
+    ) -> None:
+        if not tasks:
+            # If no tasks, we will set the default value for every run
+            for run in runs:
+                run[field_name] = default_value
+            return
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for run, value in zip(runs, results):
+            if isinstance(value, Exception):
+                logger.error(
+                    "Error %s occurred while fetching %s for run %s",
+                    value,
+                    field_name,
+                    run.get("id"),
+                )
+                continue
+            run[field_name] = value
+
+    async def _enrich_test_runs(
+        self,
+        test_runs: list[dict[str, Any]],
+        project_id: str,
+        include_results: bool = False,
+        coverage_config: Optional["CodeCoverageConfig"] = None,
+    ) -> list[dict[str, Any]]:
+        logger.info(
+            f"Enriching {len(test_runs)} test runs for project {project_id}, include_results={include_results}"
+        )
+
+        test_results_tasks: list[Awaitable[list[dict[str, Any]]]] = (
+            [self._fetch_test_results(project_id, run["id"]) for run in test_runs]
+            if include_results
+            else []
+        )
+
+        coverage_tasks: list[Awaitable[dict[str, Any]]] = (
+            [
+                self._fetch_code_coverage(
+                    project_id, run["build"]["id"], coverage_config
+                )
+                for run in test_runs
+            ]
+            if coverage_config
+            else []
+        )
+
+        await self._attach_async_results(
+            test_runs, test_results_tasks, "__testResults", []
+        )
+        await self._attach_async_results(
+            test_runs, coverage_tasks, "__codeCoverage", {}
+        )
+
+        return test_runs
+
+    async def _fetch_test_results(
+        self, project_id: str, run_id: str
+    ) -> list[dict[str, Any]]:
+        """Fetch test results for a specific test run."""
+        results = []
+        async for page in self._get_paginated_by_top_and_continuation_token(
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/runs/{run_id}/results"
+        ):
+            results.extend(page)
+        return results
+
+    async def _fetch_code_coverage(
+        self, project_id: str, build_id: int, coverage_config: "CodeCoverageConfig"
+    ) -> dict[str, Any]:
+        logger.info(
+            f"Starting to fetch code coverage for project {project_id}, run id={build_id}, flags={coverage_config.flags}"
+        )
+
+        params = {"buildId": build_id}
+        if coverage_config.flags is not None:
+            params["flags"] = coverage_config.flags
+
+        coverage_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/test/codecoverage"
+        response = await self.send_request("GET", coverage_url, params=params)
+        if not response:
+            return {}
+
+        return response.json()

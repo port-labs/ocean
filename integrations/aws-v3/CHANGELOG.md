@@ -7,6 +7,286 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.0.8-beta (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 2.0.7-beta (2025-11-17)
+
+### Bug Fixes
+
+- Fixed bug where `LambdaFunctionProperties.Tags` was incorrectly defined as a list of dictionaries. It is now a dictionary type, which correctly represents AWS Lambda Tags structure.
+
+
+## 2.0.6-beta (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 2.0.5-beta (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+## 2.0.4-beta (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
+## 2.0.3-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+## 2.0.2-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+
+## 2.0.1-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+
+
+## 2.0.0-beta (2025-11-06)
+
+
+### Improvements
+
+- Updated default resources to include the following kinds, aligning integration defaults with product requirements:
+  - AWS::Account::Info
+  - AWS::S3::Bucket
+  - AWS::EC2::Instance
+  - AWS::ECS::Cluster
+- Updated action names and definitions to align more closely with AWS standards for easier identification and clarity.
+
+
+## 1.4.13-beta (2025-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.1
+
+
+## 1.4.12-beta (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 1.4.11-beta (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 1.4.10-beta (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+## 1.4.9-beta (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 1.4.8-beta (2025-10-26)
+
+### Improvements
+
+- Move aws-v3 integration from stable to beta
+
+
+## 1.4.7 (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 1.4.6 (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 1.4.5 (2025-10-20)
+
+### Improvements
+
+- Move aws-v3 integration from beta to stable
+
+## 1.4.4-beta (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+## 1.4.3-beta (2025-10-08)
+
+
+### Improvements
+
+- Improved resync resilience and observability for multi-account scenarios.
+
+
+## 1.4.2-beta (2025-10-06)
+
+
+### Features
+
+- Add support for AWS::SQS::Queue Kind
+
+
+## 1.4.1-beta (2025-10-06)
+
+
+### Features
+
+- Add support for AWS::ECS::Service Kind
+
+
+## 1.4.0-beta (2025-10-06)
+
+
+### Features
+
+- Added support for Lambda Function.
+
+
+## 1.3.9-beta (2025-10-01)
+
+
+### Features
+
+- Added support for RDS DB Instance.
+
+
+## 1.3.8-beta (2025-10-01)
+
+
+### Features
+
+- Added support for EKS Cluster.
+
+
+## 1.3.7-beta (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 1.3.6-beta (2025-09-28)
+
+
+### Bug Fixes
+
+- Fixed a bug in the AWS Organization Account kind where the title property was incorrectly set to use "AccountName" instead of the correct "Name" property.
+
+
+## 1.3.5-beta (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 1.3.4-beta (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 1.3.3-beta (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 1.3.2-beta (2025-09-18)
+
+
+### Improvements
+
+- Add docs and installation docs to the integration
+
+
+## 1.3.1-beta (2025-09-17)
+
+
+### Improvements
+
+- Improve runtime complexity by processing accessible accounts concurrently
+
+
+## 1.3.0-beta (2025-09-17)
+
+
+### Features
+
+- Add support for AWS::Organizations::Account Kind
+
+
+## 1.2.2-beta (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 1.2.1-beta (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
 ## 1.2.0-beta (2025-09-09)
 
 

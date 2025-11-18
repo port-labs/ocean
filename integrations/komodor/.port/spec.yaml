@@ -2,6 +2,7 @@ title: Komodor
 description: Komodor integration for Port Ocean
 icon: Komodor
 type: komodor
+recommendedInstallationMethod: Saas
 provider:
   type: community
 features:

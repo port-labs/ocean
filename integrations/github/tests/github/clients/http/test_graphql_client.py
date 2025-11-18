@@ -8,6 +8,26 @@ from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 
 @pytest.mark.asyncio
 class TestGithubGraphQLClient:
+    def test_graphql_base_url_github_com(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = GithubGraphQLClient(
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=authenticator,
+        )
+        assert client.base_url == "https://api.github.com/graphql"
+
+    def test_graphql_base_url_ghe_api_v3(
+        self, authenticator: AbstractGitHubAuthenticator
+    ) -> None:
+        client = GithubGraphQLClient(
+            organization="test-org",
+            github_host="https://ghe.example.com/api/v3",
+            authenticator=authenticator,
+        )
+        assert client.base_url == "https://ghe.example.com/api/graphql"
+
     async def test_handle_graphql_errors(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:

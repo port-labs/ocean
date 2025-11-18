@@ -1,0 +1,313 @@
+{
+  "blueprints": [
+    {
+      "identifier": "ocean_hubspotContact",
+      "title": "Ocean HubSpot Contact",
+      "icon": "User",
+      "schema": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "format": "email"
+          },
+          "firstname": {
+            "type": "string",
+            "title": "First Name"
+          },
+          "lastname": {
+            "type": "string",
+            "title": "Last Name"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company"
+          },
+          "lifecyclestage": {
+            "type": "string",
+            "title": "Lifecycle Stage"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Modified"
+          }
+        },
+        "required": []
+      },
+      "calculationProperties": {},
+      "relations": {
+        "company": {
+          "title": "Company",
+          "target": "ocean_hubspotCompany",
+          "required": false,
+          "many": false
+        }
+      }
+    },
+    {
+      "identifier": "ocean_hubspotCompany",
+      "title": "Ocean HubSpot Company",
+      "icon": "TwoUsers",
+      "schema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "domain": {
+            "type": "string",
+            "title": "Domain"
+          },
+          "industry": {
+            "type": "string",
+            "title": "Industry"
+          },
+          "city": {
+            "type": "string",
+            "title": "City"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "numberOfEmployees": {
+            "type": "number",
+            "title": "Number of Employees"
+          },
+          "annualRevenue": {
+            "type": "number",
+            "title": "Annual Revenue"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Modified"
+          }
+        },
+        "required": []
+      },
+      "calculationProperties": {},
+      "relations": {}
+    },
+    {
+      "identifier": "ocean_hubspotDeal",
+      "title": "Ocean HubSpot Deal",
+      "icon": "Dollar",
+      "schema": {
+        "properties": {
+          "dealname": {
+            "type": "string",
+            "title": "Deal Name"
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount"
+          },
+          "dealstage": {
+            "type": "string",
+            "title": "Deal Stage"
+          },
+          "pipeline": {
+            "type": "string",
+            "title": "Pipeline"
+          },
+          "closedate": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Close Date"
+          },
+          "probability": {
+            "type": "number",
+            "title": "Probability"
+          },
+          "dealtype": {
+            "type": "string",
+            "title": "Deal Type"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Modified"
+          }
+        },
+        "required": []
+      },
+      "calculationProperties": {},
+      "relations": {
+        "companies": {
+          "title": "Companies",
+          "target": "ocean_hubspotCompany",
+          "required": false,
+          "many": true
+        },
+        "contacts": {
+          "title": "Contacts",
+          "target": "ocean_hubspotContact",
+          "required": false,
+          "many": true
+        }
+      }
+    },
+    {
+      "identifier": "ocean_hubspotFeatureRequest",
+      "title": "Ocean HubSpot Feature Request",
+      "icon": "Rocket",
+      "schema": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "details": {
+            "type": "string",
+            "title": "Details",
+            "format": "markdown"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "enum": [
+              "open",
+              "under review",
+              "planned",
+              "in progress",
+              "complete",
+              "closed"
+            ],
+            "enumColors": {
+              "open": "lightGray",
+              "under review": "blue",
+              "planned": "purple",
+              "in progress": "orange",
+              "complete": "green",
+              "closed": "darkGray"
+            }
+          },
+          "votes": {
+            "type": "number",
+            "title": "Votes"
+          },
+          "totalVotes": {
+            "type": "number",
+            "title": "Total Votes"
+          },
+          "ofCustomers": {
+            "type": "number",
+            "title": "# of Customers"
+          },
+          "ofUsers": {
+            "type": "number",
+            "title": "# of Users"
+          },
+          "promised": {
+            "type": "boolean",
+            "title": "Promised"
+          },
+          "promisedEta": {
+            "type": "string",
+            "title": "Promised ETA"
+          },
+          "productEta": {
+            "type": "string",
+            "format": "date",
+            "title": "Product ETA"
+          },
+          "productEtaConfidence": {
+            "type": "string",
+            "title": "ETA Confidence"
+          },
+          "planned": {
+            "type": "string",
+            "format": "date",
+            "title": "Planned Date"
+          },
+          "team": {
+            "type": "string",
+            "title": "Team"
+          },
+          "url": {
+            "type": "string",
+            "format": "url",
+            "title": "Roadmap URL"
+          },
+          "imageUrls": {
+            "type": "array",
+            "title": "Image URLs"
+          },
+          "subCategoryId": {
+            "type": "string",
+            "title": "Sub Category"
+          },
+          "technicalComponent": {
+            "type": "number",
+            "title": "Technical Component"
+          },
+          "mergedInto": {
+            "type": "string",
+            "title": "Merged Into"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Modified"
+          }
+        },
+        "required": []
+      },
+      "calculationProperties": {},
+      "relations": {
+        "companies": {
+          "title": "Companies",
+          "target": "ocean_hubspotCompany",
+          "required": false,
+          "many": true
+        },
+        "contacts": {
+          "title": "Contacts",
+          "target": "ocean_hubspotContact",
+          "required": false,
+          "many": true
+        },
+        "deals": {
+          "title": "Deals",
+          "target": "ocean_hubspotDeal",
+          "required": false,
+          "many": true
+        }
+      }
+    }
+  ]
+}

@@ -2,6 +2,7 @@ title: FireHydrant
 description: FireHydrant integration for Port Ocean
 icon: FireHydrant
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/incident-management/firehydrant
+recommendedInstallationMethod: Saas
 features:
   - type: exporter
     section: Incident Management

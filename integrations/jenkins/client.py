@@ -11,6 +11,7 @@ from port_ocean.context.ocean import ocean
 
 
 PAGE_SIZE = 50
+MAX_BUILDS = 100
 
 
 class ResourceKey(StrEnum):
@@ -84,13 +85,19 @@ class JenkinsClient:
             event.attributes.setdefault(ResourceKey.JOBS, []).extend(jobs)
             yield jobs
 
-    async def get_builds(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_builds(
+        self,
+        max_builds_per_job: int,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(ResourceKey.BUILDS):
             logger.info("picking jenkins builds from cache")
             yield cache
             return
 
-        async for _jobs in self._get_paginated_resources(ResourceKey.BUILDS):
+        async for _jobs in self._get_paginated_resources(
+            ResourceKey.BUILDS,
+            max_builds_per_job=max_builds_per_job,
+        ):
             builds = [build for job in _jobs for build in job.get("builds", [])]
             logger.debug(f"Builds received {builds}")
             event.attributes.setdefault(ResourceKey.BUILDS, []).extend(builds)
@@ -128,9 +135,12 @@ class JenkinsClient:
                     )
 
     async def _get_paginated_resources(
-        self, resource: str, parent_job: Optional[dict[str, Any]] = None
+        self,
+        resource: str,
+        parent_job: Optional[dict[str, Any]] = None,
+        max_builds_per_job: int = PAGE_SIZE,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        page_size = PAGE_SIZE
+        page_size = max_builds_per_job
         page = 0
 
         child_jobs = []
@@ -147,7 +157,7 @@ class JenkinsClient:
                 f"Fetched job data from {base_url}/api/json with params {params}"
             )
 
-            jobs = job_response.get("jobs", [])
+            jobs = job_response["jobs"]
             logger.info(f"Fetched {len(jobs)} jobs")
 
             if not jobs:
@@ -171,14 +181,29 @@ class JenkinsClient:
                 yield fetched_jobs
 
     def _build_api_params(
-        self, resource: str, page_size: int, page: int
+        self,
+        resource: str,
+        page_size: int,
+        page: int,
     ) -> dict[str, Any]:
+        """
+        Build pagination params for the API request
+
+        Args:
+            resource: The resource to fetch
+            page_size: The number of items per page
+            page: The current page
+
+        Returns:
+            dict[str, Any]: The pagination params for the API request
+        """
+
         start_idx = page_size * page
         end_idx = start_idx + page_size
 
         jobs_pagination = f"{{{start_idx},{end_idx}}}"
         builds_query = (
-            ",builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName,previousBuild[id,url]]{0,100}"
+            f",builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName,previousBuild[id,url]]{{0,{page_size}}}"
             if resource == "builds"
             else ""
         )
@@ -188,7 +213,7 @@ class JenkinsClient:
 
     def _build_base_url(self, parent_job: Optional[dict[str, Any]]) -> str:
         job_path = urlparse(parent_job["url"]).path if parent_job else ""
-        return f"{self.jenkins_base_url}{job_path}"
+        return f"{self.jenkins_base_url}{job_path}".rstrip("/")
 
     def enrich_jobs(
         self, jobs: list[dict[str, Any]], parent_job: dict[str, Any] | None

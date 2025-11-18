@@ -7,6 +7,7 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 from aiolimiter import AsyncLimiter
+from snyk.utils import enrich_batch_with_org
 
 
 class CacheKeys(StrEnum):
@@ -148,7 +149,7 @@ class SnykClient:
             async for issues in self._get_paginated_resources(
                 url_path=url, query_params=query_params
             ):
-                yield issues
+                yield enrich_batch_with_org(issues, org)
 
     def _get_projects_by_target(
         self,
@@ -195,7 +196,7 @@ class SnykClient:
                 projects_to_yield = self._get_projects_by_target(
                     projects, target_id=target_id
                 )
-                yield projects_to_yield
+                yield enrich_batch_with_org(projects_to_yield, org)
 
     async def get_single_target_by_project_id(
         self, org_id: str, project_id: str

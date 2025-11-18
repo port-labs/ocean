@@ -1,0 +1,140 @@
+[
+  {
+    "identifier": "ocean_slackUser",
+    "description": "A user in the Slack workspace",
+    "title": "Ocean Slack User",
+    "icon": "Slack",
+    "schema": {
+      "properties": {
+        "real_name": {
+          "type": "string",
+          "title": "Real Name"
+        },
+        "display_name": {
+          "type": "string",
+          "title": "Display Name"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email Address"
+        },
+        "is_admin": {
+          "type": "boolean",
+          "title": "Is Admin"
+        },
+        "is_bot": {
+          "type": "boolean",
+          "title": "Is Bot"
+        },
+        "status_text": {
+          "type": "string",
+          "title": "Status Text"
+        },
+        "status_emoji": {
+          "type": "string",
+          "title": "Status Emoji"
+        },
+        "timezone": {
+          "type": "string",
+          "title": "Timezone"
+        },
+        "profile_image": {
+          "type": "string",
+          "title": "Profile Image URL"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "ocean_slackChannel",
+    "description": "A Slack channel for team communication",
+    "title": "Ocean Slack Channel",
+    "icon": "Slack",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Channel Description"
+        },
+        "is_private": {
+          "type": "boolean",
+          "title": "Is Private Channel"
+        },
+        "member_count": {
+          "type": "number",
+          "title": "Member Count"
+        },
+        "created_at": {
+          "type": "string",
+          "title": "Created At"
+        },
+        "topic": {
+          "type": "string",
+          "title": "Channel Topic"
+        },
+        "purpose": {
+          "type": "string",
+          "title": "Channel Purpose"
+        },
+        "is_archived": {
+          "type": "boolean",
+          "title": "Is Archived"
+        },
+        "last_activity": {
+          "type": "string",
+          "title": "Last Activity Timestamp"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "creator": {
+        "target": "ocean_slackUser",
+        "required": false,
+        "many": false
+      },
+      "slack_workspace": {
+        "title": "Slack Workspace",
+        "target": "ocean_slackWorkspace",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "ocean_slackWorkspace",
+    "description": "A Slack workspace/team",
+    "title": "Ocean Slack Workspace",
+    "icon": "Slack",
+    "schema": {
+      "properties": {
+        "domain": {
+          "type": "string",
+          "title": "Domain"
+        },
+        "email_domain": {
+          "type": "string",
+          "title": "Email Domain"
+        },
+        "icon": {
+          "type": "string",
+          "title": "Workspace Icon",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  }
+]

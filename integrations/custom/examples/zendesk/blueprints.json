@@ -1,0 +1,172 @@
+[
+  {
+    "identifier": "zendesk_organization",
+    "title": "Zendesk Organization",
+    "icon": "TwoUsers",
+    "schema": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "url"
+        },
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "zendesk_user",
+    "title": "Zendesk User",
+    "icon": "User",
+    "schema": {
+      "properties": {
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "title": "Role"
+        },
+        "organization_id": {
+          "type": "string",
+          "title": "Organization ID"
+        },
+        "profile_url": {
+          "type": "string",
+          "title": "Profile Picture",
+          "format": "url"
+        },
+        "active": {
+          "type": "boolean",
+          "title": "Active"
+        },
+        "verified": {
+          "type": "boolean",
+          "title": "Verified"
+        }
+      }
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "zendesk_ticket",
+    "title": "Zendesk Ticket",
+    "icon": "Microservice",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": ["new", "open", "pending", "hold", "solved", "closed"]
+        },
+        "priority": {
+          "type": "string",
+          "title": "Priority",
+          "enum": ["low", "normal", "high", "urgent"]
+        },
+        "requester_id": {
+          "type": "string",
+          "title": "Requester ID"
+        },
+        "url": {
+          "type": "string",
+          "title": "Ticket URL",
+          "format": "url"
+        },
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        }
+      }
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "zendesk_comment",
+    "title": "Zendesk Comment",
+    "icon": "Message",
+    "schema": {
+      "properties": {
+        "comment_id": {
+          "type": "string",
+          "title": "Comment ID"
+        },
+        "ticket_id": {
+          "type": "string",
+          "title": "Ticket ID"
+        },
+        "body": {
+          "type": "string",
+          "title": "Body",
+          "format": "markdown"
+        },
+        "html_body": {
+          "type": "string",
+          "title": "HTML Body"
+        },
+        "plain_body": {
+          "type": "string",
+          "title": "Plain Body"
+        },
+        "public": {
+          "type": "boolean",
+          "title": "Public"
+        },
+        "author_id": {
+          "type": "string",
+          "title": "Author ID"
+        },
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type"
+        },
+        "via_channel": {
+          "type": "string",
+          "title": "Via Channel"
+        },
+        "audit_id": {
+          "type": "string",
+          "title": "Audit ID"
+        }
+      }
+    },
+    "relations": {
+      "ticket": {
+        "target": "zendesk_ticket",
+        "required": false,
+        "many": false
+      },
+      "author": {
+        "target": "zendesk_user",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

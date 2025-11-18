@@ -22,7 +22,16 @@ async def on_resources_resync(kind: str) -> RAW_RESULT:
         return []
     else:
         argocd_client = init_client()
-        return await argocd_client.get_resources(resource_kind=ObjectKind(kind))
+        return await argocd_client.get_resources_for_available_clusters(
+            resource_kind=ObjectKind(kind)
+        )
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLUSTER)
+async def on_clusters_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    argocd_client = init_client()
+    async for cluster in argocd_client.get_clusters():
+        yield cluster
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.DEPLOYMENT_HISTORY)
@@ -43,7 +52,7 @@ async def on_managed_k8s_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_T
 async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     argocd_client = init_client()
 
-    applications = await argocd_client.get_resources(
+    applications = await argocd_client.get_resources_for_available_clusters(
         resource_kind=ObjectKind.APPLICATION
     )
     if not applications:

@@ -73,16 +73,19 @@ class TestRestCollaboratorExporter:
         ) as mock_request:
             mock_request.return_value = mock_response.json()
             collaborator = await exporter.get_resource(
-                SingleCollaboratorOptions(repo_name="test-repo", username="user1")
+                SingleCollaboratorOptions(
+                    organization="test-org", repo_name="test-repo", username="user1"
+                )
             )
 
             # The exporter enriches the data with repository info
             expected_collaborator = TEST_COLLABORATORS[0].copy()
             expected_collaborator["__repository"] = "test-repo"
+            expected_collaborator["__organization"] = "test-org"
             assert collaborator == expected_collaborator
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/collaborators/user1/permission"
+                f"{rest_client.base_url}/repos/test-org/test-repo/collaborators/user1/permission"
             )
 
     async def test_get_paginated_resources(
@@ -98,7 +101,9 @@ class TestRestCollaboratorExporter:
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
         ) as mock_request:
             async with event_context("test_event"):
-                options = ListCollaboratorOptions(repo_name="test-repo")
+                options = ListCollaboratorOptions(
+                    organization="test-org", repo_name="test-repo"
+                )
                 exporter = RestCollaboratorExporter(rest_client)
 
                 collaborators: list[list[dict[str, Any]]] = [
@@ -110,12 +115,16 @@ class TestRestCollaboratorExporter:
 
                 # Create expected enriched collaborators with __repository field
                 expected_collaborators = [
-                    {**collaborator, "__repository": "test-repo"}
+                    {
+                        **collaborator,
+                        "__repository": "test-repo",
+                        "__organization": "test-org",
+                    }
                     for collaborator in TEST_COLLABORATORS
                 ]
                 assert collaborators[0] == expected_collaborators
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/collaborators",
+                    f"{rest_client.base_url}/repos/test-org/test-repo/collaborators",
                     {},
                 )

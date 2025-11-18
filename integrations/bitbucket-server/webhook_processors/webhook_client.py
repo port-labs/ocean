@@ -334,6 +334,6 @@ def initialize_client() -> BitbucketServerWebhookClient:
         app_host=ocean.app.base_url,
         is_version_8_7_or_older=cast(
             bool,
-            ocean.integration_config.get("bitbucket_is_version_8_point_7_or_older"),
+            ocean.integration_config.get("bitbucket_is_version8_point7_or_older"),
         ),
     )

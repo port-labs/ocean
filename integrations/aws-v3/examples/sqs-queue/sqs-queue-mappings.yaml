@@ -1,0 +1,40 @@
+resources:
+  - kind: AWS::SQS::Queue
+    selector:
+      query: 'true'
+      includeActions:
+        - GetQueueAttributesAction
+        - GetQueueTagsAction
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.QueueArn
+          title: .Properties.QueueUrl | split("/") | .[-1]
+          blueprint: '"sqsQueue"'
+          properties:
+            arn: .Properties.QueueArn
+            region: .__ExtraContext.Region
+            queueUrl: .Properties.QueueUrl
+            approximateNumberOfMessages: .Properties.ApproximateNumberOfMessages
+            visibilityTimeout: .Properties.VisibilityTimeout
+            messageRetentionPeriod: .Properties.MessageRetentionPeriod
+            sqsManagedSseEnabled: .Properties.SqsManagedSseEnabled
+            approximateNumberOfMessagesNotVisible: .Properties.ApproximateNumberOfMessagesNotVisible
+            approximateNumberOfMessagesDelayed: .Properties.ApproximateNumberOfMessagesDelayed
+            createdTimestamp: .Properties.CreatedTimestamp
+            lastModifiedTimestamp: .Properties.LastModifiedTimestamp
+            maximumMessageSize: .Properties.MaximumMessageSize
+            delaySeconds: .Properties.DelaySeconds
+            receiveMessageWaitTimeSeconds: .Properties.ReceiveMessageWaitTimeSeconds
+            policy: .Properties.Policy
+            redrivePolicy: .Properties.RedrivePolicy
+            redriveAllowPolicy: .Properties.RedriveAllowPolicy
+            kmsMasterKeyId: .Properties.KmsMasterKeyId
+            kmsDataKeyReusePeriodSeconds: .Properties.KmsDataKeyReusePeriodSeconds
+            fifoQueue: .Properties.FifoQueue
+            contentBasedDeduplication: .Properties.ContentBasedDeduplication
+            deduplicationScope: .Properties.DeduplicationScope
+            fifoThroughputLimit: .Properties.FifoThroughputLimit
+            tags: .Properties.Tags
+          relations:
+            account: .__ExtraContext.AccountId

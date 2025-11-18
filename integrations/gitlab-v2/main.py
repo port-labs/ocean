@@ -54,6 +54,12 @@ from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
 from gitlab.webhook.webhook_processors.project_webhook_processor import (
     ProjectWebhookProcessor,
 )
+from gitlab.webhook.webhook_processors.tag_webhook_processor import (
+    TagWebhookProcessor,
+)
+from gitlab.webhook.webhook_processors.release_webhook_processor import (
+    ReleaseWebhookProcessor,
+)
 
 
 RESYNC_GROUP_MEMBERS_BATCH_SIZE = 10
@@ -200,6 +206,40 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield merge_requests_batch
 
 
+@ocean.on_resync(ObjectKind.TAG)
+async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+
+    async for projects_batch in client.get_projects(
+        params=_build_visibility_params(),
+        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        include_languages=False,
+    ):
+        logger.info(f"Processing batch of {len(projects_batch)} projects for tags")
+
+        async for tags_batch in client.get_tags(
+            projects_batch, max_concurrent=DEFAULT_MAX_CONCURRENT
+        ):
+            yield tags_batch
+
+
+@ocean.on_resync(ObjectKind.RELEASE)
+async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_gitlab_client()
+
+    async for projects_batch in client.get_projects(
+        params=_build_visibility_params(),
+        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        include_languages=False,
+    ):
+        logger.info(f"Processing batch of {len(projects_batch)} projects for releases")
+
+        async for releases_batch in client.get_releases(
+            projects_batch, max_concurrent=DEFAULT_MAX_CONCURRENT
+        ):
+            yield releases_batch
+
+
 @ocean.on_resync(ObjectKind.GROUP_WITH_MEMBERS)
 async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -207,6 +247,7 @@ async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
         GitlabGroupWithMembersResourceConfig, event.resource_config
     ).selector
     include_bot_members = bool(selector.include_bot_members)
+    include_inherited_members = selector.include_inherited_members
 
     async for groups_batch in client.get_groups(params=_build_visibility_params()):
         for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
@@ -216,7 +257,9 @@ async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
             )
 
             tasks = [
-                client.enrich_group_with_members(group, include_bot_members)
+                client.enrich_group_with_members(
+                    group, include_bot_members, include_inherited_members
+                )
                 for group in current_batch
             ]
             results = await asyncio.gather(*tasks)
@@ -228,12 +271,15 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitlabMemberResourceConfig, event.resource_config).selector
     include_bot_members = bool(selector.include_bot_members)
+    include_inherited_members = selector.include_inherited_members
 
     async for groups_batch in client.get_groups(params=_build_visibility_params()):
         for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
             current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
             tasks = [
-                client.get_group_members(group["id"], include_bot_members)
+                client.get_group_members(
+                    group["id"], include_bot_members, include_inherited_members
+                )
                 for group in current_batch
             ]
             async for batch in stream_async_iterators_tasks(*tasks):
@@ -297,3 +343,5 @@ ocean.add_webhook_processor("/hook/{group_id}", GroupWithMemberWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FilePushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", TagWebhookProcessor)
+ocean.add_webhook_processor("/hook/{group_id}", ReleaseWebhookProcessor)

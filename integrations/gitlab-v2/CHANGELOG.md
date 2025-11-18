@@ -7,6 +7,236 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.18 (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 0.3.17 (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 0.3.16 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+## 0.3.15 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
+## 0.3.14 (2025-11-09)
+
+
+### Bug Fixes
+
+- Fix Resolve File References feature on array content yaml file
+
+## 0.3.13 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+## 0.3.12 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+
+## 0.3.11 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+
+
+## 0.3.10 (2025-11-06)
+
+
+### Bug Fixes
+
+- Fix async stream tried to be read in a sync context in file kind
+
+## 0.3.9 (2025-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.1
+
+
+## 0.3.8 (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 0.3.7 (2025-11-02)
+
+
+### Bug Fixes
+
+- Fix pagination bug in get_parent_groups that was creating duplicate webhooks for child groups
+
+
+
+## 0.3.6 (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 0.3.5 (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+## 0.3.4 (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 0.3.3 (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 0.3.2 (2025-10-20)
+
+
+### Features
+
+- Added live events for `tag` and `release` kinds
+
+
+## 0.3.1 (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 0.3.0 (2025-10-16)
+
+
+### Features
+
+- Added support for `releases` and `tags` kinds
+
+
+## 0.2.38 (2025-10-15)
+
+
+### Breaking change
+
+- Add memory optimizations and alignment with itemsToParse streaming for file kind
+- File kind mappings which previously assumed an object shape for file content, now to be updated to account for an array. See the updated examples for guidance - [GitLab v2 — Files and file contents](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab-v2/examples#files-and-file-contents)
+
+
+## 0.2.37 (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+## 0.2.36 (2025-09-30)
+
+
+### Improvements
+
+- Add refresh token mid session
+
+## 0.2.35 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.2.34 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.2.33 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.2.32 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 0.2.31 (2025-09-25)
+
+
+### Improvements
+
+- You can now choose to include inherited members during ingestion by using the `includeInheritedMembers` selector.
+
+
+## 0.2.30 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.2.29 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
 ## 0.2.28 (2025-09-10)
 
 

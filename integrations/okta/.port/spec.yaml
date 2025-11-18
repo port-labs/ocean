@@ -1,0 +1,47 @@
+title: Okta
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/identity-access-management/okta
+description: okta integration for Port Ocean
+icon: Okta
+features:
+  - type: exporter
+    section: Other
+    resources:
+      - kind: okta-user
+      - kind: okta-group
+configurations:
+  - name: oktaDomain
+    required: true
+    type: string
+    description: Your Okta domain (e.g., dev-123456.okta.com)
+    sensitive: false
+  - name: oktaApiToken
+    required: true
+    type: string
+    description: Your Okta API token with appropriate permissions. To create a token, see the <a href="https://developer.okta.com/docs/guides/create-an-api-token/" target="_blank">Okta documentation</a>
+    sensitive: true
+  - name: oktaWebhookSecret
+    required: false
+    type: string
+    description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from Okta are accepted.
+    sensitive: true
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
+installationDocs:
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: true
+      docs: build-your-software-catalog/sync-data-to-catalog/other/okta?installation-methods=hosted-by-port
+  githubWorkflow:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/other/okta?installation-methods=one-time-ci&cicd-method=github
+  gitlabCI:
+    enabled: false
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/other/okta?installation-methods=real-time-self-hosted
+  docker:
+    enabled: false

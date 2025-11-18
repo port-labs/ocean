@@ -19,6 +19,7 @@ class FileProcessor:
 
     async def process_file(
         self,
+        organization: str,
         repository: Dict[str, Any],
         file_path: str,
         skip_parsing: bool,
@@ -33,6 +34,7 @@ class FileProcessor:
         file_parent_dir = str(Path(file_path).parent)
 
         result = FileObject(
+            organization=organization,
             content=content,
             repository=repository,
             branch=branch,
@@ -51,6 +53,7 @@ class FileProcessor:
         logger.info(f"Resolving file references for: {file_path}")
 
         return await self._resolve_file_references(
+            organization,
             parsed_content,
             file_parent_dir,
             file_path,
@@ -62,6 +65,7 @@ class FileProcessor:
 
     async def _resolve_file_references(
         self,
+        organization: str,
         content: Any,
         parent_dir: str,
         file_path: str,
@@ -77,8 +81,11 @@ class FileProcessor:
 
         match content:
             case dict():
-                logger.debug("Content is a dictionary. Processing dict content.")
+                logger.debug(
+                    f"Content is a dictionary. Processing dict content from {organization}."
+                )
                 result = await self._process_dict_content(
+                    organization,
                     content,
                     parent_dir,
                     file_path,
@@ -88,8 +95,11 @@ class FileProcessor:
                     repo_metadata,
                 )
             case list():
-                logger.debug("Content is a list. Processing list content.")
+                logger.debug(
+                    f"Content is a list. Processing list content from {organization}."
+                )
                 result = await self._process_list_content(
+                    organization,
                     content,
                     parent_dir,
                     file_path,
@@ -99,8 +109,11 @@ class FileProcessor:
                     repo_metadata,
                 )
             case _:
-                logger.info("Content is not a dictionary or list. Returning as is.")
+                logger.info(
+                    f"Content is not a dictionary or list. Returning as is from {organization}."
+                )
                 result = FileObject(
+                    organization=organization,
                     content=content,
                     repository=repo_metadata,
                     branch=branch,
@@ -114,6 +127,7 @@ class FileProcessor:
 
     async def _process_dict_content(
         self,
+        organization: str,
         data: Dict[str, Any],
         parent_directory: str,
         file_path: str,
@@ -124,7 +138,9 @@ class FileProcessor:
     ) -> FileObject:
         """Process dictionary items and resolve file references."""
         tasks = [
-            self._process_file_value(value, parent_directory, repo_info["name"], branch)
+            self._process_file_value(
+                organization, value, parent_directory, repo_info["name"], branch
+            )
             for value in data.values()
         ]
         processed_values = await asyncio.gather(*tasks)
@@ -132,6 +148,7 @@ class FileProcessor:
         result = dict(zip(data.keys(), processed_values))
 
         return FileObject(
+            organization=organization,
             content=result,
             repository=repo_info,
             branch=branch,
@@ -143,6 +160,7 @@ class FileProcessor:
 
     async def _process_list_content(
         self,
+        organization: str,
         data: List[Dict[str, Any]],
         parent_directory: str,
         file_path: str,
@@ -158,7 +176,7 @@ class FileProcessor:
             values = await asyncio.gather(
                 *[
                     self._process_file_value(
-                        v, parent_directory, repo_info["name"], branch
+                        organization, v, parent_directory, repo_info["name"], branch
                     )
                     for v in item.values()
                 ]
@@ -168,6 +186,7 @@ class FileProcessor:
         processed_items = await asyncio.gather(*[process_item(obj) for obj in data])
 
         return FileObject(
+            organization=organization,
             content=processed_items,
             repository=repo_info,
             branch=branch,
@@ -179,6 +198,7 @@ class FileProcessor:
 
     async def _process_file_value(
         self,
+        organization: str,
         value: Any,
         parent_directory: str,
         repository: str,
@@ -198,15 +218,20 @@ class FileProcessor:
         )
 
         logger.info(
-            f"Processing file reference: {value} -> {file_path} in {repository}@{branch}"
+            f"Processing file reference: {value} -> {file_path} in {repository}@{branch} from {organization}"
         )
 
         file_content_response = await self.exporter.get_resource(
-            FileContentOptions(repo_name=repository, file_path=file_path, branch=branch)
+            FileContentOptions(
+                organization=organization,
+                repo_name=repository,
+                file_path=file_path,
+                branch=branch,
+            )
         )
         decoded_content = file_content_response.get("content")
         if not decoded_content:
-            logger.warning(f"File {file_path} has no content")
+            logger.warning(f"File {file_path} has no content from {organization}")
             return ""
 
         return parse_content(decoded_content, file_path)
