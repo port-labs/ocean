@@ -10,8 +10,8 @@ from port_ocean.context.event import event
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 
-from .utils import get_date_range_for_last_n_months
-from .rate_limiter import PagerDutyRateLimiter
+from clients.utils import get_date_range_for_last_n_months
+from clients.rate_limiter import PagerDutyRateLimiter
 
 USER_KEY = "users"
 
@@ -324,9 +324,7 @@ class PagerDutyClient(OAuthClient):
 
             finally:
                 if "response" in locals():
-                    await self._rate_limiter.update_rate_limits(
-                        response.headers, endpoint
-                    )
+                    self._rate_limiter.update_rate_limits(response.headers, endpoint)
 
     async def fetch_and_cache_users(self) -> None:
         async for users in self.paginate_request_to_pager_duty(resource=USER_KEY):

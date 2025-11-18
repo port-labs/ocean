@@ -26,7 +26,7 @@ class TestPagerDutyRateLimiter:
             }
         )
 
-        info = await limiter.update_rate_limits(headers, "/incidents/123")
+        info = limiter.update_rate_limits(headers, "/incidents/123")
         assert info is not None
         assert info.limit == 1000
         assert info.remaining == 999
@@ -39,7 +39,7 @@ class TestPagerDutyRateLimiter:
         limiter = PagerDutyRateLimiter(max_concurrent=5)
         headers = httpx.Headers({})  # missing required headers
 
-        info = await limiter.update_rate_limits(headers, "/incidents/123")
+        info = limiter.update_rate_limits(headers, "/incidents/123")
         assert info is None
         assert limiter.rate_limit_info is None
         mock_sleep.assert_not_called()

@@ -89,7 +89,7 @@ class PagerDutyRateLimiter:
             seconds_until_reset=int(headers.ratelimit_reset),
         )
 
-    async def update_rate_limits(
+    def update_rate_limits(
         self, headers: httpx.Headers, resource: str
     ) -> Optional[RateLimitInfo]:
         rate_limit_headers = RateLimiterRequiredHeaders(**headers)
