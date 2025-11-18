@@ -6,7 +6,7 @@ from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import FolderSearchOptions, ListFolderOptions
 from github.helpers.repo_selectors import (
     CompositeRepositorySelector,
-    OrganizationLoginGenerator,
+    OrganizationLoginAndTypeGenerator,
 )
 from integration import FolderSelector
 
@@ -18,7 +18,7 @@ class FolderPatternMappingBuilder:
         repo_exporter: AbstractGithubExporter[Any],
         repo_type: str,
     ):
-        self.generate_org_logins = OrganizationLoginGenerator(org_exporter)
+        self.generate_org_logins_and_types = OrganizationLoginAndTypeGenerator(org_exporter)
         self.repo_selector = CompositeRepositorySelector(repo_type)
         self.repo_exporter = repo_exporter
 
@@ -29,13 +29,13 @@ class FolderPatternMappingBuilder:
 
         for folder_sel in folders:
             organization = get_mono_repo_organization(folder_sel.organization)
-            async for org_login in self.generate_org_logins(organization):
+            async for org_login, org_type in self.generate_org_logins_and_types(organization):
                 async for (
                     repo_name,
                     branch,
                     repo_obj,
                 ) in self.repo_selector.select_repos(
-                    folder_sel, self.repo_exporter, org_login
+                    folder_sel, self.repo_exporter, org_login, org_type
                 ):
                     key = (org_login, repo_name)
                     repo_map[key].append(

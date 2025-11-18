@@ -80,6 +80,7 @@ class TestRestRepositoryExporter:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
                     organization="test-org",
+                    organization_type="Organization",
                     type=mock_port_app_config.repository_type,
                 )
                 exporter = RestRepositoryExporter(rest_client)
@@ -115,6 +116,7 @@ class TestRestRepositoryExporter:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
                     organization="test-org",
+                    organization_type="Organization",
                     type=mock_port_app_config.repository_type,
                     included_relationships=["collaborators"],
                 )
@@ -177,6 +179,7 @@ class TestRestRepositoryExporter:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
                     organization="test-org",
+                    organization_type="Organization",
                     type=mock_port_app_config.repository_type,
                     search_params=RepoSearchParams(query="code in:name"),
                 )

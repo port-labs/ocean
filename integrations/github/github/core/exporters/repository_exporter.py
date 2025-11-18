@@ -69,6 +69,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         self, options: ListRepositoryOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         _, organization, params = parse_github_options(dict(options))
+        organization_type = params.pop("organization_type")
         search_params = cast(
             Optional[RepoSearchParams], params.pop("search_params", None)
         )
@@ -81,12 +82,28 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 casted = cast(dict[str, Any], search_results)
                 yield casted["items"]
         else:
-            url = f"{self.client.base_url}/orgs/{organization}/repos"
+            url, params = self._build_repos_url_and_params(organization, organization_type, params)
             async for repos in self.client.send_paginated_request(url, params):
                 logger.info(
                     f"Fetched batch of {len(repos)} repositories from organization {organization}"
                 )
                 yield repos
+
+    def _build_repos_url_and_params(
+        self, organization: str, organization_type: str, params: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]:
+        """
+        Build the appropriate repositories API URL and parameters
+        based on the organization type.
+        """
+        if organization_type == "Organization":
+            return (
+                f"{self.client.base_url}/orgs/{organization}/repos",
+                params,
+            )
+        visibility = params.pop("type")
+        return f"{self.client.base_url}/user/repos", {**params, "affiliation": "owner", "visibility": visibility}
+
 
     async def enrich_repository_with_selected_relationships(
         self,
