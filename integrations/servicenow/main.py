@@ -8,10 +8,11 @@ from typing import cast
 
 
 def initialize_client() -> ServicenowClient:
+    config = ocean.integration_config
     return ServicenowClient(
-        ocean.integration_config["servicenow_url"],
-        ocean.integration_config["servicenow_username"],
-        ocean.integration_config["servicenow_password"],
+        config["servicenow_url"],
+        config.get("servicenow_username"),
+        config.get("servicenow_password"),
     )
 
 

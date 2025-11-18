@@ -1,35 +1,94 @@
-from typing import Any, AsyncGenerator, Optional
 import base64
+from typing import Any, AsyncGenerator, Optional
+
 import httpx
 from loguru import logger
+from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.utils import http_async_client
 
 PAGE_SIZE = 100
 
 
-class ServicenowClient:
+class ServicenowClient(OAuthClient):
     def __init__(
-        self, servicenow_url: str, servicenow_username: str, servicenow_password: str
+        self,
+        servicenow_url: str,
+        servicenow_username: str | None,
+        servicenow_password: str | None,
     ):
+        super().__init__()
         self.servicenow_url = servicenow_url
         self.servicenow_username = servicenow_username
         self.servicenow_password = servicenow_password
         self.http_client = http_async_client
-        self.http_client.headers.update(self.api_auth_params["headers"])
+        self._basic_auth_header = self._build_basic_auth_header()
+        self._ensure_valid_auth_configuration()
+        self._apply_default_headers()
 
     @property
     def api_auth_params(self) -> dict[str, Any]:
+        headers = {
+            "Content-Type": "application/json",
+        }
+        if auth_header := self._get_auth_header():
+            headers["Authorization"] = auth_header
+        return {"headers": headers}
+
+    def _apply_default_headers(self) -> None:
+        headers = {
+            "Content-Type": "application/json",
+        }
+        self.http_client.headers.update(headers)
+        self._update_client_auth_header()
+
+    def _build_basic_auth_header(self) -> str | None:
+        if not self.servicenow_username or not self.servicenow_password:
+            return None
         auth_message = f"{self.servicenow_username}:{self.servicenow_password}"
         auth_bytes = auth_message.encode("ascii")
         b64_bytes = base64.standard_b64encode(auth_bytes)
         b64_message = b64_bytes.decode("ascii")
 
-        return {
-            "headers": {
-                "Authorization": f"Basic {b64_message}",
-                "Content-Type": "application/json",
-            },
-        }
+        return f"Basic {b64_message}"
+
+    def _ensure_valid_auth_configuration(self) -> None:
+        if self.is_oauth_enabled():
+            if not self._basic_auth_header:
+                logger.debug(
+                    "ServiceNow client configured for OAuth-only authentication"
+                )
+            return
+
+        if not self._basic_auth_header:
+            raise ValueError(
+                "ServiceNow basic credentials are required when OAuth is not enabled."
+            )
+
+    def _get_auth_header(self) -> str | None:
+        if self.is_oauth_enabled():
+            try:
+                return f"Bearer {self.external_access_token}"
+            except ValueError:
+                logger.warning(
+                    "ServiceNow OAuth token not available; falling back to basic auth."
+                )
+        return self._basic_auth_header
+
+    def _update_client_auth_header(self) -> None:
+        auth_header = self._get_auth_header()
+        if auth_header:
+            self.http_client.headers["Authorization"] = auth_header
+        else:
+            self.http_client.headers.pop("Authorization", None)
+
+    def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
+        auth_header = self._get_auth_header()
+        if auth_header:
+            request.headers["Authorization"] = auth_header
+        else:
+            if "Authorization" in request.headers:
+                del request.headers["Authorization"]
+        return request
 
     async def get_paginated_resource(
         self, resource_kind: str, api_query_params: Optional[dict[str, Any]] = None
@@ -54,6 +113,7 @@ class ServicenowClient:
 
         while url:
             try:
+                self._update_client_auth_header()
                 response = await self.http_client.get(
                     url=url,
                     params=params,
@@ -77,6 +137,7 @@ class ServicenowClient:
 
     async def sanity_check(self) -> None:
         try:
+            self._update_client_auth_header()
             response = await self.http_client.get(
                 f"{self.servicenow_url}/api/now/table/sys_user?sysparm_limit=1"
             )

@@ -15,12 +15,25 @@ configurations:
     type: url
     description: The URL of your ServiceNow instance. This should be the address you use to access the ServiceNow UI in your browser. For example, `https://dev12345.service-now.com`
   - name: servicenowUsername
-    required: true
+    required: false
     type: string
     sensitive: false
-    description: The username of the ServiceNow account. To create user credentials, see the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials" target="_blank">ServiceNow documentation</a>
+    description: The username of the ServiceNow account. Required when OAuth is not configured. To create user credentials, see the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials" target="_blank">ServiceNow documentation</a>
   - name: servicenowPassword
-    required: true
+    required: false
     type: string
     sensitive: true
-    description: The password of the ServiceNow account. To create user credentials, see the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials" target="_blank">ServiceNow documentation</a>
+    description: The password of the ServiceNow account. Required when OAuth is not configured. To create user credentials, see the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials" target="_blank">ServiceNow documentation</a>
+saas:
+  enabled: true
+  oauthConfiguration:
+    requiredSecrets:
+      - name: servicenowUsername
+        value: '.oauthData.profile.user_name'
+        description: '"ServiceNow username resolved from the OAuth handshake"'
+      - name: servicenowPassword
+        value: '.oauthData.accessToken'
+        description: '"ServiceNow OAuth access token that replaces the password when OAuth is used"'
+    valuesOverride:
+      integrationSpec:
+        servicenowUrl: '.oauthData.instanceUrl // servicenowUrl'
