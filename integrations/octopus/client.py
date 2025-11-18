@@ -4,6 +4,7 @@ from loguru import logger
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError, Timeout
+import asyncio
 
 PAGE_SIZE = 50
 WEBHOOK_TIMEOUT = "00:00:50"
@@ -101,11 +102,31 @@ class OctopusClient:
     async def get_all_runbooks(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all runbooks in the Octopus instance."""
         async for runbooks in self.get_paginated_resources(ObjectKind.RUNBOOK):
-            yield runbooks
+            tasks = [self._enrich_runbook_with_project(runbook) for runbook in runbooks]
+            enriched_runbooks = await asyncio.gather(*tasks)
+            batch: list[dict[str, Any]] = []
+            for runbook in enriched_runbooks:
+                batch.append(runbook)
+                if len(batch) == PAGE_SIZE:
+                    yield batch
+                    batch = []
+            if batch:
+                yield batch
+
+    async def _enrich_runbook_with_project(
+        self, runbook: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Enrich runbook with project information."""
+        project = await self._send_api_request(
+            f"{ObjectKind.PROJECT}s/{runbook['ProjectId']}"
+        )
+        runbook["__project"] = project
+        return runbook
 
     async def get_single_runbook(self, runbook_id: str) -> dict[str, Any]:
         """Get a single runbook by ID."""
-        return await self._send_api_request(f"{ObjectKind.RUNBOOK}s/{runbook_id}")
+        runbook = await self._send_api_request(f"{ObjectKind.RUNBOOK}s/{runbook_id}")
+        return await self._enrich_runbook_with_project(runbook)
 
     async def _create_subscription(
         self, space_id: str, app_host: str

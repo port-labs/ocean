@@ -69,7 +69,8 @@ async def setup_application() -> None:
 
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind == ObjectKind.SPACE:
+    excluded_kinds: list[ObjectKind] = [ObjectKind.SPACE, ObjectKind.RUNBOOK]
+    if kind in excluded_kinds:
         return
     octopus_client = await init_client()
     async for spaces in octopus_client.get_all_spaces():
