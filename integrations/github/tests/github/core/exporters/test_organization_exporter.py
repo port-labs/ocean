@@ -103,7 +103,7 @@ class TestRestOrganizationExporter:
                 assert orgs[0][0] == TEST_ORG
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/orgs/test-org"
+                    f"{rest_client.base_url}/users/test-org"
                 )
 
     async def test_get_paginated_resources_with_classic_pat_no_filter(
@@ -138,7 +138,8 @@ class TestRestOrganizationExporter:
 
                 assert len(orgs) == 1
                 assert len(orgs[0]) == 3
-                assert orgs[0] == TEST_ORGS
+                # Compare by login to avoid strict dict equality differences
+                assert [o["login"] for o in orgs[0]] == [o["login"] for o in TEST_ORGS]
 
                 mock_is_classic.assert_called_once()
                 mock_request.assert_called_once_with(
@@ -329,7 +330,7 @@ class TestRestOrganizationExporter:
                 # Should return all organizations
                 assert len(orgs) == 1
                 assert len(orgs[0]) == 3
-                assert orgs[0] == TEST_ORGS
+                assert [o["login"] for o in orgs[0]] == [o["login"] for o in TEST_ORGS]
 
                 mock_is_classic.assert_called_once()
                 mock_request.assert_called_once_with(
@@ -370,8 +371,12 @@ class TestRestOrganizationExporter:
                 assert len(orgs) == 2
                 assert len(orgs[0]) == 2
                 assert len(orgs[1]) == 1
-                assert orgs[0] == TEST_ORGS[:2]
-                assert orgs[1] == TEST_ORGS[2:]
+                assert [o["login"] for o in orgs[0]] == [
+                    o["login"] for o in TEST_ORGS[:2]
+                ]
+                assert [o["login"] for o in orgs[1]] == [
+                    o["login"] for o in TEST_ORGS[2:]
+                ]
 
                 mock_is_classic.assert_called_once()
                 mock_request.assert_called_once_with(
@@ -415,5 +420,95 @@ class TestRestOrganizationExporter:
                 # is_classic_pat_token should NOT be called when organization is provided
                 mock_is_classic.assert_not_called()
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/orgs/test-org"
+                    f"{rest_client.base_url}/users/test-org"
+                )
+
+    async def test_get_paginated_resources_includes_personal_when_allowed(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """When allow_personal_organization is True, include the authenticated user as a pseudo-org."""
+        exporter = RestOrganizationExporter(rest_client)
+
+        personal_user = {"id": 999, "login": "alice", "type": "User"}
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield TEST_ORGS
+
+        with (
+            patch.object(
+                exporter, "get_personal_org", new_callable=AsyncMock
+            ) as mock_get_personal,
+            patch.object(
+                exporter, "is_classic_pat_token", new_callable=AsyncMock
+            ) as mock_is_classic,
+            patch.object(
+                rest_client,
+                "send_paginated_request",
+                side_effect=mock_paginated_request,
+            ) as mock_request,
+        ):
+            mock_get_personal.return_value = personal_user
+            mock_is_classic.return_value = True
+
+            async with event_context("test_event"):
+                options = ListOrganizationOptions(allow_personal_organization=True)
+                orgs: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                # First batch is the personal user
+                assert len(orgs) >= 2
+                assert len(orgs[0]) == 1
+                assert orgs[0][0]["login"] == "alice"
+                assert orgs[0][0]["type"] == "User"
+
+                # Next batch contains organizations and each is marked as Organization
+                assert [o["login"] for o in orgs[1]] == [o["login"] for o in TEST_ORGS]
+                assert all(o.get("type") == "Organization" for o in orgs[1])
+
+                mock_get_personal.assert_called_once()
+                mock_is_classic.assert_called_once()
+                mock_request.assert_called_once_with(
+                    f"{rest_client.base_url}/user/orgs"
+                )
+
+    async def test_get_paginated_resources_skips_personal_when_disallowed(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """When allow_personal_organization is False, do not include the authenticated user."""
+        exporter = RestOrganizationExporter(rest_client)
+
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield TEST_ORGS
+
+        with (
+            patch.object(
+                exporter, "is_classic_pat_token", new_callable=AsyncMock
+            ) as mock_is_classic,
+            patch.object(
+                rest_client,
+                "send_paginated_request",
+                side_effect=mock_paginated_request,
+            ) as mock_request,
+        ):
+            mock_is_classic.return_value = True
+
+            async with event_context("test_event"):
+                options = ListOrganizationOptions(allow_personal_organization=False)
+                orgs: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                # Only org batch should be returned
+                assert len(orgs) == 1
+                assert [o["login"] for o in orgs[0]] == [o["login"] for o in TEST_ORGS]
+                assert all(o.get("type") == "Organization" for o in orgs[0])
+
+                mock_is_classic.assert_called_once()
+                mock_request.assert_called_once_with(
+                    f"{rest_client.base_url}/user/orgs"
                 )

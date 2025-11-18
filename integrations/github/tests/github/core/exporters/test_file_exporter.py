@@ -552,7 +552,7 @@ class TestFileExporterUtils:
         async def mock_orgs(
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-            yield [{"login": "test-org"}]
+            yield [{"login": "test-org", "type": "Organization"}]
 
         org_exporter.get_paginated_resources = mock_orgs
 
@@ -560,7 +560,10 @@ class TestFileExporterUtils:
 
         # Act
         builder = FilePatternMappingBuilder(org_exporter, repo_exporter, repo_type)
-        result = await builder.build(files)
+        async with event_context("test_event") as event:
+            # Minimal config used by OrganizationLoginAndTypeGenerator
+            event.port_app_config = MagicMock(allow_personal_organization=False)
+            result = await builder.build(files)
 
         # Assert
         assert len(result) == 2
@@ -610,12 +613,14 @@ class TestFileExporterUtils:
         async def mock_orgs(
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-            yield [{"login": "test-org"}]
+            yield [{"login": "test-org", "type": "Organization"}]
 
         org_exporter.get_paginated_resources = mock_orgs
 
         builder = FilePatternMappingBuilder(org_exporter, repo_exporter, repo_type)
-        result = await builder.build(files)
+        async with event_context("test_event") as event:
+            event.port_app_config = MagicMock(allow_personal_organization=False)
+            result = await builder.build(files)
 
         # Assert
         assert len(result) == 2

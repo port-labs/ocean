@@ -80,6 +80,7 @@ class TestRestRepositoryExporter:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
                     organization="test-org",
+                    organization_type="Organization",
                     type=mock_port_app_config.repository_type,
                 )
                 exporter = RestRepositoryExporter(rest_client)
@@ -115,6 +116,7 @@ class TestRestRepositoryExporter:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
                     organization="test-org",
+                    organization_type="Organization",
                     type=mock_port_app_config.repository_type,
                     included_relationships=["collaborators"],
                 )
@@ -177,6 +179,7 @@ class TestRestRepositoryExporter:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
                     organization="test-org",
+                    organization_type="Organization",
                     type=mock_port_app_config.repository_type,
                     search_params=RepoSearchParams(query="code in:name"),
                 )
@@ -196,4 +199,35 @@ class TestRestRepositoryExporter:
                         "q": "org:test-org code in:name",
                         "type": "all",
                     },
+                )
+
+    async def test_get_paginated_resources_user_context_builds_user_repos_url(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield TEST_REPOS
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-user",
+                    organization_type="User",
+                    type=mock_port_app_config.repository_type,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(repos) == 1
+                assert repos[0] == TEST_REPOS
+
+                mock_request.assert_called_once_with(
+                    f"{rest_client.base_url}/user/repos",
+                    {"affiliation": "owner", "visibility": "all"},
                 )
