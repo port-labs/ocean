@@ -51,7 +51,7 @@ class HttpServerClient:
             )
         self.client = OceanAsyncClient(
             RetryTransport,
-            timeout=ocean.config.client_timeout,
+            timeout=httpx.Timeout(self.timeout),
             verify=verify_ssl,
         )
 

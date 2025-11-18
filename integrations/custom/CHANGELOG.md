@@ -1,9 +1,16 @@
 # Changelog
 
-All notable changes to the HTTP Server integration will be documented in this file.
+All notable changes to the Custom integration will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.2.11-beta] - 2025-01-27
+
+### Bug Fixes
+- Fixed timeout configuration not being used when creating HTTP client - now uses the configured `timeout` parameter instead of Ocean's default client timeout
+- Fixed SSL verification (`verify_ssl`) configuration not being properly applied to HTTP requests
+- Fixed data path auto-detection logic to correctly handle explicit `data_path` configurations vs auto-detection scenarios
 
 ## [0.2.2] - 2025-04-11
 ### Improvements

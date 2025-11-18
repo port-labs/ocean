@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "custom"
-version = "0.2.10-beta"
+version = "0.2.11-beta"
 description = "Ocean Custom Integration"
 authors = ["Port Team <support@getport.io>"]
 
