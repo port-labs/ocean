@@ -7,15 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.73-beta (2025-11-18)
+
+### Bug Fixes
+
+- Fixed Integration takes a long time before completing resync
+
+
 ## 0.1.72-beta (2025-11-18)
 
 
 ### Improvements
 
 - Bumped ocean version to ^0.29.7
-
-
-## 0.1.71-beta (2025-11-17)
 
 
 ### Improvements
@@ -92,6 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.28.19
+
 
 
 ## 0.1.62-beta (2025-10-27)
