@@ -1,3 +1,11 @@
+## 0.2.12-beta (2025-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
 # Changelog
 
 All notable changes to the Custom integration will be documented in this file.
