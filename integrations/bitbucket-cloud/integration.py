@@ -52,6 +52,10 @@ class FolderPattern(BaseModel):
 
 class BitbucketFolderSelector(Selector):
     query: str = Field(default="", description="Query string to filter folders")
+    role: str = Field(
+        default="",
+        description="Filter repositories by authenticated user's role: member, contributor, admin, or owner",
+    )
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",
@@ -103,15 +107,10 @@ class BitbucketRepositorySelector(Selector):
         alias="role",
         description="Optional. Filter repositories by authenticated user's role: member, contributor, admin, or owner",
     )
-    q: str = Field(
+    query: str = Field(
         default="",
-        alias="q",
-        description='Optional. Query string to narrow repositories as per Bitbucket filtering (e.g., name="my-repo")',
-    )
-    sort: str = Field(
-        default="",
-        alias="sort",
-        description='Optional. Sort field, e.g., "-updated_on" or "name", as per Bitbucket sorting',
+        alias="query",
+        description='Query string to narrow repositories as per Bitbucket filtering (e.g., name="my-repo")',
     )
 
 
@@ -121,11 +120,18 @@ class BitbucketRepositoryResourceConfig(ResourceConfig):
     port: PortResourceConfig
 
 
+class BitbucketPullRequestResourceConfig(ResourceConfig):
+    kind: Literal["pull-request"]
+    selector: BitbucketRepositorySelector
+    port: PortResourceConfig
+
+
 class BitbucketAppConfig(PortAppConfig):
     resources: list[
         BitbucketFolderResourceConfig
         | BitbucketFileResourceConfig
         | BitbucketRepositoryResourceConfig
+        | BitbucketPullRequestResourceConfig
         | ResourceConfig
     ] = Field(
         default_factory=list,
