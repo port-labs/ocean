@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.80-beta (2025-11-19)
+
+
+### Improvements
+
+- Prefer Jira users list endpoint with cursor pagination when available, with automatic fallback to legacy `/user/search`. 
+- Adds cursor pagination helper and updates tests to cover list-first and fallback flows. 
+- Aligns with Atlassian guidance to move away from broad `/search` usage for scalable user retrieval.
+
+
 ## 0.1.77-beta (2025-11-19)
 
 
