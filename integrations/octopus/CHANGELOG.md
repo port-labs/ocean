@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented live events for Runbook kind
 
 
+# Port_Ocean 0.1.154 (2025-11-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
 # Port_Ocean 0.1.153 (2025-11-18)
 
 ### Improvements
