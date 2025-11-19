@@ -60,30 +60,40 @@ saas:
   oauthConfiguration:
     requiredSecrets:
       - name: githubAppPrivateKey
-        value: .oauthData.additionalData.pem
+        value: .oauthData.pem
         description: '"Private key in PEM format for GitHub App authentication and API access"'
     valuesOverride:
       integrationSpec:
-        githubAppId: .oauthData.additionalData.appId
-        githubOrganization: .oauthData.additionalData.githubOrganization
+        githubHost: "'https://api.github.com'"
+        githubAppId: .oauthData.appId
+        githubOrganization: .oauthData.githubOrganization
 actionsProcessingEnabled: true
 actions:
-  - name: dispatch_github_workflow
+  - name: dispatch_workflow
     icon: GithubActions
     description: Dispatch a GitHub workflow
     inputs:
+      - name: org
+        title: Organization
+        type: string
+        description: The name of your GitHub organization/user, can be found in the organization/user URL. For example - "port-labs" for https://github.com/port-labs
+        required: true
       - name: repo
+        title: Repository
         type: string
         description: The name of the GitHub repository that contains the target workflow
         required: true
       - name: workflow
+        title: Workflow file name
         type: string
         description: The name of the file (under /.github/workflows/) that defines the target workflow, for example - deploy.yml
         required: true
-      - name: workflowInputs
-        type: jqObject
-        description: 'The following values will be sent upon the action invocation. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. You can reference secrets using {{ .secrets["secret-name"] }}. <a href="https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload" target="_blank">Learn more</a>'
       - name: reportWorkflowStatus
+        title: Report workflow status
         type: boolean
         description: Whether to report the workflow status
         default: true
+      - name: workflowInputs
+        title: Workflow inputs
+        type: jqObject
+        description: 'The following values will be sent upon the action invocation. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. You can reference secrets using {{ .secrets["secret-name"] }}. <a href="https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload" target="_blank">Learn more</a>'
