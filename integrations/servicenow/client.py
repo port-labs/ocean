@@ -42,6 +42,8 @@ class ServicenowClient(OAuthClient):
         self._update_client_auth_header()
 
     def _build_basic_auth_header(self) -> str | None:
+        if self.is_oauth_enabled():
+            return None
         if not self.servicenow_username or not self.servicenow_password:
             return None
         auth_message = f"{self.servicenow_username}:{self.servicenow_password}"
@@ -53,10 +55,9 @@ class ServicenowClient(OAuthClient):
 
     def _ensure_valid_auth_configuration(self) -> None:
         if self.is_oauth_enabled():
-            if not self._basic_auth_header:
-                logger.debug(
-                    "ServiceNow client configured for OAuth-only authentication"
-                )
+            logger.debug(
+                "ServiceNow client configured for OAuth-only authentication"
+            )
             return
 
         if not self._basic_auth_header:
@@ -66,12 +67,9 @@ class ServicenowClient(OAuthClient):
 
     def _get_auth_header(self) -> str | None:
         if self.is_oauth_enabled():
-            try:
-                return f"Bearer {self.external_access_token}"
-            except ValueError:
-                logger.warning(
-                    "ServiceNow OAuth token not available; falling back to basic auth."
-                )
+            # When OAuth is enabled, only use Bearer token - never fall back to basic auth
+            # to prevent accidentally using OAuth access tokens in Basic auth headers
+            return f"Bearer {self.external_access_token}"
         return self._basic_auth_header
 
     def _update_client_auth_header(self) -> None:
