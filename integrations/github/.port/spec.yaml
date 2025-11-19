@@ -39,6 +39,11 @@ configurations:
     required: false
     sensitive: false
     description: App id if you want the integration to interact with Github as an app. This is mandatory if githubToken is not passed in.
+  - name: githubAppInstallationId
+    type: integer
+    required: false
+    sensitive: false
+    description: Installation ID if you want the integration to interact with Github as an app. This is mandatory if githubAppId is passed in.
   - name: githubAppPrivateKey
     required: false
     type: string
@@ -66,6 +71,7 @@ saas:
       integrationSpec:
         githubHost: "'https://api.github.com'"
         githubAppId: .oauthData.appId
+        githubAppInstallationId: .oauthData.installationId
         githubOrganization: .oauthData.githubOrganization
 actionsProcessingEnabled: true
 actions:

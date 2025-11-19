@@ -18,15 +18,16 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
     def __init__(
         self,
         app_id: str,
+        installation_id: int,
         private_key: str,
         organization: str,
         github_host: str,
     ):
         self.app_id = app_id
+        self.installation_id = installation_id
         self.private_key = private_key
         self.organization = organization
         self.github_host = github_host.rstrip("/")
-        self.installation_id: Optional[int] = None
         self.cached_installation_token: Optional[GitHubToken] = None
         self.installation_token_lock = asyncio.Lock()
 
@@ -42,11 +43,6 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             ):
                 return self.cached_installation_token
 
-            if not self.installation_id:
-                self.installation_id = await self._fetch_installation_id(
-                    jwt_token.token
-                )
-
             self.cached_installation_token = await self._fetch_installation_token(
                 jwt_token.token
             )
@@ -60,18 +56,6 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             Accept="application/vnd.github+json",
             X_GitHub_Api_Version="2022-11-28",
         )
-
-    async def _fetch_installation_id(self, jwt_token: str) -> int:
-        try:
-            url = f"{self.github_host}/orgs/{self.organization}/installation"
-            headers = {"Authorization": f"Bearer {jwt_token}"}
-            response = await self.client.get(url, headers=headers)
-            response.raise_for_status()
-            return response.json()["id"]
-        except Exception as e:
-            raise AuthenticationException(
-                f"Failed to fetch installation ID: {e}"
-            ) from e
 
     async def _fetch_installation_token(self, jwt_token: str) -> GitHubToken:
         try:
