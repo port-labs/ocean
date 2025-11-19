@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.19 (2025-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
+## 0.3.18 (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 0.3.17 (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
 ## 0.3.16 (2025-11-10)
 
 
@@ -144,9 +168,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.38 (2025-10-15)
 
 
-### Improvements
+### Breaking change
 
-- Add memory optimizations for file kind
+- Add memory optimizations and alignment with itemsToParse streaming for file kind
+- File kind mappings which previously assumed an object shape for file content, now to be updated to account for an array. See the updated examples for guidance - [GitLab v2 — Files and file contents](https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab-v2/examples#files-and-file-contents)
 
 
 ## 0.2.37 (2025-10-15)

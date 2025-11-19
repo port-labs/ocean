@@ -25,3 +25,8 @@ def get_github_organizations() -> ListOrganizationOptions:
         organization=organization,
         allowed_multi_organizations=port_app_config.organizations,
     )
+
+
+def get_mono_repo_organization(organization: str | None) -> str | None:
+    """Get the organization for a monorepo."""
+    return organization or ocean.integration_config["github_organization"]

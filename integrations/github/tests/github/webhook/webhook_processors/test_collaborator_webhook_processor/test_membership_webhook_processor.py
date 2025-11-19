@@ -252,7 +252,7 @@ class TestCollaboratorMembershipWebhookProcessor:
         ]
 
         result = membership_webhook_processor._enrich_collaborators_with_repositories(
-            member_data, repositories
+            member_data, repositories, "test-org"
         )
 
         assert len(result) == 2
@@ -260,3 +260,4 @@ class TestCollaboratorMembershipWebhookProcessor:
         assert result[0]["__repository"] == "repo1"
         assert result[1]["login"] == "test-user"
         assert result[1]["__repository"] == "repo2"
+        assert all(item["__organization"] == "test-org" for item in result)

@@ -7,7 +7,11 @@ from github.core.exporters.team_exporter import (
     RestTeamExporter,
 )
 from github.core.options import SingleTeamOptions
-from github.helpers.utils import ObjectKind, enrich_with_repository
+from github.helpers.utils import (
+    ObjectKind,
+    enrich_with_repository,
+    enrich_with_organization,
+)
 from github.webhook.events import (
     COLLABORATOR_EVENTS,
     COLLABORATOR_UPSERT_EVENTS,
@@ -91,7 +95,7 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
                 repositories.append(repo)
 
         list_data_to_upsert = self._enrich_collaborators_with_repositories(
-            member, repositories
+            member, repositories, organization
         )
 
         logger.info(
@@ -103,13 +107,19 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
     def _enrich_collaborators_with_repositories(
-        self, response: Dict[str, Any], repositories: List[Dict[str, Any]]
+        self,
+        response: Dict[str, Any],
+        repositories: List[Dict[str, Any]],
+        organization: str,
     ) -> List[Dict[str, Any]]:
         """Helper function to enrich response with repository information."""
         list_of_collaborators = []
         for repository in repositories:
             collaborator_copy = response.copy()
             list_of_collaborators.append(
-                enrich_with_repository(collaborator_copy, repository["name"])
+                enrich_with_organization(
+                    enrich_with_repository(collaborator_copy, repository["name"]),
+                    organization,
+                )
             )
         return list_of_collaborators
