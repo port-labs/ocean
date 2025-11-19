@@ -55,9 +55,7 @@ class ServicenowClient(OAuthClient):
 
     def _ensure_valid_auth_configuration(self) -> None:
         if self.is_oauth_enabled():
-            logger.debug(
-                "ServiceNow client configured for OAuth-only authentication"
-            )
+            logger.debug("ServiceNow client configured for OAuth-only authentication")
             return
 
         if not self._basic_auth_header:
