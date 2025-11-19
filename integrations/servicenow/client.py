@@ -67,8 +67,6 @@ class ServicenowClient(OAuthClient):
 
     def _get_auth_header(self) -> str | None:
         if self.is_oauth_enabled():
-            # When OAuth is enabled, only use Bearer token - never fall back to basic auth
-            # to prevent accidentally using OAuth access tokens in Basic auth headers
             return f"Bearer {self.external_access_token}"
         return self._basic_auth_header
 
@@ -91,7 +89,6 @@ class ServicenowClient(OAuthClient):
     async def get_paginated_resource(
         self, resource_kind: str, api_query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-
         safe_params = (api_query_params or {}).copy()
         user_query = safe_params.pop("sysparm_query", "")
         default_ordering = "ORDERBYDESCsys_created_on"
