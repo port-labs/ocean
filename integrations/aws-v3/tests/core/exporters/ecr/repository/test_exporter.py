@@ -47,8 +47,8 @@ class TestEcrRepositoryExporter:
 
         repository = Repository(
             Properties=RepositoryProperties(
-                RepositoryName="my-repo",
-                RepositoryArn="arn:aws:ecr:us-east-1:123456789012:repository/my-repo",
+                repositoryName="my-repo",
+                repositoryArn="arn:aws:ecr:us-east-1:123456789012:repository/my-repo",
             )
         )
         mock_inspector.inspect.return_value = [repository.dict(exclude_none=True)]
@@ -154,9 +154,9 @@ class TestEcrRepositoryExporter:
         mock_inspector = AsyncMock()
         mock_inspector_class.return_value = mock_inspector
 
-        repo1 = Repository(Properties=RepositoryProperties(RepositoryName="repo1"))
-        repo2 = Repository(Properties=RepositoryProperties(RepositoryName="repo2"))
-        repo3 = Repository(Properties=RepositoryProperties(RepositoryName="repo3"))
+        repo1 = Repository(Properties=RepositoryProperties(repositoryName="repo1"))
+        repo2 = Repository(Properties=RepositoryProperties(repositoryName="repo2"))
+        repo3 = Repository(Properties=RepositoryProperties(repositoryName="repo3"))
 
         mock_inspector.inspect.side_effect = [
             [repo1.dict(exclude_none=True), repo2.dict(exclude_none=True)],

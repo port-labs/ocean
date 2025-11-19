@@ -96,10 +96,11 @@ class TestGetRepositoryPolicyAction:
             )
         )
 
-        result = await action.execute(repositories)
-
-        assert len(result) == 1
-        assert result[0]["repositoryPolicy"] is None
+        with pytest.raises(
+            action.client.exceptions.RepositoryPolicyNotFoundException,
+            match="Policy not found",
+        ):
+            await action.execute(repositories)
 
 
 class TestGetLifecyclePolicyAction:
@@ -160,10 +161,11 @@ class TestGetLifecyclePolicyAction:
             )
         )
 
-        result = await action.execute(repositories)
-
-        assert len(result) == 1
-        assert result[0]["lifecyclePolicy"] is None
+        with pytest.raises(
+            action.client.exceptions.LifecyclePolicyNotFoundException,
+            match="Policy not found",
+        ):
+            await action.execute(repositories)
 
 
 class TestListTagsForResourceAction:
