@@ -50,20 +50,20 @@ class AccountStrategyFactory:
         for provider_name in cls._get_provider_priority(config):
             provider_cls = cls._provider_factories.get(provider_name)
             if not provider_cls:
-                logger.warning(
-                    f"[AccountStrategyFactory] Unknown provider '{provider_name}', skipping..."
-                )
+                logger.warning(f"Unknown provider '{provider_name}', skipping...")
                 continue
 
             if cls._provider_is_applicable(provider_name, config):
                 logger.info(
-                    f"[AccountStrategyFactory] Using {provider_cls.__name__} (priority: {provider_name})"
+                    f"Using {provider_cls.__name__} (priority: {provider_name})"
                 )
                 return provider_cls(config=config)
 
-        logger.warning(
-            "[AccountStrategyFactory] No valid provider found; falling back to AssumeRoleProvider"
-        )
+            logger.debug(
+                f"Provider '{provider_name}' failed to satisfy config requirement, skipping..."
+            )
+
+        logger.warning("No valid provider found; falling back to assuming role")
         return AssumeRoleProvider(config=config)
 
     @staticmethod
@@ -76,7 +76,9 @@ class AccountStrategyFactory:
                 config.get("aws_access_key_id") and config.get("aws_secret_access_key")
             )
         if provider_name == "AssumeRole":
-            return True  # Always valid fallback
+            return bool(
+                config.get("account_role_arn") or config.get("account_role_arns")
+            )
         return False
 
     @classmethod
