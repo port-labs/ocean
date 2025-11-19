@@ -133,7 +133,7 @@ class ListTagsForResourceAction(Action):
             resourceArn=repository["repositoryArn"]
         )
         tags = response["tags"]
-        return {"Tags": tags}
+        return {"tags": tags}
 
 
 class DescribeRepositoriesAction(Action):

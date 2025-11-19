@@ -212,8 +212,8 @@ class TestListTagsForResourceAction:
         result = await action.execute(repositories)
 
         assert len(result) == 2
-        assert result[0]["Tags"] == [{"Key": "Environment", "Value": "prod"}]
-        assert result[1]["Tags"] == [{"Key": "Environment", "Value": "dev"}]
+        assert result[0]["tags"] == [{"Key": "Environment", "Value": "prod"}]
+        assert result[1]["tags"] == [{"Key": "Environment", "Value": "dev"}]
         assert action.client.list_tags_for_resource.call_count == 2
 
 
