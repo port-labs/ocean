@@ -61,7 +61,6 @@ class AccountStrategyFactory:
                 )
                 return provider_cls(config=config)
 
-        # Fallback: use AssumeRole if none matched
         logger.warning(
             "[AccountStrategyFactory] No valid provider found; falling back to AssumeRoleProvider"
         )
