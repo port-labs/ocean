@@ -3,10 +3,11 @@ ARG BASE_RUNNER_PYTHON_IMAGE=ghcr.io/port-labs/port-ocean-base-runner:latest
 
 FROM ${BASE_BUILDER_PYTHON_IMAGE} AS base
 
-ARG BUILD_CONTEXT
-ARG BUILDPLATFORM
 
 ENV LIBRDKAFKA_VERSION=2.8.2
+
+ARG BUILD_CONTEXT
+ARG BUILDPLATFORM
 
 WORKDIR /app
 
@@ -15,9 +16,11 @@ COPY ./${BUILD_CONTEXT}/pyproject.toml ./${BUILD_CONTEXT}/poetry.lock /app/
 RUN poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
 
 FROM ${BASE_RUNNER_PYTHON_IMAGE} AS prod
-ARG OCEAN_USER_ID=1001
 
-RUN groupadd -r appgroup && useradd -r -g appgroup -m -u ${OCEAN_USER_ID} ocean
+ARG OCEAN_USER_ID=1001
+ARG OCEAN_GROUP_ID=1001
+
+RUN groupadd -r appgroup -g ${OCEAN_GROUP_ID} && useradd -r -g appgroup -m -u ${OCEAN_USER_ID} ocean
 
 RUN mkdir -p /tmp/ocean
 
@@ -27,7 +30,6 @@ ARG PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
 ARG OAUTH_CONFIG_DIR=/app/.config
 ARG STREAMING_LOCATION=/tmp/ocean/streaming
 
-ENV LIBRDKAFKA_VERSION=2.8.2
 ENV PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR} \
     STREAMING_LOCATION=${STREAMING_LOCATION}
 
@@ -84,8 +86,9 @@ RUN mkdir -p /home/ocean/.local/share/ca-certificates \
     && chmod -R 644 /home/ocean/.local/share/ca-certificates \
     && echo "export SSL_CERT_DIR=/home/ocean/.local/share/ca-certificates" >> /home/ocean/.bashrc \
     && echo "export SSL_CERT_FILE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt" >> /home/ocean/.bashrc
-RUN setfacl -R -m u:ocean:rwX /etc/ssl/certs \
-    && setfacl -d -m u:ocean:rwX /etc/ssl/certs
+
+RUN setfacl -R -m u:ocean:rX /etc/ssl/certs \
+    && setfacl -d -m u:ocean:rX /etc/ssl/certs
 
 
 USER ocean
