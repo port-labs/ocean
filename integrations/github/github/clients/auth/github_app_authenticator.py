@@ -10,6 +10,7 @@ from github.clients.auth.abstract_authenticator import (
     GitHubHeaders,
 )
 from github.helpers.exceptions import AuthenticationException
+from port_ocean.utils.cache import cache_coroutine_result
 
 
 class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
@@ -18,10 +19,10 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
     def __init__(
         self,
         app_id: str,
-        installation_id: str,
         private_key: str,
         organization: str,
         github_host: str,
+        installation_id: Optional[str] = None,
     ):
         self.app_id = app_id
         self.installation_id = installation_id
@@ -43,6 +44,11 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             ):
                 return self.cached_installation_token
 
+            if not self.installation_id:
+                self.installation_id = await self._fetch_installation_id(
+                    jwt_token.token
+                )
+
             self.cached_installation_token = await self._fetch_installation_token(
                 jwt_token.token
             )
@@ -56,6 +62,34 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             Accept="application/vnd.github+json",
             X_GitHub_Api_Version="2022-11-28",
         )
+
+    @cache_coroutine_result()
+    async def _is_personal_org(self) -> bool:
+        try:
+            url = f"{self.github_host}/users/{self.organization}"
+            response = await self.client.get(url)
+            response.raise_for_status()
+            user_data = response.json()
+            return user_data["type"] == "User"
+        except Exception:
+            logger.exception(
+                f"Failed to check if organization is personal, assuming it is not a personal org"
+            )
+            return False
+
+    async def _fetch_installation_id(self, jwt_token: str) -> int:
+        try:
+            url = f"{self.github_host}/orgs/{self.organization}/installation"
+            if await self._is_personal_org():
+                url = f"{self.github_host}/users/{self.organization}/installation"
+            headers = {"Authorization": f"Bearer {jwt_token}"}
+            response = await self.client.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()["id"]
+        except Exception as e:
+            raise AuthenticationException(
+                f"Failed to fetch installation ID: {e}"
+            ) from e
 
     async def _fetch_installation_token(self, jwt_token: str) -> GitHubToken:
         try:

@@ -32,7 +32,7 @@ class GitHubAuthenticatorFactory:
             )
             return PersonalTokenAuthenticator(token)
 
-        if organization and app_id and installation_id and private_key:
+        if organization and app_id and private_key:
             logger.debug(
                 f"Creating GitHub App Authenticator for {organization} on {github_host}"
             )

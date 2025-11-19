@@ -40,7 +40,7 @@ configurations:
     sensitive: false
     description: App id if you want the integration to interact with Github as an app. This is mandatory if githubToken is not passed in.
   - name: githubAppInstallationId
-    type: integer
+    type: string
     required: false
     sensitive: false
     description: Installation ID if you want the integration to interact with Github as an app. This is mandatory if githubAppId is passed in.
