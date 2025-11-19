@@ -23,7 +23,7 @@ class GitHubAuthenticatorFactory:
         organization: Optional[str] = None,
         token: Optional[str] = None,
         app_id: Optional[str] = None,
-        installation_id: Optional[int] = None,
+        installation_id: Optional[str] = None,
         private_key: Optional[str] = None,
     ) -> AbstractGitHubAuthenticator:
         if token:

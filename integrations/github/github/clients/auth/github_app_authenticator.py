@@ -18,7 +18,7 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
     def __init__(
         self,
         app_id: str,
-        installation_id: int,
+        installation_id: str,
         private_key: str,
         organization: str,
         github_host: str,

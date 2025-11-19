@@ -15,13 +15,13 @@ class TestGithubAuthenticator:
             organization="test-org",
             github_host="https://api.github.com",
             app_id="test-app-id",
+            installation_id="12345",
             private_key="test-private-key",
         )
 
     async def test_token_generated(self, github_auth: GitHubAppAuthenticator) -> None:
         """Test that set_up correctly generates and sets the installation token."""
         mock_jwt_token = GitHubToken(token="mock-jwt-token", expires_at=None)
-        mock_install_id = 12345
         mock_install_token = "mock-installation-token"
 
         with (
@@ -30,11 +30,6 @@ class TestGithubAuthenticator:
                 "_generate_jwt",
                 Mock(return_value=mock_jwt_token),
             ) as mock_generate_jwt,
-            patch.object(
-                github_auth,
-                "_fetch_installation_id",
-                AsyncMock(return_value=mock_install_id),
-            ) as mock_get_install_id,
             patch.object(
                 github_auth,
                 "_fetch_installation_token",
@@ -46,14 +41,13 @@ class TestGithubAuthenticator:
             # Verify that the necessary internal methods were called
             mock_generate_jwt.assert_called_once()
             mock_get_install_token.assert_called_once()
-            mock_get_install_id.assert_called_once()
 
     async def test_token_refreshed_on_expiry(
         self, github_auth: GitHubAppAuthenticator
     ) -> None:
         """Test that a new token is fetched when the cached one expires."""
         mock_jwt_token = GitHubToken(token="mock-jwt-token", expires_at=None)
-        mock_install_id = 12345
+        mock_install_id = "12345"
         mock_expired_token = "mock-expired-token"
         mock_new_token = "mock-new-installation-token"
 
@@ -69,11 +63,6 @@ class TestGithubAuthenticator:
                 "_generate_jwt",
                 Mock(return_value=mock_jwt_token),
             ) as mock_generate_jwt,
-            patch.object(
-                github_auth,
-                "_fetch_installation_id",
-                AsyncMock(return_value=mock_install_id),
-            ) as mock_get_install_id,
             patch.object(
                 github_auth,
                 "_fetch_installation_token",
@@ -93,7 +82,6 @@ class TestGithubAuthenticator:
 
             mock_generate_jwt.assert_called_once()
             mock_get_install_token.assert_called_once()
-            mock_get_install_id.assert_not_called()
             assert github_auth.cached_installation_token.token == mock_new_token
 
             mock_get_install_token.assert_called_once()
