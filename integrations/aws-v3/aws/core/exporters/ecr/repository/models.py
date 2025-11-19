@@ -1,25 +1,25 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Any
 from datetime import datetime
 from pydantic import BaseModel, Field
 from aws.core.modeling.resource_models import ResourceModel, ResourceRequestModel
 
 
 class RepositoryProperties(BaseModel):
-    RepositoryName: str = Field(default_factory=str, alias="repositoryName")
-    RepositoryArn: str = Field(default_factory=str, alias="repositoryArn")
-    RepositoryUri: str = Field(default_factory=str, alias="repositoryUri")
-    RegistryId: Optional[str] = Field(default=None, alias="registryId")
-    CreatedAt: Optional[datetime] = Field(default=None, alias="createdAt")
-    ImageTagMutability: Optional[str] = Field(default=None, alias="imageTagMutability")
-    ImageScanningConfiguration: Optional[Dict[str, Any]] = Field(
-        default=None, alias="imageScanningConfiguration"
+    repositoryName: str = Field(default_factory=str, alias="RepositoryName")
+    repositoryArn: str = Field(default_factory=str, alias="RepositoryArn")
+    repositoryUri: str = Field(default_factory=str, alias="RepositoryUri")
+    registryId: Optional[str] = Field(default=None, alias="RegistryId")
+    createdAt: Optional[datetime] = Field(default=None, alias="CreatedAt")
+    imageTagMutability: Optional[str] = Field(default=None, alias="ImageTagMutability")
+    imageScanningConfiguration: Optional[dict[str, Any]] = Field(
+        default=None, alias="ImageScanningConfiguration"
     )
-    EncryptionConfiguration: Optional[Dict[str, Any]] = Field(
-        default=None, alias="encryptionConfiguration"
+    encryptionConfiguration: Optional[dict[str, Any]] = Field(
+        default=None, alias="EncryptionConfiguration"
     )
-    LifecyclePolicy: Optional[str] = Field(default=None, alias="lifecyclePolicy")
-    RepositoryPolicy: Optional[str] = Field(default=None, alias="repositoryPolicy")
-    Tags: List[Dict[str, str]] = Field(default_factory=list)
+    lifecyclePolicy: Optional[str] = Field(default=None, alias="LifecyclePolicy")
+    repositoryPolicy: Optional[str] = Field(default=None, alias="RepositoryPolicy")
+    tags: list[dict[str, str]] = Field(default_factory=list, alias="Tags")
 
     class Config:
         extra = "forbid"

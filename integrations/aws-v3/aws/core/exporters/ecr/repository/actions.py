@@ -43,13 +43,10 @@ class GetRepositoryPolicyAction(Action):
     async def _fetch_repository_policy(
         self, repository: dict[str, Any]
     ) -> dict[str, Any]:
-        try:
-            response = await self.client.get_repository_policy(
-                repositoryName=repository["repositoryName"]
-            )
-            return {"repositoryPolicy": response["policyText"]}
-        except self.client.exceptions.RepositoryPolicyNotFoundException:
-            return {"repositoryPolicy": None}
+        response = await self.client.get_repository_policy(
+            repositoryName=repository["repositoryName"]
+        )
+        return {"repositoryPolicy": response["policyText"]}
 
 
 class GetLifecyclePolicyAction(Action):
@@ -90,13 +87,10 @@ class GetLifecyclePolicyAction(Action):
     async def _fetch_lifecycle_policy(
         self, repository: dict[str, Any]
     ) -> dict[str, Any]:
-        try:
-            response = await self.client.get_lifecycle_policy(
-                repositoryName=repository["repositoryName"]
-            )
-            return {"lifecyclePolicy": response["lifecyclePolicyText"]}
-        except self.client.exceptions.LifecyclePolicyNotFoundException:
-            return {"lifecyclePolicy": None}
+        response = await self.client.get_lifecycle_policy(
+            repositoryName=repository["repositoryName"]
+        )
+        return {"lifecyclePolicy": response["lifecyclePolicyText"]}
 
 
 class ListTagsForResourceAction(Action):
