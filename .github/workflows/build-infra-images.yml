@@ -22,7 +22,7 @@ jobs:
 
       - name: Configure AWS Credentials 🔒
         id: aws-credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-region: "eu-west-1"
           role-to-assume: ${{ secrets.AWS_ECR_ROLE_ARN }}
