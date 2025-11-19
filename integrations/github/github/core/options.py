@@ -8,7 +8,7 @@ class ListOrganizationOptions(TypedDict):
 
     organization: NotRequired[str]
     allowed_multi_organizations: NotRequired[List[str]]
-    allow_personal_organization: NotRequired[bool]
+    include_authenticated_user: NotRequired[bool]
 
 
 class SingleOrganizationOptions(TypedDict):

@@ -158,7 +158,7 @@ class OrganizationLoginAndTypeGenerator:
     ) -> AsyncGenerator[Tuple[str, str], None]:
         port_app_config = cast("GithubPortAppConfig", event.port_app_config)
         org_options: ListOrganizationOptions = {
-            "allow_personal_organization": port_app_config.allow_personal_organization
+            "include_authenticated_user": port_app_config.include_authenticated_user
         }
         if organization:
             org_options.update({"organization": organization})

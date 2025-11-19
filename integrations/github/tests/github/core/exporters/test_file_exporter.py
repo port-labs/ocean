@@ -562,7 +562,7 @@ class TestFileExporterUtils:
         builder = FilePatternMappingBuilder(org_exporter, repo_exporter, repo_type)
         async with event_context("test_event") as event:
             # Minimal config used by OrganizationLoginAndTypeGenerator
-            event.port_app_config = MagicMock(allow_personal_organization=False)
+            event.port_app_config = MagicMock(include_authenticated_user=False)
             result = await builder.build(files)
 
         # Assert
@@ -619,7 +619,7 @@ class TestFileExporterUtils:
 
         builder = FilePatternMappingBuilder(org_exporter, repo_exporter, repo_type)
         async with event_context("test_event") as event:
-            event.port_app_config = MagicMock(allow_personal_organization=False)
+            event.port_app_config = MagicMock(include_authenticated_user=False)
             result = await builder.build(files)
 
         # Assert

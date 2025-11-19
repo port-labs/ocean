@@ -426,7 +426,7 @@ class TestRestOrganizationExporter:
     async def test_get_paginated_resources_includes_personal_when_allowed(
         self, rest_client: GithubRestClient
     ) -> None:
-        """When allow_personal_organization is True, include the authenticated user as a pseudo-org."""
+        """When include_authenticated_user is True, include the authenticated user as a pseudo-org."""
         exporter = RestOrganizationExporter(rest_client)
 
         personal_user = {"id": 999, "login": "alice", "type": "User"}
@@ -453,7 +453,7 @@ class TestRestOrganizationExporter:
             mock_is_classic.return_value = True
 
             async with event_context("test_event"):
-                options = ListOrganizationOptions(allow_personal_organization=True)
+                options = ListOrganizationOptions(include_authenticated_user=True)
                 orgs: list[list[dict[str, Any]]] = [
                     batch async for batch in exporter.get_paginated_resources(options)
                 ]
@@ -477,7 +477,7 @@ class TestRestOrganizationExporter:
     async def test_get_paginated_resources_skips_personal_when_disallowed(
         self, rest_client: GithubRestClient
     ) -> None:
-        """When allow_personal_organization is False, do not include the authenticated user."""
+        """When include_authenticated_user is False, do not include the authenticated user."""
         exporter = RestOrganizationExporter(rest_client)
 
         async def mock_paginated_request(
@@ -498,7 +498,7 @@ class TestRestOrganizationExporter:
             mock_is_classic.return_value = True
 
             async with event_context("test_event"):
-                options = ListOrganizationOptions(allow_personal_organization=False)
+                options = ListOrganizationOptions(include_authenticated_user=False)
                 orgs: list[list[dict[str, Any]]] = [
                     batch async for batch in exporter.get_paginated_resources(options)
                 ]

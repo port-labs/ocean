@@ -49,8 +49,8 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         allowed_multi_organizations: List[str] = options.get(
             "allowed_multi_organizations", []
         )
-        allow_personal_organization: bool = options.get(
-            "allow_personal_organization", False
+        include_authenticated_user: bool = options.get(
+            "include_authenticated_user", False
         )
 
         if organization := options.get("organization"):
@@ -68,7 +68,7 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
             )
 
         async for batch in self._stream_selected_organizations(
-            allowed_multi_organizations, allow_personal_organization
+            allowed_multi_organizations, include_authenticated_user
         ):
             yield batch
 
@@ -76,9 +76,9 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         raise NotImplementedError
 
     async def _stream_selected_organizations(
-        self, allowed_multi_organizations: list[str], allow_personal_organization: bool
+        self, allowed_multi_organizations: list[str], include_authenticated_user: bool
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        if allow_personal_organization:
+        if include_authenticated_user:
             yield [await self.get_personal_org()]
 
         async for batch in self.client.send_paginated_request(

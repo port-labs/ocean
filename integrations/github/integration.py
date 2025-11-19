@@ -239,10 +239,10 @@ class GithubPortAppConfig(PortAppConfig):
             "member of) for Classic PAT authentication."
         ),
     )
-    allow_personal_organization: bool = Field(
+    include_authenticated_user: bool = Field(
         default=False,
-        alias="allowPersonalOrganization",
-        description="Allow the personal organization to be synced",
+        alias="includeAuthenticatedUser",
+        description="Include the authenticated user's personal account",
     )
     repository_type: str = Field(alias="repositoryType", default="all")
     resources: list[
