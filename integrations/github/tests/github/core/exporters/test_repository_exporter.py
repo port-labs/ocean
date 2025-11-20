@@ -195,10 +195,7 @@ class TestRestRepositoryExporter:
 
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/search/repositories",
-                    {
-                        "q": "org:test-org code in:name",
-                        "type": "all",
-                    },
+                    {"q": "org:test-org code in:name"},
                 )
 
     async def test_get_paginated_resources_user_context_builds_user_repos_url(
@@ -230,4 +227,50 @@ class TestRestRepositoryExporter:
                 mock_request.assert_called_once_with(
                     f"{rest_client.base_url}/user/repos",
                     {"affiliation": "owner", "visibility": "all"},
+                )
+
+    async def test_get_paginated_resources_uses_search_strategy_when_app_auth(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
+
+        async def mock_paginated_request(
+            url: str, params: dict[str, Any], *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any] | list[dict[str, Any]], None]:
+            if "search" in url:
+                yield {"items": TEST_REPOS}
+            else:
+                yield TEST_REPOS
+
+        with patch.object(
+            rest_client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            # Force the exporter to detect App authentication
+            rest_client.authenticator = GitHubAppAuthenticator(
+                app_id="app",
+                private_key="key",
+                organization="test-org",
+                github_host=rest_client.base_url,
+                installation_id="123",
+            )
+
+            async with event_context("test_event"):
+                options = ListRepositoryOptions(
+                    organization="test-org",
+                    organization_type="Organization",
+                    type=mock_port_app_config.repository_type,
+                )
+                exporter = RestRepositoryExporter(rest_client)
+
+                repos: list[list[dict[str, Any]]] = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(repos) == 1
+                assert len(repos[0]) == 2
+                assert repos[0] == TEST_REPOS
+
+                mock_request.assert_called_once_with(
+                    f"{rest_client.base_url}/search/repositories",
+                    {"q": "org:test-org fork:true is:all"},
                 )

@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 4.1.2-beta (2025-11-20)
+
+
+### Improvements
+
+- Use GitHub Search API for repository export when authenticated as a GitHub App, falling back to list API otherwise.
+
+
 ## 4.1.1-beta (2025-11-20)
 
 
