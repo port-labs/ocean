@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.29.10 (2025-11-20)
+
+### Bug fixes
+
+- JQ expression classifier would classify mixed single item and all payload context expressions to run on all of the payload
+
+
 ## 0.29.9 (2025-11-20)
 
 ### Improvements
