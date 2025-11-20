@@ -67,10 +67,10 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     selector = cast(BitbucketRepositorySelector, config.selector)
     params: dict[str, Any] = {}
-    if selector.role:
-        params["role"] = selector.role
-    if selector.query:
-        params["q"] = selector.query
+    if selector.filters.role:
+        params["role"] = selector.filters.role
+    if selector.filters.q:
+        params["q"] = selector.filters.q
     async for repositories in client.get_repositories(params=params):
         yield repositories
 
@@ -84,10 +84,10 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     selector = cast(BitbucketRepositorySelector, config.selector)
     params: dict[str, Any] = {}
-    if selector.role:
-        params["role"] = selector.role
-    if selector.query:
-        params["q"] = selector.query
+    if selector.filters.role:
+        params["role"] = selector.filters.role
+    if selector.filters.q:
+        params["q"] = selector.filters.q
     async for repositories in client.get_repositories(params=params):
         tasks = [
             client.get_pull_requests(
@@ -109,7 +109,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = init_client()
 
     async for matching_folders in process_folder_patterns(
-        selector.folders, client, role=selector.role, query=selector.query
+        selector.mapping.folders, client, role=selector.mapping.role, query=selector.mapping.query
     ):
         yield matching_folders
 

@@ -37,6 +37,19 @@ class RepositoryBranchMapping(BaseModel):
     )
 
 
+class RepositoryMapping(BaseModel):
+    role: str = Field(
+        default="",
+        alias="role",
+        description="Filter repositories by authenticated user's role: member, contributor, admin, or owner",
+    )
+    q: str = Field(
+        default="",
+        alias="q",
+        description='Query string to narrow repositories as per Bitbucket filtering (e.g., name="my-repo")',
+    )
+
+
 class FolderPattern(BaseModel):
     path: str = Field(
         default="",
@@ -50,17 +63,18 @@ class FolderPattern(BaseModel):
     )
 
 
-class BitbucketFolderSelector(Selector):
+class FolderMapping(RepositoryMapping):
     query: str = Field(default="", description="Query string to filter folders")
-    role: str = Field(
-        default="",
-        description="Filter repositories by authenticated user's role: member, contributor, admin, or owner",
-    )
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",
         description="Specify the repositories, branches and folders to include under this relative path",
     )
+
+
+class BitbucketFolderSelector(Selector):
+    mapping: FolderMapping
+    
 
 
 class BitbucketFolderResourceConfig(ResourceConfig):
@@ -102,16 +116,7 @@ class BitbucketFileResourceConfig(ResourceConfig):
 
 
 class BitbucketRepositorySelector(Selector):
-    role: str = Field(
-        default="",
-        alias="role",
-        description="Optional. Filter repositories by authenticated user's role: member, contributor, admin, or owner",
-    )
-    query: str = Field(
-        default="",
-        alias="query",
-        description='Query string to narrow repositories as per Bitbucket filtering (e.g., name="my-repo")',
-    )
+    filters: RepositoryMapping
 
 
 class BitbucketRepositoryResourceConfig(ResourceConfig):
