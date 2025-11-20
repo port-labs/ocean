@@ -219,6 +219,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/octopus",
+      "envFile": "${workspaceFolder}/integrations/octopus/.env",
+      "justMyCode": true,
+      "name": "Run octopus integration",
+      "program": "${workspaceFolder}/integrations/octopus/debug.py",
+      "python": "${workspaceFolder}/integrations/octopus/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/jira-server",
       "envFile": "${workspaceFolder}/integrations/jira-server/.env",
       "justMyCode": true,

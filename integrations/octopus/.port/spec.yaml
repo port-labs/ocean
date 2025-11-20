@@ -12,6 +12,7 @@ features:
       - kind: release
       - kind: deployment
       - kind: machine
+      - kind: runbook
 configurations:
   - name: octopusApiKey
     required: true
