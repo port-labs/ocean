@@ -561,13 +561,13 @@ class TestJQEntityProcessor:
                 "function_with_middle_pattern": "map(.body.item.field)",  # Function with middle pattern - ALL
                 "select_with_pattern": 'select(.item.status == "active")',  # Select with pattern - SINGLE
                 "select_with_middle_pattern": 'select(.data.item.status == "active")',  # Select with middle pattern - ALL
-                "pipe_with_pattern": ".[] | .item.field",  # Pipe with pattern - SINGLE
+                "pipe_with_pattern": ".[] | .item.field",  # Pipe with pattern - ALL
                 "pipe_with_middle_pattern": ".[] | .body.item.field",  # Pipe with middle pattern - ALL
                 "array_with_pattern": "[.item.id, .item.name]",  # Array with pattern - SINGLE
                 "array_with_middle_pattern": "[.data.item.id, .body.item.name]",  # Array with middle pattern - ALL
                 "object_with_pattern": "{id: .item.id, name: .item.name}",  # Object with pattern - SINGLE
                 "object_with_middle_pattern": "{id: .data.item.id, name: .body.item.name}",  # Object with middle pattern - ALL
-                "nested_with_pattern": ".data.items[] | .item.field",  # Nested with pattern - SINGLE
+                "nested_with_pattern": ".data.items[] | .item.field",  # Nested with pattern - ALL
                 "nested_with_middle_pattern": ".data.items[] | .body.item.field",  # Nested with middle pattern - ALL
                 "conditional_with_pattern": "if .item.exists then .item.value else null end",  # Conditional with pattern - SINGLE
                 "conditional_with_middle_pattern": "if .data.item.exists then .body.item.value else null end",  # Conditional with middle pattern - ALL
@@ -597,10 +597,8 @@ class TestJQEntityProcessor:
                 "special_chars": ".item.field[0]",
                 "function_with_pattern": "map(.item.field)",
                 "select_with_pattern": 'select(.item.status == "active")',
-                "pipe_with_pattern": ".[] | .item.field",
                 "array_with_pattern": "[.item.id, .item.name]",
                 "object_with_pattern": "{id: .item.id, name: .item.name}",
-                "nested_with_pattern": ".data.items[] | .item.field",
                 "conditional_with_pattern": "if .item.exists then .item.value else null end",
             },
             "relations": {
@@ -620,9 +618,11 @@ class TestJQEntityProcessor:
                 "function_with_middle_pattern": "map(.body.item.field)",
                 "select_with_middle_pattern": 'select(.data.item.status == "active")',
                 "item_in_string": 'select(.data.string == ".item")',
+                "pipe_with_pattern": ".[] | .item.field",
                 "pipe_with_middle_pattern": ".[] | .body.item.field",
                 "array_with_middle_pattern": "[.data.item.id, .body.item.name]",
                 "object_with_middle_pattern": "{id: .data.item.id, name: .body.item.name}",
+                "nested_with_pattern": ".data.items[] | .item.field",
                 "nested_with_middle_pattern": ".data.items[] | .body.item.field",
                 "conditional_with_middle_pattern": "if .data.item.exists then .body.item.value else null end",
                 "field_with_null_name": ".is_null",
@@ -664,10 +664,10 @@ class TestJQEntityProcessor:
                 # JQ expressions with functions that contain .item
                 "mapped_property": "map(.item.field)",  # Contains .item but starts with map - SINGLE
                 "selected_property": 'select(.item.status == "active")',  # Contains .item but starts with select - SINGLE
-                "filtered_property": '.[] | select(.item.type == "service")',  # Contains .item in pipe - SINGLE
+                "filtered_property": '.[] | select(.item.type == "service")',  # Main thread is based on the main object - ALL
                 "array_literal": "[.item.id, .item.name]",  # Contains .item in array - SINGLE
                 "object_literal": "{id: .item.id, name: .item.name}",  # Contains .item in object - SINGLE
-                "nested_access": ".data.items[] | .item.field",  # Contains .item in nested access - SINGLE
+                "nested_access": ".data.items[] | .item.field",  # Contains .item in nested access - ALL
                 "conditional": "if .item.exists then .item.value else null end",  # Contains .item in conditional - SINGLE
                 "function_call": "length(.item.array)",  # Contains .item in function call - SINGLE
                 "range_expression": "range(.item.start; .item.end)",  # Contains .item in range - SINGLE
@@ -790,10 +790,8 @@ class TestJQEntityProcessor:
             "properties": {
                 "mapped_property": "map(.item.field)",
                 "selected_property": 'select(.item.status == "active")',
-                "filtered_property": '.[] | select(.item.type == "service")',
                 "array_literal": "[.item.id, .item.name]",
                 "object_literal": "{id: .item.id, name: .item.name}",
-                "nested_access": ".data.items[] | .item.field",
                 "conditional": "if .item.exists then .item.value else null end",
                 "function_call": "length(.item.array)",
                 "range_expression": "range(.item.start; .item.end)",
@@ -892,6 +890,8 @@ class TestJQEntityProcessor:
         # ALL mappings - expressions with dots but not containing .item
         expected_all = {
             "properties": {
+                "filtered_property": '.[] | select(.item.type == "service")',
+                "nested_access": ".data.items[] | .item.field",
                 "external_map": "map(.external.field)",
                 "external_select": 'select(.external.status == "active")',
                 "external_array": "[.external.id, .external.name]",
