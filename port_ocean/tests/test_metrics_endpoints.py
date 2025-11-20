@@ -4,7 +4,7 @@ from unittest.mock import Mock
 from port_ocean.helpers.metric.metric import Metrics
 
 
-def test_metrics_endpoints():
+def test_metrics_endpoints() -> None:
     """Test that both /metrics and /metrics/ endpoints work correctly."""
     # Create mock settings
     metrics_settings = Mock()
