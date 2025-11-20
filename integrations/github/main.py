@@ -99,6 +99,7 @@ async def _create_webhooks_for_organization(org_name: str, base_url: str) -> Non
         organization=org_name,
         token=ocean.integration_config.get("github_token"),
         app_id=ocean.integration_config.get("github_app_id"),
+        installation_id=ocean.integration_config.get("github_app_installation_id"),
         private_key=ocean.integration_config.get("github_app_private_key"),
     )
 
