@@ -67,10 +67,11 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     selector = cast(BitbucketRepositorySelector, config.selector)
     params: dict[str, Any] = {}
-    if selector.filters and selector.filters.role:
-        params["role"] = selector.filters.role
-    if selector.filters and selector.filters.q:
-        params["q"] = selector.filters.q.strip()
+    if selector.filters:
+        if selector.filters.role:
+            params["role"] = selector.filters.role
+        if selector.filters.q:
+            params["q"] = selector.filters.q.strip()
     async for repositories in client.get_repositories(params=params):
         yield repositories
 
@@ -84,10 +85,11 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     selector = cast(BitbucketRepositorySelector, config.selector)
     params: dict[str, Any] = {}
-    if selector.filters and selector.filters.role:
-        params["role"] = selector.filters.role
-    if selector.filters and selector.filters.q:
-        params["q"] = selector.filters.q.strip()
+    if selector.filters:
+        if selector.filters.role:
+            params["role"] = selector.filters.role
+        if selector.filters.q:
+            params["q"] = selector.filters.q.strip()
     async for repositories in client.get_repositories(params=params):
         tasks = [
             client.get_pull_requests(
