@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added support for search filtering using query param `q` in repository selector
-- Added support for role filtering using query param `role` in repository selector
+- Added support for search filtering using query param `q` in port app config
+- Added support for role filtering using query param `role` in port app config
 
 
 ## 0.1.96 (2025-11-19)
