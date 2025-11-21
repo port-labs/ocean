@@ -1,23 +1,22 @@
-from pydantic import Field, BaseModel
-from port_ocean.context.ocean import PortOceanContext
-from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
-from port_ocean.core.handlers.webhook.processor_manager import (
-    LiveEventsProcessorManager,
-)
-from port_ocean.core.integrations.base import BaseIntegration
-
-from azure_devops.gitops.file_entity_processor import GitManipulationHandler
-
 from typing import List, Literal, Optional, Union
 
+from pydantic import Field, BaseModel
+
+from azure_devops.gitops.file_entity_processor import GitManipulationHandler
+from azure_devops.misc import AzureDevopsFolderResourceConfig
+from port_ocean.context.ocean import PortOceanContext
+from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
     Selector,
 )
-from port_ocean.utils.signal import signal_handler
+from port_ocean.core.handlers.webhook.processor_manager import (
+    LiveEventsProcessorManager,
+)
+from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from azure_devops.misc import AzureDevopsFolderResourceConfig
+from port_ocean.utils.signal import signal_handler
 
 
 class AzureDevopsProjectResourceConfig(ResourceConfig):
@@ -165,6 +164,19 @@ class AzureDevopsTestRunResourceConfig(ResourceConfig):
     selector: AzureDevopsTestRunSelector
 
 
+class AzureDevopsPullRequestSelector(Selector):
+    min_time_in_days: int = Field(
+        default=7,
+        alias="minTimeInDays",
+        description="Minimum time in days since the pull request was abandoned or closed. Max value is 90. Default value is 7.",
+    )
+
+
+class AzureDevopsPullRequestResourceConfig(ResourceConfig):
+    kind: Literal["pull-request"]
+    selector: AzureDevopsPullRequestSelector
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -186,6 +198,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsFileResourceConfig
         | AzureDevopsPipelineResourceConfig
         | AzureDevopsTestRunResourceConfig
+        | AzureDevopsPullRequestResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

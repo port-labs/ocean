@@ -2,7 +2,7 @@ from typing import cast
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import (
-    PULL_REQUEST_SEARCH_CRITERIA,
+    create_pull_request_search_criteria,
     Kind,
     AzureDevopsFolderResourceConfig,
 )
@@ -13,6 +13,7 @@ from integration import (
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
     AzureDevopsTestRunResourceConfig,
+    AzureDevopsPullRequestResourceConfig,
 )
 
 from azure_devops.webhooks.webhook_processors.pull_request_processor import (
@@ -106,7 +107,10 @@ async def resync_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.PULL_REQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    for search_filter in PULL_REQUEST_SEARCH_CRITERIA:
+    config = cast(AzureDevopsPullRequestResourceConfig, event.resource_config)
+    for search_filter in create_pull_request_search_criteria(
+        config.selector.min_time_in_days
+    ):
         async for pull_requests in azure_devops_client.generate_pull_requests(
             search_filter
         ):
