@@ -19,6 +19,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.utils.signal import signal_handler
 from loguru import logger
+from typing import Optional
 
 
 FILE_PROPERTY_PREFIX = "file://"
@@ -74,7 +75,6 @@ class FolderMapping(RepositoryMapping):
 
 class BitbucketFolderSelector(Selector):
     mapping: FolderMapping
-    
 
 
 class BitbucketFolderResourceConfig(ResourceConfig):
@@ -116,7 +116,7 @@ class BitbucketFileResourceConfig(ResourceConfig):
 
 
 class BitbucketRepositorySelector(Selector):
-    filters: RepositoryMapping
+    filters: Optional[RepositoryMapping]
 
 
 class BitbucketRepositoryResourceConfig(ResourceConfig):
