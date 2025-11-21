@@ -64,17 +64,13 @@ class FolderPattern(BaseModel):
     )
 
 
-class FolderMapping(RepositoryMapping):
+class BitbucketFolderSelector(Selector):
     query: str = Field(default="", description="Query string to filter folders")
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",
         description="Specify the repositories, branches and folders to include under this relative path",
     )
-
-
-class BitbucketFolderSelector(Selector):
-    mapping: FolderMapping
 
 
 class BitbucketFolderResourceConfig(ResourceConfig):
@@ -115,33 +111,18 @@ class BitbucketFileResourceConfig(ResourceConfig):
     selector: BitbucketFileSelector
 
 
-class BitbucketRepositorySelector(Selector):
-    filters: Optional[RepositoryMapping]
-
-
-class BitbucketRepositoryResourceConfig(ResourceConfig):
-    kind: Literal["repository"]
-    selector: BitbucketRepositorySelector
-    port: PortResourceConfig
-
-
-class BitbucketPullRequestResourceConfig(ResourceConfig):
-    kind: Literal["pull-request"]
-    selector: BitbucketRepositorySelector
-    port: PortResourceConfig
-
-
 class BitbucketAppConfig(PortAppConfig):
     resources: list[
-        BitbucketFolderResourceConfig
-        | BitbucketFileResourceConfig
-        | BitbucketRepositoryResourceConfig
-        | BitbucketPullRequestResourceConfig
-        | ResourceConfig
+        BitbucketFolderResourceConfig | BitbucketFileResourceConfig | ResourceConfig
     ] = Field(
         default_factory=list,
         alias="resources",
         description="Specify the resources to include in the sync",
+    )
+    repo_filter: Optional[RepositoryMapping] = Field(
+        default=None,
+        alias="repoFilter",
+        description="Filter repositories by authenticated user's role or query string",
     )
 
 
