@@ -229,7 +229,7 @@ class TestRestRepositoryExporter:
                     {"affiliation": "owner", "visibility": "all"},
                 )
 
-    async def test_get_paginated_resources_uses_search_strategy_when_app_auth(
+    async def test_get_paginated_resources_uses_search_strategy_when_app_auth_and_personal_account(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
     ) -> None:
         from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
@@ -257,7 +257,7 @@ class TestRestRepositoryExporter:
             async with event_context("test_event"):
                 options = ListRepositoryOptions(
                     organization="test-org",
-                    organization_type="Organization",
+                    organization_type="User",
                     type=mock_port_app_config.repository_type,
                 )
                 exporter = RestRepositoryExporter(rest_client)
