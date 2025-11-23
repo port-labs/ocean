@@ -114,16 +114,15 @@ def _build_visibility_params() -> dict[str, Any]:
     return {}
 
 
-def _build_group_params() -> dict[str, Any]:
+def _build_group_params(search: str | None = None) -> dict[str, Any]:
     """Helper function to build params dictionary to filter groups.
 
     Returns:
         Dictionary of parameters to pass to GitLab API calls
     """
-    group_query = _get_group_query_config()
     visibility_params = _build_visibility_params()
     params: dict[str, Any] = {}
-    params.update(group_query)
+    params.update({"search": search} if search else _get_group_query_config())
     params.update(visibility_params)
     return params
 
@@ -133,9 +132,10 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(ProjectResourceConfig, event.resource_config).selector
     include_languages = bool(selector.include_languages)
+    params = _build_group_params(selector.search)
 
     async for projects_batch in client.get_projects(
-        params=_build_group_params(),
+        params=params,
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=include_languages,
     ):

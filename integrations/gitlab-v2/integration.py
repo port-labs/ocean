@@ -29,6 +29,11 @@ class ProjectSelector(Selector):
         default=False,
         description="Whether to include the languages of the project, defaults to false",
     )
+    search: str = Field(
+        default="",
+        alias="search",
+        description="Search for projects by name, path or description",
+    )
 
 
 class ProjectResourceConfig(ResourceConfig):
