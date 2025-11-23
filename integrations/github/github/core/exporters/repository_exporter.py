@@ -3,6 +3,7 @@ from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import parse_github_options, get_repository_metadata
+from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
@@ -73,23 +74,63 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         search_params = cast(
             Optional[RepoSearchParams], params.pop("search_params", None)
         )
+        is_personal_account = organization_type == "User"
+        is_github_app_authenticated = isinstance(
+            self.client.authenticator, GitHubAppAuthenticator
+        )
 
-        if search_params:
-            search_query = f"org:{organization} {search_params.query}"
-            query = {"q": search_query, **params}
-            url = f"{self.client.base_url}/search/repositories"
-            async for search_results in self.client.send_paginated_request(url, query):
-                casted = cast(dict[str, Any], search_results)
-                yield casted["items"]
-        else:
-            url, params = self._build_repos_url_and_params(
-                organization, organization_type, params
+        use_search_api = search_params is not None or (
+            is_github_app_authenticated and is_personal_account
+        )
+        strategy = self._search_strategy if use_search_api else self._list_strategy
+
+        async for batch in strategy(
+            organization, organization_type, params, search_params
+        ):
+            yield batch
+
+    async def _list_strategy(
+        self,
+        organization: str,
+        organization_type: str,
+        params: dict[str, Any],
+        _: Optional[RepoSearchParams],
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        url, final_params = self._build_repos_url_and_params(
+            organization, organization_type, params
+        )
+        async for repos in self.client.send_paginated_request(url, final_params):
+            logger.info(
+                f"Fetched batch of {len(repos)} repositories from organization {organization}"
             )
-            async for repos in self.client.send_paginated_request(url, params):
-                logger.info(
-                    f"Fetched batch of {len(repos)} repositories from organization {organization}"
-                )
-                yield repos
+            yield repos
+
+    async def _search_strategy(
+        self,
+        organization: str,
+        _: str,
+        params: dict[str, Any],
+        search_params: Optional[RepoSearchParams],
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        repository_type = params.pop("type")
+        forced_qualifiers = (
+            ["fork:true", f"is:{repository_type}"] if search_params is None else []
+        )
+
+        raw_q = (
+            search_params.query.strip()
+            if search_params
+            else " ".join(forced_qualifiers).strip()
+        )
+
+        query_params = {"q": f"org:{organization} {raw_q}", **params}
+        url = f"{self.client.base_url}/search/repositories"
+
+        async for search_results in self.client.send_paginated_request(
+            url, query_params
+        ):
+            casted = cast(dict[str, Any], search_results)
+            yield casted["items"]
 
     def _build_repos_url_and_params(
         self, organization: str, organization_type: str, params: dict[str, Any]
