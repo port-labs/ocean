@@ -25,7 +25,6 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 from port_ocean.core.models import (
     ActionRun,
     IntegrationActionInvocationPayload,
-    IntegrationFeatureFlag,
     RunStatus,
 )
 from port_ocean.exceptions.execution_manager import (
@@ -62,9 +61,6 @@ def mock_port_client() -> MagicMock:
     mock_port_client.get_run_by_external_id = AsyncMock()
     mock_port_client.patch_run = AsyncMock()
     mock_port_client.post_run_log = AsyncMock()
-    mock_port_client.get_organization_feature_flags = AsyncMock(
-        return_value=[IntegrationFeatureFlag.OCEAN_ACTIONS_PROCESSING_ENABLED]
-    )
     mock_port_client.auth = AsyncMock(spec=PortAuthentication)
     mock_port_client.auth.is_machine_user = AsyncMock(return_value=True)
     return mock_port_client

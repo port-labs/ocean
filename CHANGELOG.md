@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.30.0 (2025-11-23)
+
+### Improvements
+
+- Expose actions processing capability without feature flag
+
+
 ## 0.29.10 (2025-11-20)
 
 ### Bug fixes
