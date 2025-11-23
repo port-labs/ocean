@@ -122,7 +122,7 @@ class BitbucketAppConfig(PortAppConfig):
     repo_filter: Optional[RepositoryMapping] = Field(
         default=None,
         alias="repoFilter",
-        description="Filter repositories by authenticated user's role or query string",
+        description="Filter repositories by a query string or authenticated user's role",
     )
 
 
