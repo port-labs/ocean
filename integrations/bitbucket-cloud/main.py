@@ -32,6 +32,16 @@ from bitbucket_cloud.helpers.folder import (
 from bitbucket_cloud.helpers.file_kind import process_file_patterns
 
 
+def _build_repo_params(config: BitbucketAppConfig) -> dict[str, Any]:
+    """Build the parameters for the repository filter."""
+    params: dict[str, Any] = {}
+    if config.repo_filter.role:
+        params["role"] = config.repo_filter.role
+    if config.repo_filter.q:
+        params["q"] = config.repo_filter.q.strip()
+    return params
+
+
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean Bitbucket integration")
@@ -61,12 +71,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the workspace."""
     client = init_client()
     config = cast(BitbucketAppConfig, event.port_app_config)
-    params: dict[str, Any] = {}
-    if config.repo_filter:
-        if config.repo_filter.role:
-            params["role"] = config.repo_filter.role
-        if config.repo_filter.q:
-            params["q"] = config.repo_filter.q.strip()
+    params: dict[str, Any] = _build_repo_params(config)
     async for repositories in client.get_repositories(params=params):
         yield repositories
 
@@ -76,12 +81,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests from all repositories."""
     client = init_client()
     config = cast(BitbucketAppConfig, event.port_app_config)
-    params: dict[str, Any] = {}
-    if config.repo_filter:
-        if config.repo_filter.role:
-            params["role"] = config.repo_filter.role
-        if config.repo_filter.q:
-            params["q"] = config.repo_filter.q.strip()
+    params: dict[str, Any] = _build_repo_params(config)
     async for repositories in client.get_repositories(params=params):
         tasks = [
             client.get_pull_requests(
@@ -102,12 +102,11 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(BitbucketFolderSelector, config.selector)
     client = init_client()
     app_config = cast(BitbucketAppConfig, event.port_app_config)
-
+    params: dict[str, Any] = _build_repo_params(app_config)
     async for matching_folders in process_folder_patterns(
         selector.folders,
         client,
-        role=app_config.repo_filter.role if app_config.repo_filter else None,
-        query=app_config.repo_filter.q if app_config.repo_filter else None,
+        params=params,
     ):
         yield matching_folders
 

@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, TYPE_CHECKING, Optional
+from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, TYPE_CHECKING
 
 from loguru import logger
 import fnmatch
@@ -118,8 +118,7 @@ def find_common_base_path_and_max_depth(paths: List[str]) -> Tuple[str, int]:
 async def process_folder_patterns(
     folder_patterns: list[FolderPattern],
     client: "BitbucketClient",
-    role: Optional[str] = None,
-    query: Optional[str] = None,
+    params: dict[str, Any] = {},
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     repo_names = extract_repo_names_from_patterns(folder_patterns)
     if not repo_names:
@@ -127,10 +126,10 @@ async def process_folder_patterns(
 
     pattern_by_repo = create_pattern_mapping(folder_patterns)
     name_filter = f"name IN ({','.join(f'\"{name}\"' for name in repo_names)})"
-    q_param = f"{name_filter} AND ({query})" if query else name_filter
-    params = {"q": q_param}
-    if role:
-        params["role"] = role
+    q_param = f"{name_filter} AND ({params['q']})" if "q" in params else name_filter
+    if "role" in params:
+        params["role"] = params["role"]
+    params["q"] = q_param
     async for repos_batch in client.get_repositories(params=params):
         for repo in repos_batch:
             async for matching_folders in process_repo_folders(
