@@ -40,6 +40,22 @@ class TestJQEntityProcessor:
         result = await mocked_processor._search(data, pattern)
         assert result == "port/ocean"
 
+    async def test_search_with_single_quotes_in_the_end(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"organization": "port"}
+        pattern = ".organization + '/'"
+        result = await mocked_processor._search(data, pattern)
+        assert result == "port/"
+
+    async def test_search_with_single_quotes_in_the_start(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"organization": "port"}
+        pattern = "'/' + .organization"
+        result = await mocked_processor._search(data, pattern)
+        assert result == "/port"
+
     async def test_search_as_bool(self, mocked_processor: JQEntityProcessor) -> None:
         data = {"foo": True}
         pattern = ".foo"
