@@ -1,5 +1,5 @@
 import asyncio
-from typing import Type, Any
+from typing import Any, Type
 
 import httpx
 from loguru import logger
@@ -114,12 +114,50 @@ async def _initialize_required_integration_settings(
         )
 
 
+async def _mapped_blueprints_exist(
+    port_client: PortClient,
+    defaults: Defaults | None = None,
+    has_provision_feature_flag: bool = False,
+) -> bool:
+    if not defaults:
+        return True
+
+    integration = await port_client.get_current_integration(
+        should_log=False,
+        should_raise=False,
+        has_provision_feature_flag=has_provision_feature_flag,
+    )
+    integration_config = integration.get("config", {})
+    blueprints = (
+        integration_config.get("resources", {})
+        .get("port", {})
+        .get("entity", {})
+        .get("mappings", {})
+        .get("blueprint")
+    )
+
+    blueprints_results, _ = await gather_and_split_errors_from_results(
+        [
+            port_client.get_blueprint(blueprint["identifier"], should_log=False)
+            for blueprint in blueprints
+        ],
+        lambda item: isinstance(item, Blueprint),
+    )
+
+    if len(blueprints_results) != len(blueprints):
+        return True
+
+    return False
+
+
 async def _create_resources(
     port_client: PortClient,
     defaults: Defaults | None = None,
+    has_provision_feature_flag: bool = False,
 ) -> None:
     if not defaults:
         return
+
     creation_stage, *blueprint_patches = deconstruct_blueprints_to_creation_steps(
         defaults.blueprints
     )
@@ -132,7 +170,13 @@ async def _create_resources(
         lambda item: isinstance(item, Blueprint),
     )
 
-    if blueprints_results:
+    mapped_blueprints_exist = await _mapped_blueprints_exist(
+        port_client,
+        defaults,
+        has_provision_feature_flag,
+    )
+
+    if blueprints_results or mapped_blueprints_exist:
         logger.info(
             f"Blueprints already exist: {[result.identifier for result in blueprints_results]}. Skipping integration default creation..."
         )
@@ -184,15 +228,16 @@ async def _create_resources(
             )
         )
 
-        created_scorecards, scorecards_errors = (
-            await gather_and_split_errors_from_results(
-                (
-                    port_client.create_scorecard(
-                        blueprint_scorecards["blueprint"], action, should_log=False
-                    )
-                    for blueprint_scorecards in defaults.scorecards
-                    for action in blueprint_scorecards["data"]
+        (
+            created_scorecards,
+            scorecards_errors,
+        ) = await gather_and_split_errors_from_results(
+            (
+                port_client.create_scorecard(
+                    blueprint_scorecards["blueprint"], action, should_log=False
                 )
+                for blueprint_scorecards in defaults.scorecards
+                for action in blueprint_scorecards["data"]
             )
         )
 
