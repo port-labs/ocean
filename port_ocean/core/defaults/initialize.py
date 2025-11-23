@@ -348,7 +348,7 @@ async def _initialize_defaults(
         return
     try:
         logger.info("Found default resources, starting creation process")
-        await _create_resources(port_client, defaults)
+        await _create_resources(port_client, defaults, has_provision_feature_flag)
     except AbortDefaultCreationError as e:
         logger.warning(
             f"Failed to create resources. Rolling back blueprints : {e.blueprints_to_rollback}"
