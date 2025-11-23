@@ -122,11 +122,8 @@ celerybeat.pid
 # Environments
 .env
 .venv
-.venv-docker/
 env/
 venv/
-venv-docker/
-venv-docker.bak/
 ENV/
 env.bak/
 venv.bak/
@@ -155,20 +152,4 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Pycharm
-.idea
-!.idea/watcherTasks.xml
-
-# VSCode
-.vscode/*
-!.vscode/launch.json
-
-# Junit
-
-junit/*
-**/junit/*
-
-# Ocean Cache
-.ocean_cache/
-.DS_STORE
-integrations/.DS_Store
+.idea/
