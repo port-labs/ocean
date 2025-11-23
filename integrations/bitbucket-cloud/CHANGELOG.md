@@ -7,13 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.0 (2025-11-21)
+## 0.2.0 (2025-11-23)
 
 
 ### Features
 
 - Added support for search filtering using query param `q` in port app config
 - Added support for role filtering using query param `role` in port app config
+
+
+## 0.1.98 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.1.97 (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
 
 
 ## 0.1.96 (2025-11-19)
