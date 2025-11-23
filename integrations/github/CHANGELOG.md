@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.1.6-beta (2025-11-23)
+
+
+### Improvements
+
+- Change section to Git Providers in spec.yaml
+
+
 ## 4.1.5-beta (2025-11-23)
 
 
