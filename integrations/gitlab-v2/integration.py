@@ -29,6 +29,11 @@ class ProjectSelector(Selector):
         default=False,
         description="Whether to include the languages of the project, defaults to false",
     )
+    search: str = Field(
+        default="",
+        alias="search",
+        description="Search for projects by name, path or description",
+    )
 
 
 class ProjectResourceConfig(ResourceConfig):
@@ -183,11 +188,29 @@ class GitlabVisibilityConfig(BaseModel):
         return value
 
 
+class GitlabGroupFilter(BaseModel):
+    search: str = Field(
+        default="",
+        alias="search",
+        description="Search for groups by name or path",
+    )
+
+    def to_dict(self) -> dict[str, Any]:
+        if not self.search:
+            return {}
+        return {"search": self.search}
+
+
 class GitlabPortAppConfig(PortAppConfig):
     visibility: GitlabVisibilityConfig = Field(
         default_factory=GitlabVisibilityConfig,
         alias="visibility",
         description="Configuration for resource visibility and access control",
+    )
+    group_query: GitlabGroupFilter = Field(
+        default_factory=GitlabGroupFilter,
+        alias="groupQuery",
+        description="Return the list of authorized groups matching the search criteria.",
     )
     resources: list[
         ProjectResourceConfig
