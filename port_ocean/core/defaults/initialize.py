@@ -128,15 +128,32 @@ async def _mapped_blueprints_exist(
         has_provision_feature_flag=has_provision_feature_flag,
     )
     integration_config = integration.get("config", {})
-    blueprints = (
-        integration_config.get("resources", {})
-        .get("port", {})
-        .get("entity", {})
-        .get("mappings", {})
-        .get("blueprint")
-    )
+    resources = integration_config.get("resources", [])
 
-    blueprints_results, _ = await gather_and_split_errors_from_results(
+    if not isinstance(resources, list):
+        return True
+
+    blueprints = []
+    for resource in resources:
+        blueprint = (
+            resource.get("port", {})
+            .get("entity", {})
+            .get("mappings", {})
+            .get("blueprint")
+        )
+        if blueprint:
+            if (
+                isinstance(blueprint, str)
+                and blueprint.startswith('"')
+                and blueprint.endswith('"')
+            ):
+                blueprint = blueprint.strip('"')
+            blueprints.append({"identifier": blueprint})
+
+    if not blueprints:
+        return True
+
+    blueprints_results, _blueprint_errors = await gather_and_split_errors_from_results(
         [
             port_client.get_blueprint(blueprint["identifier"], should_log=False)
             for blueprint in blueprints
@@ -145,9 +162,9 @@ async def _mapped_blueprints_exist(
     )
 
     if len(blueprints_results) != len(blueprints):
-        return True
+        return False
 
-    return False
+    return True
 
 
 async def _create_resources(
