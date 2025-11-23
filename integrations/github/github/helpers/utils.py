@@ -48,6 +48,19 @@ class ObjectKind(StrEnum):
     COLLABORATOR = "collaborator"
 
 
+def enrich_with_organization(
+    response: Dict[str, Any], organization: str
+) -> Dict[str, Any]:
+    """Helper function to enrich response with organization information.
+    Args:
+        response: The response to enrich
+        organization: The name of the organization
+    Returns:
+        The enriched response
+    """
+    return {**response, "__organization": organization}
+
+
 def enrich_with_repository(
     response: Dict[str, Any], repo_name: str, key: str = "__repository"
 ) -> Dict[str, Any]:
@@ -137,3 +150,19 @@ async def get_repository_metadata(
     url = f"{client.base_url}/repos/{organization}/{repo_name}"
     logger.info(f"Fetching metadata for repository: {repo_name} from {organization}")
     return await client.send_api_request(url)
+
+
+@cache.cache_coroutine_result()
+async def enrich_user_with_primary_email(
+    client: "AbstractGithubClient", user: Dict[str, Any]
+) -> Dict[str, Any]:
+    response = await client.make_request(f"{client.base_url}/user/emails")
+    data: list[dict[str, Any]] = response.json()
+    if not data:
+        logger.error("Failed to fetch user emails")
+        return user
+
+    primary_email = next((item for item in data if item["primary"] is True), None)
+    if primary_email:
+        user["email"] = primary_email["email"]
+    return user

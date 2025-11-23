@@ -1,6 +1,10 @@
 from typing import cast
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.helpers.utils import enrich_with_repository, parse_github_options
+from github.helpers.utils import (
+    enrich_with_repository,
+    parse_github_options,
+    enrich_with_organization,
+)
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 from github.core.options import ListCollaboratorOptions, SingleCollaboratorOptions
@@ -27,7 +31,9 @@ class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
         collaborator = response["user"]
-        return enrich_with_repository(collaborator, cast(str, repo_name))
+        return enrich_with_organization(
+            enrich_with_repository(collaborator, cast(str, repo_name)), organization
+        )
 
     async def get_paginated_resources[
         ExporterOptionsT: ListCollaboratorOptions
@@ -45,7 +51,10 @@ class RestCollaboratorExporter(AbstractGithubExporter[GithubRestClient]):
             )
 
             batch = [
-                enrich_with_repository(collaborator, cast(str, repo_name))
+                enrich_with_organization(
+                    enrich_with_repository(collaborator, cast(str, repo_name)),
+                    organization,
+                )
                 for collaborator in collaborators
             ]
             yield batch
