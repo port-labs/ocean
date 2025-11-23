@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.4.33 (2025-11-21)
+## 0.4.34 (2025-11-21)
 
 
 ### Features
 
 - Added support for `min_time_in_days` selector option in pull request kind
+
+
+## 0.4.33 (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
 
 
 ## 0.4.32 (2025-11-19)
