@@ -1,3 +1,4 @@
+from port_ocean.utils.cache import cache_iterator_result
 import asyncio
 from functools import partial
 from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Union
@@ -102,6 +103,7 @@ class GitLabClient:
 
             yield enriched_batch
 
+    @cache_iterator_result()
     async def get_groups(
         self,
         params: Optional[dict[str, Any]] = None,

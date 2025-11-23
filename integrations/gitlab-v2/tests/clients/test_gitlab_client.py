@@ -105,6 +105,39 @@ class TestGitLabClient:
                 },
             )
 
+    async def test_get_groups_with_group_query_config(
+        self, client: GitLabClient
+    ) -> None:
+        """Test group fetching with group query config"""
+
+        # Arrange
+        mock_groups: list[dict[str, Any]] = [{"id": 1, "name": "Test Group"}]
+
+        # Use a context manager for patching
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ) as mock_get_resource:
+            # Act - Test default config behavior (like main.py would call)
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_groups(
+                params={"min_access_level": 30, "search": "test"}
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 1
+            assert results[0]["name"] == "Test Group"
+            mock_get_resource.assert_called_once_with(
+                "groups",
+                params={
+                    "min_access_level": 30,
+                    "all_available": True,
+                    "search": "test",
+                },
+            )
+
     async def test_get_groups_owned(self, client: GitLabClient) -> None:
         """Test group fetching with specific access level (use_min_access_level=True, min_access_level=50)"""
 

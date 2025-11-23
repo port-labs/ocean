@@ -92,6 +92,16 @@ def _get_visibility_config() -> tuple[bool, int]:
     return use_min_access_level, min_access_level
 
 
+def _get_group_query_config() -> dict[str, Any]:
+    """Helper function to get group query configuration from port_app_config.
+
+    Returns:
+        Dictionary of parameters to pass to GitLab API calls
+    """
+    port_app_config = cast(GitlabPortAppConfig, event.port_app_config)
+    return port_app_config.group_query.to_dict()
+
+
 def _build_visibility_params() -> dict[str, Any]:
     """Helper function to build params dictionary based on visibility configuration.
 
@@ -104,6 +114,20 @@ def _build_visibility_params() -> dict[str, Any]:
     return {}
 
 
+def _build_group_params() -> dict[str, Any]:
+    """Helper function to build params dictionary to filter groups.
+
+    Returns:
+        Dictionary of parameters to pass to GitLab API calls
+    """
+    group_query = _get_group_query_config()
+    visibility_params = _build_visibility_params()
+    params: dict[str, Any] = {}
+    params.update(group_query)
+    params.update(visibility_params)
+    return params
+
+
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -111,7 +135,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_languages = bool(selector.include_languages)
 
     async for projects_batch in client.get_projects(
-        params=_build_visibility_params(),
+        params=_build_group_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=include_languages,
     ):
@@ -123,7 +147,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
-    async for groups_batch in client.get_groups(params=_build_visibility_params()):
+    async for groups_batch in client.get_groups(params=_build_group_params()):
         logger.info(f"Received group batch with {len(groups_batch)} groups")
         yield groups_batch
 
@@ -132,7 +156,7 @@ async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
-    async for groups_batch in client.get_groups(params=_build_visibility_params()):
+    async for groups_batch in client.get_groups(params=_build_group_params()):
         logger.info(f"Processing batch of {len(groups_batch)} groups for issues")
         async for issues_batch in client.get_groups_resource(groups_batch, "issues"):
             yield issues_batch
@@ -143,7 +167,7 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_visibility_params(),
+        params=_build_group_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -173,7 +197,7 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_visibility_params(),
+        params=_build_group_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -190,7 +214,7 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     states = selector.states
     updated_after = selector.updated_after_datetime
 
-    async for groups_batch in client.get_groups(params=_build_visibility_params()):
+    async for groups_batch in client.get_groups(params=_build_group_params()):
         for state in states:
             logger.info(
                 f"Processing batch of {len(groups_batch)} groups for {state} merge requests"
@@ -211,7 +235,7 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_visibility_params(),
+        params=_build_group_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -228,7 +252,7 @@ async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_visibility_params(),
+        params=_build_group_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -249,7 +273,7 @@ async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     include_bot_members = bool(selector.include_bot_members)
     include_inherited_members = selector.include_inherited_members
 
-    async for groups_batch in client.get_groups(params=_build_visibility_params()):
+    async for groups_batch in client.get_groups(params=_build_group_params()):
         for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
             current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
             logger.info(
@@ -273,7 +297,7 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_bot_members = bool(selector.include_bot_members)
     include_inherited_members = selector.include_inherited_members
 
-    async for groups_batch in client.get_groups(params=_build_visibility_params()):
+    async for groups_batch in client.get_groups(params=_build_group_params()):
         for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
             current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
             tasks = [
@@ -304,7 +328,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     async for files_batch in client.search_files(
-        scope, search_path, repositories, skip_parsing, _build_visibility_params()
+        scope, search_path, repositories, skip_parsing, _build_group_params()
     ):
         yield await client._enrich_files_with_repos(files_batch)
 
