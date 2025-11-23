@@ -99,7 +99,17 @@ def _get_group_query_config() -> dict[str, Any]:
         Dictionary of parameters to pass to GitLab API calls
     """
     port_app_config = cast(GitlabPortAppConfig, event.port_app_config)
-    return port_app_config.group_query.to_dict()
+    return port_app_config.search.to_group_params()
+
+
+def _get_project_query_config() -> dict[str, Any]:
+    """Helper function to get project query configuration from port_app_config.
+
+    Returns:
+        Dictionary of parameters to pass to GitLab API calls
+    """
+    port_app_config = cast(GitlabPortAppConfig, event.port_app_config)
+    return port_app_config.search.to_project_params()
 
 
 def _build_visibility_params() -> dict[str, Any]:
@@ -114,15 +124,30 @@ def _build_visibility_params() -> dict[str, Any]:
     return {}
 
 
-def _build_group_params(search: str | None = None) -> dict[str, Any]:
+def _build_group_params() -> dict[str, Any]:
     """Helper function to build params dictionary to filter groups.
 
     Returns:
         Dictionary of parameters to pass to GitLab API calls
     """
     visibility_params = _build_visibility_params()
+    group_params = _get_group_query_config()
     params: dict[str, Any] = {}
-    params.update({"search": search} if search else _get_group_query_config())
+    params.update(group_params)
+    params.update(visibility_params)
+    return params
+
+
+def _build_project_params() -> dict[str, Any]:
+    """Helper function to build params dictionary to filter projects.
+
+    Returns:
+        Dictionary of parameters to pass to GitLab API calls
+    """
+    visibility_params = _build_visibility_params()
+    project_params = _get_project_query_config()
+    params: dict[str, Any] = {}
+    params.update(project_params)
     params.update(visibility_params)
     return params
 
@@ -132,10 +157,9 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(ProjectResourceConfig, event.resource_config).selector
     include_languages = bool(selector.include_languages)
-    params = _build_group_params(selector.search)
 
     async for projects_batch in client.get_projects(
-        params=params,
+        params=_build_project_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=include_languages,
     ):
@@ -167,7 +191,7 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_group_params(),
+        params=_build_project_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -197,7 +221,7 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_group_params(),
+        params=_build_project_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -213,6 +237,7 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     states = selector.states
     updated_after = selector.updated_after_datetime
+    search = selector.search
 
     async for groups_batch in client.get_groups(params=_build_group_params()):
         for state in states:
@@ -223,6 +248,11 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             params: Dict[str, Any] = {"state": state}
             if state != "opened":
                 params["updated_after"] = updated_after
+            if search:
+                params["search"] = search
+                logger.warning(
+                    f'Fetching {state} merge requests for {len(groups_batch)} groups with search criteria: "{search}"'
+                )
 
             async for merge_requests_batch in client.get_groups_resource(
                 groups_batch, "merge_requests", params=params
@@ -235,7 +265,7 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_group_params(),
+        params=_build_project_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -252,7 +282,7 @@ async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_group_params(),
+        params=_build_project_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):

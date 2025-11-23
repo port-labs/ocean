@@ -29,11 +29,6 @@ class ProjectSelector(Selector):
         default=False,
         description="Whether to include the languages of the project, defaults to false",
     )
-    search: str = Field(
-        default="",
-        alias="search",
-        description="Search for projects by name, path or description",
-    )
 
 
 class ProjectResourceConfig(ResourceConfig):
@@ -132,6 +127,11 @@ class GitlabMergeRequestSelector(Selector):
         description="Specify the number of days to look back for merge requests (e.g. 90 for last 90 days)",
         default=90,
     )
+    search: str = Field(
+        default="",
+        alias="search",
+        description="Search for merge requests by title or description",
+    )
 
     @property
     def updated_after_datetime(self) -> datetime:
@@ -188,17 +188,27 @@ class GitlabVisibilityConfig(BaseModel):
         return value
 
 
-class GitlabGroupFilter(BaseModel):
-    search: str = Field(
+class SearchFilter(BaseModel):
+    group: str = Field(
         default="",
-        alias="search",
-        description="Search for groups by name or path",
+        alias="group",
+        description="Search for groups by name or path matching the search criteria.",
+    )
+    project: str = Field(
+        default="",
+        alias="project",
+        description="Search for projects by name, path or description matching the search criteria.",
     )
 
-    def to_dict(self) -> dict[str, Any]:
-        if not self.search:
+    def to_group_params(self) -> dict[str, Any]:
+        if not self.group:
             return {}
-        return {"search": self.search}
+        return {"search": self.group}
+
+    def to_project_params(self) -> dict[str, Any]:
+        if not self.project:
+            return {}
+        return {"search": self.project}
 
 
 class GitlabPortAppConfig(PortAppConfig):
@@ -207,10 +217,10 @@ class GitlabPortAppConfig(PortAppConfig):
         alias="visibility",
         description="Configuration for resource visibility and access control",
     )
-    group_query: GitlabGroupFilter = Field(
-        default_factory=GitlabGroupFilter,
-        alias="groupQuery",
-        description="Return the list of authorized groups matching the search criteria.",
+    search: SearchFilter = Field(
+        default_factory=SearchFilter,
+        alias="search",
+        description="Return the list of authorized resources matching the search criteria.",
     )
     resources: list[
         ProjectResourceConfig
