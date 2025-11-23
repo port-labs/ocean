@@ -75,9 +75,13 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             Optional[RepoSearchParams], params.pop("search_params", None)
         )
         is_personal_account = organization_type == "User"
-        is_github_app_authenticated = isinstance(self.client.authenticator, GitHubAppAuthenticator)
+        is_github_app_authenticated = isinstance(
+            self.client.authenticator, GitHubAppAuthenticator
+        )
 
-        use_search_api = search_params is not None or (is_github_app_authenticated and is_personal_account)
+        use_search_api = search_params is not None or (
+            is_github_app_authenticated and is_personal_account
+        )
         strategy = self._search_strategy if use_search_api else self._list_strategy
 
         async for batch in strategy(
