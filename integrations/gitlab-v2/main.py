@@ -17,6 +17,7 @@ from integration import (
     GitlabGroupWithMembersResourceConfig,
     GitlabMemberResourceConfig,
     GitlabMergeRequestResourceConfig,
+    GitlabIssueResourceConfig,
     GitlabPortAppConfig,
 )
 
@@ -179,10 +180,20 @@ async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
+    selector = cast(GitlabIssueResourceConfig, event.resource_config).selector
+    search = selector.search
 
     async for groups_batch in client.get_groups(params=_build_group_params()):
         logger.info(f"Processing batch of {len(groups_batch)} groups for issues")
-        async for issues_batch in client.get_groups_resource(groups_batch, "issues"):
+        params: dict[str, Any] | None = None
+        if search:
+            params = {"search": search}
+            logger.warning(
+                f'Fetching issues for {len(groups_batch)} groups with search criteria: "{search}"'
+            )
+        async for issues_batch in client.get_groups_resource(
+            groups_batch, "issues", params=params
+        ):
             yield issues_batch
 
 

@@ -159,6 +159,19 @@ class GitLabFoldersResourceConfig(ResourceConfig):
     kind: Literal["folder"]
 
 
+class IssueSelector(Selector):
+    search: str = Field(
+        default="",
+        alias="search",
+        description="Search for issues by title or description matching the search criteria.",
+    )
+
+
+class GitlabIssueResourceConfig(ResourceConfig):
+    selector: IssueSelector
+    kind: Literal["issue"]
+
+
 class GitlabVisibilityConfig(BaseModel):
     use_min_access_level: bool = Field(
         alias="useMinAccessLevel",
@@ -224,6 +237,7 @@ class GitlabPortAppConfig(PortAppConfig):
     )
     resources: list[
         ProjectResourceConfig
+        | GitlabIssueResourceConfig
         | GitlabGroupWithMembersResourceConfig
         | GitlabMemberResourceConfig
         | GitLabFoldersResourceConfig

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.23 (2025-11-23)
+
+
+### Features
+
+- Added search support for `group`, `project`, `merge-request` and `issue` kinds
+- Updated logic for resources depending on `project` and `group` kinds to apply the above prefiltering criteria using port app configuration
+
+
 ## 0.3.22 (2025-11-23)
 
 
