@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any, Literal
 
+from loguru import logger
 from pydantic import BaseModel, Field
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig, Selector
@@ -33,19 +34,29 @@ class Kind(StrEnum):
     BRANCH = "branch"
 
 
-PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [
-    {"searchCriteria.status": "active"},
-    {
-        "searchCriteria.status": "abandoned",
-        "searchCriteria.queryTimeRangeType": "closed",
-        "searchCriteria.minTime": datetime.now() - timedelta(days=7),
-    },
-    {
-        "searchCriteria.status": "completed",
-        "searchCriteria.queryTimeRangeType": "closed",
-        "searchCriteria.minTime": datetime.now() - timedelta(days=7),
-    },
-]
+MAX_NUMBER_OF_DAYS_TO_SEARCH_PULL_REQUESTS = 90
+
+
+def create_pull_request_search_criteria(min_time_in_days: int) -> list[dict[str, Any]]:
+    if min_time_in_days > MAX_NUMBER_OF_DAYS_TO_SEARCH_PULL_REQUESTS:
+        logger.warning(
+            f"The selector value 'min_time_in_days' ({min_time_in_days}) must be smaller than {MAX_NUMBER_OF_DAYS_TO_SEARCH_PULL_REQUESTS}"
+        )
+        min_time_in_days = MAX_NUMBER_OF_DAYS_TO_SEARCH_PULL_REQUESTS
+
+    return [
+        {"searchCriteria.status": "active"},
+        {
+            "searchCriteria.status": "abandoned",
+            "searchCriteria.queryTimeRangeType": "closed",
+            "searchCriteria.minTime": datetime.now() - timedelta(days=min_time_in_days),
+        },
+        {
+            "searchCriteria.status": "completed",
+            "searchCriteria.queryTimeRangeType": "closed",
+            "searchCriteria.minTime": datetime.now() - timedelta(days=min_time_in_days),
+        },
+    ]
 
 
 def extract_branch_name_from_ref(ref: str) -> str:

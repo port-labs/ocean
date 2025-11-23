@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped ocean version to ^0.29.10
 
+### Features
+
+- Added support for `min_time_in_days` selector option in pull request kind
+
 
 ## 0.4.33 (2025-11-20)
 
