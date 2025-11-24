@@ -1,7 +1,13 @@
+from unittest import mock
+
 import pytest
 from unittest.mock import AsyncMock, patch
 from httpx import Response, ReadTimeout
-from azure_devops.client.base_client import HTTPBaseClient, CONTINUATION_TOKEN_HEADER
+from azure_devops.client.base_client import (
+    HTTPBaseClient,
+    CONTINUATION_TOKEN_HEADER,
+    PAGE_SIZE,
+)
 
 
 @pytest.fixture
@@ -156,6 +162,101 @@ async def test_get_paginated_by_top_and_skip_retry_on_timeout(
 
         assert len(results) == 1
         assert mock_send.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_by_top_with_max_results(
+    mock_client: HTTPBaseClient,
+) -> None:
+    """Test _get_paginated_by_top_and_skip with max_results."""
+    # page 1
+    mock_response1 = AsyncMock(spec=Response)
+    mock_response1.status_code = 200
+    mock_response1.json.return_value = {"value": [{"id": idx} for idx in range(50)]}
+
+    # page 2
+    mock_response2 = AsyncMock(spec=Response)
+    mock_response2.status_code = 200
+    mock_response2.json.return_value = {
+        "value": [{"id": idx} for idx in range(50, 100)]
+    }
+
+    max_results = 50
+    # case 1: max_results matches exactly PAGE_SIZE
+    with patch.object(
+        mock_client,
+        "send_request",
+        side_effect=[
+            mock_response1,
+            mock_response2,
+        ],
+    ) as mock_send:
+        generator = mock_client._get_paginated_by_top_and_skip(
+            "test_url", max_results=max_results
+        )
+        results = [item async for page in generator for item in page]
+
+        assert len(results) == max_results
+        assert mock_send.call_count == 1
+        mock_send.assert_called_once_with(
+            "GET", "test_url", params={"$top": max_results, "$skip": 0}
+        )
+
+    # case 2: max_results is less than PAGE_SIZE
+    mock_response3 = AsyncMock(spec=Response)
+    mock_response3.status_code = 200
+    mock_response3.json.return_value = {"value": [{"id": idx} for idx in range(25)]}
+    max_results = 25
+    with patch.object(
+        mock_client,
+        "send_request",
+        side_effect=[mock_response3],
+    ) as mock_send:
+        generator = mock_client._get_paginated_by_top_and_skip(
+            "test_url", max_results=max_results
+        )
+        results = [item async for page in generator for item in page]
+
+        assert len(results) == max_results
+        assert mock_send.call_count == 1
+        assert results[-1]["id"] == 24
+        mock_send.assert_called_once_with(
+            "GET", "test_url", params={"$top": max_results, "$skip": 0}
+        )
+
+    # case 3: max_results is more than PAGE_SIZE
+    mock_response_partial = AsyncMock(spec=Response)
+    mock_response_partial.status_code = 200
+    mock_response_partial.json.return_value = {
+        "value": [{"id": idx} for idx in range(50, 75)]
+    }
+    max_results = 75
+    with patch.object(
+        mock_client,
+        "send_request",
+        side_effect=[mock_response1, mock_response_partial],
+    ) as mock_send:
+        generator = mock_client._get_paginated_by_top_and_skip(
+            "test_url", max_results=max_results
+        )
+        results = [item async for page in generator for item in page]
+
+        assert len(results) == max_results
+        assert mock_send.call_count == 2
+        mock_send.assert_has_calls(
+            [
+                mock.call(
+                    "GET",
+                    "test_url",
+                    params={"$top": PAGE_SIZE, "$skip": 0},
+                ),
+                mock.call(
+                    "GET",
+                    "test_url",
+                    params={"$top": 25, "$skip": PAGE_SIZE},
+                ),
+            ]
+        )
 
 
 @pytest.mark.asyncio

@@ -33,11 +33,15 @@ class Kind(StrEnum):
     BRANCH = "branch"
 
 
-def create_pull_request_search_criteria(
+ACTIVE_PULL_REQUEST_SEARCH_CRITERIA: dict[str, Any] = {
+    "searchCriteria.status": "active"
+}
+
+
+def create_closed_pull_request_search_criteria(
     min_time_datetime: datetime,
 ) -> list[dict[str, Any]]:
     return [
-        {"searchCriteria.status": "active"},
         {
             "searchCriteria.status": "abandoned",
             "searchCriteria.queryTimeRangeType": "closed",

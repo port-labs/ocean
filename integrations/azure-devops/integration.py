@@ -171,6 +171,11 @@ class AzureDevopsPullRequestSelector(Selector):
         alias="minTimeInDays",
         description="Minimum time in days since the pull request was abandoned or closed. Default value is 7.",
     )
+    max_results: int = Field(
+        default=1000,
+        alias="maxResults",
+        description="Maximum number of closed pull requests to fetch. Default value is 1000.",
+    )
 
     @property
     def min_time_datetime(self) -> datetime:

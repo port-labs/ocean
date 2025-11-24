@@ -874,7 +874,10 @@ async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
         ]
 
     async def mock_get_paginated_by_top_and_skip(
-        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+        url: str,
+        additional_params: Optional[Dict[str, Any]] = None,
+        max_results: Optional[int] = None,
+        **kwargs: Any,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         if "pullrequests" in url:
             yield EXPECTED_PULL_REQUESTS
