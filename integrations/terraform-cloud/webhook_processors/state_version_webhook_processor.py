@@ -13,7 +13,7 @@ from webhook_processors.terraform_base_webhook_processor import (
     TerraformBaseWebhookProcessor,
 )
 
-MAX_CONCURRENT_BATCH = 10
+MAX_CONCURRENT_ENRICHMENTS = 10
 
 
 class StateVersionWebhookProcessor(TerraformBaseWebhookProcessor):
@@ -67,7 +67,7 @@ class StateVersionWebhookProcessor(TerraformBaseWebhookProcessor):
 
         terraform_client = init_terraform_client()
 
-        max_concurrent_enrichments = MAX_CONCURRENT_BATCH
+        max_concurrent_enrichments = MAX_CONCURRENT_ENRICHMENTS
         semaphore = BoundedSemaphore(max_concurrent_enrichments)
 
         # Fetch and enrich state versions for the workspace
