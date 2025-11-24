@@ -170,7 +170,10 @@ class AzureDevopsPullRequestSelector(Selector):
         alias="minTimeInDays",
         description="Minimum time in days since the pull request was abandoned or closed. Max value is 90. Default value is 7.",
     )
-
+  @property
+  def min_time_datetime(self):
+        """Convert the min time in days to a timezone-aware datetime object."""
+        return datetime.now(timezone.utc) - timedelta(days=self.min_time_in_days)
 
 class AzureDevopsPullRequestResourceConfig(ResourceConfig):
     kind: Literal["pull-request"]
