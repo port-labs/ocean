@@ -1,5 +1,6 @@
 import asyncio
 import json
+from collections import Counter
 from typing import Any, Literal
 from urllib.parse import quote_plus
 
@@ -354,6 +355,19 @@ class EntityClientMixin:
         """
         entities_results: list[tuple[bool, Entity]] = []
         blueprint = entities[0].blueprint
+
+        identifier_counts = Counter((e.blueprint, e.identifier) for e in entities)
+        duplicate_count = sum(
+            count - 1 for count in identifier_counts.values() if count > 1
+        )
+
+        if duplicate_count:
+            duplicate_examples = [
+                key for key, cnt in identifier_counts.items() if cnt > 1
+            ][:5]
+            logger.warning(
+                f"Detected {duplicate_count} duplicate entities (by blueprint and identifier) that may not be ingested because an identical identifier existed. Examples: {duplicate_examples}"
+            )
 
         bulk_size = self.calculate_entities_batch_size(entities)
         bulks = [

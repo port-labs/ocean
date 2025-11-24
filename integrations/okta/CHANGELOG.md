@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.17-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.1.16-beta (2025-11-23)
+
+### Features
+
+- Move Okta to Identity Providers
+- 
+## 0.1.15-beta (2025-11-23)
+
+
+### Improvements
+
+- Changed `createMissingRelatedEntities` to `false` by default
+
+## 0.1.14-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
 ## 0.1.13-beta (2025-11-23)
 
 

@@ -1,8 +1,9 @@
-from typing import cast, Any
-from unittest.mock import AsyncMock, Mock
-from loguru import logger
-import pytest
 from io import StringIO
+from typing import Any, cast
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+from loguru import logger
 
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
@@ -10,12 +11,10 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
 )
 from port_ocean.core.ocean_types import CalculationResult
 from port_ocean.exceptions.core import EntityProcessorException
-from unittest.mock import patch
 
 
 @pytest.mark.asyncio
 class TestJQEntityProcessor:
-
     @pytest.fixture
     def mocked_processor(self, monkeypatch: Any) -> JQEntityProcessor:
         mock_context = AsyncMock()
@@ -32,6 +31,30 @@ class TestJQEntityProcessor:
         pattern = ".foo"
         result = await mocked_processor._search(data, pattern)
         assert result == "bar"
+
+    async def test_search_with_single_quotes(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"repository": "ocean", "organization": "port"}
+        pattern = ".organization + '/' + .repository"
+        result = await mocked_processor._search(data, pattern)
+        assert result == "port/ocean"
+
+    async def test_search_with_single_quotes_in_the_end(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"organization": "port"}
+        pattern = ".organization + '/'"
+        result = await mocked_processor._search(data, pattern)
+        assert result == "port/"
+
+    async def test_search_with_single_quotes_in_the_start(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"organization": "port"}
+        pattern = "'/' + .organization"
+        result = await mocked_processor._search(data, pattern)
+        assert result == "/port"
 
     async def test_search_as_bool(self, mocked_processor: JQEntityProcessor) -> None:
         data = {"foo": True}
