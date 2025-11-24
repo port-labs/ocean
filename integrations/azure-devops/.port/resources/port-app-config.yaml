@@ -25,7 +25,7 @@ resources:
       entity:
         mappings:
           identifier: >-
-            "\(.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.name | ascii_downcase | gsub("[ ();]"; ""))"
+            "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"
           title: .name
           blueprint: '"service"'
           properties:
@@ -39,7 +39,8 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .__repository.id
+          identifier: >-
+            "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"
           blueprint: '"service"'
           properties:
             minimumApproverCount: .settings.minimumApproverCount
@@ -73,7 +74,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .__project.id + "/" + (.id | tostring) | gsub(" "; "")
+          identifier: .id | tostring
           title: .fields."System.Title"
           blueprint: '"workItem"'
           properties:
@@ -109,7 +110,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .projectReference.id + "/" + (.id | tostring) | gsub(" "; "")
+          identifier: .projectReference.id + "-" + (.id | tostring) | gsub(" "; "")
           title: .name
           blueprint: '"release"'
           properties:
