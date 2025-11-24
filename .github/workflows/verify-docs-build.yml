@@ -21,7 +21,7 @@ jobs:
       run:
         working-directory: docs/framework-guides/
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: true
       - name: Install dependencies
