@@ -30,4 +30,3 @@ async def enrich_state_versions_with_output_data(
         ]
     )
     return list(enriched_versions)
-

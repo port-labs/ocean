@@ -166,4 +166,3 @@ class TestEnrichWorkspaceWithTags:
         assert result["attributes"]["locked"] is False
         assert result["relationships"]["organization"]["data"]["id"] == "org-1"
         assert result["__tags"] == [{"id": "tag-1"}]
-

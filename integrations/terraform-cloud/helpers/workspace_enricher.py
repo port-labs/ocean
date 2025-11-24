@@ -34,4 +34,3 @@ async def enrich_workspace_with_tags(
 ) -> dict[str, Any]:
     """Enriches a single workspace with its tags."""
     return await _fetch_workspace_tags(http_client, workspace)
-

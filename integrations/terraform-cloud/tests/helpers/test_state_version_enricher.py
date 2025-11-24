@@ -93,4 +93,3 @@ class TestEnrichStateVersionsWithOutputData:
         assert result[0]["attributes"]["status"] == "finalized"
         assert result[0]["attributes"]["serial"] == 123
         assert result[0]["__output"] == output_data
-
