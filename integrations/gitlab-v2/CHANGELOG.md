@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.0 (2025-11-24)
+
+
+### Improvements
+
+- Added support for syncing folders from specific repositories and branches
+- Added folder kind to integration default
+
+
 ## 0.3.24 (2025-11-24)
 
 
