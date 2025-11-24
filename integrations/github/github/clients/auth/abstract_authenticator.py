@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, PrivateAttr, Field
@@ -39,11 +39,11 @@ class GitHubHeaders(BaseModel):
 
 class AbstractGitHubAuthenticator(ABC):
     @abstractmethod
-    async def get_token(self) -> GitHubToken:
+    async def get_token(self, **kwargs: Any) -> GitHubToken:
         pass
 
     @abstractmethod
-    async def get_headers(self) -> GitHubHeaders:
+    async def get_headers(self, **kwargs: Any) -> GitHubHeaders:
         pass
 
     @property

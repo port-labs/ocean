@@ -7,6 +7,8 @@ from github.webhook.webhook_processors.check_runs.file_validation import (
     ResourceConfigToPatternMapping,
     FileValidationService,
 )
+from github.core.exporters.organization_exporter import RestOrganizationExporter
+from github.core.exporters.repository_exporter import RestRepositoryExporter
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -14,7 +16,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from github.core.exporters.file_exporter.utils import (
     FileObject,
-    group_file_patterns_by_repositories_in_selector,
+    FilePatternMappingBuilder,
 )
 from github.core.exporters.file_exporter.core import RestFileExporter
 from integration import GithubPortAppConfig
@@ -116,9 +118,13 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
         for validation_mapping in validation_mappings:
             files_pattern = validation_mapping.patterns
 
-            repo_path_map = await group_file_patterns_by_repositories_in_selector(
-                files_pattern, file_exporter, repository_type
+            pattern_builder = FilePatternMappingBuilder(
+                org_exporter=RestOrganizationExporter(rest_client),
+                repo_exporter=RestRepositoryExporter(rest_client),
+                repo_type=repository_type,
             )
+
+            repo_path_map = await pattern_builder.build(files_pattern)
 
             async for file_results in file_exporter.get_paginated_resources(
                 repo_path_map

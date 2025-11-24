@@ -1,7 +1,7 @@
 from loguru import logger
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from utils import ObjectKind, init_terraform_client
-from enrich import enrich_workspace_with_tags
+from helpers.workspace_enricher import enrich_workspace_with_tags
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,

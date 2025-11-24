@@ -1,4 +1,4 @@
-from typing import List, NotRequired, Optional, Required, TypedDict
+from typing import Any, List, NotRequired, Optional, Required, TypedDict
 
 from github.helpers.models import RepoSearchParams
 
@@ -8,6 +8,7 @@ class ListOrganizationOptions(TypedDict):
 
     organization: NotRequired[str]
     allowed_multi_organizations: NotRequired[List[str]]
+    include_authenticated_user: NotRequired[bool]
 
 
 class SingleOrganizationOptions(TypedDict):
@@ -23,6 +24,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     """Options for listing repositories."""
 
     type: str
+    organization_type: Required[str]
     search_params: NotRequired[Optional[RepoSearchParams]]
     included_relationships: NotRequired[Optional[list[str]]]
 
@@ -31,15 +33,6 @@ class RepositoryIdentifier(SingleOrganizationOptions):
     """Options for identifying a repository."""
 
     repo_name: Required[str]
-
-
-class SingleFolderOptions(TypedDict):
-    repo: str
-    path: str
-
-
-class ListFolderOptions(TypedDict):
-    repo_mapping: Required[dict[str, dict[str, dict[str, list[str]]]]]
 
 
 class SinglePullRequestOptions(RepositoryIdentifier):
@@ -203,6 +196,26 @@ class ListFileSearchOptions(SingleOrganizationOptions):
 
     repo_name: Required[str]
     files: Required[List[FileSearchOptions]]
+
+
+class SingleFolderOptions(TypedDict):
+    repo: str
+    path: str
+
+
+class FolderSearchOptions(SingleOrganizationOptions):
+    """Options for searching folders within a repository."""
+
+    path: Required[str]
+    branch: NotRequired[Optional[str]]
+    repo: Required[dict[str, Any]]
+
+
+class ListFolderOptions(SingleOrganizationOptions):
+    """Grouped folder search options per repository."""
+
+    repo_name: Required[str]
+    folders: Required[List[FolderSearchOptions]]
 
 
 class SingleCollaboratorOptions(RepositoryIdentifier):

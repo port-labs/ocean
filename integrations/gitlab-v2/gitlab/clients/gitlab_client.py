@@ -414,7 +414,12 @@ class GitLabClient:
         repo = await self.get_project(file["project_id"])
         return {
             "file": file,
-            "__type": "path" if file["content"].get("path") is not None else "content",
+            "__type": (
+                "path"
+                if isinstance(file["content"], dict)
+                and file["content"].get("path") is not None
+                else "content"
+            ),
             "repo": repo,
             "__base_jq": ".file.content",
         }

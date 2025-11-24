@@ -2,7 +2,7 @@ from typing import AsyncGenerator, Dict, List, Any, Tuple, cast
 from urllib.parse import quote
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client
-from github.helpers.utils import GithubClientType, IgnoredError
+from github.helpers.utils import GithubClientType, IgnoredError, get_repository_metadata
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_ITEM,
@@ -25,7 +25,6 @@ from github.core.exporters.file_exporter.utils import (
     filter_github_tree_entries_by_pattern,
     get_graphql_file_metadata,
 )
-from port_ocean.utils import cache
 from github.core.exporters.file_exporter.file_processor import FileProcessor
 
 
@@ -37,17 +36,6 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.file_processor = FileProcessor(self)
-
-    @cache.cache_coroutine_result()
-    async def get_repository_metadata(
-        self, organization: str, repo_name: str
-    ) -> Dict[str, Any]:
-        url = f"{self.client.base_url}/repos/{organization}/{repo_name}"
-        logger.info(
-            f"Fetching metadata for repository: {repo_name} from {organization}"
-        )
-
-        return await self.client.send_api_request(url)
 
     async def get_resource[
         ExporterOptionsT: FileContentOptions
@@ -126,7 +114,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             skip_parsing = spec["skip_parsing"]
             organization = spec["organization"]
 
-            repo_obj = await self.get_repository_metadata(organization, repo_name)
+            repo_obj = await get_repository_metadata(
+                self.client, organization, repo_name
+            )
             branch = spec.get("branch") or repo_obj["default_branch"]
 
             logger.debug(
@@ -188,7 +178,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 logger.warning(f"File {file_path} has no content from {organization}")
                 continue
 
-            repository = await self.get_repository_metadata(organization, repo_name)
+            repository = await get_repository_metadata(
+                self.client, organization, repo_name
+            )
 
             file_obj = await self.file_processor.process_file(
                 organization=organization,
@@ -215,8 +207,8 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             repo_name = batch_result["repo"]
             branch = batch_result["branch"]
             retrieved_files = batch_result["file_data"]["repository"]
-            repository_metadata = await self.get_repository_metadata(
-                organization, repo_name
+            repository_metadata = await get_repository_metadata(
+                self.client, organization, repo_name
             )
 
             logger.debug(

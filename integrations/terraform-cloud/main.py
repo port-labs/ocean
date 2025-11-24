@@ -5,10 +5,8 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
 from utils import ObjectKind, init_terraform_client
-from enrich import (
-    enrich_state_versions_with_output_data,
-    enrich_workspaces_with_tags,
-)
+from helpers.state_version_enricher import enrich_state_versions_with_output_data
+from helpers.workspace_enricher import enrich_workspaces_with_tags
 from webhook_processors.run_webhook_processor import RunWebhookProcessor
 from webhook_processors.workspace_webhook_processor import WorkspaceWebhookProcessor
 from webhook_processors.state_version_webhook_processor import (

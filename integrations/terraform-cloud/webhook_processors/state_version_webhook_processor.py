@@ -1,4 +1,4 @@
-import asyncio
+from asyncio import BoundedSemaphore, gather
 from typing import Any
 
 from loguru import logger
@@ -12,6 +12,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from webhook_processors.terraform_base_webhook_processor import (
     TerraformBaseWebhookProcessor,
 )
+
+MAX_CONCURRENT_BATCH = 10
 
 
 class StateVersionWebhookProcessor(TerraformBaseWebhookProcessor):
@@ -42,6 +44,20 @@ class StateVersionWebhookProcessor(TerraformBaseWebhookProcessor):
                 return True
         return False
 
+    async def _enrich_with_semaphore(
+        self,
+        state_version: dict[str, Any],
+        terraform_client: Any,
+        semaphore: BoundedSemaphore,
+    ) -> dict[str, Any]:
+        """
+        Enrich a state version with output using a semaphore to limit concurrency.
+        """
+        async with semaphore:
+            return await self._enrich_state_version_with_output(
+                state_version, terraform_client
+            )
+
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
@@ -51,6 +67,9 @@ class StateVersionWebhookProcessor(TerraformBaseWebhookProcessor):
 
         terraform_client = init_terraform_client()
 
+        max_concurrent_enrichments = MAX_CONCURRENT_BATCH
+        semaphore = BoundedSemaphore(max_concurrent_enrichments)
+
         # Fetch and enrich state versions for the workspace
         enriched_state_versions = []
         async for (
@@ -59,9 +78,9 @@ class StateVersionWebhookProcessor(TerraformBaseWebhookProcessor):
             workspace_name, organization_name
         ):
             # Enrich each batch concurrently as it arrives
-            enriched_batch = await asyncio.gather(
+            enriched_batch = await gather(
                 *[
-                    self._enrich_state_version_with_output(sv, terraform_client)
+                    self._enrich_with_semaphore(sv, terraform_client, semaphore)
                     for sv in state_version_batch
                 ],
                 return_exceptions=False,

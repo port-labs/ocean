@@ -7,6 +7,126 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.36 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.4.35 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.4.34 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.4.33 (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+## 0.4.32 (2025-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
+## 0.4.31 (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 0.4.30 (2025-11-13)
+
+
+### Bug Fixes
+
+- Updated `PULL_REQUEST_SEARCH_CRITERIA` so that filters for both "abandoned" and "completed" pull requests now include a closed time range to improve query accuracy.
+- Added new tests to validate that "abandoned" and "completed" pull request filters correctly utilize the "closed" time range.
+
+
+## 0.4.30 (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 0.4.30 (2025-11-14)
+
+
+### Bug Fixes
+
+- Fixed file pattern processing to handle multiple glob patterns with the same base path instead of only processing the first pattern
+
+
+## 0.4.29 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+## 0.4.28 (2025-11-10)
+
+
+### Improvements
+
+- Align itemsBatch payload with API to reduce payload size and prevent validation errors during resync.
+
+
+## 0.4.27 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
+## 0.4.26 (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+## 0.4.25 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+
+## 0.4.24 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+
+
 ## 0.4.23 (2025-11-06)
 
 

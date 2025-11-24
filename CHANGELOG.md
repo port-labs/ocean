@@ -6,6 +6,74 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.30.1 (2025-11-23)
+
+### Improvements
+
+- Add support to use '' in jq filters
+
+## 0.30.0 (2025-11-23)
+
+### Improvements
+
+- Expose actions processing capability without feature flag
+
+
+## 0.29.10 (2025-11-20)
+
+### Bug fixes
+
+- JQ expression classifier would classify mixed single item and all payload context expressions to run on all of the payload
+
+
+## 0.29.9 (2025-11-20)
+
+### Improvements
+
+- Only log HTTP response sizes for non-port.io domains.
+
+## 0.29.8 (2025-11-18)
+
+### Improvements
+
+- CI: Release spec file by integration type rather dir name
+
+## 0.29.7 (2025-11-17)
+
+### Improvements
+
+- Revise internal actions api header name
+
+## 0.29.6 (2025-11-16)
+
+### Improvements
+
+- Enable `yield_items_to_parse` flag as default.
+
+## 0.29.5 (2025-11-10)
+
+### Bug fixes
+
+- Update unprocessed kinds metrics to have 'aborted' status when a resync is aborted
+
+## 0.29.4 (2025-11-10)
+
+### Bug fixes
+
+- Fix graceful shutdown handling (SIGTERM handling)
+
+## 0.29.3 (2025-11-09)
+
+### Improvements
+
+- Updated starlette dependency
+
+## 0.29.2 (2025-11-09)
+
+### Bug fixes
+
+- Avoid waiting for empty task queues to release queue lock
+
 ## 0.29.1 (2025-11-06)
 
 ### Improvements

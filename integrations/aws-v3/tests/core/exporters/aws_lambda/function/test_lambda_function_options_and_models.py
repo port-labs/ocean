@@ -129,7 +129,7 @@ class TestLambdaFunctionProperties:
             Timeout=30,
             State="Active",
             LastModified="2023-12-01T10:30:00.000+0000",
-            Tags=[{"Key": "Environment", "Value": "test"}],
+            Tags={"Environment": "test"},
         )
         assert properties.FunctionName == "test-function"
         assert (
@@ -142,19 +142,19 @@ class TestLambdaFunctionProperties:
         assert properties.Timeout == 30
         assert properties.State == "Active"
         assert properties.LastModified == "2023-12-01T10:30:00.000+0000"
-        assert properties.Tags == [{"Key": "Environment", "Value": "test"}]
+        assert properties.Tags == {"Environment": "test"}
 
     def test_dict_exclude_none(self) -> None:
         """Test dict serialization with exclude_none=True."""
         properties = LambdaFunctionProperties(
             FunctionName="test-function",
             Runtime="python3.9",
-            Tags=[{"Key": "Project", "Value": "demo"}],
+            Tags={"Project": "demo"},
         )
         result = properties.dict(exclude_none=True)
         assert result["FunctionName"] == "test-function"
         assert result["Runtime"] == "python3.9"
-        assert result["Tags"] == [{"Key": "Project", "Value": "demo"}]
+        assert result["Tags"] == {"Project": "demo"}
         # MemorySize is included because it has a default value, not None
         assert "MemorySize" in result
         assert result["MemorySize"] == 128
@@ -203,7 +203,7 @@ class TestLambdaFunctionProperties:
                     "Arn": "arn:aws:elasticfilesystem:us-east-1:123456789012:access-point/fsap-12345678"
                 }
             ],
-            Tags=[{"Key": "Name", "Value": "test-function"}],
+            Tags={"Name": "test-function"},
             KmsKeyArn="arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012",
         )
 
@@ -211,7 +211,7 @@ class TestLambdaFunctionProperties:
         assert properties.FunctionName == "comprehensive-function"
         assert properties.Runtime == "python3.9"
         assert properties.MemorySize == 1024
-        assert properties.Tags == [{"Key": "Name", "Value": "test-function"}]
+        assert properties.Tags == {"Name": "test-function"}
 
     def test_aliases_work_correctly(self) -> None:
         """Test that field aliases work correctly."""
@@ -297,10 +297,10 @@ class TestLambdaFunction:
                 "SubnetIds": ["subnet-12345678", "subnet-87654321"],
                 "SecurityGroupIds": ["sg-12345678"],
             },
-            Tags=[
-                {"Key": "Environment", "Value": "production"},
-                {"Key": "Project", "Value": "web-app"},
-            ],
+            Tags={
+                "Environment": "production",
+                "Project": "web-app",
+            },
         )
         lambda_function = LambdaFunction(Properties=properties)
 
@@ -309,3 +309,5 @@ class TestLambdaFunction:
         assert data["Properties"]["VpcConfig"]["VpcId"] == "vpc-12345678"
         assert len(data["Properties"]["VpcConfig"]["SubnetIds"]) == 2
         assert len(data["Properties"]["Tags"]) == 2
+        assert data["Properties"]["Tags"]["Environment"] == "production"
+        assert data["Properties"]["Tags"]["Project"] == "web-app"
