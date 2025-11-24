@@ -133,7 +133,7 @@ async def _mapped_blueprints_exist(
     if not isinstance(resources, list):
         return True
 
-    blueprints = []
+    mapped_blueprints = []
     for resource in resources:
         blueprint = (
             resource.get("port", {})
@@ -148,20 +148,20 @@ async def _mapped_blueprints_exist(
                 and blueprint.endswith('"')
             ):
                 blueprint = blueprint.strip('"')
-            blueprints.append({"identifier": blueprint})
+            mapped_blueprints.append({"identifier": blueprint})
 
-    if not blueprints:
+    if not mapped_blueprints:
         return True
 
-    blueprints_results, _blueprint_errors = await gather_and_split_errors_from_results(
+    exsiting_blueprints, _ = await gather_and_split_errors_from_results(
         [
             port_client.get_blueprint(blueprint["identifier"], should_log=False)
-            for blueprint in blueprints
+            for blueprint in mapped_blueprints
         ],
         lambda item: isinstance(item, Blueprint),
     )
 
-    if len(blueprints_results) != len(blueprints):
+    if len(exsiting_blueprints) != len(mapped_blueprints):
         return False
 
     return True
