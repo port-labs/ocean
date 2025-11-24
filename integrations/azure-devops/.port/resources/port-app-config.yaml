@@ -25,7 +25,7 @@ resources:
       entity:
         mappings:
           identifier: >-
-            "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"
+            "\(.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.name | ascii_downcase | gsub("[ ();]"; ""))"
           title: .name
           blueprint: '"service"'
           properties:
@@ -50,7 +50,8 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .__repository.id
+          identifier: >-
+            "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"
           blueprint: '"service"'
           properties:
             workItemLinking: .isEnabled and .isBlocking
