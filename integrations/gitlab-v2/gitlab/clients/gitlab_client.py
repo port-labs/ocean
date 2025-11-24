@@ -1,3 +1,4 @@
+import fnmatch
 import asyncio
 from functools import partial
 from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Union
@@ -364,16 +365,40 @@ class GitLabClient:
         ref: str = "main",
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch repository tree (folders only) for a project."""
+        
         project_path = project["path_with_namespace"]
-        params = {"ref": ref, "path": path, "recursive": False}
-        async for batch in self.rest.get_paginated_project_resource(
-            project_path, "repository/tree", params
-        ):
-            if folders_batch := [item for item in batch if item["type"] == "tree"]:
-                yield [
-                    {"folder": folder, "repo": project, "__branch": ref}
-                    for folder in folders_batch
+        is_wildcard = any(c in path for c in "*?[]")
+        
+        if is_wildcard:
+            # For wildcard patterns, we need to recursively search and filter by depth
+            params = {"ref": ref, "path": "", "recursive": True}
+            pattern_depth = path.count("/")
+            
+            async for batch in self.rest.get_paginated_project_resource(
+                project_path, "repository/tree", params
+            ):
+                folders_batch = [
+                    item for item in batch 
+                    if item["type"] == "tree" 
+                    and item["path"].count("/") == pattern_depth
+                    and fnmatch.fnmatch(item["path"], path)
                 ]
+                if folders_batch:
+                    yield [
+                        {"folder": folder, "repo": project, "__branch": ref}
+                        for folder in folders_batch
+                    ]
+        else:
+            # For exact paths, use non-recursive search
+            params = {"ref": ref, "path": path, "recursive": False}
+            async for batch in self.rest.get_paginated_project_resource(
+                project_path, "repository/tree", params
+            ):
+                if folders_batch := [item for item in batch if item["type"] == "tree"]:
+                    yield [
+                        {"folder": folder, "repo": project, "__branch": ref}
+                        for folder in folders_batch
+                    ]
 
     async def get_repository_folders(
         self, path: str, repository: str, branch: Optional[str] = None
