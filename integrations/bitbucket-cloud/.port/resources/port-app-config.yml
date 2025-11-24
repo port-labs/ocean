@@ -28,6 +28,20 @@ resources:
             readme: file://README.md
           relations:
             project: '.project.uuid | gsub("[{-}]"; "")'
+  - kind: folder
+    selector:
+      query: "true"
+      folders:
+        - path: "*/*/*"
+    port:
+      entity:
+        mappings:
+          identifier: .repo.full_name + "/" + .folder.path
+          title: .folder.path | split("/") | last
+          blueprint: '"bitbucketRepository"'
+          properties:
+            url: .repo.links.html.href + "/src/" + .repo.mainbranch.name + "/" + .folder.path
+            defaultBranch: .repo.mainbranch.name
   - kind: pull-request
     selector:
       query: "true"
