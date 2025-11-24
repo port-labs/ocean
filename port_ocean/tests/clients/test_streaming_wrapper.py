@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock
+from typing import Any, AsyncGenerator
 
 
 from port_ocean.clients.streaming_wrapper import StreamingClientWrapper
@@ -10,17 +11,17 @@ from port_ocean.helpers.stream import Stream
 class MockStream:
     """A mock of the port_ocean.helpers.stream.Stream class for testing."""
 
-    def __init__(self, data_chunks: list):
+    def __init__(self, data_chunks: list[list[dict[str, Any]]]) -> None:
         self._data_chunks = data_chunks
 
-    async def get_json_stream(self, target_items: str):
+    async def get_json_stream(self, target_items: str) -> AsyncGenerator[Any, None]:
         """An async generator that yields the data chunks."""
         for chunk in self._data_chunks:
             yield chunk
 
 
 @pytest.mark.asyncio
-async def test_stream_json_with_streaming_enabled():
+async def test_stream_json_with_streaming_enabled() -> None:
     """
     Tests that when streaming is enabled, the wrapper uses the `get_stream` method
     and yields data in batches.
@@ -45,7 +46,7 @@ async def test_stream_json_with_streaming_enabled():
 
 
 @pytest.mark.asyncio
-async def test_stream_json_with_empty_results_streaming():
+async def test_stream_json_with_empty_results_streaming() -> None:
     """
     Tests that the wrapper handles an empty stream correctly in streaming mode.
     """
@@ -64,7 +65,7 @@ async def test_stream_json_with_empty_results_streaming():
 
 
 @pytest.mark.asyncio
-async def test_stream_json_path_adaptation_for_streaming():
+async def test_stream_json_path_adaptation_for_streaming() -> None:
     """
     Tests that the wrapper correctly adapts the `target_items_path` for the
     streaming parser (ijson) by appending `.item`.
