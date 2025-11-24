@@ -330,7 +330,9 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 for project in projects_batch:
                     async for folders_batch in client.get_repository_folders(
-                        path=path, repository=project["path_with_namespace"], branch=None
+                        path=path,
+                        repository=project["path_with_namespace"],
+                        branch=None,
                     ):
                         if folders_batch:
                             logger.info(
