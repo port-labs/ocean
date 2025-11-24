@@ -153,7 +153,7 @@ async def _mapped_blueprints_exist(
     if not mapped_blueprints:
         return True
 
-    exsiting_blueprints, _ = await gather_and_split_errors_from_results(
+    existing_blueprints, _ = await gather_and_split_errors_from_results(
         [
             port_client.get_blueprint(blueprint["identifier"], should_log=False)
             for blueprint in mapped_blueprints
@@ -161,7 +161,7 @@ async def _mapped_blueprints_exist(
         lambda item: isinstance(item, Blueprint),
     )
 
-    if len(exsiting_blueprints) != len(mapped_blueprints):
+    if len(existing_blueprints) != len(mapped_blueprints):
         return False
 
     return True
