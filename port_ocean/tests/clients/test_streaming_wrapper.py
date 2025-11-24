@@ -3,8 +3,7 @@ from unittest.mock import AsyncMock
 from typing import Any, AsyncGenerator
 
 
-from port_ocean.clients.streaming_wrapper import StreamingClientWrapper
-from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.async_client import OceanAsyncClient, StreamingClientWrapper
 from port_ocean.helpers.stream import Stream
 
 
