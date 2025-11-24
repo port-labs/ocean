@@ -7,12 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.4.33 (2025-11-19)
+## 0.4.37 (2025-11-24)
 
 
 ### Improvements
 
 - Enrich Pipeline Deployments with Project Data
+
+
+## 0.4.36 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.4.35 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.4.34 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.4.33 (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
 
 
 ## 0.4.32 (2025-11-19)
