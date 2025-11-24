@@ -1,4 +1,5 @@
 from typing import List, Literal, Optional, Union
+from datetime import datetime, timedelta, timezone
 
 from pydantic import Field, BaseModel
 
@@ -168,12 +169,14 @@ class AzureDevopsPullRequestSelector(Selector):
     min_time_in_days: int = Field(
         default=7,
         alias="minTimeInDays",
-        description="Minimum time in days since the pull request was abandoned or closed. Max value is 90. Default value is 7.",
+        description="Minimum time in days since the pull request was abandoned or closed. Default value is 7.",
     )
-  @property
-  def min_time_datetime(self):
+
+    @property
+    def min_time_datetime(self) -> datetime:
         """Convert the min time in days to a timezone-aware datetime object."""
         return datetime.now(timezone.utc) - timedelta(days=self.min_time_in_days)
+
 
 class AzureDevopsPullRequestResourceConfig(ResourceConfig):
     kind: Literal["pull-request"]

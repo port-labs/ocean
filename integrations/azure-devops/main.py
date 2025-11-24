@@ -109,7 +109,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     config = cast(AzureDevopsPullRequestResourceConfig, event.resource_config)
     for search_filter in create_pull_request_search_criteria(
-        config.selector.min_time_in_days
+        config.selector.min_time_datetime
     ):
         async for pull_requests in azure_devops_client.generate_pull_requests(
             search_filter
