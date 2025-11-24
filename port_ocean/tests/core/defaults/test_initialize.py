@@ -1,8 +1,10 @@
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from port_ocean.clients.port.client import PortClient
+from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.defaults.common import Defaults
 from port_ocean.core.defaults.initialize import _create_resources
 from port_ocean.core.models import Blueprint
@@ -80,7 +82,7 @@ async def test_create_resources_all_mapped_blueprints_exist(
        - These SHOULD exist (return Blueprint) so mapped_blueprints_exist = True
     3. Since mapped_blueprints_exist is True, we skip creation
     """
-    mock_port_client.get_current_integration.return_value = {
+    mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
         "config": {
             "resources": [
                 {
@@ -108,7 +110,9 @@ async def test_create_resources_all_mapped_blueprints_exist(
     # Track call order: first 2 calls are for creation_stage, next 2 are for mapped blueprints
     call_count = 0
 
-    async def get_blueprint_side_effect(identifier: str, should_log: bool = True):
+    async def get_blueprint_side_effect(
+        identifier: str, should_log: bool = True
+    ) -> Blueprint:
         nonlocal call_count
         call_count += 1
 
@@ -129,7 +133,7 @@ async def test_create_resources_all_mapped_blueprints_exist(
             }
         )
 
-    mock_port_client.get_blueprint.side_effect = get_blueprint_side_effect
+    mock_port_client.get_blueprint.side_effect = get_blueprint_side_effect  # type: ignore[attr-defined]
 
     # Execute
     await _create_resources(
@@ -137,12 +141,12 @@ async def test_create_resources_all_mapped_blueprints_exist(
     )
 
     # Assert: Should not create any blueprints, actions, scorecards, or pages
-    mock_port_client.create_blueprint.assert_not_called()
-    mock_port_client.patch_blueprint.assert_not_called()
-    mock_port_client.create_action.assert_not_called()
-    mock_port_client.create_scorecard.assert_not_called()
-    mock_port_client.create_page.assert_not_called()
-    assert mock_port_client.get_blueprint.call_count == 4
+    mock_port_client.create_blueprint.assert_not_called()  # type: ignore[attr-defined]
+    mock_port_client.patch_blueprint.assert_not_called()  # type: ignore[attr-defined]
+    mock_port_client.create_action.assert_not_called()  # type: ignore[attr-defined]
+    mock_port_client.create_scorecard.assert_not_called()  # type: ignore[attr-defined]
+    mock_port_client.create_page.assert_not_called()  # type: ignore[attr-defined]
+    assert mock_port_client.get_blueprint.call_count == 4  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
@@ -160,7 +164,7 @@ async def test_create_resources_no_mapped_blueprints_exist(
        - These should NOT exist (raise exception) so mapped_blueprints_exist = False
     3. Since both are False/empty, we create all resources
     """
-    mock_port_client.get_current_integration.return_value = {
+    mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
         "config": {
             "resources": [
                 {
@@ -187,16 +191,20 @@ async def test_create_resources_no_mapped_blueprints_exist(
 
     # Mock get_blueprint to always raise exception (blueprints don't exist)
     # This simulates that no blueprints exist in Port
-    async def get_blueprint_side_effect(identifier: str, should_log: bool = True):
+    async def get_blueprint_side_effect(
+        identifier: str, should_log: bool = True
+    ) -> Blueprint:
         raise Exception(f"Blueprint {identifier} not found")
 
-    mock_port_client.get_blueprint.side_effect = get_blueprint_side_effect
+    mock_port_client.get_blueprint.side_effect = get_blueprint_side_effect  # type: ignore[attr-defined]
 
     # Mock create_blueprint to return created blueprint
-    def create_blueprint_side_effect(blueprint: dict, user_agent_type=None):
+    async def create_blueprint_side_effect(
+        blueprint: dict[str, Any], user_agent_type: UserAgentType | None = None
+    ) -> dict[str, Any]:
         return {"identifier": blueprint["identifier"], **blueprint}
 
-    mock_port_client.create_blueprint.side_effect = create_blueprint_side_effect
+    mock_port_client.create_blueprint.side_effect = create_blueprint_side_effect  # type: ignore[attr-defined]
 
     # Execute
     await _create_resources(
@@ -204,8 +212,8 @@ async def test_create_resources_no_mapped_blueprints_exist(
     )
 
     # Assert
-    assert mock_port_client.create_blueprint.call_count == 2
-    assert mock_port_client.patch_blueprint.call_count >= 2
-    assert mock_port_client.create_action.call_count == 2
-    assert mock_port_client.create_scorecard.call_count == 1
-    assert mock_port_client.create_page.call_count == 1
+    assert mock_port_client.create_blueprint.call_count == 2  # type: ignore[attr-defined]
+    assert mock_port_client.patch_blueprint.call_count >= 2  # type: ignore[attr-defined]
+    assert mock_port_client.create_action.call_count == 2  # type: ignore[attr-defined]
+    assert mock_port_client.create_scorecard.call_count == 1  # type: ignore[attr-defined]
+    assert mock_port_client.create_page.call_count == 1  # type: ignore[attr-defined]
