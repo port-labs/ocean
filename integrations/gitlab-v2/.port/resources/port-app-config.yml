@@ -15,23 +15,6 @@ resources:
             url: .web_url
             readme: file://README.md
             language: .__languages | to_entries | max_by(.value) | .key
-  - kind: folder
-    selector:
-      query: "true"
-      folders:
-        - path: "*/*/*"
-    port:
-      entity:
-        mappings:
-          identifier: .repo.path_with_namespace + "/" + .folder.path | gsub(" "; "")
-          title: .folder.name
-          blueprint: '"service"'
-          properties:
-            url: >-
-              .repo.web_url + "/tree/" + .repo.default_branch  + "/" +
-              .folder.path
-            readme: file://README.md
-            description: .description
   - kind: member
     selector:
       query: 'true'
