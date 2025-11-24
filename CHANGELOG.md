@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.30.1 (2025-11-23)
+
+### Improvements
+
+- Add support to use '' in jq filters
+
+## 0.30.0 (2025-11-23)
+
+### Improvements
+
+- Expose actions processing capability without feature flag
+
+
+## 0.29.10 (2025-11-20)
+
+### Bug fixes
+
+- JQ expression classifier would classify mixed single item and all payload context expressions to run on all of the payload
+
+
+## 0.29.9 (2025-11-20)
+
+### Improvements
+
+- Only log HTTP response sizes for non-port.io domains.
+
 ## 0.29.8 (2025-11-18)
 
 ### Improvements

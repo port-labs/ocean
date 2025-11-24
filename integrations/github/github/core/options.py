@@ -8,6 +8,7 @@ class ListOrganizationOptions(TypedDict):
 
     organization: NotRequired[str]
     allowed_multi_organizations: NotRequired[List[str]]
+    include_authenticated_user: NotRequired[bool]
 
 
 class SingleOrganizationOptions(TypedDict):
@@ -23,6 +24,7 @@ class ListRepositoryOptions(SingleOrganizationOptions):
     """Options for listing repositories."""
 
     type: str
+    organization_type: Required[str]
     search_params: NotRequired[Optional[RepoSearchParams]]
     included_relationships: NotRequired[Optional[list[str]]]
 

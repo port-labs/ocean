@@ -7,6 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.1.7-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 4.1.6-beta (2025-11-23)
+
+
+### Improvements
+
+- Change section to Git Providers in spec.yaml
+
+
+## 4.1.5-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 4.1.4-beta (2025-11-23)
+
+
+### Improvements
+
+- Use GitHub Search API for repository export when authenticated as a GitHub App with Personal Account, falling back to list API otherwise.
+
+
+## 4.1.3-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 4.1.2-beta (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+## 4.1.1-beta (2025-11-20)
+
+
+### Improvements
+
+- Adapt to the new ocean core itemstoparse logic
+
+## 4.1.0-beta (2025-11-19)
+
+
+### Bug Fixes
+
+- Fixed GitHub App authentication by requiring installation ID as a configuration parameter instead of fetching it dynamically, improving reliability and reducing API calls
+
+
+## 4.0.0-beta (2025-11-19)
+
+
+### Improvements
+
+- Optional syncing of the authenticated user's personal account as a pseudo-organization when `includeAuthenticatedUser` is enabled.
+- Repository exporter now supports both Organization and User contexts by selecting the correct API and handling visibility/affiliation accordingly.
+- Propagated organization type through repository selectors and options.
+- Introduced helper to centralize repository option construction.
+- During user resync, enrich the personal user with their primary email when needed.
+- Improved HTTP client error messages to include the HTTP method for clearer diagnostics.
+
+
 ## 3.3.10-beta (2025-11-19)
 
 
