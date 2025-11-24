@@ -1,0 +1,158 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: user
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"cursorUser"'
+          identifier: .id
+          title: .name
+          properties:
+            email: .email
+            name: .name
+            id: .id
+            role: .role
+            status: .status
+            joinedAt: .joinedAt
+            lastActiveAt: .lastActiveAt
+
+  - kind: daily-usage
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"cursorDailyUsage"'
+          identifier: '(.date + "-" + .userId)'
+          title: '(.userEmail + " - " + .date)'
+          properties:
+            date: .date
+            userId: .userId
+            userEmail: .userEmail
+            totalRequests: .totalRequests
+            aiCompletions: .aiCompletions
+            aiChats: .aiChats
+            codeChanges: .codeChanges
+            linesOfCode: .linesOfCode
+            activeMinutes: .activeMinutes
+            projectsWorkedOn: (.projectsWorkedOn // [])
+          relations:
+            user: .userId
+
+
+  - kind: usage-event
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"cursorUsageEvent"'
+          identifier: .eventId
+          title: '(.eventType + " - " + .eventId)'
+          properties:
+            eventId: .eventId
+            userId: .userId
+            userEmail: .userEmail
+            eventType: .eventType
+            eventDate: .eventDate
+            duration: .duration
+            metadata: (.metadata // {})
+            projectId: .projectId
+            projectName: .projectName
+            filePath: .filePath
+            language: .language
+            aiModel: .aiModel
+            tokensUsed: .tokensUsed
+          relations:
+            user: .userId
+
+  - kind: blocklisted-repo
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"cursorBlocklistedRepo"'
+          identifier: .id
+          title: .name
+          properties:
+            id: .id
+            name: .name
+            fullName: .fullName
+            url: .url
+            reason: .reason
+            blockedAt: .blockedAt
+            blockedBy: .blockedBy
+
+  - kind: spending-data
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"cursorSpendingData"'
+          identifier: .period
+          title: '("Spending - " + .period)'
+          properties:
+            period: .period
+            totalSpent: .totalSpent
+            currency: .currency
+            breakdown: (.breakdown // {})
+            startDate: .startDate
+            endDate: .endDate
+            lastUpdated: .lastUpdated
+
+  - kind: ai-commit-metrics
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"cursorAiCommitMetrics"'
+          identifier: .commitHash
+          title: '(.repoName + " - " + .commitHash)'
+          properties:
+            commitHash: .commitHash
+            userId: .userId
+            userEmail: .userEmail
+            repoName: .repoName
+            branchName: .branchName
+            isPrimaryBranch: .isPrimaryBranch
+            totalLinesAdded: .totalLinesAdded
+            totalLinesDeleted: .totalLinesDeleted
+            tabLinesAdded: .tabLinesAdded
+            tabLinesDeleted: .tabLinesDeleted
+            composerLinesAdded: .composerLinesAdded
+            composerLinesDeleted: .composerLinesDeleted
+            nonAiLinesAdded: .nonAiLinesAdded
+            nonAiLinesDeleted: .nonAiLinesDeleted
+            message: .message
+            commitTs: .commitTs
+            createdAt: .createdAt
+          relations:
+            user: .userId
+
+  - kind: ai-code-change-metrics
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"cursorAiCodeChangeMetrics"'
+          identifier: .changeId
+          title: '(.source + " - " + .changeId)'
+          properties:
+            changeId: .changeId
+            userId: .userId
+            userEmail: .userEmail
+            source: .source
+            model: .model
+            totalLinesAdded: .totalLinesAdded
+            totalLinesDeleted: .totalLinesDeleted
+            createdAt: .createdAt
+            metadata: (.metadata // [])
+          relations:
+            user: .userId

@@ -1,0 +1,502 @@
+[
+  {
+    "identifier": "cursorUser",
+    "title": "Cursor User",
+    "icon": "Cursor",
+    "schema": {
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "title": "Email",
+          "description": "The email address of the user."
+        },
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "The display name of the user."
+        },
+        "id": {
+          "type": "string",
+          "title": "User ID",
+          "description": "The unique identifier of the user."
+        },
+        "role": {
+          "type": "string",
+          "title": "Role",
+          "description": "The role of the user in the team.",
+          "enum": ["owner", "admin", "member", "viewer"]
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the user account.",
+          "enum": ["active", "inactive", "pending"]
+        },
+        "joinedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Joined At",
+          "description": "The date and time when the user joined the team."
+        },
+        "lastActiveAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Active At",
+          "description": "The date and time when the user was last active."
+        }
+      },
+      "required": ["email", "id"]
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "cursorDailyUsage",
+    "title": "Cursor Daily Usage",
+    "icon": "Cursor",
+    "schema": {
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date",
+          "title": "Date",
+          "description": "The date for which usage data is recorded."
+        },
+        "userId": {
+          "type": "string",
+          "title": "User ID",
+          "description": "The ID of the user for whom usage is recorded."
+        },
+        "userEmail": {
+          "type": "string",
+          "format": "email",
+          "title": "User Email",
+          "description": "The email of the user for whom usage is recorded."
+        },
+        "totalRequests": {
+          "type": "number",
+          "title": "Total Requests",
+          "description": "Total number of AI requests made on this date."
+        },
+        "aiCompletions": {
+          "type": "number",
+          "title": "AI Completions",
+          "description": "Number of AI code completions generated."
+        },
+        "aiChats": {
+          "type": "number",
+          "title": "AI Chats",
+          "description": "Number of AI chat interactions."
+        },
+        "codeChanges": {
+          "type": "number",
+          "title": "Code Changes",
+          "description": "Number of code changes made with AI assistance."
+        },
+        "linesOfCode": {
+          "type": "number",
+          "title": "Lines of Code",
+          "description": "Number of lines of code generated or modified."
+        },
+        "activeMinutes": {
+          "type": "number",
+          "title": "Active Minutes",
+          "description": "Number of minutes the user was active in Cursor."
+        },
+        "projectsWorkedOn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Projects Worked On",
+          "description": "List of project names or IDs worked on during this date."
+        }
+      },
+      "required": ["date", "userId"]
+    },
+    "relations": {
+      "user": {
+        "title": "User",
+        "target": "cursorUser",
+        "many": false,
+        "required": true
+      }
+    }
+  },
+  {
+    "identifier": "cursorUsageEvent",
+    "title": "Cursor Usage Event",
+    "icon": "Cursor",
+    "schema": {
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "title": "Event ID",
+          "description": "The unique identifier of the usage event."
+        },
+        "userId": {
+          "type": "string",
+          "title": "User ID",
+          "description": "The ID of the user who triggered the event."
+        },
+        "userEmail": {
+          "type": "string",
+          "format": "email",
+          "title": "User Email",
+          "description": "The email of the user who triggered the event."
+        },
+        "eventType": {
+          "type": "string",
+          "title": "Event Type",
+          "description": "The type of usage event.",
+          "enum": ["ai_completion", "ai_chat", "code_generation", "file_edit", "project_open", "session_start", "session_end"]
+        },
+        "eventDate": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Event Date",
+          "description": "The date and time when the event occurred."
+        },
+        "duration": {
+          "type": "number",
+          "title": "Duration",
+          "description": "Duration of the event in seconds."
+        },
+        "metadata": {
+          "type": "object",
+          "title": "Metadata",
+          "description": "Additional metadata about the event."
+        },
+        "projectId": {
+          "type": "string",
+          "title": "Project ID",
+          "description": "The ID of the project associated with the event."
+        },
+        "projectName": {
+          "type": "string",
+          "title": "Project Name",
+          "description": "The name of the project associated with the event."
+        },
+        "filePath": {
+          "type": "string",
+          "title": "File Path",
+          "description": "The path to the file associated with the event."
+        },
+        "language": {
+          "type": "string",
+          "title": "Language",
+          "description": "The programming language associated with the event."
+        },
+        "aiModel": {
+          "type": "string",
+          "title": "AI Model",
+          "description": "The AI model used for the event."
+        },
+        "tokensUsed": {
+          "type": "number",
+          "title": "Tokens Used",
+          "description": "Number of tokens used in the AI request."
+        }
+      },
+      "required": ["eventId", "userId", "eventType", "eventDate"]
+    },
+    "relations": {
+      "user": {
+        "title": "User",
+        "target": "cursorUser",
+        "many": false,
+        "required": true
+      }
+    }
+  },
+  {
+    "identifier": "cursorBlocklistedRepo",
+    "title": "Cursor Blocklisted Repository",
+    "icon": "Cursor",
+    "schema": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Repository ID",
+          "description": "The unique identifier of the blocklisted repository."
+        },
+        "name": {
+          "type": "string",
+          "title": "Repository Name",
+          "description": "The name of the blocklisted repository."
+        },
+        "fullName": {
+          "type": "string",
+          "title": "Full Name",
+          "description": "The full name of the repository (e.g., owner/repo)."
+        },
+        "url": {
+          "type": "string",
+          "format": "url",
+          "title": "Repository URL",
+          "description": "The URL of the blocklisted repository."
+        },
+        "reason": {
+          "type": "string",
+          "title": "Block Reason",
+          "description": "The reason why the repository was blocklisted."
+        },
+        "blockedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Blocked At",
+          "description": "The date and time when the repository was blocklisted."
+        },
+        "blockedBy": {
+          "type": "string",
+          "title": "Blocked By",
+          "description": "The user who blocklisted the repository."
+        }
+      },
+      "required": ["id", "name"]
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "cursorSpendingData",
+    "title": "Cursor Spending Data",
+    "icon": "Cursor",
+    "schema": {
+      "properties": {
+        "period": {
+          "type": "string",
+          "title": "Period",
+          "description": "The time period for the spending data."
+        },
+        "totalSpent": {
+          "type": "number",
+          "title": "Total Spent",
+          "description": "Total amount spent in the period."
+        },
+        "currency": {
+          "type": "string",
+          "title": "Currency",
+          "description": "The currency of the spending data."
+        },
+        "breakdown": {
+          "type": "object",
+          "title": "Spending Breakdown",
+          "description": "Detailed breakdown of spending by category."
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date",
+          "title": "Start Date",
+          "description": "The start date of the spending period."
+        },
+        "endDate": {
+          "type": "string",
+          "format": "date",
+          "title": "End Date",
+          "description": "The end date of the spending period."
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Updated",
+          "description": "When the spending data was last updated."
+        }
+      },
+      "required": ["period", "totalSpent"]
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "cursorAiCommitMetrics",
+    "title": "Cursor AI Commit Metrics",
+    "icon": "Cursor",
+    "schema": {
+      "properties": {
+        "commitHash": {
+          "type": "string",
+          "title": "Commit Hash",
+          "description": "Git commit hash."
+        },
+        "userId": {
+          "type": "string",
+          "title": "User ID",
+          "description": "Encoded user ID (e.g., user_abc123)."
+        },
+        "userEmail": {
+          "type": "string",
+          "format": "email",
+          "title": "User Email",
+          "description": "User's email address."
+        },
+        "repoName": {
+          "type": "string",
+          "title": "Repository Name",
+          "description": "Repository name."
+        },
+        "branchName": {
+          "type": "string",
+          "title": "Branch Name",
+          "description": "Branch name."
+        },
+        "isPrimaryBranch": {
+          "type": "boolean",
+          "title": "Is Primary Branch",
+          "description": "Whether this is the primary branch."
+        },
+        "totalLinesAdded": {
+          "type": "number",
+          "title": "Total Lines Added",
+          "description": "Total lines added in commit."
+        },
+        "totalLinesDeleted": {
+          "type": "number",
+          "title": "Total Lines Deleted",
+          "description": "Total lines deleted in commit."
+        },
+        "tabLinesAdded": {
+          "type": "number",
+          "title": "TAB Lines Added",
+          "description": "Lines added via TAB completions."
+        },
+        "tabLinesDeleted": {
+          "type": "number",
+          "title": "TAB Lines Deleted",
+          "description": "Lines deleted via TAB completions."
+        },
+        "composerLinesAdded": {
+          "type": "number",
+          "title": "Composer Lines Added",
+          "description": "Lines added via Composer."
+        },
+        "composerLinesDeleted": {
+          "type": "number",
+          "title": "Composer Lines Deleted",
+          "description": "Lines deleted via Composer."
+        },
+        "nonAiLinesAdded": {
+          "type": "number",
+          "title": "Non-AI Lines Added",
+          "description": "Non-AI lines added."
+        },
+        "nonAiLinesDeleted": {
+          "type": "number",
+          "title": "Non-AI Lines Deleted",
+          "description": "Non-AI lines deleted."
+        },
+        "message": {
+          "type": "string",
+          "title": "Commit Message",
+          "description": "Commit message."
+        },
+        "commitTs": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Commit Timestamp",
+          "description": "Commit timestamp (ISO format)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "Ingestion timestamp (ISO format)."
+        }
+      },
+      "required": ["commitHash", "userId", "userEmail"]
+    },
+    "relations": {
+      "user": {
+        "title": "User",
+        "target": "cursorUser",
+        "many": false,
+        "required": true
+      }
+    }
+  },
+  {
+    "identifier": "cursorAiCodeChangeMetrics",
+    "title": "Cursor AI Code Change Metrics",
+    "icon": "Cursor",
+    "schema": {
+      "properties": {
+        "changeId": {
+          "type": "string",
+          "title": "Change ID",
+          "description": "Deterministic ID for the change."
+        },
+        "userId": {
+          "type": "string",
+          "title": "User ID",
+          "description": "Encoded user ID (e.g., user_abc123)."
+        },
+        "userEmail": {
+          "type": "string",
+          "format": "email",
+          "title": "User Email",
+          "description": "User's email address."
+        },
+        "source": {
+          "type": "string",
+          "title": "Source",
+          "description": "Source of the AI change.",
+          "enum": ["TAB", "COMPOSER"]
+        },
+        "model": {
+          "type": "string",
+          "title": "AI Model",
+          "description": "AI model used."
+        },
+        "totalLinesAdded": {
+          "type": "number",
+          "title": "Total Lines Added",
+          "description": "Total lines added."
+        },
+        "totalLinesDeleted": {
+          "type": "number",
+          "title": "Total Lines Deleted",
+          "description": "Total lines deleted."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "Ingestion timestamp (ISO format)."
+        },
+        "metadata": {
+          "type": "array",
+          "title": "Metadata",
+          "description": "File metadata (fileName may be omitted in privacy mode).",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fileName": {
+                "type": "string",
+                "title": "File Name"
+              },
+              "fileExtension": {
+                "type": "string",
+                "title": "File Extension"
+              },
+              "linesAdded": {
+                "type": "number",
+                "title": "Lines Added"
+              },
+              "linesDeleted": {
+                "type": "number",
+                "title": "Lines Deleted"
+              }
+            }
+          }
+        }
+      },
+      "required": ["changeId", "userId", "userEmail", "source"]
+    },
+    "relations": {
+      "user": {
+        "title": "User",
+        "target": "cursorUser",
+        "many": false,
+        "required": true
+      }
+    }
+  }
+]
