@@ -231,7 +231,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             else:
                 response = transport.handle_request(request)
 
-            self._log_response_size(request, response)
+            # self._log_response_size(request, response)
 
             return response
         except Exception as e:
@@ -257,7 +257,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             else:
                 response = await transport.handle_async_request(request)
 
-            self._log_response_size(request, response)
+            # self._log_response_size(request, response)
 
             return response
         except Exception as e:

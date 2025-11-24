@@ -78,7 +78,7 @@ class MetricsSettings(BaseOceanModel, extra=Extra.allow):
 
 
 class StreamingSettings(BaseOceanModel, extra=Extra.allow):
-    enabled: bool = Field(default=False)
+    enabled: bool = Field(default=True)
     max_buffer_size_mb: int = Field(default=1024 * 1024 * 20)  # 20 mb
     chunk_size: int = Field(default=1024 * 64)  # 64 kb
     location: str = Field(default="/tmp/ocean/streaming")

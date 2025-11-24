@@ -1,0 +1,4 @@
+127.0.0.1       localhost
+127.0.0.1 api.localhost
+127.0.0.1 gw.localhost
+127.0.0.1 ingest.localhost

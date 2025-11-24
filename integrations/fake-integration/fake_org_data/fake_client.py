@@ -7,14 +7,14 @@ from port_ocean.context.ocean import ocean
 from .types import FakePerson
 from .static import FAKE_DEPARTMENTS
 
-
-API_URL = "http://localhost:8000/integration/department"
+from loguru import logger
+API_URL = "http://host.docker.internal:8001/integration/department"
 USER_AGENT = "Ocean Framework Fake Integration (https://github.com/port-labs/ocean)"
 
 
 class FakeIntegrationDefaults(IntEnum):
-    ENTITY_AMOUNT = 20
-    ENTITY_KB_SIZE = 1
+    ENTITY_AMOUNT = 1000
+    ENTITY_KB_SIZE = 500
     THIRD_PARTY_BATCH_SIZE = 1000
     THIRD_PARTY_LATENCY_MS = 0
 
@@ -70,40 +70,40 @@ async def get_fake_persons_batch(
     department_id: str, limit: int, entity_kb_size: int, latency_ms: int
 ) -> List[Dict[Any, Any]]:
     url = f"{API_URL}/{department_id}/employees?limit={limit}&entity_kb_size={entity_kb_size}&latency={latency_ms}"
-    response = await http_async_client.get(
+    stream = await http_async_client.get_stream(
         url,
         headers={
             "Accept": "application/json",
             "User-Agent": USER_AGENT,
         },
     )
-
-    raw_persons = response.json()
-
-    return [
-        FakePerson(
-            **{
-                **person,
-                "department": [
-                    department
-                    for department in FAKE_DEPARTMENTS
-                    if department_id == department.id
-                ][0],
-            }
-        ).dict()
-        for person in raw_persons["results"]
-    ]
-
+    stream_json = stream.get_json_stream(target_items="results.item", max_buffer_size_mb=20*1024*1024)
+    async for persons in stream_json:
+        logger.info(f"persons length: {len(persons)}")
+        fake_persons = [
+            FakePerson(
+                **{
+                    **person,
+                    "department": [
+                        department
+                        for department in FAKE_DEPARTMENTS
+                        if department_id == department.id
+                    ][0],
+                }
+            ).dict()
+            for person in persons
+        ]
+        yield fake_persons
 
 async def get_fake_persons() -> AsyncGenerator[List[Dict[Any, Any]], None]:
     batches, entity_kb_size, latency_ms = get_config()
     async for departments_batch in get_departments():
         for department in departments_batch:
             for batch in batches:
-                current_result = await get_fake_persons_batch(
+                async for current_result in get_fake_persons_batch(
                     department["id"], batch, entity_kb_size, latency_ms
-                )
-                yield current_result
+                ):
+                    yield current_result
 
 
 async def get_random_person_from_batch() -> Dict[Any, Any]:

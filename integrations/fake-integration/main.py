@@ -27,7 +27,6 @@ async def resync_persons(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield persons_batch
 
 
-initialize_fake_routes()
 
 
 @ocean.router.post("/webhook")

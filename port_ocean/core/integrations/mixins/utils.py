@@ -116,24 +116,25 @@ async def resync_generator_wrapper(
             try:
                 with resync_error_handling():
                     result = await anext(generator)
-                    if not ocean.config.yield_items_to_parse:
-                        validated_result = validate_result(result)
-                        processed_result = _process_path_type_items(validated_result,items_to_parse)
-                        yield processed_result
-                    else:
-                        if items_to_parse:
-                            for data in result:
-                                data_path: str | None = None
-                                if isinstance(data, dict) and data.get("file") is not None:
-                                    content = data["file"].get("content") if isinstance(data["file"].get("content"), dict) else {}
-                                    data_path = content.get("path", None)
-                                bulks = get_items_to_parse_bulks(data, data_path, items_to_parse, items_to_parse_name, data.get("__base_jq", ".file.content"))
-                                async for bulk in bulks:
-                                    yield bulk
-                        else:
-                            validated_result = validate_result(result)
-                            processed_result = _process_path_type_items(validated_result, items_to_parse)
-                            yield processed_result
+                    yield validate_result(result)
+                    # if not ocean.config.yield_items_to_parse:
+                    #     validated_result = validate_result(result)
+                    #     processed_result = _process_path_type_items(validated_result,items_to_parse)
+                    #     yield processed_result
+                    # else:
+                    #     if items_to_parse:
+                    #         for data in result:
+                    #             data_path: str | None = None
+                    #             if isinstance(data, dict) and data.get("file") is not None:
+                    #                 content = data["file"].get("content") if isinstance(data["file"].get("content"), dict) else {}
+                    #                 data_path = content.get("path", None)
+                    #             bulks = get_items_to_parse_bulks(data, data_path, items_to_parse, items_to_parse_name, data.get("__base_jq", ".file.content"))
+                    #             async for bulk in bulks:
+                    #                 yield bulk
+                    #     else:
+                    #         validated_result = validate_result(result)
+                    #         processed_result = _process_path_type_items(validated_result, items_to_parse)
+                    #         yield processed_result
             except OceanAbortException as error:
                 errors.append(error)
                 ocean.metrics.inc_metric(
@@ -273,6 +274,7 @@ def get_events_as_a_stream(
         target_items: str = "item",
         max_buffer_size_mb: int = 1
     ) -> Generator[list[dict[str, Any]], None, None]:
+        logger.info(f"max_buffer_size_mb: {max_buffer_size_mb}")
         events = ijson.sendable_list()
         coro = ijson.items_coro(events, target_items, use_float=True)
 
