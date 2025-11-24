@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.4 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.4.3 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.4.2 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.4.1 (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+## 0.4.0 (2025-11-19)
+
+
+### Improvements
+
+- Added PagerDuty API rate limiter and integrated it into the client to comply with rate limits and improve reliability.
+- Improved incidents webhook processor behavior.
+
+
 ## 0.3.98 (2025-11-19)
 
 

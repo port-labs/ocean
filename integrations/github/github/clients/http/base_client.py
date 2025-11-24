@@ -68,6 +68,7 @@ class AbstractGithubClient(ABC):
         self,
         error: httpx.HTTPStatusError,
         resource: str,
+        method: str,
         ignored_errors: Optional[List[IgnoredError]] = None,
         ignore_default_errors: bool = True,
     ) -> bool:
@@ -79,7 +80,7 @@ class AbstractGithubClient(ABC):
         for ignored_error in all_ignored_errors:
             if str(status_code) == str(ignored_error.status):
                 logger.warning(
-                    f"Failed to fetch resources at {resource} due to {ignored_error.message}"
+                    f"Failed to {method} resources at {resource} due to {ignored_error.message}"
                 )
                 return True
         return False
@@ -115,7 +116,7 @@ class AbstractGithubClient(ABC):
 
                 if not self.rate_limiter.is_rate_limit_response(response):
                     if self._should_ignore_error(
-                        e, resource, ignored_errors, ignore_default_errors
+                        e, resource, method, ignored_errors, ignore_default_errors
                     ):
                         return Response(200, content=b"{}")
 

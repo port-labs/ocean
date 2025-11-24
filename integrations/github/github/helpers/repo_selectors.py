@@ -9,6 +9,7 @@ from typing import (
     Tuple,
     TYPE_CHECKING,
     Protocol,
+    cast,
 )
 
 from loguru import logger
@@ -20,9 +21,11 @@ from github.core.options import (
 )
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import get_repository_metadata
+from port_ocean.context.event import event
+
 
 if TYPE_CHECKING:
-    from integration import RepositoryBranchMapping
+    from integration import RepositoryBranchMapping, GithubPortAppConfig
 
 
 class RepoListSelector(Protocol):
@@ -44,6 +47,7 @@ class RepositorySelectorStrategy(ABC):
         selector: RepoListSelector,
         repo_exporter: AbstractGithubExporter[Any],
         org_login: str,
+        org_type: str,
     ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
         """Yield (repo_name, branch, repo_obj)"""
         ...
@@ -60,9 +64,14 @@ class AllRepositorySelector(RepositorySelectorStrategy):
         selector: RepoListSelector,
         repo_exporter: AbstractGithubExporter[Any],
         org_login: str,
+        org_type: str,
     ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
-        logger.info(f"Fetching all '{self.repo_type}' repositories from '{org_login}'.")
-        options = ListRepositoryOptions(organization=org_login, type=self.repo_type)
+        logger.info(
+            f"Fetching all '{self.repo_type}' repositories from '{org_login}' of type '{org_type}'."
+        )
+        options = ListRepositoryOptions(
+            organization=org_login, organization_type=org_type, type=self.repo_type
+        )
         async for batch in repo_exporter.get_paginated_resources(options):
             for repo in batch:
                 name = repo["name"]
@@ -85,6 +94,7 @@ class ExactRepositorySelector(RepositorySelectorStrategy):
         selector: RepoListSelector,
         repo_exporter: AbstractGithubExporter[Any],
         org_login: str,
+        org_type: str,
     ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
         if not selector.repos:
             return
@@ -121,18 +131,19 @@ class CompositeRepositorySelector(RepositorySelectorStrategy):
         selector: RepoListSelector,
         repo_exporter: AbstractGithubExporter[Any],
         org_login: str,
+        org_type: str,
     ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
         active_strategies = (
             self.explicit_strategies if selector.repos else self.implicit_strategies
         )
         for strategy in active_strategies:
             async for result in strategy.select_repos(
-                selector, repo_exporter, org_login
+                selector, repo_exporter, org_login, org_type
             ):
                 yield result
 
 
-class OrganizationLoginGenerator:
+class OrganizationLoginAndTypeGenerator:
     """Helper to iterate organizations for a selector.
 
     Wraps the exporter pagination to yield organization logins for a specific
@@ -142,15 +153,18 @@ class OrganizationLoginGenerator:
     def __init__(self, org_exporter: AbstractGithubExporter[Any]):
         self.org_exporter = org_exporter
 
-    async def __call__(self, organization: Optional[str]) -> AsyncGenerator[str, None]:
-        org_options: ListOrganizationOptions
+    async def __call__(
+        self, organization: Optional[str]
+    ) -> AsyncGenerator[Tuple[str, str], None]:
+        port_app_config = cast("GithubPortAppConfig", event.port_app_config)
+        org_options: ListOrganizationOptions = {
+            "include_authenticated_user": port_app_config.include_authenticated_user
+        }
         if organization:
-            org_options = {"organization": organization}
-        else:
-            org_options = {}
+            org_options.update({"organization": organization})
+
         async for batch in self.org_exporter.get_paginated_resources(org_options):
             if not batch or not any(batch):
                 continue
             for org in batch:
-                org_login = org["login"]
-                yield org_login
+                yield org["login"], org["type"]

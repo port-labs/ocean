@@ -24,6 +24,7 @@ def get_github_organizations() -> ListOrganizationOptions:
     return ListOrganizationOptions(
         organization=organization,
         allowed_multi_organizations=port_app_config.organizations,
+        include_authenticated_user=port_app_config.include_authenticated_user,
     )
 
 
