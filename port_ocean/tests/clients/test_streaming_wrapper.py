@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock
 
-import httpx
 
 from port_ocean.clients.streaming_wrapper import StreamingClientWrapper
 from port_ocean.helpers.async_client import OceanAsyncClient
@@ -14,14 +13,10 @@ class MockStream:
     def __init__(self, data_chunks: list):
         self._data_chunks = data_chunks
 
-    def get_json_stream(self, target_items: str):
+    async def get_json_stream(self, target_items: str):
         """An async generator that yields the data chunks."""
-
-        async def generator():
-            for chunk in self._data_chunks:
-                yield chunk
-
-        return generator()
+        for chunk in self._data_chunks:
+            yield chunk
 
 
 @pytest.mark.asyncio
@@ -38,7 +33,7 @@ async def test_stream_json_with_streaming_enabled():
     )
     mock_client.get_stream.return_value = mock_stream_instance
 
-    wrapper = StreamingClientWrapper(http_client=mock_client, streaming_enabled=True)
+    wrapper = StreamingClientWrapper(http_client=mock_client)
 
     # Act
     results = [item async for item in wrapper.stream_json("http://test.com", "results")]
@@ -47,51 +42,6 @@ async def test_stream_json_with_streaming_enabled():
     mock_client.get_stream.assert_called_once_with("http://test.com")
     mock_client.get.assert_not_called()
     assert results == [[{"id": 1, "name": "one"}], [{"id": 2, "name": "two"}]]
-
-
-@pytest.mark.asyncio
-async def test_stream_json_with_streaming_disabled():
-    """
-    Tests that when streaming is disabled, the wrapper uses the standard `get` method
-    and yields the entire result as a single batch.
-    """
-    # Arrange
-    mock_client = AsyncMock(spec=OceanAsyncClient)
-    mock_response = AsyncMock(spec=httpx.Response)
-    mock_response.json.return_value = {
-        "results": [{"id": 1, "name": "one"}, {"id": 2, "name": "two"}]
-    }
-    mock_client.get.return_value = mock_response
-
-    wrapper = StreamingClientWrapper(http_client=mock_client, streaming_enabled=False)
-
-    # Act
-    results = [item async for item in wrapper.stream_json("http://test.com", "results")]
-
-    # Assert
-    mock_client.get.assert_called_once_with("http://test.com")
-    mock_client.get_stream.assert_not_called()
-    assert results == [[{"id": 1, "name": "one"}, {"id": 2, "name": "two"}]]
-
-
-@pytest.mark.asyncio
-async def test_stream_json_with_empty_results_non_streaming():
-    """
-    Tests that the wrapper handles an empty list correctly in non-streaming mode.
-    """
-    # Arrange
-    mock_client = AsyncMock(spec=OceanAsyncClient)
-    mock_response = AsyncMock(spec=httpx.Response)
-    mock_response.json.return_value = {"results": []}
-    mock_client.get.return_value = mock_response
-
-    wrapper = StreamingClientWrapper(http_client=mock_client, streaming_enabled=False)
-
-    # Act
-    results = [item async for item in wrapper.stream_json("http://test.com", "results")]
-
-    # Assert
-    assert results == [[]]
 
 
 @pytest.mark.asyncio
@@ -104,7 +54,7 @@ async def test_stream_json_with_empty_results_streaming():
     mock_stream_instance = MockStream([[]])  # Stream yields one empty batch
     mock_client.get_stream.return_value = mock_stream_instance
 
-    wrapper = StreamingClientWrapper(http_client=mock_client, streaming_enabled=True)
+    wrapper = StreamingClientWrapper(http_client=mock_client)
 
     # Act
     results = [item async for item in wrapper.stream_json("http://test.com", "results")]
@@ -124,7 +74,7 @@ async def test_stream_json_path_adaptation_for_streaming():
     mock_stream = AsyncMock(spec=Stream)
     mock_client.get_stream.return_value = mock_stream
 
-    wrapper = StreamingClientWrapper(http_client=mock_client, streaming_enabled=True)
+    wrapper = StreamingClientWrapper(http_client=mock_client)
 
     # Act
     # We only need to trigger the call to check the arguments
