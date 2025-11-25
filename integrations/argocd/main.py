@@ -1,7 +1,9 @@
+from typing import Any, AsyncGenerator
+
 from fastapi import Request
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import RAW_RESULT, ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.ocean_types import RAW_RESULT
 
 from client import ArgocdClient, ObjectKind, ResourceKindsWithSpecialHandling
 
@@ -16,40 +18,44 @@ def init_client() -> ArgocdClient:
 
 
 @ocean.on_resync()
-async def on_resources_resync(kind: str) -> RAW_RESULT:
-    if kind in iter(ResourceKindsWithSpecialHandling):
+async def on_resources_resync(kind: str) -> AsyncGenerator[RAW_RESULT, None]:
+    if kind in ResourceKindsWithSpecialHandling:
         logger.info(f"Kind {kind} has a special handling. Skipping...")
-        return []
+        return
     else:
         argocd_client = init_client()
-        return await argocd_client.get_resources_for_available_clusters(
+        yield await argocd_client.get_resources_for_available_clusters(
             resource_kind=ObjectKind(kind)
         )
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLUSTER)
-async def on_clusters_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def on_clusters_resync(kind: str) -> AsyncGenerator[list[dict[str, Any]], None]:
     argocd_client = init_client()
     async for cluster in argocd_client.get_clusters():
         yield cluster
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.DEPLOYMENT_HISTORY)
-async def on_history_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def on_history_resync(kind: str) -> AsyncGenerator[list[dict[str, Any]], None]:
     argocd_client = init_client()
     async for history in argocd_client.get_deployment_history():
         yield history
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.KUBERNETES_RESOURCE)
-async def on_managed_k8s_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def on_managed_k8s_resources_resync(
+    kind: str,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
     argocd_client = init_client()
     async for resources in argocd_client.get_kubernetes_resource():
         yield resources
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.MANAGED_RESOURCE)
-async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def on_managed_resources_resync(
+    kind: str,
+) -> AsyncGenerator[list[dict[str, Any]], None]:
     argocd_client = init_client()
 
     applications = await argocd_client.get_resources_for_available_clusters(

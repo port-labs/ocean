@@ -3,7 +3,6 @@ from typing import Any, Optional, AsyncGenerator
 
 import httpx
 from loguru import logger
-from port_ocean.utils import http_async_client
 
 
 class ObjectKind(StrEnum):
@@ -47,7 +46,7 @@ class ArgocdClient:
             )
             self.http_client = httpx.AsyncClient(verify=False)
         else:
-            self.http_client = http_async_client
+            self.http_client = httpx.AsyncClient()
         self.http_client.headers.update(self.api_auth_header)
 
     async def _send_api_request(
