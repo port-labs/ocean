@@ -5,23 +5,14 @@ from port_ocean.context.ocean import ocean
 
 from client import (
     BitbucketClient,
-    DEFAULT_BITBUCKET_RATE_LIMIT,
-    DEFAULT_BITBUCKET_RATE_LIMIT_WINDOW,
-    DEFAULT_PAGE_SIZE,
     DEFAULT_MAX_CONCURRENT_REQUESTS,
+    DEFAULT_PAGE_SIZE,
 )
 
 
 def initialize_client() -> BitbucketClient:
     config = ocean.integration_config
 
-    # Extract rate limiting configuration
-    rate_limit = int(config["bitbucket_rate_limit"])
-    rate_limit_window = int(
-        config["bitbucket_rate_limit_window"])
-    )
-
-    # Extract project filtering configuration from selector
     project_filter_regex = None
     if event.resource_config and hasattr(event.resource_config, "selector"):
         project_filter_regex = getattr(
@@ -38,8 +29,8 @@ def initialize_client() -> BitbucketClient:
             bool,
             config.get("bitbucket_is_version8_point7_or_older"),
         ),
-        rate_limit=rate_limit,
-        rate_limit_window=rate_limit_window,
+        rate_limit=int(config["bitbucket_rate_limit"]),
+        rate_limit_window=int(config["bitbucket_rate_limit_window"]),
         page_size=DEFAULT_PAGE_SIZE,
         max_concurrent_requests=DEFAULT_MAX_CONCURRENT_REQUESTS,
         project_filter_regex=project_filter_regex,

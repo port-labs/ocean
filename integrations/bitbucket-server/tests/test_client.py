@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -5,19 +6,30 @@ from httpx import AsyncClient, Response
 
 from client import (
     BitbucketClient,
-    DEFAULT_BITBUCKET_RATE_LIMIT,
     DEFAULT_MAX_CONCURRENT_REQUESTS,
     DEFAULT_PAGE_SIZE,
 )
+
+SPEC_DEFAULT_RATE_LIMIT = 1000
+SPEC_DEFAULT_RATE_LIMIT_WINDOW = 3600
+
+
+def _build_client(**overrides: Any) -> BitbucketClient:
+    base_kwargs: dict[str, Any] = {
+        "base_url": "https://bitbucket.example.com",
+        "username": "test-user",
+        "password": "test-password",
+        "rate_limit": SPEC_DEFAULT_RATE_LIMIT,
+        "rate_limit_window": SPEC_DEFAULT_RATE_LIMIT_WINDOW,
+    }
+    base_kwargs.update(overrides)
+    return BitbucketClient(**base_kwargs)
 
 
 @pytest.fixture
 def mock_client() -> BitbucketClient:
     """Create a mocked Bitbucket Server client."""
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
+    client = _build_client(
         webhook_secret="test-secret",
         app_host="https://app.example.com",
     )
@@ -100,12 +112,7 @@ async def test_healthcheck_failure(mock_client: BitbucketClient) -> None:
 async def test_configurable_page_size() -> None:
     """Test that page size is configurable and used in pagination."""
     custom_page_size = 100
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
-        page_size=custom_page_size,
-    )
+    client = _build_client(page_size=custom_page_size)
     client.client = MagicMock(spec=AsyncClient)
 
     mock_response = MagicMock(spec=Response)
@@ -128,11 +135,7 @@ async def test_configurable_page_size() -> None:
 @pytest.mark.asyncio
 async def test_default_page_size() -> None:
     """Test that default page size is used when not specified."""
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
-    )
+    client = _build_client()
 
     assert client.page_size == DEFAULT_PAGE_SIZE
 
@@ -143,12 +146,8 @@ async def test_configurable_rate_limit() -> None:
     custom_rate_limit = 2000
     custom_window = 7200
 
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
-        rate_limit=custom_rate_limit,
-        rate_limit_window=custom_window,
+    client = _build_client(
+        rate_limit=custom_rate_limit, rate_limit_window=custom_window
     )
 
     assert client.rate_limiter.max_rate == custom_rate_limit
@@ -156,16 +155,12 @@ async def test_configurable_rate_limit() -> None:
 
 
 @pytest.mark.asyncio
-async def test_default_rate_limit() -> None:
-    """Test that default rate limit is used when not specified."""
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
-    )
+async def test_rate_limit_uses_spec_defaults() -> None:
+    """Test that provided rate limit values are applied (mirrors spec defaults)."""
+    client = _build_client()
 
-    assert client.rate_limiter.max_rate == DEFAULT_BITBUCKET_RATE_LIMIT
-    assert client.rate_limiter.time_period == 3600
+    assert client.rate_limiter.max_rate == SPEC_DEFAULT_RATE_LIMIT
+    assert client.rate_limiter.time_period == SPEC_DEFAULT_RATE_LIMIT_WINDOW
 
 
 @pytest.mark.asyncio
@@ -173,12 +168,7 @@ async def test_configurable_concurrency() -> None:
     """Test that max concurrent requests is configurable."""
     custom_concurrency = 50
 
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
-        max_concurrent_requests=custom_concurrency,
-    )
+    client = _build_client(max_concurrent_requests=custom_concurrency)
 
     assert client.max_concurrent_requests == custom_concurrency
     assert client.pr_semaphore._value == custom_concurrency
@@ -187,11 +177,7 @@ async def test_configurable_concurrency() -> None:
 @pytest.mark.asyncio
 async def test_default_concurrency() -> None:
     """Test that default concurrency is used when not specified."""
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
-    )
+    client = _build_client()
 
     assert client.max_concurrent_requests == DEFAULT_MAX_CONCURRENT_REQUESTS
     assert client.pr_semaphore._value == DEFAULT_MAX_CONCURRENT_REQUESTS
@@ -200,12 +186,7 @@ async def test_default_concurrency() -> None:
 @pytest.mark.asyncio
 async def test_project_filtering_with_prefix_regex() -> None:
     """Test project filtering with prefix regex pattern."""
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
-        project_filter_regex="^PROD-.*",
-    )
+    client = _build_client(project_filter_regex="^PROD-.*")
 
     assert client._should_include_project("PROD-123") is True
     assert client._should_include_project("PROD-ABC") is True
@@ -216,12 +197,7 @@ async def test_project_filtering_with_prefix_regex() -> None:
 @pytest.mark.asyncio
 async def test_project_filtering_with_suffix_regex() -> None:
     """Test project filtering with suffix regex pattern."""
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
-        project_filter_regex=".*-PROD$",
-    )
+    client = _build_client(project_filter_regex=".*-PROD$")
 
     assert client._should_include_project("PROJECT-PROD") is True
     assert client._should_include_project("TEAM-PROD") is True
@@ -232,12 +208,7 @@ async def test_project_filtering_with_suffix_regex() -> None:
 @pytest.mark.asyncio
 async def test_project_filtering_with_combined_regex() -> None:
     """Test project filtering with combined prefix and suffix regex."""
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
-        project_filter_regex="^TEAM-.*-PROD$",
-    )
+    client = _build_client(project_filter_regex="^TEAM-.*-PROD$")
 
     assert client._should_include_project("TEAM-APP-PROD") is True
     assert client._should_include_project("TEAM-API-PROD") is True
@@ -249,11 +220,7 @@ async def test_project_filtering_with_combined_regex() -> None:
 @pytest.mark.asyncio
 async def test_project_filtering_disabled_by_default() -> None:
     """Test that project filtering is disabled when no patterns are provided."""
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
-    )
+    client = _build_client()
 
     assert client._should_include_project("ANY-PROJECT") is True
     assert client._should_include_project("ANOTHER-ONE") is True
@@ -263,12 +230,7 @@ async def test_project_filtering_disabled_by_default() -> None:
 @pytest.mark.asyncio
 async def test_project_filtering_logic_with_regex() -> None:
     """Test that project filtering logic works correctly with regex."""
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
-        project_filter_regex="^PROD-.*",
-    )
+    client = _build_client(project_filter_regex="^PROD-.*")
 
     test_projects = [
         {"key": "PROD-123", "name": "Production 123"},
@@ -289,12 +251,7 @@ async def test_project_filtering_logic_with_regex() -> None:
 async def test_parallel_pr_fetching_uses_semaphore() -> None:
     """Test that PR fetching uses semaphore for concurrency control."""
     max_concurrent = 5
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
-        max_concurrent_requests=max_concurrent,
-    )
+    client = _build_client(max_concurrent_requests=max_concurrent)
 
     assert client.pr_semaphore._value == max_concurrent
     assert client.max_concurrent_requests == max_concurrent

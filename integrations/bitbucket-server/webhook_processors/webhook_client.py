@@ -328,13 +328,6 @@ class BitbucketServerWebhookClient(BitbucketClient):
 def initialize_client() -> BitbucketServerWebhookClient:
     config = ocean.integration_config
 
-    # Extract rate limiting configuration
-    rate_limit = int(config.get("bitbucket_rate_limit", 1000))
-    rate_limit_window = int(config.get("bitbucket_rate_limit_window", 3600))
-
-    # Webhook client does not use project filtering
-    project_filter_regex = None
-
     return BitbucketServerWebhookClient(
         username=config["bitbucket_username"],
         password=config["bitbucket_password"],
@@ -345,9 +338,9 @@ def initialize_client() -> BitbucketServerWebhookClient:
             bool,
             config.get("bitbucket_is_version8_point7_or_older"),
         ),
-        rate_limit=rate_limit,
-        rate_limit_window=rate_limit_window,
+        rate_limit=int(config["bitbucket_rate_limit"]),
+        rate_limit_window=int(config["bitbucket_rate_limit_window"]),
         page_size=DEFAULT_PAGE_SIZE,
         max_concurrent_requests=DEFAULT_MAX_CONCURRENT_REQUESTS,
-        project_filter_regex=project_filter_regex,
+        project_filter_regex=None,
     )

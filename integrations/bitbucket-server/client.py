@@ -15,8 +15,6 @@ from port_ocean.utils.async_iterators import (
 from port_ocean.utils.cache import cache_iterator_result
 
 # Rate limit docs: https://support.atlassian.com/bitbucket-cloud/docs/api-request-limits/
-DEFAULT_BITBUCKET_RATE_LIMIT = 1000  # requests per hour
-DEFAULT_BITBUCKET_RATE_LIMIT_WINDOW = 3600  # 1 hour
 DEFAULT_PAGE_SIZE = 100  # items per page
 DEFAULT_MAX_CONCURRENT_REQUESTS = 50  # concurrent repository PR requests
 
@@ -32,11 +30,11 @@ class BitbucketClient:
         username: str,
         password: str,
         base_url: str,
+        rate_limit: int | None = None,
+        rate_limit_window: int | None = None,
         webhook_secret: str | None = None,
         app_host: str | None = None,
         is_version_8_7_or_older: bool = False,
-        rate_limit: int = DEFAULT_BITBUCKET_RATE_LIMIT,
-        rate_limit_window: int = DEFAULT_BITBUCKET_RATE_LIMIT_WINDOW,
         page_size: int = DEFAULT_PAGE_SIZE,
         max_concurrent_requests: int = DEFAULT_MAX_CONCURRENT_REQUESTS,
         project_filter_regex: str | None = None,
@@ -48,11 +46,11 @@ class BitbucketClient:
             username: Bitbucket username for authentication
             password: Bitbucket password/token for authentication
             base_url: Base URL of the Bitbucket server
+            rate_limit: Maximum number of requests allowed within the rate limit window
+            rate_limit_window: Time window in seconds for rate limiting
             webhook_secret: Optional secret for webhook signature verification
             app_host: Optional host URL for webhook callbacks
             is_version_8_7_or_older: Whether the Bitbucket Server version is 8.7 or older
-            rate_limit: Maximum number of requests allowed within the rate limit window
-            rate_limit_window: Time window in seconds for rate limiting (default: 3600 = 1 hour)
             page_size: Number of items per page for paginated requests (default: 25)
             max_concurrent_requests: Maximum number of concurrent repository PR requests (default: 10)
             project_filter_regex: Optional regex pattern to filter project keys (e.g., "^PROJ-.*" for prefix or ".*-PROD$" for suffix)
@@ -73,6 +71,11 @@ class BitbucketClient:
         self.project_filter_regex = (
             re.compile(project_filter_regex) if project_filter_regex else None
         )
+
+        if rate_limit is None or rate_limit_window is None:
+            raise ValueError(
+                "Both rate_limit and rate_limit_window must be provided when initializing BitbucketClient."
+            )
 
         # Despite this, being the rate limits, we do not reduce to the lowest common factor because we want to allow as much
         # concurrency as possible. This is because we expect most users to have resources
