@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "firehydrant"
-version = "0.1.224"
+version = "0.1.225"
 description = "FireHydrant Integration Powered by Ocean"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
