@@ -10,6 +10,7 @@ from github.clients.auth.abstract_authenticator import (
     GitHubHeaders,
 )
 from github.helpers.exceptions import AuthenticationException
+from port_ocean.utils.cache import cache_coroutine_result
 
 
 class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
@@ -21,12 +22,13 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
         private_key: str,
         organization: str,
         github_host: str,
+        installation_id: Optional[str] = None,
     ):
         self.app_id = app_id
+        self.installation_id = installation_id
         self.private_key = private_key
         self.organization = organization
         self.github_host = github_host.rstrip("/")
-        self.installation_id: Optional[int] = None
         self.cached_installation_token: Optional[GitHubToken] = None
         self.installation_token_lock = asyncio.Lock()
 
@@ -61,13 +63,29 @@ class GitHubAppAuthenticator(AbstractGitHubAuthenticator):
             X_GitHub_Api_Version="2022-11-28",
         )
 
-    async def _fetch_installation_id(self, jwt_token: str) -> int:
+    @cache_coroutine_result()
+    async def _is_personal_org(self) -> bool:
+        try:
+            url = f"{self.github_host}/users/{self.organization}"
+            response = await self.client.get(url)
+            response.raise_for_status()
+            user_data = response.json()
+            return user_data["type"] == "User"
+        except Exception:
+            logger.exception(
+                "Failed to check if organization is personal, assuming it is not a personal org"
+            )
+            return False
+
+    async def _fetch_installation_id(self, jwt_token: str) -> str:
         try:
             url = f"{self.github_host}/orgs/{self.organization}/installation"
+            if await self._is_personal_org():
+                url = f"{self.github_host}/users/{self.organization}/installation"
             headers = {"Authorization": f"Bearer {jwt_token}"}
             response = await self.client.get(url, headers=headers)
             response.raise_for_status()
-            return response.json()["id"]
+            return str(response.json()["id"])
         except Exception as e:
             raise AuthenticationException(
                 f"Failed to fetch installation ID: {e}"

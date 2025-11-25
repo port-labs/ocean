@@ -188,7 +188,6 @@ jobs:
 
           while IFS= read -r file; do
               integration_dir=$(dirname "$file")
-              integration_name=$(echo "$integration_dir" | awk -F'/' '{print $2}')
 
               # Extract the type for pyproject.toml
               type=$(grep -E '^name = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
@@ -196,9 +195,9 @@ jobs:
               # Extract the version from pyproject.toml
               version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
-              integration_spec="$integration_name-$version.json"
-              integration_dest="$integration_name/$integration_spec"
-              integration_legacy_dest="$integration_name.json" # TODO: legacy support, remove once not in use
+              integration_spec="$type-$version.json"
+              integration_dest="$type/$integration_spec"
+              integration_legacy_dest="$type.json" # TODO: legacy support, remove once not in use
 
               # Convert YAML to JSON
               yq -o json "$file" >"$temp_file"

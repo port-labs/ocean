@@ -172,6 +172,12 @@ class TestCheckRunValidatorWebhookProcessor:
                 return_value=[validation_mapping],
             ),
             patch(
+                "github.core.exporters.organization_exporter.RestOrganizationExporter.get_paginated_resources",
+                new=lambda *args, **kwargs: MockAsyncGenerator(
+                    [[{"login": "test-org", "type": "Organization"}]]
+                ),
+            ),
+            patch(
                 "github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor.create_github_client",
                 return_value=(lambda: None)(),
             ),
@@ -225,6 +231,12 @@ class TestCheckRunValidatorWebhookProcessor:
             patch(
                 "github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor.get_file_validation_mappings",
                 return_value=[validation_mapping],
+            ),
+            patch(
+                "github.core.exporters.organization_exporter.RestOrganizationExporter.get_paginated_resources",
+                new=lambda *args, **kwargs: MockAsyncGenerator(
+                    [[{"login": "test-org", "type": "Organization"}]]
+                ),
             ),
             patch(
                 "github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor.create_github_client",
