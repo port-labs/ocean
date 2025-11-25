@@ -227,8 +227,8 @@ async def resync_pipeline_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for environments in azure_devops_client.generate_environments():
         tasks = [
             azure_devops_client.generate_pipeline_deployments(
-                project_id=environment["project"]["id"],
                 environment_id=environment["id"],
+                project=environment["project"],
             )
             for environment in environments
         ]

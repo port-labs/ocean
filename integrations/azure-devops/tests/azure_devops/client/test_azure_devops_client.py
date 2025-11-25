@@ -2996,7 +2996,9 @@ async def test_generate_pipeline_deployments() -> None:
     ):
         # ACT
         deployments: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            1, {"id": "proj1", "name": "Project One"}
+        ):
             deployments.extend(deployment_batch)
 
         # ASSERT
@@ -3014,7 +3016,9 @@ async def test_generate_pipeline_deployments_will_skip_404() -> None:
 
     with patch.object(client._client, "request", side_effect=mock_make_request):
         deployments: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            1, {"id": "proj1", "name": "Project One"}
+        ):
             deployments.extend(deployment_batch)
 
         assert not deployments
@@ -3048,12 +3052,16 @@ async def test_generate_pipeline_deployments_with_multiple_environments() -> Non
     ):
         # Test environment 1
         deployments_env1: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            1, {"id": "proj1", "name": "Project One"}
+        ):
             deployments_env1.extend(deployment_batch)
 
         # Test environment 2
         deployments_env2: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 2):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            2, {"id": "proj1", "name": "Project One"}
+        ):
             deployments_env2.extend(deployment_batch)
 
         # ASSERT
