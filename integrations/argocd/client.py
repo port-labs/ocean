@@ -36,6 +36,7 @@ class ArgocdClient:
         server_url: str,
         ignore_server_error: bool,
         allow_insecure: bool,
+        use_streaming: bool = False,
     ):
         self.token = token
         self.api_url = f"{server_url}/api/v1"
@@ -53,6 +54,7 @@ class ArgocdClient:
             self.http_client = http_async_client  # type: ignore
         self.http_client.headers.update(self.api_auth_header)
         self.streaming_client = StreamingClientWrapper(self.http_client)
+        self.use_streaming = use_streaming
 
     async def _send_api_request(
         self,
@@ -87,23 +89,69 @@ class ArgocdClient:
                 return {}
             raise e
 
+    async def _fetch_paginated_data(
+        self,
+        url: str,
+        query_params: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch paginated data using traditional HTTP requests (non-streaming)"""
+        page = 0
+        page_size = PAGE_SIZE
+
+        while True:
+            current_params = {**(query_params or {}), "page": page, "size": page_size}
+
+            try:
+                response = await self._send_api_request(
+                    url=url, query_params=current_params
+                )
+                items = response.get("items", [])
+
+                if not items:
+                    break
+
+                yield items
+
+                if len(items) < page_size:
+                    break
+
+                page += 1
+
+            except Exception as e:
+                logger.error(f"Failed to fetch page {page} from {url}: {e}")
+                if not self.ignore_server_error:
+                    raise
+                break
+
     async def get_clusters(
         self, skip_unavailable_clusters: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s"
         try:
-            async for clusters in self.streaming_client.stream_json(
-                url=url, target_items_path="items"
-            ):
-                if skip_unavailable_clusters:
-                    yield [
-                        cluster
-                        for cluster in clusters
-                        if cluster.get("connectionState", {}).get("status")
-                        == ClusterState.AVAILABLE.value
-                    ]
-                else:
-                    yield clusters
+            if self.use_streaming:
+                async for clusters in self.streaming_client.stream_json(
+                    url=url, target_items_path="items"
+                ):
+                    if skip_unavailable_clusters:
+                        yield [
+                            cluster
+                            for cluster in clusters
+                            if cluster.get("connectionState", {}).get("status")
+                            == ClusterState.AVAILABLE.value
+                        ]
+                    else:
+                        yield clusters
+            else:
+                async for clusters in self._fetch_paginated_data(url=url):
+                    if skip_unavailable_clusters:
+                        yield [
+                            cluster
+                            for cluster in clusters
+                            if cluster.get("connectionState", {}).get("status")
+                            == ClusterState.AVAILABLE.value
+                        ]
+                    else:
+                        yield clusters
         except Exception as e:
             logger.error(f"Failed to fetch clusters: {e}")
             if not self.ignore_server_error:
@@ -124,12 +172,18 @@ class ArgocdClient:
 
         for cluster_name in cluster_names:
             try:
-                async for resources in self.streaming_client.stream_json(
-                    url=url,
-                    target_items_path="items",
-                    params={"cluster": cluster_name},
-                ):
-                    yield resources
+                if self.use_streaming:
+                    async for resources in self.streaming_client.stream_json(
+                        url=url,
+                        target_items_path="items",
+                        params={"cluster": cluster_name},
+                    ):
+                        yield resources
+                else:
+                    async for resources in self._fetch_paginated_data(
+                        url=url, query_params={"cluster": cluster_name}
+                    ):
+                        yield resources
             except Exception as e:
                 logger.error(
                     f"Failed to fetch resources of kind {resource_kind} for cluster {cluster_name}: {e}"
@@ -224,14 +278,22 @@ class ArgocdClient:
             )
             url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
 
-            async for managed_resources in self.streaming_client.stream_json(
-                url=url, target_items_path="items"
-            ):
-                yield [
-                    {**managed_resource, "__application": application}
-                    for managed_resource in managed_resources
-                    if managed_resource
-                ]
+            if self.use_streaming:
+                async for managed_resources in self.streaming_client.stream_json(
+                    url=url, target_items_path="items"
+                ):
+                    yield [
+                        {**managed_resource, "__application": application}
+                        for managed_resource in managed_resources
+                        if managed_resource
+                    ]
+            else:
+                async for managed_resources in self._fetch_paginated_data(url=url):
+                    yield [
+                        {**managed_resource, "__application": application}
+                        for managed_resource in managed_resources
+                        if managed_resource
+                    ]
 
         except Exception as e:
             logger.error(

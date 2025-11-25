@@ -12,6 +12,7 @@ def init_client() -> ArgocdClient:
         ocean.integration_config["server_url"],
         ocean.integration_config["ignore_server_error"],
         ocean.integration_config["allow_insecure"],
+        ocean.config.streaming.enabled,
     )
 
 
