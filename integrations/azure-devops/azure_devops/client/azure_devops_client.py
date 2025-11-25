@@ -608,12 +608,14 @@ class AzureDevopsClient(HTTPBaseClient):
                     yield deployments
 
     async def generate_pipeline_deployments(
-        self, project_id: str, environment_id: int
+        self, environment_id: int, project: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        deployments_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/distributedtask/environments/{environment_id}/environmentdeploymentrecords"
+        deployments_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/distributedtask/environments/{environment_id}/environmentdeploymentrecords"
         async for deployments in self._get_paginated_by_top_and_continuation_token(
             deployments_url
         ):
+            for deployment in deployments:
+                deployment["__project"] = project
             yield deployments
 
     async def generate_repository_policies(
@@ -998,18 +1000,21 @@ class AzureDevopsClient(HTTPBaseClient):
 
             for base_path, group in grouped.items():
                 recursion = sorted({d.recursion for d in group}, key=get_priority)[-1]
-                descriptor = [
-                    PathDescriptor(
-                        base_path=base_path,
-                        recursion=recursion,
-                        pattern=group[0].pattern,
-                    )
-                ]
-                raw_files = await self._get_files_by_descriptors(
-                    repository, descriptor, branch
+
+                # Fetch files once for the base path with the highest recursion level
+                descriptor = PathDescriptor(
+                    base_path=base_path,
+                    recursion=recursion,
+                    pattern=group[0].pattern,
                 )
-                matched = filter_files_by_glob(raw_files, descriptor[0])
-                files += matched
+                raw_files = await self._get_files_by_descriptors(
+                    repository, [descriptor], branch
+                )
+
+                # Match files against all patterns in the group
+                for pattern_desc in group:
+                    matched = filter_files_by_glob(raw_files, pattern_desc)
+                    files += matched
 
         logger.info(f"Found {len(files)} files in repository {repository['name']}")
 

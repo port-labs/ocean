@@ -4,7 +4,7 @@ description: okta integration for Port Ocean
 icon: Okta
 features:
   - type: exporter
-    section: Other
+    section: Identity Providers
     resources:
       - kind: okta-user
       - kind: okta-group
