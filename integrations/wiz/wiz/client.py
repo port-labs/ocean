@@ -152,13 +152,19 @@ class WizClient:
 
     async def get_issues(
         self,
-        status_list: list[str] = ["OPEN", "IN_PROGRESS"],
+        status_list: list[str],
+        severity_list: list[str],
+        type_list: list[str],
         page_size: int = PAGE_SIZE,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         variables: dict[str, Any] = {
             "first": page_size,
             "orderBy": {"direction": "DESC", "field": "CREATED_AT"},
-            "filterBy": {"status": status_list} if status_list else {},
+            "filterBy": {
+                "status": status_list,
+                # "severity": severity_list,
+                # "type": type_list,
+            },
         }
 
         async for issues in self._get_paginated_resources(

@@ -39,13 +39,18 @@ async def resync_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield projects
 
     elif kind in {ObjectKind.ISSUE, ObjectKind.CONTROL, ObjectKind.SERVICE_TICKET}:
-        status_list = typing.cast(
-            IssueResourceConfig, event.resource_config
-        ).selector.status_list
+        selector = typing.cast(IssueResourceConfig, event.resource_config).selector
+        status_list = selector.status_list
+        severity_list = selector.severity_list
+        type_list = selector.type_list
 
         logger.info(f"Resyncing {kind.lower()} with status list: {status_list}")
+        logger.info(f"Resyncing {kind.lower()} with severity list: {severity_list}")
+        logger.info(f"Resyncing {kind.lower()} with type list: {type_list}")
 
-        async for _issues in wiz_client.get_issues(status_list):
+        async for _issues in wiz_client.get_issues(
+            status_list=status_list, severity_list=severity_list, type_list=type_list
+        ):
             if kind == ObjectKind.ISSUE:
                 yield _issues
             elif kind == ObjectKind.CONTROL:
