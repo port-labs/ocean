@@ -11,7 +11,7 @@ resources:
         mappings:
           identifier: .id | gsub(" "; "")
           title: .name
-          blueprint: '"project"'
+          blueprint: '"azureDevopsProject"'
           properties:
             state: .state
             revision: .revision
@@ -26,7 +26,7 @@ resources:
         mappings:
           identifier: .id
           title: .name
-          blueprint: '"service"'
+          blueprint: '"azureDevopsRepository"'
           properties:
             url: .remoteUrl
             readme: file://README.md
@@ -39,7 +39,7 @@ resources:
       entity:
         mappings:
           identifier: .__repository.id
-          blueprint: '"service"'
+          blueprint: '"azureDevopsRepository"'
           properties:
             minimumApproverCount: .settings.minimumApproverCount
   - kind: repository-policy
@@ -49,7 +49,7 @@ resources:
       entity:
         mappings:
           identifier: .__repository.id
-          blueprint: '"service"'
+          blueprint: '"azureDevopsRepository"'
           properties:
             workItemLinking: .isEnabled and .isBlocking
   - kind: board
@@ -60,7 +60,7 @@ resources:
         mappings:
           identifier: .id | gsub(" "; "")
           title: .name
-          blueprint: '"board"'
+          blueprint: '"azureDevopsBoard"'
           properties:
             link: .url
           relations:
@@ -74,7 +74,7 @@ resources:
         mappings:
           identifier: .__project.id + "/" + (.id | tostring) | gsub(" "; "")
           title: .fields."System.Title"
-          blueprint: '"workItem"'
+          blueprint: '"azureDevopsWorkItem"'
           properties:
             type: .fields."System.WorkItemType"
             state: .fields."System.State"
@@ -99,7 +99,7 @@ resources:
         mappings:
           identifier: .__stateType+"-"+.name+"-"+.__board.__project.id | gsub(" "; "")
           title: .name
-          blueprint: '"column"'
+          blueprint: '"azureDevopsColumn"'
           relations:
             board: .__board.id | gsub(" "; "")
   - kind: release
@@ -110,7 +110,7 @@ resources:
         mappings:
           identifier: .projectReference.id + "/" + (.id | tostring) | gsub(" "; "")
           title: .name
-          blueprint: '"release"'
+          blueprint: '"azureDevopsRelease"'
           properties:
             status: .status
             reason: .reason
