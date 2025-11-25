@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.4.37 (2025-11-19)
+## 0.4.38 (2025-11-25)
 
 
 ### Improvements
 
 - Use Azure DevOps service `.id` as `identifier` for `repository` kind to ensure stable, unique keys and avoid normalization issues during resync and live events.
 - Update identifiers for repository-policy, work-item and release in default mapping
+
+
+## 0.4.37 (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
 
 
 ## 0.4.36 (2025-11-23)
