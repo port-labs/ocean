@@ -64,7 +64,7 @@ async def test_get_resources_for_available_clusters(
                 }
             ]
 
-            async def mock_stream_json(*args, **kwargs):
+            async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
                 yield response_data["items"]
 
             with patch.object(
@@ -147,7 +147,8 @@ async def test_get_deployment_history(mock_argocd_client: ArgocdClient) -> None:
             }
         ]
     }
-    async def mock_resources_generator(*args, **kwargs):
+
+    async def mock_resources_generator(*args: Any, **kwargs: Any) -> Any:
         yield response_data["items"]
 
     with patch(
@@ -181,7 +182,8 @@ async def test_get_deployment_history_without_history_data(
             }
         ]
     }
-    async def mock_resources_generator(*args, **kwargs):
+
+    async def mock_resources_generator(*args: Any, **kwargs: Any) -> Any:
         yield response_data["items"]
 
     with patch(
@@ -190,8 +192,7 @@ async def test_get_deployment_history_without_history_data(
     ) as mock_request:
         kind = ObjectKind.APPLICATION
         histories = [
-            history
-            async for history in mock_argocd_client.get_deployment_history()
+            history async for history in mock_argocd_client.get_deployment_history()
         ]
         assert not histories
         mock_request.assert_called_with(resource_kind=kind)
@@ -227,7 +228,8 @@ async def test_get_kubernetes_resource(mock_argocd_client: ArgocdClient) -> None
             }
         ]
     }
-    async def mock_resources_generator(*args, **kwargs):
+
+    async def mock_resources_generator(*args: Any, **kwargs: Any) -> Any:
         yield response_data["items"]
 
     with patch(
@@ -261,7 +263,8 @@ async def test_get_kubernetes_resource_without_resource_data(
             }
         ]
     }
-    async def mock_resources_generator(*args, **kwargs):
+
+    async def mock_resources_generator(*args: Any, **kwargs: Any) -> Any:
         yield response_data["items"]
 
     with patch(
@@ -295,7 +298,8 @@ async def test_get_managed_resources(
             },
         ]
     }
-    async def mock_stream_json(*args, **kwargs):
+
+    async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
         yield response_data["items"]
 
     with patch.object(
@@ -310,7 +314,8 @@ async def test_get_managed_resources(
                 assert len(resources) == len(response_data["items"])
                 application_name = application["metadata"]["name"]
                 mock_stream.assert_called_with(
-                    url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources", target_items_path="items"
+                    url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources",
+                    target_items_path="items",
                 )
 
 
@@ -339,7 +344,7 @@ async def test_get_clusters_with_only_available_clusters(
         ]
     }
 
-    async def mock_stream_json(*args, **kwargs):
+    async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
         yield response_data["items"]
 
     with patch.object(
@@ -402,7 +407,7 @@ async def test_get_clusters_filters_unavailable_clusters(
 
         all_clusters = []
 
-        async def mock_stream_json(*args, **kwargs):
+        async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
             yield response_data["items"]
 
         with patch.object(
@@ -424,4 +429,6 @@ async def test_get_clusters_filters_unavailable_clusters(
             # Verify the correct clusters were included
             cluster_names = [cluster["name"] for cluster in all_clusters]
             assert cluster_names == ["cluster-1", "cluster-3", "cluster-5"]
-            mock_stream.assert_called_with(url=f"{mock_argocd_client.api_url}/clusters", target_items_path="items")
+            mock_stream.assert_called_with(
+                url=f"{mock_argocd_client.api_url}/clusters", target_items_path="items"
+            )

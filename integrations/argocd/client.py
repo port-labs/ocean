@@ -47,9 +47,10 @@ class ArgocdClient:
             logger.warning(
                 "Insecure mode is enabled. This will disable SSL verification for the ArgoCD API client, which is not recommended for production use."
             )
-            self.http_client: OceanAsyncClient = OceanAsyncClient(verify=False)
+            self.http_client = OceanAsyncClient(verify=False)
         else:
-            self.http_client = http_async_client
+            # Type ignore because http_async_client is typed as AsyncClient but returns OceanAsyncClient
+            self.http_client = http_async_client  # type: ignore
         self.http_client.headers.update(self.api_auth_header)
         self.streaming_client = StreamingClientWrapper(self.http_client)
 
