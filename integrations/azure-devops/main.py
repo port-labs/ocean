@@ -122,7 +122,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for pull_requests in azure_devops_client.generate_pull_requests(
             search_filter, selector.max_results
         ):
-            logger.info(f"Resyncing {len(pull_requests)} abandoned/completed pull_requests")
+            logger.info(
+                f"Resyncing {len(pull_requests)} abandoned/completed pull_requests"
+            )
             yield pull_requests
 
 
