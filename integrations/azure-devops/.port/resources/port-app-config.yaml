@@ -97,7 +97,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .__stateType+"-"+.name+"-"+.__board.__project.id | gsub(" "; "")
+          identifier: .__stateType + "/" +.name+ "/"+.__board.__project.id | gsub(" "; "")
           title: .name
           blueprint: '"azureDevopsColumn"'
           relations:
