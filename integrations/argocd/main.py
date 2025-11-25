@@ -1,9 +1,10 @@
 from fastapi import Request
 from loguru import logger
-from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import RAW_RESULT, ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import ArgocdClient, ObjectKind, ResourceKindsWithSpecialHandling
+from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
 def init_client() -> ArgocdClient:
@@ -19,12 +20,13 @@ def init_client() -> ArgocdClient:
 async def on_resources_resync(kind: str) -> RAW_RESULT:
     if kind in iter(ResourceKindsWithSpecialHandling):
         logger.info(f"Kind {kind} has a special handling. Skipping...")
-        return []
+        yield []
     else:
         argocd_client = init_client()
-        return await argocd_client.get_resources_for_available_clusters(
+        async for cluster in  argocd_client.get_resources_for_available_clusters(
             resource_kind=ObjectKind(kind)
-        )
+        ):
+            yield cluster
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLUSTER)
