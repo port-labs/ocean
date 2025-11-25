@@ -1,5 +1,3 @@
-from unittest import mock
-
 import pytest
 from unittest.mock import AsyncMock, patch
 from httpx import Response, ReadTimeout
