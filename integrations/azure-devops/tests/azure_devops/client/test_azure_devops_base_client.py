@@ -1,4 +1,5 @@
 import pytest
+from typing import Any
 from unittest.mock import AsyncMock, patch
 from httpx import Response, ReadTimeout
 from azure_devops.client.base_client import (
@@ -181,46 +182,68 @@ async def test_get_paginated_by_top_with_max_results(
 
     max_results = 50
     # case 1: max_results matches exactly PAGE_SIZE
+    captured_calls = []
+
+    async def capture_and_return(*args: Any, **kwargs: Any) -> Response:
+        # Capture a snapshot of params at call time
+        captured_calls.append(
+            {
+                "args": args,
+                "params": (
+                    kwargs.get("params", {}).copy() if kwargs.get("params") else {}
+                ),
+            }
+        )
+        return mock_response1
+
     with patch.object(
         mock_client,
         "send_request",
-        side_effect=[
-            mock_response1,
-            mock_response2,
-        ],
-    ) as mock_send:
+        side_effect=capture_and_return,
+    ):
         generator = mock_client._get_paginated_by_top_and_skip(
             "test_url", max_results=max_results
         )
         results = [item async for page in generator for item in page]
 
         assert len(results) == max_results
-        assert mock_send.call_count == 1
-        mock_send.assert_called_once_with(
-            "GET", "test_url", params={"$top": max_results, "$skip": 0}
-        )
+        assert len(captured_calls) == 1
+        assert captured_calls[0]["args"] == ("GET", "test_url")
+        assert captured_calls[0]["params"] == {"$top": max_results, "$skip": 0}
 
     # case 2: max_results is less than PAGE_SIZE
     mock_response3 = AsyncMock(spec=Response)
     mock_response3.status_code = 200
     mock_response3.json.return_value = {"value": [{"id": idx} for idx in range(25)]}
     max_results = 25
+    captured_calls = []
+
+    async def capture_and_return2(*args: Any, **kwargs: Any) -> Response:
+        captured_calls.append(
+            {
+                "args": args,
+                "params": (
+                    kwargs.get("params", {}).copy() if kwargs.get("params") else {}
+                ),
+            }
+        )
+        return mock_response3
+
     with patch.object(
         mock_client,
         "send_request",
-        side_effect=[mock_response3],
-    ) as mock_send:
+        side_effect=capture_and_return2,
+    ):
         generator = mock_client._get_paginated_by_top_and_skip(
             "test_url", max_results=max_results
         )
         results = [item async for page in generator for item in page]
 
         assert len(results) == max_results
-        assert mock_send.call_count == 1
+        assert len(captured_calls) == 1
         assert results[-1]["id"] == 24
-        mock_send.assert_called_once_with(
-            "GET", "test_url", params={"$top": max_results, "$skip": 0}
-        )
+        assert captured_calls[0]["args"] == ("GET", "test_url")
+        assert captured_calls[0]["params"] == {"$top": max_results, "$skip": 0}
 
     # case 3: max_results is more than PAGE_SIZE
     mock_response_partial = AsyncMock(spec=Response)
@@ -229,21 +252,36 @@ async def test_get_paginated_by_top_with_max_results(
         "value": [{"id": idx} for idx in range(50, 75)]
     }
     max_results = 75
+    captured_calls = []
+    responses = [mock_response1, mock_response_partial]
+
+    async def capture_and_return3(*args: Any, **kwargs: Any) -> Response:
+        captured_calls.append(
+            {
+                "args": args,
+                "params": (
+                    kwargs.get("params", {}).copy() if kwargs.get("params") else {}
+                ),
+            }
+        )
+        return responses[len(captured_calls) - 1]
+
     with patch.object(
         mock_client,
         "send_request",
-        side_effect=[mock_response1, mock_response_partial],
-    ) as mock_send:
+        side_effect=capture_and_return3,
+    ):
         generator = mock_client._get_paginated_by_top_and_skip(
             "test_url", max_results=max_results
         )
         results = [item async for page in generator for item in page]
 
         assert len(results) == max_results
-        assert mock_send.call_count == 2
-        mock_send.assert_called_with(
-            "GET", "test_url", params={"$top": 25, "$skip": PAGE_SIZE}
-        )
+        assert len(captured_calls) == 2
+        # First call
+        assert captured_calls[0]["params"] == {"$top": PAGE_SIZE, "$skip": 0}
+        # Second call
+        assert captured_calls[1]["params"] == {"$top": 25, "$skip": PAGE_SIZE}
 
 
 @pytest.mark.asyncio

@@ -146,7 +146,7 @@ class HTTPBaseClient:
                 params["$top"] = min(PAGE_SIZE, max_results - total_items_fetched)
 
             try:
-                response = await self.send_request("GET", url, params=params.copy())
+                response = await self.send_request("GET", url, params=params)
                 if not response:
                     break
 
