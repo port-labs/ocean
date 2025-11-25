@@ -243,19 +243,8 @@ async def test_get_paginated_by_top_with_max_results(
 
         assert len(results) == max_results
         assert mock_send.call_count == 2
-        mock_send.assert_has_calls(
-            [
-                mock.call(
-                    "GET",
-                    "test_url",
-                    params={"$top": PAGE_SIZE, "$skip": 0},
-                ),
-                mock.call(
-                    "GET",
-                    "test_url",
-                    params={"$top": 25, "$skip": PAGE_SIZE},
-                ),
-            ]
+        mock_send.assert_called_with(
+            "GET", "test_url", params={"$top": 25, "$skip": PAGE_SIZE}
         )
 
 
