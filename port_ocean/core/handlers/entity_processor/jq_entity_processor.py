@@ -1,19 +1,27 @@
 import asyncio
+import json
+import re
 from asyncio import Task
 from dataclasses import dataclass, field
 from functools import lru_cache
-import json
 from typing import Any, Optional
+
 import jq  # type: ignore
 from loguru import logger
+
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.entity_processor.base import BaseEntityProcessor
+from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
+    InputClassifyingResult,
+    can_expression_run_with_no_input,
+    classify_input,
+)
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import (
     RAW_ITEM,
-    EntitySelectorDiff,
     CalculationResult,
+    EntitySelectorDiff,
 )
 from port_ocean.core.utils.utils import (
     gather_and_split_errors_from_results,
@@ -21,11 +29,6 @@ from port_ocean.core.utils.utils import (
 )
 from port_ocean.exceptions.core import EntityProcessorException
 from port_ocean.utils.queue_utils import process_in_queue
-from port_ocean.core.handlers.entity_processor.jq_input_evaluator import (
-    InputClassifyingResult,
-    classify_input,
-    can_expression_run_with_no_input,
-)
 
 
 class ExampleStates:
@@ -92,8 +95,29 @@ class JQEntityProcessor(BaseEntityProcessor):
     searching for data in dictionaries, and transforming data based on object mappings.
     """
 
+    @staticmethod
+    def _format_filter(filter: str) -> str:
+        """
+        Convert single quotes to double quotes in JQ expressions.
+        Only replaces single quotes that are opening or closing string delimiters,
+        not single quotes that are part of string content.
+        """
+        # Escape single quotes only if they are opening or closing a string
+        # Pattern matches:
+        # - Single quote at start of string or after whitespace (opening quote)
+        # - Single quote before whitespace or end of string (closing quote)
+        # Uses negative lookahead/lookbehind to avoid replacing quotes inside strings
+        # \1 and \2 will be empty for the alternative that didn't match, so \1"\2 works for both cases
+        # This matches the TypeScript pattern: /(^|\s)'(?!\s|")|(?<!\s|")'(\s|$)/g
+        formatted_filter = re.sub(
+            r'(^|\s)\'(?!\s|")|(?<!\s|")\'(\s|$)', r'\1"\2', filter
+        )
+        return formatted_filter
+
     @lru_cache
     def _compile(self, pattern: str) -> Any:
+        # Convert single quotes to double quotes for JQ compatibility
+        pattern = self._format_filter(pattern)
         if not ocean.config.allow_environment_variables_jq_access:
             pattern = "def env: {}; {} as $ENV | " + pattern
         return jq.compile(pattern)
@@ -119,7 +143,6 @@ class JQEntityProcessor(BaseEntityProcessor):
         missing_required_fields: bool,
         entity_mapping_fault_counter: int,
     ) -> None:
-
         if len(entity_misconfigurations) > 0:
             logger.info(
                 f"Unable to find valid data for: {entity_misconfigurations} (null, missing, or misconfigured)"
@@ -444,7 +467,6 @@ class JQEntityProcessor(BaseEntityProcessor):
         key: str,
         value: dict[str, Any],
     ) -> None:
-
         if key in ["properties", "relations"]:
             mapping_dicts: dict[InputClassifyingResult, dict[str, Any]] = {
                 InputClassifyingResult.SINGLE: {},

@@ -318,9 +318,13 @@ class TestCanExpressionRunOnSingleItem:
 
     def test_key_in_pipe(self) -> None:
         """Test key in pipe operations"""
-        assert _can_expression_run_on_single_item(".[] | .item.field", "item") is True
+        assert _can_expression_run_on_single_item(".[] | .item.field", "item") is False
         assert (
-            _can_expression_run_on_single_item(".data[] | .item.field", "item") is True
+            _can_expression_run_on_single_item(".data[] | .item.field", "item") is False
+        )
+        assert (
+            _can_expression_run_on_single_item("[1,2,3,4] | .item.field", "item")
+            is True
         )
 
     def test_key_in_array(self) -> None:
@@ -409,7 +413,7 @@ class TestCanExpressionRunOnSingleItem:
         """Test key in complex expressions"""
         assert (
             _can_expression_run_on_single_item(".data.items[] | .item.field", "item")
-            is True
+            is False
         )
         assert (
             _can_expression_run_on_single_item(
@@ -473,9 +477,7 @@ class TestClassifyInput:
             classify_input("select(.item.status)", "item")
             == InputClassifyingResult.SINGLE
         )
-        assert (
-            classify_input(".[] | .item.field", "item") == InputClassifyingResult.SINGLE
-        )
+        assert classify_input(".[] | .item.field", "item") == InputClassifyingResult.ALL
         assert (
             classify_input("[.item.id, .item.name]", "item")
             == InputClassifyingResult.SINGLE
@@ -538,7 +540,7 @@ class TestClassifyInput:
         # Complex single input expressions
         assert (
             classify_input(".data.items[] | .item.field", "item")
-            == InputClassifyingResult.SINGLE
+            == InputClassifyingResult.ALL
         )
         assert (
             classify_input("reduce .item.items[] as $item (0; . + $item.value)", "item")
@@ -835,9 +837,7 @@ class TestIntegration:
             classify_input('select(.item.status == "active")', "item")
             == InputClassifyingResult.SINGLE
         )
-        assert (
-            classify_input(".[] | .item.field", "item") == InputClassifyingResult.SINGLE
-        )
+        assert classify_input(".[] | .item.field", "item") == InputClassifyingResult.ALL
         assert (
             classify_input("[.item.id, .item.name]", "item")
             == InputClassifyingResult.SINGLE
