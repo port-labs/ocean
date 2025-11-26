@@ -64,7 +64,7 @@ lint:
 
 lint/fix:
 	$(ACTIVATE) && \
-	black . && \
+	black .
 	ruff check --fix .
 
 run:
