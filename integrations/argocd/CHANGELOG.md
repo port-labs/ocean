@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.247 (2025-11-25)
+
+
+### Improvements
+
+- Supports streaming for argocd data
+
 ## 0.1.246 (2025-11-25)
 
 

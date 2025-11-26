@@ -458,13 +458,14 @@ async def test_fetch_paginated_data_success() -> None:
         {"items": page2_items},
     ]
 
-    with patch.object(client, "_send_api_request", new_callable=AsyncMock) as mock_request:
+    with patch.object(
+        client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
         mock_request.side_effect = page_responses
 
         all_items = []
         async for items in client._fetch_paginated_data(
-            url="https://test.com/api",
-            query_params={"filter": "test"}
+            url="https://test.com/api", query_params={"filter": "test"}
         ):
             all_items.extend(items)
 
@@ -493,7 +494,9 @@ async def test_fetch_paginated_data_with_error() -> None:
         use_streaming=False,
     )
 
-    with patch.object(client, "_send_api_request", new_callable=AsyncMock) as mock_request:
+    with patch.object(
+        client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
         mock_request.side_effect = Exception("API Error")
 
         with pytest.raises(Exception, match="API Error"):
@@ -512,7 +515,9 @@ async def test_fetch_paginated_data_with_ignored_error() -> None:
         use_streaming=False,
     )
 
-    with patch.object(client, "_send_api_request", new_callable=AsyncMock) as mock_request:
+    with patch.object(
+        client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
         mock_request.side_effect = Exception("API Error")
 
         items = []
@@ -543,7 +548,9 @@ async def test_get_clusters_with_streaming_enabled() -> None:
     async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
         yield response_data["items"]
 
-    with patch.object(client.streaming_client, "stream_json", side_effect=mock_stream_json) as mock_stream:
+    with patch.object(
+        client.streaming_client, "stream_json", side_effect=mock_stream_json
+    ) as mock_stream:
         with patch.object(client, "_fetch_paginated_data") as mock_paginated:
             clusters = []
             async for cluster_batch in client.get_clusters():
@@ -575,7 +582,9 @@ async def test_get_clusters_with_streaming_disabled() -> None:
         yield response_data
 
     with patch.object(client.streaming_client, "stream_json") as mock_stream:
-        with patch.object(client, "_fetch_paginated_data", side_effect=mock_fetch_paginated) as mock_paginated:
+        with patch.object(
+            client, "_fetch_paginated_data", side_effect=mock_fetch_paginated
+        ) as mock_paginated:
             clusters = []
             async for cluster_batch in client.get_clusters():
                 clusters.extend(cluster_batch)
@@ -606,14 +615,16 @@ async def test_get_clusters_skip_unavailable_with_streaming_disabled() -> None:
     async def mock_fetch_paginated(*args: Any, **kwargs: Any) -> Any:
         yield response_data
 
-    with patch.object(client, "_fetch_paginated_data", side_effect=mock_fetch_paginated):
-            clusters = []
-            async for cluster_batch in client.get_clusters(skip_unavailable_clusters=True):
-                clusters.extend(cluster_batch)
+    with patch.object(
+        client, "_fetch_paginated_data", side_effect=mock_fetch_paginated
+    ):
+        clusters = []
+        async for cluster_batch in client.get_clusters(skip_unavailable_clusters=True):
+            clusters.extend(cluster_batch)
 
-            # Should only have successful clusters
-            assert len(clusters) == 2
-            assert all(c["connectionState"]["status"] == "Successful" for c in clusters)
+        # Should only have successful clusters
+        assert len(clusters) == 2
+        assert all(c["connectionState"]["status"] == "Successful" for c in clusters)
 
 
 @pytest.mark.asyncio
@@ -628,7 +639,9 @@ async def test_get_resources_for_available_clusters_with_streaming_disabled() ->
     )
 
     # Mock available clusters
-    with patch.object(client, "get_available_clusters", new_callable=AsyncMock) as mock_clusters:
+    with patch.object(
+        client, "get_available_clusters", new_callable=AsyncMock
+    ) as mock_clusters:
         mock_clusters.return_value = [{"name": "test-cluster"}]
 
         response_data = [
@@ -640,15 +653,19 @@ async def test_get_resources_for_available_clusters_with_streaming_disabled() ->
             yield response_data
 
         with patch.object(client.streaming_client, "stream_json") as mock_stream:
-            with patch.object(client, "_fetch_paginated_data", side_effect=mock_fetch_paginated) as mock_paginated:
+            with patch.object(
+                client, "_fetch_paginated_data", side_effect=mock_fetch_paginated
+            ) as mock_paginated:
                 resources = []
-                async for resource_batch in client.get_resources_for_available_clusters(ObjectKind.APPLICATION):
+                async for resource_batch in client.get_resources_for_available_clusters(
+                    ObjectKind.APPLICATION
+                ):
                     resources.extend(resource_batch)
 
                 # Should use paginated, not streaming
                 mock_paginated.assert_called_once_with(
                     url=f"{client.api_url}/applications",
-                    query_params={"cluster": "test-cluster"}
+                    query_params={"cluster": "test-cluster"},
                 )
                 mock_stream.assert_not_called()
                 assert len(resources) == 2
@@ -675,7 +692,9 @@ async def test_get_managed_resources_with_streaming_disabled() -> None:
         yield response_data
 
     with patch.object(client.streaming_client, "stream_json") as mock_stream:
-        with patch.object(client, "_fetch_paginated_data", side_effect=mock_fetch_paginated) as mock_paginated:
+        with patch.object(
+            client, "_fetch_paginated_data", side_effect=mock_fetch_paginated
+        ) as mock_paginated:
             resources = []
             async for resource_batch in client.get_managed_resources(application):
                 resources.extend(resource_batch)
