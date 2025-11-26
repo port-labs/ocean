@@ -4,6 +4,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from pydantic import Field
+from typing import Literal
 
 
 class IssueSelector(Selector):
@@ -26,10 +27,31 @@ class IssueSelector(Selector):
 
 class IssueResourceConfig(ResourceConfig):
     selector: IssueSelector
+    kind: Literal["issue"]
+
+
+class ProjectSelector(Selector):
+    impact: str = Field(
+        alias="impact",
+        description="The business impact of the project. If empty, all projects are fetched. Valid values are: LBI, MBI, HBI",
+        default="",
+    )
+    include_archived: bool = Field(
+        alias="includeArchived",
+        description="Include archived projects. False by default.",
+        default=False,
+    )
+
+
+class ProjectResourceConfig(ResourceConfig):
+    selector: ProjectSelector
+    kind: Literal["project"]
 
 
 class WizPortAppConfig(PortAppConfig):
-    resources: list[IssueResourceConfig | ResourceConfig] = Field(default_factory=list)
+    resources: list[IssueResourceConfig | ProjectResourceConfig | ResourceConfig] = (
+        Field(default_factory=list)
+    )
     max_pages: int = Field(
         alias="maxPages",
         description="Maximum number of pages to fetch. By default, 500 pages are fetched.",

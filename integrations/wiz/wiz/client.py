@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Optional
 
 import httpx
 from loguru import logger
@@ -173,14 +173,24 @@ class WizClient:
             yield issues
 
     async def get_projects(
-        self, max_pages: int, page_size: int = PAGE_SIZE
+        self,
+        max_pages: int,
+        include_archived: bool = False,
+        impact: Optional[str] = None,
+        page_size: int = PAGE_SIZE,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(CacheKeys.PROJECTS):
             logger.info("Picking Wiz projects from cache")
             yield cache
             return
 
-        variables: dict[str, Any] = {"first": page_size}
+        variables: dict[str, Any] = {
+            "first": page_size,
+            "filterBy": {"includeArchived": include_archived},
+        }
+
+        if impact:
+            variables["filterBy"]["impact"] = impact
 
         async for projects in self._get_paginated_resources(
             resource="projects", variables=variables, max_pages=max_pages
