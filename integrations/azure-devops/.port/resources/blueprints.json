@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "azureDevopsProject",
+    "identifier": "project",
     "title": "Project",
     "icon": "AzureDevops",
     "schema": {
@@ -45,7 +45,7 @@
     "relations": {}
   },
   {
-    "identifier": "azureDevopsRepository",
+    "identifier": "service",
     "title": "Service",
     "icon": "AzureDevops",
     "schema": {
@@ -110,14 +110,14 @@
     "relations": {
       "project": {
         "title": "Project",
-        "target": "azureDevopsProject",
+        "target": "project",
         "required": false,
         "many": false
       }
     }
   },
   {
-    "identifier": "azureDevopsWorkItem",
+    "identifier": "workItem",
     "title": "Work Item",
     "icon": "AzureDevops",
     "schema": {
@@ -205,21 +205,41 @@
     "relations": {
       "project": {
         "title": "Project",
-        "target": "azureDevopsProject",
+        "target": "project",
         "required": true,
         "many": false
       },
       "column": {
         "title": "Column",
         "description": "The column the entity belongs",
-        "target": "azureDevopsColumn",
+        "target": "column",
         "required": true,
         "many": false
       }
     }
   },
   {
-    "identifier": "azureDevopsBoard",
+    "identifier": "column",
+    "title": "Column",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {},
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "board": {
+        "title": "board",
+        "target": "board",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "board",
     "title": "Board",
     "icon": "AzureDevops",
     "schema": {
@@ -240,34 +260,14 @@
     "relations": {
       "project": {
         "title": "Project",
-        "target": "azureDevopsProject",
+        "target": "project",
         "required": true,
         "many": false
       }
     }
   },
   {
-    "identifier": "azureDevopsColumn",
-    "title": "Column",
-    "icon": "AzureDevops",
-    "schema": {
-      "properties": {},
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
-      "board": {
-        "title": "board",
-        "target": "azureDevopsBoard",
-        "required": true,
-        "many": false
-      }
-    }
-  },
-  {
-    "identifier": "azureDevopsRelease",
+    "identifier": "release",
     "title": "Release",
     "icon": "AzureDevops",
     "schema": {
@@ -328,7 +328,7 @@
     "relations": {
       "project": {
         "title": "Project",
-        "target": "azureDevopsProject",
+        "target": "project",
         "required": true,
         "many": false
       }
