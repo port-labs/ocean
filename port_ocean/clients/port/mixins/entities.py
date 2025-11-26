@@ -359,16 +359,23 @@ class EntityClientMixin:
         blueprint = entities[0].blueprint
 
         identifier_counts = Counter((e.blueprint, e.identifier) for e in entities)
-        duplicate_count = sum(
-            count - 1 for count in identifier_counts.values() if count > 1
-        )
+        duplicates: dict[tuple[str, str], int] = {
+            key: cnt for key, cnt in identifier_counts.items() if cnt > 1
+        }
 
-        if duplicate_count:
-            duplicate_examples = [
-                key for key, cnt in identifier_counts.items() if cnt > 1
-            ][:5]
+        if duplicates:
+            # Total number of *extra* occurrences beyond the first appearance of each entity
+            duplicate_count = sum(cnt - 1 for cnt in duplicates.values())
+
+            # Show up to 5 example (blueprint, identifier) pairs to avoid noisy logs
+            duplicate_examples = list(duplicates)[:5]
+
             logger.warning(
-                f"Detected {duplicate_count} duplicate entities (by blueprint and identifier) that may not be ingested because an identical identifier existed. Examples: {duplicate_examples}"
+                "Detected duplicate entities (by blueprint and identifier) that may not be ingested because an identical identifier existed",
+                extra={
+                    "duplicate_examples": duplicate_examples,
+                    "duplicate_count": duplicate_count,
+                },
             )
 
         bulk_size = self.calculate_entities_batch_size(entities)
