@@ -107,8 +107,8 @@ class TestRepositoryProperties:
             imageTagMutability="IMMUTABLE",
             imageScanningConfiguration={"scanOnPush": True},
             encryptionConfiguration={"encryptionType": "AES256"},
-            lifecyclePolicy='{"rules":[{"rulePriority":1}]}',  # string
-            repositoryPolicy='{"Version":"2012-10-17"}',
+            lifecyclePolicy={"rules": [{"rulePriority": 1}]},
+            repositoryPolicy={"Version": "2012-10-17"},
             tags=[{"Key": "Name", "Value": "server"}],
         )
         assert properties.repositoryName == "my-repo"

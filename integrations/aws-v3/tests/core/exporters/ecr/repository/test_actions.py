@@ -80,8 +80,8 @@ class TestGetRepositoryPolicyAction:
         result = await action.execute(repositories)
 
         assert len(result) == 2
-        assert result[0]["repositoryPolicy"] == policy_text_1
-        assert result[1]["repositoryPolicy"] == policy_text_2
+        assert result[0]["repositoryPolicy"]["policyText"] == policy_text_1
+        assert result[1]["repositoryPolicy"]["policyText"] == policy_text_2
         assert action.client.get_repository_policy.call_count == 2
 
     @pytest.mark.asyncio
@@ -145,8 +145,8 @@ class TestGetLifecyclePolicyAction:
         result = await action.execute(repositories)
 
         assert len(result) == 2
-        assert result[0]["lifecyclePolicy"] == lifecycle_text_1
-        assert result[1]["lifecyclePolicy"] == lifecycle_text_2
+        assert result[0]["lifecyclePolicy"]["lifecyclePolicyText"] == lifecycle_text_1
+        assert result[1]["lifecyclePolicy"]["lifecyclePolicyText"] == lifecycle_text_2
         assert action.client.get_lifecycle_policy.call_count == 2
 
     @pytest.mark.asyncio

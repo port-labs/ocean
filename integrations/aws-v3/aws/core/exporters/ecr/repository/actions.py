@@ -46,7 +46,8 @@ class GetRepositoryPolicyAction(Action):
         response = await self.client.get_repository_policy(
             repositoryName=repository["repositoryName"]
         )
-        return {"repositoryPolicy": response["policyText"]}
+
+        return {"repositoryPolicy": response}
 
 
 class GetLifecyclePolicyAction(Action):
@@ -90,7 +91,7 @@ class GetLifecyclePolicyAction(Action):
         response = await self.client.get_lifecycle_policy(
             repositoryName=repository["repositoryName"]
         )
-        return {"lifecyclePolicy": response["lifecyclePolicyText"]}
+        return {"lifecyclePolicy": response}
 
 
 class ListTagsForResourceAction(Action):

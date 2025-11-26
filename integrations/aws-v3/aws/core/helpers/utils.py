@@ -21,6 +21,8 @@ def is_resource_not_found_exception(e: Exception) -> bool:
         "ResourceNotFoundException",
         "ResourceNotFound",
         "ResourceNotFoundFault",
+        "RepositoryPolicyNotFoundException",
+        "LifecyclePolicyNotFoundException",
     ]
     response = getattr(e, "response", None)
     if isinstance(response, dict):

@@ -17,8 +17,12 @@ class RepositoryProperties(BaseModel):
     encryptionConfiguration: Optional[dict[str, Any]] = Field(
         default=None, alias="EncryptionConfiguration"
     )
-    lifecyclePolicy: Optional[str] = Field(default=None, alias="LifecyclePolicy")
-    repositoryPolicy: Optional[str] = Field(default=None, alias="RepositoryPolicy")
+    lifecyclePolicy: Optional[dict[str, Any]] = Field(
+        default=None, alias="LifecyclePolicy"
+    )
+    repositoryPolicy: Optional[dict[str, Any]] = Field(
+        default=None, alias="RepositoryPolicy"
+    )
     tags: list[dict[str, str]] = Field(default_factory=list, alias="Tags")
 
     class Config:
