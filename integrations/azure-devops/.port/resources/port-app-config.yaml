@@ -48,6 +48,8 @@ resources:
           properties:
             url: .__repository.remoteUrl + "?path=/" + .path
             readme: file://README.md
+          relations:
+            project: .__repository.project.id | gsub(" "; "")
   - kind: repository-policy
     selector:
       query: .type.displayName=="Minimum number of reviewers"
