@@ -1409,7 +1409,7 @@ class AzureDevopsClient(HTTPBaseClient):
         if not project:
             logger.warning(f"Project {project_name} not found")
             return
-        
+
         repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
         repos_response = await self.send_request("GET", repos_url)
         if repos_response:
