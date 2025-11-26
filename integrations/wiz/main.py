@@ -10,7 +10,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from port_ocean.context.event import event
 from wiz.client import WizClient
-from overrides import IssueResourceConfig
+from overrides import IssueResourceConfig, WizPortAppConfig
 
 
 class ObjectKind(StrEnum):
@@ -32,9 +32,10 @@ def init_client() -> WizClient:
 @ocean.on_resync()
 async def resync_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     wiz_client = init_client()
+    max_pages = typing.cast(WizPortAppConfig, event.port_app_config).max_pages
 
     if kind == ObjectKind.PROJECT:
-        async for projects in wiz_client.get_projects():
+        async for projects in wiz_client.get_projects(max_pages=max_pages):
             logger.info(f"Received {len(projects)} projects")
             yield projects
 
@@ -44,12 +45,15 @@ async def resync_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         severity_list = selector.severity_list
         type_list = selector.type_list
 
-        logger.info(f"Resyncing {kind.lower()} with status list: {status_list}")
-        logger.info(f"Resyncing {kind.lower()} with severity list: {severity_list}")
-        logger.info(f"Resyncing {kind.lower()} with type list: {type_list}")
+        logger.info(
+            f"Resyncing {kind.lower()} with status list: {status_list}, severity list: {severity_list}, type list: {type_list}, max pages: {max_pages}"
+        )
 
         async for _issues in wiz_client.get_issues(
-            status_list=status_list, severity_list=severity_list, type_list=type_list
+            status_list=status_list,
+            severity_list=severity_list,
+            type_list=type_list,
+            max_pages=max_pages,
         ):
             if kind == ObjectKind.ISSUE:
                 yield _issues

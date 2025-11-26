@@ -14,7 +14,6 @@ from .constants import (
     COGNITO_URLS,
     GRAPH_QUERIES,
     ISSUES_GQL,
-    MAX_PAGES,
     PAGE_SIZE,
 )
 
@@ -130,13 +129,13 @@ class WizClient:
             raise
 
     async def _get_paginated_resources(
-        self, resource: str, variables: dict[str, Any]
+        self, resource: str, variables: dict[str, Any], max_pages: int
     ) -> AsyncGenerator[list[Any], None]:
         logger.info(f"Fetching {resource} data from Wiz API")
         page_num = 1
 
-        while page_num <= MAX_PAGES:
-            logger.info(f"Fetching page {page_num} of {MAX_PAGES}")
+        while page_num <= max_pages:
+            logger.info(f"Fetching page {page_num} of {max_pages}")
             gql = GRAPH_QUERIES[resource]
             data = await self.make_graphql_query(gql, variables)
 
@@ -155,6 +154,7 @@ class WizClient:
         status_list: list[str],
         severity_list: list[str],
         type_list: list[str],
+        max_pages: int,
         page_size: int = PAGE_SIZE,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         variables: dict[str, Any] = {
@@ -162,18 +162,18 @@ class WizClient:
             "orderBy": {"direction": "DESC", "field": "CREATED_AT"},
             "filterBy": {
                 "status": status_list,
-                # "severity": severity_list,
-                # "type": type_list,
+                "severity": severity_list,
+                "type": type_list,
             },
         }
 
         async for issues in self._get_paginated_resources(
-            resource="issues", variables=variables
+            resource="issues", variables=variables, max_pages=max_pages
         ):
             yield issues
 
     async def get_projects(
-        self, page_size: int = PAGE_SIZE
+        self, max_pages: int, page_size: int = PAGE_SIZE
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(CacheKeys.PROJECTS):
             logger.info("Picking Wiz projects from cache")
@@ -183,7 +183,7 @@ class WizClient:
         variables: dict[str, Any] = {"first": page_size}
 
         async for projects in self._get_paginated_resources(
-            resource="projects", variables=variables
+            resource="projects", variables=variables, max_pages=max_pages
         ):
             event.attributes.setdefault(CacheKeys.PROJECTS, []).extend(projects)
             yield projects
