@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -33,19 +33,26 @@ class Kind(StrEnum):
     BRANCH = "branch"
 
 
-PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [
-    {"searchCriteria.status": "active"},
-    {
-        "searchCriteria.status": "abandoned",
-        "searchCriteria.queryTimeRangeType": "closed",
-        "searchCriteria.minTime": datetime.now() - timedelta(days=7),
-    },
-    {
-        "searchCriteria.status": "completed",
-        "searchCriteria.queryTimeRangeType": "closed",
-        "searchCriteria.minTime": datetime.now() - timedelta(days=7),
-    },
-]
+ACTIVE_PULL_REQUEST_SEARCH_CRITERIA: dict[str, Any] = {
+    "searchCriteria.status": "active"
+}
+
+
+def create_closed_pull_request_search_criteria(
+    min_time_datetime: datetime,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "searchCriteria.status": "abandoned",
+            "searchCriteria.queryTimeRangeType": "closed",
+            "searchCriteria.minTime": min_time_datetime,
+        },
+        {
+            "searchCriteria.status": "completed",
+            "searchCriteria.queryTimeRangeType": "closed",
+            "searchCriteria.minTime": min_time_datetime,
+        },
+    ]
 
 
 def extract_branch_name_from_ref(ref: str) -> str:
