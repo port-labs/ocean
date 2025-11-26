@@ -11,8 +11,6 @@ class GetRepositoryPolicyAction(Action):
     async def _execute(
         self, repositories: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
-        if not repositories:
-            return []
 
         policies = await asyncio.gather(
             *(self._fetch_repository_policy(repo) for repo in repositories),
@@ -56,8 +54,6 @@ class GetLifecyclePolicyAction(Action):
     async def _execute(
         self, repositories: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
-        if not repositories:
-            return []
 
         policies = await asyncio.gather(
             *(self._fetch_lifecycle_policy(repo) for repo in repositories),
@@ -100,8 +96,6 @@ class ListTagsForResourceAction(Action):
     async def _execute(
         self, repositories: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
-        if not repositories:
-            return []
 
         tags = await asyncio.gather(
             *(self._fetch_repository_tags(repo) for repo in repositories),
