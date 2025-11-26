@@ -2188,13 +2188,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.30.1"
+version = "0.30.3"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.30.1-py3-none-any.whl", hash = "sha256:731c6549098f1fc904a10b75541021265bdf40a9a3578642829dca94af2f32ac"},
-    {file = "port_ocean-0.30.1.tar.gz", hash = "sha256:ab4420376599b7710beb39f288390f8f372d0a9f36c8ae75509e07d4955df64a"},
+    {file = "port_ocean-0.30.3-py3-none-any.whl", hash = "sha256:2ea8335be4fcc6be4c659531bfd421b77b02d2ef15aa4085242d84e731a546ea"},
+    {file = "port_ocean-0.30.3.tar.gz", hash = "sha256:afd961f84f6c88eb1d0490584f3a8325731993483be7786f709fe59a03c14005"},
 ]
 
 [package.dependencies]
@@ -2209,6 +2209,7 @@ httpx = ">=0.28.1,<0.29.0"
 ijson = ">=3.4.0,<4.0.0"
 jinja2 = ">=3.1.6"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
+jmespath = ">=1.0.1,<2.0.0"
 jq = ">=1.8.0,<2.0.0"
 loguru = ">=0.7.0,<0.8.0"
 prometheus-client = ">=0.21.1,<0.22.0"
@@ -3730,4 +3731,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "0070f3900d4a05e0966eb4e5b0003edf9f218e1843c9382e1cb39873babee791"
+content-hash = "f69e0246d16849ed472777639ebe08f70676b897c00510b77478cb129d1bd99a"
