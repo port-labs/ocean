@@ -1,6 +1,10 @@
 from loguru import logger
 from github.webhook.events import DEPENDABOT_ACTION_TO_STATE
-from github.helpers.utils import ObjectKind, enrich_with_repository
+from github.helpers.utils import (
+    ObjectKind,
+    enrich_with_repository,
+    enrich_with_organization,
+)
 from github.clients.client_factory import create_github_client
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -35,9 +39,10 @@ class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         alert_number = alert["number"]
         repo_name = repo["name"]
+        organization = payload["organization"]["login"]
 
         logger.info(
-            f"Processing Dependabot alert event: {action} for alert {alert_number} in {repo_name}"
+            f"Processing Dependabot alert event: {action} for alert {alert_number} in {repo_name} from {organization}"
         )
 
         config = cast(GithubDependabotAlertConfig, resource_config)
@@ -45,7 +50,9 @@ class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         if current_state not in config.selector.states:
 
-            alert = enrich_with_repository(alert, repo_name)
+            alert = enrich_with_organization(
+                enrich_with_repository(alert, repo_name), organization
+            )
 
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[alert]
@@ -55,7 +62,11 @@ class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         exporter = RestDependabotAlertExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
-            SingleDependabotAlertOptions(repo_name=repo_name, alert_number=alert_number)
+            SingleDependabotAlertOptions(
+                organization=organization,
+                repo_name=repo_name,
+                alert_number=alert_number,
+            )
         )
 
         return WebhookEventRawResults(

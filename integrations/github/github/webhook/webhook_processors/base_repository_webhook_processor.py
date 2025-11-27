@@ -12,9 +12,11 @@ from loguru import logger
 class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return await self.validate_repository_payload(
-            payload
-        ) and await self._validate_payload(payload)
+        return (
+            await super().validate_payload(payload)
+            and await self.validate_repository_payload(payload)
+            and await self._validate_payload(payload)
+        )
 
     @abstractmethod
     async def _validate_payload(self, payload: EventPayload) -> bool: ...

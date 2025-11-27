@@ -2,6 +2,7 @@ title: Snyk
 description: Snyk integration for Port Ocean
 icon: Snyk
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/snyk
+recommendedInstallationMethod: Saas
 features:
   - type: exporter
     section: Code Quality & Security

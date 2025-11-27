@@ -7,6 +7,270 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.37 (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 0.5.36 (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 0.5.35 (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 0.5.34 (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 0.5.33 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.5.32 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.5.31 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.5.30 (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+## 0.5.29 (2025-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
+## 0.5.28 (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 0.5.27 (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 0.5.26 (2025-11-10)
+
+
+### Improvements
+
+- Added rate limiter to Jira client
+
+
+## 0.5.25 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+## 0.5.24 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
+## 0.5.23 (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+## 0.5.22 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+
+## 0.5.21 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+
+
+## 0.5.20 (2025-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.1
+
+
+## 0.5.19 (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 0.5.18 (2025-11-03)
+
+
+### Bug Fix
+
+- Fix bug Jira cannot ingest issues when the jql selector empty
+
+
+
+## 0.5.17 (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 0.5.16 (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+## 0.5.15 (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 0.5.14 (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 0.5.13 (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 0.5.12 (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+## 0.5.11 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.5.10 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.5.9 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.5.8 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 0.5.7 (2025-09-25)
+
+
+### Bug Fix
+
+- Fix bug Jira cannot ingest issues when the jql selector is empty
+
+
+## 0.5.6 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.5.5 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
 ## 0.5.4 (2025-09-10)
 
 

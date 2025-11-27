@@ -3,7 +3,11 @@ from loguru import logger
 from github.webhook.events import (
     CODE_SCANNING_ALERT_ACTION_TO_STATE,
 )
-from github.helpers.utils import ObjectKind, enrich_with_repository
+from github.helpers.utils import (
+    ObjectKind,
+    enrich_with_repository,
+    enrich_with_organization,
+)
 from github.clients.client_factory import create_github_client
 from integration import GithubCodeScanningAlertConfig
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
@@ -39,9 +43,10 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         alert_number = alert["number"]
         repo_name = repo["name"]
+        organization = payload["organization"]["login"]
 
         logger.info(
-            f"Processing code scanning alert event: {action} for alert {alert_number} in {repo_name}"
+            f"Processing code scanning alert event: {action} for alert {alert_number} in {repo_name} from {organization}"
         )
 
         config = cast(GithubCodeScanningAlertConfig, resource_config)
@@ -49,7 +54,7 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         if not possible_states:
             logger.info(
-                f"The action {action} is not allowed for code scanning alert {alert_number} in {repo_name}. Skipping resource."
+                f"The action {action} is not allowed for code scanning alert {alert_number} in {repo_name} from {organization}. Skipping resource."
             )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
@@ -57,10 +62,12 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         if config.selector.state not in possible_states:
             logger.info(
-                f"The action {action} is not allowed for code scanning alert {alert_number} in {repo_name}. Deleting resource."
+                f"The action {action} is not allowed for code scanning alert {alert_number} in {repo_name} from {organization}. Deleting resource."
             )
 
-            alert = enrich_with_repository(alert, repo_name)
+            alert = enrich_with_organization(
+                enrich_with_repository(alert, repo_name), organization
+            )
 
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[alert]
@@ -71,7 +78,9 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         data_to_upsert = await exporter.get_resource(
             SingleCodeScanningAlertOptions(
-                repo_name=repo_name, alert_number=alert_number
+                organization=organization,
+                repo_name=repo_name,
+                alert_number=alert_number,
             )
         )
 

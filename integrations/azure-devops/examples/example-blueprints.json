@@ -44,5 +44,71 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "iteration",
+    "title": "Iteration",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string",
+          "icon": "Calendar",
+          "description": "The name of the iteration"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string",
+          "icon": "Folder",
+          "description": "The hierarchical path of the iteration"
+        },
+        "iterationKind": {
+          "title": "Iteration Kind",
+          "type": "string",
+          "icon": "Tag",
+          "description": "The classified type of iteration (sprint, release, milestone, epic, iteration)"
+        },
+        "startDate": {
+          "title": "Start Date",
+          "type": "string",
+          "format": "date-time",
+          "icon": "Calendar",
+          "description": "The start date of the iteration"
+        },
+        "finishDate": {
+          "title": "Finish Date",
+          "type": "string",
+          "format": "date-time",
+          "icon": "Calendar",
+          "description": "The finish date of the iteration"
+        },
+        "timeFrame": {
+          "title": "Time Frame",
+          "type": "string",
+          "icon": "Clock",
+          "description": "The time frame of the iteration (past, current, future)"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url",
+          "icon": "AzureDevops",
+          "description": "Link to the iteration in Azure DevOps"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "azureDevOpsProject",
+        "required": true,
+        "many": false
+      }
+    }
   }
 ]

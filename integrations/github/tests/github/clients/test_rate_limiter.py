@@ -90,11 +90,12 @@ class TestRateLimiter:
         resp = await client.make_request("/user")
         assert resp.status_code == 200
 
-        status = client.rate_limiter.get_rate_limit_status()
-        assert client_config.api_type in status
-        assert status[client_config.api_type]["limit"] == 1000
-        assert status[client_config.api_type]["remaining"] == 999
-        assert status[client_config.api_type]["utilization_percentage"] == 0.1
+        info = client.rate_limiter.rate_limit_info
+
+        assert info is not None
+        assert info.limit == 1000
+        assert info.remaining == 999
+        assert info.utilization_percentage == 0.1
 
         # No sleeping purely for success
         mock_sleep.assert_not_called()
@@ -111,7 +112,7 @@ class TestRateLimiter:
         assert exc.value.response.status_code == 429
 
         # No headers were parsed; limiter has no info and did not sleep.
-        assert client.rate_limiter._rate_limit_info is None
+        assert client.rate_limiter.rate_limit_info is None
         mock_sleep.assert_not_called()
 
     @pytest.mark.asyncio
@@ -129,9 +130,7 @@ class TestRateLimiter:
         info = RateLimitInfo(
             limit=1000, remaining=1, reset_time=int(time.time()) + reset_in
         )
-        client.rate_limiter._rate_limit_info = (
-            info  # trusted internal seed for the test
-        )
+        client.rate_limiter.rate_limit_info = info  # trusted internal seed for the test
 
         # This call should sleep on __aenter__
         mock_sleep.reset_mock()
@@ -187,8 +186,10 @@ class TestRateLimiter:
         assert c1.rate_limiter is c2.rate_limiter
 
         await c1.make_request("/user")
-        status = c2.rate_limiter.get_rate_limit_status()
-        assert status[client_config.api_type]["remaining"] == 999
+        info = c2.rate_limiter.rate_limit_info
+
+        assert info is not None
+        assert info.remaining == 999
 
     @pytest.mark.asyncio
     async def test_success_paths_do_not_sleep(
@@ -214,7 +215,7 @@ class TestRateLimiter:
         async def task_a() -> None:
             order.append("A-enter")
             # Seed limiter so that __aenter__ will sleep
-            limiter._rate_limit_info = RateLimitInfo(
+            limiter.rate_limit_info = RateLimitInfo(
                 remaining=0, limit=1000, reset_time=int(time.time()) + 5
             )
             async with limiter:

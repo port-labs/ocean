@@ -140,7 +140,12 @@ class TestPullRequestWebhookProcessor:
             "state": "open" if action == "opened" else "closed",
         }
         repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
-        payload = {"action": action, "pull_request": pr_data, "repository": repo_data}
+        payload = {
+            "action": action,
+            "pull_request": pr_data,
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
 
         updated_pr_data = {**pr_data, "additional_data": "from_api"}
         mock_exporter = AsyncMock()
@@ -160,7 +165,9 @@ class TestPullRequestWebhookProcessor:
                 assert result.updated_raw_results == [updated_pr_data]
                 assert result.deleted_raw_results == []
                 mock_exporter.get_resource.assert_called_once_with(
-                    SinglePullRequestOptions(repo_name="test-repo", pr_number=101)
+                    SinglePullRequestOptions(
+                        organization="test-org", repo_name="test-repo", pr_number=101
+                    )
                 )
             elif expected_delete:
                 assert result.updated_raw_results == []

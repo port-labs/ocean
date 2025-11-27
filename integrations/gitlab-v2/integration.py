@@ -42,6 +42,11 @@ class GitlabMemberSelector(Selector):
         default=False,
         description="If set to false, bots will be filtered out from the members list. Default value is false",
     )
+    include_inherited_members: bool = Field(
+        alias="includeInheritedMembers",
+        default=False,
+        description="If set to true, the integration will include inherited members in the group members list. Default value is false",
+    )
 
 
 class GitlabGroupWithMembersResourceConfig(ResourceConfig):
@@ -134,6 +139,16 @@ class GitlabMergeRequestResourceConfig(ResourceConfig):
     kind: Literal["merge-request"]
 
 
+class TagResourceConfig(ResourceConfig):
+    kind: Literal["tag"]
+    selector: Selector
+
+
+class ReleaseResourceConfig(ResourceConfig):
+    kind: Literal["release"]
+    selector: Selector
+
+
 class GitLabFoldersResourceConfig(ResourceConfig):
     selector: GitlabFolderSelector
     kind: Literal["folder"]
@@ -181,6 +196,8 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitLabFoldersResourceConfig
         | GitLabFilesResourceConfig
         | GitlabMergeRequestResourceConfig
+        | TagResourceConfig
+        | ReleaseResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

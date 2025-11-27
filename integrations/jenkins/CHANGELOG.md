@@ -7,6 +7,261 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.19 (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 0.2.18 (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 0.2.17 (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 0.2.16 (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 0.2.15 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.2.14 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.2.13 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.2.12 (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+## 0.2.11 (2025-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
+## 0.2.10 (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 0.2.9 (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 0.2.8 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+## 0.2.7 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
+## 0.2.6 (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+## 0.2.5 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+- Bumped pip version to ^25.3
+
+
+## 0.2.4 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+
+
+## 0.2.3 (2025-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.1
+
+
+## 0.2.2 (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 0.2.1 (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 0.2.0 (2025-10-29)
+
+### Improvements
+
+- Optimize Jenkins build fetching with timestamp filtering and max build limit
+
+
+## 0.1.192 (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+## 0.1.191 (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 0.1.190 (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 0.1.189 (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 0.1.188 (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+## 0.1.187 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.1.186 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.1.185 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.1.184 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 0.1.183 (2025-09-25)
+
+
+### Bug Fix
+
+- Fixes Failing to Sync Jobs and Builds due to malformed URLs with Double Slashes
+
+
+## 0.1.182 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.1.181 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
 ## 0.1.180 (2025-09-10)
 
 

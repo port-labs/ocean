@@ -28,15 +28,17 @@ class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
         environment = payload["deployment"]["environment"]
         repo = payload["repository"]["name"]
         resource_config_kind = resource_config.kind
+        organization = payload["organization"]["login"]
 
         logger.info(
-            f"Processing deployment event: {action} for {resource_config_kind} in {repo}"
+            f"Processing deployment event: {action} for {resource_config_kind} in {repo} from {organization}"
         )
 
         client = create_github_client()
         environment_exporter = RestEnvironmentExporter(client)
         data_to_upsert = await environment_exporter.get_resource(
             SingleEnvironmentOptions(
+                organization=organization,
                 repo_name=repo,
                 name=environment,
             )

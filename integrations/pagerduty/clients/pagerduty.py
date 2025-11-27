@@ -1,4 +1,4 @@
-import asyncio
+from http import HTTPStatus
 from typing import Any, AsyncGenerator, Dict, Optional
 
 import httpx
@@ -7,9 +7,11 @@ from consts import ALL_EVENTS
 from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
-from port_ocean.utils import http_async_client
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
 
-from .utils import get_date_range_for_last_n_months
+from clients.utils import get_date_range_for_last_n_months
+from clients.rate_limiter import PagerDutyRateLimiter
 
 USER_KEY = "users"
 
@@ -24,9 +26,19 @@ class PagerDutyClient(OAuthClient):
         self.token = token
         self.api_url = api_url
         self.app_host = app_host
-        self.http_client = http_async_client
+        self.http_client = OceanAsyncClient(
+            retry_config=RetryConfig(
+                additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
+                retry_after_headers=[
+                    "ratelimit-reset",
+                ],
+            ),
+            timeout=ocean.config.client_timeout,
+        )
         self.http_client.headers.update(self.headers)
-        self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+        self._rate_limiter = PagerDutyRateLimiter(
+            max_concurrent=MAX_CONCURRENT_REQUESTS,
+        )
 
     @classmethod
     def from_ocean_configuration(cls) -> "PagerDutyClient":
@@ -286,7 +298,7 @@ class PagerDutyClient(OAuthClient):
             f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
 
-        async with self._semaphore:
+        async with self._rate_limiter:
             try:
                 response = await self.http_client.request(
                     method=method,
@@ -298,15 +310,21 @@ class PagerDutyClient(OAuthClient):
                 response.raise_for_status()
                 return response.json()
             except httpx.HTTPStatusError as e:
-                if e.response.status_code == 404:
+                status_code = e.response.status_code
+                if status_code == 404:
                     logger.debug(
                         f"Resource not found at endpoint '{endpoint}' with params: {query_params}, method: {method}"
                     )
                     return {}
+
                 logger.error(
-                    f"HTTP error for endpoint '{endpoint}': Status code {e.response.status_code}, Method: {method}, Query params: {query_params}, Response text: {e.response.text}"
+                    f"HTTP error for endpoint '{endpoint}': Status code {status_code}, Method: {method}, Query params: {query_params}, Response text: {e.response.text}"
                 )
                 raise
+
+            finally:
+                if "response" in locals():
+                    self._rate_limiter.update_rate_limits(response.headers, endpoint)
 
     async def fetch_and_cache_users(self) -> None:
         async for users in self.paginate_request_to_pager_duty(resource=USER_KEY):

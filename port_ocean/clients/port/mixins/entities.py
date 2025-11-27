@@ -1,24 +1,25 @@
 import asyncio
+import json
+from collections import Counter
 from typing import Any, Literal
 from urllib.parse import quote_plus
-import json
 
 import httpx
 from loguru import logger
-from port_ocean.context.ocean import ocean
+from starlette import status
+
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
 from port_ocean.clients.port.utils import (
-    handle_port_status_code,
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
+    handle_port_status_code,
 )
+from port_ocean.context.ocean import ocean
 from port_ocean.core.models import (
     BulkUpsertResponse,
     Entity,
     PortAPIErrorMessage,
 )
-from starlette import status
-
 from port_ocean.helpers.metric.metric import MetricPhase, MetricType
 
 ENTITIES_BULK_SAMPLES_SIZE = 10
@@ -261,34 +262,36 @@ class EntityClientMixin:
         }
         error_entities = {error["index"]: error for error in result.get("errors", [])}
 
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[
+                ocean.metrics.current_resource_kind(),
+                MetricPhase.LOAD,
+                MetricPhase.LoadResult.LOADED,
+            ],
+            value=len(successful_entities),
+        )
+
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[
+                ocean.metrics.current_resource_kind(),
+                MetricPhase.LOAD,
+                MetricPhase.LoadResult.FAILED,
+            ],
+            value=len(error_entities),
+        )
+
         batch_results: list[tuple[bool | None, Entity]] = []
         for entity_index, original_entity in index_to_entity.items():
             reduced_entity = self._reduce_entity(original_entity)
             if entity_index in successful_entities:
-                ocean.metrics.inc_metric(
-                    name=MetricType.OBJECT_COUNT_NAME,
-                    labels=[
-                        ocean.metrics.current_resource_kind(),
-                        MetricPhase.LOAD,
-                        MetricPhase.LoadResult.LOADED,
-                    ],
-                    value=1,
-                )
                 success_entity = successful_entities[entity_index]
                 # Create a copy of the original entity with the new identifier
                 updated_entity = reduced_entity.copy()
                 updated_entity.identifier = success_entity["identifier"]
                 batch_results.append((True, updated_entity))
             elif entity_index in error_entities:
-                ocean.metrics.inc_metric(
-                    name=MetricType.OBJECT_COUNT_NAME,
-                    labels=[
-                        ocean.metrics.current_resource_kind(),
-                        MetricPhase.LOAD,
-                        MetricPhase.LoadResult.FAILED,
-                    ],
-                    value=1,
-                )
                 error = error_entities[entity_index]
                 if (
                     error.get("identifier") == "unknown"
@@ -354,6 +357,26 @@ class EntityClientMixin:
         """
         entities_results: list[tuple[bool, Entity]] = []
         blueprint = entities[0].blueprint
+
+        identifier_counts = Counter((e.blueprint, e.identifier) for e in entities)
+        duplicates: dict[tuple[str, str], int] = {
+            key: cnt for key, cnt in identifier_counts.items() if cnt > 1
+        }
+
+        if duplicates:
+            # Total number of *extra* occurrences beyond the first appearance of each entity
+            duplicate_count = sum(cnt - 1 for cnt in duplicates.values())
+
+            # Show up to 5 example (blueprint, identifier) pairs to avoid noisy logs
+            duplicate_examples = list(duplicates)[:5]
+
+            logger.warning(
+                "Detected duplicate entities (by blueprint and identifier) that may not be ingested because an identical identifier existed",
+                extra={
+                    "duplicate_examples": duplicate_examples,
+                    "duplicate_count": duplicate_count,
+                },
+            )
 
         bulk_size = self.calculate_entities_batch_size(entities)
         bulks = [
@@ -484,54 +507,89 @@ class EntityClientMixin:
         parameters_to_include: list[str] | None = None,
     ) -> list[Entity]:
         if query is None:
-            datasource_prefix = f"port-ocean/{self.auth.integration_type}/"
-            datasource_suffix = (
-                f"/{self.auth.integration_identifier}/{user_agent_type.value}"
-            )
-            logger.info(
-                f"Searching entities with datasource prefix: {datasource_prefix} and suffix: {datasource_suffix}"
-            )
+            return await self._search_entities_by_datasource_paginated(user_agent_type)
+
+        return await self._search_entities_by_query(
+            user_agent_type=user_agent_type,
+            query=query,
+            parameters_to_include=parameters_to_include,
+        )
+
+    async def _search_entities_by_datasource_paginated(
+        self, user_agent_type: UserAgentType
+    ) -> list[Entity]:
+        datasource_prefix = f"port-ocean/{self.auth.integration_type}/"
+        datasource_suffix = (
+            f"/{self.auth.integration_identifier}/{user_agent_type.value}"
+        )
+        logger.info(
+            f"Searching entities with datasource prefix: {datasource_prefix} and suffix: {datasource_suffix}"
+        )
+
+        next_from: str | None = None
+        aggregated_entities: list[Entity] = []
+        while True:
+            request_body: dict[str, Any] = {
+                "datasource_prefix": datasource_prefix,
+                "datasource_suffix": datasource_suffix,
+            }
+
+            if next_from:
+                request_body["from"] = next_from
 
             response = await self.client.post(
                 f"{self.auth.api_url}/blueprints/entities/datasource-entities",
-                json={
-                    "datasource_prefix": datasource_prefix,
-                    "datasource_suffix": datasource_suffix,
-                },
+                json=request_body,
                 headers=await self.auth.headers(user_agent_type),
                 extensions={"retryable": True},
             )
-        else:
-            default_query = {
-                "combinator": "and",
-                "rules": [
-                    {
-                        "property": "$datasource",
-                        "operator": "contains",
-                        "value": f"port-ocean/{self.auth.integration_type}/",
-                    },
-                    {
-                        "property": "$datasource",
-                        "operator": "contains",
-                        "value": f"/{self.auth.integration_identifier}/{user_agent_type.value}",
-                    },
-                ],
-            }
-
-            if query.get("rules"):
-                query["rules"].extend(default_query["rules"])
-
-            logger.info(f"Searching entities with custom query: {query}")
-            response = await self.client.post(
-                f"{self.auth.api_url}/entities/search",
-                json=query,
-                headers=await self.auth.headers(user_agent_type),
-                params={
-                    "exclude_calculated_properties": "true",
-                    "include": parameters_to_include or ["blueprint", "identifier"],
-                },
-                extensions={"retryable": True},
+            handle_port_status_code(response)
+            response_json = response.json()
+            aggregated_entities.extend(
+                Entity.parse_obj(result) for result in response_json.get("entities", [])
             )
+            next_from = response_json.get("next")
+            if not next_from:
+                break
+
+        return aggregated_entities
+
+    async def _search_entities_by_query(
+        self,
+        user_agent_type: UserAgentType,
+        query: dict[Any, Any],
+        parameters_to_include: list[str] | None,
+    ) -> list[Entity]:
+        default_query = {
+            "combinator": "and",
+            "rules": [
+                {
+                    "property": "$datasource",
+                    "operator": "contains",
+                    "value": f"port-ocean/{self.auth.integration_type}/",
+                },
+                {
+                    "property": "$datasource",
+                    "operator": "contains",
+                    "value": f"/{self.auth.integration_identifier}/{user_agent_type.value}",
+                },
+            ],
+        }
+
+        if query.get("rules"):
+            query["rules"].extend(default_query["rules"])
+
+        logger.info(f"Searching entities with custom query: {query}")
+        response = await self.client.post(
+            f"{self.auth.api_url}/entities/search",
+            json=query,
+            headers=await self.auth.headers(user_agent_type),
+            params={
+                "exclude_calculated_properties": "true",
+                "include": parameters_to_include or ["blueprint", "identifier"],
+            },
+            extensions={"retryable": True},
+        )
 
         handle_port_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]

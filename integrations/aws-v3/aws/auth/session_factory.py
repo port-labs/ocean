@@ -16,8 +16,8 @@ import os
 StrategyType = SingleAccountStrategy | MultiAccountStrategy | OrganizationsStrategy
 
 
-class ResyncStrategyFactory:
-    """A factory for creating resync strategies based on the global configuration."""
+class AccountStrategyFactory:
+    """A factory for creating account strategies based on the global configuration."""
 
     _cached_strategy: StrategyType | None = None
 
@@ -31,17 +31,17 @@ class ResyncStrategyFactory:
         # Check for web identity token first (highest priority)
         if os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE"):
             logger.info(
-                "[SessionStrategyFactory] Using AssumeRoleWithWebIdentityProvider (found AWS_WEB_IDENTITY_TOKEN_FILE)"
+                "[AccountStrategyFactory] Using AssumeRoleWithWebIdentityProvider (found AWS_WEB_IDENTITY_TOKEN_FILE)"
             )
             return AssumeRoleWithWebIdentityProvider(config=config)
 
         if config.get("aws_access_key_id") and config.get("aws_secret_access_key"):
             logger.info(
-                "[SessionStrategyFactory] Using StaticCredentialProvider (found aws_access_key_id and aws_secret_access_key)"
+                "[AccountStrategyFactory] Using StaticCredentialProvider (found aws_access_key_id and aws_secret_access_key)"
             )
             return StaticCredentialProvider(config=config)
 
-        logger.info("[SessionStrategyFactory] Using AssumeRoleProvider")
+        logger.info("[AccountStrategyFactory] Using AssumeRoleProvider")
         return AssumeRoleProvider(config=config)
 
     @classmethod
@@ -85,6 +85,6 @@ class AccountInfo(TypedDict):
 
 
 async def get_all_account_sessions() -> AsyncIterator[tuple[AccountInfo, AioSession]]:
-    strategy = await ResyncStrategyFactory.create()
+    strategy = await AccountStrategyFactory.create()
     async for account_info, session in strategy.get_account_sessions():
         yield AccountInfo(Id=account_info["Id"], Name=account_info["Name"]), session

@@ -136,7 +136,12 @@ class TestIssueWebhookProcessor:
         repo_data = {"name": "test-repo"}
 
         # Setup payload
-        payload = {"action": action, "issue": issue_data, "repository": repo_data}
+        payload = {
+            "action": action,
+            "issue": issue_data,
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
 
         # Setup resource config
         resource_config.selector.state = selector_state
@@ -168,7 +173,9 @@ class TestIssueWebhookProcessor:
                 assert result.updated_raw_results == [updated_issue_data]
                 assert result.deleted_raw_results == []
                 mock_exporter.get_resource.assert_called_once_with(
-                    SingleIssueOptions(repo_name="test-repo", issue_number=42)
+                    SingleIssueOptions(
+                        organization="test-org", repo_name="test-repo", issue_number=42
+                    )
                 )
             elif expected_delete:
                 assert result.updated_raw_results == []

@@ -7,6 +7,253 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.91 (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 0.1.90 (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 0.1.89 (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 0.1.88 (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 0.1.87 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.1.86 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.1.85 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.1.84 (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+## 0.1.83 (2025-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
+## 0.1.82 (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 0.1.81 (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 0.1.80 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+## 0.1.79 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
+## 0.1.78 (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+## 0.1.77 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+
+## 0.1.76 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+
+
+## 0.1.75 (2025-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.1
+
+
+## 0.1.74 (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 0.1.73 (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 0.1.72 (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+## 0.1.71 (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 0.1.70 (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 0.1.69 (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 0.1.68 (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+## 0.1.67 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.1.66 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.1.65 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.1.64 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 0.1.63 (2025-09-22)
+
+
+### Improvements
+
+- Added recommendedInstallationMethod: Saas to integration spec - enables showing a recommended option for the installation method in the dropdown on the frontend when installing a new data source
+
+
+## 0.1.62 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.1.61 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
 ## 0.1.60 (2025-09-10)
 
 

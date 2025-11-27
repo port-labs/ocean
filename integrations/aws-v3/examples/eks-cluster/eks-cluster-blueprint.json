@@ -1,0 +1,110 @@
+[
+  {
+    "identifier": "eksCluster",
+    "title": "EKS Cluster",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "arn": {
+          "type": "string",
+          "title": "ARN",
+          "description": "The Amazon Resource Name (ARN) of the EKS cluster"
+        },
+        "name": {
+          "type": "string",
+          "title": "Cluster Name",
+          "description": "The name of the EKS cluster"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the EKS cluster"
+        },
+        "version": {
+          "type": "string",
+          "title": "Kubernetes Version",
+          "description": "The Kubernetes version running on the cluster"
+        },
+        "platformVersion": {
+          "type": "string",
+          "title": "Platform Version",
+          "description": "The platform version of the EKS cluster"
+        },
+        "endpoint": {
+          "type": "string",
+          "title": "API Server Endpoint",
+          "description": "The endpoint for the EKS cluster API server"
+        },
+        "roleArn": {
+          "type": "string",
+          "title": "Service Role ARN",
+          "description": "The Amazon Resource Name (ARN) of the IAM role that provides permissions for the EKS cluster"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Creation Date",
+          "description": "The date and time when the cluster was created",
+          "format": "date-time"
+        },
+        "resourcesVpcConfig": {
+          "type": "object",
+          "title": "VPC Configuration",
+          "description": "The VPC configuration used by the cluster control plane"
+        },
+        "kubernetesNetworkConfig": {
+          "type": "object",
+          "title": "Kubernetes Network Configuration",
+          "description": "The Kubernetes network configuration for the cluster"
+        },
+        "logging": {
+          "type": "object",
+          "title": "Logging Configuration",
+          "description": "The logging configuration for the cluster"
+        },
+        "identity": {
+          "type": "object",
+          "title": "Identity Configuration",
+          "description": "The identity provider configuration for the cluster"
+        },
+        "certificateAuthority": {
+          "type": "object",
+          "title": "Certificate Authority",
+          "description": "The certificate-authority-data for the cluster"
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags",
+          "description": "Tags associated with the EKS cluster"
+        },
+        "accessConfig": {
+          "type": "object",
+          "title": "Access Configuration",
+          "description": "The access configuration for the cluster"
+        },
+        "upgradePolicy": {
+          "type": "object",
+          "title": "Upgrade Policy",
+          "description": "The upgrade policy for the cluster"
+        },
+        "zonalShiftConfig": {
+          "type": "object",
+          "title": "Zonal Shift Configuration",
+          "description": "The zonal shift configuration for the cluster"
+        },
+        "computeConfig": {
+          "type": "object",
+          "title": "Compute Configuration",
+          "description": "The compute configuration for the cluster"
+        },
+        "storageConfig": {
+          "type": "object",
+          "title": "Storage Configuration",
+          "description": "The storage configuration for the cluster"
+        }
+      },
+      "required": []
+    },
+    "calculationProperties": {},
+    "relations": {}
+  }
+]

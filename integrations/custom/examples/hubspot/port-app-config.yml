@@ -1,0 +1,127 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+
+resources:
+  - kind: /crm/v3/objects/contacts
+    selector:
+      query: "true"
+      method: GET
+      query_params:
+        limit: "100"
+        properties: "email,firstname,lastname,phone,company,lifecyclestage,associatedcompanyid"
+        associations: "companies"
+      data_path: .results
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .properties.email
+          blueprint: '"ocean_hubspotContact"'
+          properties:
+            email: .properties.email
+            firstname: .properties.firstname
+            lastname: .properties.lastname
+            phone: .properties.phone
+            company: .properties.company
+            lifecyclestage: .properties.lifecyclestage
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+          relations:
+            company: .properties.associatedcompanyid
+
+  - kind: /crm/v3/objects/companies
+    selector:
+      query: "true"
+      method: GET
+      query_params:
+        limit: "100"
+        properties: "name,domain,industry,city,state,country,numberofemployees,annualrevenue"
+      data_path: .results
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .properties.name
+          blueprint: '"ocean_hubspotCompany"'
+          properties:
+            name: .properties.name
+            domain: .properties.domain
+            industry: .properties.industry
+            city: .properties.city
+            state: .properties.state
+            country: .properties.country
+            numberOfEmployees: .properties.numberofemployees
+            annualRevenue: .properties.annualrevenue
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+
+  - kind: /crm/v3/objects/deals
+    selector:
+      query: "true"
+      method: GET
+      query_params:
+        limit: "100"
+        properties: "dealname,amount,dealstage,pipeline,closedate,hs_deal_stage_probability,dealtype"
+        associations: "companies,contacts"
+      data_path: .results
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .properties.dealname
+          blueprint: '"ocean_hubspotDeal"'
+          properties:
+            dealname: .properties.dealname
+            amount: .properties.amount
+            dealstage: .properties.dealstage
+            pipeline: .properties.pipeline
+            closedate: .properties.closedate
+            probability: .properties.hs_deal_stage_probability
+            dealtype: .properties.dealtype
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+          relations:
+            companies: '[.associations.companies.results[].id]'
+            contacts: '[.associations.contacts.results[].id]'
+
+  - kind: /crm/v3/objects/2-24903472
+    selector:
+      query: "true"
+      method: GET
+      query_params:
+        limit: "100"
+        properties: "name,title,details,status,votes,total_votes,of_customers,of_users,promised,promised_eta,product_eta,product_eta_confidence,planned,team,url,imageurls,subcategoryid,technical__component,merged_into"
+        associations: "companies,contacts,deals"
+      data_path: .results
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .properties.title // .properties.name
+          blueprint: '"ocean_hubspotFeatureRequest"'
+          properties:
+            title: .properties.title
+            name: .properties.name
+            details: .properties.details
+            status: .properties.status
+            votes: .properties.votes
+            totalVotes: .properties.total_votes
+            ofCustomers: .properties.of_customers
+            ofUsers: .properties.of_users
+            promised: .properties.promised
+            promisedEta: .properties.promised_eta
+            productEta: .properties.product_eta
+            productEtaConfidence: .properties.product_eta_confidence
+            planned: .properties.planned
+            team: .properties.team
+            url: .properties.url
+            imageUrls: .properties.imageurls
+            subCategoryId: .properties.subcategoryid
+            technicalComponent: .properties.technical__component
+            mergedInto: .properties.merged_into
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+          relations:
+            companies: '[.associations.companies.results[]?.id] // []'
+            contacts: '[.associations.contacts.results[]?.id] // []'
+            deals: '[.associations.deals.results[]?.id] // []'

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -12,6 +12,9 @@ class Kind(StrEnum):
     REPOSITORY_POLICY = "repository-policy"
     PULL_REQUEST = "pull-request"
     PIPELINE = "pipeline"
+    BUILD = "build"
+    PIPELINE_STAGE = "pipeline-stage"
+    PIPELINE_RUN = "pipeline-run"
     MEMBER = "member"
     TEAM = "team"
     PROJECT = "project"
@@ -19,22 +22,37 @@ class Kind(StrEnum):
     BOARD = "board"
     COLUMN = "column"
     RELEASE = "release"
+    ENVIRONMENT = "environment"
+    RELEASE_DEPLOYMENT = "release-deployment"
+    PIPELINE_DEPLOYMENT = "pipeline-deployment"
+    TEST_RUN = "test-run"
     FILE = "file"
     USER = "user"
     FOLDER = "folder"
+    ITERATION = "iteration"
+    BRANCH = "branch"
 
 
-PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [
-    {"searchCriteria.status": "active"},
-    {
-        "searchCriteria.status": "abandoned",
-        "searchCriteria.minTime": datetime.now() - timedelta(days=7),
-    },
-    {
-        "searchCriteria.status": "completed",
-        "searchCriteria.minTime": datetime.now() - timedelta(days=7),
-    },
-]
+ACTIVE_PULL_REQUEST_SEARCH_CRITERIA: dict[str, Any] = {
+    "searchCriteria.status": "active"
+}
+
+
+def create_closed_pull_request_search_criteria(
+    min_time_datetime: datetime,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "searchCriteria.status": "abandoned",
+            "searchCriteria.queryTimeRangeType": "closed",
+            "searchCriteria.minTime": min_time_datetime,
+        },
+        {
+            "searchCriteria.status": "completed",
+            "searchCriteria.queryTimeRangeType": "closed",
+            "searchCriteria.minTime": min_time_datetime,
+        },
+    ]
 
 
 def extract_branch_name_from_ref(ref: str) -> str:

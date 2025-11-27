@@ -21,7 +21,6 @@ resources:
           blueprint: '"s3Bucket"'
           properties:
             arn: .Properties.Arn
-            region: .Properties.LocationConstraint
             creationDate: .Properties.CreationDate
             tags: .Properties.Tags
           relations:

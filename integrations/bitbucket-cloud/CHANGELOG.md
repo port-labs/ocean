@@ -7,6 +7,261 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.104 (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 0.1.103 (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 0.1.102 (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 0.1.101 (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 0.1.100 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.1.99 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.1.98 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.1.97 (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+## 0.1.96 (2025-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
+## 0.1.95 (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 0.1.94 (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 0.1.93 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+## 0.1.92 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
+## 0.1.91 (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+## 0.1.90 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+
+## 0.1.89 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+
+
+## 0.1.88 (2025-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.1
+
+
+## 0.1.87 (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 0.1.86 (2025-11-03)
+
+
+### Improvements
+
+- Added support for user scoped token authentication for Bitbucket Cloud
+
+
+## 0.1.85 (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 0.1.84 (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+## 0.1.83 (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 0.1.82 (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 0.1.81 (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 0.1.80 (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+## 0.1.79 (2025-10-03)
+
+
+### Improvements
+
+- Updated spec file of Bitbucket cloud to support docs
+
+
+## 0.1.78 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.1.77 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.1.76 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.1.75 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 0.1.74 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.1.73 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
 ## 0.1.72 (2025-09-10)
 
 

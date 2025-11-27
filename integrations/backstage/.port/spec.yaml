@@ -1,6 +1,7 @@
 title: Backstage
 description: Backstage integration for Port Ocean
 icon: Backstage
+recommendedInstallationMethod: Saas
 features:
   - type: exporter
     section: Other

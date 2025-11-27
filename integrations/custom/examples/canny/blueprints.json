@@ -1,0 +1,247 @@
+{
+  "blueprints": [
+    {
+      "identifier": "ocean_cannyBoard",
+      "title": "Ocean Canny Board",
+      "icon": "Microservice",
+      "schema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Board Name"
+          },
+          "url": {
+            "type": "string",
+            "format": "url",
+            "title": "Board URL"
+          },
+          "postCount": {
+            "type": "number",
+            "title": "Post Count"
+          },
+          "isPrivate": {
+            "type": "boolean",
+            "title": "Private Board"
+          },
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "required": []
+      },
+      "calculationProperties": {},
+      "relations": {}
+    },
+    {
+      "identifier": "ocean_cannyPost",
+      "title": "Ocean Canny Post",
+      "icon": "DefaultProperty",
+      "schema": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "details": {
+            "type": "string",
+            "title": "Details",
+            "format": "markdown"
+          },
+          "url": {
+            "type": "string",
+            "format": "url",
+            "title": "Post URL"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "enum": [
+              "open",
+              "under review",
+              "planned",
+              "in progress",
+              "complete",
+              "closed"
+            ],
+            "enumColors": {
+              "open": "lightGray",
+              "under review": "blue",
+              "planned": "purple",
+              "in progress": "orange",
+              "complete": "green",
+              "closed": "darkGray"
+            }
+          },
+          "commentCount": {
+            "type": "number",
+            "title": "Comment Count"
+          },
+          "voteCount": {
+            "type": "number",
+            "title": "Vote Count"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "eta": {
+            "type": "string",
+            "title": "ETA"
+          },
+          "imageURLs": {
+            "type": "array",
+            "title": "Image URLs"
+          },
+          "authorEmail": {
+            "type": "string",
+            "title": "Author Email",
+            "format": "email"
+          },
+          "authorName": {
+            "type": "string",
+            "title": "Author Name"
+          },
+          "ownerName": {
+            "type": "string",
+            "title": "Owner Name"
+          },
+          "ownerEmail": {
+            "type": "string",
+            "title": "Owner Email",
+            "format": "email"
+          },
+          "tags": {
+            "type": "array",
+            "title": "Tags"
+          }
+        },
+        "required": []
+      },
+      "calculationProperties": {},
+      "relations": {
+        "board": {
+          "title": "Board",
+          "target": "ocean_cannyBoard",
+          "required": false,
+          "many": false
+        },
+        "category": {
+          "title": "Category",
+          "target": "ocean_cannyCategory",
+          "required": false,
+          "many": false
+        }
+      }
+    },
+    {
+      "identifier": "ocean_cannyCategory",
+      "title": "Ocean Canny Category",
+      "icon": "Category",
+      "schema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Category Name"
+          },
+          "url": {
+            "type": "string",
+            "format": "url",
+            "title": "Category URL"
+          },
+          "postCount": {
+            "type": "number",
+            "title": "Post Count"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "required": []
+      },
+      "calculationProperties": {},
+      "relations": {
+        "board": {
+          "title": "Board",
+          "target": "ocean_cannyBoard",
+          "required": false,
+          "many": false
+        }
+      }
+    },
+    {
+      "identifier": "ocean_cannyCompany",
+      "title": "Ocean Canny Company",
+      "icon": "TwoUsers",
+      "schema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "customFields": {
+            "type": "object",
+            "title": "Custom Fields"
+          },
+          "monthlySpend": {
+            "type": "number",
+            "title": "Monthly Spend"
+          }
+        },
+        "required": []
+      },
+      "calculationProperties": {},
+      "relations": {}
+    },
+    {
+      "identifier": "ocean_cannyVote",
+      "title": "Ocean Canny Vote",
+      "icon": "Star",
+      "schema": {
+        "properties": {
+          "voterEmail": {
+            "type": "string",
+            "title": "Voter Email",
+            "format": "email"
+          },
+          "voterName": {
+            "type": "string",
+            "title": "Voter Name"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Voted At"
+          }
+        },
+        "required": []
+      },
+      "calculationProperties": {},
+      "relations": {
+        "post": {
+          "title": "Post",
+          "target": "ocean_cannyPost",
+          "required": false,
+          "many": false
+        }
+      }
+    }
+  ]
+}

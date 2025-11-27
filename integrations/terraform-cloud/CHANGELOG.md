@@ -7,6 +7,257 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.4 (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 0.2.3 (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 0.2.2 (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 0.2.1 (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 0.2.0 (2025-11-10)
+
+
+### Improvements
+
+- Added support for state file kind
+- Added support for state version kind
+- Refactored webhook to use the new webhook processor architecture
+- Added test coverage for the entire integration
+
+
+## 0.1.213 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.1.212 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.1.211 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.1.210 (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+## 0.1.209 (2025-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
+## 0.1.208 (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 0.1.207 (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 0.1.206 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+## 0.1.205 (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
+## 0.1.204 (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+## 0.1.203 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+
+## 0.1.202 (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+>>>>>>> origin
+
+
+## 0.1.201 (2025-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.1
+
+
+## 0.1.200 (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 0.1.199 (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 0.1.198 (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+## 0.1.197 (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 0.1.196 (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 0.1.195 (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 0.1.194 (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+## 0.1.193 (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 0.1.192 (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 0.1.191 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 0.1.190 (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 0.1.189 (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 0.1.188 (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
 ## 0.1.187 (2025-09-10)
 
 

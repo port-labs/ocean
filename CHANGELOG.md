@@ -6,6 +6,207 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.30.5 (2025-11-27)
+
+### Bug Fixes
+
+-  Fix delete target logic for complex items_to_parse jq expressions
+-  Fix items_to_parse with yield_items_to_parse enabled item construction
+
+## 0.30.4 (2025-11-26)
+- Updated upsert (load) metrics to be calculated directly from response
+- Updated log on duplicate count
+
+## 0.30.3 (2025-11-25)
+
+### Improvements
+
+-  Add StreamingWrapper to core
+
+## 0.30.2 (2025-11-24)
+
+### Improvements
+
+- Fixed NOT recreating blueprints if they exist under different name
+
+
+## 0.30.1 (2025-11-23)
+
+### Improvements
+
+- Add support to use '' in jq filters
+
+## 0.30.0 (2025-11-23)
+
+### Improvements
+
+- Expose actions processing capability without feature flag
+
+
+## 0.29.10 (2025-11-20)
+
+### Bug fixes
+
+- JQ expression classifier would classify mixed single item and all payload context expressions to run on all of the payload
+
+
+## 0.29.9 (2025-11-20)
+
+### Improvements
+
+- Only log HTTP response sizes for non-port.io domains.
+
+## 0.29.8 (2025-11-18)
+
+### Improvements
+
+- CI: Release spec file by integration type rather dir name
+
+## 0.29.7 (2025-11-17)
+
+### Improvements
+
+- Revise internal actions api header name
+
+## 0.29.6 (2025-11-16)
+
+### Improvements
+
+- Enable `yield_items_to_parse` flag as default.
+
+## 0.29.5 (2025-11-10)
+
+### Bug fixes
+
+- Update unprocessed kinds metrics to have 'aborted' status when a resync is aborted
+
+## 0.29.4 (2025-11-10)
+
+### Bug fixes
+
+- Fix graceful shutdown handling (SIGTERM handling)
+
+## 0.29.3 (2025-11-09)
+
+### Improvements
+
+- Updated starlette dependency
+
+## 0.29.2 (2025-11-09)
+
+### Bug fixes
+
+- Avoid waiting for empty task queues to release queue lock
+
+## 0.29.1 (2025-11-06)
+
+### Improvements
+
+- Resolved Dependabot alerts
+
+## 0.29.0 (2025-11-04)
+
+### Improvements
+
+- Add capability of running an execution agent
+
+## 0.28.18 (2025-10-27)
+
+### Bug fixes
+
+- Remove assume length by reading the response for logging
+- Fixed publish core image Github action
+
+## 0.28.18 (2025-10-27)
+
+### Bug fixes
+
+- Fix logging exception on process finish
+- Fixed serialization issue caused by Decimal objects returned from ijson.items_coro during jq transformation when yield_items_to_parse is enabled
+
+## 0.28.17 (2025-10-26)
+
+### Bug fixes
+
+- Prevent StreamConsumed error when there is no content-length header on response
+
+## 0.28.16 (2025-10-21)
+
+### Bug fixes
+
+- Add pagination to search entities API call
+
+## 0.28.15 (2025-10-20)
+
+### Bug fixes
+
+- Fix examples construction on items_to_parse (extra nesting removed)
+- Fix onload process from fs in items_to_parse with no yield_items_to_parse branch
+
+## 0.28.14 (2025-10-15)
+
+### Bug fixes
+
+- Fix items_to_parse without yield_items_to_parse bug on array data type
+- Fix items_to_parse group_complex_mapping_value bug
+
+## 0.28.13 (2025-10-03)
+
+### Improvements
+
+- Improved cache key generation for instance/class methods in Ocean's caching utilities
+- Added comprehensive test coverage for cache decorators on instance/class/static methods
+
+## 0.28.12 (2025-09-30)
+
+### Bug fixes
+
+- Change raw data timestamp from to int with miliseconds
+
+## 0.28.11 (2025-09-28)
+
+### Bug fixes
+
+- Change raw data timestamp from sting to int
+
+## 0.28.10 (2025-09-26)
+
+### Bug fixes
+
+- Convert Entity dictionary identifiers to consistent json representation
+- Fix buggy check in EntityMapping that always resolves to False
+
+
+## 0.28.9 (2025-09-21)
+
+### Bug Fixes
+
+- revert memory optimization commit
+
+## 0.28.8 (2025-09-21)
+
+### Improvements
+
+- added extractionTimestamp to post_integration_raw_data
+
+
+## 0.28.7 (2025-09-16)
+
+### Improvements
+
+- Support for events which their payload offloaded to the fs
+- Memory optimizations of itemstoparse feature
+
+## 0.28.6 (2025-09-16)
+
+### Improvements
+- Add secrets to github ocean secrets
+
+## 0.28.5 (2025-09-16)
+
+### Bug Fixes
+- Fix user ocean permissions on `/etc/ssl/certs`
+
 ## 0.28.4 (2025-09-10)
 
 ### Bug Fixes

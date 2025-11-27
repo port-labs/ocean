@@ -22,7 +22,7 @@ resources:
           title: .attributes.name
           blueprint: '"snykProject"'
           properties:
-            url: ("https://app.snyk.io/org/" + .relationships.organization.data.id + "/project/" + .id | tostring)
+            url: ("https://app.snyk.io/org/" + .__organization.slug + "/project/" + .id | tostring)
             businessCriticality: .attributes.business_criticality
             environment: .attributes.environment
             lifeCycle: .attributes.lifecycle
@@ -61,7 +61,7 @@ resources:
             packageNames: '[.attributes.coordinates[].representations[].dependency?.package_name | select(. != null)]'
             packageVersions: '[.attributes.coordinates[].representations[].dependency?.package_version | select(. != null)]'
             severity: .attributes.effective_severity_level
-            url: ("https://app.snyk.io/org/" + .attributes.key | tostring)
+            url: ("https://app.snyk.io/org/" + .__organization.slug + "/project/" + .relationships.scan_item.data.id + "#issue-" + .attributes.key | tostring)
             publicationTime: .attributes.created_at
             status: .attributes.status
             type: .attributes.type

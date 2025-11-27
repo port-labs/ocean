@@ -3,14 +3,14 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from aws.core.exporters.ec2.instance.actions import (
-    GetInstanceStatusAction,
+    DescribeInstanceStatusAction,
     DescribeInstancesAction,
     EC2InstanceActionsMap,
 )
 from aws.core.interfaces.action import Action
 
 
-class TestGetInstanceStatusAction:
+class TestDescribeInstanceStatusAction:
 
     @pytest.fixture
     def mock_client(self) -> AsyncMock:
@@ -19,15 +19,15 @@ class TestGetInstanceStatusAction:
         return client
 
     @pytest.fixture
-    def action(self, mock_client: AsyncMock) -> GetInstanceStatusAction:
-        return GetInstanceStatusAction(mock_client)
+    def action(self, mock_client: AsyncMock) -> DescribeInstanceStatusAction:
+        return DescribeInstanceStatusAction(mock_client)
 
-    def test_inheritance(self, action: GetInstanceStatusAction) -> None:
+    def test_inheritance(self, action: DescribeInstanceStatusAction) -> None:
         assert isinstance(action, Action)
 
     @pytest.mark.asyncio
     async def test_execute_success(
-        self, mock_logger: MagicMock, action: GetInstanceStatusAction
+        self, mock_logger: MagicMock, action: DescribeInstanceStatusAction
     ) -> None:
         identifiers = [
             {"InstanceId": "i-1"},
@@ -111,12 +111,12 @@ class TestEC2InstanceActionsMap:
         try:
             action_map = EC2InstanceActionsMap()
             merged = action_map.merge(
-                ["GetInstanceStatusAction", "DummyAction"]
+                ["DescribeInstanceStatusAction", "DummyAction"]
             )  # Include our dummy
 
             names = [cls.__name__ for cls in merged]
             assert "DescribeInstancesAction" in names
-            assert "GetInstanceStatusAction" in names
+            assert "DescribeInstanceStatusAction" in names
             assert "DummyAction" in names
         finally:
             EC2InstanceActionsMap.options = []  # reset to not influence other tests

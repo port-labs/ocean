@@ -4,9 +4,10 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from httpx import URL, Timeout
 from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
+from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from aiolimiter import AsyncLimiter
+from snyk.utils import enrich_batch_with_org
 
 
 class CacheKeys(StrEnum):
@@ -120,11 +121,9 @@ class SnykClient:
                 )
                 raise
 
+    @cache_coroutine_result()
     async def get_issues(self, org_id: str, project_id: str) -> list[dict[str, Any]]:
-        cache_key = f"{CacheKeys.ISSUE}-{project_id}"
         # We cache the issues for each project in the event attributes as in the same resync events we may need to fetch the issues multiple times for aggregations
-        if cache := event.attributes.get(cache_key):
-            return cache
 
         url = f"{self.api_url}/org/{org_id}/project/{project_id}/aggregated-issues"
         issues = (
@@ -135,7 +134,6 @@ class SnykClient:
             )
         ).get("issues", [])
 
-        event.attributes[cache_key] = issues
         return issues
 
     async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -148,7 +146,7 @@ class SnykClient:
             async for issues in self._get_paginated_resources(
                 url_path=url, query_params=query_params
             ):
-                yield issues
+                yield enrich_batch_with_org(issues, org)
 
     def _get_projects_by_target(
         self,
@@ -165,18 +163,10 @@ class SnykClient:
             else all_projects
         )
 
+    @cache_iterator_result()
     async def get_paginated_projects(
         self,
-        target_id: Optional[str] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if CacheKeys.PROJECT in event.attributes:
-            all_projects = event.attributes[CacheKeys.PROJECT]
-            projects_to_yield = self._get_projects_by_target(
-                all_projects, target_id=target_id
-            )
-            yield projects_to_yield
-            return
-
         all_organizations = await self.get_organizations_in_groups()
         for org in all_organizations:
             logger.info(f"Fetching paginated projects for organization: {org['id']}")
@@ -190,12 +180,7 @@ class SnykClient:
             async for projects in self._get_paginated_resources(
                 url_path=url, query_params=query_params
             ):
-                event.attributes.setdefault(CacheKeys.PROJECT, []).extend(projects)
-
-                projects_to_yield = self._get_projects_by_target(
-                    projects, target_id=target_id
-                )
-                yield projects_to_yield
+                yield enrich_batch_with_org(projects, org)
 
     async def get_single_target_by_project_id(
         self, org_id: str, project_id: str
@@ -215,8 +200,10 @@ class SnykClient:
             return {}
 
         target = response["data"]
-        async for projects_data_of_target in self.get_paginated_projects(target["id"]):
-            target.setdefault("__projects", []).extend(projects_data_of_target)
+        async for projects in self.get_paginated_projects():
+            target.setdefault("__projects", []).extend(
+                self._get_projects_by_target(projects, target["id"])
+            )
         return target
 
     async def get_paginated_targets(
@@ -233,29 +220,15 @@ class SnykClient:
             ):
                 targets_with_project_data = []
                 for target_data in targets:
-                    async for projects_data_of_target in self.get_paginated_projects(
-                        target_data["id"]
-                    ):
+                    async for projects in self.get_paginated_projects():
                         target_data.setdefault("__projects", []).extend(
-                            projects_data_of_target
+                            self._get_projects_by_target(projects, target_data["id"])
                         )
                     targets_with_project_data.append(target_data)
                 yield targets_with_project_data
 
+    @cache_coroutine_result()
     async def get_single_project(self, org_id: str, project_id: str) -> dict[str, Any]:
-        if CacheKeys.PROJECT in event.attributes:
-            all_projects = event.attributes[CacheKeys.PROJECT]
-            project = next(
-                (
-                    project
-                    for project in all_projects
-                    if project.get("id") == project_id
-                ),
-                None,
-            )
-            if project:
-                return project
-
         url = f"{self.rest_api_url}/orgs/{org_id}/projects/{project_id}"
         query_params = {
             "meta.latest_issue_counts": "true",
@@ -268,7 +241,6 @@ class SnykClient:
             version=self.snyk_api_version,
         )
         project = response.get("data", {})
-        event.attributes.setdefault(CacheKeys.PROJECT, []).append(project)
 
         return project
 
@@ -311,12 +283,8 @@ class SnykClient:
         ]
         return all_organizations
 
+    @cache_coroutine_result()
     async def get_organizations_in_groups(self) -> list[Any]:
-        # Check if the result is already cached
-        if cache := event.attributes.get(CacheKeys.GROUP):
-            logger.info("Fetched Snyk organizations from the cache")
-            return cache
-
         all_organizations = await self.get_all_organizations()
 
         if self.organization_ids:
@@ -328,7 +296,6 @@ class SnykClient:
                 f"Fetched {len(matching_organization)} organizations for the given organization ID(s)."
             )
             if matching_organization:
-                event.attributes[CacheKeys.GROUP] = matching_organization
                 return matching_organization
             else:
                 logger.warning(
@@ -350,12 +317,10 @@ class SnykClient:
                 f"Fetched {len(matching_organizations_in_groups)} organizations for the given groups."
             )
 
-            event.attributes[CacheKeys.GROUP] = matching_organizations_in_groups
             return matching_organizations_in_groups
         else:
             logger.info(
                 "Integration config did not specify any group(s) or organizationId to filter. Getting all organizations linked to the provided Snyk token"
             )
 
-            event.attributes[CacheKeys.GROUP] = all_organizations
             return all_organizations

@@ -7,6 +7,408 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.1.11-beta (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 4.1.10-beta (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 4.1.9-beta (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 4.1.8-beta (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 4.1.7-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 4.1.6-beta (2025-11-23)
+
+
+### Improvements
+
+- Change section to Git Providers in spec.yaml
+
+
+## 4.1.5-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 4.1.4-beta (2025-11-23)
+
+
+### Improvements
+
+- Use GitHub Search API for repository export when authenticated as a GitHub App with Personal Account, falling back to list API otherwise.
+
+
+## 4.1.3-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 4.1.2-beta (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+## 4.1.1-beta (2025-11-20)
+
+
+### Improvements
+
+- Adapt to the new ocean core itemstoparse logic
+
+## 4.1.0-beta (2025-11-19)
+
+
+### Bug Fixes
+
+- Fixed GitHub App authentication by requiring installation ID as a configuration parameter instead of fetching it dynamically, improving reliability and reducing API calls
+
+
+## 4.0.0-beta (2025-11-19)
+
+
+### Improvements
+
+- Optional syncing of the authenticated user's personal account as a pseudo-organization when `includeAuthenticatedUser` is enabled.
+- Repository exporter now supports both Organization and User contexts by selecting the correct API and handling visibility/affiliation accordingly.
+- Propagated organization type through repository selectors and options.
+- Introduced helper to centralize repository option construction.
+- During user resync, enrich the personal user with their primary email when needed.
+- Improved HTTP client error messages to include the HTTP method for clearer diagnostics.
+
+
+## 3.3.10-beta (2025-11-19)
+
+
+### Improvements
+
+- dispatch workflow action spec naming improvements
+
+
+## 3.3.9-beta (2025-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
+## 3.3.8-beta (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 3.3.7-beta (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 3.3.6-beta (2025-11-16)
+
+
+### Improvements
+
+- Revise OAuth configuration spec
+
+
+## 3.3.5-beta (2025-11-13)
+
+
+### Improvements
+
+- Enriched pull request export with organization context across REST exporter responses and batches.
+
+
+## 3.3.4-beta (2025-11-12)
+
+
+### Bug Fixes
+
+- Authenticate throw app jwt token in auth context request
+
+
+## 3.3.3-beta (2025-11-11)
+
+
+### Bug Fixes
+
+- Get actor for github installation that uses an app
+
+
+## 3.3.2-beta (2025-11-11)
+
+
+### Bug Fixes
+
+- Fixed GraphQL base URL for GitHub Enterprise Server, ensuring compatibility with GHES.
+- Skipped and added warning log when a repository is not found during file export.
+
+
+## 3.3.1-beta (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+## 3.3.0-beta (2025-11-10)
+
+
+### Improvements
+
+- Allow file/folder selectors to target all repositories when `repos` is omitted (supports exact and glob patterns)
+- Centralize repository metadata retrieval and reuse across exporters
+- Use shared resolver for repo/branch selection with consistent branch fallback
+- Update folder options shape to grouped per-repo entries
+
+
+## 3.2.5-beta (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
+## 3.2.4-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+## 3.2.3-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+
+## 3.2.2-beta (2025-11-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+
+
+## 3.2.1-beta (2025-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.1
+
+
+# 3.2.0-beta (2025-11-04)
+
+
+### Improvements
+
+- Added support for running github workflows as part of Port actions
+
+
+## 3.1.2-beta (2025-11-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+## 3.1.1-beta (2025-11-04)
+
+
+### Improvements
+
+- Update `repo_search` selector to use `repoSearch` alias for camelCase consistency.
+
+
+## 3.1.0-beta (2025-11-03)
+
+
+### Features
+
+- Added support for ingesting repositories using Github search API
+
+
+## 3.0.5-beta (2025-11-03)
+
+
+### Features
+
+- Added bot filtering option for GitHub user sync
+
+
+## 3.0.4-beta (2025-11-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+## 3.0.3-beta (2025-10-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+## 3.0.2-beta (2025-10-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+## 3.0.1-beta (2025-10-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+## 3.0.0-beta (2025-10-20)
+
+
+### Features
+
+- Added multi-organization support for GitHub integration
+- Updated all resync functions to iterate through multiple organizations
+- Modified webhook processors to include organization context
+- Updated exporters to support organization parameters
+- Added `organization` as a new resource kind
+
+
+## 2.0.3-beta (2025-10-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+## 2.0.2-beta (2025-10-15)
+
+
+### Bug Fixes
+
+- Updated Closed Pull Request Tests with Mocked Datetime
+
+
+## 2.0.1-beta (2025-10-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+## 2.0.0-beta (2025-09-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+## 1.5.9-beta (2025-09-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+## 1.5.8-beta (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+## 1.5.7-beta (2025-09-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+## 1.5.6-beta (2025-09-17)
+
+### Improvements
+
+- Fix token decoder from oauth-flow
+
+
+## 1.5.5-beta (2025-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+## 1.5.4-beta (2025-09-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
 ## 1.5.3-beta (2025-09-10)
 
 

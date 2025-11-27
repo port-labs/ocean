@@ -7,6 +7,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from newrelic_integration.core.entities import EntitiesHandler
 from newrelic_integration.core.issues import IssuesHandler, IssueState, IssueEvent
 from newrelic_integration.core.service_levels import ServiceLevelsHandler
+from newrelic_integration.core.alert_conditions import AlertConditionsHandler
 
 from newrelic_integration.utils import (
     get_port_resource_configuration_by_newrelic_entity_type,
@@ -93,6 +94,26 @@ async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 ]
                 enriched_service_levels = await asyncio.gather(*tasks)
                 yield enriched_service_levels
+
+
+@ocean.on_resync(kind="newRelicAlertCondition")
+async def resync_alert_conditions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    with logger.contextualize(resource_kind=kind):
+        async with httpx.AsyncClient() as http_client:
+            alert_conditions_handler = AlertConditionsHandler(http_client)
+            page_size = 100
+            counter = 0
+            conditions = []
+            async for condition in alert_conditions_handler.list_alert_conditions():
+                counter += 1
+                conditions.append(condition)
+                # yield the conditions in batches to take advantage of the async list generator
+                if counter == page_size:
+                    counter = 0
+                    yield conditions
+                    conditions = []
+            if conditions:
+                yield conditions
 
 
 @ocean.router.post("/events")

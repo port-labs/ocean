@@ -57,6 +57,7 @@ class SyncState:
     COMPLETED = "completed"
     PENDING = "pending"
     FAILED = "failed"
+    ABORTED = "aborted"
 
 
 class MetricResourceKind:
@@ -265,6 +266,7 @@ class Metrics:
         router = APIRouter()
 
         @router.get("/", response_class=PlainTextResponse)
+        @router.get("", response_class=PlainTextResponse)
         async def prom_metrics() -> str:
             return self.generate_latest()
 

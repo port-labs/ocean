@@ -1,10 +1,31 @@
 from typing import cast
 
+from loguru import logger
+
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import (
-    PULL_REQUEST_SEARCH_CRITERIA,
+    create_closed_pull_request_search_criteria,
+    ACTIVE_PULL_REQUEST_SEARCH_CRITERIA,
     Kind,
     AzureDevopsFolderResourceConfig,
+)
+from azure_devops.webhooks.webhook_processors.branch_webhook_processor import (
+    BranchWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.file_webhook_processor import (
+    FileWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.folder_webhook_processor import (
+    FolderWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.gitops_webhook_processor import (
+    GitopsWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.pull_request_processor import (
+    PullRequestWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.repository_processor import (
+    RepositoryWebhookProcessor,
 )
 from integration import (
     AzureDevopsPipelineResourceConfig,
@@ -12,29 +33,13 @@ from integration import (
     AzureDevopsFileResourceConfig,
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
+    AzureDevopsTestRunResourceConfig,
+    AzureDevopsPullRequestResourceConfig,
 )
-
-from azure_devops.webhooks.webhook_processors.pull_request_processor import (
-    PullRequestWebhookProcessor,
-)
-
-from azure_devops.webhooks.webhook_processors.repository_processor import (
-    RepositoryWebhookProcessor,
-)
-from azure_devops.webhooks.webhook_processors.file_webhook_processor import (
-    FileWebhookProcessor,
-)
-from azure_devops.webhooks.webhook_processors.gitops_webhook_processor import (
-    GitopsWebhookProcessor,
-)
-from azure_devops.webhooks.webhook_processors.folder_webhook_processor import (
-    FolderWebhookProcessor,
-)
-
-from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
 @ocean.on_resync(Kind.PROJECT)
@@ -101,11 +106,25 @@ async def resync_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.PULL_REQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    for search_filter in PULL_REQUEST_SEARCH_CRITERIA:
+    selector = cast(
+        AzureDevopsPullRequestResourceConfig, event.resource_config
+    ).selector
+
+    async for pull_requests in azure_devops_client.generate_pull_requests(
+        ACTIVE_PULL_REQUEST_SEARCH_CRITERIA
+    ):
+        logger.info(f"Resyncing {len(pull_requests)} active pull_requests")
+        yield pull_requests
+
+    for search_filter in create_closed_pull_request_search_criteria(
+        selector.min_time_datetime
+    ):
         async for pull_requests in azure_devops_client.generate_pull_requests(
-            search_filter
+            search_filter, selector.max_results
         ):
-            logger.info(f"Resyncing {len(pull_requests)} pull_requests")
+            logger.info(
+                f"Resyncing {len(pull_requests)} abandoned/completed pull_requests"
+            )
             yield pull_requests
 
 
@@ -116,6 +135,15 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for repositories in azure_devops_client.generate_repositories():
         logger.info(f"Resyncing {len(repositories)} repositories")
         yield repositories
+
+
+@ocean.on_resync(Kind.BRANCH)
+async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+
+    async for branches in azure_devops_client.generate_branches():
+        logger.info(f"Resyncing {len(branches)} branches")
+        yield branches
 
 
 @ocean.on_resync(Kind.REPOSITORY_POLICY)
@@ -161,6 +189,56 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield releases
 
 
+@ocean.on_resync(Kind.BUILD)
+async def resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for builds in azure_devops_client.generate_builds():
+        logger.info(f"Resyncing {len(builds)} builds")
+        yield builds
+
+
+@ocean.on_resync(Kind.PIPELINE_STAGE)
+async def resync_pipeline_stages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for stages in azure_devops_client.generate_pipeline_stages():
+        logger.info(f"Resyncing {len(stages)} pipeline stages")
+        yield stages
+
+
+@ocean.on_resync(Kind.ENVIRONMENT)
+async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for environments in azure_devops_client.generate_environments():
+        logger.info(f"Fetched {len(environments)} environments")
+        yield environments
+
+
+@ocean.on_resync(Kind.RELEASE_DEPLOYMENT)
+async def resync_release_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+
+    async for deployments in azure_devops_client.generate_release_deployments():
+        logger.info(f"Fetched {len(deployments)} release deployments")
+        yield deployments
+
+
+@ocean.on_resync(Kind.PIPELINE_DEPLOYMENT)
+async def resync_pipeline_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+
+    async for environments in azure_devops_client.generate_environments():
+        tasks = [
+            azure_devops_client.generate_pipeline_deployments(
+                environment_id=environment["id"],
+                project=environment["project"],
+            )
+            for environment in environments
+        ]
+        async for deployments in stream_async_iterators_tasks(*tasks):
+            logger.info(f"Fetched {len(deployments)} pipeline deployments")
+            yield deployments
+
+
 @ocean.on_resync(Kind.FILE)
 async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
@@ -175,6 +253,14 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if files_batch:
             logger.info(f"Resyncing batch of {len(files_batch)} files")
             yield files_batch
+
+
+@ocean.on_resync(Kind.PIPELINE_RUN)
+async def resync_pipeline_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for runs in azure_devops_client.generate_pipeline_runs():
+        logger.info(f"Resyncing {len(runs)} pipeline runs")
+        yield runs
 
 
 @ocean.on_start()
@@ -214,8 +300,31 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield matching_folders
 
 
+@ocean.on_resync(Kind.TEST_RUN)
+async def resync_test_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    selector = cast(AzureDevopsTestRunResourceConfig, event.resource_config).selector
+    include_results = selector.include_results
+    coverage_config = selector.code_coverage
+
+    async for test_runs in azure_devops_client.fetch_test_runs(
+        include_results, coverage_config
+    ):
+        logger.info(f"Fetched {len(test_runs)} test runs")
+        yield test_runs
+
+
+@ocean.on_resync(Kind.ITERATION)
+async def resync_iterations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for iterations in azure_devops_client.generate_iterations():
+        logger.info(f"Resyncing {len(iterations)} iterations")
+        yield iterations
+
+
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FileWebhookProcessor)
 ocean.add_webhook_processor("/webhook", GitopsWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FolderWebhookProcessor)
+ocean.add_webhook_processor("/webhook", BranchWebhookProcessor)

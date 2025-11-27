@@ -7,6 +7,245 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.146-post1 (2025-11-27)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+0.2.145-post1 (2025-11-26)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+0.2.144-post1 (2025-11-25)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+0.2.143-post1 (2025-11-24)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+0.2.142-post1 (2025-11-23)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+0.2.141-post1 (2025-11-23)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+0.2.140-post1 (2025-11-23)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+0.2.139-post1 (2025-11-20)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+0.2.138-post1 (2025-11-19)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
+0.2.137-post1 (2025-11-18)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+0.2.136-post1 (2025-11-17)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+0.2.135-post1 (2025-11-10)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+0.2.134-post1 (2025-11-10)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
+0.2.133-post1 (2025-11-09)
+==========================
+
+### Improvements
+
+- Bumped starlette version to 0.49.3
+
+0.2.132-post1 (2025-11-09)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.29.3
+
+
+0.2.131-post1 (2025-11-09)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.29.2
+
+
+0.2.130-post1 (2025-11-06)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.29.1
+
+
+0.2.129-post1 (2025-11-04)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.29.0
+
+
+0.2.128-post1 (2025-11-02)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.28.19
+
+
+0.2.127-post1 (2025-10-27)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.28.18
+
+
+0.2.126-post1 (2025-10-26)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.28.17
+
+
+0.2.125-post1 (2025-10-21)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.28.16
+
+
+0.2.124-post1 (2025-10-20)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.28.15
+
+
+0.2.123-post1 (2025-10-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.28.14
+
+
+0.2.122-post1 (2025-09-30)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.28.12
+
+
+0.2.121-post1 (2025-09-28)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.28.11
+
+
+0.2.120-post1 (2025-09-25)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.28.9
+
+
+0.2.119-post1 (2025-09-25)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.28.8
+
+
+0.2.118-post1 (2025-09-17)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.28.7
+
+
+0.2.117-post1 (2025-09-16)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.28.5
+
+
 0.2.116-post1 (2025-09-10)
 ==========================
 

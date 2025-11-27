@@ -1,5 +1,5 @@
 import asyncio
-from typing import Type, Any
+from typing import Any, Type
 
 import httpx
 from loguru import logger
@@ -13,13 +13,15 @@ from port_ocean.core.defaults.common import (
     get_port_integration_defaults,
 )
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
-from port_ocean.core.models import Blueprint, CreatePortResourcesOrigin
+from port_ocean.core.models import (
+    Blueprint,
+    CreatePortResourcesOrigin,
+    IntegrationFeatureFlag,
+)
 from port_ocean.core.utils.utils import gather_and_split_errors_from_results
 from port_ocean.exceptions.port_defaults import (
     AbortDefaultCreationError,
 )
-
-ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG = "USE_PROVISIONED_DEFAULTS"
 
 
 def deconstruct_blueprints_to_creation_steps(
@@ -75,6 +77,7 @@ async def _initialize_required_integration_settings(
                 integration_config.integration.type,
                 integration_config.event_listener.get_changelog_destination_details(),
                 port_app_config=default_mapping,
+                actions_processing_enabled=integration_config.actions_processor.enabled,
                 create_port_resources_origin_in_port=integration_config.create_port_resources_origin
                 == CreatePortResourcesOrigin.Port,
             )
@@ -101,18 +104,77 @@ async def _initialize_required_integration_settings(
         integration.get("changelogDestination") != changelog_destination
         or integration.get("installationAppType") != integration_config.integration.type
         or integration.get("version") != port_client.integration_version
+        or integration.get("actionsProcessingEnabled")
+        != integration_config.actions_processor.enabled
     ):
         await port_client.patch_integration(
-            integration_config.integration.type, changelog_destination
+            _type=integration_config.integration.type,
+            changelog_destination=changelog_destination,
+            actions_processing_enabled=integration_config.actions_processor.enabled,
         )
+
+
+async def _mapped_blueprints_exist(
+    port_client: PortClient,
+    defaults: Defaults | None = None,
+    has_provision_feature_flag: bool = False,
+) -> bool:
+    if not defaults:
+        return True
+
+    integration = await port_client.get_current_integration(
+        should_log=False,
+        should_raise=False,
+        has_provision_feature_flag=has_provision_feature_flag,
+    )
+    integration_config = integration.get("config", {})
+    resources = integration_config.get("resources", [])
+
+    if not isinstance(resources, list):
+        return True
+
+    mapped_blueprints = []
+    for resource in resources:
+        blueprint = (
+            resource.get("port", {})
+            .get("entity", {})
+            .get("mappings", {})
+            .get("blueprint")
+        )
+        if blueprint:
+            if (
+                isinstance(blueprint, str)
+                and blueprint.startswith('"')
+                and blueprint.endswith('"')
+            ):
+                blueprint = blueprint.strip('"')
+            mapped_blueprints.append({"identifier": blueprint})
+
+    if not mapped_blueprints:
+        return True
+
+    existing_blueprints, _ = await gather_and_split_errors_from_results(
+        [
+            port_client.get_blueprint(blueprint["identifier"], should_log=False)
+            for blueprint in mapped_blueprints
+        ],
+        lambda item: isinstance(item, Blueprint),
+    )
+
+    if len(existing_blueprints) != len(mapped_blueprints):
+        return False
+
+    return True
 
 
 async def _create_resources(
     port_client: PortClient,
     defaults: Defaults | None = None,
+    has_provision_feature_flag: bool = False,
 ) -> None:
     if not defaults:
         return
+
     creation_stage, *blueprint_patches = deconstruct_blueprints_to_creation_steps(
         defaults.blueprints
     )
@@ -125,7 +187,13 @@ async def _create_resources(
         lambda item: isinstance(item, Blueprint),
     )
 
-    if blueprints_results:
+    mapped_blueprints_exist = await _mapped_blueprints_exist(
+        port_client,
+        defaults,
+        has_provision_feature_flag,
+    )
+
+    if blueprints_results or mapped_blueprints_exist:
         logger.info(
             f"Blueprints already exist: {[result.identifier for result in blueprints_results]}. Skipping integration default creation..."
         )
@@ -177,15 +245,16 @@ async def _create_resources(
             )
         )
 
-        created_scorecards, scorecards_errors = (
-            await gather_and_split_errors_from_results(
-                (
-                    port_client.create_scorecard(
-                        blueprint_scorecards["blueprint"], action, should_log=False
-                    )
-                    for blueprint_scorecards in defaults.scorecards
-                    for action in blueprint_scorecards["data"]
+        (
+            created_scorecards,
+            scorecards_errors,
+        ) = await gather_and_split_errors_from_results(
+            (
+                port_client.create_scorecard(
+                    blueprint_scorecards["blueprint"], action, should_log=False
                 )
+                for blueprint_scorecards in defaults.scorecards
+                for action in blueprint_scorecards["data"]
             )
         )
 
@@ -219,7 +288,7 @@ async def _initialize_defaults(
         )
     )
 
-    has_provision_feature_flag = ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG in (
+    has_provision_feature_flag = IntegrationFeatureFlag.USE_PROVISIONED_DEFAULTS in (
         await port_client.get_organization_feature_flags()
     )
 
@@ -279,7 +348,7 @@ async def _initialize_defaults(
         return
     try:
         logger.info("Found default resources, starting creation process")
-        await _create_resources(port_client, defaults)
+        await _create_resources(port_client, defaults, has_provision_feature_flag)
     except AbortDefaultCreationError as e:
         logger.warning(
             f"Failed to create resources. Rolling back blueprints : {e.blueprints_to_rollback}"

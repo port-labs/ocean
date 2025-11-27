@@ -19,21 +19,23 @@ class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         return True
 
-    async def _verify_webhook_signature(self, request: Request) -> bool:
+    async def _verify_webhook_signature(
+        self, organization: str, request: Request
+    ) -> bool:
         """Verify that the payload was sent from GitHub by validating SHA256."""
 
         secret = ocean.integration_config["webhook_secret"]
 
         if not secret:
             logger.warning(
-                "Skipping webhook signature verification because no secret is configured."
+                f"Skipping webhook signature verification because no secret is configured from {organization}."
             )
             return True
 
         signature = request.headers.get("x-hub-signature-256")
         if not signature:
             logger.error(
-                "Missing 'x-hub-signature-256' header. Webhook authentication failed."
+                f"Missing 'x-hub-signature-256' header. Webhook authentication failed from {organization}."
             )
             return False
 
@@ -42,7 +44,7 @@ class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
         computed_signature = "sha256=" + hash_object.hexdigest()
 
         logger.debug(
-            "Validating webhook signature...",
+            f"Validating webhook signature from {organization}...",
             extra={
                 "received_signature": signature,
                 "computed_signature": computed_signature,
@@ -57,4 +59,9 @@ class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         if not (event._original_request and await self._should_process_event(event)):
             return False
-        return await self._verify_webhook_signature(event._original_request)
+        return await self._verify_webhook_signature(
+            event.payload["organization"]["login"], event._original_request
+        )
+
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        return "organization" in payload and "login" in payload["organization"]

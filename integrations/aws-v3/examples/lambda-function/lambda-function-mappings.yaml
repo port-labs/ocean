@@ -1,0 +1,50 @@
+resources:
+  - kind: AWS::Lambda::Function
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.FunctionArn
+          title: .Properties.FunctionName
+          blueprint: '"lambdaFunction"'
+          properties:
+            FunctionName: .Properties.FunctionName
+            FunctionArn: .Properties.FunctionArn
+            Runtime: .Properties.Runtime
+            Handler: .Properties.Handler
+            MemorySize: .Properties.MemorySize
+            Timeout: .Properties.Timeout
+            State: .Properties.State
+            LastModified: .Properties.LastModified
+            CodeSha256: .Properties.CodeSha256
+            CodeSize: .Properties.CodeSize
+            Description: .Properties.Description
+            Role: .Properties.Role
+            LastUpdateStatus: .Properties.LastUpdateStatus
+            LastUpdateStatusReason: .Properties.LastUpdateStatusReason
+            LastUpdateStatusReasonCode: .Properties.LastUpdateStatusReasonCode
+            Version: .Properties.Version
+            RevisionId: .Properties.RevisionId
+            PackageType: .Properties.PackageType
+            MasterArn: .Properties.MasterArn
+            SigningJobArn: .Properties.SigningJobArn
+            SigningProfileVersionArn: .Properties.SigningProfileVersionArn
+            StateReason: .Properties.StateReason
+            StateReasonCode: .Properties.StateReasonCode
+            DeadLetterConfig: .Properties.DeadLetterConfig
+            Environment: .Properties.Environment
+            VpcConfig: .Properties.VpcConfig
+            TracingConfig: .Properties.TracingConfig
+            LoggingConfig: .Properties.LoggingConfig
+            EphemeralStorage: .Properties.EphemeralStorage
+            ImageConfigResponse: .Properties.ImageConfigResponse
+            RuntimeVersionConfig: .Properties.RuntimeVersionConfig
+            SnapStart: .Properties.SnapStart
+            Layers: .Properties.Layers
+            Architectures: .Properties.Architectures
+            FileSystemConfigs: .Properties.FileSystemConfigs
+            Tags: .Properties.Tags
+            KmsKeyArn: .Properties.KmsKeyArn
+          relations:
+            account: .__ExtraContext.AccountId

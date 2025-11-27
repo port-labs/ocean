@@ -7,18 +7,22 @@ from github.core.exporters.abstract_exporter import (
     AbstractGithubExporter,
 )
 from github.core.options import ListWorkflowOptions, SingleWorkflowOptions
-from github.helpers.utils import enrich_with_repository
+from github.helpers.utils import enrich_with_repository, enrich_with_organization
 
 
 class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[
         ExporterOptionsT: SingleWorkflowOptions
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{options['repo_name']}/actions/workflows/{options['workflow_id']}"
+        organization = options["organization"]
+        endpoint = f"{self.client.base_url}/repos/{organization}/{options['repo_name']}/actions/workflows/{options['workflow_id']}"
+
         response = await self.client.send_api_request(endpoint)
-        workflow = enrich_with_repository(response, options["repo_name"])
+        workflow = enrich_with_organization(
+            enrich_with_repository(response, options["repo_name"]), organization
+        )
         logger.info(
-            f"Fetched workflow {options['workflow_id']} from {options['repo_name']}"
+            f"Fetched workflow {options['workflow_id']} from {options['repo_name']} from {organization}"
         )
 
         return workflow
@@ -28,14 +32,19 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all workflows in repository with pagination."""
 
-        url = f"{self.client.base_url}/repos/{self.client.organization}/{options['repo_name']}/actions/workflows"
+        organization = options["organization"]
+        repo_name = options["repo_name"]
+        url = f"{self.client.base_url}/repos/{organization}/{options['repo_name']}/actions/workflows"
+
         async for workflows in self.client.send_paginated_request(url):
             workflow_batch = cast(dict[str, Any], workflows)
             logger.info(
-                f"Fetched batch of {len(workflow_batch['workflows'])} workflows from {options['repo_name']}"
+                f"Fetched batch of {len(workflow_batch['workflows'])} workflows from {repo_name} from {organization}"
             )
             batch = [
-                enrich_with_repository(workflow, options["repo_name"])
+                enrich_with_organization(
+                    enrich_with_repository(workflow, repo_name), organization
+                )
                 for workflow in workflow_batch["workflows"]
             ]
             yield batch

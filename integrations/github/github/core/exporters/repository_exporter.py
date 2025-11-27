@@ -1,6 +1,9 @@
 import asyncio
-from typing import Any, Dict, TYPE_CHECKING, cast, ClassVar
+from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
+from github.helpers.models import RepoSearchParams
+from github.helpers.utils import parse_github_options, get_repository_metadata
+from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 from loguru import logger
@@ -24,18 +27,20 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         ExporterOptionsT: SingleRepositoryOptions
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
         name = options["name"]
+        organization = options["organization"]
         included_relationships = options.get("included_relationships")
 
-        endpoint = f"{self.client.base_url}/repos/{self.client.organization}/{name}"
-        response = await self.client.send_api_request(endpoint)
+        response = await get_repository_metadata(self.client, organization, name)
 
-        logger.info(f"Fetched repository with identifier: {name}")
+        logger.info(
+            f"Fetched repository with identifier: {name} for organization {organization}"
+        )
 
         if not included_relationships:
             return response
 
         return await self.enrich_repository_with_selected_relationships(
-            response, cast(list[str], included_relationships)
+            response, cast(list[str], included_relationships), organization
         )
 
     @cache_iterator_result()
@@ -43,15 +48,10 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         ExporterOptionsT: ListRepositoryOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
-        params = dict(options)
+        organization = options["organization"]
         included_relationships = options.get("included_relationships")
 
-        async for repos in self.client.send_paginated_request(
-            f"{self.client.base_url}/orgs/{self.client.organization}/repos", params
-        ):
-            logger.info(
-                f"Fetched batch of {len(repos)} repositories from organization {self.client.organization}"
-            )
+        async for repos in self._fetch_repositories(options):
             if not included_relationships:
                 yield repos
             else:
@@ -59,15 +59,103 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 batch = await asyncio.gather(
                     *[
                         self.enrich_repository_with_selected_relationships(
-                            repo, cast(list[str], included_relationships)
+                            repo, cast(list[str], included_relationships), organization
                         )
                         for repo in repos
                     ]
                 )
                 yield batch
 
+    async def _fetch_repositories(
+        self, options: ListRepositoryOptions
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        _, organization, params = parse_github_options(dict(options))
+        organization_type = params.pop("organization_type")
+        search_params = cast(
+            Optional[RepoSearchParams], params.pop("search_params", None)
+        )
+        is_personal_account = organization_type == "User"
+        is_github_app_authenticated = isinstance(
+            self.client.authenticator, GitHubAppAuthenticator
+        )
+
+        use_search_api = search_params is not None or (
+            is_github_app_authenticated and is_personal_account
+        )
+        strategy = self._search_strategy if use_search_api else self._list_strategy
+
+        async for batch in strategy(
+            organization, organization_type, params, search_params
+        ):
+            yield batch
+
+    async def _list_strategy(
+        self,
+        organization: str,
+        organization_type: str,
+        params: dict[str, Any],
+        _: Optional[RepoSearchParams],
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        url, final_params = self._build_repos_url_and_params(
+            organization, organization_type, params
+        )
+        async for repos in self.client.send_paginated_request(url, final_params):
+            logger.info(
+                f"Fetched batch of {len(repos)} repositories from organization {organization}"
+            )
+            yield repos
+
+    async def _search_strategy(
+        self,
+        organization: str,
+        _: str,
+        params: dict[str, Any],
+        search_params: Optional[RepoSearchParams],
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        repository_type = params.pop("type")
+        forced_qualifiers = (
+            ["fork:true", f"is:{repository_type}"] if search_params is None else []
+        )
+
+        raw_q = (
+            search_params.query.strip()
+            if search_params
+            else " ".join(forced_qualifiers).strip()
+        )
+
+        query_params = {"q": f"org:{organization} {raw_q}", **params}
+        url = f"{self.client.base_url}/search/repositories"
+
+        async for search_results in self.client.send_paginated_request(
+            url, query_params
+        ):
+            casted = cast(dict[str, Any], search_results)
+            yield casted["items"]
+
+    def _build_repos_url_and_params(
+        self, organization: str, organization_type: str, params: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]:
+        """
+        Build the appropriate repositories API URL and parameters
+        based on the organization type.
+        """
+        if organization_type == "Organization":
+            return (
+                f"{self.client.base_url}/orgs/{organization}/repos",
+                params,
+            )
+        visibility = params.pop("type")
+        return f"{self.client.base_url}/user/repos", {
+            **params,
+            "affiliation": "owner",
+            "visibility": visibility,
+        }
+
     async def enrich_repository_with_selected_relationships(
-        self, repository: Dict[str, Any], included_relationships: list[str]
+        self,
+        repository: Dict[str, Any],
+        included_relationships: list[str],
+        organization: str,
     ) -> RAW_ITEM:
         """Enrich a repository with selected relationships."""
         repo_name = repository["name"]
@@ -80,20 +168,20 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                     f"for repository '{repo_name}'"
                 )
                 method = getattr(self, method_name)
-                repository = await method(repository)
+                repository = await method(repository, organization)
 
         logger.info(f"Finished enrichment for repository '{repo_name}'")
         return repository
 
     async def _enrich_repository_with_collaborators(
-        self, repository: Dict[str, Any]
+        self, repository: Dict[str, Any], organization: str
     ) -> RAW_ITEM:
         """Enrich repository with collaborators."""
         repo_name = repository["name"]
         all_collaborators = []
 
         async for collaborators in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/collaborators",
+            f"{self.client.base_url}/repos/{organization}/{repo_name}/collaborators",
             {},
         ):
             logger.info(
@@ -105,14 +193,14 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         return repository
 
     async def _enrich_repository_with_teams(
-        self, repository: Dict[str, Any]
+        self, repository: Dict[str, Any], organization: str
     ) -> RAW_ITEM:
         """Enrich repository with teams."""
         repo_name = repository["name"]
         all_teams = []
 
         async for teams in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{self.client.organization}/{repo_name}/teams",
+            f"{self.client.base_url}/repos/{organization}/{repo_name}/teams",
             {},
         ):
             logger.info(

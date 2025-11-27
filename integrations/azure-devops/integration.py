@@ -1,23 +1,23 @@
+from typing import List, Literal, Optional, Union
+from datetime import datetime, timedelta, timezone
+
 from pydantic import Field, BaseModel
-from port_ocean.context.ocean import PortOceanContext
-from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
-from port_ocean.core.handlers.webhook.processor_manager import (
-    LiveEventsProcessorManager,
-)
-from port_ocean.core.integrations.base import BaseIntegration
 
 from azure_devops.gitops.file_entity_processor import GitManipulationHandler
-
-from typing import List, Literal, Optional, Union
-
+from azure_devops.misc import AzureDevopsFolderResourceConfig
+from port_ocean.context.ocean import PortOceanContext
+from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
     Selector,
 )
-from port_ocean.utils.signal import signal_handler
+from port_ocean.core.handlers.webhook.processor_manager import (
+    LiveEventsProcessorManager,
+)
+from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from azure_devops.misc import AzureDevopsFolderResourceConfig
+from port_ocean.utils.signal import signal_handler
 
 
 class AzureDevopsProjectResourceConfig(ResourceConfig):
@@ -139,6 +139,57 @@ class AzureDevopsPipelineResourceConfig(ResourceConfig):
     selector: AzureDevopsPipelineSelector
 
 
+class CodeCoverageConfig(BaseModel):
+    flags: int | None = Field(
+        default=None,
+        alias="flags",
+        description="Flags to control how detailed the coverage response will be",
+    )
+
+
+class AzureDevopsTestRunSelector(Selector):
+    include_results: bool = Field(
+        default=True,
+        alias="includeResults",
+        description="Whether to include test results for each test run, defaults to true",
+    )
+    code_coverage: Optional[CodeCoverageConfig] = Field(
+        default=None,
+        alias="codeCoverage",
+        description="Whether to include code coverage data for each test run, defaults to None",
+    )
+
+
+class AzureDevopsTestRunResourceConfig(ResourceConfig):
+    kind: Literal["test-run"]
+    selector: AzureDevopsTestRunSelector
+
+
+class AzureDevopsPullRequestSelector(Selector):
+    min_time_in_days: int = Field(
+        default=7,
+        ge=1,
+        alias="minTimeInDays",
+        description="Minimum time in days since the pull request was abandoned or closed. Default value is 7.",
+    )
+    max_results: int = Field(
+        default=100,
+        ge=1,
+        alias="maxResults",
+        description="Maximum number of closed pull requests to fetch. Default value is 100.",
+    )
+
+    @property
+    def min_time_datetime(self) -> datetime:
+        """Convert the min time in days to a timezone-aware datetime object."""
+        return datetime.now(timezone.utc) - timedelta(days=self.min_time_in_days)
+
+
+class AzureDevopsPullRequestResourceConfig(ResourceConfig):
+    kind: Literal["pull-request"]
+    selector: AzureDevopsPullRequestSelector
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -159,6 +210,8 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsTeamResourceConfig
         | AzureDevopsFileResourceConfig
         | AzureDevopsPipelineResourceConfig
+        | AzureDevopsTestRunResourceConfig
+        | AzureDevopsPullRequestResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
