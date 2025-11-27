@@ -6,7 +6,6 @@ from httpx import URL, Timeout
 from loguru import logger
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
-from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from aiolimiter import AsyncLimiter
 from snyk.utils import enrich_batch_with_org
