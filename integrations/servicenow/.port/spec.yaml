@@ -4,7 +4,7 @@ icon: Servicenow  # Should be one of the available icons in Port
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/incident-management/servicenow
 features:
   - type: exporter
-    section: Incident Management  # Should be one of the available sections in Port
+    section: Incident Management
     resources:
       - kind: sys_user_group
       - kind: sc_catalog
@@ -14,13 +14,25 @@ configurations:
     required: true
     type: url
     description: The URL of your ServiceNow instance. This should be the address you use to access the ServiceNow UI in your browser. For example, `https://dev12345.service-now.com`
+  # Basic Auth credentials (optional if using OAuth)
   - name: servicenowUsername
-    required: true
+    required: false
     type: string
     sensitive: false
-    description: The username of the ServiceNow account. To create user credentials, see the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials" target="_blank">ServiceNow documentation</a>
+    description: The username of the ServiceNow account for Basic authentication. Not required if using OAuth Client Credentials. To create user credentials, see the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials" target="_blank">ServiceNow documentation</a>
   - name: servicenowPassword
-    required: true
+    required: false
     type: string
     sensitive: true
-    description: The password of the ServiceNow account. To create user credentials, see the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials" target="_blank">ServiceNow documentation</a>
+    description: The password of the ServiceNow account for Basic authentication. Not required if using OAuth Client Credentials. To create user credentials, see the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials" target="_blank">ServiceNow documentation</a>
+  # OAuth Client Credentials (optional if using Basic Auth)
+  - name: servicenowClientId
+    required: false
+    type: string
+    sensitive: false
+    description: OAuth Client ID for Client Credentials authentication. To configure OAuth, see the <a href="https://www.servicenow.com/docs/bundle/zurich-platform-security/page/integrate/machine-identity/task/configure-an-oauth-client-credential-grant.html" target="_blank">ServiceNow OAuth documentation</a>
+  - name: servicenowClientSecret
+    required: false
+    type: string
+    sensitive: true
+    description: OAuth Client Secret for Client Credentials authentication. To configure OAuth, see the <a href="https://www.servicenow.com/docs/bundle/zurich-platform-security/page/integrate/machine-identity/task/configure-an-oauth-client-credential-grant.html" target="_blank">ServiceNow OAuth documentation</a>
