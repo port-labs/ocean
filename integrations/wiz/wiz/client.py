@@ -149,6 +149,27 @@ class WizClient:
             variables["after"] = cursor.get("endCursor", "")
             page_num += 1
 
+    async def _get_paginated_projects(
+        self, variables: dict[str, Any]
+    ) -> AsyncGenerator[list[Any], None]:
+        logger.info("Fetching projects data from Wiz API")
+        page_num = 1
+
+        while True:
+            logger.info(f"Fetching page {page_num}")
+            gql = GRAPH_QUERIES["projects"]
+            data = await self.make_graphql_query(gql, variables)
+
+            yield data["projects"]["nodes"]
+
+            cursor = data["projects"].get("pageInfo") or {}
+            if not cursor.get("hasNextPage", False):
+                break  # Break out of the loop if no more pages
+
+            # Set the cursor for the next page request
+            variables["after"] = cursor.get("endCursor", "")
+            page_num += 1
+
     async def get_issues(
         self,
         status_list: list[str],
@@ -174,7 +195,6 @@ class WizClient:
 
     async def get_projects(
         self,
-        max_pages: int,
         include_archived: bool = False,
         impact: Optional[str] = None,
         page_size: int = PAGE_SIZE,
@@ -192,8 +212,8 @@ class WizClient:
         if impact:
             variables["filterBy"]["impact"] = impact
 
-        async for projects in self._get_paginated_resources(
-            resource="projects", variables=variables, max_pages=max_pages
+        async for projects in self._get_paginated_projects(
+            variables=variables,
         ):
             event.attributes.setdefault(CacheKeys.PROJECTS, []).extend(projects)
             yield projects

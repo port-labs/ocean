@@ -23,6 +23,11 @@ class IssueSelector(Selector):
         description="List of issue types to fetch. If empty, all issue types are fetched. Valid values are: TOXIC_COMBINATION, THREAT_DETECTION, CLOUD_CONFIGURATION.",
         default=[],
     )
+    max_pages: int = Field(
+        alias="maxPages",
+        description="Maximum number of pages to fetch. By default, 500 pages are fetched.",
+        default=500,
+    )
 
 
 class IssueResourceConfig(ResourceConfig):
@@ -51,9 +56,4 @@ class ProjectResourceConfig(ResourceConfig):
 class WizPortAppConfig(PortAppConfig):
     resources: list[IssueResourceConfig | ProjectResourceConfig | ResourceConfig] = (
         Field(default_factory=list)
-    )
-    max_pages: int = Field(
-        alias="maxPages",
-        description="Maximum number of pages to fetch. By default, 500 pages are fetched.",
-        default=500,
     )
