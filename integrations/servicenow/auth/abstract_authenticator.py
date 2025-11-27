@@ -8,4 +8,3 @@ class AbstractServiceNowAuthenticator(ABC):
     async def get_headers(self) -> dict[str, str]:
         """Return headers needed for ServiceNow API authentication."""
         pass
-

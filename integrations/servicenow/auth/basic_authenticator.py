@@ -1,4 +1,5 @@
 import base64
+
 from auth.abstract_authenticator import AbstractServiceNowAuthenticator
 
 
@@ -19,4 +20,3 @@ class BasicAuthenticator(AbstractServiceNowAuthenticator):
             "Authorization": f"Basic {b64_message}",
             "Content-Type": "application/json",
         }
-

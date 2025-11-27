@@ -1,15 +1,16 @@
 import asyncio
 import base64
+from datetime import datetime, timedelta, timezone
 from typing import Optional
-from datetime import datetime, timezone, timedelta
-from pydantic import BaseModel, PrivateAttr
-from loguru import logger
+
 import httpx
+from loguru import logger
+from port_ocean.context.ocean import ocean
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryConfig
+from pydantic import BaseModel, PrivateAttr
 
 from auth.abstract_authenticator import AbstractServiceNowAuthenticator
-from port_ocean.helpers.retry import RetryConfig
-from port_ocean.helpers.async_client import OceanAsyncClient
-from port_ocean.context.ocean import ocean
 
 
 class ServiceNowToken(BaseModel):
@@ -18,7 +19,9 @@ class ServiceNowToken(BaseModel):
     access_token: str
     expires_in: int
     token_type: str
-    _created_at: datetime = PrivateAttr(default_factory=lambda: datetime.now(timezone.utc))
+    _created_at: datetime = PrivateAttr(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
     _time_buffer: timedelta = PrivateAttr(default_factory=lambda: timedelta(minutes=2))
 
     @property
@@ -99,4 +102,3 @@ class OAuthClientCredentialsAuthenticator(AbstractServiceNowAuthenticator):
         except httpx.HTTPError as e:
             logger.error(f"Failed to fetch OAuth token: {e}")
             raise
-

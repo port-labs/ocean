@@ -1,7 +1,9 @@
 from typing import Any, AsyncGenerator, Optional
+
 import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
+
 from auth.abstract_authenticator import AbstractServiceNowAuthenticator
 
 PAGE_SIZE = 100

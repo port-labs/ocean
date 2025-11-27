@@ -1,13 +1,11 @@
 from typing import Any, Literal
-from pydantic import Field, BaseModel
 
 from port_ocean.core.handlers import APIPortAppConfig
-from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
-    PortAppConfig,
-    Selector,
-)
+from port_ocean.core.handlers.port_app_config.models import (PortAppConfig,
+                                                             ResourceConfig,
+                                                             Selector)
 from port_ocean.core.integrations.base import BaseIntegration
+from pydantic import BaseModel, Field
 
 
 class APIQueryParams(BaseModel):

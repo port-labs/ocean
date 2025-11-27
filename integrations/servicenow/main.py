@@ -1,15 +1,16 @@
-from loguru import logger
-from port_ocean.context.ocean import ocean
-from client import ServicenowClient
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.context.event import event
-from integration import ServiceNowResourceConfig
 from typing import cast
+
+from loguru import logger
+from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from auth.abstract_authenticator import AbstractServiceNowAuthenticator
 from auth.basic_authenticator import BasicAuthenticator
 from auth.oauth_authenticator import OAuthClientCredentialsAuthenticator
+from client import ServicenowClient
 from exceptions import MissingCredentialsError
+from integration import ServiceNowResourceConfig
 
 
 def create_authenticator() -> AbstractServiceNowAuthenticator:
