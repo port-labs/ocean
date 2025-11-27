@@ -45,7 +45,7 @@ class GetRepositoryPolicyAction(Action):
             repositoryName=repository["repositoryName"]
         )
 
-        return {"repositoryPolicy": response}
+        return {"repositoryPolicyText": response["policyText"]}
 
 
 class GetLifecyclePolicyAction(Action):

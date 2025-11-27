@@ -20,8 +20,8 @@ class RepositoryProperties(BaseModel):
     lifecyclePolicy: Optional[dict[str, Any]] = Field(
         default=None, alias="LifecyclePolicy"
     )
-    repositoryPolicy: Optional[dict[str, Any]] = Field(
-        default=None, alias="RepositoryPolicy"
+    repositoryPolicyText: Optional[str] = Field(
+        default=None, alias="RepositoryPolicyText"
     )
     tags: list[dict[str, str]] = Field(default_factory=list, alias="Tags")
 
