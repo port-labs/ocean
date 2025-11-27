@@ -103,22 +103,42 @@ def can_expression_run_with_no_input(selector_query: str) -> bool:
 
 def _can_expression_run_on_single_item(expr: str, key: str) -> bool:
     """
-    Detect `.key` outside of quotes, as a standalone path segment beginning
-    after a non-word boundary (start, space, |, (, [, {, , or :) and not part
-    of `.something.key`.
-    assuming key = 'item'
-    Examples:
-        - .item.yaeli => true
-        - map(.item.yaeli) => true
-        - .body.item => false
+    Return True only if all top-level jq paths in the expression
+    reference `.key...` and nothing outside that tree.
     """
     if not key:
         return False
 
     masked = _mask_strings(expr)
     masked = _mask_numbers(masked)
-    pattern = re.compile(rf"(?<![A-Za-z0-9_])\.{re.escape(key)}(?![A-Za-z0-9_])")
-    return bool(pattern.search(masked))
+
+    # 🚫 Reject expressions that start from a root-level array, e.g. `.[] | ...` or `.[0] | ...`
+    # Top-level ".[" = a dot not preceded by [A-Za-z0-9_.])]
+    if re.search(r"(?<![A-Za-z0-9_.\]\)])\.\[", masked):
+        return False
+
+    # Match *top-level* paths only:
+    # - A dot NOT preceded by [A-Za-z0-9_.])]
+    #   (so we don't treat `.field` in `.item.field[0].subfield` as a new root)
+    # - Followed by an identifier for the first segment
+    paths = re.findall(
+        r"(?<![A-Za-z0-9_.\]\)])\.[A-Za-z_][A-Za-z0-9_]*",
+        masked,
+    )
+
+    if not paths:
+        return False
+
+    allowed_root = f".{key}"
+
+    for p in paths:
+        if p == allowed_root or p.startswith(allowed_root + "."):
+            continue
+        else:
+            # Some other root field like .name, .body, .foo, etc.
+            return False
+
+    return True
 
 
 def classify_input(

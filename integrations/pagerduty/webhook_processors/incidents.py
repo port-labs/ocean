@@ -1,6 +1,8 @@
+from typing import cast
 from clients.pagerduty import PagerDutyClient
 from consts import INCIDENT_UPSERT_EVENTS
 from kinds import Kinds
+from integration import PagerdutyIncidentResourceConfig
 from webhook_processors.abstract import (
     PagerdutyAbstractWebhookProcessor,
 )
@@ -21,18 +23,25 @@ class IncidentWebhookProcessor(PagerdutyAbstractWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kinds.INCIDENTS]
 
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        return bool(payload.get("event", {}).get("data", {}).get("id"))
+
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         client = PagerDutyClient.from_ocean_configuration()
-        incident_id = payload.get("event", {}).get("data", {}).get("id")
-        incident = await client.get_single_resource(
+        incident_id = payload["event"]["data"]["id"]
+
+        data = await client.get_single_resource(
             object_type=Kinds.INCIDENTS, identifier=incident_id
         )
-        enriched_incident = await client.enrich_incidents_with_analytics_data(
-            [incident["incident"]] if incident.get("incident") else []
-        )
+        incidents = [data["incident"]] if data.get("incident") else []
+
+        selector = cast(PagerdutyIncidentResourceConfig, resource_config).selector
+        if selector.incident_analytics:
+            incidents = await client.enrich_incidents_with_analytics_data(incidents)
+
         return WebhookEventRawResults(
-            updated_raw_results=enriched_incident,
+            updated_raw_results=incidents,
             deleted_raw_results=[],
         )
