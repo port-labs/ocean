@@ -129,13 +129,15 @@ class WizClient:
             raise
 
     async def _get_paginated_resources(
-        self, resource: str, variables: dict[str, Any], max_pages: int
+        self, resource: str, variables: dict[str, Any], max_pages: Optional[int] = None
     ) -> AsyncGenerator[list[Any], None]:
         logger.info(f"Fetching {resource} data from Wiz API")
         page_num = 1
 
-        while page_num <= max_pages:
-            logger.info(f"Fetching page {page_num} of {max_pages}")
+        while True:
+            logger.info(
+                f"Fetching page {page_num} {f"of {max_pages}" if max_pages else ''}"
+            )
             gql = GRAPH_QUERIES[resource]
             data = await self.make_graphql_query(gql, variables)
 
@@ -148,27 +150,8 @@ class WizClient:
             # Set the cursor for the next page request
             variables["after"] = cursor.get("endCursor", "")
             page_num += 1
-
-    async def _get_paginated_projects(
-        self, variables: dict[str, Any]
-    ) -> AsyncGenerator[list[Any], None]:
-        logger.info("Fetching projects data from Wiz API")
-        page_num = 1
-
-        while True:
-            logger.info(f"Fetching page {page_num}")
-            gql = GRAPH_QUERIES["projects"]
-            data = await self.make_graphql_query(gql, variables)
-
-            yield data["projects"]["nodes"]
-
-            cursor = data["projects"].get("pageInfo") or {}
-            if not cursor.get("hasNextPage", False):
-                break  # Break out of the loop if no more pages
-
-            # Set the cursor for the next page request
-            variables["after"] = cursor.get("endCursor", "")
-            page_num += 1
+            if max_pages and page_num >= max_pages:
+                break
 
     async def get_issues(
         self,
@@ -212,8 +195,8 @@ class WizClient:
         if impact:
             variables["filterBy"]["impact"] = impact
 
-        async for projects in self._get_paginated_projects(
-            variables=variables,
+        async for projects in self._get_paginated_resources(
+            resource="projects", variables=variables
         ):
             event.attributes.setdefault(CacheKeys.PROJECTS, []).extend(projects)
             yield projects

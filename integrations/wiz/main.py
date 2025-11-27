@@ -10,7 +10,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from port_ocean.context.event import event
 from wiz.client import WizClient
-from wiz.constants import MAX_PAGES
 from overrides import IssueResourceConfig, ProjectResourceConfig
 
 
@@ -51,7 +50,7 @@ async def resync_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             config.selector.severity_list if kind == ObjectKind.ISSUE else []
         )
         type_list = config.selector.type_list if kind == ObjectKind.ISSUE else []
-        max_pages = config.selector.max_pages if kind == ObjectKind.ISSUE else MAX_PAGES
+        max_pages = config.selector.max_pages if kind == ObjectKind.ISSUE else None
 
         logger.info(
             f"Resyncing {kind.lower()} with status list: {status_list}, severity list: {severity_list}, type list: {type_list}, max pages: {max_pages}"
