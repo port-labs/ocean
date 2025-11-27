@@ -26,7 +26,7 @@ class RepositoryProperties(BaseModel):
     tags: list[dict[str, str]] = Field(default_factory=list, alias="Tags")
 
     class Config:
-        extra = "forbid"
+        extra = "ignore"
         allow_population_by_field_name = True
 
 
