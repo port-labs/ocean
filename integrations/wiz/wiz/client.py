@@ -8,6 +8,7 @@ from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.utils import http_async_client
 from port_ocean.utils.misc import get_time
 from pydantic import BaseModel, Field, PrivateAttr
+from wiz.options import IssueOptions, ProjectOptions
 
 from .constants import (
     AUTH0_URLS,
@@ -155,31 +156,29 @@ class WizClient:
 
     async def get_issues(
         self,
-        status_list: list[str],
-        severity_list: list[str],
-        type_list: list[str],
-        max_pages: int,
+        options: IssueOptions,
         page_size: int = PAGE_SIZE,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         variables: dict[str, Any] = {
             "first": page_size,
             "orderBy": {"direction": "DESC", "field": "CREATED_AT"},
-            "filterBy": {
-                "status": status_list,
-                "severity": severity_list,
-                "type": type_list,
-            },
+            "filterBy": {"status": options["status_list"]},
         }
 
+        if options["severity_list"]:
+            variables["filterBy"]["severity"] = options["severity_list"]
+
+        if options["type_list"]:
+            variables["filterBy"]["type"] = options["type_list"]
+
         async for issues in self._get_paginated_resources(
-            resource="issues", variables=variables, max_pages=max_pages
+            resource="issues", variables=variables, max_pages=options["max_pages"]
         ):
             yield issues
 
     async def get_projects(
         self,
-        include_archived: bool = False,
-        impact: Optional[str] = None,
+        options: ProjectOptions,
         page_size: int = PAGE_SIZE,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(CacheKeys.PROJECTS):
@@ -189,11 +188,14 @@ class WizClient:
 
         variables: dict[str, Any] = {
             "first": page_size,
-            "filterBy": {"includeArchived": include_archived},
+            "filterBy": {},
         }
 
-        if impact:
-            variables["filterBy"]["impact"] = impact
+        if options["include_archived"]:
+            variables["filterBy"]["includeArchived"] = options["include_archived"]
+
+        if options["impact"]:
+            variables["filterBy"]["impact"] = options["impact"]
 
         async for projects in self._get_paginated_resources(
             resource="projects", variables=variables

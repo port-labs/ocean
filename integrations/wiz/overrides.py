@@ -4,24 +4,33 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from pydantic import Field
-from typing import Literal
+from typing import Literal, Optional
 
 
 class IssueSelector(Selector):
-    status_list: list[str] = Field(
+    status_list: list[Literal["OPEN", "IN_PROGRESS", "RESOLVED", "REJECTED"]] = Field(
         alias="statusList",
         description="List of statuses to filter issues by",
         default=["OPEN", "IN_PROGRESS"],
     )
-    severity_list: list[str] = Field(
+    severity_list: Optional[
+        list[Literal["LOW", "MEDIUM", "HIGH", "CRITICAL", "INFORMATIONAL"]]
+    ] = Field(
         alias="severityList",
-        description="List of severities to filter issues by. If empty, all severities are fetched. Valid values are: LOW, MEDIUM, HIGH, CRITICAL, INFORMATIONAL.",
-        default=[],
+        description="List of severities to filter issues by. If empty, all severities are fetched.",
+        default=None,
     )
-    type_list: list[str] = Field(
+    type_list: Optional[
+        list[Literal["TOXIC_COMBINATION", "THREAT_DETECTION", "CLOUD_CONFIGURATION"]]
+    ] = Field(
         alias="typeList",
-        description="List of issue types to fetch. If empty, all issue types are fetched. Valid values are: TOXIC_COMBINATION, THREAT_DETECTION, CLOUD_CONFIGURATION.",
-        default=[],
+        description="List of issue types to fetch. If empty, all issue types are fetched.",
+        default=None,
+    )
+    max_pages: int = Field(
+        alias="maxPages",
+        description="Maximum number of pages to fetch for issues. By default, 500 pages are fetched.",
+        default=500,
     )
 
 
@@ -31,15 +40,15 @@ class IssueResourceConfig(ResourceConfig):
 
 
 class ProjectSelector(Selector):
-    impact: str = Field(
+    impact: Optional[Literal["LBI", "MBI", "HBI"]] = Field(
         alias="impact",
-        description="The business impact of the project. If empty, all projects are fetched. Valid values are: LBI, MBI, HBI",
-        default="",
+        description="The business impact of the project. If empty, all projects are fetched.",
+        default=None,
     )
-    include_archived: bool = Field(
+    include_archived: Optional[bool] = Field(
         alias="includeArchived",
         description="Include archived projects. False by default.",
-        default=False,
+        default=None,
     )
 
 
@@ -49,15 +58,6 @@ class ProjectResourceConfig(ResourceConfig):
 
 
 class WizPortAppConfig(PortAppConfig):
-    resources: list[
-        IssueResourceConfig
-        | ProjectResourceConfig
-        # | ControlResourceConfig
-        # | ServiceTicketResourceConfig
-        | ResourceConfig
-    ] = Field(default_factory=list)
-    issues_max_pages: int = Field(
-        alias="issuesMaxPages",
-        description="Maximum number of pages to fetch for issues. By default, 500 pages are fetched.",
-        default=500,
+    resources: list[IssueResourceConfig | ProjectResourceConfig | ResourceConfig] = (
+        Field(default_factory=list)
     )
