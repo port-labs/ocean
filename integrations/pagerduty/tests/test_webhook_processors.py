@@ -17,6 +17,7 @@ from webhook_processors.services import ServiceWebhookProcessor
 from webhook_processors.incidents import IncidentWebhookProcessor
 from kinds import Kinds
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+from integration import PagerdutyIncidentResourceConfig
 
 
 @pytest.fixture(autouse=True)
@@ -76,6 +77,32 @@ def resource_config() -> ResourceConfig:
                     identifier=".id",
                     title=".name",
                     blueprint='"pagerdutyService"',
+                    properties={},
+                )
+            )
+        ),
+    )
+
+
+@pytest.fixture(
+    params=[True, False], ids=["incidentAnalytics=True", "incidentAnalytics=False"]
+)
+def incident_resource_config(
+    request: pytest.FixtureRequest,
+) -> PagerdutyIncidentResourceConfig:
+    """Typed incident resource config so selector has incident_analytics."""
+    return PagerdutyIncidentResourceConfig(
+        kind="incidents",
+        selector=PagerdutyIncidentResourceConfig.PagerdutySelector(
+            query="true",
+            incidentAnalytics=request.param,
+        ),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".id",
+                    title=".title",
+                    blueprint='"pagerdutyIncident"',
                     properties={},
                 )
             )
@@ -239,7 +266,7 @@ class TestIncidentWebhookProcessor:
         self,
         incident_webhook_processor: IncidentWebhookProcessor,
         mock_client: MagicMock,
-        resource_config: ResourceConfig,
+        incident_resource_config: PagerdutyIncidentResourceConfig,
     ) -> None:
         incident_id = "INC123"
         incident_data = {
@@ -264,7 +291,7 @@ class TestIncidentWebhookProcessor:
             return_value=mock_client,
         ):
             result = await incident_webhook_processor.handle_event(
-                payload, resource_config
+                payload, incident_resource_config
             )
             assert isinstance(result, WebhookEventRawResults)
             assert result.updated_raw_results == [incident_data]
@@ -274,6 +301,9 @@ class TestIncidentWebhookProcessor:
         mock_client.get_single_resource.assert_called_once_with(
             object_type=Kinds.INCIDENTS, identifier=incident_id
         )
-        mock_client.enrich_incidents_with_analytics_data.assert_called_once_with(
-            [incident_data]
-        )
+        if incident_resource_config.selector.incident_analytics:
+            mock_client.enrich_incidents_with_analytics_data.assert_called_once_with(
+                [incident_data]
+            )
+        else:
+            mock_client.enrich_incidents_with_analytics_data.assert_not_called()

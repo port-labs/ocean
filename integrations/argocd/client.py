@@ -3,6 +3,8 @@ from typing import Any, Optional, AsyncGenerator
 
 import httpx
 from loguru import logger
+
+from port_ocean.helpers.async_client import OceanAsyncClient, StreamingClientWrapper
 from port_ocean.utils import http_async_client
 
 
@@ -34,6 +36,7 @@ class ArgocdClient:
         server_url: str,
         ignore_server_error: bool,
         allow_insecure: bool,
+        use_streaming: bool = False,
     ):
         self.token = token
         self.api_url = f"{server_url}/api/v1"
@@ -45,10 +48,13 @@ class ArgocdClient:
             logger.warning(
                 "Insecure mode is enabled. This will disable SSL verification for the ArgoCD API client, which is not recommended for production use."
             )
-            self.http_client = httpx.AsyncClient(verify=False)
+            self.http_client = OceanAsyncClient(verify=False)
         else:
-            self.http_client = http_async_client
+            # Type ignore because http_async_client is typed as AsyncClient but returns OceanAsyncClient
+            self.http_client = http_async_client  # type: ignore
         self.http_client.headers.update(self.api_auth_header)
+        self.streaming_client = StreamingClientWrapper(self.http_client)
+        self.use_streaming = use_streaming
 
     async def _send_api_request(
         self,
@@ -83,34 +89,73 @@ class ArgocdClient:
                 return {}
             raise e
 
+    async def _fetch_paginated_data(
+        self,
+        url: str,
+        query_params: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Fetch paginated data using traditional HTTP requests (non-streaming)"""
+        page = 0
+        page_size = PAGE_SIZE
+
+        while True:
+            current_params = {**(query_params or {}), "page": page, "size": page_size}
+
+            try:
+                response = await self._send_api_request(
+                    url=url, query_params=current_params
+                )
+                items = response.get("items", [])
+
+                if not items:
+                    break
+
+                yield items
+
+                if len(items) < page_size:
+                    break
+
+                page += 1
+
+            except Exception as e:
+                logger.error(f"Failed to fetch page {page} from {url}: {e}")
+                if not self.ignore_server_error:
+                    raise
+                break
+
     async def get_clusters(
         self, skip_unavailable_clusters: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self.api_url}/{ResourceKindsWithSpecialHandling.CLUSTER}s"
         try:
-            response_data = await self._send_api_request(url=url)
-            clusters: list[dict[str, Any]] = []
-            if skip_unavailable_clusters:
-                for cluster in response_data.get("items", []):
-                    if (
-                        cluster.get("connectionState", {}).get("status")
-                        == ClusterState.AVAILABLE.value
-                    ):
-                        clusters.append(cluster)
+            if self.use_streaming:
+                async for clusters in self.streaming_client.stream_json(
+                    url=url, target_items_path="items"
+                ):
+                    if skip_unavailable_clusters:
+                        yield [
+                            cluster
+                            for cluster in clusters
+                            if cluster.get("connectionState", {}).get("status")
+                            == ClusterState.AVAILABLE.value
+                        ]
+                    else:
+                        yield clusters
             else:
-                clusters = response_data.get("items", [])
-
-            if len(clusters) >= PAGE_SIZE:
-                yield clusters
-                clusters = []
-
-            if clusters:
-                yield clusters
+                async for clusters in self._fetch_paginated_data(url=url):
+                    if skip_unavailable_clusters:
+                        yield [
+                            cluster
+                            for cluster in clusters
+                            if cluster.get("connectionState", {}).get("status")
+                            == ClusterState.AVAILABLE.value
+                        ]
+                    else:
+                        yield clusters
         except Exception as e:
             logger.error(f"Failed to fetch clusters: {e}")
-            if self.ignore_server_error:
-                yield []
-            raise e
+            if not self.ignore_server_error:
+                raise
 
     async def get_available_clusters(self) -> list[dict[str, Any]]:
         available_clusters: list[dict[str, Any]] = []
@@ -120,26 +165,31 @@ class ArgocdClient:
 
     async def get_resources_for_available_clusters(
         self, resource_kind: ObjectKind
-    ) -> list[dict[str, Any]]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         available_clusters = await self.get_available_clusters()
         cluster_names = [cluster["name"] for cluster in available_clusters]
         url = f"{self.api_url}/{resource_kind}s"
 
-        all_resources = []
         for cluster_name in cluster_names:
             try:
-                response_data = await self._send_api_request(
-                    url=url, query_params={"cluster": cluster_name}
-                )
-                all_resources.extend(response_data.get("items", []))
+                if self.use_streaming:
+                    async for resources in self.streaming_client.stream_json(
+                        url=url,
+                        target_items_path="items",
+                        params={"cluster": cluster_name},
+                    ):
+                        yield resources
+                else:
+                    async for resources in self._fetch_paginated_data(
+                        url=url, query_params={"cluster": cluster_name}
+                    ):
+                        yield resources
             except Exception as e:
                 logger.error(
                     f"Failed to fetch resources of kind {resource_kind} for cluster {cluster_name}: {e}"
                 )
-                if self.ignore_server_error:
-                    continue
-                raise e
-        return all_resources
+                if not self.ignore_server_error:
+                    raise
 
     async def get_application_by_name(self, name: str) -> dict[str, Any]:
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{name}"
@@ -153,15 +203,12 @@ class ArgocdClient:
         logger.warning(
             f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
-        applications = await self.get_resources_for_available_clusters(
+        batch: list[dict[str, Any]] = []
+        has_applications = False
+        async for applications in self.get_resources_for_available_clusters(
             resource_kind=ObjectKind.APPLICATION
-        )
-        if not applications:
-            logger.error(
-                "No applications were found. Skipping deployment history ingestion"
-            )
-        else:
-            batch: list[dict[str, Any]] = []
+        ):
+            has_applications = True
             for application in applications:
                 history = application.get("status", {}).get("history", [])
                 if history:
@@ -170,9 +217,13 @@ class ArgocdClient:
                         if len(batch) >= PAGE_SIZE:
                             yield batch
                             batch = []
+        if batch:
+            yield batch
 
-            if batch:
-                yield batch
+        if not has_applications:
+            logger.error(
+                "No applications were found. Skipping deployment history ingestion"
+            )
 
     async def get_kubernetes_resource(
         self,
@@ -181,76 +232,72 @@ class ArgocdClient:
         logger.warning(
             f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
         )
-        applications = await self.get_resources_for_available_clusters(
-            resource_kind=ObjectKind.APPLICATION
-        )
-        if not applications:
-            logger.error(
-                "No applications were found. Skipping managed resources ingestion"
-            )
-            return
-
         batch: list[dict[str, Any]] = []
-        for app in applications:
-            if not app["metadata"]["uid"]:
-                logger.warning(
-                    f"Skipping application without UID: {app.get('metadata', {}).get('name', 'unknown')}"
-                )
-                continue
+        has_applications = False
+        async for applications in self.get_resources_for_available_clusters(
+            resource_kind=ObjectKind.APPLICATION
+        ):
+            has_applications = True
+            for app in applications:
+                if not app.get("metadata", {}).get("uid"):
+                    logger.warning(
+                        f"Skipping application without UID: {app.get('metadata', {}).get('name', 'unknown')}"
+                    )
+                    continue
 
-            resources = [
-                {
-                    **resource,
-                    "__application": app,
-                }
-                for resource in app.get("status", {}).get("resources", [])
-                if resource
-            ]
+                resources = [
+                    {
+                        **resource,
+                        "__application": app,
+                    }
+                    for resource in app.get("status", {}).get("resources", [])
+                    if resource
+                ]
 
-            for resource in resources:
-                batch.append(resource)
-                if len(batch) >= PAGE_SIZE:
-                    yield batch
-                    batch = []
+                for resource in resources:
+                    batch.append(resource)
+                    if len(batch) >= PAGE_SIZE:
+                        yield batch
+                        batch = []
 
         if batch:
             yield batch
 
+        if not has_applications:
+            logger.error(
+                "No applications were found. Skipping managed resources ingestion"
+            )
+
     async def get_managed_resources(
         self, application: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        errors = []
         try:
             application_name = application["metadata"]["name"]
             logger.info(
                 f"Fetching managed resources for application: {application_name}"
             )
             url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
-            managed_resources = (await self._send_api_request(url=url)).get("items", [])
 
-            batch: list[dict[str, Any]] = []
-            for managed_resource in managed_resources:
-                if managed_resource:
-                    resource = {
-                        **managed_resource,
-                        "__application": application,
-                    }
-                    batch.append(resource)
-
-                    if len(batch) >= PAGE_SIZE:
-                        yield batch
-                        batch = []
-
-            if batch:
-                yield batch
+            if self.use_streaming:
+                async for managed_resources in self.streaming_client.stream_json(
+                    url=url, target_items_path="items"
+                ):
+                    yield [
+                        {**managed_resource, "__application": application}
+                        for managed_resource in managed_resources
+                        if managed_resource
+                    ]
+            else:
+                async for managed_resources in self._fetch_paginated_data(url=url):
+                    yield [
+                        {**managed_resource, "__application": application}
+                        for managed_resource in managed_resources
+                        if managed_resource
+                    ]
 
         except Exception as e:
             logger.error(
                 f"Failed to fetch managed resources for application {application['metadata']['name']}: {e}"
             )
-            errors.append(e)
-
-        if errors and not self.ignore_server_error:
-            raise ExceptionGroup(
-                "Errors occurred during managed resource ingestion", errors
-            )
+            if not self.ignore_server_error:
+                raise
