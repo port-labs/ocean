@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, TYPE_CHECKING
 
 from loguru import logger
-import fnmatch
+from wcmatch import glob
 from integration import FolderPattern
 
 
@@ -72,19 +72,13 @@ def find_matching_folders(
     """Find folders that match the given patterns."""
     matching_folders = []
     for pattern_str in patterns:
-        is_wildcard_pattern = any(c in pattern_str for c in "*?[]")
         matching = [
             {"folder": folder, "repo": repo, "pattern": pattern_str, "branch": branch}
             for folder in contents
             if folder["type"] == "commit_directory"
-            and (
-                (
-                    is_wildcard_pattern
-                    and folder["path"].count("/") == pattern_str.count("/")
-                )
-                or (not is_wildcard_pattern and folder["path"] == pattern_str)
+            and glob.globmatch(
+                folder["path"], pattern_str, flags=glob.GLOBSTAR | glob.DOTGLOB
             )
-            and fnmatch.fnmatch(folder["path"], pattern_str)
         ]
         matching_folders.extend(matching)
     return matching_folders
