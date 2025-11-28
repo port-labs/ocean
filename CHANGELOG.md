@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.30.5 (2025-11-27)
+
+### Bug Fixes
+
+-  Fix delete target logic for complex items_to_parse jq expressions
+-  Fix items_to_parse with yield_items_to_parse enabled item construction
+
+## 0.30.4 (2025-11-26)
+- Updated upsert (load) metrics to be calculated directly from response
+- Updated log on duplicate count
+
 ## 0.30.3 (2025-11-25)
 
 ### Improvements

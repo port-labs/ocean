@@ -1,10 +1,31 @@
 from typing import cast
 
+from loguru import logger
+
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import (
-    PULL_REQUEST_SEARCH_CRITERIA,
+    create_closed_pull_request_search_criteria,
+    ACTIVE_PULL_REQUEST_SEARCH_CRITERIA,
     Kind,
     AzureDevopsFolderResourceConfig,
+)
+from azure_devops.webhooks.webhook_processors.branch_webhook_processor import (
+    BranchWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.file_webhook_processor import (
+    FileWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.folder_webhook_processor import (
+    FolderWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.gitops_webhook_processor import (
+    GitopsWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.pull_request_processor import (
+    PullRequestWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.repository_processor import (
+    RepositoryWebhookProcessor,
 )
 from integration import (
     AzureDevopsPipelineResourceConfig,
@@ -13,29 +34,8 @@ from integration import (
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
     AzureDevopsTestRunResourceConfig,
+    AzureDevopsPullRequestResourceConfig,
 )
-
-from azure_devops.webhooks.webhook_processors.pull_request_processor import (
-    PullRequestWebhookProcessor,
-)
-
-from azure_devops.webhooks.webhook_processors.repository_processor import (
-    RepositoryWebhookProcessor,
-)
-from azure_devops.webhooks.webhook_processors.file_webhook_processor import (
-    FileWebhookProcessor,
-)
-from azure_devops.webhooks.webhook_processors.gitops_webhook_processor import (
-    GitopsWebhookProcessor,
-)
-from azure_devops.webhooks.webhook_processors.folder_webhook_processor import (
-    FolderWebhookProcessor,
-)
-from azure_devops.webhooks.webhook_processors.branch_webhook_processor import (
-    BranchWebhookProcessor,
-)
-
-from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -106,11 +106,25 @@ async def resync_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.PULL_REQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    for search_filter in PULL_REQUEST_SEARCH_CRITERIA:
+    selector = cast(
+        AzureDevopsPullRequestResourceConfig, event.resource_config
+    ).selector
+
+    async for pull_requests in azure_devops_client.generate_pull_requests(
+        ACTIVE_PULL_REQUEST_SEARCH_CRITERIA
+    ):
+        logger.info(f"Resyncing {len(pull_requests)} active pull_requests")
+        yield pull_requests
+
+    for search_filter in create_closed_pull_request_search_criteria(
+        selector.min_time_datetime
+    ):
         async for pull_requests in azure_devops_client.generate_pull_requests(
-            search_filter
+            search_filter, selector.max_results
         ):
-            logger.info(f"Resyncing {len(pull_requests)} pull_requests")
+            logger.info(
+                f"Resyncing {len(pull_requests)} abandoned/completed pull_requests"
+            )
             yield pull_requests
 
 
