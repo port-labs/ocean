@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for ingesting CODEOWNERS files in the default mapping
 
 
+## 0.1.104 (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
 ## 0.1.103 (2025-11-26)
 
 
