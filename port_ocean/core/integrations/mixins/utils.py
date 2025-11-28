@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 from contextlib import contextmanager
 from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
+import copy
 
 import ijson
 from loguru import logger
@@ -124,8 +125,8 @@ async def resync_generator_wrapper(
                         if items_to_parse:
                             for data in result:
                                 data_path: str | None = None
-                                if isinstance(data, dict) and data.get("file") is not None:
-                                    content = data["file"].get("content") if isinstance(data["file"].get("content"), dict) else {}
+                                if isinstance(data, dict) and data.get("__type") == "path":
+                                    content = data.get("file", {}).get("content") if isinstance(data["file"].get("content"), dict) else {}
                                     data_path = content.get("path", None)
                                 bulks = get_items_to_parse_bulks(data, data_path, items_to_parse, items_to_parse_name, data.get("__base_jq", ".file.content"))
                                 async for bulk in bulks:
@@ -146,6 +147,62 @@ async def resync_generator_wrapper(
             raise ExceptionGroup(
                 "At least one of the resync generator iterations failed", errors
             )
+
+def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
+    """
+    Revised function to extract a simple path suitable for del() by analyzing pipe segments.
+    """
+    expr = jq_expression.strip()
+
+    # 1. Handle surrounding parentheses and extract the main chain
+    if expr.startswith('('):
+        match_paren = re.match(r'\((.*?)\)', expr, re.DOTALL)
+        if match_paren:
+            chain = match_paren.group(1).strip()
+        else:
+            return None
+    else:
+        chain = expr
+
+    # 2. Split the chain by the main pipe operator (excluding pipes inside quotes or brackets,
+    # but for simplicity here, we split naively and check segments)
+    segments = chain.split('|')
+
+    # 3. Analyze each segment for a simple path
+    for segment in segments:
+        segment = segment.strip()
+
+        # Ignore variable assignment segments like '. as $root'
+        if re.match(r'^\.\s+as\s+\$\w+', segment):
+            continue
+
+        # Ignore identity and variable access like '.' or '$items'
+        if segment == '.' or segment.startswith('$'):
+            continue
+
+        # Look for the first genuine path accessor (e.g., .key, .[index], .key.nested, .key[0])
+        # This regex looks for a starting dot and follows it with path components
+        # (alphanumeric keys or bracketed accessors, where brackets can follow words directly)
+        # Pattern: Start with .word or .[index], then optionally more:
+        #   - .word (dot followed by word)
+        #   - [index] (bracket directly after word, no dot)
+        #   - .[index] (dot followed by bracket)
+        path_match = re.match(r'(\.[\w]+|\.\[[^\]]+\])(\.[\w]+|\[[^\]]+\]|\.\[[^\]]+\])*', segment)
+
+        if path_match:
+            path = path_match.group(0).strip()
+
+            # If the path is immediately followed by a simple fallback (// value),
+            # we consider the path complete.
+            if re.search(r'\s*//\s*(\[\]|null|\.|\{.*?\})', segment):
+                return path
+
+            # If the path is just a path segment followed by nothing or the end of a complex
+            # expression (like .file.content.raw) we return it.
+            return path
+
+    # Default case: No suitable path found after checking all segments
+    return None
 
 
 def is_resource_supported(
@@ -197,6 +254,7 @@ async def get_items_to_parse_bulks(raw_data: dict[Any, Any], data_path: str, ite
     temp_output_path = None
 
     try:
+        is_path_type = True
         # Create secure temporary files
         if not data_path:
             raw_data_serialized = json.dumps(raw_data)
@@ -204,17 +262,17 @@ async def get_items_to_parse_bulks(raw_data: dict[Any, Any], data_path: str, ite
             with open(temp_data_path, "w") as f:
                 f.write(raw_data_serialized)
             data_path = temp_data_path
+            is_path_type = False
 
         temp_output_path = _create_secure_temp_file("_parsed.json")
 
-        delete_target = items_to_parse.split('|', 1)[0].strip() if not items_to_parse.startswith('map(') else '.'
-        base_jq_object_string = await _build_base_jq_object_string(raw_data, base_jq, delete_target)
+        delete_target = extract_jq_deletion_path_revised(items_to_parse) or '.'
 
         # Build jq expression safely
         jq_expression = f""". as $all
       | ($all | {items_to_parse}) as $items
       | $items
-      | map({{{items_to_parse_name}: ., {base_jq_object_string}}})"""
+      | {_build_mapping_jq_expression(items_to_parse_name, base_jq, delete_target, is_path_type)}"""
 
         # Use subprocess with list arguments instead of shell=True
 
@@ -237,7 +295,7 @@ async def get_items_to_parse_bulks(raw_data: dict[Any, Any], data_path: str, ite
             with open(temp_output_path, "r") as f:
                 events_stream = get_events_as_a_stream(f, 'item', ocean.config.yield_items_to_parse_batch_size)
                 for items_bulk in events_stream:
-                    yield items_bulk
+                    yield items_bulk if not is_path_type else [merge_raw_data_to_item(item, raw_data) for item in items_bulk]
 
     except ValueError as e:
         logger.error(f"Invalid jq expression: {e}")
@@ -260,13 +318,57 @@ def unsupported_kind_response(
     logger.error(f"Kind {kind} is not supported in this integration")
     return [], [KindNotImplementedException(kind, available_resync_kinds)]
 
-async def _build_base_jq_object_string(raw_data: dict[Any, Any], base_jq: str, delete_target: str) -> str:
-    base_jq_object_before_parsing = await cast(JQEntityProcessor, ocean.app.integration.entity_processor)._search(raw_data, f"{base_jq} = {json.dumps("__all")}")
-    base_jq_object_before_parsing_serialized = json.dumps(base_jq_object_before_parsing)
-    base_jq_object_before_parsing_serialized = base_jq_object_before_parsing_serialized[1:-1] if len(base_jq_object_before_parsing_serialized) >= 2 else base_jq_object_before_parsing_serialized
-    base_jq_object_before_parsing_serialized = base_jq_object_before_parsing_serialized.replace("\"__all\"", f"(($all | del({delete_target})) // {{}})")
-    return base_jq_object_before_parsing_serialized
+def _build_mapping_jq_expression(items_to_parse_name: str, base_jq: str, delete_target: str, is_path_type: bool = False) -> str:
+    if is_path_type:
+        return f"map({{{items_to_parse_name}: . }} | {base_jq} = (($all | del({delete_target})) // {{}}))"
+    return f"map(($all | del({delete_target})) + {{{items_to_parse_name}: . }})"
 
+def merge_raw_data_to_item(item: dict[str, Any], raw_data: dict[str, Any]) -> dict[str, Any]:
+    return recursive_dict_merge(raw_data, item)
+
+def recursive_dict_merge(d1: dict[Any, Any], d2: dict[Any, Any]) -> dict[Any, Any]:
+    """
+    Recursively merges dict d2 into dict d1.
+
+    If a key exists in both dictionaries:
+    1. If the value in d2 is an empty dictionary (e.g., {}), it overwrites the value in d1.
+    2. If both values are non-empty dictionaries, they are merged recursively.
+    3. Otherwise, the value from d2 overwrites the value from d1.
+
+    The original dictionaries are not modified (d1 is copied).
+
+    Args:
+        d1: The base dictionary (will be copied and modified).
+        d2: The dictionary to merge into d1.
+
+    Returns:
+        The merged dictionary.
+    """
+    # Start with a copy of d1 to ensure d1 is not mutated
+    merged_dict = copy.deepcopy(d1)
+
+    for key, value in d2.items():
+        # Condition to trigger recursive deep merge:
+        # 1. Key exists in merged_dict
+        # 2. Both values are dictionaries
+        # 3. The value from d2 is NOT an empty dictionary ({}).
+        #    If d2's value is {}, we treat it as an explicit instruction to overwrite/clear.
+        is_deep_merge = (
+            key in merged_dict and
+            isinstance(merged_dict[key], dict) and
+            isinstance(value, dict) and
+            value != {}
+        )
+
+        if is_deep_merge:
+            # If both are dictionaries and d2 is not empty, recurse
+            merged_dict[key] = recursive_dict_merge(merged_dict[key], value)
+        else:
+            # Otherwise (new key, non-dict value, or explicit {} overwrite),
+            # overwrite the value from d1 with the value from d2
+            merged_dict[key] = value
+
+    return merged_dict
 
 def get_events_as_a_stream(
         stream: Any,
