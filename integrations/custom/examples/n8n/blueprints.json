@@ -1,111 +1,141 @@
 [
-{
-  "identifier": "n8nUser",
-  "description": "This blueprint represents an n8n user",
-  "title": "n8n User",
-  "icon": "User",
-  "schema": {
-    "properties": {
-      "created_at": {
-        "type": "string",
-        "title": "Created At",
-        "format": "date-time"
+   {
+      "identifier":"n8nUser",
+      "description":"This blueprint represents an n8n user",
+      "title":"n8n User",
+      "icon":"User",
+      "schema":{
+         "properties":{
+            "created_at":{
+               "type":"string",
+               "title":"Created At",
+               "format":"date-time"
+            },
+            "is_active":{
+               "type":"boolean",
+               "title":"Is Active"
+            },
+            "email":{
+               "type":"string",
+               "title":"Email"
+            },
+            "full_name":{
+               "type":"string",
+               "title":"Full Name"
+            }
+         },
+         "required":[
+            
+         ]
       },
-      "is_active": {
-        "type": "boolean",
-        "title": "Is Active"
+      "mirrorProperties":{
+         
       },
-      "email": {
-        "type": "string",
-        "title": "Email"
+      "calculationProperties":{
+         
       },
-      "full_name": {
-        "type": "string",
-        "title": "Full Name"
+      "aggregationProperties":{
+         
+      },
+      "relations":{
+         
       }
-    },
-    "required": []
-  },
-  "mirrorProperties": {},
-  "calculationProperties": {},
-  "aggregationProperties": {},
-  "relations": {}
-},
-{
-  "identifier": "n8nProject",
-  "description": "This blueprint represents an n8n project",
-  "title": "n8n Project",
-  "icon": "OpenFolder",
-  "schema": {
-    "properties": {},
-    "required": []
-  },
-  "mirrorProperties": {},
-  "calculationProperties": {},
-  "aggregationProperties": {},
-  "relations": {}
-},
-{
-  "identifier": "n8nWorkflow",
-  "description": "This blueprint represents an n8n workflow",
-  "title": "n8n Workflow",
-  "icon": "Pipeline",
-  "schema": {
-    "properties": {
-      "created_at": {
-        "type": "string",
-        "title": "Created At",
-        "format": "date-time"
+   },
+   {
+      "identifier":"n8nProject",
+      "description":"This blueprint represents an n8n project",
+      "title":"n8n Project",
+      "icon":"OpenFolder",
+      "schema":{
+         "properties":{
+            
+         },
+         "required":[
+            
+         ]
       },
-      "updated_at": {
-        "type": "string",
-        "title": "Updated At",
-        "format": "date-time"
+      "mirrorProperties":{
+         
       },
-      "is_active": {
-        "type": "boolean",
-        "title": "Is Active"
+      "calculationProperties":{
+         
       },
-      "is_archived": {
-        "type": "boolean",
-        "title": "Is Archived"
+      "aggregationProperties":{
+         
       },
-      "nodes": {
-        "items": {
-          "type": "object"
-        },
-        "icon": "DefaultProperty",
-        "type": "array",
-        "title": "Nodes"
-      },
-      "connections": {
-        "type": "object",
-        "title": "Connections"
-      },
-      "trigger_count": {
-        "type": "number",
-        "title": "Trigger Count"
-      },
-      "tags": {
-        "items": {
-          "type": "string"
-        },
-        "type": "array",
-        "title": "Tags"
+      "relations":{
+         
       }
-    },
-    "required": []
-  },
-  "mirrorProperties": {},
-  "calculationProperties": {},
-  "aggregationProperties": {},
-  "relations": {
-    "project": {
-      "title": "Project",
-      "target": "n8nProject",
-      "required": false,
-      "many": false
-    }
-  }
-}
+   },
+   {
+      "identifier":"n8nWorkflow",
+      "description":"This blueprint represents an n8n workflow",
+      "title":"n8n Workflow",
+      "icon":"Pipeline",
+      "schema":{
+         "properties":{
+            "created_at":{
+               "type":"string",
+               "title":"Created At",
+               "format":"date-time"
+            },
+            "updated_at":{
+               "type":"string",
+               "title":"Updated At",
+               "format":"date-time"
+            },
+            "is_active":{
+               "type":"boolean",
+               "title":"Is Active"
+            },
+            "is_archived":{
+               "type":"boolean",
+               "title":"Is Archived"
+            },
+            "nodes":{
+               "items":{
+                  "type":"object"
+               },
+               "icon":"DefaultProperty",
+               "type":"array",
+               "title":"Nodes"
+            },
+            "connections":{
+               "type":"object",
+               "title":"Connections"
+            },
+            "trigger_count":{
+               "type":"number",
+               "title":"Trigger Count"
+            },
+            "tags":{
+               "items":{
+                  "type":"string"
+               },
+               "type":"array",
+               "title":"Tags"
+            }
+         },
+         "required":[
+            
+         ]
+      },
+      "mirrorProperties":{
+         
+      },
+      "calculationProperties":{
+         
+      },
+      "aggregationProperties":{
+         
+      },
+      "relations":{
+         "project":{
+            "title":"Project",
+            "target":"n8nProject",
+            "required":false,
+            "many":false
+         }
+      }
+   }
 ]
