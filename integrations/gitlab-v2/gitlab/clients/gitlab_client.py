@@ -1,4 +1,3 @@
-import fnmatch
 import asyncio
 from functools import partial
 from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Union
@@ -10,6 +9,7 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 from urllib.parse import quote
+from wcmatch import glob
 
 from gitlab.helpers.utils import parse_file_content
 
@@ -370,9 +370,8 @@ class GitLabClient:
         is_wildcard = any(c in path for c in "*?[]")
 
         if is_wildcard:
-            # For wildcard patterns, we need to recursively search and filter by depth
+            # For wildcard patterns, we need to recursively search and filter using globmatch
             params = {"ref": ref, "path": "", "recursive": True}
-            pattern_depth = path.count("/")
 
             async for batch in self.rest.get_paginated_project_resource(
                 project_path, "repository/tree", params
@@ -381,8 +380,9 @@ class GitLabClient:
                     item
                     for item in batch
                     if item["type"] == "tree"
-                    and item["path"].count("/") == pattern_depth
-                    and fnmatch.fnmatch(item["path"], path)
+                    and glob.globmatch(
+                        item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
+                    )
                 ]
                 if folders_batch:
                     yield [
