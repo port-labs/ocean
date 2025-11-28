@@ -141,6 +141,8 @@ resources:
                 identifier: ($tokens[0]
                           | gsub("\\*\\*"; "doublestar")
                           | gsub("\\*"; "star")),
+                users: ($tokens[1:] | map(select(contains("/") | not) | gsub("@"; ""))),
+                teams: ($tokens[1:] | map(select(test("^@[^ ]+/[^ ]+$")) | split("/") | .[-1])),
                 repoName: $root.repo.name,
                 projectName: $root.repo.project.name,
                 filePath: $root.file.path
@@ -155,5 +157,7 @@ resources:
           properties:
             scope: .item.scope
             location: .item.filePath
+            users: .item.users
+            teams: .item.teams
           relations:
             service: (.item.projectName | ascii_downcase | gsub("[ ();]"; "")) + "/" + (.item.repoName | ascii_downcase | gsub("[ ();]"; ""))
