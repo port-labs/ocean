@@ -1,0 +1,28 @@
+# Helm values for Port Ocean Ocean Custom - n8n example
+# Replace ${...} via envsubst or manual edits before installing.
+port:
+  clientId: ${PORT_CLIENT_ID}
+  clientSecret: ${PORT_CLIENT_SECRET}
+  baseUrl: https://api.getport.io
+
+integration:
+  identifier: n8n-integration
+  type: custom
+  version: latest
+  config:
+    baseUrl: https://your-instance.com/api
+    authType: api_key
+    apiKeyHeader: X-N8N-API-KEY
+    paginationType: cursor
+    paginationParam: cursor
+    sizeParam: limit
+    pageSize: 100
+    cursorPath: nextCursor
+    hasMorePath: nextCursor
+  secrets:
+    apiKey: ${N8N_API_KEY}
+
+initializePortResources: true
+sendRawDataExamples: true
+eventListener:
+  type: ONCE

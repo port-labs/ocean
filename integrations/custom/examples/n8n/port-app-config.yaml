@@ -1,0 +1,54 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+enableMergeEntity: true
+resources:
+  - kind: /v1/users
+    selector:
+      query: 'true'
+      data_path: .data
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .email
+          blueprint: '"n8nUser"'
+          properties:
+            full_name: >-
+              if (.firstName // null) != null or (.lastName // null) != null
+              then ((.firstName // "") + " " + (.lastName // "")) else .email
+              end
+            is_active: (.isPending | not)
+            created_at: .createdAt
+            email: .email
+  - kind: /v1/projects
+    selector:
+      query: 'true'
+      data_path: .data
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"n8nProject"'
+          properties: {}
+  - kind: /v1/workflows
+    selector:
+      query: 'true'
+      data_path: .data
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"n8nWorkflow"'
+          properties:
+            nodes: .nodes
+            connections: .connections
+            trigger_count: .triggerCount
+            is_active: .active
+            is_archived: .isArchived
+            tags: (.tags | map(.name))
+            created_at: .createdAt
+            updated_at: .updatedAt
+          relations:
+            project: .shared[0].projectId
