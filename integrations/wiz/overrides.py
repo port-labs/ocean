@@ -35,6 +35,16 @@ class IssueResourceConfig(ResourceConfig):
     kind: Literal["issue"]
 
 
+class ControlResourceConfig(ResourceConfig):
+    selector: IssueSelector
+    kind: Literal["control"]
+
+
+class ServiceTicketResourceConfig(ResourceConfig):
+    selector: IssueSelector
+    kind: Literal["serviceTicket"]
+
+
 class ProjectSelector(Selector):
     impact: str = Field(
         alias="impact",
@@ -54,6 +64,10 @@ class ProjectResourceConfig(ResourceConfig):
 
 
 class WizPortAppConfig(PortAppConfig):
-    resources: list[IssueResourceConfig | ProjectResourceConfig | ResourceConfig] = (
-        Field(default_factory=list)
-    )
+    resources: list[
+        IssueResourceConfig
+        | ProjectResourceConfig
+        | ControlResourceConfig
+        | ServiceTicketResourceConfig
+        | ResourceConfig
+    ] = Field(default_factory=list)

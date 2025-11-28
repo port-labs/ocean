@@ -1,3 +1,4 @@
+from overrides import IssueSelector
 from enum import StrEnum
 from typing import Any
 import typing
@@ -45,12 +46,11 @@ async def resync_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     elif kind in {ObjectKind.ISSUE, ObjectKind.CONTROL, ObjectKind.SERVICE_TICKET}:
         config = typing.cast(IssueResourceConfig, event.resource_config)
-        status_list = config.selector.status_list if kind == ObjectKind.ISSUE else []
-        severity_list = (
-            config.selector.severity_list if kind == ObjectKind.ISSUE else []
-        )
-        type_list = config.selector.type_list if kind == ObjectKind.ISSUE else []
-        max_pages = config.selector.max_pages if kind == ObjectKind.ISSUE else None
+        issue_selector = typing.cast(IssueSelector, config.selector)
+        status_list = issue_selector.status_list
+        severity_list = issue_selector.severity_list
+        type_list = issue_selector.type_list
+        max_pages = issue_selector.max_pages
 
         logger.info(
             f"Resyncing {kind.lower()} with status list: {status_list}, severity list: {severity_list}, type list: {type_list}, max pages: {max_pages}"
