@@ -46,7 +46,7 @@ inputs:
     default: ''
   check-size:
     required: false
-    description: Check image size against latest baseline
+    description: Check image size against baseline
     default: 'true'
   # ┌─────────────────────────────────────────────────────────────────────────┐
   # │ IMAGE SIZE THRESHOLD CONFIGURATION                                      │
@@ -65,13 +65,17 @@ inputs:
     required: false
     description: Fail the build if size threshold is exceeded
     default: 'false'
+  baseline-tag:
+    required: false
+    description: The tag to use as the baseline for size comparison
+    default: 'latest'
 
 outputs:
   new-size-mb:
     description: 'Size of the new image in MB'
     value: ${{ steps.check-size.outputs.new_size_mb }}
   baseline-size-mb:
-    description: 'Size of the baseline (latest) image in MB'
+    description: 'Size of the baseline image in MB'
     value: ${{ steps.check-size.outputs.baseline_size_mb }}
   size-diff-percent:
     description: 'Percentage difference (positive = larger)'
@@ -106,7 +110,7 @@ runs:
         file: ${{ inputs.dockerfile }}
         platforms: ${{ inputs.platforms }}
         push: ${{ inputs.skip-push == 'false' }}
-        load: ${{ inputs.test != '' || inputs.load-created-image != '' || inputs.check-size != '' }}
+        load: ${{ inputs.test != '' || inputs.load-created-image != '' || inputs.check-size == 'true' }}
         tags: ${{ inputs.tags }}
         build-args: |
           ${{ inputs.build-args }}
@@ -122,12 +126,13 @@ runs:
     - name: Check Image Size
       id: check-size
       shell: bash
-      if: ${{ inputs.check-size != '' }}
+      if: ${{ inputs.check-size == 'true' }}
       env:
         TAGS: ${{ inputs.tags }}
         PLATFORMS: ${{ inputs.platforms }}
         THRESHOLD: ${{ inputs.size-threshold }}
         FAIL_ON_THRESHOLD: ${{ inputs.fail-on-threshold }}
+        BASELINE_TAG: ${{ inputs.baseline-tag }}
       run: |
         set -e
 
@@ -138,7 +143,7 @@ runs:
         # Extract image name (without tag) and tag
         IMAGE_NAME=$(echo "${SINGLE_TAG}" | cut -d':' -f1)
         IMAGE_TAG=$(echo "${SINGLE_TAG}" | cut -d':' -f2)
-        BASELINE_IMAGE="${IMAGE_NAME}:latest"
+        BASELINE_IMAGE="${IMAGE_NAME}:${BASELINE_TAG}"
         ARCH=$(echo "${SINGLE_PLATFORM}" | cut -d'/' -f2)
 
         echo "🔍 Checking image sizes..."
@@ -199,11 +204,11 @@ runs:
 
         # Check threshold
         THRESHOLD_EXCEEDED="false"
-        if echo "${DIFF_PERCENT} ${THRESHOLD}" | awk '{exit !($1 > $2)}'; then
+        if [ "$(echo "${DIFF_PERCENT} > ${THRESHOLD}" | bc)" -eq 1 ]; then
           THRESHOLD_EXCEEDED="true"
           echo ""
           echo "🚨 Image size increased by ${DIFF_PERCENT}%, exceeds ${THRESHOLD}% threshold!"
-        elif echo "${DIFF_PERCENT}" | awk '{exit !($1 > 0)}'; then
+        elif [ "$(echo "${DIFF_PERCENT} > 0" | bc)" -eq 1 ]; then
           echo "📈 Within ${THRESHOLD}% threshold"
         else
           echo "📉 Size decreased or unchanged 🎉"
