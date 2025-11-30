@@ -108,7 +108,6 @@ jobs:
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
           skip-push: 'true'
           skip-login: ${{ github.event_name == 'pull_request' }}
-          load-created-image: 'true'
 
       - name: Extract image info
         id: image_info
