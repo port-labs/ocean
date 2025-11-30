@@ -141,8 +141,21 @@ runs:
         SINGLE_PLATFORM=$(echo "${PLATFORMS}" | awk -F ',' '{print $1}')
 
         # Extract image name (without tag) and tag
-        IMAGE_NAME=$(echo "${SINGLE_TAG}" | cut -d':' -f1)
-        IMAGE_TAG=$(echo "${SINGLE_TAG}" | cut -d':' -f2)
+        # Safely split image into name and tag (handle registry with port)
+        if [[ "${SINGLE_TAG}" == *:*/*:* || "${SINGLE_TAG}" == *":"*":"* ]]; then
+          # Fallback for unusual cases; treat last ':' as tag separator
+          IMAGE_NAME="${SINGLE_TAG%:*}"
+          IMAGE_TAG="${SINGLE_TAG##*:}"
+        else
+          # Common case; still split by last ':'
+          if [[ "${SINGLE_TAG}" == *:* ]]; then
+            IMAGE_NAME="${SINGLE_TAG%:*}"
+            IMAGE_TAG="${SINGLE_TAG##*:}"
+          else
+            IMAGE_NAME="${SINGLE_TAG}"
+            IMAGE_TAG="latest"
+          fi
+        fi
         BASELINE_IMAGE="${IMAGE_NAME}:${BASELINE_TAG}"
         ARCH=$(echo "${SINGLE_PLATFORM}" | cut -d'/' -f2)
 
