@@ -179,7 +179,7 @@ jobs:
         id: size_check
         if: steps.calc_max_size.outputs.skip_check == 'false'
         continue-on-error: true
-        uses: wemake-services/docker-image-size-limit@master
+        uses: wemake-services/docker-image-size-limit@2.2.0
         with:
           image: ${{ steps.image_info.outputs.image_tag }}
           size: ${{ steps.calc_max_size.outputs.max_size }}
