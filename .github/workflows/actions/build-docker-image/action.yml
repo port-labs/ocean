@@ -47,7 +47,7 @@ inputs:
   check-size:
     required: false
     description: Check image size against baseline
-    default: 'true'
+    default: 'false'
   # ┌─────────────────────────────────────────────────────────────────────────┐
   # │ IMAGE SIZE THRESHOLD CONFIGURATION                                      │
   # │ Change the default value below to adjust the maximum allowed            │
@@ -110,11 +110,25 @@ runs:
 
     - name: Login to Docker Hub
       uses: docker/login-action@v3
-      if: ${{ inputs.skip-init == '' && inputs.skip-login == '' }}
+      if: ${{ inputs.skip-init == '' && inputs.skip-login == '' && inputs.docker-user != '' && inputs.docker-password != '' }}
       with:
         registry: ghcr.io
         username: ${{ inputs.docker-user }}
         password: ${{ inputs.docker-password }}
+
+    - name: Check if single platform build
+      id: check-platform
+      shell: bash
+      run: |
+        if [[ "${{ inputs.platforms }}" != *","* ]]; then
+          echo "is_single=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "is_single=false" >> "$GITHUB_OUTPUT"
+          echo "⚠️  Multi-platform build detected - skipping docker load, tests, and size checks"
+          if [[ "${{ inputs.check-size }}" == "true" ]]; then
+            echo "::notice title=Size check skipped::Size check requires single-platform builds."
+          fi
+        fi
 
     - name: Build Runner Image
       uses: docker/build-push-action@v6
@@ -123,23 +137,25 @@ runs:
         file: ${{ inputs.dockerfile }}
         platforms: ${{ inputs.platforms }}
         push: ${{ inputs.skip-push == 'false' }}
-        load: ${{ inputs.test != '' || inputs.load-created-image != '' || inputs.check-size == 'true' }}
+        load: ${{ steps.check-platform.outputs.is_single == 'true' && (inputs.test != '' || inputs.load-created-image != '' || inputs.check-size == 'true') }}
         tags: ${{ inputs.tags }}
         build-args: |
           ${{ inputs.build-args }}
 
     - name: Verify Built Image
       shell: bash
-      if: ${{ inputs.test != '' }}
+      if: ${{ inputs.test != '' && steps.check-platform.outputs.is_single == 'true' }}
       run: |
         SINGLE_TAG=$(echo "${{ inputs.tags }}" | awk -F ',' '{print $1};' )
         SINGLE_PLATFORM=$(echo "${{ inputs.platforms }}" | awk -F ',' '{print $1};' )
-        docker run --platform "${SINGLE_PLATFORM}" --rm --entrypoint bash "${SINGLE_TAG}" -c '${{ inputs.test }}'
+        docker run --platform "${SINGLE_PLATFORM}" --rm --entrypoint bash "${SINGLE_TAG}" -s <<'EOF'
+        ${{ inputs.test }}
+        EOF
 
     - name: Check Image Size
       id: check-size
       shell: bash
-      if: ${{ inputs.check-size == 'true' }}
+      if: ${{ inputs.check-size == 'true' && steps.check-platform.outputs.is_single == 'true' }}
       env:
         TAGS: ${{ inputs.tags }}
         PLATFORMS: ${{ inputs.platforms }}

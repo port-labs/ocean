@@ -43,7 +43,7 @@ jobs:
           build-args: |
             ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
           skip-push: ${{ github.event_name == 'pull_request' }}
-          new-relic-api-key: ${{ secrets.NEW_RELIC_API_KEY }}
+          check-size: 'false'
 
       - name: Build Docker Image
         uses: ./.github/workflows/actions/build-docker-image
@@ -57,4 +57,4 @@ jobs:
           build-args: |
             ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
           skip-push: ${{ github.event_name == 'pull_request' }}
-          new-relic-api-key: ${{ secrets.NEW_RELIC_API_KEY }}
+          check-size: 'false'

@@ -103,4 +103,5 @@ jobs:
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
           skip-push: 'true'
           skip-login: ${{ github.event_name == 'pull_request' }}
+          check-size: 'true'
           new-relic-api-key: ${{ secrets.NEW_RELIC_API_KEY }}
