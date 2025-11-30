@@ -43,7 +43,6 @@ jobs:
           build-args: |
             ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
           skip-push: ${{ github.event_name == 'pull_request' }}
-          check-size: 'false'
 
       - name: Build Docker Image
         uses: ./.github/workflows/actions/build-docker-image
@@ -57,4 +56,3 @@ jobs:
           build-args: |
             ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
           skip-push: ${{ github.event_name == 'pull_request' }}
-          check-size: 'false'
