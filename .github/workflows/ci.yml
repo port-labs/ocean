@@ -130,17 +130,16 @@ jobs:
           BASELINE_IMAGE="ghcr.io/port-labs/${IMAGE_NAME}:latest"
 
           echo "📦 Pulling baseline image: ${BASELINE_IMAGE}"
-          if docker pull "${BASELINE_IMAGE}"; then
-              BASELINE_SIZE_BYTES=$(docker image inspect "${BASELINE_IMAGE}" --format='{{.Size}}')
-              BASELINE_MB=$(echo "scale=2; ${BASELINE_SIZE_BYTES} / 1048576" | bc)
-              echo "📦 Found baseline from registry: ${BASELINE_MB} MB"
-          else
+          if ! docker pull -q "${BASELINE_IMAGE}"; then
               echo "⚠️ Failed to pull baseline image, skipping size limit check"
               echo "skip_check=true" >> $GITHUB_OUTPUT
               exit 0
           fi
 
-          if [ -z "${BASELINE_MB}" ] || [ "${BASELINE_MB}" = "0" ] || [ "${BASELINE_MB}" = "null" ]; then
+          BASELINE_SIZE_BYTES=$(docker image inspect "${BASELINE_IMAGE}" --format='{{.Size}}')
+          BASELINE_MB=$(jq -n "${BASELINE_SIZE_BYTES} / 1048576")
+
+          if [[ -z "${BASELINE_MB}" ]] || [[ "${BASELINE_MB}" == "0" ]]; then
             echo "⚠️ Invalid baseline value, skipping size limit check"
             echo "skip_check=true" >> $GITHUB_OUTPUT
             exit 0
