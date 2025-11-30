@@ -52,12 +52,19 @@ inputs:
   # │ IMAGE SIZE THRESHOLD CONFIGURATION                                      │
   # │ Change the default value below to adjust the maximum allowed            │
   # │ percentage increase in image size before the build is flagged.          │
-  # │ Example: '7' means fail if new image is >7% larger than baseline.       │
+  # │ Example: '7' means flag if new image is >7% larger than baseline.       │
   # └─────────────────────────────────────────────────────────────────────────┘
   size-threshold:
     required: false
-    description: Fail if image size increases by more than this percentage
+    description: Flag if image size increases by more than this percentage
     default: '7'
+  # ┌─────────────────────────────────────────────────────────────────────────┐
+  # │ FAIL ON THRESHOLD - Set to 'true' to fail the build when exceeded       │
+  # └─────────────────────────────────────────────────────────────────────────┘
+  fail-on-threshold:
+    required: false
+    description: Fail the build if size threshold is exceeded
+    default: 'false'
 
 outputs:
   new-size-mb:
@@ -120,6 +127,7 @@ runs:
         TAGS: ${{ inputs.tags }}
         PLATFORMS: ${{ inputs.platforms }}
         THRESHOLD: ${{ inputs.size-threshold }}
+        FAIL_ON_THRESHOLD: ${{ inputs.fail-on-threshold }}
       run: |
         set -e
 
@@ -205,3 +213,10 @@ runs:
         echo "baseline_size_mb=${BASELINE_SIZE_MB}" >> $GITHUB_OUTPUT
         echo "size_diff_percent=${DIFF_PERCENT}" >> $GITHUB_OUTPUT
         echo "threshold_exceeded=${THRESHOLD_EXCEEDED}" >> $GITHUB_OUTPUT
+
+        # Fail the build if threshold exceeded and fail-on-threshold is enabled
+        if [ "${THRESHOLD_EXCEEDED}" = "true" ] && [ "${FAIL_ON_THRESHOLD}" = "true" ]; then
+          echo ""
+          echo "❌ Build failed: image size increase exceeds ${THRESHOLD}% threshold"
+          exit 1
+        fi
