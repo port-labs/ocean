@@ -69,6 +69,13 @@ inputs:
     required: false
     description: The tag to use as the baseline for size comparison
     default: 'latest'
+  # ┌─────────────────────────────────────────────────────────────────────────┐
+  # │ NEW RELIC - Send image size metrics for tracking/alerting               │
+  # └─────────────────────────────────────────────────────────────────────────┘
+  new-relic-api-key:
+    required: false
+    description: New Relic API key for sending size metrics
+    default: ''
 
 outputs:
   new-size-mb:
@@ -83,6 +90,12 @@ outputs:
   threshold-exceeded:
     description: 'Whether the threshold was exceeded'
     value: ${{ steps.check-size.outputs.threshold_exceeded }}
+  image-name:
+    description: 'The image name (without tag)'
+    value: ${{ steps.check-size.outputs.image_name }}
+  image-tag:
+    description: 'The image tag'
+    value: ${{ steps.check-size.outputs.image_tag }}
 
 runs:
   using: 'composite'
@@ -231,6 +244,9 @@ runs:
         echo "baseline_size_mb=${BASELINE_SIZE_MB}" >> $GITHUB_OUTPUT
         echo "size_diff_percent=${DIFF_PERCENT}" >> $GITHUB_OUTPUT
         echo "threshold_exceeded=${THRESHOLD_EXCEEDED}" >> $GITHUB_OUTPUT
+        echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+        echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+        echo "platform=${SINGLE_PLATFORM}" >> $GITHUB_OUTPUT
 
         # Fail the build if threshold exceeded and fail-on-threshold is enabled
         if [ "${THRESHOLD_EXCEEDED}" = "true" ] && [ "${FAIL_ON_THRESHOLD}" = "true" ]; then
@@ -238,3 +254,22 @@ runs:
           echo "❌ Build failed: image size increase exceeds ${THRESHOLD}% threshold"
           exit 1
         fi
+
+    - name: Send Image Size Metric to New Relic
+      if: ${{ inputs.check-size == 'true' && inputs.new-relic-api-key != '' && steps.check-size.outputs.new_size_mb != '0' }}
+      uses: port-labs/infra-utils/.github/actions/new-relic-metric@generic-log-event
+      with:
+        new_relic_api_key: ${{ inputs.new-relic-api-key }}
+        metric_name: docker.image.size_mb
+        metric_type: gauge
+        metric_value: ${{ steps.check-size.outputs.new_size_mb }}
+        metric_attributes: |
+          {
+            "imageName": "${{ steps.check-size.outputs.image_name }}",
+            "imageTag": "${{ steps.check-size.outputs.image_tag }}",
+            "platform": "${{ steps.check-size.outputs.platform }}",
+            "baselineSizeMb": ${{ steps.check-size.outputs.baseline_size_mb || 0 }},
+            "sizeDiffPercent": ${{ steps.check-size.outputs.size_diff_percent || 0 }},
+            "thresholdPercent": ${{ inputs.size-threshold }},
+            "thresholdExceeded": ${{ steps.check-size.outputs.threshold_exceeded }}
+          }
