@@ -31,7 +31,7 @@ inputs:
     description: Docker Hub User
   docker-password:
     required: false
-    description: Docker Hub User
+    description: Docker Hub Password
   skip-push:
     required: false
     description: Optionally skip push
@@ -44,58 +44,6 @@ inputs:
     required: false
     description: Optionally skip docker login
     default: ''
-  check-size:
-    required: false
-    description: Check image size against baseline
-    default: 'false'
-  # ┌─────────────────────────────────────────────────────────────────────────┐
-  # │ IMAGE SIZE THRESHOLD CONFIGURATION                                      │
-  # │ Change the default value below to adjust the maximum allowed            │
-  # │ percentage increase in image size before the build is flagged.          │
-  # │ Example: '7' means flag if new image is >7% larger than baseline.       │
-  # └─────────────────────────────────────────────────────────────────────────┘
-  size-threshold:
-    required: false
-    description: Flag if image size increases by more than this percentage
-    default: '7'
-  # ┌─────────────────────────────────────────────────────────────────────────┐
-  # │ FAIL ON THRESHOLD - Set to 'true' to fail the build when exceeded       │
-  # └─────────────────────────────────────────────────────────────────────────┘
-  fail-on-threshold:
-    required: false
-    description: Fail the build if size threshold is exceeded
-    default: 'false'
-  baseline-tag:
-    required: false
-    description: The tag to use as the baseline for size comparison
-    default: 'latest'
-  # ┌─────────────────────────────────────────────────────────────────────────┐
-  # │ NEW RELIC - Send image size metrics for tracking/alerting               │
-  # └─────────────────────────────────────────────────────────────────────────┘
-  new-relic-api-key:
-    required: false
-    description: New Relic API key for sending size metrics
-    default: ''
-
-outputs:
-  new-size-mb:
-    description: 'Size of the new image in MB'
-    value: ${{ steps.check-size.outputs.new_size_mb }}
-  baseline-size-mb:
-    description: 'Size of the baseline image in MB'
-    value: ${{ steps.check-size.outputs.baseline_size_mb }}
-  size-diff-percent:
-    description: 'Percentage difference (positive = larger)'
-    value: ${{ steps.check-size.outputs.size_diff_percent }}
-  threshold-exceeded:
-    description: 'Whether the threshold was exceeded'
-    value: ${{ steps.check-size.outputs.threshold_exceeded }}
-  image-name:
-    description: 'The image name (without tag)'
-    value: ${{ steps.check-size.outputs.image_name }}
-  image-tag:
-    description: 'The image tag'
-    value: ${{ steps.check-size.outputs.image_tag }}
 
 runs:
   using: 'composite'
@@ -124,10 +72,7 @@ runs:
           echo "is_single=true" >> "$GITHUB_OUTPUT"
         else
           echo "is_single=false" >> "$GITHUB_OUTPUT"
-          echo "⚠️  Multi-platform build detected - skipping docker load, tests, and size checks"
-          if [[ "${{ inputs.check-size }}" == "true" ]]; then
-            echo "::notice title=Size check skipped::Size check requires single-platform builds."
-          fi
+          echo "⚠️  Multi-platform build detected - skipping docker load and tests"
         fi
 
     - name: Build Runner Image
@@ -137,7 +82,7 @@ runs:
         file: ${{ inputs.dockerfile }}
         platforms: ${{ inputs.platforms }}
         push: ${{ inputs.skip-push == 'false' }}
-        load: ${{ steps.check-platform.outputs.is_single == 'true' && (inputs.test != '' || inputs.load-created-image != '' || inputs.check-size == 'true') }}
+        load: ${{ steps.check-platform.outputs.is_single == 'true' && (inputs.test != '' || inputs.load-created-image != '') }}
         tags: ${{ inputs.tags }}
         build-args: |
           ${{ inputs.build-args }}
@@ -151,141 +96,3 @@ runs:
         docker run --platform "${SINGLE_PLATFORM}" --rm --entrypoint bash "${SINGLE_TAG}" -s <<'EOF'
         ${{ inputs.test }}
         EOF
-
-    - name: Check Image Size
-      id: check-size
-      shell: bash
-      if: ${{ inputs.check-size == 'true' && steps.check-platform.outputs.is_single == 'true' }}
-      env:
-        TAGS: ${{ inputs.tags }}
-        PLATFORMS: ${{ inputs.platforms }}
-        THRESHOLD: ${{ inputs.size-threshold }}
-        FAIL_ON_THRESHOLD: ${{ inputs.fail-on-threshold }}
-        BASELINE_TAG: ${{ inputs.baseline-tag }}
-      run: |
-        set -e
-
-        # Get first tag and platform
-        SINGLE_TAG=$(echo "${TAGS}" | awk -F ',' '{print $1}')
-        SINGLE_PLATFORM=$(echo "${PLATFORMS}" | awk -F ',' '{print $1}')
-
-        # Extract image name (without tag) and tag
-        # Safely split image into name and tag (handle registry with port)
-        if [[ "${SINGLE_TAG}" == *:*/*:* || "${SINGLE_TAG}" == *":"*":"* ]]; then
-          # Fallback for unusual cases; treat last ':' as tag separator
-          IMAGE_NAME="${SINGLE_TAG%:*}"
-          IMAGE_TAG="${SINGLE_TAG##*:}"
-        else
-          # Common case; still split by last ':'
-          if [[ "${SINGLE_TAG}" == *:* ]]; then
-            IMAGE_NAME="${SINGLE_TAG%:*}"
-            IMAGE_TAG="${SINGLE_TAG##*:}"
-          else
-            IMAGE_NAME="${SINGLE_TAG}"
-            IMAGE_TAG="latest"
-          fi
-        fi
-        BASELINE_IMAGE="${IMAGE_NAME}:${BASELINE_TAG}"
-        ARCH=$(echo "${SINGLE_PLATFORM}" | cut -d'/' -f2)
-
-        echo "🔍 Checking image sizes..."
-        echo "   New image: ${SINGLE_TAG}"
-        echo "   Baseline:  ${BASELINE_IMAGE}"
-        echo "   Platform:  ${SINGLE_PLATFORM}"
-
-        # Get new image size (loaded locally)
-        NEW_SIZE=$(docker image inspect "${SINGLE_TAG}" --format='{{.Size}}' 2>/dev/null || echo "0")
-
-        if [ "${NEW_SIZE}" = "0" ]; then
-          echo "⚠️  Could not get size of new image - skipping check"
-          echo "new_size_mb=0" >> $GITHUB_OUTPUT
-          echo "baseline_size_mb=0" >> $GITHUB_OUTPUT
-          echo "size_diff_percent=0" >> $GITHUB_OUTPUT
-          echo "threshold_exceeded=false" >> $GITHUB_OUTPUT
-          exit 0
-        fi
-
-        NEW_SIZE_MB=$(echo "scale=2; ${NEW_SIZE} / 1048576" | bc)
-        echo "📦 New image size: ${NEW_SIZE_MB} MB"
-
-        # Try to get baseline image size from registry manifest
-        BASELINE_SIZE=0
-
-        if MANIFEST=$(docker manifest inspect "${BASELINE_IMAGE}" 2>/dev/null); then
-          # Get digest for our platform
-          DIGEST=$(echo "${MANIFEST}" | jq -r --arg arch "${ARCH}" '
-            .manifests[]? | select(.platform.architecture == $arch) | .digest // empty
-          ' 2>/dev/null || echo "")
-
-          if [ -n "${DIGEST}" ]; then
-            if PLATFORM_MANIFEST=$(docker manifest inspect "${IMAGE_NAME}@${DIGEST}" 2>/dev/null); then
-              BASELINE_SIZE=$(echo "${PLATFORM_MANIFEST}" | jq '[.layers[]?.size // 0] | add // 0' 2>/dev/null || echo "0")
-            fi
-          fi
-        fi
-
-        if [ "${BASELINE_SIZE}" = "0" ] || [ "${BASELINE_SIZE}" = "null" ] || [ -z "${BASELINE_SIZE}" ]; then
-          echo "⚠️  No baseline image found - skipping comparison"
-          echo "new_size_mb=${NEW_SIZE_MB}" >> $GITHUB_OUTPUT
-          echo "baseline_size_mb=0" >> $GITHUB_OUTPUT
-          echo "size_diff_percent=0" >> $GITHUB_OUTPUT
-          echo "threshold_exceeded=false" >> $GITHUB_OUTPUT
-          exit 0
-        fi
-
-        BASELINE_SIZE_MB=$(echo "scale=2; ${BASELINE_SIZE} / 1048576" | bc)
-
-        # Calculate percentage difference
-        DIFF_PERCENT=$(echo "scale=2; ((${NEW_SIZE} - ${BASELINE_SIZE}) * 100) / ${BASELINE_SIZE}" | bc)
-
-        echo ""
-        echo "📊 Size comparison:"
-        echo "   Baseline: ${BASELINE_SIZE_MB} MB"
-        echo "   New:      ${NEW_SIZE_MB} MB"
-        echo "   Change:   ${DIFF_PERCENT}%"
-
-        # Check threshold
-        THRESHOLD_EXCEEDED="false"
-        if [ "$(echo "${DIFF_PERCENT} > ${THRESHOLD}" | bc)" -eq 1 ]; then
-          THRESHOLD_EXCEEDED="true"
-          echo ""
-          echo "🚨 Image size increased by ${DIFF_PERCENT}%, exceeds ${THRESHOLD}% threshold!"
-        elif [ "$(echo "${DIFF_PERCENT} > 0" | bc)" -eq 1 ]; then
-          echo "📈 Within ${THRESHOLD}% threshold"
-        else
-          echo "📉 Size decreased or unchanged 🎉"
-        fi
-
-        echo "new_size_mb=${NEW_SIZE_MB}" >> $GITHUB_OUTPUT
-        echo "baseline_size_mb=${BASELINE_SIZE_MB}" >> $GITHUB_OUTPUT
-        echo "size_diff_percent=${DIFF_PERCENT}" >> $GITHUB_OUTPUT
-        echo "threshold_exceeded=${THRESHOLD_EXCEEDED}" >> $GITHUB_OUTPUT
-        echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
-        echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
-        echo "platform=${SINGLE_PLATFORM}" >> $GITHUB_OUTPUT
-
-        # Fail the build if threshold exceeded and fail-on-threshold is enabled
-        if [ "${THRESHOLD_EXCEEDED}" = "true" ] && [ "${FAIL_ON_THRESHOLD}" = "true" ]; then
-          echo ""
-          echo "❌ Build failed: image size increase exceeds ${THRESHOLD}% threshold"
-          exit 1
-        fi
-
-    - name: Send Image Size Metric to New Relic
-      if: ${{ inputs.check-size == 'true' && inputs.new-relic-api-key != '' && steps.check-size.outputs.new_size_mb != '0' }}
-      uses: port-labs/infra-utils/.github/actions/new-relic-metric@generic-log-event
-      with:
-        new_relic_api_key: ${{ inputs.new-relic-api-key }}
-        metric_name: docker.image.size_mb
-        metric_type: gauge
-        metric_value: ${{ steps.check-size.outputs.new_size_mb }}
-        metric_attributes: |
-          {
-            "imageName": "${{ steps.check-size.outputs.image_name }}",
-            "imageTag": "${{ steps.check-size.outputs.image_tag }}",
-            "platform": "${{ steps.check-size.outputs.platform }}",
-            "baselineSizeMb": ${{ steps.check-size.outputs.baseline_size_mb || 0 }},
-            "sizeDiffPercent": ${{ steps.check-size.outputs.size_diff_percent || 0 }},
-            "thresholdPercent": ${{ inputs.size-threshold }},
-            "thresholdExceeded": ${{ steps.check-size.outputs.threshold_exceeded }}
-          }
