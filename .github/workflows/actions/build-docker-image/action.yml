@@ -64,17 +64,6 @@ runs:
         username: ${{ inputs.docker-user }}
         password: ${{ inputs.docker-password }}
 
-    - name: Check if single platform build
-      id: check-platform
-      shell: bash
-      run: |
-        if [[ "${{ inputs.platforms }}" != *","* ]]; then
-          echo "is_single=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "is_single=false" >> "$GITHUB_OUTPUT"
-          echo "⚠️  Multi-platform build detected - skipping docker load and tests"
-        fi
-
     - name: Build Runner Image
       uses: docker/build-push-action@v6
       with:
@@ -82,14 +71,14 @@ runs:
         file: ${{ inputs.dockerfile }}
         platforms: ${{ inputs.platforms }}
         push: ${{ inputs.skip-push == 'false' }}
-        load: ${{ steps.check-platform.outputs.is_single == 'true' && (inputs.test != '' || inputs.load-created-image != '') }}
+        load: ${{ inputs.test != '' || inputs.load-created-image != '' }}
         tags: ${{ inputs.tags }}
         build-args: |
           ${{ inputs.build-args }}
 
     - name: Verify Built Image
       shell: bash
-      if: ${{ inputs.test != '' && steps.check-platform.outputs.is_single == 'true' }}
+      if: ${{ inputs.test != '' }}
       run: |
         SINGLE_TAG=$(echo "${{ inputs.tags }}" | awk -F ',' '{print $1};' )
         SINGLE_PLATFORM=$(echo "${{ inputs.platforms }}" | awk -F ',' '{print $1};' )

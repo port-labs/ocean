@@ -19,9 +19,8 @@ jobs:
         id: prepare-matrix
         run: |
           integrations_to_build=()
-          # Get the list of integrations
-          files=$(find integrations/*/.port -name "spec.yaml")
-          for file in $files; do
+          # Get the list of integrations (null-delimited to handle spaces safely)
+          while IFS= read -r -d '' file; do
             folder=$(dirname "$file")
             type=$(grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
 
@@ -35,9 +34,9 @@ jobs:
             if [ $rc -eq 0 ]; then
               echo "Image already exists: ghcr.io/port-labs/port-ocean-$type:$version"
             else
-              integrations_to_build+=($file)
+              integrations_to_build+=("$file")
             fi
-          done
+          done < <(find integrations -path '*/.port/spec.yaml' -print0)
 
           # Output JSON array for matrix strategy (e.g. ["integrations/github/.port/spec.yaml"])
           # Uses newline splitting to handle paths with spaces correctly
@@ -72,7 +71,7 @@ jobs:
       - name: Prepare Docker images tags
         id: prepare_tags
         run: |
-          current_integration_spec=${{ matrix.integration }}
+          current_integration_spec="${{ matrix.integration }}"
 
           folder=$(dirname "$current_integration_spec")
           context_dir=$(dirname "$folder")
