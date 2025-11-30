@@ -58,7 +58,7 @@ runs:
 
     - name: Login to Docker Hub
       uses: docker/login-action@v3
-      if: ${{ inputs.skip-init == '' && inputs.skip-login == '' && inputs.docker-user != '' && inputs.docker-password != '' }}
+      if: ${{ inputs.skip-init == '' && inputs.skip-login == '' }}
       with:
         registry: ghcr.io
         username: ${{ inputs.docker-user }}
@@ -82,6 +82,4 @@ runs:
       run: |
         SINGLE_TAG=$(echo "${{ inputs.tags }}" | awk -F ',' '{print $1};' )
         SINGLE_PLATFORM=$(echo "${{ inputs.platforms }}" | awk -F ',' '{print $1};' )
-        docker run --platform "${SINGLE_PLATFORM}" --rm --entrypoint bash "${SINGLE_TAG}" -s <<'EOF'
-        ${{ inputs.test }}
-        EOF
+        docker run --platform "${SINGLE_PLATFORM}" --rm --entrypoint bash "${SINGLE_TAG}" -c '${{ inputs.test }}'
