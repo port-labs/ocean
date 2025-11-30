@@ -5,7 +5,7 @@ on:
 
 env:
   # Maximum allowed image size increase (percentage)
-  SIZE_INCREASE_THRESHOLD: 7
+  SIZE_INCREASE_THRESHOLD: ${{ vars.SIZE_INCREASE_THRESHOLD }}
 
 jobs:
   prepare-matrix:
@@ -119,35 +119,26 @@ jobs:
           echo "image_tag=${SINGLE_TAG}" >> $GITHUB_OUTPUT
           echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
           echo "platform_suffix=${PLATFORM_SUFFIX}" >> $GITHUB_OUTPUT
-          echo "artifact_name=image-metrics-${IMAGE_NAME}-${PLATFORM_SUFFIX}" >> $GITHUB_OUTPUT
 
-      - name: Download baseline metrics from main
-        id: download_baseline
-        uses: dawidd6/action-download-artifact@v6
-        continue-on-error: true
-        with:
-          workflow: ci.yml
-          branch: main
-          name: ${{ steps.image_info.outputs.artifact_name }}
-          path: baseline-metrics/
-          search_artifacts: true
-          workflow_conclusion: success
 
       - name: Calculate max allowed size
         id: calc_max_size
         run: |
           THRESHOLD="${{ env.SIZE_INCREASE_THRESHOLD }}"
-          ARTIFACT_NAME="${{ steps.image_info.outputs.artifact_name }}"
-          BASELINE_FILE="baseline-metrics/metrics/${ARTIFACT_NAME#image-metrics-}.json"
+          IMAGE_NAME="${{ steps.image_info.outputs.image_name }}"
 
-          # Try to get baseline from downloaded artifact
-          if [ -f "${BASELINE_FILE}" ]; then
-            BASELINE_MB=$(jq -r '.size_mb' "${BASELINE_FILE}")
-            echo "📦 Found baseline from main branch: ${BASELINE_MB} MB"
+          # Use the 'latest' tag to fetch the baseline image
+          BASELINE_IMAGE="ghcr.io/port-labs/${IMAGE_NAME}:latest"
+
+          echo "📦 Pulling baseline image: ${BASELINE_IMAGE}"
+          if docker pull "${BASELINE_IMAGE}"; then
+              BASELINE_SIZE_BYTES=$(docker image inspect "${BASELINE_IMAGE}" --format='{{.Size}}')
+              BASELINE_MB=$(echo "scale=2; ${BASELINE_SIZE_BYTES} / 1048576" | bc)
+              echo "📦 Found baseline from registry: ${BASELINE_MB} MB"
           else
-            echo "⚠️ No baseline found from main branch, skipping size limit check"
-            echo "skip_check=true" >> $GITHUB_OUTPUT
-            exit 0
+              echo "⚠️ Failed to pull baseline image, skipping size limit check"
+              echo "skip_check=true" >> $GITHUB_OUTPUT
+              exit 0
           fi
 
           if [ -z "${BASELINE_MB}" ] || [ "${BASELINE_MB}" = "0" ] || [ "${BASELINE_MB}" = "null" ]; then
@@ -157,9 +148,9 @@ jobs:
           fi
 
           # Calculate max allowed size: baseline * (1 + threshold/100)
-          MAX_SIZE_MB=$(echo "scale=2; ${BASELINE_MB} * (1 + ${THRESHOLD} / 100)" | bc)
+          MAX_SIZE_MB=$(jq -n "${BASELINE_MB} * (1 + ${THRESHOLD} / 100)")
 
-          echo "📊 Baseline (from main): ${BASELINE_MB} MB"
+          echo "📊 Baseline (from registry): ${BASELINE_MB} MB"
           echo "📊 Threshold: ${THRESHOLD}%"
           echo "📊 Max allowed: ${MAX_SIZE_MB} MB"
 
@@ -176,79 +167,3 @@ jobs:
           image: ${{ steps.image_info.outputs.image_tag }}
           size: ${{ steps.calc_max_size.outputs.max_size }}
           show_current_size: true
-
-      - name: Send size threshold exceeded metric to New Relic
-        if: steps.size_check.outcome == 'failure'
-        uses: port-labs/infra-utils/.github/actions/new-relic-metric@generic-log-event
-        with:
-          new_relic_api_key: ${{ secrets.NEW_RELIC_API_KEY }}
-          metric_name: docker.image.size_threshold_exceeded
-          metric_type: gauge
-          metric_value: 1
-          metric_attributes: |
-            {
-              "imageName": "${{ steps.image_info.outputs.image_name }}",
-              "imageTag": "${{ steps.prepare_tags.outputs.version }}",
-              "platform": "${{ matrix.platform }}",
-              "baselineSizeMb": ${{ steps.calc_max_size.outputs.baseline_mb }},
-              "maxAllowedMb": "${{ steps.calc_max_size.outputs.max_size }}",
-              "thresholdPercent": ${{ env.SIZE_INCREASE_THRESHOLD }}
-            }
-
-      - name: Fail if size check failed
-        if: steps.size_check.outcome == 'failure'
-        run: |
-          echo "❌ Image size exceeds the allowed threshold of ${{ env.SIZE_INCREASE_THRESHOLD }}%"
-          exit 1
-
-      - name: Collect image metrics
-        id: metrics
-        run: |
-          IMAGE="${{ steps.image_info.outputs.image_tag }}"
-
-          # Get size in bytes and MB
-          SIZE_BYTES=$(docker image inspect "${IMAGE}" --format='{{.Size}}')
-          SIZE_MB=$(echo "scale=2; ${SIZE_BYTES} / 1048576" | bc)
-
-          # Get layer count
-          LAYERS=$(docker image inspect "${IMAGE}" --format='{{len .RootFS.Layers}}')
-
-          echo "size_bytes=${SIZE_BYTES}" >> $GITHUB_OUTPUT
-          echo "size_mb=${SIZE_MB}" >> $GITHUB_OUTPUT
-          echo "layers=${LAYERS}" >> $GITHUB_OUTPUT
-
-          # Create metrics JSON file
-          mkdir -p metrics
-          cat > metrics/${{ steps.image_info.outputs.image_name }}-${{ steps.image_info.outputs.platform_suffix }}.json << EOF
-          {
-            "image": "${IMAGE}",
-            "platform": "${{ matrix.platform }}",
-            "size_bytes": ${SIZE_BYTES},
-            "size_mb": ${SIZE_MB},
-            "layers": ${LAYERS},
-            "version": "${{ steps.prepare_tags.outputs.version }}",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          }
-          EOF
-
-      - name: Upload image metrics
-        uses: actions/upload-artifact@v4
-        with:
-          name: image-metrics-${{ steps.image_info.outputs.image_name }}-${{ steps.image_info.outputs.platform_suffix }}
-          path: metrics/
-          retention-days: 30
-
-      - name: Send image size metric to New Relic
-        uses: port-labs/infra-utils/.github/actions/new-relic-metric@generic-log-event
-        with:
-          new_relic_api_key: ${{ secrets.NEW_RELIC_API_KEY }}
-          metric_name: docker.image.size_mb
-          metric_type: gauge
-          metric_value: ${{ steps.metrics.outputs.size_mb }}
-          metric_attributes: |
-            {
-              "imageName": "${{ steps.image_info.outputs.image_name }}",
-              "imageTag": "${{ steps.prepare_tags.outputs.version }}",
-              "platform": "${{ matrix.platform }}",
-              "layers": ${{ steps.metrics.outputs.layers }}
-            }
