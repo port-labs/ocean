@@ -207,3 +207,28 @@ jobs:
             echo "   Baseline Size: ${BASELINE_MB_FMT} MB"
             echo "   Difference: ${DIFF_MB_FMT} MB"
           fi
+
+      - name: Comment if image size limit exceeded
+        if: steps.size_check.outputs.is_over == 'true'
+        uses: actions/github-script@v7
+        env:
+          NEW_SIZE_MB_FMT: ${{ steps.size_check.outputs.new_size_mb }}
+          BASELINE_MB_FMT: ${{ steps.size_check.outputs.baseline_mb }}
+          DIFF_MB_FMT: ${{ steps.size_check.outputs.diff_mb }}
+          BASELINE_VERSION: ${{ steps.size_check.outputs.baseline_version }}
+          THRESHOLD: ${{ env.SIZE_INCREASE_THRESHOLD }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `❌ FAILURE: Image size limit exceeded!
+              Current Size: ${NEW_SIZE_MB_FMT} MB
+              Baseline Size: ${BASELINE_MB_FMT} MB (Version: ${BASELINE_VERSION})
+              Difference: +${DIFF_MB_FMT} MB
+              Allowed Increase: ${THRESHOLD}%`;
+
+            github.rest.issues.createComment({
+              issue_number: ${{ github.event.pull_request.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
