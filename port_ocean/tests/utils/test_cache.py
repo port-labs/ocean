@@ -512,3 +512,37 @@ async def test_regular_coroutine_with_self_param_not_filtered(
 
     # Keys should not be the same because 'self' is not filtered
     assert key1 != key2
+
+
+@pytest.mark.asyncio
+async def test_cache_iterator_maintains_chunks(
+    mock_ocean: Any, monkeypatch: Any
+) -> None:
+    monkeypatch.setattr(cache, "ocean", mock_ocean)
+
+    call_count = 0
+
+    @cache.cache_iterator_result()
+    async def chunked_iterator() -> AsyncGenerator[List[int], None]:
+        nonlocal call_count
+        call_count += 1
+        yield [1, 2]
+        await asyncio.sleep(0.01)
+        yield [3, 4]
+
+    # First call - populates cache
+    results1 = []
+    async for chunk in chunked_iterator():
+        results1.append(chunk)
+
+    assert results1 == [[1, 2], [3, 4]]
+    assert call_count == 1
+
+    # Second call - reads from cache
+    results2 = []
+    async for chunk in chunked_iterator():
+        results2.append(chunk)
+
+    # Verify structure is preserved (chunks remain separate)
+    assert results2 == [[1, 2], [3, 4]]
+    assert call_count == 1
