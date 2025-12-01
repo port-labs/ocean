@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Optional
 
 import httpx
 from loguru import logger
@@ -8,13 +8,13 @@ from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.utils import http_async_client
 from port_ocean.utils.misc import get_time
 from pydantic import BaseModel, Field, PrivateAttr
+from wiz.options import IssueOptions, ProjectOptions
 
 from .constants import (
     AUTH0_URLS,
     COGNITO_URLS,
     GRAPH_QUERIES,
     ISSUES_GQL,
-    MAX_PAGES,
     PAGE_SIZE,
 )
 
@@ -130,13 +130,15 @@ class WizClient:
             raise
 
     async def _get_paginated_resources(
-        self, resource: str, variables: dict[str, Any]
+        self, resource: str, variables: dict[str, Any], max_pages: Optional[int] = None
     ) -> AsyncGenerator[list[Any], None]:
         logger.info(f"Fetching {resource} data from Wiz API")
         page_num = 1
 
-        while page_num <= MAX_PAGES:
-            logger.info(f"Fetching page {page_num} of {MAX_PAGES}")
+        while True:
+            logger.info(
+                f"Fetching page {page_num} {f"of {max_pages}" if max_pages else ''}"
+            )
             gql = GRAPH_QUERIES[resource]
             data = await self.make_graphql_query(gql, variables)
 
@@ -149,32 +151,51 @@ class WizClient:
             # Set the cursor for the next page request
             variables["after"] = cursor.get("endCursor", "")
             page_num += 1
+            if max_pages and page_num >= max_pages:
+                break
 
     async def get_issues(
         self,
-        status_list: list[str] = ["OPEN", "IN_PROGRESS"],
+        options: IssueOptions,
         page_size: int = PAGE_SIZE,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         variables: dict[str, Any] = {
             "first": page_size,
             "orderBy": {"direction": "DESC", "field": "CREATED_AT"},
-            "filterBy": {"status": status_list} if status_list else {},
+            "filterBy": {"status": options["status_list"]},
         }
 
+        if options["severity_list"]:
+            variables["filterBy"]["severity"] = options["severity_list"]
+
+        if options["type_list"]:
+            variables["filterBy"]["type"] = options["type_list"]
+
         async for issues in self._get_paginated_resources(
-            resource="issues", variables=variables
+            resource="issues", variables=variables, max_pages=options["max_pages"]
         ):
             yield issues
 
     async def get_projects(
-        self, page_size: int = PAGE_SIZE
+        self,
+        options: ProjectOptions,
+        page_size: int = PAGE_SIZE,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(CacheKeys.PROJECTS):
             logger.info("Picking Wiz projects from cache")
             yield cache
             return
 
-        variables: dict[str, Any] = {"first": page_size}
+        variables: dict[str, Any] = {
+            "first": page_size,
+            "filterBy": {},
+        }
+
+        if options["include_archived"]:
+            variables["filterBy"]["includeArchived"] = options["include_archived"]
+
+        if options["impact"]:
+            variables["filterBy"]["impact"] = options["impact"]
 
         async for projects in self._get_paginated_resources(
             resource="projects", variables=variables

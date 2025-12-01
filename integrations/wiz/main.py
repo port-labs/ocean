@@ -10,11 +10,15 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from port_ocean.context.event import event
 from wiz.client import WizClient
-from overrides import IssueResourceConfig
+from overrides import IssueResourceConfig, ProjectResourceConfig
+from wiz.options import IssueOptions, ProjectOptions
+
+
+class ObjectKindWithSpecialHandling(StrEnum):
+    PROJECT = "project"
 
 
 class ObjectKind(StrEnum):
-    PROJECT = "project"
     ISSUE = "issue"
     SERVICE_TICKET = "serviceTicket"
     CONTROL = "control"
@@ -29,23 +33,54 @@ def init_client() -> WizClient:
     )
 
 
+@ocean.on_resync(ObjectKindWithSpecialHandling.PROJECT)
+async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    wiz_client = init_client()
+    selector = typing.cast(ProjectResourceConfig, event.resource_config).selector
+
+    impact = selector.impact
+    include_archived = selector.include_archived
+
+    logger.info(
+        f"Resyncing {kind.lower()} with impact: {impact}, include archived: {include_archived}"
+    )
+
+    options = ProjectOptions(
+        impact=impact,
+        include_archived=include_archived,
+    )
+
+    async for projects in wiz_client.get_projects(options):
+        logger.info(f"Received {len(projects)} projects")
+        yield projects
+
+
 @ocean.on_resync()
 async def resync_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if kind == ObjectKindWithSpecialHandling.PROJECT:
+        logger.debug(f"Kind {kind} has a special handling. Skipping...")
+        return
+
     wiz_client = init_client()
+    if kind in {ObjectKind.ISSUE, ObjectKind.CONTROL, ObjectKind.SERVICE_TICKET}:
+        selector = typing.cast(IssueResourceConfig, event.resource_config).selector
+        status_list = selector.status_list
+        severity_list = selector.severity_list
+        type_list = selector.type_list
+        max_pages = selector.max_pages
 
-    if kind == ObjectKind.PROJECT:
-        async for projects in wiz_client.get_projects():
-            logger.info(f"Received {len(projects)} projects")
-            yield projects
+        logger.info(
+            f"Resyncing {kind.lower()} with status list: {status_list}, severity list: {severity_list}, type list: {type_list}, max pages: {max_pages}"
+        )
 
-    elif kind in {ObjectKind.ISSUE, ObjectKind.CONTROL, ObjectKind.SERVICE_TICKET}:
-        status_list = typing.cast(
-            IssueResourceConfig, event.resource_config
-        ).selector.status_list
+        options = IssueOptions(
+            max_pages=max_pages,
+            status_list=status_list,
+            severity_list=severity_list,
+            type_list=type_list,
+        )
 
-        logger.info(f"Resyncing {kind.lower()} with status list: {status_list}")
-
-        async for _issues in wiz_client.get_issues(status_list):
+        async for _issues in wiz_client.get_issues(options):
             if kind == ObjectKind.ISSUE:
                 yield _issues
             elif kind == ObjectKind.CONTROL:
