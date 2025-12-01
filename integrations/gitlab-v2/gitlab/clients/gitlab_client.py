@@ -89,7 +89,7 @@ class GitLabClient:
         if params:
             request_params.update(params)
             if "search" in params:
-                logger.warning(
+                logger.info(
                     f"Fetching projects for search criteria: \"{params['search']}\""
                 )
 
@@ -119,7 +119,7 @@ class GitLabClient:
         if params:
             request_params.update(params)
             if "search" in params:
-                logger.warning(
+                logger.info(
                     f"Fetching groups for search criteria: \"{params['search']}\""
                 )
 
