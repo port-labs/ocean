@@ -138,31 +138,72 @@ jobs:
           fi
 
           BASELINE_SIZE_BYTES=$(docker image inspect "${BASELINE_IMAGE}" --format='{{.Size}}')
-          BASELINE_MB=$(jq -n "${BASELINE_SIZE_BYTES} / 1048576")
 
-          if [[ -z "${BASELINE_MB}" ]] || [[ "${BASELINE_MB}" == "0" ]]; then
+          # Try to get version from label, fallback to 'latest'
+          BASELINE_VERSION=$(docker image inspect "${BASELINE_IMAGE}" --format='{{ index .Config.Labels "INTEGRATION_VERSION" }}')
+          if [[ -z "$BASELINE_VERSION" ]]; then
+            BASELINE_VERSION="latest"
+          fi
+
+          if [[ -z "${BASELINE_SIZE_BYTES}" ]] || [[ "${BASELINE_SIZE_BYTES}" == "0" ]]; then
             echo "⚠️ Invalid baseline value, skipping size limit check"
             echo "skip_check=true" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # Calculate max allowed size: baseline * (1 + threshold/100)
-          MAX_SIZE_MB=$(jq -n "${BASELINE_MB} * (1 + ${THRESHOLD} / 100)")
+          # Calculate max allowed size in bytes: baseline * (1 + threshold/100)
+          MAX_SIZE_BYTES=$(jq -n "${BASELINE_SIZE_BYTES} * (1 + ${THRESHOLD} / 100)")
+          BASELINE_MB=$(jq -n "${BASELINE_SIZE_BYTES} / 1048576")
 
           echo "📊 Baseline (from registry): ${BASELINE_MB} MB"
+          echo "📊 Baseline Version: ${BASELINE_VERSION}"
           echo "📊 Threshold: ${THRESHOLD}%"
-          echo "📊 Max allowed: ${MAX_SIZE_MB} MB"
 
-          echo "baseline_mb=${BASELINE_MB}" >> $GITHUB_OUTPUT
-          echo "max_size=${MAX_SIZE_MB}MiB" >> $GITHUB_OUTPUT
+          echo "baseline_bytes=${BASELINE_SIZE_BYTES}" >> $GITHUB_OUTPUT
+          echo "baseline_version=${BASELINE_VERSION}" >> $GITHUB_OUTPUT
+          echo "max_size_bytes=${MAX_SIZE_BYTES}" >> $GITHUB_OUTPUT
           echo "skip_check=false" >> $GITHUB_OUTPUT
 
       - name: Check image size limit
         id: size_check
         if: steps.calc_max_size.outputs.skip_check == 'false'
-        continue-on-error: true
-        uses: wemake-services/docker-image-size-limit@2.2.0
-        with:
-          image: ${{ steps.image_info.outputs.image_tag }}
-          size: ${{ steps.calc_max_size.outputs.max_size }}
-          show_current_size: true
+        shell: bash
+        env:
+          FAIL_ON_LIMIT: "true"
+        run: |
+          NEW_IMAGE="${{ steps.image_info.outputs.image_tag }}"
+          BASELINE_BYTES="${{ steps.calc_max_size.outputs.baseline_bytes }}"
+          BASELINE_VERSION="${{ steps.calc_max_size.outputs.baseline_version }}"
+          MAX_BYTES="${{ steps.calc_max_size.outputs.max_size_bytes }}"
+          THRESHOLD="${{ env.SIZE_INCREASE_THRESHOLD }}"
+
+          NEW_SIZE_BYTES=$(docker image inspect "${NEW_IMAGE}" --format='{{.Size}}')
+
+          # Calculate values for display using jq
+          NEW_SIZE_MB=$(jq -n "${NEW_SIZE_BYTES} / 1048576")
+          BASELINE_MB=$(jq -n "${BASELINE_BYTES} / 1048576")
+          DIFF_MB=$(jq -n "(${NEW_SIZE_BYTES} - ${BASELINE_BYTES}) / 1048576")
+
+          # Format to 2 decimal places
+          NEW_SIZE_MB_FMT=$(printf "%.2f" $NEW_SIZE_MB)
+          BASELINE_MB_FMT=$(printf "%.2f" $BASELINE_MB)
+          DIFF_MB_FMT=$(printf "%.2f" $DIFF_MB)
+
+          IS_OVER=$(jq -n "${NEW_SIZE_BYTES} > ${MAX_BYTES}")
+
+          if [[ "$IS_OVER" == "true" ]]; then
+            echo "❌ FAILURE: Image size limit exceeded!"
+            echo "   Current Size: ${NEW_SIZE_MB_FMT} MB"
+            echo "   Baseline Size: ${BASELINE_MB_FMT} MB (Version: ${BASELINE_VERSION})"
+            echo "   Difference: +${DIFF_MB_FMT} MB"
+            echo "   Allowed Increase: ${THRESHOLD}%"
+
+            if [[ "${FAIL_ON_LIMIT}" == "true" ]]; then
+              exit 1
+            fi
+          else
+            echo "✅ SUCCESS: Image size is within limits."
+            echo "   Current Size: ${NEW_SIZE_MB_FMT} MB"
+            echo "   Baseline Size: ${BASELINE_MB_FMT} MB"
+            echo "   Difference: ${DIFF_MB_FMT} MB"
+          fi
