@@ -1,4 +1,4 @@
-from typing import Any, Callable, Awaitable
+from typing import Any, Callable, Awaitable, cast
 from aiobotocore.session import AioSession
 from aws.auth.region_resolver import RegionResolver
 from loguru import logger
@@ -92,7 +92,7 @@ async def execute_concurrent_aws_operations(
                     f"Error fetching {operation_name} for '{resource_id}': {result}"
                 )
                 raise result
-        results.append(result)
+        results.append(cast(dict[str, Any], result))
 
     logger.info(f"Successfully fetched {operation_name} for {len(results)} resources")
     return results
