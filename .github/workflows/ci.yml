@@ -48,7 +48,7 @@ jobs:
       is_dev_version: ${{ steps.prepare_tags.outputs.is_dev_version }}
     permissions:
       contents: read
-      issues: write
+      pull-requests: write
     needs: [prepare-matrix]
     strategy:
       max-parallel: 10
