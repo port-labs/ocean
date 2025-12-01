@@ -19,6 +19,10 @@ from integration import (
     GitlabGroupWithMembersResourceConfig,
     GitlabMemberResourceConfig,
     GitlabMergeRequestResourceConfig,
+    PipelineResourceConfig,
+    JobResourceConfig,
+    ReleaseResourceConfig,
+    TagResourceConfig,
     GitlabIssueResourceConfig,
 )
 
@@ -88,9 +92,10 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(ProjectResourceConfig, event.resource_config).selector
     include_languages = bool(selector.include_languages)
+    include_active_projects = selector.include_active_projects
 
     async for projects_batch in client.get_projects(
-        params=build_project_params(),
+        params=build_project_params(include_active_projects=include_active_projects),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=include_languages,
     ):
@@ -143,9 +148,11 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.PIPELINE)
 async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
+    selector = cast(PipelineResourceConfig, event.resource_config).selector
+    include_active_projects = selector.include_active_projects
 
     async for projects_batch in client.get_projects(
-        params=build_project_params(),
+        params=build_project_params(include_active_projects=include_active_projects),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -173,9 +180,11 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     Results will be approximately 100 (more or less).
     """
     client = create_gitlab_client()
+    selector = cast(JobResourceConfig, event.resource_config).selector
+    include_active_projects = selector.include_active_projects
 
     async for projects_batch in client.get_projects(
-        params=build_project_params(),
+        params=build_project_params(include_active_projects=include_active_projects),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -220,9 +229,11 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.TAG)
 async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
+    selector = cast(TagResourceConfig, event.resource_config).selector
+    include_active_projects = selector.include_active_projects
 
     async for projects_batch in client.get_projects(
-        params=build_project_params(),
+        params=build_project_params(include_active_projects=include_active_projects),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -237,9 +248,11 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.RELEASE)
 async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
+    selector = cast(ReleaseResourceConfig, event.resource_config).selector
+    include_active_projects = selector.include_active_projects
 
     async for projects_batch in client.get_projects(
-        params=build_project_params(),
+        params=build_project_params(include_active_projects=include_active_projects),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):

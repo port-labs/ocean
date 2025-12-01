@@ -37,9 +37,9 @@ class ProjectSelector(Selector):
         default=False,
         description="Whether to include the languages of the project, defaults to false",
     )
-    active: Optional[bool] = Field(
+    include_active_projects: Optional[bool] = Field(
         default=None,
-        alias="active",
+        alias="includeActiveProjects",
         description="Filter projects by active status",
     )
 
@@ -164,12 +164,12 @@ class GitlabMergeRequestResourceConfig(ResourceConfig):
 
 class TagResourceConfig(ResourceConfig):
     kind: Literal["tag"]
-    selector: Selector
+    selector: ProjectSelector
 
 
 class ReleaseResourceConfig(ResourceConfig):
     kind: Literal["release"]
-    selector: Selector
+    selector: ProjectSelector
 
 
 class GitLabFoldersResourceConfig(ResourceConfig):
@@ -276,6 +276,16 @@ class SearchFilter(BaseModel):
         return {"search": self.project}
 
 
+class PipelineResourceConfig(ResourceConfig):
+    kind: Literal["pipeline"]
+    selector: ProjectSelector
+
+
+class JobResourceConfig(ResourceConfig):
+    kind: Literal["job"]
+    selector: ProjectSelector
+
+
 class GitlabPortAppConfig(PortAppConfig):
     visibility: GitlabVisibilityConfig = Field(
         default_factory=GitlabVisibilityConfig,
@@ -298,6 +308,8 @@ class GitlabPortAppConfig(PortAppConfig):
         | GitlabMergeRequestResourceConfig
         | TagResourceConfig
         | ReleaseResourceConfig
+        | PipelineResourceConfig
+        | JobResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

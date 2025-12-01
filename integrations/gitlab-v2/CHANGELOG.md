@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.28 (2025-12-01)
+
+
+### Features
+
+- Added support for filtering issues by `search`, `updated_after`, `state`, `non_archived`, `labels` and `issue_type` selectors
+- Added support for filtering groups by active status using `include_active_groups` selector in `group` kind
+- Added support for filtering projects by active status using `include_active_projects` selector in `project` kind
+- Extended `issue`, `group-with-members`, `file` and `merge-request` kinds to support `include_active_groups` selector from the `group` kind
+
+
+
 ## 0.3.27 (2025-11-27)
 
 

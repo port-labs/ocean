@@ -63,7 +63,9 @@ def build_group_params(include_active_groups: Optional[bool] = None) -> dict[str
     return params
 
 
-def build_project_params() -> dict[str, Any]:
+def build_project_params(
+    include_active_projects: Optional[bool] = None,
+) -> dict[str, Any]:
     """Helper function to build params dictionary to filter projects.
 
     Returns:
@@ -74,4 +76,6 @@ def build_project_params() -> dict[str, Any]:
     params: dict[str, Any] = {}
     params.update(project_params)
     params.update(visibility_params)
+    if include_active_projects is not None:
+        params["active"] = include_active_projects
     return params
