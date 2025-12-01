@@ -49,7 +49,6 @@ RUN apt-get update \
         acl \
         sudo \
         jq \
-        libreoffice \
     && apt-get clean
 
 LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
