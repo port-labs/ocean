@@ -292,7 +292,9 @@ class AzureDevopsClient(HTTPBaseClient):
             )
 
     async def generate_pull_requests(
-        self, search_filters: Optional[dict[str, Any]] = None
+        self,
+        search_filters: Optional[dict[str, Any]] = None,
+        max_results: Optional[int] = None,
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for repositories in self.generate_repositories(
             include_disabled_repositories=False
@@ -305,6 +307,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         self._get_paginated_by_top_and_skip,
                         f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests",
                         search_filters,
+                        max_results=max_results,
                     ),
                 )
                 for repository in repositories
@@ -608,12 +611,14 @@ class AzureDevopsClient(HTTPBaseClient):
                     yield deployments
 
     async def generate_pipeline_deployments(
-        self, project_id: str, environment_id: int
+        self, environment_id: int, project: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        deployments_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/distributedtask/environments/{environment_id}/environmentdeploymentrecords"
+        deployments_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/distributedtask/environments/{environment_id}/environmentdeploymentrecords"
         async for deployments in self._get_paginated_by_top_and_continuation_token(
             deployments_url
         ):
+            for deployment in deployments:
+                deployment["__project"] = project
             yield deployments
 
     async def generate_repository_policies(

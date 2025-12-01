@@ -19,7 +19,10 @@ from github.clients.client_factory import (
     create_github_client,
 )
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
-from github.clients.utils import get_github_organizations, integration_config
+from github.clients.utils import (
+    get_github_organizations,
+    integration_config,
+)
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.branch_exporter import RestBranchExporter
 from github.core.exporters.deployment_exporter import RestDeploymentExporter
@@ -65,7 +68,11 @@ from github.core.options import (
     ListCollaboratorOptions,
     ListSecretScanningAlertOptions,
 )
-from github.helpers.utils import ObjectKind, GithubClientType
+from github.helpers.utils import (
+    ObjectKind,
+    GithubClientType,
+    enrich_user_with_primary_email,
+)
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from github.webhook.webhook_client import GithubWebhookClient
 
@@ -92,6 +99,7 @@ async def _create_webhooks_for_organization(org_name: str, base_url: str) -> Non
         organization=org_name,
         token=ocean.integration_config.get("github_token"),
         app_id=ocean.integration_config.get("github_app_id"),
+        installation_id=ocean.integration_config.get("github_app_installation_id"),
         private_key=ocean.integration_config.get("github_app_private_key"),
     )
 
@@ -120,9 +128,6 @@ async def on_start() -> None:
 
     github_organization = ocean.integration_config.get("github_organization")
     if github_organization:
-        logger.info(
-            f"Subscribing to GitHub webhooks for organization: {github_organization}"
-        )
         await _create_webhooks_for_organization(github_organization, base_url)
         return
 
@@ -162,7 +167,6 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     rest_client = create_github_client()
     org_exporter = RestOrganizationExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-
     repo_config = cast(GithubRepositoryConfig, event.resource_config)
     included_relationships = repo_config.selector.include
 
@@ -173,6 +177,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             RestRepositoryExporter(rest_client).get_paginated_resources(
                 options=ListRepositoryOptions(
                     organization=org["login"],
+                    organization_type=org["type"],
                     type=port_app_config.repository_type,
                     included_relationships=cast(list[str], included_relationships),
                     search_params=repo_config.selector.repo_search,
@@ -194,20 +199,30 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     org_exporter = RestOrganizationExporter(rest_client)
     user_config = cast(GithubUserConfig, event.resource_config)
     include_bots = user_config.selector.include_bots
+    exporter = GraphQLUserExporter(graphql_client)
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = (
-            GraphQLUserExporter(graphql_client).get_paginated_resources(
-                options=ListUserOptions(
-                    organization=org["login"], include_bots=include_bots
+        tasks = []
+        for org in organizations:
+            if org["type"] == "Organization":
+                tasks.append(
+                    exporter.get_paginated_resources(
+                        options=ListUserOptions(
+                            organization=org["login"], include_bots=include_bots
+                        )
+                    )
                 )
-            )
-            for org in organizations
-        )
-        async for users in stream_async_iterators_tasks(*tasks):
-            yield users
+                continue
+
+            if not org.get("email"):
+                org = await enrich_user_with_primary_email(rest_client, org)
+            yield [org]
+
+        if tasks:
+            async for users in stream_async_iterators_tasks(*tasks):
+                yield users
 
 
 @ocean.on_resync(ObjectKind.TEAM)
@@ -228,20 +243,24 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         tasks = []
         for org in organizations:
-            org_name = org["login"]
-            exporter: AbstractGithubExporter[Any]
+            if org["type"] == "Organization":
+                org_name = org["login"]
+                exporter: AbstractGithubExporter[Any]
 
-            if selector.members:
-                exporter = GraphQLTeamWithMembersExporter(graphql_client)
-            else:
-                exporter = RestTeamExporter(rest_client)
+                if selector.members:
+                    exporter = GraphQLTeamWithMembersExporter(graphql_client)
+                else:
+                    exporter = RestTeamExporter(rest_client)
 
-            tasks.append(
-                exporter.get_paginated_resources(ListTeamOptions(organization=org_name))
-            )
+                tasks.append(
+                    exporter.get_paginated_resources(
+                        ListTeamOptions(organization=org_name)
+                    )
+                )
 
-        async for teams in stream_async_iterators_tasks(*tasks):
-            yield teams
+        if tasks:
+            async for teams in stream_async_iterators_tasks(*tasks):
+                yield teams
 
 
 @ocean.on_resync(ObjectKind.WORKFLOW)
@@ -265,6 +284,7 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
             repo_options = ListRepositoryOptions(
                 organization=org_name,
+                organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
             )
@@ -307,6 +327,7 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
                 organization=org_name,
+                organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
             )
@@ -349,7 +370,6 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     pull_request_exporter = RestPullRequestExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-
     config = cast(GithubPullRequestConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
@@ -360,6 +380,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
                 organization=org_name,
+                organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
             )
@@ -395,7 +416,6 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     issue_exporter = RestIssueExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-
     config = cast(GithubIssueConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
@@ -406,6 +426,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
                 organization=org_name,
+                organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
             )
@@ -449,6 +470,7 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
                 organization=org_name,
+                organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
             )
@@ -490,6 +512,7 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
                 organization=org_name,
+                organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
             )
@@ -521,7 +544,6 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     branch_exporter = RestBranchExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-
     selector = cast(GithubBranchConfig, event.resource_config).selector
 
     async for organizations in org_exporter.get_paginated_resources(
@@ -532,6 +554,7 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
                 organization=org_name,
+                organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=selector.repo_search,
             )
@@ -574,9 +597,9 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         tasks = []
         for org in organizations:
             org_name = org["login"]
-
             repo_options = ListRepositoryOptions(
                 organization=org_name,
+                organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
             )
@@ -617,9 +640,9 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         tasks = []
         for org in organizations:
             org_name = org["login"]
-
             repo_options = ListRepositoryOptions(
                 organization=org_name,
+                organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
             )
@@ -652,7 +675,6 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dependabot_alert_exporter = RestDependabotAlertExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-
     config = cast(GithubDependabotAlertConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
@@ -664,6 +686,7 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
             repo_options = ListRepositoryOptions(
                 organization=org_name,
+                organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
             )
@@ -697,7 +720,6 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     code_scanning_alert_exporter = RestCodeScanningAlertExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-
     config = cast(GithubCodeScanningAlertConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
@@ -706,9 +728,9 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         tasks = []
         for org in organizations:
             org_name = org["login"]
-
             repo_options = ListRepositoryOptions(
                 organization=org_name,
+                organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
             )
@@ -801,6 +823,7 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
                 organization=org_name,
+                organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
             )
@@ -832,7 +855,6 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     secret_scanning_alert_exporter = RestSecretScanningAlertExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-
     config = cast(GithubSecretScanningAlertConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
@@ -843,6 +865,7 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
                 organization=org_name,
+                organization_type=org["type"],
                 type=port_app_config.repository_type,
                 search_params=config.selector.repo_search,
             )

@@ -1305,6 +1305,17 @@ arrow = "*"
 jinja2 = "*"
 
 [[package]]
+name = "jmespath"
+version = "1.0.1"
+description = "JSON Matching Expressions"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "jmespath-1.0.1-py3-none-any.whl", hash = "sha256:02e2e4cc71b5bcab88332eebf907519190dd9e6e82107fa7f83b1003a6252980"},
+    {file = "jmespath-1.0.1.tar.gz", hash = "sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe"},
+]
+
+[[package]]
 name = "jq"
 version = "1.8.0"
 description = "jq is a lightweight and flexible JSON processor."
@@ -1847,13 +1858,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.29.8"
+version = "0.30.5"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.29.8-py3-none-any.whl", hash = "sha256:4abcced8c0ac718bdb7f90811a158c6fb136bfbf275fa8ab4670d202ecec2654"},
-    {file = "port_ocean-0.29.8.tar.gz", hash = "sha256:d530da54ccf20423d5ff0bca21bd24ad768b33ee2851502c729f32a4d4373799"},
+    {file = "port_ocean-0.30.5-py3-none-any.whl", hash = "sha256:91fc851effc3b0a1653ace1631fda2a864d4cf5131c96f2990c67492bd2f3ee4"},
+    {file = "port_ocean-0.30.5.tar.gz", hash = "sha256:d7859f443a8dff5459c7138bcf5c587a06a7ac44f8b4bcc3b559378d362c914e"},
 ]
 
 [package.dependencies]
@@ -1868,6 +1879,7 @@ httpx = ">=0.28.1,<0.29.0"
 ijson = ">=3.4.0,<4.0.0"
 jinja2 = ">=3.1.6"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
+jmespath = ">=1.0.1,<2.0.0"
 jq = ">=1.8.0,<2.0.0"
 loguru = ">=0.7.0,<0.8.0"
 prometheus-client = ">=0.21.1,<0.22.0"
@@ -2807,4 +2819,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "b2750c500358d5f9bb8fd56d1a6bce7379e2ac3ee114db800572c78c15eb7590"
+content-hash = "e3db48d7c427f9296c24a94ef648cbe76544885bc2f4189805a00a3cec71604c"
