@@ -9,16 +9,17 @@ from port_ocean.utils.async_iterators import (
 )
 import asyncio
 from gitlab.clients.client_factory import create_gitlab_client
+from gitlab.clients.utils import build_group_params, build_project_params
 from gitlab.helpers.utils import ObjectKind, enrich_resources_with_project
 from integration import (
     GitLabFilesResourceConfig,
+    GroupResourceConfig,
     ProjectResourceConfig,
     GitLabFoldersResourceConfig,
     GitlabGroupWithMembersResourceConfig,
     GitlabMemberResourceConfig,
     GitlabMergeRequestResourceConfig,
     GitlabIssueResourceConfig,
-    GitlabPortAppConfig,
 )
 
 from gitlab.webhook.webhook_processors.merge_request_webhook_processor import (
@@ -61,6 +62,7 @@ from gitlab.webhook.webhook_processors.tag_webhook_processor import (
 from gitlab.webhook.webhook_processors.release_webhook_processor import (
     ReleaseWebhookProcessor,
 )
+from gitlab.clients.options import IssueOptions
 
 
 RESYNC_GROUP_MEMBERS_BATCH_SIZE = 10
@@ -81,78 +83,6 @@ async def on_start() -> None:
         await webhook_factory.create_webhooks_for_all_groups()
 
 
-def _get_visibility_config() -> tuple[bool, int]:
-    """Helper function to get visibility configuration from port_app_config.
-
-    Returns:
-        Tuple of (use_min_access_level, min_access_level)
-    """
-    port_app_config = cast(GitlabPortAppConfig, event.port_app_config)
-    use_min_access_level = bool(port_app_config.visibility.use_min_access_level)
-    min_access_level = int(port_app_config.visibility.min_access_level)
-    return use_min_access_level, min_access_level
-
-
-def _get_group_query_config() -> dict[str, Any]:
-    """Helper function to get group query configuration from port_app_config.
-
-    Returns:
-        Dictionary of parameters to pass to GitLab API calls
-    """
-    port_app_config = cast(GitlabPortAppConfig, event.port_app_config)
-    return port_app_config.search.to_group_params()
-
-
-def _get_project_query_config() -> dict[str, Any]:
-    """Helper function to get project query configuration from port_app_config.
-
-    Returns:
-        Dictionary of parameters to pass to GitLab API calls
-    """
-    port_app_config = cast(GitlabPortAppConfig, event.port_app_config)
-    return port_app_config.search.to_project_params()
-
-
-def _build_visibility_params() -> dict[str, Any]:
-    """Helper function to build params dictionary based on visibility configuration.
-
-    Returns:
-        Dictionary of parameters to pass to GitLab API calls
-    """
-    use_min_access_level, min_access_level = _get_visibility_config()
-    if use_min_access_level:
-        return {"min_access_level": min_access_level}
-    return {}
-
-
-def _build_group_params() -> dict[str, Any]:
-    """Helper function to build params dictionary to filter groups.
-
-    Returns:
-        Dictionary of parameters to pass to GitLab API calls
-    """
-    visibility_params = _build_visibility_params()
-    group_params = _get_group_query_config()
-    params: dict[str, Any] = {}
-    params.update(group_params)
-    params.update(visibility_params)
-    return params
-
-
-def _build_project_params() -> dict[str, Any]:
-    """Helper function to build params dictionary to filter projects.
-
-    Returns:
-        Dictionary of parameters to pass to GitLab API calls
-    """
-    visibility_params = _build_visibility_params()
-    project_params = _get_project_query_config()
-    params: dict[str, Any] = {}
-    params.update(project_params)
-    params.update(visibility_params)
-    return params
-
-
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
@@ -160,7 +90,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     include_languages = bool(selector.include_languages)
 
     async for projects_batch in client.get_projects(
-        params=_build_project_params(),
+        params=build_project_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=include_languages,
     ):
@@ -171,8 +101,12 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.GROUP)
 async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
+    selector = cast(GroupResourceConfig, event.resource_config).selector
+    include_active_groups = selector.include_active_groups
 
-    async for groups_batch in client.get_groups(params=_build_group_params()):
+    async for groups_batch in client.get_groups(
+        params=build_group_params(include_active_groups=include_active_groups)
+    ):
         logger.info(f"Received group batch with {len(groups_batch)} groups")
         yield groups_batch
 
@@ -181,16 +115,25 @@ async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GitlabIssueResourceConfig, event.resource_config).selector
-    search = selector.search
 
-    async for groups_batch in client.get_groups(params=_build_group_params()):
+    options: IssueOptions = IssueOptions(
+        search=selector.search,
+        issue_type=selector.issue_type,
+        labels=selector.labels,
+        non_archived=selector.non_archived,
+        state=selector.state,
+        updated_after=(
+            selector.updated_after_datetime if selector.updated_after else None
+        ),
+    )
+
+    async for groups_batch in client.get_groups(
+        params=build_group_params(include_active_groups=selector.include_active_groups)
+    ):
         logger.info(f"Processing batch of {len(groups_batch)} groups for issues")
-        params: dict[str, Any] | None = None
-        if search:
-            params = {"search": search}
-            logger.warning(
-                f'Fetching issues for {len(groups_batch)} groups with search criteria: "{search}"'
-            )
+        params: dict[str, Any] = {
+            key: value for key, value in options.items() if value is not None
+        }
         async for issues_batch in client.get_groups_resource(
             groups_batch, "issues", params=params
         ):
@@ -202,7 +145,7 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_project_params(),
+        params=build_project_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -232,7 +175,7 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_project_params(),
+        params=build_project_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -249,8 +192,11 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     states = selector.states
     updated_after = selector.updated_after_datetime
     search = selector.search
+    include_active_groups = selector.include_active_groups
 
-    async for groups_batch in client.get_groups(params=_build_group_params()):
+    async for groups_batch in client.get_groups(
+        params=build_group_params(include_active_groups=include_active_groups)
+    ):
         for state in states:
             logger.info(
                 f"Processing batch of {len(groups_batch)} groups for {state} merge requests"
@@ -276,7 +222,7 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_project_params(),
+        params=build_project_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -293,7 +239,7 @@ async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     async for projects_batch in client.get_projects(
-        params=_build_project_params(),
+        params=build_project_params(),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -313,8 +259,11 @@ async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     ).selector
     include_bot_members = bool(selector.include_bot_members)
     include_inherited_members = selector.include_inherited_members
+    include_active_groups = selector.include_active_groups
 
-    async for groups_batch in client.get_groups(params=_build_group_params()):
+    async for groups_batch in client.get_groups(
+        params=build_group_params(include_active_groups=include_active_groups)
+    ):
         for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
             current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
             logger.info(
@@ -337,8 +286,11 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(GitlabMemberResourceConfig, event.resource_config).selector
     include_bot_members = bool(selector.include_bot_members)
     include_inherited_members = selector.include_inherited_members
+    include_active_groups = selector.include_active_groups
 
-    async for groups_batch in client.get_groups(params=_build_group_params()):
+    async for groups_batch in client.get_groups(
+        params=build_group_params(include_active_groups=include_active_groups)
+    ):
         for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
             current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
             tasks = [
@@ -357,6 +309,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     selector = cast(GitLabFilesResourceConfig, event.resource_config).selector
+    include_active_groups = selector.include_active_groups
 
     search_path = selector.files.path
     scope = "blobs"
@@ -369,7 +322,11 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     async for files_batch in client.search_files(
-        scope, search_path, repositories, skip_parsing, _build_group_params()
+        scope,
+        search_path,
+        repositories,
+        skip_parsing,
+        build_group_params(include_active_groups=include_active_groups),
     ):
         yield await client._enrich_files_with_repos(files_batch)
 

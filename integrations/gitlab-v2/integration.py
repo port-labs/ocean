@@ -1,4 +1,4 @@
-from typing import Literal, Any, Type, List
+from typing import Literal, Any, Type, List, Optional
 from pydantic import BaseModel, Field, validator
 
 from port_ocean.context.ocean import PortOceanContext
@@ -23,11 +23,24 @@ FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
 
 
+class GroupSelector(Selector):
+    include_active_groups: Optional[bool] = Field(
+        default=None,
+        alias="includeActiveGroups",
+        description="Filter groups by active status",
+    )
+
+
 class ProjectSelector(Selector):
     include_languages: bool = Field(
         alias="includeLanguages",
         default=False,
         description="Whether to include the languages of the project, defaults to false",
+    )
+    active: Optional[bool] = Field(
+        default=None,
+        alias="active",
+        description="Filter projects by active status",
     )
 
 
@@ -36,7 +49,12 @@ class ProjectResourceConfig(ResourceConfig):
     selector: ProjectSelector
 
 
-class GitlabMemberSelector(Selector):
+class GroupResourceConfig(ResourceConfig):
+    kind: Literal["group"]
+    selector: GroupSelector
+
+
+class GitlabMemberSelector(GroupSelector):
     include_bot_members: bool = Field(
         alias="includeBotMembers",
         default=False,
@@ -74,7 +92,7 @@ class FilesSelector(BaseModel):
     )
 
 
-class GitLabFilesSelector(Selector):
+class GitLabFilesSelector(GroupSelector):
     files: FilesSelector
 
 
@@ -116,7 +134,7 @@ class GitlabFolderSelector(Selector):
     )
 
 
-class GitlabMergeRequestSelector(Selector):
+class GitlabMergeRequestSelector(GroupSelector):
     states: List[Literal["opened", "closed", "merged"]] = Field(
         alias="states",
         description="Specify the state of the merge request to match. Allowed values: opened, closed, merged",
@@ -159,12 +177,44 @@ class GitLabFoldersResourceConfig(ResourceConfig):
     kind: Literal["folder"]
 
 
-class IssueSelector(Selector):
+class IssueSelector(GroupSelector):
     search: str = Field(
         default="",
         alias="search",
         description="Search for issues by title or description matching the search criteria.",
     )
+    issue_type: Optional[Literal["issue", "incident", "test_case", "task"]] = Field(
+        default=None,
+        alias="issueType",
+        description="Filter issues by type",
+    )
+    labels: Optional[str] = Field(
+        default=None,
+        alias="labels",
+        description="Filter issues by labels",
+    )
+    non_archived: Optional[bool] = Field(
+        default=None,
+        alias="nonArchived",
+        description="Filter issues from non archived projects",
+    )
+    state: Optional[Literal["opened", "closed"]] = Field(
+        default=None,
+        alias="state",
+        description="Filter issues by state",
+    )
+    updated_after: Optional[float] = Field(
+        default=None,
+        alias="updatedAfter",
+        description="Filter issues updated on or after the given time in days",
+    )
+
+    @property
+    def updated_after_datetime(self) -> datetime:
+        """Convert the created_after days to a timezone-aware datetime object"""
+        if not self.updated_after:
+            return datetime.now(timezone.utc)
+        return datetime.now(timezone.utc) - timedelta(days=self.updated_after)
 
 
 class GitlabIssueResourceConfig(ResourceConfig):
@@ -237,6 +287,7 @@ class GitlabPortAppConfig(PortAppConfig):
     )
     resources: list[
         ProjectResourceConfig
+        | GroupResourceConfig
         | GitlabIssueResourceConfig
         | GitlabGroupWithMembersResourceConfig
         | GitlabMemberResourceConfig
