@@ -191,6 +191,15 @@ jobs:
 
           IS_OVER=$(jq -n "${NEW_SIZE_BYTES} > ${MAX_BYTES}")
 
+          # add output variables for comment action
+          {
+            echo "is_over=${IS_OVER}"
+            echo "new_size_mb=${NEW_SIZE_MB_FMT}"
+            echo "baseline_mb=${BASELINE_MB_FMT}"
+            echo "diff_mb=${DIFF_MB_FMT}"
+            echo "baseline_version=${BASELINE_VERSION}"
+          } >> "$GITHUB_OUTPUT"
+
           if [[ "$IS_OVER" == "true" ]]; then
             echo "❌ FAILURE: Image size limit exceeded!"
             echo "   Current Size: ${NEW_SIZE_MB_FMT} MB"
