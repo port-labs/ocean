@@ -60,9 +60,6 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v5
 
-      - name: Setup .dockerignore
-        run: cp integrations/_infra/Dockerfile.dockerignore .dockerignore
-
       - name: Prepare Docker images tags
         id: prepare_tags
         run: |
