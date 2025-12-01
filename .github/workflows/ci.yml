@@ -216,10 +216,7 @@ jobs:
           fi
 
       - name: Comment if image size limit exceeded
-        if: |
-          github.event_name == 'pull_request' &&
-          steps.size_check.outcome != 'skipped' &&
-          steps.size_check.outputs.is_over == 'true'
+        if: ${{ steps.size_check.outputs.is_over == 'true' }}
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
