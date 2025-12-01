@@ -168,7 +168,7 @@ jobs:
         if: steps.calc_max_size.outputs.skip_check == 'false'
         shell: bash
         env:
-          FAIL_ON_LIMIT: "true"
+          FAIL_ON_LIMIT: ${{ !contains(github.event.pull_request.labels.*.name, 'allow-size-increase') }}
         run: |
           NEW_IMAGE="${{ steps.image_info.outputs.image_tag }}"
           BASELINE_BYTES="${{ steps.calc_max_size.outputs.baseline_bytes }}"
