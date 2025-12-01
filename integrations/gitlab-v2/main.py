@@ -207,7 +207,7 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 params["updated_after"] = updated_after
             if search:
                 params["search"] = search
-                logger.warning(
+                logger.info(
                     f'Fetching {state} merge requests for {len(groups_batch)} groups with search criteria: "{search}"'
                 )
 
