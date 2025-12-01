@@ -222,11 +222,14 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `❌ FAILURE: Image size limit exceeded!
-              Current Size: ${{ steps.size_check.outputs.new_size_mb }} MB
-              Baseline Size: ${{ steps.size_check.outputs.baseline_mb }} MB (Version: ${{ steps.size_check.outputs.baseline_version }})
-              Difference: +${{ steps.size_check.outputs.diff_mb }} MB
-              Allowed Increase: ${{ env.SIZE_INCREASE_THRESHOLD }}%`;
+            const output = [
+              '### ❌ Image Size Limit Exceeded',
+              '',
+              '**Current Size:** `${{ steps.size_check.outputs.new_size_mb }} MB`',
+              '**Baseline:** `${{ steps.size_check.outputs.baseline_mb }} MB` (v${{ steps.size_check.outputs.baseline_version }})',
+              '**Difference:** `+${{ steps.size_check.outputs.diff_mb }} MB`',
+              '**Allowed Increase:** `${{ env.SIZE_INCREASE_THRESHOLD }}%`'
+            ].join('\n');
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
