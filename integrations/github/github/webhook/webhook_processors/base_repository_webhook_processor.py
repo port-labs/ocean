@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Any, Optional, cast
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
+from port_ocean.core.handlers.webhook.webhook_event import EventPayload
 from port_ocean.context.event import event
 from github.clients.client_factory import create_github_client
 from github.core.exporters.repository_exporter import RestRepositoryExporter
@@ -34,6 +34,9 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
         selector = cast(RepoSearchSelector, config.selector)
         organization = payload["organization"]
         repo = payload["repository"]
+
+        if selector.repo_search is None:
+            return repo
 
         targeted_query = f"{selector.repo_search.query} {repo['name']} in:name"
 
