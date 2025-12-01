@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.2.0-beta (2025-12-01)
+
+
+### Improvements
+
+- Add webhook support to repo search
+
+
 ## 4.1.11-beta (2025-11-27)
 
 
