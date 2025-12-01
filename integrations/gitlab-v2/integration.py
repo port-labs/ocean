@@ -210,11 +210,13 @@ class IssueSelector(GroupSelector):
     )
 
     @property
-    def updated_after_datetime(self) -> datetime:
-        """Convert the created_after days to a timezone-aware datetime object"""
+    def updated_after_datetime(self) -> str:
+        """Convert the created_after days to a timezone-aware datetime object in ISO 8601 format"""
         if not self.updated_after:
-            return datetime.now(timezone.utc)
-        return datetime.now(timezone.utc) - timedelta(days=self.updated_after)
+            return datetime.now(timezone.utc).isoformat()
+        return (
+            datetime.now(timezone.utc) - timedelta(days=self.updated_after)
+        ).isoformat()
 
 
 class GitlabIssueResourceConfig(ResourceConfig):

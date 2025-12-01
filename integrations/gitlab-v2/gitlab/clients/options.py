@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Literal, NotRequired, TypedDict, Optional
 
 
@@ -10,4 +9,4 @@ class IssueOptions(TypedDict):
     labels: NotRequired[Optional[str]]
     non_archived: NotRequired[Optional[bool]]
     state: NotRequired[Optional[Literal["opened", "closed"]]]
-    updated_after: NotRequired[Optional[datetime]]
+    updated_after: NotRequired[Optional[str]]
