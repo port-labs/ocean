@@ -32,7 +32,7 @@ resources:
     selector:
       query: "true"
       folders:
-        - path: "*/*/*"
+        - path: "*/*"
     port:
       entity:
         mappings:
