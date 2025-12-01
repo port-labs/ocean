@@ -127,7 +127,7 @@ jobs:
         with:
           metric_name: "image.size"
           metric_value: ${{ steps.image_size.outputs.size_mb_linux-amd64 }}
-          new_relic_api_key: ${{ secrets.NEW_RELIC_API_KEY }}
+          new_relic_api_key: ${{ secrets.NEW_RELIC_INGEST_API_KEY }}
           metric_attributes: |
             {
               "image_name": "port-ocean-${{ steps.prepare_tags.outputs.type }}",
@@ -141,7 +141,7 @@ jobs:
         with:
           metric_name: "image.size"
           metric_value: ${{ steps.image_size.outputs.size_mb_linux-arm64 }}
-          new_relic_api_key: ${{ secrets.NEW_RELIC_API_KEY }}
+          new_relic_api_key: ${{ secrets.NEW_RELIC_INGEST_API_KEY}}
           metric_attributes: |
             {
               "image_name": "port-ocean-${{ steps.prepare_tags.outputs.type }}",
