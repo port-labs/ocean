@@ -115,10 +115,8 @@ jobs:
         run: |
           SINGLE_TAG=$(echo "${{ steps.prepare_tags.outputs.tags }}" | awk -F ',' '{print $1}')
           IMAGE_NAME=$(echo "${SINGLE_TAG}" | sed 's/.*\///' | cut -d':' -f1)
-          PLATFORM_SUFFIX=$(echo "${{ matrix.platform }}" | tr '/' '-')
           echo "image_tag=${SINGLE_TAG}" >> $GITHUB_OUTPUT
           echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
-          echo "platform_suffix=${PLATFORM_SUFFIX}" >> $GITHUB_OUTPUT
 
       - name: Calculate max allowed size
         id: calc_max_size
@@ -191,25 +189,25 @@ jobs:
 
           IS_OVER=$(jq -n "${NEW_SIZE_BYTES} > ${MAX_BYTES}")
 
-          # add output variables for comment action
+          # Set outputs for GitHub Actions
           {
             echo "is_over=${IS_OVER}"
-            echo "new_size_mb=${NEW_SIZE_MB_FMT}"
-            echo "baseline_mb=${BASELINE_MB_FMT}"
-            echo "diff_mb=${DIFF_MB_FMT}"
-            echo "baseline_version=${BASELINE_VERSION}"
+            if [[ "$IS_OVER" == "true" ]]; then
+              echo "new_size_mb=${NEW_SIZE_MB_FMT}"
+              echo "baseline_mb=${BASELINE_MB_FMT}"
+              echo "diff_mb=${DIFF_MB_FMT}"
+              echo "baseline_version=${BASELINE_VERSION}"
+            fi
           } >> "$GITHUB_OUTPUT"
 
+          # Log results and exit if limit exceeded
           if [[ "$IS_OVER" == "true" ]]; then
             echo "❌ FAILURE: Image size limit exceeded!"
             echo "   Current Size: ${NEW_SIZE_MB_FMT} MB"
             echo "   Baseline Size: ${BASELINE_MB_FMT} MB (Version: ${BASELINE_VERSION})"
             echo "   Difference: +${DIFF_MB_FMT} MB"
             echo "   Allowed Increase: ${THRESHOLD}%"
-
-            if [[ "${FAIL_ON_LIMIT}" == "true" ]]; then
-              exit 1
-            fi
+            [[ "${FAIL_ON_LIMIT}" == "true" ]] && exit 1
           else
             echo "✅ SUCCESS: Image size is within limits."
             echo "   Current Size: ${NEW_SIZE_MB_FMT} MB"
@@ -218,25 +216,22 @@ jobs:
           fi
 
       - name: Comment if image size limit exceeded
-        if: steps.size_check.outputs.is_over == 'true'
+        if: |
+          github.event_name == 'pull_request' &&
+          steps.size_check.outcome != 'skipped' &&
+          steps.size_check.outputs.is_over == 'true'
         uses: actions/github-script@v7
-        env:
-          NEW_SIZE_MB_FMT: ${{ steps.size_check.outputs.new_size_mb }}
-          BASELINE_MB_FMT: ${{ steps.size_check.outputs.baseline_mb }}
-          DIFF_MB_FMT: ${{ steps.size_check.outputs.diff_mb }}
-          BASELINE_VERSION: ${{ steps.size_check.outputs.baseline_version }}
-          THRESHOLD: ${{ env.SIZE_INCREASE_THRESHOLD }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const output = `❌ FAILURE: Image size limit exceeded!
-              Current Size: ${NEW_SIZE_MB_FMT} MB
-              Baseline Size: ${BASELINE_MB_FMT} MB (Version: ${BASELINE_VERSION})
-              Difference: +${DIFF_MB_FMT} MB
-              Allowed Increase: ${THRESHOLD}%`;
+              Current Size: ${{ steps.size_check.outputs.new_size_mb }} MB
+              Baseline Size: ${{ steps.size_check.outputs.baseline_mb }} MB (Version: ${{ steps.size_check.outputs.baseline_version }})
+              Difference: +${{ steps.size_check.outputs.diff_mb }} MB
+              Allowed Increase: ${{ env.SIZE_INCREASE_THRESHOLD }}%`;
 
             github.rest.issues.createComment({
-              issue_number: ${{ github.event.pull_request.number }},
+              issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: output
