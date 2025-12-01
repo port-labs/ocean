@@ -125,12 +125,13 @@ jobs:
         run: |
           THRESHOLD="${{ env.SIZE_INCREASE_THRESHOLD }}"
           IMAGE_NAME="${{ steps.image_info.outputs.image_name }}"
+          PLATFORM="${{ matrix.platform }}"
 
           # Use the 'latest' tag to fetch the baseline image
           BASELINE_IMAGE="ghcr.io/port-labs/${IMAGE_NAME}:latest"
 
-          echo "📦 Pulling baseline image: ${BASELINE_IMAGE}"
-          if ! docker pull -q "${BASELINE_IMAGE}" > /dev/null; then
+          echo "📦 Pulling baseline image (${PLATFORM}): ${BASELINE_IMAGE}"
+          if ! docker pull --platform "${PLATFORM}" -q "${BASELINE_IMAGE}" > /dev/null; then
               echo "⚠️ Failed to pull baseline image, skipping size limit check"
               echo "skip_check=true" >> $GITHUB_OUTPUT
               exit 0
