@@ -11,7 +11,7 @@ resources:
         mappings:
           identifier: .id | gsub(" "; "")
           title: .name
-          blueprint: '"project"'
+          blueprint: '"azureDevopsProject"'
           properties:
             state: .state
             revision: .revision
@@ -24,10 +24,9 @@ resources:
     port:
       entity:
         mappings:
-          identifier: >-
-            "\(.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.name | ascii_downcase | gsub("[ ();]"; ""))"
+          identifier: .id
           title: .name
-          blueprint: '"service"'
+          blueprint: '"azureDevopsRepository"'
           properties:
             url: .remoteUrl
             readme: file://README.md
@@ -39,9 +38,8 @@ resources:
     port:
       entity:
         mappings:
-          identifier: >-
-            "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"
-          blueprint: '"service"'
+          identifier: .__repository.id
+          blueprint: '"azureDevopsRepository"'
           properties:
             minimumApproverCount: .settings.minimumApproverCount
   - kind: repository-policy
@@ -50,9 +48,8 @@ resources:
     port:
       entity:
         mappings:
-          identifier: >-
-            "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"
-          blueprint: '"service"'
+          identifier: .__repository.id
+          blueprint: '"azureDevopsRepository"'
           properties:
             workItemLinking: .isEnabled and .isBlocking
   - kind: board
@@ -63,7 +60,7 @@ resources:
         mappings:
           identifier: .id | gsub(" "; "")
           title: .name
-          blueprint: '"board"'
+          blueprint: '"azureDevopsBoard"'
           properties:
             link: .url
           relations:
@@ -75,9 +72,9 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id | tostring
+          identifier: .__project.id + "/" + (.id | tostring) | gsub(" "; "")
           title: .fields."System.Title"
-          blueprint: '"workItem"'
+          blueprint: '"azureDevopsWorkItem"'
           properties:
             type: .fields."System.WorkItemType"
             state: .fields."System.State"
@@ -100,9 +97,9 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .__stateType+"-"+.name+"-"+.__board.__project.id | gsub(" "; "")
+          identifier: .__stateType + "/" +.name+ "/"+.__board.__project.id | gsub(" "; "")
           title: .name
-          blueprint: '"column"'
+          blueprint: '"azureDevopsColumn"'
           relations:
             board: .__board.id | gsub(" "; "")
   - kind: release
@@ -111,9 +108,9 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .projectReference.id + "-" + (.id | tostring) | gsub(" "; "")
+          identifier: .projectReference.id + "/" + (.id | tostring) | gsub(" "; "")
           title: .name
-          blueprint: '"release"'
+          blueprint: '"azureDevopsRelease"'
           properties:
             status: .status
             reason: .reason
