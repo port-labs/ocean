@@ -1,8 +1,6 @@
-from typing import Any, Type, cast
+from typing import Any, Type
 from aws.core.interfaces.action import Action, ActionMap
-from aws.core.helpers.utils import is_recoverable_aws_exception
-from loguru import logger
-import asyncio
+from aws.core.helpers.utils import execute_concurrent_aws_operations
 
 
 class GetRepositoryPolicyAction(Action):
@@ -12,31 +10,12 @@ class GetRepositoryPolicyAction(Action):
         self, repositories: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
 
-        policies = await asyncio.gather(
-            *(self._fetch_repository_policy(repo) for repo in repositories),
-            return_exceptions=True,
+        return await execute_concurrent_aws_operations(
+            input_items=repositories,
+            operation_func=self._fetch_repository_policy,
+            get_resource_identifier=lambda repo: repo["repositoryName"],
+            operation_name="repository policy",
         )
-
-        results: list[dict[str, Any]] = []
-        for idx, policy_result in enumerate(policies):
-            if isinstance(policy_result, Exception):
-                repository_name = repositories[idx].get("repositoryName", "unknown")
-                if is_recoverable_aws_exception(policy_result):
-                    logger.warning(
-                        f"Skipping repository policy for '{repository_name}': {policy_result}"
-                    )
-                    continue
-                else:
-                    logger.error(
-                        f"Error fetching repository policy for '{repository_name}': {policy_result}"
-                    )
-                    raise policy_result
-            results.append(cast(dict[str, Any], policy_result))
-
-        logger.info(
-            f"Successfully fetched policies for {len(results)} ECR repositories"
-        )
-        return results
 
     async def _fetch_repository_policy(
         self, repository: dict[str, Any]
@@ -55,31 +34,12 @@ class GetLifecyclePolicyAction(Action):
         self, repositories: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
 
-        policies = await asyncio.gather(
-            *(self._fetch_lifecycle_policy(repo) for repo in repositories),
-            return_exceptions=True,
+        return await execute_concurrent_aws_operations(
+            input_items=repositories,
+            operation_func=self._fetch_lifecycle_policy,
+            get_resource_identifier=lambda repo: repo["repositoryName"],
+            operation_name="lifecycle policy",
         )
-
-        results: list[dict[str, Any]] = []
-        for idx, policy_result in enumerate(policies):
-            if isinstance(policy_result, Exception):
-                repository_name = repositories[idx].get("repositoryName", "unknown")
-                if is_recoverable_aws_exception(policy_result):
-                    logger.warning(
-                        f"Skipping lifecycle policy for '{repository_name}': {policy_result}"
-                    )
-                    continue
-                else:
-                    logger.error(
-                        f"Error fetching lifecycle policy for '{repository_name}': {policy_result}"
-                    )
-                    raise policy_result
-            results.append(cast(dict[str, Any], policy_result))
-
-        logger.info(
-            f"Successfully fetched lifecycle policies for {len(results)} ECR repositories"
-        )
-        return results
 
     async def _fetch_lifecycle_policy(
         self, repository: dict[str, Any]
@@ -97,29 +57,12 @@ class ListTagsForResourceAction(Action):
         self, repositories: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
 
-        tags = await asyncio.gather(
-            *(self._fetch_repository_tags(repo) for repo in repositories),
-            return_exceptions=True,
+        return await execute_concurrent_aws_operations(
+            input_items=repositories,
+            operation_func=self._fetch_repository_tags,
+            get_resource_identifier=lambda repo: repo["repositoryName"],
+            operation_name="tags",
         )
-
-        results: list[dict[str, Any]] = []
-        for idx, tag_result in enumerate(tags):
-            if isinstance(tag_result, Exception):
-                repository_name = repositories[idx].get("repositoryName", "unknown")
-                if is_recoverable_aws_exception(tag_result):
-                    logger.warning(
-                        f"Skipping tags for repository '{repository_name}': {tag_result}"
-                    )
-                    continue
-                else:
-                    logger.error(
-                        f"Error fetching tags for repository '{repository_name}'"
-                    )
-                    raise tag_result
-            results.append(cast(dict[str, Any], tag_result))
-
-        logger.info(f"Successfully fetched tags for {len(results)} ECR repositories")
-        return results
 
     async def _fetch_repository_tags(
         self, repository: dict[str, Any]
