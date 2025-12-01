@@ -1,16 +1,20 @@
 from abc import abstractmethod
-from typing import cast
-from port_ocean.core.handlers.webhook.webhook_event import EventPayload
+from typing import Any, Optional, cast
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.handlers.webhook.webhook_event import EventPayload, WebhookEvent
 from port_ocean.context.event import event
+from github.clients.client_factory import create_github_client
+from github.core.exporters.repository_exporter import RestRepositoryExporter
+from github.core.options import ListRepositoryOptions
+from github.helpers.models import RepoSearchParams
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
 )
-from integration import GithubPortAppConfig
+from integration import GithubPortAppConfig, RepoSearchSelector
 from loguru import logger
 
 
 class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
-
     async def validate_payload(self, payload: EventPayload) -> bool:
         return (
             await super().validate_payload(payload)
@@ -20,6 +24,36 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
 
     @abstractmethod
     async def _validate_payload(self, payload: EventPayload) -> bool: ...
+
+    async def repo_in_search(
+        self, payload: EventPayload, config: ResourceConfig
+    ) -> Optional[dict[str, Any]]:
+        configured_visibility = cast(
+            GithubPortAppConfig, event.port_app_config
+        ).repository_type
+        selector = cast(RepoSearchSelector, config.selector)
+        organization = payload["organization"]
+        repo = payload["repository"]
+
+        targeted_query = f"{selector.repo_search.query} {repo['name']} in:name"
+
+        search_options = ListRepositoryOptions(
+            type=configured_visibility,
+            organization=organization["login"],
+            organization_type="Organization",
+            search_params=RepoSearchParams(query=targeted_query),
+        )
+        rest_client = create_github_client()
+        exporter = RestRepositoryExporter(rest_client)
+        async for search_results in exporter.get_paginated_resources(search_options):
+            for repository in search_results:
+                if repository["id"] == repo["id"]:
+                    logger.info(
+                        f"repository {repository['name']} found in search query, webhook will be processed."
+                    )
+                    return repository
+
+        return None
 
     async def validate_repository_payload(self, payload: EventPayload) -> bool:
         repository = payload.get("repository", {})

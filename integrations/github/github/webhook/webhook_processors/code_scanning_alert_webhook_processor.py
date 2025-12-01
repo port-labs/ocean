@@ -50,6 +50,18 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         config = cast(GithubCodeScanningAlertConfig, resource_config)
+        if config.selector.repo_search is not None:
+            logger.info(
+                "search query is configured for this kind, checking if repository is in matched results."
+            )
+            if await self.repo_in_search(payload, resource_config) is None:
+                logger.info(
+                    "Repository is not matched by search query, no actions will be performed."
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
+
         possible_states = CODE_SCANNING_ALERT_ACTION_TO_STATE.get(action, [])
 
         if not possible_states:

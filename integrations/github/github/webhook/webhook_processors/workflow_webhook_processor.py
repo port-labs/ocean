@@ -1,3 +1,4 @@
+from typing import cast
 from loguru import logger
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.core.options import SingleWorkflowOptions
@@ -13,6 +14,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from github.helpers.utils import fetch_commit_diff, extract_changed_files
+from integration import GithubRepoSearchConfig
 
 
 class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
@@ -51,6 +53,21 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         repo_name = repo["name"]
         organization = payload["organization"]["login"]
+
+        config = cast(GithubRepoSearchConfig, resource_config)
+
+        if config.selector.repo_search is not None:
+            logger.info(
+                "search query is configured for this kind, checking if repository is in matched results."
+            )
+            repo = await self.repo_in_search(payload, resource_config)
+            if repo is None:
+                logger.info(
+                    "Repository is not matched by search query, no actions will be performed."
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
 
         rest_client = create_github_client()
         commit_diff = await fetch_commit_diff(

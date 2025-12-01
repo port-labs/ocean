@@ -33,7 +33,6 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-
         action = payload["action"]
         issue = payload["issue"]
         repo_name = payload["repository"]["name"]
@@ -45,11 +44,21 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         config = cast(GithubIssueConfig, resource_config)
+        if config.selector.repo_search is not None:
+            logger.info(
+                "search query is configured for this kind, checking if repository is in matched results."
+            )
+            if await self.repo_in_search(payload, resource_config) is None:
+                logger.info(
+                    "Repository is not matched by search query, no actions will be performed."
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
 
         if (
             action == "closed" and config.selector.state == "open"
         ) or action in ISSUE_DELETE_EVENTS:
-
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[issue],
