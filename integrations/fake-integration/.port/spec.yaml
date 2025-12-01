@@ -1,0 +1,36 @@
+title: Fake Integration
+description: Fake integration for Port Ocean
+# Should be one of the available icons in Port, you should replace this!
+icon: Cookiecutter
+features:
+  - type: exporter
+    section: Under Development  # Should be one of the available sections in Port
+    resources:
+      - kind: fake-department
+      - kind: fake-person
+configurations:
+  - name: entityAmount
+    required: false
+    type: integer
+    description: Amount of fake persons per department created
+    default: -1
+  - name: entityKbSize
+    required: false
+    type: integer
+    description: Factor of size of entity (by making the 'bio' string field)
+    default: -1
+  - name: thirdPartyBatchSize
+    required: false
+    type: integer
+    description: Batch size of requests against fake 3rd party API
+    default: -1
+  - name: thirdPartyLatencyMS
+    required: false
+    type: integer
+    description: latency in milliseconds to each 3rd party API call
+    default: -1
+  - name: singleDepartmentRun
+    required: false
+    type: boolean
+    description: Run only 1 static department instead of the default 5
+    default: False
