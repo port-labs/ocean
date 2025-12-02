@@ -78,7 +78,6 @@ resources:
         path: CODEOWNERS
         skipParsing: 'true'
     port:
-      itemsToParseName: data
       itemsToParse: >-
         .file.content.content | split("\n") |
         map(gsub("^[[:space:]]+|[[:space:]]+$"; "")) |
@@ -94,13 +93,13 @@ resources:
         mappings:
           identifier: >-
             (.file.repo.path_with_namespace | gsub(" "; "")) + "_" +
-            .data.identifier + "_codeowners"
-          title: .data.scope + " codeowners"
+            .item.identifier + "_codeowners"
+          title: .item.scope + " codeowners"
           blueprint: '"gitlabCodeowners"'
           properties:
-            scope: .data.scope
+            scope: .item.scope
             location: .file.path
-            users: .data.users
-            teams: .data.teams
+            users: .item.users
+            teams: .item.teams
           relations:
             project: .file.repo.path_with_namespace | gsub(" "; "")
