@@ -86,7 +86,8 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
             # Check if the result is already in the cache
             try:
                 if cache := await ocean.app.cache_provider.get(cache_key):
-                    yield cache
+                    for chunk in cache:
+                        yield chunk
                     return
             except FailedToReadCacheError as e:
                 logger.warning(f"Failed to read cache for {cache_key}: {str(e)}")
@@ -94,7 +95,7 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
             # If not in cache, fetch the data
             cached_results = list()
             async for result in func(*args, **kwargs):
-                cached_results.extend(result)
+                cached_results.append(result)
                 yield result
 
             # Cache the results
