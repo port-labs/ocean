@@ -1,15 +1,19 @@
 import asyncio
+from copy import deepcopy
 import json
 import multiprocessing
+from operator import ne
 import os
 import re
 import shutil
 import stat
 import subprocess
 import tempfile
-from contextlib import contextmanager
+import tracemalloc
+import gc
+import sys
+from contextlib import aclosing, contextmanager
 from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
-import copy
 
 import ijson
 from loguru import logger
@@ -30,6 +34,7 @@ from port_ocean.exceptions.core import (
     KindNotImplementedException,
 )
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
+from port_ocean.helpers.stream import IterJsonStream, TextJsonStream
 from port_ocean.utils.async_http import _http_client
 
 def _process_path_type_items(
@@ -81,72 +86,6 @@ def _process_path_type_items(
             processed_result.append(item)
 
     return processed_result
-
-@contextmanager
-def resync_error_handling() -> Generator[None, None, None]:
-    try:
-        yield
-    except RawObjectValidationException as error:
-        err_msg = f"Failed to validate raw data for returned data from resync function, error: {error}"
-        logger.exception(err_msg)
-        raise OceanAbortException(err_msg) from error
-    except StopAsyncIteration:
-        raise
-    except Exception as error:
-        err_msg = f"Failed to execute resync function, error: {error}"
-        logger.exception(err_msg)
-        raise OceanAbortException(err_msg) from error
-
-
-async def resync_function_wrapper(
-    fn: Callable[[str], Awaitable[RAW_RESULT]], kind: str, items_to_parse: str | None = None
-) -> RAW_RESULT:
-    with resync_error_handling():
-        results = await fn(kind)
-        validated_results = validate_result(results)
-        return _process_path_type_items(validated_results, items_to_parse)
-
-
-async def resync_generator_wrapper(
-    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse_name: str, items_to_parse: str | None = None
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    generator = fn(kind)
-    errors = []
-    try:
-        while True:
-            try:
-                with resync_error_handling():
-                    result = await anext(generator)
-                    if not ocean.config.yield_items_to_parse:
-                        validated_result = validate_result(result)
-                        processed_result = _process_path_type_items(validated_result,items_to_parse)
-                        yield processed_result
-                    else:
-                        if items_to_parse:
-                            for data in result:
-                                data_path: str | None = None
-                                if isinstance(data, dict) and data.get("__type") == "path":
-                                    content = data.get("file", {}).get("content") if isinstance(data["file"].get("content"), dict) else {}
-                                    data_path = content.get("path", None)
-                                bulks = get_items_to_parse_bulks(data, data_path, items_to_parse, items_to_parse_name, data.get("__base_jq", ".file.content"))
-                                async for bulk in bulks:
-                                    yield bulk
-                        else:
-                            validated_result = validate_result(result)
-                            processed_result = _process_path_type_items(validated_result, items_to_parse)
-                            yield processed_result
-            except OceanAbortException as error:
-                errors.append(error)
-                ocean.metrics.inc_metric(
-                    name=MetricType.OBJECT_COUNT_NAME,
-                    labels=[ocean.metrics.current_resource_kind(), MetricPhase.EXTRACT , MetricPhase.ExtractResult.FAILED],
-                    value=1
-                )
-    except StopAsyncIteration:
-        if errors:
-            raise ExceptionGroup(
-                "At least one of the resync generator iterations failed", errors
-            )
 
 def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
     """
@@ -204,6 +143,75 @@ def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
     # Default case: No suitable path found after checking all segments
     return None
 
+@contextmanager
+def resync_error_handling() -> Generator[None, None, None]:
+    try:
+        yield
+    except RawObjectValidationException as error:
+        err_msg = f"Failed to validate raw data for returned data from resync function, error: {error}"
+        logger.exception(err_msg)
+        raise OceanAbortException(err_msg) from error
+    except StopAsyncIteration:
+        raise
+    except Exception as error:
+        err_msg = f"Failed to execute resync function, error: {error}"
+        logger.exception(err_msg)
+        raise OceanAbortException(err_msg) from error
+
+
+async def resync_function_wrapper(
+    fn: Callable[[str], Awaitable[RAW_RESULT]], kind: str, items_to_parse: str | None = None
+) -> RAW_RESULT:
+    with resync_error_handling():
+        results = await fn(kind)
+        validated_results = validate_result(results)
+        return _process_path_type_items(validated_results, items_to_parse)
+
+def compare_memory_usage(snap0: tracemalloc.Snapshot, snap1: tracemalloc.Snapshot):
+    c1 = snap1.compare_to(snap0, 'lineno')
+    print("--------------------------------")
+    for stat in c1[:5]:
+        print(f"{stat.traceback.format()}: {stat.size} {stat.count} {stat.size_diff} {stat.count_diff}")
+    print(f"Total memory usage: {sum(stat.size for stat in c1)}")
+
+async def resync_generator_wrapper(
+    fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse_name: str, items_to_parse: str | None = None
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    generator = fn(kind)
+    errors = []
+    try:
+        while True:
+            try:
+                with resync_error_handling():
+                    result = validate_result(await anext(generator))
+                    if items_to_parse:
+                        delete_target = extract_jq_deletion_path_revised(items_to_parse) or '.'
+                        jq_expression = f""" .| del({delete_target})"""
+
+                        for item in result:
+                            new_item = await ocean.app.integration.entity_processor._search(item, jq_expression)
+                            datas = await ocean.app.integration.entity_processor._search(item, items_to_parse)
+                            while len(datas) > 0:
+                                batch = datas[:1000]
+                                datas = datas[1000:]
+                                yield [{**new_item, "item": data} for data in batch]
+                    else:
+                        yield result
+
+
+            except OceanAbortException as error:
+                errors.append(error)
+                ocean.metrics.inc_metric(
+                    name=MetricType.OBJECT_COUNT_NAME,
+                    labels=[ocean.metrics.current_resource_kind(), MetricPhase.EXTRACT , MetricPhase.ExtractResult.FAILED],
+                    value=1
+                )
+    except StopAsyncIteration:
+        if errors:
+            raise ExceptionGroup(
+                "At least one of the resync generator iterations failed", errors
+            )
+
 
 def is_resource_supported(
     kind: str, resync_event_mapping: dict[str | None, list[RESYNC_EVENT_LISTENER]]
@@ -254,7 +262,6 @@ async def get_items_to_parse_bulks(raw_data: dict[Any, Any], data_path: str, ite
     temp_output_path = None
 
     try:
-        is_path_type = True
         # Create secure temporary files
         if not data_path:
             raw_data_serialized = json.dumps(raw_data)
@@ -262,17 +269,17 @@ async def get_items_to_parse_bulks(raw_data: dict[Any, Any], data_path: str, ite
             with open(temp_data_path, "w") as f:
                 f.write(raw_data_serialized)
             data_path = temp_data_path
-            is_path_type = False
 
         temp_output_path = _create_secure_temp_file("_parsed.json")
 
-        delete_target = extract_jq_deletion_path_revised(items_to_parse) or '.'
+        delete_target = items_to_parse.split('|', 1)[0].strip() if not items_to_parse.startswith('map(') else '.'
+        base_jq_object_string = await _build_base_jq_object_string(raw_data, base_jq, delete_target)
 
         # Build jq expression safely
         jq_expression = f""". as $all
       | ($all | {items_to_parse}) as $items
       | $items
-      | {_build_mapping_jq_expression(items_to_parse_name, base_jq, delete_target, is_path_type)}"""
+      | map({{{items_to_parse_name}: ., {base_jq_object_string}}})"""
 
         # Use subprocess with list arguments instead of shell=True
 
@@ -295,7 +302,7 @@ async def get_items_to_parse_bulks(raw_data: dict[Any, Any], data_path: str, ite
             with open(temp_output_path, "r") as f:
                 events_stream = get_events_as_a_stream(f, 'item', ocean.config.yield_items_to_parse_batch_size)
                 for items_bulk in events_stream:
-                    yield items_bulk if not is_path_type else [merge_raw_data_to_item(item, raw_data) for item in items_bulk]
+                    yield items_bulk
 
     except ValueError as e:
         logger.error(f"Invalid jq expression: {e}")
@@ -318,63 +325,20 @@ def unsupported_kind_response(
     logger.error(f"Kind {kind} is not supported in this integration")
     return [], [KindNotImplementedException(kind, available_resync_kinds)]
 
-def _build_mapping_jq_expression(items_to_parse_name: str, base_jq: str, delete_target: str, is_path_type: bool = False) -> str:
-    if is_path_type:
-        return f"map({{{items_to_parse_name}: . }} | {base_jq} = (($all | del({delete_target})) // {{}}))"
-    return f"map(($all | del({delete_target})) + {{{items_to_parse_name}: . }})"
+async def _build_base_jq_object_string(raw_data: dict[Any, Any], base_jq: str, delete_target: str) -> str:
+    base_jq_object_before_parsing = await cast(JQEntityProcessor, ocean.app.integration.entity_processor)._search(raw_data, f"{base_jq} = {json.dumps("__all")}")
+    base_jq_object_before_parsing_serialized = json.dumps(base_jq_object_before_parsing)
+    base_jq_object_before_parsing_serialized = base_jq_object_before_parsing_serialized[1:-1] if len(base_jq_object_before_parsing_serialized) >= 2 else base_jq_object_before_parsing_serialized
+    base_jq_object_before_parsing_serialized = base_jq_object_before_parsing_serialized.replace("\"__all\"", f"(($all | del({delete_target})) // {{}})")
+    return base_jq_object_before_parsing_serialized
 
-def merge_raw_data_to_item(item: dict[str, Any], raw_data: dict[str, Any]) -> dict[str, Any]:
-    return recursive_dict_merge(raw_data, item)
-
-def recursive_dict_merge(d1: dict[Any, Any], d2: dict[Any, Any]) -> dict[Any, Any]:
-    """
-    Recursively merges dict d2 into dict d1.
-
-    If a key exists in both dictionaries:
-    1. If the value in d2 is an empty dictionary (e.g., {}), it overwrites the value in d1.
-    2. If both values are non-empty dictionaries, they are merged recursively.
-    3. Otherwise, the value from d2 overwrites the value from d1.
-
-    The original dictionaries are not modified (d1 is copied).
-
-    Args:
-        d1: The base dictionary (will be copied and modified).
-        d2: The dictionary to merge into d1.
-
-    Returns:
-        The merged dictionary.
-    """
-    # Start with a copy of d1 to ensure d1 is not mutated
-    merged_dict = copy.deepcopy(d1)
-
-    for key, value in d2.items():
-        # Condition to trigger recursive deep merge:
-        # 1. Key exists in merged_dict
-        # 2. Both values are dictionaries
-        # 3. The value from d2 is NOT an empty dictionary ({}).
-        #    If d2's value is {}, we treat it as an explicit instruction to overwrite/clear.
-        is_deep_merge = (
-            key in merged_dict and
-            isinstance(merged_dict[key], dict) and
-            isinstance(value, dict) and
-            value != {}
-        )
-
-        if is_deep_merge:
-            # If both are dictionaries and d2 is not empty, recurse
-            merged_dict[key] = recursive_dict_merge(merged_dict[key], value)
-        else:
-            # Otherwise (new key, non-dict value, or explicit {} overwrite),
-            # overwrite the value from d1 with the value from d2
-            merged_dict[key] = value
-
-    return merged_dict
 
 def get_events_as_a_stream(
         stream: Any,
         target_items: str = "item",
         max_buffer_size_mb: int = 1
     ) -> Generator[list[dict[str, Any]], None, None]:
+        logger.info(f"max_buffer_size_mb: {max_buffer_size_mb}")
         events = ijson.sendable_list()
         coro = ijson.items_coro(events, target_items, use_float=True)
 

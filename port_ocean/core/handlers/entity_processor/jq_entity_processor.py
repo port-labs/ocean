@@ -154,12 +154,9 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
-            loop = asyncio.get_event_loop()
             compiled_pattern = self._compile(pattern)
             func = compiled_pattern.input_value(data)
-            return await loop.run_in_executor(
-                None, self._stop_iterator_handler(func.first)
-            )
+            return func.first()
         except Exception as exc:
             logger.error(
                 f"Search failed for pattern '{pattern}' in data: {data}, Error: {exc}"
@@ -185,10 +182,8 @@ class JQEntityProcessor(BaseEntityProcessor):
         loop = asyncio.get_event_loop()
 
         compiled_pattern = self._compile(pattern)
-        if isinstance(data, str):
-            func = compiled_pattern.input_text(data)
-        else:
-            func = compiled_pattern.input_value(data)
+
+        func = compiled_pattern.input_value(data)
 
         value = await loop.run_in_executor(
             None, self._stop_iterator_handler(func.first)
@@ -233,12 +228,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                     self._search_as_object(data, value, misconfigurations)
                 )
             else:
-                if isinstance(data, str):
-                    search_tasks[key] = asyncio.create_task(
-                        self._search_stringified(data, value)
-                    )
-                else:
-                    search_tasks[key] = asyncio.create_task(self._search(data, value))
+                search_tasks[key] = asyncio.create_task(self._search(data, value))
 
         result: dict[str, Any | None] = {}
         for key, task in search_tasks.items():
@@ -262,32 +252,25 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     async def _get_mapped_entity(
         self,
-        data: dict[str, Any] | tuple[dict[str, Any], str],
+        data: dict[str, Any],
         raw_entity_mappings: dict[str, Any],
-        items_to_parse_key: str | None,
         selector_query: str,
         parse_all: bool = False,
     ) -> MappedEntity:
-        should_run = await self._should_map_entity(
-            data, selector_query, items_to_parse_key
-        )
+        should_run = await self._search_as_bool(data, selector_query)
         if parse_all or should_run:
-            misconfigurations, mapped_entity = await self._map_entity(
-                data, raw_entity_mappings, items_to_parse_key
+            misconfigurations: dict[str, str] = {}
+            mapped_entity = await self._search_as_object(
+                data, raw_entity_mappings, misconfigurations
             )
             return MappedEntity(
                 mapped_entity,
                 did_entity_pass_selector=should_run,
-                raw_data=data,
+                raw_data=data if should_run else None,
                 misconfigurations=misconfigurations,
             )
 
-        return MappedEntity(
-            {},
-            did_entity_pass_selector=False,
-            raw_data=data,
-            misconfigurations={},
-        )
+        return MappedEntity()
 
     async def _map_entity(
         self,
@@ -369,46 +352,22 @@ class JQEntityProcessor(BaseEntityProcessor):
         selector_query: str,
         parse_all: bool = False,
     ) -> tuple[list[MappedEntity], list[Exception]]:
-        raw_data: list[dict[str, Any]] | list[tuple[dict[str, Any], str]] = [
-            data.copy()
-        ]
-        items_to_parse_key = None
-        if items_to_parse:
-            items_to_parse_key = items_to_parse_name
-            if not ocean.config.yield_items_to_parse:
-                if isinstance(data, dict) and data.get("__type") == "path":
-                    file_path = data.get("file", {}).get("content", {}).get("path")
-                    with open(file_path, "r") as f:
-                        data["file"]["content"] = json.loads(f.read())
-                items = await self._search(data, items_to_parse)
-                if not isinstance(items, list):
-                    logger.warning(
-                        f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items)}."
-                        f" Skipping..."
-                    )
-                    return [], []
-                raw_all_payload_stringified = json.dumps(data)
-                raw_data = [
-                    ({items_to_parse_name: item}, raw_all_payload_stringified)
-                    for item in items
-                ]
-            single_item_mappings, all_items_mappings, empty_items_mappings = (
-                self._build_raw_entity_mappings(
-                    raw_entity_mappings, items_to_parse_name
-                )
-            )
-            raw_entity_mappings = {
-                "item": single_item_mappings,
-                "all": all_items_mappings,
-                "empty": empty_items_mappings,
-            }
+        raw_data = [data.copy()]
+        # if items_to_parse:
+        #     items = await self._search(data, items_to_parse)
+        #     if not isinstance(items, list):
+        #         logger.warning(
+        #             f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items)}."
+        #             f" Skipping..."
+        #         )
+        #         return [], []
+        #     raw_data = [{"item": item, **data} for item in items]
 
         entities, errors = await gather_and_split_errors_from_results(
             [
                 self._get_mapped_entity(
                     raw,
                     raw_entity_mappings,
-                    items_to_parse_key,
                     selector_query,
                     parse_all,
                 )
