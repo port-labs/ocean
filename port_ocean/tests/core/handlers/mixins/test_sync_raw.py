@@ -76,9 +76,7 @@ def mock_sync_raw_mixin(
         yield raw_data
 
     # Return a list containing the async generator and an empty error list
-    sync_raw_mixin._get_resource_raw_results = AsyncMock(
-        return_value=([raw_results_generator()], [])
-    )  # type: ignore
+    sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([raw_results_generator()], []))  # type: ignore
     sync_raw_mixin._entity_processor.parse_items = AsyncMock(return_value=MagicMock())  # type: ignore
 
     return sync_raw_mixin
@@ -109,8 +107,7 @@ async def test_sync_raw_mixin_self_dependency(
 
     calc_result_mock = MagicMock()
     calc_result_mock.entity_selector_diff = EntitySelectorDiff(
-        passed=entities,
-        failed=[],  # No failed entities in this test case
+        passed=entities, failed=[]  # No failed entities in this test case
     )
     calc_result_mock.errors = []  # No errors in this test case
     calc_result_mock.number_of_transformed_entities = len(
@@ -118,9 +115,7 @@ async def test_sync_raw_mixin_self_dependency(
     )  # Add this to match real behavior
     calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(
-        return_value=calc_result_mock
-    )  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -132,12 +127,8 @@ async def test_sync_raw_mixin_self_dependency(
             )
         )
         event.port_app_config = app_config
-        event.entity_topological_sorter.register_entity = MagicMock(
-            side_effect=event.entity_topological_sorter.register_entity
-        )  # type: ignore
-        event.entity_topological_sorter.get_entities = MagicMock(
-            side_effect=event.entity_topological_sorter.get_entities
-        )  # type: ignore
+        event.entity_topological_sorter.register_entity = MagicMock(side_effect=event.entity_topological_sorter.register_entity)  # type: ignore
+        event.entity_topological_sorter.get_entities = MagicMock(side_effect=event.entity_topological_sorter.get_entities)  # type: ignore
 
         with patch(
             "port_ocean.core.integrations.mixins.sync_raw.event_context",
@@ -147,6 +138,7 @@ async def test_sync_raw_mixin_self_dependency(
                 "port_ocean.core.utils.entity_topological_sorter.EntityTopologicalSorter.order_by_entities_dependencies",
                 mock_order_by_entities_dependencies,
             ):
+
                 res = await mock_sync_raw_mixin.sync_raw_all(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
@@ -236,8 +228,7 @@ async def test_sync_raw_mixin_circular_dependency(
 
     calc_result_mock = MagicMock()
     calc_result_mock.entity_selector_diff = EntitySelectorDiff(
-        passed=entities,
-        failed=[],  # No failed entities in this test case
+        passed=entities, failed=[]  # No failed entities in this test case
     )
     calc_result_mock.errors = []  # No errors in this test case
     calc_result_mock.number_of_transformed_entities = len(
@@ -245,9 +236,7 @@ async def test_sync_raw_mixin_circular_dependency(
     )  # Add this to match real behavior
     calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(
-        return_value=calc_result_mock
-    )  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -266,9 +255,7 @@ async def test_sync_raw_mixin_circular_dependency(
             entity.properties["mock_is_to_fail"] = False
             return org(*args, **kwargs)
 
-        event.entity_topological_sorter.register_entity = MagicMock(
-            side_effect=mock_register_entity
-        )  # type: ignore
+        event.entity_topological_sorter.register_entity = MagicMock(side_effect=mock_register_entity)  # type: ignore
         raiesed_error_handle_failed = []
         org_get_entities = event.entity_topological_sorter.get_entities
 
@@ -279,9 +266,7 @@ async def test_sync_raw_mixin_circular_dependency(
                 raiesed_error_handle_failed.append(e)
                 raise e
 
-        event.entity_topological_sorter.get_entities = MagicMock(
-            side_effect=lambda *args, **kwargs: handle_failed_wrapper(*args, **kwargs)
-        )  # type: ignore
+        event.entity_topological_sorter.get_entities = MagicMock(side_effect=lambda *args, **kwargs: handle_failed_wrapper(*args, **kwargs))  # type: ignore
 
         with patch(
             "port_ocean.core.integrations.mixins.sync_raw.event_context",
@@ -291,6 +276,7 @@ async def test_sync_raw_mixin_circular_dependency(
                 "port_ocean.core.utils.entity_topological_sorter.EntityTopologicalSorter.order_by_entities_dependencies",
                 mock_order_by_entities_dependencies,
             ):
+
                 res = await mock_sync_raw_mixin.sync_raw_all(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
@@ -386,8 +372,7 @@ async def test_sync_raw_mixin_dependency(
     # Create a more realistic CalculationResult mock
     calc_result_mock = MagicMock()
     calc_result_mock.entity_selector_diff = EntitySelectorDiff(
-        passed=entities,
-        failed=[],  # No failed entities in this test case
+        passed=entities, failed=[]  # No failed entities in this test case
     )
     calc_result_mock.errors = []  # No errors in this test case
     calc_result_mock.number_of_transformed_entities = len(
@@ -396,9 +381,7 @@ async def test_sync_raw_mixin_dependency(
     calc_result_mock.misconfigured_entity_keys = {}  # Add this to match real behavior
 
     # Mock the parse_items method to return our realistic mock
-    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(
-        return_value=calc_result_mock
-    )  # type: ignore
+    mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
         side_effect=EntityTopologicalSorter.order_by_entities_dependencies
@@ -417,9 +400,7 @@ async def test_sync_raw_mixin_dependency(
             entity.properties["mock_is_to_fail"] = False
             return org(*args, **kwargs)
 
-        event.entity_topological_sorter.register_entity = MagicMock(
-            side_effect=mock_register_entity
-        )  # type: ignore
+        event.entity_topological_sorter.register_entity = MagicMock(side_effect=mock_register_entity)  # type: ignore
         raiesed_error_handle_failed = []
         org_event_get_entities = event.entity_topological_sorter.get_entities
 
@@ -430,9 +411,7 @@ async def test_sync_raw_mixin_dependency(
                 raiesed_error_handle_failed.append(e)
                 raise e
 
-        event.entity_topological_sorter.get_entities = MagicMock(
-            side_effect=lambda *args, **kwargs: get_entities_wrapper(*args, **kwargs)
-        )  # type: ignore
+        event.entity_topological_sorter.get_entities = MagicMock(side_effect=lambda *args, **kwargs: get_entities_wrapper(*args, **kwargs))  # type: ignore
 
         with patch(
             "port_ocean.core.integrations.mixins.sync_raw.event_context",
@@ -442,6 +421,7 @@ async def test_sync_raw_mixin_dependency(
                 "port_ocean.core.utils.entity_topological_sorter.EntityTopologicalSorter.order_by_entities_dependencies",
                 mock_order_by_entities_dependencies,
             ):
+
                 res = await mock_sync_raw_mixin.sync_raw_all(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
@@ -528,6 +508,7 @@ async def test_register_raw(
     mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
     mock_resource_config: ResourceConfig,
 ) -> None:
+
     kind = "service"
     user_agent_type = UserAgentType.exporter
     raw_entity = [
@@ -673,6 +654,7 @@ async def test_map_entities_compared_with_port_returns_original_entities_when_us
     mock_sync_raw_mixin: SyncRawMixin,
     mock_resource_config: ResourceConfig,
 ) -> None:
+
     team_search_query = {
         "combinator": "and",
         "rules": [{"property": "$team", "operator": "=", "value": "my-team"}],
@@ -802,16 +784,7 @@ async def test_register_resource_raw_no_changes_upsert_not_called_entitiy_is_ret
     mock_port_app_config: PortAppConfig,
 ) -> None:
     entity = Entity(identifier="1", blueprint="service")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(
-        return_value=[
-            CalculationResult(
-                entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
-                errors=[],
-                misconfigurations=[],
-                misconfigured_entity_keys=[],
-            )
-        ]
-    )  # type: ignore
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misconfigured_entity_keys=[])])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
@@ -838,19 +811,8 @@ async def test_register_resource_raw_with_changes_upsert_called_and_entities_are
     mock_port_app_config: PortAppConfig,
 ) -> None:
     entity = Entity(identifier="1", blueprint="service")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(
-        return_value=[
-            CalculationResult(
-                entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]),
-                errors=[],
-                misconfigurations=[],
-                misconfigured_entity_keys=[],
-            )
-        ]
-    )  # type: ignore
-    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(
-        return_value=([entity])
-    )  # type: ignore
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[entity], failed=[]), errors=[], misconfigurations=[], misconfigured_entity_keys=[])])  # type: ignore
+    mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([entity]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock(return_value=[entity])  # type: ignore
 
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
@@ -876,18 +838,7 @@ async def test_register_resource_raw_with_errors(
 ) -> None:
     failed_entity = Entity(identifier="1", blueprint="service")
     error = Exception("Test error")
-    mock_sync_raw_mixin._calculate_raw = AsyncMock(
-        return_value=[
-            CalculationResult(
-                entity_selector_diff=EntitySelectorDiff(
-                    passed=[], failed=[failed_entity]
-                ),
-                errors=[error],
-                misconfigurations=[],
-                misconfigured_entity_keys=[],
-            )
-        ]
-    )  # type: ignore
+    mock_sync_raw_mixin._calculate_raw = AsyncMock(return_value=[CalculationResult(entity_selector_diff=EntitySelectorDiff(passed=[], failed=[failed_entity]), errors=[error], misconfigurations=[], misconfigured_entity_keys=[])])  # type: ignore
     mock_sync_raw_mixin._map_entities_compared_with_port = AsyncMock(return_value=([]))  # type: ignore
     mock_sync_raw_mixin.entities_state_applier.upsert = AsyncMock()  # type: ignore
 
