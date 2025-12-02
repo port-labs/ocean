@@ -707,3 +707,149 @@ async def test_get_managed_resources_with_streaming_disabled() -> None:
             assert len(resources) == 2
             # Verify application is added to each resource
             assert all("__application" in resource for resource in resources)
+
+
+@pytest.mark.asyncio
+async def test_fetch_paginated_data_infinite_loop_prevention() -> None:
+    """Test that _fetch_paginated_data terminates properly when API returns empty items"""
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://localhost:8080",
+        ignore_server_error=False,
+        allow_insecure=True,
+        use_streaming=False,
+    )
+
+    call_count = 0
+
+    async def mock_api_request(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        nonlocal call_count
+        call_count += 1
+
+        # First call returns full page, second call returns empty items
+        if call_count == 1:
+            return {"items": [{"id": i} for i in range(100)]}  # Full page
+        else:
+            return {"items": []}  # Empty items - should stop iteration
+
+    with patch.object(
+        client, "_send_api_request", side_effect=mock_api_request
+    ):
+        results = []
+        async for batch in client._fetch_paginated_data(url="https://test.com/api"):
+            results.extend(batch)
+
+        # Should only make 2 calls and stop
+        assert call_count == 2
+        assert len(results) == 100  # Only first page
+
+
+@pytest.mark.asyncio
+async def test_fetch_paginated_data_partial_page_termination() -> None:
+    """Test that _fetch_paginated_data terminates when getting a partial page"""
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://localhost:8080",
+        ignore_server_error=False,
+        allow_insecure=True,
+        use_streaming=False,
+    )
+
+    call_count = 0
+
+    async def mock_api_request(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        nonlocal call_count
+        call_count += 1
+
+        if call_count == 1:
+            return {"items": [{"id": i} for i in range(100)]}  # Full page
+        elif call_count == 2:
+            return {"items": [{"id": i} for i in range(50)]}  # Partial page - should stop
+        else:
+            # This should never be called
+            return {"items": [{"id": 999}]}
+
+    with patch.object(
+        client, "_send_api_request", side_effect=mock_api_request
+    ):
+        results = []
+        async for batch in client._fetch_paginated_data(url="https://test.com/api"):
+            results.extend(batch)
+
+        # Should only make 2 calls and stop on partial page
+        assert call_count == 2
+        assert len(results) == 150  # First page + partial page
+
+
+@pytest.mark.asyncio
+async def test_fetch_paginated_data_with_break_vs_return_behavior() -> None:
+    """Test that using return instead of break properly terminates async generator"""
+    import asyncio
+
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://localhost:8080",
+        ignore_server_error=False,
+        allow_insecure=True,
+        use_streaming=False,
+    )
+
+    call_count = 0
+
+    async def mock_api_request(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return {"items": [{"id": i} for i in range(100)]}  # Full page
+        else:
+            return {"items": []}  # Empty items - should trigger return and stop
+
+    with patch.object(
+        client, "_send_api_request", side_effect=mock_api_request
+    ):
+        # Test that the async generator terminates properly with a timeout
+        results = []
+
+        async def collect_with_timeout():
+            async for batch in client._fetch_paginated_data(url="https://test.com/api"):
+                results.extend(batch)
+
+        # This should complete quickly, not hang indefinitely
+        await asyncio.wait_for(collect_with_timeout(), timeout=1.0)
+
+        assert len(results) == 100  # Full page of data
+        assert call_count == 2  # First call gets data, second gets empty and terminates
+
+
+@pytest.mark.asyncio
+async def test_fetch_paginated_data_error_handling_terminates_properly() -> None:
+    """Test that _fetch_paginated_data terminates properly on errors"""
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://localhost:8080",
+        ignore_server_error=True,  # Ignore errors
+        allow_insecure=True,
+        use_streaming=False,
+    )
+
+    call_count = 0
+
+    async def mock_api_request(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        nonlocal call_count
+        call_count += 1
+
+        if call_count == 1:
+            return {"items": [{"id": i} for i in range(100)]}  # Full page to trigger next call
+        else:
+            raise Exception("API Error")  # Should terminate generator
+
+    with patch.object(
+        client, "_send_api_request", side_effect=mock_api_request
+    ):
+        results = []
+        async for batch in client._fetch_paginated_data(url="https://test.com/api"):
+            results.extend(batch)
+
+        # Should get first page then terminate on error
+        assert call_count == 2
+        assert len(results) == 100
