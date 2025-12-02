@@ -94,8 +94,7 @@ class ArgocdClient:
         url: str,
         query_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Fetch data using traditional HTTP requests (non-streaming, single request)"""
-        # For ArgoCD API, we make a single request like the original code (no pagination needed)
+        """Fetch data using single HTTP request when streaming is disabled"""
         try:
             response = await self._send_api_request(url=url, query_params=query_params)
             items = response.get("items", [])

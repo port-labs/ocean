@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed infinite resync issue for project kind by removing problematic pagination logic from `_fetch_paginated_data` method. The method now makes single API requests like the original pre-streaming implementation, preventing infinite loops during resync operations.
+- Modified `_fetch_paginated_data` method to use single HTTP requests instead of pagination loop
 
 ## 0.1.250 (2025-12-01)
 

@@ -438,7 +438,7 @@ async def test_get_clusters_filters_unavailable_clusters(
 # Tests for streaming vs non-streaming functionality
 @pytest.mark.asyncio
 async def test_fetch_single_request_success() -> None:
-    """Test _fetch_paginated_data method - makes single request (no pagination)"""
+    """Test _fetch_paginated_data method with successful response"""
     client = ArgocdClient(
         token="test_token",
         server_url="https://localhost:8080",
@@ -462,7 +462,6 @@ async def test_fetch_single_request_success() -> None:
         ):
             all_items.extend(items)
 
-        # Should have called once (no pagination)
         assert mock_request.call_count == 1
         assert len(all_items) == 50
         assert all_items[0]["name"] == "item0"
@@ -475,7 +474,7 @@ async def test_fetch_single_request_success() -> None:
 
 @pytest.mark.asyncio
 async def test_fetch_single_request_with_error() -> None:
-    """Test _fetch_paginated_data handles errors correctly (single request mode)"""
+    """Test _fetch_paginated_data error handling"""
     client = ArgocdClient(
         token="test_token",
         server_url="https://localhost:8080",
@@ -496,7 +495,7 @@ async def test_fetch_single_request_with_error() -> None:
 
 @pytest.mark.asyncio
 async def test_fetch_single_request_with_ignored_error() -> None:
-    """Test _fetch_paginated_data with ignore_server_error=True (single request mode)"""
+    """Test _fetch_paginated_data with ignore_server_error=True"""
     client = ArgocdClient(
         token="test_token",
         server_url="https://localhost:8080",
@@ -514,7 +513,7 @@ async def test_fetch_single_request_with_ignored_error() -> None:
         async for batch in client._fetch_paginated_data(url="https://test.com/api"):
             items.extend(batch)
 
-        assert len(items) == 0  # Should return empty due to error being ignored
+        assert len(items) == 0
 
 
 @pytest.mark.asyncio
@@ -546,7 +545,6 @@ async def test_get_clusters_with_streaming_enabled() -> None:
             async for cluster_batch in client.get_clusters():
                 clusters.extend(cluster_batch)
 
-            # Should use streaming, not single requests
             mock_stream.assert_called_once()
             mock_single_request.assert_not_called()
             assert len(clusters) == 2
@@ -554,7 +552,7 @@ async def test_get_clusters_with_streaming_enabled() -> None:
 
 @pytest.mark.asyncio
 async def test_get_clusters_with_streaming_disabled() -> None:
-    """Test get_clusters uses single requests when streaming disabled"""
+    """Test get_clusters with streaming disabled"""
     client = ArgocdClient(
         token="test_token",
         server_url="https://localhost:8080",
@@ -579,7 +577,6 @@ async def test_get_clusters_with_streaming_disabled() -> None:
             async for cluster_batch in client.get_clusters():
                 clusters.extend(cluster_batch)
 
-            # Should use single requests, not streaming
             mock_single_request.assert_called_once()
             mock_stream.assert_not_called()
             assert len(clusters) == 2
@@ -612,14 +609,13 @@ async def test_get_clusters_skip_unavailable_with_streaming_disabled() -> None:
         async for cluster_batch in client.get_clusters(skip_unavailable_clusters=True):
             clusters.extend(cluster_batch)
 
-        # Should only have successful clusters
         assert len(clusters) == 2
         assert all(c["connectionState"]["status"] == "Successful" for c in clusters)
 
 
 @pytest.mark.asyncio
 async def test_get_resources_for_available_clusters_with_streaming_disabled() -> None:
-    """Test get_resources_for_available_clusters uses single requests when streaming disabled"""
+    """Test get_resources_for_available_clusters with streaming disabled"""
     client = ArgocdClient(
         token="test_token",
         server_url="https://localhost:8080",
@@ -652,18 +648,17 @@ async def test_get_resources_for_available_clusters_with_streaming_disabled() ->
                 ):
                     resources.extend(resource_batch)
 
-                # Should use single requests, not streaming
-                mock_single_request.assert_called_once_with(
-                    url=f"{client.api_url}/applications",
-                    query_params={"cluster": "test-cluster"},
-                )
+                    mock_single_request.assert_called_once_with(
+                        url=f"{client.api_url}/applications",
+                        query_params={"cluster": "test-cluster"},
+                    )
                 mock_stream.assert_not_called()
                 assert len(resources) == 2
 
 
 @pytest.mark.asyncio
 async def test_get_managed_resources_with_streaming_disabled() -> None:
-    """Test get_managed_resources uses single requests when streaming disabled"""
+    """Test get_managed_resources with streaming disabled"""
     client = ArgocdClient(
         token="test_token",
         server_url="https://localhost:8080",
@@ -689,7 +684,6 @@ async def test_get_managed_resources_with_streaming_disabled() -> None:
             async for resource_batch in client.get_managed_resources(application):
                 resources.extend(resource_batch)
 
-            # Should use single requests, not streaming
             mock_single_request.assert_called_once_with(
                 url=f"{client.api_url}/applications/test-app/managed-resources"
             )
