@@ -361,7 +361,7 @@ class EntityClientMixin:
         identifier_counts = Counter(
             (e.blueprint, e.get_identifier_as_string()) for e in entities
         )
-        duplicates: dict[tuple[str, str | dict[str, Any]], int] = {
+        duplicates: dict[tuple[str, str], int] = {
             key: cnt for key, cnt in identifier_counts.items() if cnt > 1
         }
 
