@@ -45,7 +45,7 @@ class EntityTopologicalSorter:
 
     @staticmethod
     def node(entity: Entity) -> Node:
-        return entity.identifier, entity.blueprint
+        return entity.get_identifier_as_string(), entity.blueprint
 
     @staticmethod
     def order_by_entities_dependencies(entities: list[Entity]) -> list[Entity]:
