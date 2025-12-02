@@ -108,12 +108,12 @@ class ArgocdClient:
                 items = response.get("items", [])
 
                 if not items:
-                    break
+                    return
 
                 yield items
 
                 if len(items) < page_size:
-                    break
+                    return
 
                 page += 1
 
@@ -121,7 +121,7 @@ class ArgocdClient:
                 logger.error(f"Failed to fetch page {page} from {url}: {e}")
                 if not self.ignore_server_error:
                     raise
-                break
+                return
 
     async def get_clusters(
         self, skip_unavailable_clusters: bool = False
