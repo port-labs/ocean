@@ -810,7 +810,7 @@ async def test_fetch_paginated_data_with_break_vs_return_behavior() -> None:
         # Test that the async generator terminates properly with a timeout
         results = []
 
-        async def collect_with_timeout():
+        async def collect_with_timeout() -> None:
             async for batch in client._fetch_paginated_data(url="https://test.com/api"):
                 results.extend(batch)
 
