@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for flexible repository selection: all projects, specific project, or specific repos
 
 
+## 0.4.44 (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
 ## 0.4.43 (2025-11-28)
 
 
