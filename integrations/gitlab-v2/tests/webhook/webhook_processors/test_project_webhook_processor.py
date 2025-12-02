@@ -61,6 +61,14 @@ class TestProjectWebhookProcessor:
             "project_visibility": "private",
         }
 
+    @pytest.fixture
+    def resource_config(self) -> MagicMock:
+        """Create a mock resource config with selector"""
+        config = MagicMock()
+        config.selector = MagicMock()
+        config.selector.include_languages = False
+        return config
+
     async def test_get_matching_kinds(
         self, processor: ProjectWebhookProcessor, mock_event: WebhookEvent
     ) -> None:
@@ -68,10 +76,12 @@ class TestProjectWebhookProcessor:
         assert await processor.get_matching_kinds(mock_event) == [ObjectKind.PROJECT]
 
     async def test_handle_event_project_create(
-        self, processor: ProjectWebhookProcessor, project_create_payload: dict[str, Any]
+        self,
+        processor: ProjectWebhookProcessor,
+        project_create_payload: dict[str, Any],
+        resource_config: MagicMock,
     ) -> None:
         """Test handling a project creation event"""
-        resource_config = MagicMock()
         project_id = project_create_payload["project_id"]
         expected_project = {
             "id": project_id,
@@ -86,7 +96,9 @@ class TestProjectWebhookProcessor:
 
         result = await processor.handle_event(project_create_payload, resource_config)
 
-        processor._gitlab_webhook_client.get_project.assert_called_once_with(project_id)
+        processor._gitlab_webhook_client.get_project.assert_called_once_with(
+            project_id, resource_config.selector.include_languages
+        )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == expected_project
         assert not result.deleted_raw_results
@@ -228,10 +240,12 @@ class TestProjectWebhookProcessor:
         assert result == expected
 
     async def test_handle_event_project_create_error(
-        self, processor: ProjectWebhookProcessor, project_create_payload: dict[str, Any]
+        self,
+        processor: ProjectWebhookProcessor,
+        project_create_payload: dict[str, Any],
+        resource_config: MagicMock,
     ) -> None:
         """Test handling project creation when get_project raises an exception"""
-        resource_config = MagicMock()
         processor._gitlab_webhook_client = MagicMock()
         processor._gitlab_webhook_client.get_project = AsyncMock(
             side_effect=Exception("API Error")

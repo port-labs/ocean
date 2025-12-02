@@ -183,10 +183,10 @@ class IssueSelector(GroupSelector):
         alias="labels",
         description="Filter issues by labels",
     )
-    non_archived: Optional[bool] = Field(
-        default=None,
+    non_archived: bool = Field(
+        default=True,
         alias="nonArchived",
-        description="Filter issues from non archived projects",
+        description="Return issues from non archived projects. Default value is true",
     )
     state: Optional[Literal["opened", "closed"]] = Field(
         default=None,
