@@ -145,11 +145,6 @@ class GitlabMergeRequestSelector(GroupSelector):
         description="Specify the number of days to look back for merge requests (e.g. 90 for last 90 days)",
         default=90,
     )
-    search: str = Field(
-        default="",
-        alias="search",
-        description="Search for merge requests by title or description",
-    )
 
     @property
     def updated_after_datetime(self) -> datetime:
@@ -178,11 +173,6 @@ class GitLabFoldersResourceConfig(ResourceConfig):
 
 
 class IssueSelector(GroupSelector):
-    search: str = Field(
-        default="",
-        alias="search",
-        description="Search for issues by title or description matching the search criteria.",
-    )
     issue_type: Optional[Literal["issue", "incident", "test_case", "task"]] = Field(
         default=None,
         alias="issueType",
@@ -263,11 +253,39 @@ class JobResourceConfig(ResourceConfig):
     selector: ProjectSelector
 
 
+class SearchFilter(BaseModel):
+    group: str = Field(
+        default="",
+        alias="group",
+        description="Search for groups by name or path matching the search criteria.",
+    )
+    project: str = Field(
+        default="",
+        alias="project",
+        description="Search for projects by name, path or description matching the search criteria.",
+    )
+
+    def to_group_params(self) -> dict[str, Any]:
+        if not self.group:
+            return {}
+        return {"search": self.group}
+
+    def to_project_params(self) -> dict[str, Any]:
+        if not self.project:
+            return {}
+        return {"search": self.project}
+
+
 class GitlabPortAppConfig(PortAppConfig):
     visibility: GitlabVisibilityConfig = Field(
         default_factory=GitlabVisibilityConfig,
         alias="visibility",
         description="Configuration for resource visibility and access control",
+    )
+    search: SearchFilter = Field(
+        default_factory=SearchFilter,
+        alias="search",
+        description="Return the list of authorized resources matching the search criteria.",
     )
     resources: list[
         ProjectResourceConfig

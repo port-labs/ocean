@@ -122,7 +122,6 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(GitlabIssueResourceConfig, event.resource_config).selector
 
     options: IssueOptions = IssueOptions(
-        search=selector.search,
         issue_type=selector.issue_type,
         labels=selector.labels,
         non_archived=selector.non_archived,
@@ -200,7 +199,6 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     states = selector.states
     updated_after = selector.updated_after_datetime
-    search = selector.search
     include_active_groups = selector.include_active_groups
 
     async for groups_batch in client.get_groups(
@@ -214,11 +212,6 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             params: Dict[str, Any] = {"state": state}
             if state != "opened":
                 params["updated_after"] = updated_after
-            if search:
-                params["search"] = search
-                logger.info(
-                    f'Fetching {state} merge requests for {len(groups_batch)} groups with search criteria: "{search}"'
-                )
 
             async for merge_requests_batch in client.get_groups_resource(
                 groups_batch, "merge_requests", params=params
