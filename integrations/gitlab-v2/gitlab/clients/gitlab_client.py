@@ -1,7 +1,6 @@
 import asyncio
-from functools import cache, lru_cache, partial
+from functools import partial
 from typing import Any, AsyncIterator, Callable, Optional, Awaitable, Union
-from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 
 import anyio
 from loguru import logger
