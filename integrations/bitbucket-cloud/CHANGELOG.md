@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added folder kind mapping to bitbucket integration defaults
 
 
+## 0.1.105 (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
 ## 0.1.104 (2025-11-27)
 
 
