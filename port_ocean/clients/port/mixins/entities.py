@@ -358,8 +358,10 @@ class EntityClientMixin:
         entities_results: list[tuple[bool, Entity]] = []
         blueprint = entities[0].blueprint
 
-        identifier_counts = Counter((e.blueprint, e.identifier) for e in entities)
-        duplicates: dict[tuple[str, str], int] = {
+        identifier_counts = Counter(
+            (e.blueprint, e.get_identifier_as_string()) for e in entities
+        )
+        duplicates: dict[tuple[str, str | dict[str, Any]], int] = {
             key: cnt for key, cnt in identifier_counts.items() if cnt > 1
         }
 
@@ -456,7 +458,7 @@ class EntityClientMixin:
                 f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
             )
             response = await self.client.delete(
-                f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{quote_plus(entity.identifier)}",
+                f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{quote_plus(str(entity.identifier))}",
                 headers=await self.auth.headers(user_agent_type),
                 params={
                     "delete_dependents": str(

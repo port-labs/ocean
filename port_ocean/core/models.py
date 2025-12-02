@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum, StrEnum
+import json
 from typing import Any, Literal, TypedDict
 from pydantic import BaseModel
 from pydantic.fields import Field
@@ -55,7 +56,7 @@ class PortAPIErrorMessage(Enum):
 
 
 class Entity(BaseModel):
-    identifier: Any
+    identifier: str | dict[str, Any]
     icon: str | None
     blueprint: Any
     title: Any
@@ -73,6 +74,13 @@ class Entity(BaseModel):
             isinstance(relation, dict) for relation in self.relations.values()
         ) or (
             self.team is not None and any(isinstance(team, dict) for team in self.team)
+        )
+
+    def get_identifier_as_string(self) -> str:
+        return (
+            json.dumps(self.identifier, sort_keys=True)
+            if self.is_using_search_identifier
+            else str(self.identifier)
         )
 
 

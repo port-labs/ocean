@@ -4,7 +4,7 @@ import json
 from typing import Iterable, Any, TypeVar, Callable, Awaitable
 
 from loguru import logger
-from pydantic import BaseModel, parse_obj_as, ValidationError
+from pydantic import parse_obj_as, ValidationError
 
 
 from port_ocean.clients.port.client import PortClient
@@ -79,17 +79,9 @@ async def gather_and_split_errors_from_results(
     return valid_items, errors
 
 
-def _get_entity_key(entity: Entity) -> tuple[str, str]:
-    identifier = entity.identifier
-    if isinstance(identifier, BaseModel):
-        identifier = identifier.dict()
-
-    key_part = (
-        json.dumps(identifier, sort_keys=True)
-        if isinstance(identifier, dict)
-        else str(identifier)
-    )
-    return key_part, entity.blueprint
+def get_entity_key(entity: Entity) -> tuple[str, str]:
+    identifier = entity.get_identifier_as_string()
+    return identifier, entity.blueprint
 
 
 def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPortDiff:
@@ -101,10 +93,10 @@ def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPo
 
     # Create dictionaries for before and after lists
     for entity in before:
-        before_dict[_get_entity_key(entity)] = entity
+        before_dict[get_entity_key(entity)] = entity
 
     for entity in after:
-        after_dict[_get_entity_key(entity)] = entity
+        after_dict[get_entity_key(entity)] = entity
 
     # Find created, modified, and deleted objects
     for key, obj in after_dict.items():
