@@ -9,6 +9,8 @@ features:
       - kind: repository
       - kind: pull-request
       - kind: user
+      - kind: folder
+      - kind: file
 deploymentMethodOverride:
   - type: helm
 configurations:
