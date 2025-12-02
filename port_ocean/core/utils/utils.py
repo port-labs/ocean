@@ -79,7 +79,7 @@ async def gather_and_split_errors_from_results(
     return valid_items, errors
 
 
-def get_entity_key(entity: Entity) -> tuple[str, str]:
+def _get_entity_key(entity: Entity) -> tuple[str, str]:
     identifier = entity.get_identifier_as_string()
     return identifier, entity.blueprint
 
@@ -93,10 +93,10 @@ def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPo
 
     # Create dictionaries for before and after lists
     for entity in before:
-        before_dict[get_entity_key(entity)] = entity
+        before_dict[_get_entity_key(entity)] = entity
 
     for entity in after:
-        after_dict[get_entity_key(entity)] = entity
+        after_dict[_get_entity_key(entity)] = entity
 
     # Find created, modified, and deleted objects
     for key, obj in after_dict.items():
