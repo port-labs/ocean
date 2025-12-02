@@ -88,10 +88,6 @@ class GitLabClient:
         request_params = {**self.DEFAULT_PARAMS}
         if params:
             request_params.update(params)
-            if "search" in params:
-                logger.info(
-                    f"Fetching projects for search criteria: \"{params['search']}\""
-                )
 
         async for projects_batch in self.rest.get_paginated_resource(
             "projects", params=request_params
@@ -118,10 +114,6 @@ class GitLabClient:
         request_params = {**self.DEFAULT_PARAMS}
         if params:
             request_params.update(params)
-            if "search" in params:
-                logger.info(
-                    f"Fetching groups for search criteria: \"{params['search']}\""
-                )
 
         async for groups_batch in self.rest.get_paginated_resource(
             "groups", params=request_params
