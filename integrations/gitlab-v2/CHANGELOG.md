@@ -9,10 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.5.0 (2025-11-28)
 
+
 ### Improvements
 
 - Added support for syncing folders from specific repositories and branches
 - Added folder kind to integration default
+
+
+## 0.3.28 (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
 
 
 ## 0.3.27 (2025-11-27)
