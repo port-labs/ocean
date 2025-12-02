@@ -34,7 +34,6 @@ from port_ocean.exceptions.core import (
     KindNotImplementedException,
 )
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
-from port_ocean.helpers.stream import IterJsonStream, TextJsonStream
 from port_ocean.utils.async_http import _http_client
 
 def _process_path_type_items(
