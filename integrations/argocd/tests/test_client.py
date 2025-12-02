@@ -732,9 +732,7 @@ async def test_fetch_paginated_data_infinite_loop_prevention() -> None:
         else:
             return {"items": []}  # Empty items - should stop iteration
 
-    with patch.object(
-        client, "_send_api_request", side_effect=mock_api_request
-    ):
+    with patch.object(client, "_send_api_request", side_effect=mock_api_request):
         results = []
         async for batch in client._fetch_paginated_data(url="https://test.com/api"):
             results.extend(batch)
@@ -764,14 +762,14 @@ async def test_fetch_paginated_data_partial_page_termination() -> None:
         if call_count == 1:
             return {"items": [{"id": i} for i in range(100)]}  # Full page
         elif call_count == 2:
-            return {"items": [{"id": i} for i in range(50)]}  # Partial page - should stop
+            return {
+                "items": [{"id": i} for i in range(50)]
+            }  # Partial page - should stop
         else:
             # This should never be called
             return {"items": [{"id": 999}]}
 
-    with patch.object(
-        client, "_send_api_request", side_effect=mock_api_request
-    ):
+    with patch.object(client, "_send_api_request", side_effect=mock_api_request):
         results = []
         async for batch in client._fetch_paginated_data(url="https://test.com/api"):
             results.extend(batch)
@@ -804,9 +802,7 @@ async def test_fetch_paginated_data_with_break_vs_return_behavior() -> None:
         else:
             return {"items": []}  # Empty items - should trigger return and stop
 
-    with patch.object(
-        client, "_send_api_request", side_effect=mock_api_request
-    ):
+    with patch.object(client, "_send_api_request", side_effect=mock_api_request):
         # Test that the async generator terminates properly with a timeout
         results = []
 
@@ -839,13 +835,13 @@ async def test_fetch_paginated_data_error_handling_terminates_properly() -> None
         call_count += 1
 
         if call_count == 1:
-            return {"items": [{"id": i} for i in range(100)]}  # Full page to trigger next call
+            return {
+                "items": [{"id": i} for i in range(100)]
+            }  # Full page to trigger next call
         else:
             raise Exception("API Error")  # Should terminate generator
 
-    with patch.object(
-        client, "_send_api_request", side_effect=mock_api_request
-    ):
+    with patch.object(client, "_send_api_request", side_effect=mock_api_request):
         results = []
         async for batch in client._fetch_paginated_data(url="https://test.com/api"):
             results.extend(batch)
