@@ -756,7 +756,7 @@ async def test_streaming_vs_non_streaming_equivalence() -> None:
     )
 
     # Mock streaming responses
-    async def mock_stream_json(*args, **kwargs):
+    async def mock_stream_json(*args: Any, **kwargs: Any) -> Any:
         url = kwargs.get("url", "")
         if "clusters" in url:
             yield test_clusters
@@ -768,7 +768,7 @@ async def test_streaming_vs_non_streaming_equivalence() -> None:
             yield test_managed_resources
 
     # Mock non-streaming responses
-    def mock_send_request(url, **kwargs):
+    def mock_send_request(url: str, **kwargs: Any) -> dict[str, Any]:
         if "clusters" in url:
             return {"items": test_clusters}
         elif "projects" in url:
@@ -858,10 +858,10 @@ async def test_streaming_vs_non_streaming_edge_cases() -> None:
     )
 
     # Mock empty responses
-    async def mock_empty_stream(*args, **kwargs):
+    async def mock_empty_stream(*args: Any, **kwargs: Any) -> Any:
         yield []
 
-    def mock_empty_request(url, **kwargs):
+    def mock_empty_request(url: str, **kwargs: Any) -> dict[str, Any]:
         return {"items": []}
 
     with (
@@ -914,14 +914,14 @@ async def test_streaming_vs_non_streaming_edge_cases() -> None:
         {"metadata": {"name": f"project{i}", "uid": f"uid{i}"}} for i in range(150)
     ]
 
-    async def mock_large_stream(*args, **kwargs):
+    async def mock_large_stream(*args: Any, **kwargs: Any) -> Any:
         url = kwargs.get("url", "")
         if "clusters" in url:
             yield large_clusters
         elif "projects" in url:
             yield large_projects
 
-    def mock_large_request(url, **kwargs):
+    def mock_large_request(url: str, **kwargs: Any) -> dict[str, Any]:
         if "clusters" in url:
             return {"items": large_clusters}
         elif "projects" in url:
