@@ -94,34 +94,19 @@ class ArgocdClient:
         url: str,
         query_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Fetch paginated data using traditional HTTP requests (non-streaming)"""
-        page = 0
-        page_size = PAGE_SIZE
+        """Fetch data using traditional HTTP requests (non-streaming, single request)"""
+        # For ArgoCD API, we make a single request like the original code (no pagination needed)
+        try:
+            response = await self._send_api_request(url=url, query_params=query_params)
+            items = response.get("items", [])
 
-        while True:
-            current_params = {**(query_params or {}), "page": page, "size": page_size}
-
-            try:
-                response = await self._send_api_request(
-                    url=url, query_params=current_params
-                )
-                items = response.get("items", [])
-
-                if not items:
-                    break
-
+            if items:
                 yield items
 
-                if len(items) < page_size:
-                    break
-
-                page += 1
-
-            except Exception as e:
-                logger.error(f"Failed to fetch page {page} from {url}: {e}")
-                if not self.ignore_server_error:
-                    raise
-                break
+        except Exception as e:
+            logger.error(f"Failed to fetch data from {url}: {e}")
+            if not self.ignore_server_error:
+                raise
 
     async def get_clusters(
         self, skip_unavailable_clusters: bool = False

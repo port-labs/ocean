@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.251 (2025-12-02)
+
+### Bug Fixes
+
+- Fixed infinite resync issue for project kind by removing problematic pagination logic from `_fetch_paginated_data` method. The method now makes single API requests like the original pre-streaming implementation, preventing infinite loops during resync operations.
+
 ## 0.1.250 (2025-12-01)
 
 
