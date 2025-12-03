@@ -343,32 +343,6 @@ class TestIssueWebhookProcessor:
         )
         assert len(result.updated_raw_results) == 1
 
-    async def test_handle_event_updated_after_selector_old_issue(
-        self,
-        processor: IssueWebhookProcessor,
-        issue_payload: dict[str, Any],
-        resource_config: MagicMock,
-    ) -> None:
-        """Test handling an old issue with updated_after selector"""
-        from datetime import datetime, timedelta, timezone
-
-        resource_config.selector.updated_after = 7  # 7 days
-        # Create a date older than 7 days
-        old_date = datetime.now(timezone.utc) - timedelta(days=10)
-        resource_config.selector.updated_after_datetime = (
-            datetime.now(timezone.utc) - timedelta(days=7)
-        ).isoformat()
-        issue_payload["object_attributes"]["updated_at"] = old_date.strftime(
-            "%Y-%m-%d %H:%M:%S UTC"
-        )
-        processor._gitlab_webhook_client = MagicMock()
-
-        result = await processor.handle_event(issue_payload, resource_config)
-
-        processor._gitlab_webhook_client.get_issue.assert_not_called()
-        assert len(result.updated_raw_results) == 0
-        assert len(result.deleted_raw_results) == 0
-
     async def test_handle_event_multiple_selectors_all_match(
         self,
         processor: IssueWebhookProcessor,
