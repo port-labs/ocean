@@ -25,6 +25,23 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
     @abstractmethod
     async def _validate_payload(self, payload: EventPayload) -> bool: ...
 
+    async def should_process_repo_search(
+        self, payload: EventPayload, config: ResourceConfig
+    ) -> bool:
+        selector = getattr(config, "selector", None)
+        repo_search = getattr(selector, "repo_search", None)
+
+        if repo_search is not None:
+            logger.info(
+                "search query is configured for this kind, checking if repository is in matched results."
+            )
+            if await self.repo_in_search(payload, config) is None:
+                logger.info(
+                    "Repository is not matched by search query, no actions will be performed."
+                )
+                return False
+        return True
+
     async def repo_in_search(
         self, payload: EventPayload, config: ResourceConfig
     ) -> Optional[dict[str, Any]]:

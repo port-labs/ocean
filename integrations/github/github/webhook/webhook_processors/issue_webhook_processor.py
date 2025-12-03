@@ -38,23 +38,16 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo_name = payload["repository"]["name"]
         issue_number = payload["issue"]["number"]
         organization = payload["organization"]["login"]
+        config = cast(GithubIssueConfig, resource_config)
 
         logger.info(
             f"Processing issue event: {action} for {repo_name}/{issue_number} from {organization}"
         )
 
-        config = cast(GithubIssueConfig, resource_config)
-        if config.selector.repo_search is not None:
-            logger.info(
-                "search query is configured for this kind, checking if repository is in matched results."
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
             )
-            if await self.repo_in_search(payload, resource_config) is None:
-                logger.info(
-                    "Repository is not matched by search query, no actions will be performed."
-                )
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[]
-                )
 
         if (
             action == "closed" and config.selector.state == "open"

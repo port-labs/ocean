@@ -1,4 +1,3 @@
-from typing import cast
 from loguru import logger
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.core.options import SingleWorkflowRunOptions
@@ -13,7 +12,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-from integration import GithubRepoSearchConfig
 
 
 class WorkflowRunWebhookProcessor(BaseWorkflowRunWebhookProcessor):
@@ -28,19 +26,11 @@ class WorkflowRunWebhookProcessor(BaseWorkflowRunWebhookProcessor):
         logger.info(
             f"Processing workflow run event: {action} of organization: {organization}"
         )
-        config = cast(GithubRepoSearchConfig, resource_config)
 
-        if config.selector.repo_search is not None:
-            logger.info(
-                "search query is configured for this kind, checking if repository is in matched results."
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
             )
-            if await self.repo_in_search(payload, resource_config) is None:
-                logger.info(
-                    "Repository is not matched by search query, no actions will be performed."
-                )
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[]
-                )
 
         if action in WORKFLOW_DELETE_EVENTS:
             logger.info(

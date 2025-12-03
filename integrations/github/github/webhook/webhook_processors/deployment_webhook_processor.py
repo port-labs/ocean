@@ -1,4 +1,3 @@
-from typing import cast
 from loguru import logger
 from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
@@ -15,7 +14,6 @@ from github.core.exporters.deployment_exporter import RestDeploymentExporter
 from github.webhook.webhook_processors.base_deployment_webhook_processor import (
     BaseDeploymentWebhookProcessor,
 )
-from integration import GithubRepoSearchConfig
 
 
 class DeploymentWebhookProcessor(BaseDeploymentWebhookProcessor):
@@ -36,19 +34,10 @@ class DeploymentWebhookProcessor(BaseDeploymentWebhookProcessor):
             f"Processing deployment event: {action} for {resource_config_kind} in {repo} from {organization}"
         )
 
-        config = cast(GithubRepoSearchConfig, resource_config)
-
-        if config.selector.repo_search is not None:
-            logger.info(
-                "search query is configured for this kind, checking if repository is in matched results."
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
             )
-            if await self.repo_in_search(payload, resource_config) is None:
-                logger.info(
-                    "Repository is not matched by search query, no actions will be performed."
-                )
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[]
-                )
 
         client = create_github_client()
         deployment_exporter = RestDeploymentExporter(client)

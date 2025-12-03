@@ -1,4 +1,3 @@
-from typing import cast
 from loguru import logger
 from github.helpers.utils import ObjectKind
 from github.clients.client_factory import create_github_client
@@ -13,7 +12,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from github.core.options import SingleTagOptions
 from github.core.exporters.tag_exporter import RestTagExporter
-from integration import GithubRepoSearchConfig
 
 
 class TagWebhookProcessor(BaseRepositoryWebhookProcessor):
@@ -45,20 +43,11 @@ class TagWebhookProcessor(BaseRepositoryWebhookProcessor):
         logger.info(
             f"Processing tag event: {self._event_type} for tag {tag_ref} in {repo_name} from {organization}"
         )
-        config = cast(GithubRepoSearchConfig, resource_config)
 
-        if config.selector.repo_search is not None:
-            logger.info(
-                "search query is configured for this kind, checking if repository is in matched results."
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
             )
-            repo = await self.repo_in_search(payload, resource_config)
-            if repo is None:
-                logger.info(
-                    "Repository is not matched by search query, no actions will be performed."
-                )
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[]
-                )
 
         if self._event_type == "delete":
             data_to_delete = {"name": tag_ref}
