@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.262 (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
+## 0.1.261 (2025-12-03)
+
+
+### Bug Fixes
+
+- Fixed date parsing for `lastAnalysisDate` and `mainBranchLastAnalysisDate` fields to properly handle timezone offsets and null values
+
+
+## 0.1.260 (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
 ## 0.1.259 (2025-11-27)
 
 
