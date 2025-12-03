@@ -26,17 +26,14 @@ RUN apt-get update \
         python3-pip \
         python3-poetry \
         build-essential\
-        jq \
+        yq \
         git \
         python3-venv \
         acl \
     && apt-get clean
 
-RUN wget https://github.com/sclevine/yj/releases/download/v5.1.0/yj-linux-arm64
-RUN chmod +x yj-linux-arm64
-# RUN wget http://pyyaml.org/download/libyaml/yaml-0.2.5.tar.gz
-# RUN tar -xzf yaml-0.2.5.tar.gz
-# RUN cd yaml-0.2.5 && ./configure && make && make install
+RUN wget https://github.com/sclevine/yj/releases/download/v5.1.0/yj-linux-arm64 -O /usr/local/bin/yj
+RUN chmod +x /usr/local/bin/yj
 
 
 ARG BUILD_CONTEXT

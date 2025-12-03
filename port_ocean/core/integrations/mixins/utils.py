@@ -119,7 +119,7 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
             continue
         batch = []
         while len(items_to_parse_data) > 0:
-            if (len(batch) > batch_size):
+            if (len(batch) >= batch_size):
                 yield batch
                 batch = []
             merged_item = {**lean_item}
