@@ -29,7 +29,6 @@ configurations:
         when:
           equals: bearer_token
         then:
-          visible: true
           required: true
   - name: username
     required: false
@@ -40,7 +39,6 @@ configurations:
         when:
           equals: basic
         then:
-          visible: true
           required: true
   - name: password
     required: false
@@ -52,7 +50,6 @@ configurations:
         when:
           equals: basic
         then:
-          visible: true
           required: true
   - name: apiKey
     required: false
@@ -64,7 +61,6 @@ configurations:
         when:
           equals: api_key
         then:
-          visible: true
           required: true
   - name: apiKeyHeader
     required: false
@@ -76,7 +72,6 @@ configurations:
         when:
           equals: api_key
         then:
-          visible: true
           required: false
   - name: paginationType
     required: false
@@ -94,7 +89,6 @@ configurations:
         when:
           in: ["offset", "page", "cursor"]
         then:
-          visible: true
           required: false
   - name: paginationParam
     required: false
@@ -105,7 +99,6 @@ configurations:
         when:
           in: ["offset", "page", "cursor"]
         then:
-          visible: true
           required: false
   - name: sizeParam
     required: false
@@ -116,7 +109,6 @@ configurations:
         when:
           in: ["offset", "page", "cursor"]
         then:
-          visible: true
           required: false
   - name: startPage
     required: false
@@ -128,7 +120,6 @@ configurations:
         when:
           equals: page
         then:
-          visible: true
           required: false
   - name: cursorPath
     required: false
@@ -139,7 +130,6 @@ configurations:
         when:
           equals: cursor
         then:
-          visible: true
           required: false
   - name: hasMorePath
     required: false
@@ -150,7 +140,6 @@ configurations:
         when:
           in: ["offset", "page", "cursor"]
         then:
-          visible: true
           required: false
   - name: timeout
     required: false
