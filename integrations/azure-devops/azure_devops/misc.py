@@ -66,7 +66,7 @@ class RepositoryBranchMapping(BaseModel):
 
 class FolderPattern(BaseModel):
     path: str = Field(
-        default="",
+        ...,
         alias="path",
         description="""Specify the repositories and folders to include under this relative path.
         Supports glob pattern (*) for matching within a path segment:
@@ -88,9 +88,9 @@ class FolderPattern(BaseModel):
 class AzureDevopsFolderSelector(Selector):
     """Selector for Azure DevOps folder scanning configuration"""
 
-    project_name: str = Field(
-        ...,
-        description="Name of the Azure DevOps project that contains the repositories to be scanned",
+    project_name: str | None = Field(
+        default=None,
+        description="Name of the Azure DevOps project that contains the repositories to be scanned. If not provided, scans all projects.",
     )
     folders: list[FolderPattern] = Field(
         default_factory=list,

@@ -1,3 +1,11 @@
+## 0.2.22-beta (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
 ## 0.2.21-beta (2025-12-01)
 
 

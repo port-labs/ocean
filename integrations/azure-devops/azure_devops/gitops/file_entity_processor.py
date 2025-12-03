@@ -27,6 +27,8 @@ class GitManipulationHandler(JQEntityProcessor):
 
 
 def parse_repository_payload(data: Dict[str, Any]) -> Tuple[str, str]:
-    repository_id = data.get("id", "")
-    branch = extract_branch_name_from_ref(data.get("defaultBranch", ""))
+    repository_id = data.get("id") or data.get("__repository", {}).get("id")
+    branch = extract_branch_name_from_ref(
+        data.get("defaultBranch") or data.get("__branch", "")
+    )
     return repository_id, branch
