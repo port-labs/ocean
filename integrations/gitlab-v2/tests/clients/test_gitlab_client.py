@@ -635,10 +635,10 @@ class TestGitLabClient:
             "content": mock_file_content,
             "path": "config.yaml",
         }
-        expected_parsed_content = {
+        expected_parsed_content = [{
             "key": "value",
             "ref": mock_referenced_content,
-        }
+        }]
 
         with (
             patch.object(
