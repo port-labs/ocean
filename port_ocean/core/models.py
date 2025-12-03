@@ -77,6 +77,7 @@ class Entity(BaseModel):
         )
 
     def get_identifier_as_string(self) -> str:
+        """Return string identifier. JSON-encodes dictionaries with sorted keys."""
         return (
             json.dumps(self.identifier, sort_keys=True)
             if self.is_using_search_identifier
