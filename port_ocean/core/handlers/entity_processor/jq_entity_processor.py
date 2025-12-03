@@ -159,15 +159,12 @@ class JQEntityProcessor(BaseEntityProcessor):
             return None
 
     async def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
-        loop = asyncio.get_event_loop()
 
         compiled_pattern = self._compile(pattern)
 
         func = compiled_pattern.input_value(data)
 
-        value = await loop.run_in_executor(
-            None, self._stop_iterator_handler(func.first)
-        )
+        value = func.first()
         if isinstance(value, bool):
             return value
         raise EntityProcessorException(

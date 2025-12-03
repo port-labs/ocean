@@ -48,9 +48,9 @@ RUN apt-get update \
         curl \
         acl \
         sudo \
+        libyaml-dev \
     && apt-get clean
 
-RUN apt-get install -y libyaml-dev
 LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
 # Used to ensure that new integrations will be public, see https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility
 LABEL org.opencontainers.image.source=https://github.com/port-labs/ocean

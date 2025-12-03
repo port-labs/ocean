@@ -23,5 +23,4 @@ source .venv-docker/bin/activate
 python -m pip install -e ../../
 
 python -m pip install debugpy
-make run
-# python -m debugpy --listen 0.0.0.0:5678 --wait-for-client debug.py
+python -m debugpy --listen 0.0.0.0:5678 --wait-for-client debug.py
