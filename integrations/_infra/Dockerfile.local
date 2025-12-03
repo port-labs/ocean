@@ -26,15 +26,10 @@ RUN apt-get update \
         python3-pip \
         python3-poetry \
         build-essential\
-        yq \
         git \
         python3-venv \
         acl \
     && apt-get clean
-
-RUN wget https://github.com/sclevine/yj/releases/download/v5.1.0/yj-linux-arm64 -O /usr/local/bin/yj
-RUN chmod +x /usr/local/bin/yj
-
 
 ARG BUILD_CONTEXT
 ARG PROMETHEUS_MULTIPROC_DIR=/tmp/ocean/prometheus/metrics
@@ -63,8 +58,6 @@ RUN chown -R ocean:appgroup /app/${BUILD_CONTEXT} && chmod -R 755 /app/${BUILD_C
 RUN chown -R ocean:appgroup /tmp/ocean && chmod -R 755 /tmp/ocean
 # Add ocean user to ssl certs group
 RUN setfacl -m u:ocean:rwX /etc/ssl/certs
-
-
 
 USER ocean
 

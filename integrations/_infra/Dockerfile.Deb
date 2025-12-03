@@ -48,7 +48,6 @@ RUN apt-get update \
         curl \
         acl \
         sudo \
-        jq \
     && apt-get clean
 
 RUN apt-get install -y libyaml-dev
