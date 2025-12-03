@@ -1,31 +1,10 @@
 from copy import deepcopy
 from enum import StrEnum
-import subprocess
 from loguru import logger
-from typing import Any, Callable, Generator, AsyncIterator, Union
+from typing import Any, Union
 import json
 # import strictyaml as syaml
-import yaml
-from yaml import load, dump, safe_load_all
-from yaml import CLoader
-import io
-import re
-from yaml.events import (
-    StreamStartEvent,
-    StreamEndEvent,
-    DocumentStartEvent,
-    DocumentEndEvent,
-    SequenceStartEvent,
-    SequenceEndEvent,
-    MappingStartEvent,
-    MappingEndEvent,
-    ScalarEvent,
-    AliasEvent,
-)
-import uuid
-import os
-
-from yaml.loader import Loader
+from yaml import safe_load_all, YAMLError
 
 
 class ObjectKind(StrEnum):
@@ -77,7 +56,7 @@ def parse_file_content(
         documents = []
         for part in parts:
             # prevent oom
-            data = deepcopy(yaml.safe_load(part))
+            data = deepcopy(safe_load_all(part))
             if isinstance(data, list):
                 documents.extend(data)
             else:
@@ -85,7 +64,7 @@ def parse_file_content(
 
         return documents
 
-    except yaml.YAMLError:
+    except YAMLError:
         logger.debug(
             # f"Failed to parse file '{file_path}' in '{context}' as JSON or YAML: {str(e)}. "
             f"Failed to parse file '{file_path}' in '{context}' as JSON or YAML. "
