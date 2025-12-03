@@ -71,6 +71,67 @@ class GitHubClient:
             ],
         )
 
+    async def get_billing_info_for_organization(
+        self, organization: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Get Copilot seat information and settings for an organization.
+
+        Returns seat breakdown, management settings, and feature policies.
+        """
+        url = self._resolve_route_params(
+            GithubEndpoints.COPILOT_ORGANIZATION_BILLING.value,
+            {"org": organization["login"]},
+        )
+        return await self.send_api_request(
+            "get",
+            url,
+            ignore_status_code=[
+                self.copilot_disabled_status_code,
+                self.forbidden_status_code,
+            ],
+        )
+
+    async def get_seat_assignments_for_organization(
+        self, organization: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """List all Copilot seat assignments for an organization.
+
+        Returns detailed seat information including user activity and editor usage.
+        Supports pagination.
+        """
+        url = self._resolve_route_params(
+            GithubEndpoints.COPILOT_ORGANIZATION_SEATS.value,
+            {"org": organization["login"]},
+        )
+        async for seats in self._get_paginated_data(
+            url,
+            ignore_status_code=[
+                self.copilot_disabled_status_code,
+                self.forbidden_status_code,
+            ],
+        ):
+            yield seats
+
+    async def get_seat_assignment_for_user(
+        self, organization: dict[str, Any], username: str
+    ) -> dict[str, Any] | None:
+        """Get Copilot seat assignment details for a specific user.
+
+        Returns individual user's seat details, activity, and assigning team.
+        """
+        url = self._resolve_route_params(
+            GithubEndpoints.COPILOT_USER_SEAT.value,
+            {"org": organization["login"], "username": username},
+        )
+        return await self.send_api_request(
+            "get",
+            url,
+            ignore_status_code=[
+                self.copilot_disabled_status_code,
+                self.forbidden_status_code,
+            ],
+        )
+
     async def _get_paginated_data(
         self,
         url: str,
