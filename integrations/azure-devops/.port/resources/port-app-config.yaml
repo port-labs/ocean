@@ -32,6 +32,23 @@ resources:
             readme: file://README.md
           relations:
             project: .project.id | gsub(" "; "")
+  - kind: folder
+    selector:
+      query: "true"
+      folders:
+        - path: "*/*"
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))/\(.path)"
+          title: .path
+          blueprint: '"service"'
+          properties:
+            url: .__repository.remoteUrl + "?path=/" + .path
+            readme: file://README.md
+          relations:
+            project: .__repository.project.id | gsub(" "; "")
   - kind: repository-policy
     selector:
       query: .type.displayName=="Minimum number of reviewers"
