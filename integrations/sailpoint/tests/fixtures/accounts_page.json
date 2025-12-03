@@ -1,0 +1,5 @@
+{"data":[
+  {"id":"acct-1","name":"ada@okta","sourceId":"src_okta"},
+  {"id":"acct-2","name":"grace@aad","sourceId":"src_azuread"},
+  {"id":"acct-3","name":"alan@aws","sourceId":"src_aws"}
+]}
