@@ -1,12 +1,8 @@
 from enum import StrEnum
-import subprocess
 from loguru import logger
-from typing import Any, Callable, Generator, AsyncIterator, Union
+from typing import Any, Callable, Generator, AsyncIterator
 import json
-# import strictyaml as syaml
 import yaml
-from yaml import load, dump, safe_load_all
-from yaml import CLoader
 import io
 import re
 from yaml.events import (
@@ -23,8 +19,6 @@ from yaml.events import (
 )
 import uuid
 import os
-
-from yaml.loader import Loader
 
 
 class ObjectKind(StrEnum):
@@ -46,7 +40,7 @@ def parse_file_content(
     content: str,
     file_path: str,
     context: str,
-) -> Union[str, dict[str, Any], list[Any]]:
+) -> dict[str, Any]:
     """
     Attempt to parse a string as JSON or YAML. If both parse attempts fail or the content
     is empty, the function returns the original string.
@@ -58,79 +52,66 @@ def parse_file_content(
                        or the original string if parsing fails.
     """
     # Quick check for empty or whitespace-only strings
-    if not content.strip():
+    if not content or content.isspace():
         logger.debug(
             f"File '{file_path}' in '{context}' is empty; returning raw content."
         )
-        return content
-        # return {"content": content, "should_resolve_references": False}
-    # content_path = f"/tmp/ocean/temp_{uuid.uuid4()}.json"
-    # os.makedirs("/tmp/ocean", exist_ok=True)
-    # should_resolve_references = False
+        return {"content": content, "should_resolve_references": False}
+    content_path = f"/tmp/ocean/temp_{uuid.uuid4()}.json"
+    os.makedirs("/tmp/ocean", exist_ok=True)
+    should_resolve_references = False
     # 1) Try JSON
-    # if file_path.endswith(".json"):
-    #     try:
-    #         json_content = json.loads(content)
-    #         with open(content_path, "w", encoding="utf-8") as f:
-    #             json.dump(json_content, f)
-    #         if "file://" in content:
-    #             should_resolve_references = True
-    #         return (
-    #             {
-    #                 "path": content_path,
-    #                 "should_resolve_references": should_resolve_references,
-    #             }
-    #             if not should_resolve_references
-    #             else {
-    #                 "content": json_content,
-    #                 "should_resolve_references": should_resolve_references,
-    #             }
-    #         )
-    #     except json.JSONDecodeError:
-    #         pass  # Proceed to try YAML
-    try:
-        return json.loads(content)
-    except json.JSONDecodeError:
-        pass
+    if file_path.endswith(".json"):
+        try:
+            json_content = json.loads(content)
+            with open(content_path, "w", encoding="utf-8") as f:
+                json.dump(json_content, f)
+            if "file://" in content:
+                should_resolve_references = True
+            return (
+                {
+                    "path": content_path,
+                    "should_resolve_references": should_resolve_references,
+                }
+                if not should_resolve_references
+                else {
+                    "content": json_content,
+                    "should_resolve_references": should_resolve_references,
+                }
+            )
+        except json.JSONDecodeError:
+            pass  # Proceed to try YAML
+
     # 2) Try YAML
     logger.debug(f"Attempting to parse file '{file_path}' in '{context}' as YAML.")
     try:
-        parts = [x for x in content.split("---\n") if x.strip() != ""]
-        documents = []
-        for part in parts:
-            data = subprocess.run(["/yj-linux-arm64"], input=part, capture_output=True, text=True)
-            data = json.loads(data.stdout)
-            if isinstance(data, list):
-                documents.extend(data)
-            else:
-                documents.append(data)
-
-        return documents
-
-
-        # if not documents:
-        #     logger.debug(
-        #         f"No valid YAML documents found in file '{file_path}' (context='{context}')."
-        #         " Returning raw content."
-        #     )
-        #     return content
-        # return documents[0] if len(documents) == 1 else documents
-        # for event in yaml.parse(io.StringIO(content)):
-        #     pass
-
-    except yaml.YAMLError:
+        with open(content_path, "w", encoding="utf-8") as f:
+            yaml_to_json_chunks(content, multiple="array", file_stream=f)
+        if "file://" in content:
+            should_resolve_references = True
+        if not should_resolve_references:
+            return {
+                "path": content_path,
+                "should_resolve_references": should_resolve_references,
+            }
+        else:
+            with open(content_path, "r", encoding="utf-8") as fr:
+                json_content = json.load(fr)
+                return {
+                    "content": (
+                        json_content[0] if len(json_content) == 1 else json_content
+                    ),
+                    "should_resolve_references": should_resolve_references,
+                }
+    except Exception as e:
         logger.debug(
-            # f"Failed to parse file '{file_path}' in '{context}' as JSON or YAML: {str(e)}. "
-            f"Failed to parse file '{file_path}' in '{context}' as JSON or YAML. "
+            f"Failed to parse file '{file_path}' in '{context}' as JSON or YAML: {str(e)}. "
             "Returning raw content."
         )
-        return content
-
-
-        # return {
-        #     "content": content,
-        #     "should_resolve_references": should_resolve_references,
-        # }
+        return {
+            "content": content,
+            "should_resolve_references": should_resolve_references,
+        }
 
 
 def enrich_resources_with_project(
