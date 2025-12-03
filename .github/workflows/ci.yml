@@ -3,6 +3,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+env:
+  # Maximum allowed image size increase (percentage)
+  SIZE_INCREASE_THRESHOLD: ${{ vars.SIZE_INCREASE_THRESHOLD }}
+
 jobs:
   prepare-matrix:
     runs-on: ubuntu-latest
@@ -44,6 +48,7 @@ jobs:
       is_dev_version: ${{ steps.prepare_tags.outputs.is_dev_version }}
     permissions:
       contents: read
+      pull-requests: write
     needs: [prepare-matrix]
     strategy:
       max-parallel: 10
@@ -91,6 +96,7 @@ jobs:
           fi
 
       - name: Build Docker Image
+        id: build
         uses: ./.github/workflows/actions/build-docker-image
         with:
           dockerfile: ${{ steps.prepare_tags.outputs.dockerfile_path }}
@@ -102,4 +108,132 @@ jobs:
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
           skip-push: 'true'
+          load-created-image: 'true'
           skip-login: ${{ github.event_name == 'pull_request' }}
+
+      - name: Extract image info
+        id: image_info
+        run: |
+          SINGLE_TAG=$(echo "${{ steps.prepare_tags.outputs.tags }}" | awk -F ',' '{print $1}')
+          IMAGE_NAME=$(echo "${SINGLE_TAG}" | sed 's/.*\///' | cut -d':' -f1)
+          echo "image_tag=${SINGLE_TAG}" >> $GITHUB_OUTPUT
+          echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Calculate max allowed size
+        id: calc_max_size
+        run: |
+          THRESHOLD="${{ env.SIZE_INCREASE_THRESHOLD }}"
+          IMAGE_NAME="${{ steps.image_info.outputs.image_name }}"
+          PLATFORM="${{ matrix.platform }}"
+
+          # Use the 'latest' tag to fetch the baseline image
+          BASELINE_IMAGE="ghcr.io/port-labs/${IMAGE_NAME}:latest"
+
+          echo "📦 Pulling baseline image (${PLATFORM}): ${BASELINE_IMAGE}"
+          if ! docker pull --platform "${PLATFORM}" -q "${BASELINE_IMAGE}" > /dev/null; then
+              echo "⚠️ Failed to pull baseline image, skipping size limit check"
+              echo "skip_check=true" >> $GITHUB_OUTPUT
+              exit 0
+          fi
+
+          BASELINE_SIZE_BYTES=$(docker image inspect "${BASELINE_IMAGE}" --format='{{.Size}}')
+
+          # Try to get version from label, fallback to 'latest'
+          BASELINE_VERSION=$(docker image inspect "${BASELINE_IMAGE}" --format='{{ index .Config.Labels "INTEGRATION_VERSION" }}')
+          if [[ -z "$BASELINE_VERSION" ]]; then
+            BASELINE_VERSION="latest"
+          fi
+
+          if [[ -z "${BASELINE_SIZE_BYTES}" ]] || [[ "${BASELINE_SIZE_BYTES}" == "0" ]]; then
+            echo "⚠️ Invalid baseline value, skipping size limit check"
+            echo "skip_check=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Calculate max allowed size in bytes: baseline * (1 + threshold/100)
+          MAX_SIZE_BYTES=$(jq -n "${BASELINE_SIZE_BYTES} * (1 + ${THRESHOLD} / 100)")
+          BASELINE_MB=$(jq -n "${BASELINE_SIZE_BYTES} / 1048576")
+
+          echo "📊 Baseline (from registry): ${BASELINE_MB} MB"
+          echo "📊 Baseline Version: ${BASELINE_VERSION}"
+          echo "📊 Threshold: ${THRESHOLD}%"
+
+          echo "baseline_bytes=${BASELINE_SIZE_BYTES}" >> $GITHUB_OUTPUT
+          echo "baseline_version=${BASELINE_VERSION}" >> $GITHUB_OUTPUT
+          echo "max_size_bytes=${MAX_SIZE_BYTES}" >> $GITHUB_OUTPUT
+          echo "skip_check=false" >> $GITHUB_OUTPUT
+
+      - name: Check image size limit
+        id: size_check
+        if: steps.calc_max_size.outputs.skip_check == 'false'
+        shell: bash
+        env:
+          FAIL_ON_LIMIT: ${{ !contains(github.event.pull_request.labels.*.name, 'allow-size-increase') }}
+        run: |
+          NEW_IMAGE="${{ steps.image_info.outputs.image_tag }}"
+          BASELINE_BYTES="${{ steps.calc_max_size.outputs.baseline_bytes }}"
+          BASELINE_VERSION="${{ steps.calc_max_size.outputs.baseline_version }}"
+          MAX_BYTES="${{ steps.calc_max_size.outputs.max_size_bytes }}"
+          THRESHOLD="${{ env.SIZE_INCREASE_THRESHOLD }}"
+
+          NEW_SIZE_BYTES=$(docker image inspect "${NEW_IMAGE}" --format='{{.Size}}')
+
+          # Calculate values for display using jq
+          NEW_SIZE_MB=$(jq -n "${NEW_SIZE_BYTES} / 1048576")
+          BASELINE_MB=$(jq -n "${BASELINE_BYTES} / 1048576")
+          DIFF_MB=$(jq -n "(${NEW_SIZE_BYTES} - ${BASELINE_BYTES}) / 1048576")
+
+          # Format to 2 decimal places
+          NEW_SIZE_MB_FMT=$(printf "%.2f" $NEW_SIZE_MB)
+          BASELINE_MB_FMT=$(printf "%.2f" $BASELINE_MB)
+          DIFF_MB_FMT=$(printf "%.2f" $DIFF_MB)
+
+          image_size_exceeded=$(jq -n "${NEW_SIZE_BYTES} > ${MAX_BYTES}")
+
+          # Set outputs for GitHub Actions
+          {
+            echo "image_size_exceeded=${image_size_exceeded}"
+            if [[ "$image_size_exceeded" == "true" ]]; then
+              echo "new_size_mb=${NEW_SIZE_MB_FMT}"
+              echo "baseline_mb=${BASELINE_MB_FMT}"
+              echo "diff_mb=${DIFF_MB_FMT}"
+              echo "baseline_version=${BASELINE_VERSION}"
+            fi
+          } >> "$GITHUB_OUTPUT"
+
+          # Log results and exit if limit exceeded
+          if [[ "$image_size_exceeded" == "true" ]]; then
+            echo "❌ FAILURE: Image size limit exceeded!"
+            echo "   Current Size: ${NEW_SIZE_MB_FMT} MB"
+            echo "   Baseline Size: ${BASELINE_MB_FMT} MB (Version: ${BASELINE_VERSION})"
+            echo "   Difference: +${DIFF_MB_FMT} MB"
+            echo "   Allowed Increase: ${THRESHOLD}%"
+            [[ "${FAIL_ON_LIMIT}" == "true" ]] && exit 1
+          else
+            echo "✅ SUCCESS: Image size is within limits."
+            echo "   Current Size: ${NEW_SIZE_MB_FMT} MB"
+            echo "   Baseline Size: ${BASELINE_MB_FMT} MB"
+            echo "   Difference: ${DIFF_MB_FMT} MB"
+          fi
+
+      - name: Comment if image size limit exceeded
+        if: failure() && steps.size_check.outputs.image_size_exceeded == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = [
+              '### ❌ Image Size Limit Exceeded',
+              '',
+              '**Current Size:** `${{ steps.size_check.outputs.new_size_mb }} MB`',
+              '**Baseline:** `${{ steps.size_check.outputs.baseline_mb }} MB` (v${{ steps.size_check.outputs.baseline_version }})',
+              '**Difference:** `+${{ steps.size_check.outputs.diff_mb }} MB`',
+              '**Allowed Increase:** `${{ env.SIZE_INCREASE_THRESHOLD }}%`'
+            ].join('\n');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
