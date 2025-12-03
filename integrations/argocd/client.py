@@ -89,40 +89,6 @@ class ArgocdClient:
                 return {}
             raise e
 
-    async def _fetch_paginated_data(
-        self,
-        url: str,
-        query_params: Optional[dict[str, Any]] = None,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Fetch paginated data using traditional HTTP requests (non-streaming)"""
-        page = 0
-        page_size = PAGE_SIZE
-
-        while True:
-            current_params = {**(query_params or {}), "page": page, "size": page_size}
-
-            try:
-                response = await self._send_api_request(
-                    url=url, query_params=current_params
-                )
-                items = response.get("items", [])
-
-                if not items:
-                    return
-
-                yield items
-
-                if len(items) < page_size:
-                    return
-
-                page += 1
-
-            except Exception as e:
-                logger.error(f"Failed to fetch page {page} from {url}: {e}")
-                if not self.ignore_server_error:
-                    raise
-                return
-
     async def get_clusters(
         self, skip_unavailable_clusters: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -142,16 +108,27 @@ class ArgocdClient:
                     else:
                         yield clusters
             else:
-                async for clusters in self._fetch_paginated_data(url=url):
-                    if skip_unavailable_clusters:
-                        yield [
-                            cluster
-                            for cluster in clusters
-                            if cluster.get("connectionState", {}).get("status")
-                            == ClusterState.AVAILABLE.value
-                        ]
-                    else:
-                        yield clusters
+                response_data = await self._send_api_request(url=url)
+                clusters = response_data.get("items", [])
+
+                if skip_unavailable_clusters:
+                    clusters = [
+                        cluster
+                        for cluster in clusters
+                        if cluster.get("connectionState", {}).get("status")
+                        == ClusterState.AVAILABLE.value
+                    ]
+
+                # Yield in batches of PAGE_SIZE
+                batch = []
+                for cluster in clusters:
+                    batch.append(cluster)
+                    if len(batch) >= PAGE_SIZE:
+                        yield batch
+                        batch = []
+
+                if batch:
+                    yield batch
         except Exception as e:
             logger.error(f"Failed to fetch clusters: {e}")
             if not self.ignore_server_error:
@@ -170,6 +147,7 @@ class ArgocdClient:
         cluster_names = [cluster["name"] for cluster in available_clusters]
         url = f"{self.api_url}/{resource_kind}s"
 
+        all_resources = []
         for cluster_name in cluster_names:
             try:
                 if self.use_streaming:
@@ -178,18 +156,29 @@ class ArgocdClient:
                         target_items_path="items",
                         params={"cluster": cluster_name},
                     ):
-                        yield resources
+                        all_resources.extend(resources)
                 else:
-                    async for resources in self._fetch_paginated_data(
+                    response_data = await self._send_api_request(
                         url=url, query_params={"cluster": cluster_name}
-                    ):
-                        yield resources
+                    )
+                    all_resources.extend(response_data.get("items", []))
             except Exception as e:
                 logger.error(
                     f"Failed to fetch resources of kind {resource_kind} for cluster {cluster_name}: {e}"
                 )
                 if not self.ignore_server_error:
                     raise
+
+        # Yield in batches of PAGE_SIZE
+        batch = []
+        for resource in all_resources:
+            batch.append(resource)
+            if len(batch) >= PAGE_SIZE:
+                yield batch
+                batch = []
+
+        if batch:
+            yield batch
 
     async def get_application_by_name(self, name: str) -> dict[str, Any]:
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{name}"
@@ -288,12 +277,25 @@ class ArgocdClient:
                         if managed_resource
                     ]
             else:
-                async for managed_resources in self._fetch_paginated_data(url=url):
-                    yield [
-                        {**managed_resource, "__application": application}
-                        for managed_resource in managed_resources
-                        if managed_resource
-                    ]
+                response_data = await self._send_api_request(url=url)
+                managed_resources = response_data.get("items", [])
+
+                # Yield in batches of PAGE_SIZE
+                batch = []
+                for managed_resource in managed_resources:
+                    if managed_resource:
+                        resource = {
+                            **managed_resource,
+                            "__application": application,
+                        }
+                        batch.append(resource)
+
+                        if len(batch) >= PAGE_SIZE:
+                            yield batch
+                            batch = []
+
+                if batch:
+                    yield batch
 
         except Exception as e:
             logger.error(

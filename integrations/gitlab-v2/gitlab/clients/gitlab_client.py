@@ -438,6 +438,7 @@ class GitLabClient:
     ) -> dict[str, Any]:
 
         repo = await self.get_project(file["project_id"])
+        file["repo"] = repo
         return {
             "file": file,
             "__type": (
@@ -524,6 +525,7 @@ class GitLabClient:
 
         file_data = await self.rest.get_file_data(project_id, file_path, ref)
         file_data["project_id"] = project_id
+        file_data["path"] = file_path
 
         if (
             not skip_parsing
