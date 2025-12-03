@@ -50,6 +50,11 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         config = cast(GithubCodeScanningAlertConfig, resource_config)
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         possible_states = CODE_SCANNING_ALERT_ACTION_TO_STATE.get(action, [])
 
         if not possible_states:

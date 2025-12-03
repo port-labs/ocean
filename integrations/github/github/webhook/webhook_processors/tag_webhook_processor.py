@@ -44,6 +44,11 @@ class TagWebhookProcessor(BaseRepositoryWebhookProcessor):
             f"Processing tag event: {self._event_type} for tag {tag_ref} in {repo_name} from {organization}"
         )
 
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         if self._event_type == "delete":
             data_to_delete = {"name": tag_ref}
             return WebhookEventRawResults(

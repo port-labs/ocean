@@ -9,7 +9,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
@@ -20,13 +19,14 @@ from github.webhook.webhook_processors.workflow_webhook_processor import (
 )
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.core.options import SingleWorkflowOptions
+from integration import GithubRepoSearchConfig, RepoSearchSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+    return GithubRepoSearchConfig(
         kind=ObjectKind.WORKFLOW,
-        selector=Selector(query="true"),
+        selector=RepoSearchSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
