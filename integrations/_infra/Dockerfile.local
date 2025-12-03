@@ -29,6 +29,7 @@ RUN apt-get update \
         git \
         python3-venv \
         acl \
+        libyaml-dev \
     && apt-get clean
 
 ARG BUILD_CONTEXT

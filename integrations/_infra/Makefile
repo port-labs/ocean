@@ -95,9 +95,3 @@ seed:
 		echo "No seeding script found. Create tests/seed_data.py for this integration if needed."; \
 		exit 0; \
 	fi
-
-docker/build:
-	docker build . -f ./integrations/_infra/Dockerfile.local --build-arg BUILD_CONTEXT=integrations/fake-integration -t ocean_local
-
-docker/run:
-	docker run -v $(pwd):/app -v ./integrations/_infra/hosts:/etc/hosts -e BUILD_CONTEXT=integrations/gitlab-v2 -e --memory 1gb --cpus 1 --env-file ./integrations/gitlab-v2/.env -p '5678:5678' ocean_local
