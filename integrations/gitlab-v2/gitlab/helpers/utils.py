@@ -4,7 +4,7 @@ from loguru import logger
 from typing import Any, Union
 import json
 # import strictyaml as syaml
-from yaml import safe_load_all, YAMLError
+from yaml import safe_load, YAMLError
 
 
 class ObjectKind(StrEnum):
@@ -52,11 +52,11 @@ def parse_file_content(
     # 2) Try YAML
     logger.debug(f"Attempting to parse file '{file_path}' in '{context}' as YAML.")
     try:
-        parts = [x for x in content.split("---\n") if x.strip() != ""]
+        parts = [x for x in content.split("\n---\n") if x.strip() != ""]
         documents = []
         for part in parts:
             # prevent oom
-            data = deepcopy(safe_load_all(part))
+            data = deepcopy(safe_load(part))
             if isinstance(data, list):
                 documents.extend(data)
             else:

@@ -3,12 +3,6 @@ from typing import Any, Optional
 import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
-import ijson  # type: ignore[import-untyped]
-import aiofiles
-import base64
-import uuid
-from gitlab.helpers.utils import _AiterReader
-import os
 
 from gitlab.clients.auth_client import AuthClient
 
