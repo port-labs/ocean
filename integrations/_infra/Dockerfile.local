@@ -2,7 +2,7 @@ ARG BASE_PYTHON_IMAGE=debian:trixie-slim
 # debian:trixie-slim - Python 3.12
 FROM ${BASE_PYTHON_IMAGE}
 
-ARG OCEAN_USER_ID=999
+ARG OCEAN_USER_ID=1001
 RUN groupadd -r appgroup && useradd -r -g appgroup -m -u ${OCEAN_USER_ID} ocean
 
 RUN mkdir -p /tmp/ocean
@@ -38,6 +38,10 @@ ARG STREAMING_LOCATION=/tmp/ocean/streaming
 
 ENV PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR}
 ENV STREAMING_LOCATION=${STREAMING_LOCATION}
+ENV SSL_CERT_DIR=/home/ocean/.local/share/ca-certificates
+ENV SSL_CERT_FILE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt
+ENV CURL_CA_BUNDLE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt
+ENV REQUESTS_CA_BUNDLE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt
 # Create /tmp/ocean directory and set permissions
 
 
@@ -58,8 +62,11 @@ WORKDIR /app
 RUN chown -R ocean:appgroup /app && chmod -R 755 /app
 RUN chown -R ocean:appgroup /app/${BUILD_CONTEXT} && chmod -R 755 /app/${BUILD_CONTEXT}
 RUN chown -R ocean:appgroup /tmp/ocean && chmod -R 755 /tmp/ocean
-# Add ocean user to ssl certs group
-RUN setfacl -m u:ocean:rwX /etc/ssl/certs
+# Add ocean user to ssl certs group and prepare CA cert sync
+RUN setfacl -m u:ocean:rwX /etc/ssl/certs \
+    && mkdir -p /home/ocean/.local/share/ca-certificates \
+    && chown -R ocean:appgroup /home/ocean/.local/share/ca-certificates \
+    && chmod +x /app/integrations/_infra/sync_ca_certs.sh
 USER ocean
 
 ENTRYPOINT ["./integrations/_infra/entry_local.sh"]
