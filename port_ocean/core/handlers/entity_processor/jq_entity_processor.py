@@ -173,7 +173,7 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     async def _search_as_object(
         self,
-        data: dict[str, Any] | str,
+        data: dict[str, Any],
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
     ) -> dict[str, Any | None]:
