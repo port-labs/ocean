@@ -3,6 +3,7 @@ from enum import StrEnum
 from loguru import logger
 from typing import Any, Union
 import json
+
 # import strictyaml as syaml
 from yaml import safe_load, YAMLError
 
@@ -70,6 +71,7 @@ def parse_file_content(
             "Returning raw content."
         )
         return content
+
 
 def enrich_resources_with_project(
     resources: list[dict[str, Any]], project_map: dict[str, Any]

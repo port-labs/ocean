@@ -410,7 +410,7 @@ class GitLabClient:
         self,
         file: dict[str, Any],
     ) -> dict[str, Any]:
-        repo =await self.get_project(file["project_id"])
+        repo = await self.get_project(file["project_id"])
         return {"file": file, "repo": repo}
 
     async def _enrich_files_with_repos(
@@ -498,7 +498,8 @@ class GitLabClient:
                 parse_file_content, file_data["content"], file_path, context
             )
             parsed_content = await self._resolve_file_references(
-                parsed_content, project_id, ref)
+                parsed_content, project_id, ref
+            )
             file_data["content"] = parsed_content
 
         return file_data

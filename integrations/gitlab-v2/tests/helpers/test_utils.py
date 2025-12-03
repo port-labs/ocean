@@ -1,6 +1,3 @@
-import io
-import json
-from unittest.mock import Mock, call
 from gitlab.helpers.utils import (
     enrich_resources_with_project,
 )
