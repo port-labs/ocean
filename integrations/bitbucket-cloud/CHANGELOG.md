@@ -1,3 +1,11 @@
+## 0.3.1 (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
 # Changelog - Ocean - bitbucket
 
 All notable changes to this project will be documented in this file.
