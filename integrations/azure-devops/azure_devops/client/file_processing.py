@@ -199,7 +199,9 @@ def matches_glob_pattern(path: str, pattern: str) -> bool:
     Supports ** and other extended glob syntax via wcmatch.
     """
     return glob.globmatch(
-        path.strip("/"), pattern.strip("/"), flags=glob.GLOBSTAR | glob.IGNORECASE
+        path.strip("/"),
+        pattern.strip("/"),
+        flags=glob.GLOBSTAR | glob.IGNORECASE | glob.DOTGLOB,
     )
 
 

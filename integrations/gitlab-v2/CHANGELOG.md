@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.29 (2025-12-02)
+## 0.4.1 (2025-12-03)
 
 
 ### Features
@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for filtering groups by active status using `include_active_groups` selector in `group` kind
 - Added support for filtering projects by active status using `include_active_projects` selector in `project` kind
 - Extended `issue`, `group-with-members`, `file` and `merge-request` kinds to support `include_active_groups` selector from the `group` kind
+
+
+## 0.4.0 (2025-11-17)
+
+
+### Improvements
+
+- Added support for ingesting CODEOWNERS files in the default mapping
 
 
 ## 0.3.28 (2025-12-01)
