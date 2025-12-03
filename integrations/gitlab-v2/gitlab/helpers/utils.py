@@ -66,7 +66,6 @@ def parse_file_content(
 
     except YAMLError:
         logger.debug(
-            # f"Failed to parse file '{file_path}' in '{context}' as JSON or YAML: {str(e)}. "
             f"Failed to parse file '{file_path}' in '{context}' as JSON or YAML. "
             "Returning raw content."
         )
