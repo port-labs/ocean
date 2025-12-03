@@ -47,3 +47,37 @@ resources:
             link: ".links.html.href"
           relations:
             repository: ".destination.repository.name"
+  - kind: file
+    selector:
+      query: 'true'
+      files:
+        path: '*/'
+        filenames:
+          - CODEOWNERS
+        skipParsing: true
+    port:
+      itemsToParse: >-
+        .content | split("\n") | map(gsub("^\\s+|\\s+$"; "")) |
+        map(select(test("^[[:space:]]*#") | not)) |
+        map(select(length > 0)) |
+        map(
+          split(" ") | map(select(length > 0)) |
+          {
+            scope: .[0],
+            identifier: (.[0] | gsub("\\*\\*"; "doublestar") | gsub("\\*"; "star")),
+            users: (.[1:] | map(select(contains("/") | not) | gsub("@"; ""))),
+            teams: (.[1:] | map(select(test("^@[^ ]+/[^ ]+$")) | split("/") | .[-1]))
+          }
+        )
+      entity:
+        mappings:
+          identifier: .repo.name + "_" + .item.identifier + "_codeowners"
+          title: .item.scope + " codeowners"
+          blueprint: '"bitbucketCodeowners"'
+          properties:
+            scope: .item.scope
+            location: .metadata.path
+            users: .item.users
+            teams: .item.teams
+          relations:
+            repository: .repo.name
