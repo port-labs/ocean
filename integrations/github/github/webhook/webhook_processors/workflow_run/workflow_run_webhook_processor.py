@@ -13,7 +13,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 
-
 class WorkflowRunWebhookProcessor(BaseWorkflowRunWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig

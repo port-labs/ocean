@@ -10,7 +10,7 @@ from github.helpers.models import RepoSearchParams
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
 )
-from integration import GithubPortAppConfig, RepoSearchSelector
+from integration import GithubPortAppConfig, GithubRepoSearchConfig, RepoSearchSelector
 from loguru import logger
 
 
@@ -28,8 +28,7 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def should_process_repo_search(
         self, payload: EventPayload, config: ResourceConfig
     ) -> bool:
-        selector = getattr(config, "selector", None)
-        repo_search = getattr(selector, "repo_search", None)
+        repo_search = cast(GithubRepoSearchConfig, config).selector.repo_search
 
         if repo_search is not None:
             logger.info(
@@ -55,11 +54,26 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
         if selector.repo_search is None:
             return repo
 
-        targeted_query = f"{selector.repo_search.query} {repo['name']} in:name"
+        return await self._search_repository_by_query(
+            selector.repo_search.query,
+            repo,
+            organization["login"],
+            configured_visibility,
+        )
+
+    async def _search_repository_by_query(
+        self,
+        query: str,
+        repo: dict[str, Any],
+        organization_login: str,
+        configured_visibility: str,
+    ) -> Optional[dict[str, Any]]:
+        # This search is designed to match exactly one repo and would not paginate through many
+        targeted_query = f"{query} AND {repo['name']} in:name"
 
         search_options = ListRepositoryOptions(
             type=configured_visibility,
-            organization=organization["login"],
+            organization=organization_login,
             organization_type="Organization",
             search_params=RepoSearchParams(query=targeted_query),
         )
@@ -72,7 +86,6 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
                         f"repository {repository['name']} found in search query, webhook will be processed."
                     )
                     return repository
-
         return None
 
     async def validate_repository_payload(self, payload: EventPayload) -> bool:
