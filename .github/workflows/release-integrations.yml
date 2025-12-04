@@ -12,7 +12,7 @@ jobs:
       matrix: ${{ steps.prepare-matrix.outputs.INTEGRATIONS_MATRIX }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Prepare matrix
         id: prepare-matrix
@@ -62,7 +62,7 @@ jobs:
         integration: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
     steps:
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Prepare Docker images tags
         id: prepare_tags
@@ -203,7 +203,7 @@ jobs:
     needs: release-integration
     steps:
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Configure AWS Credentials 🔒
         id: aws-credentials
         uses: aws-actions/configure-aws-credentials@v4

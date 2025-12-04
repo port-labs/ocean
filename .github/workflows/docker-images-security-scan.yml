@@ -47,7 +47,7 @@ jobs:
       images: ${{ steps.set-images.outputs.images }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Determine which image to scan
         id: set-images
@@ -78,7 +78,7 @@ jobs:
         image: ${{ fromJson(needs.detect-images.outputs.images) }}
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Extract version and image tag
         id: enrich-version

@@ -15,7 +15,7 @@ jobs:
     name: Build Sonarcloud scan run
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Get all changed integrations
@@ -43,7 +43,7 @@ jobs:
       matrix: ${{ fromJson(needs.pre-run.outputs.changed_integrations) }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Create integration variable
