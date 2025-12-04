@@ -169,14 +169,14 @@ async def enrich_user_with_primary_email(
 
 
 def issue_matches_labels(
-    issue_labels: list[dict[str, Any]], required_labels: Optional[str]
+    issue_labels: list[dict[str, Any]], required_labels: Optional[list[str]]
 ) -> bool:
     """
     Check if an issue's labels match the required labels filter.
 
     Args:
         issue_labels: List of label objects from webhook payload
-        required_labels: Comma-separated string of required labels
+        required_labels: List of required labels
 
     Returns:
         True if issue matches (has ALL of the required labels), False otherwise
@@ -184,12 +184,10 @@ def issue_matches_labels(
     if not required_labels:
         return True
 
-    required_set = {
-        label.strip().lower() for label in required_labels.split(",") if label.strip()
-    }
+    required_set = {label.lower() for label in required_labels}
     if not required_set:
         return True
 
-    issue_label_names = {label.get("name", "").lower() for label in issue_labels}
+    issue_label_names = {label["name"].lower() for label in issue_labels}
 
     return required_set.issubset(issue_label_names)

@@ -131,6 +131,7 @@ class TestIssueWebhookProcessor:
             "number": 42,
             "title": "Test Issue",
             "state": issue_state,
+            "labels": [],
         }
 
         repo_data = {"name": "test-repo"}
@@ -191,7 +192,7 @@ class TestIssueFiltering:
     ) -> None:
         """Test labels filter accepts issues with ALL matching labels (AND logic)."""
         selector = GithubIssueSelector(
-            query=".pull_request == null", labels="bug,enhancement"
+            query=".pull_request == null", labels=["bug", "enhancement"]
         )
 
         # Issue has BOTH required labels
@@ -210,7 +211,7 @@ class TestIssueFiltering:
     ) -> None:
         """Test labels filter rejects issues without ALL required labels (AND logic)."""
         selector = GithubIssueSelector(
-            query=".pull_request == null", labels="enhancement,feature"
+            query=".pull_request == null", labels=["enhancement", "feature"]
         )
 
         # Issue has only "bug", missing "enhancement" and "feature"
@@ -223,7 +224,7 @@ class TestIssueFiltering:
     ) -> None:
         """Test labels filter rejects issues with only some required labels."""
         selector = GithubIssueSelector(
-            query=".pull_request == null", labels="bug,enhancement,feature"
+            query=".pull_request == null", labels=["bug", "enhancement", "feature"]
         )
 
         # Issue has "bug" and "enhancement" but missing "feature"

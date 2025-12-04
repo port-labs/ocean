@@ -441,7 +441,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 state=config.selector.state,
-                                labels=config.selector.labels,
+                                labels=config.selector.labels_str,
                             )
                         )
                     )

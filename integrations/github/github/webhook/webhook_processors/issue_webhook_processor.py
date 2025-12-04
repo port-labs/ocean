@@ -80,4 +80,4 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
         self, selector: GithubIssueSelector, issue: dict[str, Any]
     ) -> bool:
         """Check if issue labels match selector labels filter."""
-        return issue_matches_labels(issue.get("labels", []), selector.labels)
+        return issue_matches_labels(issue["labels"], selector.labels)
