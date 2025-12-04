@@ -1,4 +1,5 @@
 ACTIVATE := . .venv/bin/activate
+CURRENT_DIR := $(shell pwd)
 
 define run_checks
 	exit_code=0; \
@@ -169,3 +170,17 @@ coverage:
 	coverage combine coverage-merge && \
 	coverage html && \
 	coverage json
+
+docker/build:
+	docker build . -f ./integrations/_infra/Dockerfile.local --build-arg BUILD_CONTEXT=integrations/fake-integration -t ocean_local
+
+docker/run:
+	if [ -z "$(OCEAN_DOCKER_INTEGRATION_PATH)" ]; then \
+		echo "OCEAN_DOCKER_INTEGRATION_PATH is not set"; \
+		exit 1; \
+	fi; \
+	if [ ! -f "$(OCEAN_DOCKER_INTEGRATION_PATH)/.env" ]; then \
+		echo "$(OCEAN_DOCKER_INTEGRATION_PATH)/.env does not exist"; \
+		exit 1; \
+	fi; \
+	docker run -v $(CURRENT_DIR):/app -v ./integrations/_infra/hosts:/etc/hosts -e BUILD_CONTEXT=$(OCEAN_DOCKER_INTEGRATION_PATH) --memory 1gb --cpus 1 --env-file ./$(OCEAN_DOCKER_INTEGRATION_PATH)/.env -p '5678:5678' ocean_local
