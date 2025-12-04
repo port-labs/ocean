@@ -111,6 +111,7 @@ jobs:
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
 
       - name: Get image sizes
+        continue-on-error: true
         id: image_size
         run: |
           IMAGE="ghcr.io/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}:${{ steps.prepare_tags.outputs.version }}"
@@ -123,6 +124,7 @@ jobs:
           done
 
       - name: Track image size in New Relic (amd64)
+        continue-on-error: true
         uses: ./.github/actions/new-relic-metric
         with:
           metric_name: "image.size"
@@ -137,6 +139,7 @@ jobs:
             }
 
       - name: Track image size in New Relic (arm64)
+        continue-on-error: true
         uses: ./.github/actions/new-relic-metric
         with:
           metric_name: "image.size"
