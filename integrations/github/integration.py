@@ -121,6 +121,10 @@ class GithubIssueSelector(RepoSearchSelector):
         default="open",
         description="Filter by issue state (open, closed, all)",
     )
+    labels: Optional[str] = Field(
+        default=None,
+        description="Filter issues by labels (comma-separated). Issues must have ALL of the specified labels. Example: 'bug,enhancement'",
+    )
 
 
 class GithubIssueConfig(ResourceConfig):
