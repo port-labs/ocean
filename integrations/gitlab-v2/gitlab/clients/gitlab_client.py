@@ -410,20 +410,8 @@ class GitLabClient:
         self,
         file: dict[str, Any],
     ) -> dict[str, Any]:
-
         repo = await self.get_project(file["project_id"])
-        file["repo"] = repo
-        return {
-            "file": file,
-            "__type": (
-                "path"
-                if isinstance(file["content"], dict)
-                and file["content"].get("path") is not None
-                else "content"
-            ),
-            "repo": repo,
-            "__base_jq": ".file.content",
-        }
+        return {"file": file, "repo": repo}
 
     async def _enrich_files_with_repos(
         self,
@@ -509,19 +497,11 @@ class GitLabClient:
             parsed_content = await anyio.to_thread.run_sync(
                 parse_file_content, file_data["content"], file_path, context
             )
-            if parsed_content.get("should_resolve_references", False):
-                file_resolved_content = await self._resolve_file_references(
-                    parsed_content.get("content"), project_id, ref
-                )
-                parsed_content["content"] = file_resolved_content
-            file_data["content"] = (
-                parsed_content
-                if not parsed_content.get("content")
-                else parsed_content["content"]
+            parsed_content = await self._resolve_file_references(
+                parsed_content, project_id, ref
             )
+            file_data["content"] = parsed_content
 
-        if isinstance(file_data["content"], str):
-            file_data["content"] = {"content": file_data["content"]}
         return file_data
 
     async def _process_file_batch(
