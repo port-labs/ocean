@@ -54,7 +54,7 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
-            
+
         if (
             action == "closed" and config.selector.state == "open"
         ) or action in ISSUE_DELETE_EVENTS:
