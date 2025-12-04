@@ -77,10 +77,7 @@ resources:
       query: 'true'
       files:
         - path: '**/CODEOWNERS'
-          organization: Chukwuemeka-Test-Org
           skipParsing: true
-          repos:
-            - name: ocean
     port:
       itemsToParse: >-
         (. as $root | .content | split("\n") |
