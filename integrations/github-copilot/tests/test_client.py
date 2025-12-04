@@ -5,7 +5,14 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from clients.github_client import GitHubClient
-from tests.mocks import organizations_response, teams_response, copilot_metrics_response
+from tests.mocks import (
+    organizations_response,
+    teams_response,
+    copilot_metrics_response,
+    copilot_billing_response,
+    copilot_seat_assignments_response,
+    copilot_user_seat_response,
+)
 
 BASE_URL = "https://api.github.com"
 TOKEN = "test-token"
@@ -153,3 +160,125 @@ def test_resolve_route_params() -> None:
     params = {"org": "acme", "team": "devs"}
     result = GitHubClient._resolve_route_params(endpoint, params)
     assert result == "/orgs/acme/teams/devs/metrics"
+
+
+@pytest.mark.asyncio
+async def test_get_billing_info_for_organization(github_client: GitHubClient) -> None:
+    expected_response = copilot_billing_response
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = expected_response
+
+    with patch.object(
+        github_client._client, "request", new=AsyncMock(return_value=mock_response)
+    ):
+        result = await github_client.get_billing_info_for_organization(
+            organizations_response[0]
+        )
+        assert result == expected_response
+        assert result["seat_breakdown"]["total"] == 12
+        assert result["plan_type"] == "business"
+
+
+@pytest.mark.asyncio
+async def test_get_billing_info_403_ignored(github_client: GitHubClient) -> None:
+    error_response = httpx.Response(
+        status_code=403, request=httpx.Request("GET", "https://fake")
+    )
+    async_mock = AsyncMock(
+        side_effect=httpx.HTTPStatusError(
+            "Forbidden", request=error_response.request, response=error_response
+        )
+    )
+
+    with patch.object(github_client._client, "request", new=async_mock):
+        result = await github_client.get_billing_info_for_organization(
+            organizations_response[0]
+        )
+        assert result == []
+
+
+@pytest.mark.asyncio
+async def test_get_seat_assignments_for_organization(
+    github_client: GitHubClient,
+) -> None:
+    expected_response = copilot_seat_assignments_response
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = expected_response
+    mock_response.headers = {}
+
+    with patch.object(
+        github_client._client, "request", new=AsyncMock(return_value=mock_response)
+    ):
+        results = []
+        async for seats_batch in github_client.get_seat_assignments_for_organization(
+            organizations_response[0]
+        ):
+            results.append(seats_batch)
+
+        assert len(results) == 1
+        assert results[0] == expected_response
+        assert results[0]["total_seats"] == 2
+        assert len(results[0]["seats"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_seat_assignments_422_ignored(github_client: GitHubClient) -> None:
+    error_response = httpx.Response(
+        status_code=422, request=httpx.Request("GET", "https://fake")
+    )
+    async_mock = AsyncMock(
+        side_effect=httpx.HTTPStatusError(
+            "Unprocessable Entity",
+            request=error_response.request,
+            response=error_response,
+        )
+    )
+
+    with patch.object(github_client._client, "request", new=async_mock):
+        results = []
+        async for seats_batch in github_client.get_seat_assignments_for_organization(
+            organizations_response[0]
+        ):
+            results.extend(seats_batch)
+
+        assert results == []
+
+
+@pytest.mark.asyncio
+async def test_get_seat_assignment_for_user(github_client: GitHubClient) -> None:
+    expected_response = copilot_user_seat_response
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = expected_response
+
+    with patch.object(
+        github_client._client, "request", new=AsyncMock(return_value=mock_response)
+    ):
+        result = await github_client.get_seat_assignment_for_user(
+            organizations_response[0], "octocat"
+        )
+        assert result == expected_response
+        assert result["assignee"]["login"] == "octocat"
+        assert result["plan_type"] == "business"
+
+
+@pytest.mark.asyncio
+async def test_get_seat_assignment_for_user_404_returns_empty(
+    github_client: GitHubClient,
+) -> None:
+    error_response = httpx.Response(
+        status_code=404, request=httpx.Request("GET", "https://fake")
+    )
+    async_mock = AsyncMock(
+        side_effect=httpx.HTTPStatusError(
+            "Not Found", request=error_response.request, response=error_response
+        )
+    )
+
+    with patch.object(github_client._client, "request", new=async_mock):
+        result = await github_client.get_seat_assignment_for_user(
+            organizations_response[0], "nonexistent"
+        )
+        assert result == []
