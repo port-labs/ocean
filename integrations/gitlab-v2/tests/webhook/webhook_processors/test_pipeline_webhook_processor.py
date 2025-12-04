@@ -62,6 +62,8 @@ class TestPipelineWebhookProcessor:
     ) -> None:
         """Test handling a pipeline event"""
         resource_config = MagicMock()
+        resource_config.selector = MagicMock()
+        resource_config.selector.include_active_projects = None
         pipeline_id = pipeline_payload["object_attributes"]["id"]
         project_id = pipeline_payload["project"]["id"]
 

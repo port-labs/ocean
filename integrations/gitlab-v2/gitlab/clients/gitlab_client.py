@@ -35,9 +35,14 @@ class GitLabClient:
             "GET", f"projects/{project_id}/releases/{tag_name}"
         )
 
-    async def get_project(self, project_path: str | int) -> dict[str, Any]:
+    async def get_project(
+        self, project_path: str | int, include_languages: bool = False
+    ) -> dict[str, Any]:
         encoded_path = quote(str(project_path), safe="")
-        return await self.rest.send_api_request("GET", f"projects/{encoded_path}")
+        project = await self.rest.send_api_request("GET", f"projects/{encoded_path}")
+        if include_languages:
+            return await self._enrich_project_with_languages(project)
+        return project
 
     async def get_group(self, group_id: int) -> dict[str, Any]:
         return await self.rest.send_api_request("GET", f"groups/{group_id}")

@@ -10,8 +10,9 @@ from gitlab.helpers.utils import ObjectKind
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
 )
-from typing import override, Dict, Any
+from typing import override, Dict, Any, cast
 import re
+from integration import ProjectResourceConfig
 
 
 class ProjectWebhookProcessor(_GitlabAbstractWebhookProcessor):
@@ -35,7 +36,11 @@ class ProjectWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 deleted_raw_results=[deleted_project],
             )
 
-        project = await self._gitlab_webhook_client.get_project(project_id)
+        selector = cast(ProjectResourceConfig, resource_config).selector
+        include_languages = selector.include_languages
+        project = await self._gitlab_webhook_client.get_project(
+            project_id, include_languages
+        )
         return WebhookEventRawResults(
             updated_raw_results=[project],
             deleted_raw_results=[],
