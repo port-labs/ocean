@@ -28,7 +28,7 @@ jobs:
 
       - name: Trigger docs sync
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: peter-evans/repository-dispatch@v2
+        uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.PORT_DOCS_SYNC_TOKEN }}
           repository: ${{ github.repository_owner }}/port-docs
