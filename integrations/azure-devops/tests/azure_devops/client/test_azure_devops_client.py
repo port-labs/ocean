@@ -2059,11 +2059,41 @@ async def test_process_folder_patterns(
             "project": {"name": project_name, "id": "project-123"},
         }
 
+    async def mock_get_repositories_for_project(
+        project_name: str,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        repos_data = [
+            {
+                "name": "repo1",
+                "id": "repo1-id",
+                "project": {"name": project_name, "id": "project-123"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "name": "repo2",
+                "id": "repo2-id",
+                "project": {"name": project_name, "id": "project-123"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "name": "repo3",
+                "id": "repo3-id",
+                "project": {"name": project_name, "id": "project-123"},
+                "defaultBranch": "refs/heads/develop",
+            },
+        ]
+        yield repos_data
+
     with (
         patch.object(
             mock_azure_client,
             "generate_repositories",
             side_effect=mock_generate_repositories,
+        ),
+        patch.object(
+            mock_azure_client,
+            "_get_repositories_for_project",
+            side_effect=mock_get_repositories_for_project,
         ),
         patch.object(
             mock_azure_client,
