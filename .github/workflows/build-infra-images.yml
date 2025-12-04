@@ -28,7 +28,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ECR_ROLE_ARN }}
 
       - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
         with:
           mask-password: 'true'
 
