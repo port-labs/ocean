@@ -444,9 +444,7 @@ async def test_sync_raw_mixin_dependency(
                         entity.get("identifier")
                         for entity in result_bulk[1].get("json").get("entities")
                     ]
-                ) == "-".join(
-                    [entity.get_identifier_as_string() for entity in entities]
-                )
+                ) == "-".join([entity.identifier for entity in entities])
                 assert "-".join(
                     [call[1].get("json").get("identifier") for call in result_non_bulk]
                 ) in (

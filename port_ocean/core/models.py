@@ -56,7 +56,7 @@ class PortAPIErrorMessage(Enum):
 
 
 class Entity(BaseModel):
-    identifier: str | dict[str, Any]
+    identifier: Any
     icon: str | None
     blueprint: Any
     title: Any

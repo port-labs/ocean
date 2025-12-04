@@ -12,6 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - fix webhook processor crashing when entity identifier is a dictionary
 
+
 ## 0.31.1 (2025-12-04)
 
 ### Bug Fixes

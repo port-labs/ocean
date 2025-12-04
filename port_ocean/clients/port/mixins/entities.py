@@ -458,7 +458,7 @@ class EntityClientMixin:
                 f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
             )
             response = await self.client.delete(
-                f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{quote_plus(str(entity.identifier))}",
+                f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{quote_plus(entity.identifier)}",
                 headers=await self.auth.headers(user_agent_type),
                 params={
                     "delete_dependents": str(
