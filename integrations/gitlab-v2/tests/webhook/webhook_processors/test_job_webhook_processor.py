@@ -73,6 +73,8 @@ class TestJobWebhookProcessor:
     ) -> None:
         """Test handling a job event"""
         resource_config = MagicMock()
+        resource_config.selector = MagicMock()
+        resource_config.selector.include_active_projects = None
         job_id = job_payload["build_id"]
         project_id = job_payload["project"]["id"]
 
