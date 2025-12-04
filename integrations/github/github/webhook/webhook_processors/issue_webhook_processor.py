@@ -47,6 +47,14 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         config = cast(GithubIssueConfig, resource_config)
 
+        if not self._check_labels_filter(config.selector, issue):
+            logger.info(
+                f"Issue {repo_name}/{issue_number} filtered out by selector criteria"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+            
         if (
             action == "closed" and config.selector.state == "open"
         ) or action in ISSUE_DELETE_EVENTS:
@@ -54,13 +62,6 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[issue],
-            )
-        if not self._check_labels_filter(config.selector, issue):
-            logger.info(
-                f"Issue {repo_name}/{issue_number} filtered out by selector criteria"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
             )
         exporter = RestIssueExporter(create_github_client())
         data_to_upsert = await exporter.get_resource(
