@@ -37,8 +37,13 @@ jobs:
               integrations_to_release+=($file)
             fi
           done
-          echo $(echo ${integrations_to_release[@]} | jq -R -c 'split(" ")')
-          echo "INTEGRATIONS_MATRIX=$(echo ${integrations_to_release[@]} | jq -R -c 'split(" ")')" >> $GITHUB_OUTPUT
+          if [ ${#integrations_to_release[@]} -eq 0 ]; then
+            matrix_json='[]'
+          else
+            matrix_json=$(printf '%s\n' "${integrations_to_release[@]}" | jq -R -s -c 'split("\n")[:-1]')
+          fi
+          echo "$matrix_json"
+          echo "INTEGRATIONS_MATRIX=$matrix_json" >> $GITHUB_OUTPUT
 
   release-integration:
     runs-on: ubuntu-latest
@@ -105,50 +110,48 @@ jobs:
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
 
-      # - name: Get image sizes
-      #   id: image_size
-      #   run: |
-      #     IMAGE="ghcr.io/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}:${{ steps.prepare_tags.outputs.version }}"
+      - name: Get image sizes
+        continue-on-error: true
+        id: image_size
+        run: |
+          IMAGE="ghcr.io/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}:${{ steps.prepare_tags.outputs.version }}"
+          MANIFEST=$(docker buildx imagetools inspect "${IMAGE}" --raw)
 
-      #     # Get manifest with sizes for each platform
-      #     MANIFEST=$(docker buildx imagetools inspect "${IMAGE}" --raw)
+          for arch in amd64 arm64; do
+            SIZE=$(echo "${MANIFEST}" | jq "[.manifests[] | select(.platform.architecture==\"${arch}\") | .size] | add")
+            SIZE_MB=$(jq -n "${SIZE} / 1048576" | xargs printf "%.2f")
+            echo "size_mb_linux_${arch}=${SIZE_MB}" >> $GITHUB_OUTPUT
+          done
 
-      #     AMD64_SIZE=$(echo "${MANIFEST}" | jq '[.manifests[] | select(.platform.architecture=="amd64") | .size] | add')
-      #     ARM64_SIZE=$(echo "${MANIFEST}" | jq '[.manifests[] | select(.platform.architecture=="arm64") | .size] | add')
+      - name: Track image size in New Relic (amd64)
+        continue-on-error: true
+        uses: ./.github/actions/new-relic-metric
+        with:
+          metric_name: "image.size"
+          metric_value: ${{ steps.image_size.outputs.size_mb_linux_amd64 }}
+          new_relic_api_key: ${{ secrets.NEW_RELIC_INGEST_API_KEY }}
+          metric_attributes: |
+            {
+              "image_name": "port-ocean-${{ steps.prepare_tags.outputs.type }}",
+              "image_version": "${{ steps.prepare_tags.outputs.version }}",
+              "platform": "linux/amd64",
+              "size_mb": "${{ steps.image_size.outputs.size_mb_linux_amd64 }}"
+            }
 
-      #     AMD64_MB=$(jq -n "${AMD64_SIZE} / 1048576" | xargs printf "%.2f")
-      #     ARM64_MB=$(jq -n "${ARM64_SIZE} / 1048576" | xargs printf "%.2f")
-
-      #     echo "size_mb_linux-amd64=${AMD64_MB}" >> $GITHUB_OUTPUT
-      #     echo "size_mb_linux-arm64=${ARM64_MB}" >> $GITHUB_OUTPUT
-
-      # - name: Track image size in New Relic (amd64)
-      #   uses: port-labs/infra-utils/.github/actions/new-relic-metric@main
-      #   with:
-      #     metric_name: "image.size"
-      #     metric_value: ${{ steps.image_size.outputs.size_mb_linux-amd64 }}
-      #     new_relic_api_key: ${{ secrets.NEW_RELIC_INGEST_API_KEY }}
-      #     metric_attributes: |
-      #       {
-      #         "image_name": "port-ocean-${{ steps.prepare_tags.outputs.type }}",
-      #         "image_version": "${{ steps.prepare_tags.outputs.version }}",
-      #         "platform": "linux/amd64",
-      #         "size_mb": "${{ steps.image_size.outputs.size_mb_linux-amd64 }}"
-      #       }
-
-      # - name: Track image size in New Relic (arm64)
-      #   uses: port-labs/infra-utils/.github/actions/new-relic-metric@main
-      #   with:
-      #     metric_name: "image.size"
-      #     metric_value: ${{ steps.image_size.outputs.size_mb_linux-arm64 }}
-      #     new_relic_api_key: ${{ secrets.NEW_RELIC_INGEST_API_KEY}}
-      #     metric_attributes: |
-      #       {
-      #         "image_name": "port-ocean-${{ steps.prepare_tags.outputs.type }}",
-      #         "image_version": "${{ steps.prepare_tags.outputs.version }}",
-      #         "platform": "linux/arm64",
-      #         "size_mb": "${{ steps.image_size.outputs.size_mb_linux-arm64 }}"
-      #       }
+      - name: Track image size in New Relic (arm64)
+        continue-on-error: true
+        uses: ./.github/actions/new-relic-metric
+        with:
+          metric_name: "image.size"
+          metric_value: ${{ steps.image_size.outputs.size_mb_linux_arm64 }}
+          new_relic_api_key: ${{ secrets.NEW_RELIC_INGEST_API_KEY }}
+          metric_attributes: |
+            {
+              "image_name": "port-ocean-${{ steps.prepare_tags.outputs.type }}",
+              "image_version": "${{ steps.prepare_tags.outputs.version }}",
+              "platform": "linux/arm64",
+              "size_mb": "${{ steps.image_size.outputs.size_mb_linux_arm64 }}"
+            }
 
       - name: Configure AWS Credentials 🔒
         if: steps.prepare_tags.outputs.is_dev_version == 'false'
