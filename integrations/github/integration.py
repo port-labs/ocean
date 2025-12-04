@@ -121,6 +121,15 @@ class GithubIssueSelector(RepoSearchSelector):
         default="open",
         description="Filter by issue state (open, closed, all)",
     )
+    labels: Optional[list[str]] = Field(
+        default=None,
+        description="Filter issues by labels. Issues must have ALL of the specified labels. Example: ['bug', 'enhancement']",
+    )
+
+    @property
+    def labels_str(self) -> Optional[str]:
+        """Convert labels list to comma-separated string for GitHub API."""
+        return ",".join(self.labels) if self.labels else None
 
 
 class GithubIssueConfig(ResourceConfig):

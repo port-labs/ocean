@@ -59,6 +59,7 @@ class ListIssueOptions(RepositoryIdentifier):
     """Options for listing issues."""
 
     state: Required[str]
+    labels: NotRequired[Optional[str]]
 
 
 class SingleUserOptions(SingleOrganizationOptions):
