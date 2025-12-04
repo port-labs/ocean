@@ -36,7 +36,7 @@ class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
 
         if not should_process:
             logger.info(
-                f"Issue {issue_id} filtered out by selector criteria - skipping API call"
+                f"Issue {issue_id} filtered out by selector criteria. Skipping..."
             )
             return WebhookEventRawResults(
                 updated_raw_results=[],
@@ -56,31 +56,53 @@ class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
         object_attrs: dict[str, Any],
     ) -> bool:
         """Helper function to determine if an issue should be processed based on selector criteria."""
-        should_process = True
+        return (
+            self._check_state_filter(selector, object_attrs)
+            and self._check_issue_type_filter(selector, object_attrs)
+            and self._check_labels_filter(selector, object_attrs)
+        )
 
-        if selector.state and object_attrs.get("state") != selector.state:
+    def _check_state_filter(
+        self, selector: IssueSelector, object_attrs: dict[str, Any]
+    ) -> bool:
+        if not selector.state:
+            return True
+
+        has_desired_state = object_attrs.get("state") == selector.state
+        if not has_desired_state:
             logger.info(
                 f"Issue {object_attrs.get('iid')} state '{object_attrs.get('state')}' does not match selector state '{selector.state}'"
             )
-            should_process = False
+        return has_desired_state
 
-        if selector.issue_type and should_process:
-            webhook_type = object_attrs.get("type", "").lower()
-            if webhook_type != selector.issue_type:
-                logger.info(
-                    f"Issue {object_attrs.get('iid')} type '{webhook_type}' does not match selector type '{selector.issue_type}'"
-                )
-                should_process = False
+    def _check_issue_type_filter(
+        self, selector: IssueSelector, object_attrs: dict[str, Any]
+    ) -> bool:
+        if not selector.issue_type:
+            return True
 
-        if selector.labels and should_process:
-            required_labels = {label.strip() for label in selector.labels.split(",")}
-            issue_label_titles = {
-                label.get("title", "") for label in object_attrs.get("labels", [])
-            }
-            if not required_labels.issubset(issue_label_titles):
-                logger.info(
-                    f"Issue {object_attrs.get('iid')} labels {issue_label_titles} do not contain all required labels {required_labels}"
-                )
-                should_process = False
+        has_desired_issue_type = (
+            object_attrs.get("type", "").lower() == selector.issue_type.lower()
+        )
+        if not has_desired_issue_type:
+            logger.info(
+                f"Issue {object_attrs.get('iid')} type '{object_attrs.get('type', '')}' does not match selector type '{selector.issue_type}'"
+            )
+        return has_desired_issue_type
 
-        return should_process
+    def _check_labels_filter(
+        self, selector: IssueSelector, object_attrs: dict[str, Any]
+    ) -> bool:
+        if not selector.labels:
+            return True
+
+        required_labels = {label.strip() for label in selector.labels.split(",")}
+        issue_label_titles = {
+            label.get("title", "") for label in object_attrs.get("labels", [])
+        }
+        has_desired_labels_filter = required_labels.issubset(issue_label_titles)
+        if not has_desired_labels_filter:
+            logger.info(
+                f"Issue {object_attrs.get('iid')} labels {issue_label_titles} do not match selector labels '{selector.labels}'"
+            )
+        return has_desired_labels_filter
