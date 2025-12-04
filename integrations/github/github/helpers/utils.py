@@ -169,7 +169,7 @@ async def enrich_user_with_primary_email(
 
 
 def issue_matches_labels(
-    issue_labels: List[Dict], required_labels: Optional[str]
+    issue_labels: list[dict[str, Any]], required_labels: Optional[str]
 ) -> bool:
     """
     Check if an issue's labels match the required labels filter.
