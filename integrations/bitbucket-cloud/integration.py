@@ -43,9 +43,9 @@ class RepositoryMapping(BaseModel):
         alias="role",
         description="Filter repositories by authenticated user's role: member, contributor, admin, or owner",
     )
-    repo_query_filter: Optional[str] = Field(
+    query: Optional[str] = Field(
         default=None,
-        alias="repoQueryFilter",
+        alias="query",
         description='Query string to narrow repositories as per Bitbucket filtering (e.g., name="my-repo")',
     )
 
