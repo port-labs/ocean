@@ -20,9 +20,9 @@ class TargetWebhookProcessor(SnykBaseWebhookProcessor):
         snyk_client = init_client()
 
         project_id = payload["project"]["id"]
-        organization_id = payload["org"]["id"]
+        organization = payload["org"]
         data_to_update = await snyk_client.get_single_target_by_project_id(
-            organization_id, project_id
+            organization, project_id
         )
 
         return WebhookEventRawResults(
