@@ -26,49 +26,6 @@ from port_ocean.exceptions.core import EntityProcessorException
 from port_ocean.utils.queue_utils import process_in_queue
 
 
-class ExampleStates:
-    __succeed: list[dict[str, Any]]
-    __errors: list[dict[str, Any]]
-    __max_size: int
-
-    def __init__(self, max_size: int = 0) -> None:
-        """
-        Store two sequences:
-          - succeed: items that succeeded
-          - errors:  items that failed
-        """
-        self.__succeed = []
-        self.__errors = []
-        self.__max_size = max_size
-
-    def add_example(self, succeed: bool, item: dict[str, Any]) -> None:
-        if succeed:
-            self.__succeed.append(item)
-        else:
-            self.__errors.append(item)
-
-    def __len__(self) -> int:
-        """
-        Total number of items (successes + errors).
-        """
-        return len(self.__succeed) + len(self.__errors)
-
-    def get_examples(self, number: int = 0) -> list[dict[str, Any]]:
-        """
-        Return a list of up to number items, taking successes first,
-        """
-        if number <= 0:
-            number = self.__max_size
-        # how many from succeed?
-        s_count = min(number, len(self.__succeed))
-        result = list(self.__succeed[:s_count])
-        # how many more from errors?
-        e_count = number - s_count
-        if e_count > 0:
-            result.extend(self.__errors[:e_count])
-        return result
-
-
 @dataclass
 class MappedEntity:
     """Represents the entity after applying the mapping
@@ -295,6 +252,15 @@ class JQEntityProcessor(BaseEntityProcessor):
         parse_all: bool = False,
         send_raw_data_examples_amount: int = 0,
     ) -> CalculationResult:
+        # Send raw data examples FIRST (before transformation)
+        # This ensures users can see the raw data even if transformation fails
+        if send_raw_data_examples_amount > 0 and raw_results:
+            examples_to_send = [
+                self._get_raw_data_for_example(item, mapping.port.items_to_parse_name)
+                for item in raw_results[:send_raw_data_examples_amount]
+            ]
+            await self._send_examples(examples_to_send, mapping.kind)
+
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
         )
@@ -314,24 +280,12 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         passed_entities = []
         failed_entities = []
-        examples_to_send = ExampleStates(send_raw_data_examples_amount)
         entity_misconfigurations: dict[str, str] = {}
         missing_required_fields: bool = False
         entity_mapping_fault_counter: int = 0
         for result in calculated_entities_results:
             if len(result.misconfigurations) > 0:
                 entity_misconfigurations |= result.misconfigurations
-
-            if (
-                len(examples_to_send) < send_raw_data_examples_amount
-                and result.raw_data is not None
-            ):
-                examples_to_send.add_example(
-                    result.did_entity_pass_selector,
-                    self._get_raw_data_for_example(
-                        result.raw_data, mapping.port.items_to_parse_name
-                    ),
-                )
 
             if result.entity.get("identifier") and result.entity.get("blueprint"):
                 parsed_entity = Entity.parse_obj(result.entity)
@@ -348,8 +302,6 @@ class JQEntityProcessor(BaseEntityProcessor):
             missing_required_fields,
             entity_mapping_fault_counter,
         )
-
-        await self._send_examples(examples_to_send.get_examples(), mapping.kind)
 
         return CalculationResult(
             EntitySelectorDiff(passed=passed_entities, failed=failed_entities),
