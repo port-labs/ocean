@@ -8,8 +8,12 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from port_ocean.ocean import Ocean
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.models import (
+    EntityMapping,
+    MappingsConfig,
     PortAppConfig,
+    PortResourceConfig,
     ResourceConfig,
+    Selector,
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin
 from port_ocean.core.handlers.entities_state_applier.port.applier import (
@@ -1035,6 +1039,93 @@ async def test_multiple_on_resync_start_on_resync_complete_hooks_called_in_order
         "on_resync_complete1",
         "on_resync_complete2",
     ], "Hooks were not called in the correct order"
+
+
+@pytest.mark.asyncio
+async def test_kind_examples_sent_before_transformation_even_when_mapping_fails(
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin,
+    mock_ocean: Ocean,
+) -> None:
+    """
+    Integration test: Verify that kind examples are sent BEFORE transformation,
+    so users can see raw data even when the mapping completely fails.
+
+    Scenario:
+    - Raw data has users with 'name' and 'email' fields
+    - Mapping tries to use '.nonexistent_field' as identifier (doesn't exist)
+    - Transformation should fail (no valid entities created)
+    - BUT examples should still be sent to Port
+    """
+    # Create a resource config with a broken mapping (identifier field doesn't exist)
+    broken_resource_config = ResourceConfig(
+        kind="users",
+        selector=Selector(query="true"),
+        port=PortResourceConfig(
+            entity=MappingsConfig(
+                mappings=EntityMapping(
+                    identifier=".nonexistent_field",  # This field doesn't exist in raw data
+                    title=".name",
+                    blueprint='"user"',
+                    properties={"email": ".email"},
+                    relations={},
+                )
+            )
+        ),
+    )
+
+    broken_app_config = PortAppConfig(
+        enable_merge_entity=True,
+        delete_dependent_entities=True,
+        create_missing_related_entities=False,
+        resources=[broken_resource_config],
+    )
+
+    # Raw data - users with name and email, but NO .nonexistent_field
+    raw_results = [
+        {"name": "John Doe", "email": "john@example.com"},
+        {"name": "Jane Smith", "email": "jane@example.com"},
+        {"name": "Bob Wilson", "email": "bob@example.com"},
+    ]
+
+    # Mock the port client's ingest_integration_kind_examples method
+    mock_ocean.port_client.ingest_integration_kind_examples = AsyncMock()  # type: ignore
+
+    # Enable sending raw data examples
+    mock_ocean.config.send_raw_data_examples = True
+
+    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+        event.port_app_config = broken_app_config
+
+        # Call _register_resource_raw which will process the data
+        result = await mock_sync_raw_mixin_with_jq_processor._register_resource_raw(
+            broken_resource_config,
+            raw_results,
+            UserAgentType.exporter,
+            send_raw_data_examples_amount=2,  # Request 2 examples
+        )
+
+        # KEY ASSERTION: Examples should be sent even though transformation failed
+        mock_ocean.port_client.ingest_integration_kind_examples.assert_called_once()
+
+        # Verify the examples contain the raw data
+        call_args = mock_ocean.port_client.ingest_integration_kind_examples.call_args
+        kind_arg = call_args[0][0]
+        examples_arg = call_args[0][1]
+
+        assert kind_arg == "users", "Kind should be 'users'"
+        assert len(examples_arg) == 2, "Should send 2 examples as requested"
+        assert examples_arg[0] == {"name": "John Doe", "email": "john@example.com"}
+        assert examples_arg[1] == {"name": "Jane Smith", "email": "jane@example.com"}
+
+        # Verify transformation failed (no entities created because .nonexistent_field doesn't exist)
+        assert (
+            len(result.entity_selector_diff.passed) == 0
+        ), "No entities should pass because identifier mapping failed"
+
+        # Verify misconfigurations were detected
+        assert (
+            "identifier" in result.misconfigured_entity_keys
+        ), "Should report identifier as misconfigured"
 
 
 @pytest.mark.asyncio
