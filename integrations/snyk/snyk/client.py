@@ -4,7 +4,8 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from httpx import URL, Timeout
 from loguru import logger
-from port_ocean.utils import http_async_client
+from port_ocean.helpers.retry import RetryConfig
+from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from aiolimiter import AsyncLimiter
 from snyk.utils import enrich_batch_with_org
@@ -45,7 +46,13 @@ class SnykClient:
         self.group_ids = group_ids
         self.rest_api_url = f"{api_url}/rest"
         self.webhook_secret = webhook_secret
-        self.http_client = http_async_client
+        retry_config = RetryConfig(
+            retryable_methods=[
+                "POST",
+                "GET",
+            ],
+        )
+        self.http_client = OceanAsyncClient(retry_config=retry_config)
         self.http_client.headers.update(self.api_auth_header)
         self.http_client.timeout = Timeout(30)
         self.snyk_api_version = "2024-06-21"
@@ -166,7 +173,6 @@ class SnykClient:
     @cache_iterator_result()
     async def get_paginated_projects(
         self,
-        target_id: Optional[str] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         all_organizations = await self.get_organizations_in_groups()
         for org in all_organizations:
@@ -181,10 +187,7 @@ class SnykClient:
             async for projects in self._get_paginated_resources(
                 url_path=url, query_params=query_params
             ):
-                projects_to_yield = self._get_projects_by_target(
-                    projects, target_id=target_id
-                )
-                yield enrich_batch_with_org(projects_to_yield, org)
+                yield enrich_batch_with_org(projects, org)
 
     async def get_single_target_by_project_id(
         self, org_id: str, project_id: str
@@ -204,8 +207,10 @@ class SnykClient:
             return {}
 
         target = response["data"]
-        async for projects_data_of_target in self.get_paginated_projects(target["id"]):
-            target.setdefault("__projects", []).extend(projects_data_of_target)
+        async for projects in self.get_paginated_projects():
+            target.setdefault("__projects", []).extend(
+                self._get_projects_by_target(projects, target["id"])
+            )
         return target
 
     async def get_paginated_targets(
@@ -222,11 +227,9 @@ class SnykClient:
             ):
                 targets_with_project_data = []
                 for target_data in targets:
-                    async for projects_data_of_target in self.get_paginated_projects(
-                        target_data["id"]
-                    ):
+                    async for projects in self.get_paginated_projects():
                         target_data.setdefault("__projects", []).extend(
-                            projects_data_of_target
+                            self._get_projects_by_target(projects, target_data["id"])
                         )
                     targets_with_project_data.append(target_data)
                 yield targets_with_project_data

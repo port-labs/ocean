@@ -13,7 +13,6 @@ from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import IntegrationFeatureFlag
 from port_ocean.exceptions.execution_manager import (
     DuplicateActionExecutorError,
     PartitionKeyNotFoundError,
@@ -132,13 +131,6 @@ class ExecutionManager:
         """
         Start polling and processing action runs for all registered actions.
         """
-        flags = await ocean.port_client.get_organization_feature_flags()
-        if IntegrationFeatureFlag.OCEAN_ACTIONS_PROCESSING_ENABLED not in flags:
-            logger.warning(
-                "Actions processing is not allowed for your organization, skipping actions processing"
-            )
-            return
-
         if not await ocean.port_client.auth.is_machine_user():
             logger.warning(
                 "Actions processing is allowed only for machine users, skipping actions processing"
@@ -423,7 +415,7 @@ class ExecutionManager:
                     elapsed_ms=(time.monotonic() - start_time) * 1000,
                 )
             except Exception as e:
-                logger.exception("Error executing run", error=e)
+                logger.exception("Error executing run")
                 error_summary = f"Failed to execute run: {str(e)}"
 
             if error_summary:

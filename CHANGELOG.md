@@ -6,6 +6,69 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.31.1 (2025-12-04)
+
+### Bug Fixes
+
+- Fixed logger.exception() call in execution manager to properly capture exceptions without interfering with automatic exception capture
+
+
+## 0.31.0 (2025-12-03)
+
+### Improvements
+
+- Remove multi-threading from ocean core.
+
+
+## 0.30.7 (2025-12-03)
+
+### Improvements
+
+- Make mapping errors have error log instead of info
+
+
+## 0.30.6 (2025-11-27)
+
+### Improvements
+
+- `cache_iterator_result` preserves the chunks that got inserted.
+
+## 0.30.5 (2025-11-27)
+
+### Bug Fixes
+
+-  Fix delete target logic for complex items_to_parse jq expressions
+-  Fix items_to_parse with yield_items_to_parse enabled item construction
+
+## 0.30.4 (2025-11-26)
+- Updated upsert (load) metrics to be calculated directly from response
+- Updated log on duplicate count
+
+## 0.30.3 (2025-11-25)
+
+### Improvements
+
+-  Add StreamingWrapper to core
+
+## 0.30.2 (2025-11-24)
+
+### Improvements
+
+- Fixed NOT recreating blueprints if they exist under different name
+
+
+## 0.30.1 (2025-11-23)
+
+### Improvements
+
+- Add support to use '' in jq filters
+
+## 0.30.0 (2025-11-23)
+
+### Improvements
+
+- Expose actions processing capability without feature flag
+
 
 ## 0.29.10 (2025-11-20)
 

@@ -11,7 +11,7 @@ resources:
         mappings:
           identifier: .id | gsub(" "; "")
           title: .name
-          blueprint: '"project"'
+          blueprint: '"azureDevopsProject"'
           properties:
             state: .state
             revision: .revision
@@ -24,24 +24,39 @@ resources:
     port:
       entity:
         mappings:
-          identifier: >-
-            "\(.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.name | ascii_downcase | gsub("[ ();]"; ""))"
+          identifier: .id
           title: .name
-          blueprint: '"service"'
+          blueprint: '"azureDevopsRepository"'
           properties:
             url: .remoteUrl
             readme: file://README.md
           relations:
             project: .project.id | gsub(" "; "")
+  - kind: folder
+    selector:
+      query: "true"
+      folders:
+        - path: "*/*"
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))/\(.path)"
+          title: .path
+          blueprint: '"service"'
+          properties:
+            url: .__repository.remoteUrl + "?path=/" + .path
+            readme: file://README.md
+          relations:
+            project: .__repository.project.id | gsub(" "; "")
   - kind: repository-policy
     selector:
       query: .type.displayName=="Minimum number of reviewers"
     port:
       entity:
         mappings:
-          identifier: >-
-            "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"
-          blueprint: '"service"'
+          identifier: .__repository.id
+          blueprint: '"azureDevopsRepository"'
           properties:
             minimumApproverCount: .settings.minimumApproverCount
   - kind: repository-policy
@@ -50,9 +65,8 @@ resources:
     port:
       entity:
         mappings:
-          identifier: >-
-            "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"
-          blueprint: '"service"'
+          identifier: .__repository.id
+          blueprint: '"azureDevopsRepository"'
           properties:
             workItemLinking: .isEnabled and .isBlocking
   - kind: board
@@ -63,7 +77,7 @@ resources:
         mappings:
           identifier: .id | gsub(" "; "")
           title: .name
-          blueprint: '"board"'
+          blueprint: '"azureDevopsBoard"'
           properties:
             link: .url
           relations:
@@ -75,9 +89,9 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id | tostring
+          identifier: .__project.id + "/" + (.id | tostring) | gsub(" "; "")
           title: .fields."System.Title"
-          blueprint: '"workItem"'
+          blueprint: '"azureDevopsWorkItem"'
           properties:
             type: .fields."System.WorkItemType"
             state: .fields."System.State"
@@ -100,9 +114,9 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .__stateType+"-"+.name+"-"+.__board.__project.id | gsub(" "; "")
+          identifier: .__stateType + "/" +.name+ "/"+.__board.__project.id | gsub(" "; "")
           title: .name
-          blueprint: '"column"'
+          blueprint: '"azureDevopsColumn"'
           relations:
             board: .__board.id | gsub(" "; "")
   - kind: release
@@ -111,9 +125,9 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .projectReference.id + "-" + (.id | tostring) | gsub(" "; "")
+          identifier: .projectReference.id + "/" + (.id | tostring) | gsub(" "; "")
           title: .name
-          blueprint: '"release"'
+          blueprint: '"azureDevopsRelease"'
           properties:
             status: .status
             reason: .reason
@@ -125,3 +139,39 @@ resources:
             link: ._links.web.href | gsub("_release?releaseId="; "")
           relations:
             project: .projectReference.id | gsub(" "; "")
+  - kind: file
+    selector:
+      query: 'true'
+      files:
+        path: '**/CODEOWNERS'
+    port:
+      itemsToParse: >-
+        (. as $root | .file.content.raw | split("\n") |
+        map(gsub("^[[:space:]]+|[[:space:]]+$"; "")) |
+        map(select((test("^[[:space:]]*#") | not) and (length > 0))) | map(
+            (split(" ") | map(select(length > 0))) as $tokens
+            | {
+                scope: ($tokens[0]),
+                identifier: ($tokens[0]
+                          | gsub("\\*\\*"; "doublestar")
+                          | gsub("\\*"; "star")),
+                users: ($tokens[1:] | map(select(contains("/") | not) | gsub("@"; ""))),
+                teams: ($tokens[1:] | map(select(test("^@[^ ]+/[^ ]+$")) | split("/") | .[-1])),
+                repoName: $root.repo.name,
+                projectName: $root.repo.project.name,
+                filePath: $root.file.path
+            }
+          )
+        )
+      entity:
+        mappings:
+          identifier: (.item.projectName | ascii_downcase | gsub("[ ();]"; "")) + "/" + (.item.repoName | ascii_downcase | gsub("[ ();]"; "")) + "_" + .item.identifier + "_codeowners"
+          title: .item.scope + " codeowners"
+          blueprint: '"azureDevopsCodeowners"'
+          properties:
+            scope: .item.scope
+            location: .item.filePath
+            users: .item.users
+            teams: .item.teams
+          relations:
+            service: (.item.projectName | ascii_downcase | gsub("[ ();]"; "")) + "/" + (.item.repoName | ascii_downcase | gsub("[ ();]"; ""))

@@ -7,6 +7,131 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.2 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.1
+
+
+## 0.6.1 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.0
+
+
+## 0.6.0 (2025-12-01)
+
+
+### Features
+
+- Added folder kind to integration default with wildcard pattern support
+- Added support for syncing folders from all repositories when repos are not specified
+- Made `project_name` and `repos` optional in folder selector configuration
+- Added support for flexible repository selection: all projects, specific project, or specific repos
+
+
+## 0.5.1 (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
+## 0.5.0 (2025-11-17)
+
+
+### Improvements
+
+- Added support for ingesting CODEOWNERS files in the default mapping
+
+
+## 0.4.44 (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
+## 0.4.43 (2025-11-28)
+
+
+### Improvements
+
+- Use Azure DevOps service `.id` as `identifier` for `repository` kind to ensure stable, unique keys and avoid normalization issues during resync and live events.
+- Update identifiers for repository-policy, work-item and release in default mapping
+
+
+## 0.4.42 (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 0.4.41 (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 0.4.40 (2025-11-25)
+
+
+### Features
+
+- Added support for `min_time_in_days` selector option in pull request kind
+- Added support for `max_results` selector option for closed pull requests
+
+
+## 0.4.39 (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 0.4.38 (2025-11-24)
+
+
+### Improvements
+
+- Enrich Pipeline Deployments with Project Data
+
+
+## 0.4.37 (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 0.4.36 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.4.35 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
 ## 0.4.34 (2025-11-23)
 
 
