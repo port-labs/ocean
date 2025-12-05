@@ -136,9 +136,6 @@ async def process_folder_patterns(
     if repo_names is not None and not repo_names:
         return
 
-    if "role" in params:
-        params["role"] = params["role"]
-
     pattern_by_repo, global_patterns = create_pattern_mapping(folder_patterns)
 
     # If repos are specified, process those repos with their specific patterns + global patterns

@@ -37,8 +37,8 @@ def _build_repo_params(config: BitbucketAppConfig) -> dict[str, Any]:
     params: dict[str, Any] = {}
     if config.repo_filter.role:
         params["role"] = config.repo_filter.role
-    if config.repo_filter.q:
-        params["q"] = config.repo_filter.q.strip()
+    if config.repo_filter.repo_query_filter:
+        params["q"] = config.repo_filter.repo_query_filter.strip()
     return params
 
 

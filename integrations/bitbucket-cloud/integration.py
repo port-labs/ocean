@@ -8,7 +8,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 from bitbucket_cloud.entity_processors.file_entity_processor import FileEntityProcessor
-from typing import Any, Literal, Type
+from typing import Any, Literal, Type, Optional
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from pydantic import BaseModel, Field, validator
 from port_ocean.core.handlers.port_app_config.models import (
@@ -38,22 +38,22 @@ class RepositoryBranchMapping(BaseModel):
 
 
 class RepositoryMapping(BaseModel):
-    role: str = Field(
-        default="",
+    role: Optional[Literal["member", "contributor", "admin", "owner"]] = Field(
+        default=None,
         alias="role",
         description="Filter repositories by authenticated user's role: member, contributor, admin, or owner",
     )
-    q: str = Field(
-        default="",
-        alias="q",
+    repo_query_filter: Optional[str] = Field(
+        default=None,
+        alias="repoQueryFilter",
         description='Query string to narrow repositories as per Bitbucket filtering (e.g., name="my-repo")',
     )
 
     @validator("role")
-    def validate_role(cls, value: str) -> str:
+    def validate_role(cls, value: Optional[str]) -> Optional[str]:
         """Validate role value to ensure it's one of the allowed values from Bitbucket API."""
         valid_roles = ["member", "contributor", "admin", "owner"]
-        if value not in valid_roles:
+        if value is not None and value not in valid_roles:
             raise ValueError(f"role must be one of {valid_roles}, got {value} instead")
         return value
 
