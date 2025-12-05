@@ -380,3 +380,73 @@ class TestJQEntityProcessor:
             "{'blueprint': '.bar', 'identifier': '.foo'} (null, missing, or misconfigured)"
             in logs_captured
         )
+
+    async def test_examples_sent_even_when_transformation_fails(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """
+        Test that kind examples are sent BEFORE transformation, so users can see
+        raw data even when the mapping fails completely.
+
+        Scenario: Raw data has user objects with 'name' and 'email', but the mapping
+        tries to use '.test' as identifier (which doesn't exist). Transformation
+        should fail, but examples should still be sent.
+        """
+        mapping = Mock()
+        mapping.kind = "users"
+        mapping.port.entity.mappings.dict.return_value = {
+            "identifier": ".test",  # This field doesn't exist in raw data
+            "blueprint": '"user"',
+            "properties": {
+                "name": ".name",
+                "email": ".email",
+            },
+        }
+        mapping.port.items_to_parse = None
+        mapping.port.items_to_parse_name = "item"
+        mapping.selector.query = "true"
+
+        # Raw data - users with name and email, but NO .color field
+        raw_results = [
+            {"name": "John Doe", "email": "john@example.com"},
+            {"name": "Jane Smith", "email": "jane@example.com"},
+            {"name": "Bob Wilson", "email": "bob@example.com"},
+        ]
+
+        with patch(
+            "port_ocean.core.handlers.entity_processor.jq_entity_processor.JQEntityProcessor._send_examples"
+        ) as mock_send_examples:
+            result = await mocked_processor._parse_items(
+                mapping, raw_results, send_raw_data_examples_amount=2
+            )
+
+            # Verify examples were sent (this is the key assertion)
+            assert (
+                mock_send_examples.await_args is not None
+            ), "Examples should be sent even when transformation fails"
+
+            # Verify the raw data was sent as examples
+            args, _ = mock_send_examples.await_args
+            examples_sent = cast(list[Any], args[0])
+            assert len(examples_sent) == 2, "Should send requested number of examples"
+
+            # Verify examples contain the raw data
+            assert examples_sent[0] == {"name": "John Doe", "email": "john@example.com"}
+            assert examples_sent[1] == {
+                "name": "Jane Smith",
+                "email": "jane@example.com",
+            }
+
+            # Verify the kind was passed correctly
+            kind_arg = args[1]
+            assert kind_arg == "users"
+
+            # Verify transformation failed (no entities created because .color doesn't exist)
+            assert (
+                len(result.entity_selector_diff.passed) == 0
+            ), "No entities should pass because identifier mapping failed"
+
+            # Verify misconfigurations were detected
+            assert (
+                "identifier" in result.misconfigured_entity_keys
+            ), "Should report identifier as misconfigured"
