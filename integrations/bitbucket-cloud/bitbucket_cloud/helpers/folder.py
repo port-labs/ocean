@@ -136,13 +136,17 @@ async def process_folder_patterns(
     if repo_names is not None and not repo_names:
         return
 
+    if "role" in params:
+        params["role"] = params["role"]
+
     pattern_by_repo, global_patterns = create_pattern_mapping(folder_patterns)
 
     # If repos are specified, process those repos with their specific patterns + global patterns
     if repo_names is not None:
-        async for repos_batch in client.get_repositories(
-            params={"q": f"name IN ({','.join(f'"{name}"' for name in repo_names)})"}
-        ):
+        name_filter = f"name IN ({','.join(f'"{name}"' for name in repo_names)})"
+        q_param = f"{name_filter} AND ({params['q']})" if "q" in params else name_filter
+        params["q"] = q_param
+        async for repos_batch in client.get_repositories(params=params):
             for repo in repos_batch:
                 async for matching_folders in process_repo_folders(
                     repo, pattern_by_repo, global_patterns, client
@@ -153,7 +157,7 @@ async def process_folder_patterns(
     if global_patterns:
         # If we already processed specific repos, we need to process the remaining repos with global patterns
         if repo_names is not None:
-            async for repos_batch in client.get_repositories():
+            async for repos_batch in client.get_repositories(params=params):
                 for repo in repos_batch:
                     repo_name = repo["name"].replace(" ", "-")
                     # Skip repos that were already processed with specific patterns
