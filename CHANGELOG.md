@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.31.2 (2025-12-07)
+
+### Vulnerabilities
+
+- Ocean core: Fixed werkzeug & urllib3 vulnerabilities
+- Ocean docs: docusaurus, glob, js-yaml & node-forge
+
 ## 0.31.1 (2025-12-04)
 
 ### Bug Fixes
