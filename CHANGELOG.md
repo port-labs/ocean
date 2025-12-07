@@ -10,7 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Vulnerabilities
 
-- Ocean core: Fixed werkzeug & urllib3 vulnerabilties
+- Ocean core: Fixed werkzeug & urllib3 vulnerabilities
 - Ocean docs: docusaurus, glob, js-yaml & node-forge
 
 ## 0.31.1 (2025-12-04)
