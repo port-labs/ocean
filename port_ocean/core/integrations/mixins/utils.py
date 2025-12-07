@@ -8,6 +8,7 @@ import ijson
 from loguru import logger
 
 from port_ocean.clients.port.utils import _http_client as _port_http_client
+from port_ocean.context.resource import resource
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
@@ -109,8 +110,10 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
     batch_size = ocean.config.yield_items_to_parse_batch_size
 
     for item in result:
-        lean_item = await ocean.app.integration.entity_processor._search(item, jq_expression)
         items_to_parse_data = await ocean.app.integration.entity_processor._search(item, items_to_parse)
+        with resource as rc:
+            if rc.resource_config.port.items_to_parse_top_level_transform:
+                item = await ocean.app.integration.entity_processor._search(item, jq_expression)
         if not isinstance(items_to_parse_data, list):
             logger.warning(
                 f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items_to_parse_data)}."
@@ -122,7 +125,7 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
             if (len(batch) >= batch_size):
                 yield batch
                 batch = []
-            merged_item = {**lean_item}
+            merged_item = {**item}
             merged_item[items_to_parse_name] = items_to_parse_data.pop(0)
             batch.append(merged_item)
         if len(batch) > 0:
