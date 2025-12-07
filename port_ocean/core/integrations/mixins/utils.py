@@ -8,7 +8,7 @@ import ijson
 from loguru import logger
 
 from port_ocean.clients.port.utils import _http_client as _port_http_client
-from port_ocean.context.resource import resource
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
@@ -111,9 +111,8 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
 
     for item in result:
         items_to_parse_data = await ocean.app.integration.entity_processor._search(item, items_to_parse)
-        with resource as rc:
-            if rc.resource_config.port.items_to_parse_top_level_transform:
-                item = await ocean.app.integration.entity_processor._search(item, jq_expression)
+        if event.resource_config.port.items_to_parse_top_level_transform:
+            item = await ocean.app.integration.entity_processor._search(item, jq_expression)
         if not isinstance(items_to_parse_data, list):
             logger.warning(
                 f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items_to_parse_data)}."
