@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.3 (2025-12-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.2
+
+
+## 0.6.2 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.1
+
+
+## 0.6.1 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.0
+
+
+## 0.6.0 (2025-12-01)
+
+
+### Features
+
+- Added folder kind to integration default with wildcard pattern support
+- Added support for syncing folders from all repositories when repos are not specified
+- Made `project_name` and `repos` optional in folder selector configuration
+- Added support for flexible repository selection: all projects, specific project, or specific repos
+
+
+## 0.5.1 (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
+## 0.5.0 (2025-11-17)
+
+
+### Improvements
+
+- Added support for ingesting CODEOWNERS files in the default mapping
+
+
+## 0.4.44 (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
+## 0.4.43 (2025-11-28)
+
+
+### Improvements
+
+- Use Azure DevOps service `.id` as `identifier` for `repository` kind to ensure stable, unique keys and avoid normalization issues during resync and live events.
+- Update identifiers for repository-policy, work-item and release in default mapping
+
+
 ## 0.4.42 (2025-11-27)
 
 

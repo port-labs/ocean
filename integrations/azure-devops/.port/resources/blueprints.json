@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "project",
+    "identifier": "azureDevopsProject",
     "title": "Project",
     "icon": "AzureDevops",
     "schema": {
@@ -45,7 +45,7 @@
     "relations": {}
   },
   {
-    "identifier": "service",
+    "identifier": "azureDevopsRepository",
     "title": "Service",
     "icon": "AzureDevops",
     "schema": {
@@ -110,14 +110,14 @@
     "relations": {
       "project": {
         "title": "Project",
-        "target": "project",
+        "target": "azureDevopsProject",
         "required": false,
         "many": false
       }
     }
   },
   {
-    "identifier": "workItem",
+    "identifier": "azureDevopsWorkItem",
     "title": "Work Item",
     "icon": "AzureDevops",
     "schema": {
@@ -205,41 +205,21 @@
     "relations": {
       "project": {
         "title": "Project",
-        "target": "project",
+        "target": "azureDevopsProject",
         "required": true,
         "many": false
       },
       "column": {
         "title": "Column",
         "description": "The column the entity belongs",
-        "target": "column",
+        "target": "azureDevopsColumn",
         "required": true,
         "many": false
       }
     }
   },
   {
-    "identifier": "column",
-    "title": "Column",
-    "icon": "AzureDevops",
-    "schema": {
-      "properties": {},
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
-      "board": {
-        "title": "board",
-        "target": "board",
-        "required": true,
-        "many": false
-      }
-    }
-  },
-  {
-    "identifier": "board",
+    "identifier": "azureDevopsBoard",
     "title": "Board",
     "icon": "AzureDevops",
     "schema": {
@@ -260,14 +240,34 @@
     "relations": {
       "project": {
         "title": "Project",
-        "target": "project",
+        "target": "azureDevopsProject",
         "required": true,
         "many": false
       }
     }
   },
   {
-    "identifier": "release",
+    "identifier": "azureDevopsColumn",
+    "title": "Column",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {},
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "board": {
+        "title": "board",
+        "target": "azureDevopsBoard",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "azureDevopsRelease",
     "title": "Release",
     "icon": "AzureDevops",
     "schema": {
@@ -328,8 +328,52 @@
     "relations": {
       "project": {
         "title": "Project",
-        "target": "project",
+        "target": "azureDevopsProject",
         "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "azureDevopsCodeowners",
+    "description": "This blueprint represents a CODEOWNERS file in an Azure DevOps repository",
+    "title": "Azure DevOps Codeowners",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "location": {
+          "type": "string",
+          "title": "File location",
+          "description": "File path to CODEOWNERS file"
+        },
+        "scope": {
+          "icon": "AzureDevops",
+          "type": "string",
+          "title": "Scope",
+          "description": "The scope which the user/team owns"
+        },
+        "users": {
+          "type": "array",
+          "title": "Users",
+          "description": "Users who own this scope"
+        },
+        "teams": {
+          "type": "array",
+          "title": "Teams",
+          "description": "Teams who own this scope"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "service": {
+        "title": "Service",
+        "description": "The repository which the CODEOWNERS file resides in",
+        "target": "service",
+        "required": false,
         "many": false
       }
     }
