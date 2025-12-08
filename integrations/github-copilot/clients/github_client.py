@@ -112,26 +112,6 @@ class GitHubClient:
         ):
             yield seats
 
-    async def get_seat_assignment_for_user(
-        self, organization: dict[str, Any], username: str
-    ) -> dict[str, Any] | None:
-        """Get Copilot seat assignment details for a specific user.
-
-        Returns individual user's seat details, activity, and assigning team.
-        """
-        url = self._resolve_route_params(
-            GithubEndpoints.COPILOT_USER_SEAT.value,
-            {"org": organization["login"], "username": username},
-        )
-        return await self.send_api_request(
-            "get",
-            url,
-            ignore_status_code=[
-                self.copilot_disabled_status_code,
-                self.forbidden_status_code,
-            ],
-        )
-
     async def _get_paginated_data(
         self,
         url: str,
