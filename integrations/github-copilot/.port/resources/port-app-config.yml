@@ -77,3 +77,55 @@ resources:
               [.copilot_ide_chat.editors[]?.total_engaged_users // 0]
               | map(select(. != null)) | add
             git_hub_org: .__organization.login
+  - kind: copilot-organization-billing
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .__organization.login
+          title: (.__organization.login + " Copilot Billing")
+          blueprint: '"github_copilot_billing"'
+          properties:
+            organization: .__organization.login
+            seat_breakdown: .seat_breakdown
+            total_seats: .seat_breakdown.total
+            active_seats: .seat_breakdown.active_this_cycle
+            inactive_seats: .seat_breakdown.inactive_this_cycle
+            added_this_cycle: .seat_breakdown.added_this_cycle
+            pending_invitation: .seat_breakdown.pending_invitation
+            pending_cancellation: .seat_breakdown.pending_cancellation
+            seat_management_setting: .seat_management_setting
+            ide_chat: .ide_chat
+            platform_chat: .platform_chat
+            cli: .cli
+            public_code_suggestions: .public_code_suggestions
+            plan_type: .plan_type
+  - kind: copilot-seat-assignments
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: (.__organization.login + "-" + .assignee.login)
+          title: (.assignee.login + " Copilot Seat")
+          blueprint: '"github_copilot_seat"'
+          properties:
+            organization: .__organization.login
+            username: .assignee.login
+            user_id: .assignee.id
+            user_type: .assignee.type
+            user_avatar_url: .assignee.avatar_url
+            user_url: .assignee.html_url
+            created_at: .created_at
+            updated_at: .updated_at
+            pending_cancellation_date: .pending_cancellation_date
+            last_activity_at: .last_activity_at
+            last_activity_editor: .last_activity_editor
+            last_authenticated_at: .last_authenticated_at
+            plan_type: .plan_type
+            assigning_team_name: .assigning_team.name
+            assigning_team_slug: .assigning_team.slug
+            assigning_team_url: .assigning_team.html_url
+          relations:
+            billing: .__organization.login
