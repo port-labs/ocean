@@ -67,15 +67,21 @@ async def on_projects_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.on_resync(IntegrationKind.ISSUE)
-async def on_issues_resync(kind: str) -> list[dict[str, Any]]:
+async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     snyk_client = init_client()
-    all_issues: list[dict[str, Any]] = []
+    seen_issue_ids: set[str] = set()
 
     logger.warning(
         "This kind will be deprecated at the end of Q3, in favour of our new data model for Snyk resources. This change is necessary because Snyk has announced a migration and end of life of their v1 API to focus on their REST API. Refer to our documentation for more information: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/snyk/#issue"
     )
 
-    async for projects in snyk_client.get_paginated_projects():
+    all_organizations = await snyk_client.get_organizations_in_groups()
+    project_tasks = (
+        snyk_client.get_paginated_projects(org) for org in all_organizations
+    )
+
+    async for projects in stream_async_iterators_tasks(*project_tasks):
+        unique_issues: list[dict[str, Any]] = []
         logger.debug(
             f"Received batch with {len(projects)} projects, getting their issues parallelled"
         )
@@ -85,9 +91,12 @@ async def on_issues_resync(kind: str) -> list[dict[str, Any]]:
         ]
         project_issues_list = await asyncio.gather(*tasks)
         logger.info("Gathered all project issues of projects in batch")
-        all_issues.extend(sum(project_issues_list, []))
+        for issue in sum(project_issues_list, []):
+            if issue["id"] not in seen_issue_ids:
+                seen_issue_ids.add(issue["id"])
+                unique_issues.append(issue)
 
-    return list({issue["id"]: issue for issue in all_issues}.values())
+        yield unique_issues
 
 
 @ocean.on_resync(IntegrationKind.VULNERABILITY)
