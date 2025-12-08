@@ -15,7 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enriched resources with `__url` field in the client and updated default mappings to use `.__url` instead of constructing URLs from environment variables
 
 
-## 0.1.168 (2025-12-08)
+# 0.1.169 (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.4
+
+
+# 0.1.168 (2025-12-08)
 
 
 ### Improvements
