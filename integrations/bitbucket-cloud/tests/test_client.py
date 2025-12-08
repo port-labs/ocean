@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
-from typing import Any, AsyncIterator, Generator
-from bitbucket_cloud.client import BitbucketClient
+from typing import Any, AsyncIterator, Generator, AsyncGenerator
+from bitbucket_cloud.client import BitbucketClient, PULL_REQUEST_PAGE_SIZE
 from bitbucket_cloud.helpers.token_manager import TokenManager
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 from bitbucket_cloud.webhook_processors.options import PullRequestSelectorOptions
@@ -257,7 +257,7 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
     """Test getting pull requests."""
     mock_data = {"values": [{"id": 1, "title": "Test PR"}]}
 
-    async with event_context("test_event"):
+    async with event_context("test_get_pull_requests"):
         with patch.object(
             mock_client, "_fetch_paginated_api_with_rate_limiter"
         ) as mock_paginated:
@@ -271,7 +271,7 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
                 assert prs == mock_data["values"]
             mock_paginated.assert_called_once_with(
                 f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
-                params={"state": "OPEN", "pagelen": 50},
+                params={"state": ["OPEN"], "pagelen": 50},
             )
 
 
@@ -479,3 +479,41 @@ async def test_client_init_with_invalid_workspace_tokens() -> None:
             host="https://api.bitbucket.org/2.0",
             workspace_token="",
         )
+
+
+@pytest.mark.asyncio
+async def test_get_pull_requests_multiple_states(mock_client: BitbucketClient) -> None:
+    """Test getting pull requests with multiple states (including the single-state edge case)."""
+    mock_data = {"values": [{"id": 1, "title": "Test PR"}]}
+
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client,
+            "_fetch_paginated_api_with_rate_limiter",
+            autospec=True,
+        ) as mock_paginated:
+
+            async def mock_generator() -> AsyncGenerator[list[dict[str, Any]], None]:
+                yield mock_data["values"]
+
+            mock_paginated.return_value = mock_generator()
+
+            options_single = PullRequestSelectorOptions(states=["OPEN"])
+            async for prs in mock_client.get_pull_requests("test-repo", options_single):
+                assert prs == mock_data["values"]
+
+            options_multi = PullRequestSelectorOptions(states=["OPEN", "MERGED"])
+            async for prs in mock_client.get_pull_requests("test-repo", options_multi):
+                assert prs == mock_data["values"]
+
+            mock_paginated.assert_any_call(
+                f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
+                params={"pagelen": PULL_REQUEST_PAGE_SIZE, "state": ["OPEN"]},
+            )
+
+            mock_paginated.assert_any_call(
+                f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
+                params={"pagelen": PULL_REQUEST_PAGE_SIZE, "state": ["OPEN", "MERGED"]},
+            )
+
+            assert mock_paginated.call_count == 2

@@ -252,8 +252,10 @@ class BitbucketClient:
         self, repo_slug: str, options: PullRequestSelectorOptions
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get pull requests for a repository."""
-        params: dict[str, Any] = {"pagelen": PULL_REQUEST_PAGE_SIZE}
-        params.update({"state": state for state in options["states"]})
+        params: dict[str, Any] = {
+            "pagelen": PULL_REQUEST_PAGE_SIZE,
+            "state": options["states"],
+        }
 
         async for pull_requests in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests",
