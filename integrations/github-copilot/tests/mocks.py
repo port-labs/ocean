@@ -191,11 +191,7 @@ copilot_billing_response = {
         "inactive_this_cycle": 11,
     },
     "seat_management_setting": "assign_selected",
-    "ide_chat": "enabled",
-    "platform_chat": "enabled",
-    "cli": "enabled",
     "public_code_suggestions": "block",
-    "plan_type": "business",
 }
 
 copilot_seat_assignments_response = {

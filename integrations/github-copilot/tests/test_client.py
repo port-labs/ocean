@@ -177,7 +177,7 @@ async def test_get_billing_info_for_organization(github_client: GitHubClient) ->
         )
         assert result == expected_response
         assert result["seat_breakdown"]["total"] == 12
-        assert result["plan_type"] == "business"
+        assert result["seat_management_setting"] == "assign_selected"
 
 
 @pytest.mark.asyncio
