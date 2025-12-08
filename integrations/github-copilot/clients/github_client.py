@@ -73,7 +73,7 @@ class GitHubClient:
 
     async def get_billing_info_for_organization(
         self, organization: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any] | list[Any]:
         """Get Copilot seat information and settings for an organization.
 
         Returns seat breakdown, management settings, and feature policies.
