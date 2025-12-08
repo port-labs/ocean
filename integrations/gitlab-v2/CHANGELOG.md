@@ -13,9 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Added support for filtering issues by `updated_after`, `state`, `non_archived`, `labels` and `issue_type` selectors
-- Added support for filtering groups by active status using `include_active_groups` selector in `group` kind
-- Added support for filtering projects by active status using `include_active_projects` selector in `project` kind
-- Extended `issue`, `group-with-members`, `file` and `merge-request` kinds to support `include_active_groups` selector from the `group` kind
+- Added support for filtering groups by active status using `include_only_active_groups` selector in `group` kind
+- Added support for filtering projects by active status using `include_only_active_projects` selector in `project` kind
+- Extended `folder` kind to support `include_only_active_projects` selector
+- Extended `issue`, `group-with-members`, `file` and `merge-request` kinds to support `include_only_active_groups` selector
 
 
 ## 0.5.2 (2025-12-08)
