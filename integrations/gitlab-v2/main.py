@@ -347,17 +347,34 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         repos = folder_selector.repos
 
         if not repos:
+            # If no repos specified, sync folders from all projects
             logger.info(
-                f"No repositories specified for path {path}; skipping folder resync"
+                f"No repositories specified for path {path}; syncing from all projects"
             )
-            continue
-
-        for repo in repos:
-            async for folders_batch in client.get_repository_folders(
-                path=path, repository=repo.name, branch=repo.branch
+            async for projects_batch in client.get_projects(
+                params=_build_visibility_params(),
+                max_concurrent=DEFAULT_MAX_CONCURRENT,
+                include_languages=False,
             ):
-                logger.info(f"Found batch of {len(folders_batch)} matching folders")
-                yield folders_batch
+                for project in projects_batch:
+                    async for folders_batch in client.get_repository_folders(
+                        path=path,
+                        repository=project["path_with_namespace"],
+                        branch=None,
+                    ):
+                        if folders_batch:
+                            logger.info(
+                                f"Found {len(folders_batch)} folders in {project['path_with_namespace']}"
+                            )
+                            yield folders_batch
+        else:
+            # Process specific repos
+            for repo in repos:
+                async for folders_batch in client.get_repository_folders(
+                    path=path, repository=repo.name, branch=repo.branch
+                ):
+                    logger.info(f"Found batch of {len(folders_batch)} matching folders")
+                    yield folders_batch
 
 
 ocean.add_webhook_processor("/hook/{group_id}", GroupWebhookProcessor)

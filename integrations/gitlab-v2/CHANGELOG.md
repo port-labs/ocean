@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.4.5 (2025-12-08)
+## 0.5.3 (2025-12-08)
 
 
 ### Features
@@ -16,6 +16,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for filtering groups by active status using `include_active_groups` selector in `group` kind
 - Added support for filtering projects by active status using `include_active_projects` selector in `project` kind
 - Extended `issue`, `group-with-members`, `file` and `merge-request` kinds to support `include_active_groups` selector from the `group` kind
+
+
+
+## 0.5.2 (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.4
+
+
+## 0.5.1 (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.3
+
+
+## 0.5.0 (2025-11-28)
+
+
+### Improvements
+
+- Added support for syncing folders from specific repositories and branches
+- Added folder kind to integration default
 
 
 ## 0.4.4 (2025-12-07)
