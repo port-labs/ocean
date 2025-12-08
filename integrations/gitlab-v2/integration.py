@@ -126,7 +126,7 @@ class FolderPattern(BaseModel):
     )
 
 
-class GitlabFolderSelector(Selector):
+class GitlabFolderSelector(ProjectSelector):
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",

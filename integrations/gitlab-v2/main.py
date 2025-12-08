@@ -351,8 +351,9 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.info(
                 f"No repositories specified for path {path}; syncing from all projects"
             )
+            include_active_projects = selector.include_active_projects
             async for projects_batch in client.get_projects(
-                params=_build_visibility_params(),
+                params=build_project_params(include_active_projects=include_active_projects),
                 max_concurrent=DEFAULT_MAX_CONCURRENT,
                 include_languages=False,
             ):
