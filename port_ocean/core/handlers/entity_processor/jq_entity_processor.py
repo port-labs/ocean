@@ -315,21 +315,13 @@ class JQEntityProcessor(BaseEntityProcessor):
         items_to_parse_name: str,
     ) -> dict[str, Any]:
         if isinstance(data, tuple):
-            try:
-                raw_data = json.loads(data[1])
-                return {
-                    **(
-                        data[0]
-                        if items_to_parse_name in data[0]
-                        else {items_to_parse_name: data[0]}
-                    ),
-                    **raw_data,
-                }
-            except json.JSONDecodeError:
-                logger.warning(f"Failed to decode json for raw data example: {data[1]}")
-                return {
-                    "context": data[0],
-                    "error": "failed to decode json",
-                    "raw": data[1],
-                }
+            raw_data = json.loads(data[1])
+            return {
+                **(
+                    data[0]
+                    if items_to_parse_name in data[0]
+                    else {items_to_parse_name: data[0]}
+                ),
+                **raw_data,
+            }
         return data
