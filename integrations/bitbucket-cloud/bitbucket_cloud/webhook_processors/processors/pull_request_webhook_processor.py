@@ -56,7 +56,7 @@ class PullRequestWebhookProcessor(_BitbucketAbstractWebhookProcessor):
             payload["repository"]["uuid"], options
         ):
             logger.info(
-                f"Pull request repository {payload['repository']['name']} does not match any of the repository filters in the selector: {options['repo_query']}. Skipping..."
+                f"Pull request repository {payload['repository']['name']} does not match any of the repository filters in the selector: {options}. Skipping..."
             )
             return WebhookEventRawResults(
                 updated_raw_results=[],
@@ -83,17 +83,23 @@ class PullRequestWebhookProcessor(_BitbucketAbstractWebhookProcessor):
     async def _check_repository_filter(
         self, repo_uuid: str, options: PullRequestSelectorOptions
     ) -> bool:
+        """
+        Check if the repository matches the repository filter.
+        """
         user_role = options["user_role"]
         repo_query = options["repo_query"]
-        if not user_role or not repo_query:
-            return True
-
-        repo = await self._webhook_client.get_repository(repo_uuid)
-        if not repo:
+        if not user_role and not repo_query:
             return True
 
         params: dict[str, Any] = build_repo_params(user_role, repo_query)
-        logger.info(f"Repository params: {params}")
-        if True:
-            return True
+        uuid_query = f'uuid="{repo_uuid}"'
+        params["q"] = (
+            f"({params['q']}) AND {uuid_query}" if "q" in params else uuid_query
+        )
+        logger.info(f"Repository filter check with params: {params}")
+
+        async for repositories in self._webhook_client.get_repositories(params=params):
+            # returns a list containing only the repository if it matches the filter
+            if repositories:
+                return True
         return False

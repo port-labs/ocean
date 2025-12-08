@@ -83,11 +83,13 @@ class TestPullRequestWebhookProcessor:
         """Test handling a pull request event."""
         # Arrange
         payload = {
-            "repository": {"uuid": "repo-123"},
+            "repository": {"uuid": "repo-123", "name": "test-repo"},
             "pullrequest": {"id": "pr-456", "state": "OPEN"},
         }
         resource_config = MagicMock()
         resource_config.selector.states = ["OPEN"]
+        resource_config.selector.user_role = None
+        resource_config.selector.repo_query = None
 
         webhook_client_mock.get_pull_request.return_value = {
             "id": "pr-456",
