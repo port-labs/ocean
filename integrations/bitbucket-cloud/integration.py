@@ -37,16 +37,24 @@ class RepositoryBranchMapping(BaseModel):
     )
 
 
-class RepositoryMapping(BaseModel):
-    role: Optional[Literal["member", "contributor", "admin", "owner"]] = Field(
+class RepositorySelector(Selector):
+    user_role: Optional[Literal["member", "contributor", "admin", "owner"]] = Field(
         default=None,
-        alias="role",
+        alias="userRole",
         description="Filter repositories by authenticated user's role: member, contributor, admin, or owner",
     )
-    query: Optional[str] = Field(
+    repo_query: Optional[str] = Field(
         default=None,
-        alias="query",
+        alias="repoQuery",
         description='Query string to narrow repositories as per Bitbucket filtering (e.g., name="my-repo")',
+    )
+
+
+class PullRequestSelector(RepositorySelector):
+    states: list[Literal["OPEN", "MERGED", "DECLINED", "SUPERSEDED"]] = Field(
+        default=["OPEN"],
+        alias="states",
+        description="Filter pull requests by state",
     )
 
 
@@ -63,7 +71,7 @@ class FolderPattern(BaseModel):
     )
 
 
-class BitbucketFolderSelector(Selector):
+class BitbucketFolderSelector(RepositorySelector):
     query: str = Field(default="", description="Query string to filter folders")
     folders: list[FolderPattern] = Field(
         default_factory=list,
@@ -110,18 +118,27 @@ class BitbucketFileResourceConfig(ResourceConfig):
     selector: BitbucketFileSelector
 
 
+class RepositoryResourceConfig(ResourceConfig):
+    kind: Literal["repository"]
+    selector: RepositorySelector
+
+
+class PullRequestResourceConfig(ResourceConfig):
+    kind: Literal["pull-request"]
+    selector: PullRequestSelector
+
+
 class BitbucketAppConfig(PortAppConfig):
     resources: list[
-        BitbucketFolderResourceConfig | BitbucketFileResourceConfig | ResourceConfig
+        BitbucketFolderResourceConfig
+        | BitbucketFileResourceConfig
+        | PullRequestResourceConfig
+        | RepositoryResourceConfig
+        | ResourceConfig
     ] = Field(
         default_factory=list,
         alias="resources",
         description="Specify the resources to include in the sync",
-    )
-    repo_filter: RepositoryMapping = Field(
-        default_factory=RepositoryMapping,
-        alias="repoFilter",
-        description="Filter repositories by a query string or authenticated user's role",
     )
 
 

@@ -6,6 +6,7 @@ from typing import Any, AsyncIterator, Generator
 from bitbucket_cloud.client import BitbucketClient
 from bitbucket_cloud.helpers.token_manager import TokenManager
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
+from bitbucket_cloud.webhook_processors.options import PullRequestSelectorOptions
 
 
 @pytest.fixture
@@ -265,7 +266,8 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
                 yield mock_data["values"]
 
             mock_paginated.return_value = mock_generator()
-            async for prs in mock_client.get_pull_requests("test-repo"):
+            options = PullRequestSelectorOptions(states=["OPEN"])
+            async for prs in mock_client.get_pull_requests("test-repo", options):
                 assert prs == mock_data["values"]
             mock_paginated.assert_called_once_with(
                 f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
