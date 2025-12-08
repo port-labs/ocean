@@ -561,7 +561,7 @@ async def on_start() -> None:
 
 
 @ocean.on_resync_start()
-async def refresh_accounts_before_resync():
+async def refresh_accounts_before_resync() -> None:
     """Refresh AWS account list before each resync cycle to ensure up-to-date account data"""
     logger.info("Refreshing AWS accounts before resync")
     await initialize_access_credentials()
