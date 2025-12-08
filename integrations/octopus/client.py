@@ -22,11 +22,31 @@ class ObjectKind(StrEnum):
 
 class OctopusClient:
     def __init__(self, server_url: str, octopus_api_key: str) -> None:
-        self.octopus_url = f"{server_url.rstrip('/')}/api/"
+        self.server_url = server_url.rstrip("/")
+        self.octopus_url = f"{self.server_url}/api/"
         self.api_auth_header = {"X-Octopus-ApiKey": octopus_api_key}
         self.client = http_async_client
         self.client.timeout = Timeout(CLIENT_TIMEOUT)
         self.client.headers.update(self.api_auth_header)
+
+    def _build_resource_url(self, resource: dict[str, Any], kind: str) -> str:
+        resource_id = resource["Id"]
+        space_id = resource.get("SpaceId", "")
+        base = f"{self.server_url}/app#/{space_id}"
+
+        paths = {
+            ObjectKind.SPACE: f"{self.server_url}/app#/{resource_id}",
+            ObjectKind.PROJECT: f"{base}/projects/{resource_id}",
+            ObjectKind.RELEASE: f"{base}/releases/{resource_id}",
+            ObjectKind.DEPLOYMENT: f"{base}/deployments/{resource_id}",
+            ObjectKind.MACHINE: f"{base}/infrastructure/machines/{resource_id}/settings",
+        }
+        return paths.get(kind, "")
+
+    def _enrich_with_url(
+        self, resources: list[dict[str, Any]], kind: str
+    ) -> list[dict[str, Any]]:
+        return [{**resource, "__url": self._build_resource_url(resource, kind)} for resource in resources]
 
     async def _send_api_request(
         self,
@@ -70,7 +90,7 @@ class OctopusClient:
             response = await self._send_api_request(endpoint, params=params)
             items = response.get("Items", [])
             last_page = response.get("LastPageNumber", 0)
-            yield items
+            yield self._enrich_with_url(items, kind)
             if page >= last_page:
                 break
             if kind in KINDS_WITH_LIMITATION and params["skip"] >= MAX_ITEMS_LIMITATION:
@@ -85,11 +105,18 @@ class OctopusClient:
         self, resource_kind: str, resource_id: str, space_id: str
     ) -> dict[str, Any]:
         """Get a single resource by kind and ID."""
-        return await self._send_api_request(f"{space_id}/{resource_kind}/{resource_id}")
+        resource = await self._send_api_request(
+            f"{space_id}/{resource_kind}/{resource_id}"
+        )
+        kind = ObjectKind(resource_kind.rstrip("s"))
+        resource["__url"] = self._build_resource_url(resource, kind)
+        return resource
 
     async def get_single_space(self, space_id: str) -> dict[str, Any]:
         """Get a single space by ID."""
-        return await self._send_api_request(f"{ObjectKind.SPACE}s/{space_id}")
+        space = await self._send_api_request(f"{ObjectKind.SPACE}s/{space_id}")
+        space["__url"] = self._build_resource_url(space, ObjectKind.SPACE)
+        return space
 
     @cache_iterator_result()
     async def get_all_spaces(self) -> AsyncGenerator[list[dict[str, Any]], None]:

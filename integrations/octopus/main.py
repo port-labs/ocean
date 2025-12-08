@@ -114,7 +114,8 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
             resource_prefix = resource_id.split("-")[0].lower()
             if resource_prefix in TRACKED_EVENTS:
                 if resource_prefix == ObjectKind.SPACE:
-                    await client.get_single_space(space_id)
+                    space_data = await client.get_single_space(space_id)
+                    await ocean.register_raw(ObjectKind.SPACE, [space_data])
                     return {"ok": True}
                 kind = ObjectKind(resource_prefix.rstrip("s"))
                 try:
