@@ -92,10 +92,12 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(ProjectResourceConfig, event.resource_config).selector
     include_languages = bool(selector.include_languages)
-    include_active_projects = selector.include_active_projects
+    include_only_active_projects = selector.include_only_active_projects
 
     async for projects_batch in client.get_projects(
-        params=build_project_params(include_active_projects=include_active_projects),
+        params=build_project_params(
+            include_only_active_projects=include_only_active_projects
+        ),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=include_languages,
     ):
@@ -107,10 +109,10 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(GroupResourceConfig, event.resource_config).selector
-    include_active_groups = selector.include_active_groups
+    include_only_active_groups = selector.include_only_active_groups
 
     async for groups_batch in client.get_groups(
-        params=build_group_params(include_active_groups=include_active_groups)
+        params=build_group_params(include_only_active_groups=include_only_active_groups)
     ):
         logger.info(f"Received group batch with {len(groups_batch)} groups")
         yield groups_batch
@@ -132,7 +134,9 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     async for groups_batch in client.get_groups(
-        params=build_group_params(include_active_groups=selector.include_active_groups)
+        params=build_group_params(
+            include_only_active_groups=selector.include_only_active_groups
+        )
     ):
         logger.info(f"Processing batch of {len(groups_batch)} groups for issues")
         params: dict[str, Any] = {
@@ -148,10 +152,12 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(PipelineResourceConfig, event.resource_config).selector
-    include_active_projects = selector.include_active_projects
+    include_only_active_projects = selector.include_only_active_projects
 
     async for projects_batch in client.get_projects(
-        params=build_project_params(include_active_projects=include_active_projects),
+        params=build_project_params(
+            include_only_active_projects=include_only_active_projects
+        ),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -180,10 +186,12 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     client = create_gitlab_client()
     selector = cast(JobResourceConfig, event.resource_config).selector
-    include_active_projects = selector.include_active_projects
+    include_only_active_projects = selector.include_only_active_projects
 
     async for projects_batch in client.get_projects(
-        params=build_project_params(include_active_projects=include_active_projects),
+        params=build_project_params(
+            include_only_active_projects=include_only_active_projects
+        ),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -199,10 +207,10 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     states = selector.states
     updated_after = selector.updated_after_datetime
-    include_active_groups = selector.include_active_groups
+    include_only_active_groups = selector.include_only_active_groups
 
     async for groups_batch in client.get_groups(
-        params=build_group_params(include_active_groups=include_active_groups)
+        params=build_group_params(include_only_active_groups=include_only_active_groups)
     ):
         for state in states:
             logger.info(
@@ -223,10 +231,12 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(TagResourceConfig, event.resource_config).selector
-    include_active_projects = selector.include_active_projects
+    include_only_active_projects = selector.include_only_active_projects
 
     async for projects_batch in client.get_projects(
-        params=build_project_params(include_active_projects=include_active_projects),
+        params=build_project_params(
+            include_only_active_projects=include_only_active_projects
+        ),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -242,10 +252,12 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
     selector = cast(ReleaseResourceConfig, event.resource_config).selector
-    include_active_projects = selector.include_active_projects
+    include_only_active_projects = selector.include_only_active_projects
 
     async for projects_batch in client.get_projects(
-        params=build_project_params(include_active_projects=include_active_projects),
+        params=build_project_params(
+            include_only_active_projects=include_only_active_projects
+        ),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=False,
     ):
@@ -265,10 +277,10 @@ async def on_resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     ).selector
     include_bot_members = bool(selector.include_bot_members)
     include_inherited_members = selector.include_inherited_members
-    include_active_groups = selector.include_active_groups
+    include_only_active_groups = selector.include_only_active_groups
 
     async for groups_batch in client.get_groups(
-        params=build_group_params(include_active_groups=include_active_groups)
+        params=build_group_params(include_only_active_groups=include_only_active_groups)
     ):
         for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
             current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
@@ -292,10 +304,10 @@ async def on_resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(GitlabMemberResourceConfig, event.resource_config).selector
     include_bot_members = bool(selector.include_bot_members)
     include_inherited_members = selector.include_inherited_members
-    include_active_groups = selector.include_active_groups
+    include_only_active_groups = selector.include_only_active_groups
 
     async for groups_batch in client.get_groups(
-        params=build_group_params(include_active_groups=include_active_groups)
+        params=build_group_params(include_only_active_groups=include_only_active_groups)
     ):
         for i in range(0, len(groups_batch), RESYNC_GROUP_MEMBERS_BATCH_SIZE):
             current_batch = groups_batch[i : i + RESYNC_GROUP_MEMBERS_BATCH_SIZE]
@@ -315,7 +327,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_gitlab_client()
 
     selector = cast(GitLabFilesResourceConfig, event.resource_config).selector
-    include_active_groups = selector.include_active_groups
+    include_only_active_groups = selector.include_only_active_groups
 
     search_path = selector.files.path
     scope = "blobs"
@@ -332,7 +344,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         search_path,
         repositories,
         skip_parsing,
-        build_group_params(include_active_groups=include_active_groups),
+        build_group_params(include_only_active_groups=include_only_active_groups),
     ):
         yield await client._enrich_files_with_repos(files_batch)
 
@@ -351,10 +363,10 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.info(
                 f"No repositories specified for path {path}; syncing from all projects"
             )
-            include_active_projects = selector.include_active_projects
+            include_only_active_projects = selector.include_only_active_projects
             async for projects_batch in client.get_projects(
                 params=build_project_params(
-                    include_active_projects=include_active_projects
+                    include_only_active_projects=include_only_active_projects
                 ),
                 max_concurrent=DEFAULT_MAX_CONCURRENT,
                 include_languages=False,

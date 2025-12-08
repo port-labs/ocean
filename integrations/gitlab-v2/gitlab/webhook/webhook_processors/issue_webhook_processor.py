@@ -71,7 +71,7 @@ class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
         has_desired_state = object_attrs["state"] == selector.state
         if not has_desired_state:
             logger.info(
-                f"Issue {object_attrs['iid']} state '{object_attrs['state']}' does not match selector state '{selector.state}'"
+                f"Issue {object_attrs['id']} state '{object_attrs['state']}' does not match selector state '{selector.state}'"
             )
         return has_desired_state
 
@@ -86,7 +86,7 @@ class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
         )
         if not has_desired_issue_type:
             logger.info(
-                f"Issue {object_attrs['iid']} type '{object_attrs['type']}' does not match selector type '{selector.issue_type}'"
+                f"Issue {object_attrs['id']} type '{object_attrs['type']}' does not match selector type '{selector.issue_type}'"
             )
         return has_desired_issue_type
 
@@ -101,6 +101,6 @@ class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
         has_desired_labels_filter = required_labels.issubset(issue_label_titles)
         if not has_desired_labels_filter:
             logger.info(
-                f"Issue {object_attrs.get('iid')} labels {issue_label_titles} do not match selector labels '{selector.labels}'"
+                f"Issue {object_attrs['id']} labels {issue_label_titles} do not match selector labels '{selector.labels}'"
             )
         return has_desired_labels_filter

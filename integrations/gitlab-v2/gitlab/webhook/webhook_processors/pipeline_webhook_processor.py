@@ -31,12 +31,12 @@ class PipelineWebhookProcessor(_GitlabAbstractWebhookProcessor):
         )
 
         selector = cast(PipelineResourceConfig, resource_config).selector
-        include_active_projects = selector.include_active_projects
+        include_only_active_projects = selector.include_only_active_projects
 
-        if include_active_projects is not None:
+        if include_only_active_projects is not None:
             project = await self._gitlab_webhook_client.get_project(project_id)
             is_active = not project["archived"]
-            if include_active_projects != is_active:
+            if include_only_active_projects != is_active:
                 logger.info(
                     f"Pipeline {pipeline_id} filtered out because project {project_id} "
                     f"is {'archived' if not is_active else 'active'}. Skipping..."

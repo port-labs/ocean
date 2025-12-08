@@ -24,9 +24,9 @@ SEARCH_PROPERTY_PREFIX = "search://"
 
 
 class GroupSelector(Selector):
-    include_active_groups: Optional[bool] = Field(
+    include_only_active_groups: Optional[bool] = Field(
         default=None,
-        alias="includeActiveGroups",
+        alias="includeOnlyActiveGroups",
         description="Filter groups by active status",
     )
 
@@ -37,9 +37,9 @@ class ProjectSelector(Selector):
         default=False,
         description="Whether to include the languages of the project, defaults to false",
     )
-    include_active_projects: Optional[bool] = Field(
+    include_only_active_projects: Optional[bool] = Field(
         default=None,
-        alias="includeActiveProjects",
+        alias="includeOnlyActiveProjects",
         description="Filter projects by active status",
     )
 
