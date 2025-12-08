@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gitlab-v2"
-version = "0.4.4"
+version = "0.5.0"
 description = "Gitlab"
 authors = ["Shariff <mohammed.s@getport.io>"]
 
@@ -10,6 +10,7 @@ port_ocean = {version = "^0.31.2", extras = ["cli"]}
 pyyaml = "^6.0.2"
 aiolimiter = "^1.2.1"
 types-aiofiles = "^24.1.0.20250822"
+wcmatch = "^10.1"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
@@ -24,6 +25,8 @@ pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
 types-pyyaml = "^6.0.12.20241230"
+types-python-dateutil = "^2.9.0"
+yamllint = "^1.37.1"
 
 [tool.towncrier]
 directory = "changelog"

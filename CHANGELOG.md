@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.31.3 (2025-12-08)
+
+### Bug fixes
+
+- fix webhook processor crashing when entity identifier is a dictionary
+
 ## 0.31.2 (2025-12-07)
 
 ### Vulnerabilities
@@ -32,7 +38,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Improvements
 
 - Make mapping errors have error log instead of info
-
 
 ## 0.30.6 (2025-11-27)
 
