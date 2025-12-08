@@ -279,3 +279,26 @@ async def test_search_entities_uses_datasource_route_when_query_is_none_two_page
     second_sent_json = second_call_args[1]["json"]
     assert second_sent_json["datasource_prefix"] == "port-ocean/test-integration/"
     assert second_sent_json["datasource_suffix"] == "/test-identifier/sync"
+
+
+async def test_upsert_entities_in_batches_with_dictionary_identifier(
+    entity_client: EntityClientMixin,
+) -> None:
+    """Test that upsert_entities_in_batches handles dictionary identifiers correctly"""
+    dictionary_identifier = {"key": "value", "nested": 123}
+    entity = Entity(
+        identifier=dictionary_identifier,
+        blueprint="test_blueprint",
+        properties={"test": "prop"},
+        icon="icon",
+        title="title",
+    )
+
+    result = await entity_client.upsert_entities_in_batches(
+        entities=[entity], request_options=MagicMock(), should_raise=True
+    )
+
+    assert len(result) == 1
+    success, result_entity = result[0]
+    assert success is True
+    assert result_entity.identifier == dictionary_identifier
