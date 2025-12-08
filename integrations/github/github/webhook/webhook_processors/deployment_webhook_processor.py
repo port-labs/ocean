@@ -66,11 +66,9 @@ class DeploymentWebhookProcessor(BaseDeploymentWebhookProcessor):
     ) -> bool:
         """Check if deployment matches selector task and environment filters."""
 
-        # Check task filter
         if selector.task and deployment["task"] != selector.task:
             return False
 
-        # Check environment filter
         if selector.environment and deployment["environment"] != selector.environment:
             return False
 
