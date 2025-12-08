@@ -18,7 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extended `issue`, `group-with-members`, `file` and `merge-request` kinds to support `include_active_groups` selector from the `group` kind
 
 
-
 ## 0.5.2 (2025-12-08)
 
 

@@ -30,7 +30,7 @@ class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
             f"Handling issue webhook event for project {project_id} and issue {issue_id}"
         )
 
-        object_attrs: dict[str, Any] = payload.get("object_attributes", {})
+        object_attrs: dict[str, Any] = payload["object_attributes"]
         selector = cast(GitlabIssueResourceConfig, resource_config).selector
         should_process = self._should_process_issue(selector, object_attrs)
 
@@ -68,10 +68,10 @@ class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
         if not selector.state:
             return True
 
-        has_desired_state = object_attrs.get("state") == selector.state
+        has_desired_state = object_attrs["state"] == selector.state
         if not has_desired_state:
             logger.info(
-                f"Issue {object_attrs.get('iid')} state '{object_attrs.get('state')}' does not match selector state '{selector.state}'"
+                f"Issue {object_attrs['iid']} state '{object_attrs['state']}' does not match selector state '{selector.state}'"
             )
         return has_desired_state
 
@@ -82,11 +82,11 @@ class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
             return True
 
         has_desired_issue_type = (
-            object_attrs.get("type", "").lower() == selector.issue_type.lower()
+            object_attrs["type"].lower() == selector.issue_type.lower()
         )
         if not has_desired_issue_type:
             logger.info(
-                f"Issue {object_attrs.get('iid')} type '{object_attrs.get('type', '')}' does not match selector type '{selector.issue_type}'"
+                f"Issue {object_attrs['iid']} type '{object_attrs['type']}' does not match selector type '{selector.issue_type}'"
             )
         return has_desired_issue_type
 
@@ -97,9 +97,7 @@ class IssueWebhookProcessor(_GitlabAbstractWebhookProcessor):
             return True
 
         required_labels = {label.strip() for label in selector.labels.split(",")}
-        issue_label_titles = {
-            label.get("title", "") for label in object_attrs.get("labels", [])
-        }
+        issue_label_titles = {label["title"] for label in object_attrs["labels"]}
         has_desired_labels_filter = required_labels.issubset(issue_label_titles)
         if not has_desired_labels_filter:
             logger.info(
