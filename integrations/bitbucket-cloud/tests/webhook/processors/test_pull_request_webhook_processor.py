@@ -1,11 +1,12 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from typing import Any
+from typing import Any, AsyncGenerator
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
 from bitbucket_cloud.helpers.utils import ObjectKind
+from bitbucket_cloud.webhook_processors.options import PullRequestSelectorOptions
 
 # Patch the module before importing the class
 with patch("initialize_client.init_webhook_client") as mock_init_client:
@@ -136,3 +137,44 @@ class TestPullRequestWebhookProcessor:
         """Test payload validation with various input scenarios."""
         result = await pull_request_webhook_processor.validate_payload(payload)
         assert result == expected
+
+    @pytest.mark.parametrize(
+        "options, repo_exists, expected",
+        [
+            # Case 1: No filters set -> Should pass
+            ({"user_role": None, "repo_query": None}, False, True),
+            # Case 2: Filters set, repository matches -> Should pass
+            ({"user_role": "admin", "repo_query": "name~test"}, True, True),
+            # Case 3: Filters set, repository does not match -> Should fail
+            ({"user_role": "admin", "repo_query": "name~test"}, False, False),
+            # Case 4: Filters set, repository does not match -> Should fail
+            ({"user_role": None, "repo_query": "name~test"}, False, False),
+            # Case 5: Filters set, repository matches -> Should pass
+            ({"user_role": None, "repo_query": "name~test"}, True, True),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_check_repository_filter(
+        self,
+        pull_request_webhook_processor: PullRequestWebhookProcessor,
+        webhook_client_mock: MagicMock,
+        options: PullRequestSelectorOptions,
+        repo_exists: bool,
+        expected: bool,
+    ) -> None:
+        """Test _check_repository_filter with various scenarios."""
+
+        async def mock_repositories_generator(
+            params: dict[str, Any]
+        ) -> AsyncGenerator[dict[str, Any], None]:
+            if repo_exists:
+                yield {"uuid": "repo-uuid"}
+
+        webhook_client_mock.get_repositories.side_effect = mock_repositories_generator
+
+        result = await pull_request_webhook_processor._check_repository_filter(
+            "repo-uuid", options
+        )
+        assert result == expected
+        if options["user_role"] or options["repo_query"]:
+            webhook_client_mock.get_repositories.assert_called()
