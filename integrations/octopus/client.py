@@ -34,7 +34,7 @@ class OctopusClient:
         space_id = resource.get("SpaceId", "")
         base = f"{self.server_url}/app#/{space_id}"
 
-        paths = {
+        paths: dict[str, str] = {
             ObjectKind.SPACE: f"{self.server_url}/app#/{resource_id}",
             ObjectKind.PROJECT: f"{base}/projects/{resource_id}",
             ObjectKind.RELEASE: f"{base}/releases/{resource_id}",
@@ -46,7 +46,10 @@ class OctopusClient:
     def _enrich_with_url(
         self, resources: list[dict[str, Any]], kind: str
     ) -> list[dict[str, Any]]:
-        return [{**resource, "__url": self._build_resource_url(resource, kind)} for resource in resources]
+        return [
+            {**resource, "__url": self._build_resource_url(resource, kind)}
+            for resource in resources
+        ]
 
     async def _send_api_request(
         self,
