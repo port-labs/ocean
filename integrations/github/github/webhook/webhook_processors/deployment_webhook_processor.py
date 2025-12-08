@@ -67,13 +67,11 @@ class DeploymentWebhookProcessor(BaseDeploymentWebhookProcessor):
         """Check if deployment matches selector task and environment filters."""
 
         # Check task filter
-        deployment_task = deployment.get("task")
-        if selector.task and deployment_task != selector.task:
+        if selector.task and deployment["task"] != selector.task:
             return False
 
         # Check environment filter
-        deployment_environment = deployment.get("environment")
-        if selector.environment and deployment_environment != selector.environment:
+        if selector.environment and deployment["environment"] != selector.environment:
             return False
 
         return True
