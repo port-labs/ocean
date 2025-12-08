@@ -178,6 +178,8 @@ async def test_get_billing_info_for_organization(github_client: GitHubClient) ->
         assert result == expected_response
         assert result["seat_breakdown"]["total"] == 12
         assert result["seat_management_setting"] == "assign_selected"
+        assert result["plan_type"] == "business"
+        assert result["ide_chat"] == "enabled"
 
 
 @pytest.mark.asyncio
@@ -221,6 +223,9 @@ async def test_get_seat_assignments_for_organization(
         assert results[0] == expected_response
         assert results[0]["total_seats"] == 2
         assert len(results[0]["seats"]) == 2
+        assert results[0]["seats"][0]["assignee"]["login"] == "octocat"
+        assert results[0]["seats"][0]["plan_type"] == "business"
+        assert "assigning_team" in results[0]["seats"][0]
 
 
 @pytest.mark.asyncio
@@ -261,7 +266,9 @@ async def test_get_seat_assignment_for_user(github_client: GitHubClient) -> None
         )
         assert result == expected_response
         assert result["assignee"]["login"] == "octocat"
+        assert result["assignee"]["type"] == "User"
         assert result["plan_type"] == "business"
+        assert "assigning_team" in result
 
 
 @pytest.mark.asyncio

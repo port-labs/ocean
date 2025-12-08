@@ -182,84 +182,34 @@ copilot_metrics_response = [
 ]
 
 copilot_billing_response = {
-    "seat_breakdown": {
-        "total": 12,
-        "added_this_cycle": 9,
-        "pending_invitation": 0,
-        "pending_cancellation": 0,
-        "active_this_cycle": 12,
-        "inactive_this_cycle": 11,
-    },
-    "seat_management_setting": "assign_selected",
-    "public_code_suggestions": "block",
+  "seat_breakdown": {
+    "total": 12,
+    "added_this_cycle": 9,
+    "pending_invitation": 0,
+    "pending_cancellation": 0,
+    "active_this_cycle": 12,
+    "inactive_this_cycle": 11
+  },
+  "seat_management_setting": "assign_selected",
+  "ide_chat": "enabled",
+  "platform_chat": "enabled",
+  "cli": "enabled",
+  "public_code_suggestions": "block",
+  "plan_type": "business"
 }
 
 copilot_seat_assignments_response = {
-    "total_seats": 2,
-    "seats": [
-        {
-            "created_at": "2021-08-03T18:00:00-06:00",
-            "updated_at": "2021-09-23T15:00:00-06:00",
-            "pending_cancellation_date": None,
-            "last_activity_at": "2021-10-14T00:53:32-06:00",
-            "last_activity_editor": "vscode/1.77.3/copilot/1.86.82",
-            "last_authenticated_at": "2021-10-14T00:53:32-06:00",
-            "plan_type": "business",
-            "assignee": {
-                "login": "octocat",
-                "id": 1,
-                "node_id": "MDQ6VXNlcjE=",
-                "avatar_url": "https://github.com/images/error/octocat_happy.gif",
-                "gravatar_id": "",
-                "url": "https://api.github.com/users/octocat",
-                "html_url": "https://github.com/octocat",
-                "type": "User",
-                "site_admin": False,
-            },
-            "assigning_team": {
-                "id": 1,
-                "node_id": "MDQ6VGVhbTE=",
-                "url": "https://api.github.com/teams/1",
-                "html_url": "https://github.com/orgs/github/teams/justice-league",
-                "name": "Justice League",
-                "slug": "justice-league",
-                "description": "A great team.",
-                "privacy": "closed",
-                "permission": "admin",
-            },
-        },
-        {
-            "created_at": "2021-09-23T18:00:00-06:00",
-            "updated_at": "2021-09-23T15:00:00-06:00",
-            "pending_cancellation_date": "2021-11-01",
-            "last_activity_at": "2021-10-13T00:53:32-06:00",
-            "last_activity_editor": "vscode/1.77.3/copilot/1.86.82",
-            "last_authenticated_at": "2021-10-14T00:53:32-06:00",
-            "plan_type": "business",
-            "assignee": {
-                "login": "octokitten",
-                "id": 2,
-                "node_id": "MDQ76VNlcjE=",
-                "avatar_url": "https://github.com/images/error/octokitten_happy.gif",
-                "gravatar_id": "",
-                "url": "https://api.github.com/users/octokitten",
-                "html_url": "https://github.com/octokitten",
-                "type": "User",
-                "site_admin": False,
-            },
-        },
-    ],
-}
-
-copilot_user_seat_response = {
-    "created_at": "2021-08-03T18:00:00-06:00",
-    "updated_at": "2021-09-23T15:00:00-06:00",
-    "pending_cancellation_date": None,
-    "last_activity_at": "2021-10-14T00:53:32-06:00",
-    "last_activity_editor": "vscode/1.77.3/copilot/1.86.82",
-    "last_authenticated_at": "2021-10-14T00:53:32-06:00",
-    "plan_type": "business",
-    "assignee": {
+  "total_seats": 2,
+  "seats": [
+    {
+      "created_at": "2021-08-03T18:00:00-06:00",
+      "updated_at": "2021-09-23T15:00:00-06:00",
+      "pending_cancellation_date": None,
+      "last_activity_at": "2021-10-14T00:53:32-06:00",
+      "last_activity_editor": "vscode/1.77.3/copilot/1.86.82",
+      "last_authenticated_at": "2021-10-14T00:53:32-06:00",
+      "plan_type": "business",
+      "assignee": {
         "login": "octocat",
         "id": 1,
         "node_id": "MDQ6VXNlcjE=",
@@ -267,10 +217,19 @@ copilot_user_seat_response = {
         "gravatar_id": "",
         "url": "https://api.github.com/users/octocat",
         "html_url": "https://github.com/octocat",
+        "followers_url": "https://api.github.com/users/octocat/followers",
+        "following_url": "https://api.github.com/users/octocat/following{/other_user}",
+        "gists_url": "https://api.github.com/users/octocat/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/octocat/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/octocat/subscriptions",
+        "organizations_url": "https://api.github.com/users/octocat/orgs",
+        "repos_url": "https://api.github.com/users/octocat/repos",
+        "events_url": "https://api.github.com/users/octocat/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/octocat/received_events",
         "type": "User",
-        "site_admin": False,
-    },
-    "assigning_team": {
+        "site_admin": False
+      },
+      "assigning_team": {
         "id": 1,
         "node_id": "MDQ6VGVhbTE=",
         "url": "https://api.github.com/teams/1",
@@ -279,6 +238,86 @@ copilot_user_seat_response = {
         "slug": "justice-league",
         "description": "A great team.",
         "privacy": "closed",
+        "notification_setting": "notifications_enabled",
         "permission": "admin",
+        "members_url": "https://api.github.com/teams/1/members{/member}",
+        "repositories_url": "https://api.github.com/teams/1/repos",
+        "parent": None
+      }
     },
+    {
+      "created_at": "2021-09-23T18:00:00-06:00",
+      "updated_at": "2021-09-23T15:00:00-06:00",
+      "pending_cancellation_date": "2021-11-01",
+      "last_activity_at": "2021-10-13T00:53:32-06:00",
+      "last_activity_editor": "vscode/1.77.3/copilot/1.86.82",
+      "last_authenticated_at": "2021-10-14T00:53:32-06:00",
+      "plan_type": "business",
+      "assignee": {
+        "login": "octokitten",
+        "id": 1,
+        "node_id": "MDQ76VNlcjE=",
+        "avatar_url": "https://github.com/images/error/octokitten_happy.gif",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/octokitten",
+        "html_url": "https://github.com/octokitten",
+        "followers_url": "https://api.github.com/users/octokitten/followers",
+        "following_url": "https://api.github.com/users/octokitten/following{/other_user}",
+        "gists_url": "https://api.github.com/users/octokitten/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/octokitten/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/octokitten/subscriptions",
+        "organizations_url": "https://api.github.com/users/octokitten/orgs",
+        "repos_url": "https://api.github.com/users/octokitten/repos",
+        "events_url": "https://api.github.com/users/octokitten/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/octokitten/received_events",
+        "type": "User",
+        "site_admin": False
+      }
+    }
+  ]
+}
+
+copilot_user_seat_response = {
+  "created_at": "2021-08-03T18:00:00-06:00",
+  "updated_at": "2021-09-23T15:00:00-06:00",
+  "pending_cancellation_date": None,
+  "last_activity_at": "2021-10-14T00:53:32-06:00",
+  "last_activity_editor": "vscode/1.77.3/copilot/1.86.82",
+  "last_authenticated_at": "2021-10-14T00:53:32-06:00",
+  "plan_type": "business",
+  "assignee": {
+    "login": "octocat",
+    "id": 1,
+    "node_id": "MDQ6VXNlcjE=",
+    "avatar_url": "https://github.com/images/error/octocat_happy.gif",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/octocat",
+    "html_url": "https://github.com/octocat",
+    "followers_url": "https://api.github.com/users/octocat/followers",
+    "following_url": "https://api.github.com/users/octocat/following{/other_user}",
+    "gists_url": "https://api.github.com/users/octocat/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/octocat/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/octocat/subscriptions",
+    "organizations_url": "https://api.github.com/users/octocat/orgs",
+    "repos_url": "https://api.github.com/users/octocat/repos",
+    "events_url": "https://api.github.com/users/octocat/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/octocat/received_events",
+    "type": "User",
+    "site_admin": False
+  },
+  "assigning_team": {
+    "id": 1,
+    "node_id": "MDQ6VGVhbTE=",
+    "url": "https://api.github.com/teams/1",
+    "html_url": "https://github.com/orgs/github/teams/justice-league",
+    "name": "Justice League",
+    "slug": "justice-league",
+    "description": "A great team.",
+    "privacy": "closed",
+    "notification_setting": "notifications_enabled",
+    "permission": "admin",
+    "members_url": "https://api.github.com/teams/1/members{/member}",
+    "repositories_url": "https://api.github.com/teams/1/repos",
+    "parent": None
+  }
 }
