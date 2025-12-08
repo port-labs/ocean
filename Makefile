@@ -183,4 +183,4 @@ docker/run:
 		echo "$(OCEAN_DOCKER_INTEGRATION_PATH)/.env does not exist"; \
 		exit 1; \
 	fi; \
-	docker run -v $(CURRENT_DIR):/app -v ./integrations/_infra/hosts:/etc/hosts -e BUILD_CONTEXT=$(OCEAN_DOCKER_INTEGRATION_PATH) --memory 2gb --cpus 1 --env-file ./$(OCEAN_DOCKER_INTEGRATION_PATH)/.env -p '5678:5678' ocean_local
+	docker run -v $(CURRENT_DIR):/app -v ./integrations/_infra/hosts:/etc/hosts -e BUILD_CONTEXT=$(OCEAN_DOCKER_INTEGRATION_PATH) --memory 1gb --cpus 1 --env-file ./$(OCEAN_DOCKER_INTEGRATION_PATH)/.env -p '5678:5678' ocean_local
