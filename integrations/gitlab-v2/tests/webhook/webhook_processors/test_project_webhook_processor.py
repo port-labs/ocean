@@ -13,7 +13,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from typing import Any
 
 
-@pytest.mark.asyncio
 class TestProjectWebhookProcessor:
     """Test the project webhook processor"""
 
@@ -61,17 +60,29 @@ class TestProjectWebhookProcessor:
             "project_visibility": "private",
         }
 
+    @pytest.fixture
+    def resource_config(self) -> MagicMock:
+        """Create a mock resource config with selector"""
+        config = MagicMock()
+        config.selector = MagicMock()
+        config.selector.include_languages = False
+        return config
+
+    @pytest.mark.asyncio
     async def test_get_matching_kinds(
         self, processor: ProjectWebhookProcessor, mock_event: WebhookEvent
     ) -> None:
         """Test that get_matching_kinds returns the PROJECT kind."""
         assert await processor.get_matching_kinds(mock_event) == [ObjectKind.PROJECT]
 
+    @pytest.mark.asyncio
     async def test_handle_event_project_create(
-        self, processor: ProjectWebhookProcessor, project_create_payload: dict[str, Any]
+        self,
+        processor: ProjectWebhookProcessor,
+        project_create_payload: dict[str, Any],
+        resource_config: MagicMock,
     ) -> None:
         """Test handling a project creation event"""
-        resource_config = MagicMock()
         project_id = project_create_payload["project_id"]
         expected_project = {
             "id": project_id,
@@ -86,11 +97,14 @@ class TestProjectWebhookProcessor:
 
         result = await processor.handle_event(project_create_payload, resource_config)
 
-        processor._gitlab_webhook_client.get_project.assert_called_once_with(project_id)
+        processor._gitlab_webhook_client.get_project.assert_called_once_with(
+            project_id, resource_config.selector.include_languages
+        )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == expected_project
         assert not result.deleted_raw_results
 
+    @pytest.mark.asyncio
     async def test_handle_event_project_destroy(
         self,
         processor: ProjectWebhookProcessor,
@@ -111,6 +125,7 @@ class TestProjectWebhookProcessor:
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0] == expected_deleted_project
 
+    @pytest.mark.asyncio
     async def test_validate_payload_valid(
         self, processor: ProjectWebhookProcessor
     ) -> None:
@@ -123,6 +138,7 @@ class TestProjectWebhookProcessor:
         }
         assert await processor.validate_payload(valid_payload) is True
 
+    @pytest.mark.asyncio
     async def test_validate_payload_missing_project_id(
         self, processor: ProjectWebhookProcessor
     ) -> None:
@@ -130,6 +146,7 @@ class TestProjectWebhookProcessor:
         invalid_payload = {"name": "test-project"}
         assert await processor.validate_payload(invalid_payload) is False
 
+    @pytest.mark.asyncio
     async def test_validate_payload_empty(
         self, processor: ProjectWebhookProcessor
     ) -> None:
@@ -227,11 +244,14 @@ class TestProjectWebhookProcessor:
         result = processor._parse_deleted_payload(payload)
         assert result == expected
 
+    @pytest.mark.asyncio
     async def test_handle_event_project_create_error(
-        self, processor: ProjectWebhookProcessor, project_create_payload: dict[str, Any]
+        self,
+        processor: ProjectWebhookProcessor,
+        project_create_payload: dict[str, Any],
+        resource_config: MagicMock,
     ) -> None:
         """Test handling project creation when get_project raises an exception"""
-        resource_config = MagicMock()
         processor._gitlab_webhook_client = MagicMock()
         processor._gitlab_webhook_client.get_project = AsyncMock(
             side_effect=Exception("API Error")
@@ -252,6 +272,7 @@ class TestProjectWebhookProcessor:
         """Test that the processor has the correct hooks attribute"""
         assert processor.hooks == ["Project Hook"]
 
+    @pytest.mark.asyncio
     async def test_should_process_event_valid(
         self, processor: ProjectWebhookProcessor
     ) -> None:
@@ -263,6 +284,7 @@ class TestProjectWebhookProcessor:
         )
         assert await processor.should_process_event(event) is True
 
+    @pytest.mark.asyncio
     async def test_should_process_event_invalid_hook(
         self, processor: ProjectWebhookProcessor
     ) -> None:
@@ -274,6 +296,7 @@ class TestProjectWebhookProcessor:
         )
         assert await processor.should_process_event(event) is False
 
+    @pytest.mark.asyncio
     async def test_should_process_event_invalid_event(
         self, processor: ProjectWebhookProcessor
     ) -> None:
