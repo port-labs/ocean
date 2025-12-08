@@ -165,8 +165,6 @@ class ListDependabotAlertOptions(RepositoryIdentifier):
     """Options for listing Dependabot alerts."""
 
     state: Required[list[str]]
-    severity: NotRequired[Optional[str]]
-    ecosystem: NotRequired[Optional[str]]
 
 
 class SingleCodeScanningAlertOptions(RepositoryIdentifier):
@@ -179,7 +177,6 @@ class ListCodeScanningAlertOptions(RepositoryIdentifier):
     """Options for listing code scanning alerts."""
 
     state: Required[str]
-    severity: NotRequired[Optional[str]]
 
 
 class FileContentOptions(RepositoryIdentifier):
