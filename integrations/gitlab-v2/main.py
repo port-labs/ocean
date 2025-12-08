@@ -353,7 +353,9 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
             include_active_projects = selector.include_active_projects
             async for projects_batch in client.get_projects(
-                params=build_project_params(include_active_projects=include_active_projects),
+                params=build_project_params(
+                    include_active_projects=include_active_projects
+                ),
                 max_concurrent=DEFAULT_MAX_CONCURRENT,
                 include_languages=False,
             ):
