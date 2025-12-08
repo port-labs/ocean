@@ -701,6 +701,8 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 state=list(config.selector.states),
+                                severity=config.selector.severity_str,
+                                ecosystem=config.selector.ecosystems_str,
                             )
                         )
                     )
@@ -745,6 +747,7 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 state=config.selector.state,
+                                severity=config.selector.severity,
                             )
                         )
                     )
