@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.3 (2025-12-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.2
+
+
+## 0.6.2 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.1
+
+
+## 0.6.1 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.0
+
+
+## 0.6.0 (2025-12-01)
+
+
+### Features
+
+- Added folder kind to integration default with wildcard pattern support
+- Added support for syncing folders from all repositories when repos are not specified
+- Made `project_name` and `repos` optional in folder selector configuration
+- Added support for flexible repository selection: all projects, specific project, or specific repos
+
+
 ## 0.5.1 (2025-12-03)
 
 

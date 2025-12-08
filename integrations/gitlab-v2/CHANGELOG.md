@@ -11,8 +11,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Improvements
+
 - Added support for syncing folders from specific repositories and branches
 - Added folder kind to integration default
+
+
+## 0.4.4 (2025-12-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.2
+
+
+## 0.4.3 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.1
+
+
+## 0.4.2 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.0
+- Parse yaml with pyyaml, fix memory issue.
 
 
 ## 0.4.1 (2025-12-03)
