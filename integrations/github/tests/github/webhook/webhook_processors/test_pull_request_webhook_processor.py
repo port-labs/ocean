@@ -34,6 +34,7 @@ def resource_config() -> GithubPullRequestConfig:
         selector=GithubPullRequestSelector(
             query="true",
             states=["open"],
+            api="rest",
         ),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -166,7 +167,10 @@ class TestPullRequestWebhookProcessor:
                 assert result.deleted_raw_results == []
                 mock_exporter.get_resource.assert_called_once_with(
                     SinglePullRequestOptions(
-                        organization="test-org", repo_name="test-repo", pr_number=101
+                        organization="test-org",
+                        repo_name="test-repo",
+                        pr_number=101,
+                        repo=None,
                     )
                 )
             elif expected_delete:
