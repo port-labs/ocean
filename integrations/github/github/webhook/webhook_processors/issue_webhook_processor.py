@@ -34,18 +34,21 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-
         action = payload["action"]
         issue = payload["issue"]
         repo_name = payload["repository"]["name"]
         issue_number = payload["issue"]["number"]
         organization = payload["organization"]["login"]
+        config = cast(GithubIssueConfig, resource_config)
 
         logger.info(
             f"Processing issue event: {action} for {repo_name}/{issue_number} from {organization}"
         )
 
-        config = cast(GithubIssueConfig, resource_config)
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         if not self._check_labels_filter(config.selector, issue):
             logger.info(
@@ -58,7 +61,6 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
         if (
             action == "closed" and config.selector.state == "open"
         ) or action in ISSUE_DELETE_EVENTS:
-
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[issue],

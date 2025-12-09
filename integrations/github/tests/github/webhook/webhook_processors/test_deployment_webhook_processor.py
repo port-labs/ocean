@@ -10,19 +10,19 @@ from github.webhook.webhook_processors.deployment_webhook_processor import (
 from github.core.options import SingleDeploymentOptions
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
 )
 from github.helpers.utils import ObjectKind
+from integration import GithubRepoSearchConfig, RepoSearchSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+    return GithubRepoSearchConfig(
         kind=ObjectKind.DEPLOYMENT,
-        selector=Selector(query="true"),
+        selector=RepoSearchSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -45,7 +45,6 @@ def deployment_webhook_processor(
 
 @pytest.mark.asyncio
 class TestDeploymentWebhookProcessor:
-
     async def test_get_matching_kinds(
         self, deployment_webhook_processor: DeploymentWebhookProcessor
     ) -> None:
@@ -59,7 +58,6 @@ class TestDeploymentWebhookProcessor:
         deployment_webhook_processor: DeploymentWebhookProcessor,
         resource_config: ResourceConfig,
     ) -> None:
-
         payload = {
             "action": "created",
             "deployment": {
