@@ -261,6 +261,25 @@ class EntityClientMixin:
         }
         error_entities = {error["index"]: error for error in result.get("errors", [])}
 
+        if error_entities:
+            sample_errors = {
+                idx: {
+                    "identifier": entities[idx].identifier,
+                    "blueprint": entities[idx].blueprint,
+                    "error": error_entities[idx].get("message")
+                    or error_entities[idx].get("error"),
+                }
+                for idx in list(error_entities.keys())[:5]  # Sample up to 5 errors
+            }
+
+            logger.error(
+                "Bulk upsert completed with entity-specific failures",
+                extra={
+                    "failed_count": len(error_entities),
+                    "sample_errors": sample_errors,
+                },
+            )
+
         ocean.metrics.inc_metric(
             name=MetricType.OBJECT_COUNT_NAME,
             labels=[

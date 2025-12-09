@@ -46,6 +46,11 @@ class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         config = cast(GithubDependabotAlertConfig, resource_config)
+
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
         current_state = DEPENDABOT_ACTION_TO_STATE[action]
 
         if not self._check_alert_filters(config.selector, alert):
