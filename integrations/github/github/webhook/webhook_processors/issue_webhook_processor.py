@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Any
 from loguru import logger
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
@@ -10,11 +10,12 @@ from github.helpers.utils import ObjectKind
 from github.webhook.events import ISSUE_DELETE_EVENTS, ISSUE_EVENTS
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.options import SingleIssueOptions
-from integration import GithubIssueConfig
+from integration import GithubIssueConfig, GithubIssueSelector
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
 )
+from github.helpers.utils import issue_matches_labels
 
 
 class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
@@ -49,6 +50,14 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
+        if not self._check_labels_filter(config.selector, issue):
+            logger.info(
+                f"Issue {repo_name}/{issue_number} filtered out by selector criteria"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         if (
             action == "closed" and config.selector.state == "open"
         ) or action in ISSUE_DELETE_EVENTS:
@@ -56,7 +65,6 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[],
                 deleted_raw_results=[issue],
             )
-
         exporter = RestIssueExporter(create_github_client())
         data_to_upsert = await exporter.get_resource(
             SingleIssueOptions(
@@ -69,3 +77,9 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
+
+    def _check_labels_filter(
+        self, selector: GithubIssueSelector, issue: dict[str, Any]
+    ) -> bool:
+        """Check if issue labels match selector labels filter."""
+        return issue_matches_labels(issue["labels"], selector.labels)
