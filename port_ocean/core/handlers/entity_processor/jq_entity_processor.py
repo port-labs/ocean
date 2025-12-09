@@ -177,7 +177,7 @@ def _calculate_entity(
         parse_all,
     )
     errors: list[Exception] = []
-    entities: list[MappedEntity] = [result]
+    entities: list[MappedEntity] = []
 
     if isinstance(result, BaseException) and not isinstance(result, Exception):
         raise result
