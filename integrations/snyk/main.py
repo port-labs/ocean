@@ -56,8 +56,8 @@ async def on_projects_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.warning(
                 "The flag attach_issues_to_project is set to True, fetching issues for projects in batch. Please know that this approach of mapping issues to projects will be deprecated soon, in favour of our new data model for Snyk resources. Refer to the documentation for more information: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/snyk/#project"
             )
-            tasks = [process_project_issues(project) for project in projects]
-            issues = await asyncio.gather(*tasks)
+            issue_tasks = [process_project_issues(project) for project in projects]
+            issues = await asyncio.gather(*issue_tasks)
             yield [
                 {**project, "__issues": issues}
                 for project, issues in zip(projects, issues)
