@@ -357,7 +357,11 @@ class TestGraphQLPullRequestExporter:
         with (
             patch(
                 "github.core.exporters.pull_request_exporter.core.parse_github_options",
-                return_value=("repo1", "test-org", {"pr_number": 101}),
+                return_value=(
+                    "repo1",
+                    "test-org",
+                    {"pr_number": 101, "repo": {"name": "repo1"}},
+                ),
             ) as mock_parse,
             patch.object(
                 graphql_client,
@@ -466,6 +470,7 @@ class TestGraphQLPullRequestExporter:
                     max_results=10,
                     updated_after=mock_datetime.now(mock_datetime.UTC)
                     - mock_datetime.timedelta(days=30),
+                    repo={"name": "repo1"},
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -540,6 +545,7 @@ class TestGraphQLPullRequestExporter:
                     max_results=2,
                     updated_after=mock_datetime.now(mock_datetime.UTC)
                     - mock_datetime.timedelta(days=30),
+                    repo={"name": "repo1"},
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -584,9 +590,8 @@ class TestGraphQLPullRequestExporterInternals:
             "mergeable": "MERGEABLE",
         }
 
-        normalized = exporter._normalize_pr_node(
-            pr_node, repo_name="repo1", organization="test-org"
-        )
+        repo = {"name": "repo1"}
+        normalized = exporter._normalize_pr_node(pr_node, repo, "test-org")
 
         assert normalized["assignees"] == [{"login": "assignee"}]
         assert normalized["requested_reviewers"] == []

@@ -34,6 +34,7 @@ class RepositoryIdentifier(SingleOrganizationOptions):
     """Options for identifying a repository."""
 
     repo_name: Required[str]
+    repo: NotRequired[Optional[dict[str, Any]]]
 
 
 class SinglePullRequestOptions(RepositoryIdentifier):

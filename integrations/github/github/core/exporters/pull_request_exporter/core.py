@@ -149,6 +149,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
     ](self, options: ExporterOptionsT) -> RAW_ITEM:
         repo_name, organization, params = parse_github_options(dict(options))
         pr_number: int = params["pr_number"]
+        repo = params["repo"]
 
         variables = {
             "organization": organization,
@@ -174,7 +175,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             return {}
 
         pr_node = response["data"]["repository"]["pullRequest"]
-        return self._normalize_pr_node(pr_node, cast(str, repo_name), organization)
+        return self._normalize_pr_node(pr_node, repo, organization)
 
     async def get_paginated_resources[
         self, ExporterOptionsT: ListPullRequestOptions
@@ -183,23 +184,26 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         states = extras["states"]
         max_results = extras["max_results"]
         updated_after = extras["updated_after"]
+        repo = extras["repo"]
 
         if "open" in states:
             async for batch in self._fetch_open_pull_requests(
-                organization, cast(str, repo_name), ["OPEN"]
+                organization, repo, ["OPEN"]
             ):
                 yield batch
 
         if "closed" in states:
             async for batch in self._fetch_closed_pull_requests(
-                organization, cast(str, repo_name), max_results, updated_after
+                organization, repo, max_results, updated_after
             ):
                 yield batch
 
     async def _fetch_open_pull_requests(
-        self, organization: str, repo_name: str, states: list[str]
+        self, organization: str, repo: dict[str, Any], states: list[str]
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Generic fetcher used for both open and closed (without updated_after/max_results)."""
+
+        repo_name = repo["name"]
         variables = {
             "organization": organization,
             "repo": repo_name,
@@ -220,7 +224,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 continue
 
             batch = [
-                self._normalize_pr_node(pr_node, repo_name, organization)
+                self._normalize_pr_node(pr_node, repo, organization)
                 for pr_node in pr_nodes
             ]
 
@@ -230,11 +234,12 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
     async def _fetch_closed_pull_requests(
         self,
         organization: str,
-        repo_name: str,
+        repo: dict[str, Any],
         max_results: int,
         updated_after: datetime,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
+        repo_name = repo["name"]
         variables = {
             "organization": organization,
             "repo": repo_name,
@@ -266,7 +271,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             )
 
             enriched_batch = [
-                self._normalize_pr_node(pr, repo_name, organization)
+                self._normalize_pr_node(pr, repo, organization)
                 for pr in filter_prs_by_updated_at(
                     limited_batch, "updatedAt", updated_after
                 )
@@ -277,10 +282,11 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             total_count += batch_count
 
     def _normalize_pr_node(
-        self, pr_node: dict[str, Any], repo_name: str, organization: str
+        self, pr_node: dict[str, Any], repo: dict[str, Any], organization: str
     ) -> dict[str, Any]:
         """Centralized normalization — used by ALL code paths."""
 
+        repo_name = repo["name"]
         normalized = {
             **pr_node,
             "assignees": pr_node["assignees"]["nodes"],
@@ -293,6 +299,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             "state": pr_node["state"].lower(),
             "mergeable_state": pr_node["mergeStateStatus"].lower(),
             "mergeable": True if pr_node["mergeable"] == "MERGEABLE" else False,
+            "__repository_object": repo,
         }
 
         return enrich_with_organization(

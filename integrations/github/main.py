@@ -374,9 +374,10 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubPullRequestConfig, event.resource_config)
 
+    is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
     pull_request_exporter: AbstractGithubExporter[Any] = (
         GraphQLPullRequestExporter(graphql_client)
-        if config.selector.api == GithubClientType.GRAPHQL
+        if is_graphql_api
         else RestPullRequestExporter(rest_client)
     )
 
@@ -405,6 +406,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 states=list(config.selector.states),
                                 max_results=config.selector.max_results,
                                 updated_after=config.selector.updated_after,
+                                repo=repo if is_graphql_api else None,
                             )
                         )
                     )

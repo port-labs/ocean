@@ -40,7 +40,8 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
         action = payload["action"]
         pull_request = payload["pull_request"]
         number = pull_request["number"]
-        repo_name = payload["repository"]["name"]
+        repo = payload["repository"]
+        repo_name = repo["name"]
         organization = payload["organization"]["login"]
         config = cast(GithubPullRequestConfig, resource_config)
 
@@ -62,14 +63,18 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 deleted_raw_results=[pull_request],
             )
 
+        is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
         exporter: AbstractGithubExporter[Any] = (
             GraphQLPullRequestExporter(create_github_client(GithubClientType.GRAPHQL))
-            if config.selector.api == GithubClientType.GRAPHQL
+            if is_graphql_api
             else RestPullRequestExporter(create_github_client())
         )
         data_to_upsert = await exporter.get_resource(
             SinglePullRequestOptions(
-                organization=organization, repo_name=repo_name, pr_number=number
+                organization=organization,
+                repo_name=repo_name,
+                pr_number=number,
+                repo=repo if is_graphql_api else None,
             )
         )
 
