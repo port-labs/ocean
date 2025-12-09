@@ -7,6 +7,294 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.3.3-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.6
+
+
+## 4.3.2-beta (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.4
+
+
+## 4.3.1-beta (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.3
+
+
+## 4.3.0-beta (2025-11-28)
+
+
+### Improvements
+
+- Added folder kind to integration default
+
+
+## 4.2.0-beta (2025-11-17)
+
+
+### Improvements
+
+- Added support for ingesting CODEOWNERS files in the default mapping
+
+
+## 4.1.16-beta (2025-12-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.2
+
+
+## 4.1.15-beta (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.1
+
+
+## 4.1.14-beta (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.0
+
+
+## 4.1.13-beta (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
+## 4.1.12-beta (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
+## 4.1.11-beta (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 4.1.10-beta (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 4.1.9-beta (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 4.1.8-beta (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 4.1.7-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 4.1.6-beta (2025-11-23)
+
+
+### Improvements
+
+- Change section to Git Providers in spec.yaml
+
+
+## 4.1.5-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 4.1.4-beta (2025-11-23)
+
+
+### Improvements
+
+- Use GitHub Search API for repository export when authenticated as a GitHub App with Personal Account, falling back to list API otherwise.
+
+
+## 4.1.3-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 4.1.2-beta (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+## 4.1.1-beta (2025-11-20)
+
+
+### Improvements
+
+- Adapt to the new ocean core itemstoparse logic
+
+## 4.1.0-beta (2025-11-19)
+
+
+### Bug Fixes
+
+- Fixed GitHub App authentication by requiring installation ID as a configuration parameter instead of fetching it dynamically, improving reliability and reducing API calls
+
+
+## 4.0.0-beta (2025-11-19)
+
+
+### Improvements
+
+- Optional syncing of the authenticated user's personal account as a pseudo-organization when `includeAuthenticatedUser` is enabled.
+- Repository exporter now supports both Organization and User contexts by selecting the correct API and handling visibility/affiliation accordingly.
+- Propagated organization type through repository selectors and options.
+- Introduced helper to centralize repository option construction.
+- During user resync, enrich the personal user with their primary email when needed.
+- Improved HTTP client error messages to include the HTTP method for clearer diagnostics.
+
+
+## 3.3.10-beta (2025-11-19)
+
+
+### Improvements
+
+- dispatch workflow action spec naming improvements
+
+
+## 3.3.9-beta (2025-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
+## 3.3.8-beta (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 3.3.7-beta (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 3.3.6-beta (2025-11-16)
+
+
+### Improvements
+
+- Revise OAuth configuration spec
+
+
+## 3.3.5-beta (2025-11-13)
+
+
+### Improvements
+
+- Enriched pull request export with organization context across REST exporter responses and batches.
+
+
+## 3.3.4-beta (2025-11-12)
+
+
+### Bug Fixes
+
+- Authenticate throw app jwt token in auth context request
+
+
+## 3.3.3-beta (2025-11-11)
+
+
+### Bug Fixes
+
+- Get actor for github installation that uses an app
+
+
+## 3.3.2-beta (2025-11-11)
+
+
+### Bug Fixes
+
+- Fixed GraphQL base URL for GitHub Enterprise Server, ensuring compatibility with GHES.
+- Skipped and added warning log when a repository is not found during file export.
+
+
+## 3.3.1-beta (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.5
+
+
+## 3.3.0-beta (2025-11-10)
+
+
+### Improvements
+
+- Allow file/folder selectors to target all repositories when `repos` is omitted (supports exact and glob patterns)
+- Centralize repository metadata retrieval and reuse across exporters
+- Use shared resolver for repo/branch selection with consistent branch fallback
+- Update folder options shape to grouped per-repo entries
+
+
+## 3.2.5-beta (2025-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.4
+
+
 ## 3.2.4-beta (2025-11-09)
 
 

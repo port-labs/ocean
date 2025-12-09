@@ -102,4 +102,3 @@ class ResyncStateUpdater:
         await ocean.metrics.report_sync_metrics(
             kinds=[ocean.metrics.current_resource_kind()]
         )
-        ocean.metrics.event_id = f"{ocean.metrics.event_id}-done"

@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import BasicAuth, Request, Response
+from httpx import BasicAuth, Request, Response, HTTPStatusError
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
@@ -184,12 +184,16 @@ async def test_get_paginated_users(mock_jira_server_client: JiraServerClient) ->
     with patch.object(
         mock_jira_server_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.side_effect = [users_page1, users_page2, []]
+        # First call simulates /user/list unsupported (404) -> fallback to /user/search
+        not_found_response = Response(404, request=Request("GET", "http://example.com"))
+        list_not_supported = HTTPStatusError(
+            "Not Found", request=not_found_response.request, response=not_found_response
+        )
+        # Then legacy /user/search pages
+        mock_request.side_effect = [list_not_supported, users_page1, users_page2, []]
 
         users = []
-        async for user_batch in mock_jira_server_client.get_paginated_users(
-            username="testuser"
-        ):
+        async for user_batch in mock_jira_server_client.get_paginated_users():
             users.extend(user_batch)
 
         assert len(users) == 3
@@ -198,3 +202,45 @@ async def test_get_paginated_users(mock_jira_server_client: JiraServerClient) ->
             {"accountId": "user2"},
             {"accountId": "user3"},
         ]
+        # Verify that after the 404, we used /user/search
+        # call_args_list[0] corresponds to the failing /user/list probe
+        # subsequent calls should hit /user/search
+        for call in mock_request.call_args_list[1:]:
+            _, url, *_ = call.args
+            assert "/user/search" in url
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_users_via_list_success(
+    mock_jira_server_client: JiraServerClient,
+) -> None:
+    """Test users fetch via /user/list using cursor-based pagination."""
+    list_page1 = {
+        "values": [{"accountId": "u1"}, {"accountId": "u2"}],
+        "nextCursor": "c1",
+        "isLast": False,
+    }
+    list_page2 = {
+        "values": [{"accountId": "u3"}],
+        "isLast": True,
+    }
+
+    with patch.object(
+        mock_jira_server_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [list_page1, list_page2]
+
+        users = []
+        async for batch in mock_jira_server_client.get_paginated_users():
+            users.extend(batch)
+
+        assert users == [
+            {"accountId": "u1"},
+            {"accountId": "u2"},
+            {"accountId": "u3"},
+        ]
+        # Ensure only /user/list was used
+        assert len(mock_request.call_args_list) == 2
+        for call in mock_request.call_args_list:
+            _, url, *_ = call.args
+            assert "/user/list" in url

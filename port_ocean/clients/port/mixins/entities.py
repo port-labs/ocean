@@ -261,34 +261,36 @@ class EntityClientMixin:
         }
         error_entities = {error["index"]: error for error in result.get("errors", [])}
 
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[
+                ocean.metrics.current_resource_kind(),
+                MetricPhase.LOAD,
+                MetricPhase.LoadResult.LOADED,
+            ],
+            value=len(successful_entities),
+        )
+
+        ocean.metrics.inc_metric(
+            name=MetricType.OBJECT_COUNT_NAME,
+            labels=[
+                ocean.metrics.current_resource_kind(),
+                MetricPhase.LOAD,
+                MetricPhase.LoadResult.FAILED,
+            ],
+            value=len(error_entities),
+        )
+
         batch_results: list[tuple[bool | None, Entity]] = []
         for entity_index, original_entity in index_to_entity.items():
             reduced_entity = self._reduce_entity(original_entity)
             if entity_index in successful_entities:
-                ocean.metrics.inc_metric(
-                    name=MetricType.OBJECT_COUNT_NAME,
-                    labels=[
-                        ocean.metrics.current_resource_kind(),
-                        MetricPhase.LOAD,
-                        MetricPhase.LoadResult.LOADED,
-                    ],
-                    value=1,
-                )
                 success_entity = successful_entities[entity_index]
                 # Create a copy of the original entity with the new identifier
                 updated_entity = reduced_entity.copy()
                 updated_entity.identifier = success_entity["identifier"]
                 batch_results.append((True, updated_entity))
             elif entity_index in error_entities:
-                ocean.metrics.inc_metric(
-                    name=MetricType.OBJECT_COUNT_NAME,
-                    labels=[
-                        ocean.metrics.current_resource_kind(),
-                        MetricPhase.LOAD,
-                        MetricPhase.LoadResult.FAILED,
-                    ],
-                    value=1,
-                )
                 error = error_entities[entity_index]
                 if (
                     error.get("identifier") == "unknown"

@@ -63,7 +63,10 @@ class RepositoryBranchMapping(BaseModel):
 class FolderSelector(BaseModel):
     organization: Optional[str] = Field(default=None)
     path: str = Field(default="*")
-    repos: list[RepositoryBranchMapping]
+    repos: Optional[list[RepositoryBranchMapping]] = Field(
+        description="Specify the repositories and branches to fetch files from",
+        default=None,
+    )
 
 
 class GithubFolderSelector(Selector):
@@ -235,6 +238,11 @@ class GithubPortAppConfig(PortAppConfig):
             "will sync all organizations the personal access token user is a "
             "member of) for Classic PAT authentication."
         ),
+    )
+    include_authenticated_user: bool = Field(
+        default=False,
+        alias="includeAuthenticatedUser",
+        description="Include the authenticated user's personal account",
     )
     repository_type: str = Field(alias="repositoryType", default="all")
     resources: list[

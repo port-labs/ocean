@@ -8,7 +8,7 @@ from port_ocean.core.models import (
 )
 from port_ocean.exceptions.execution_manager import RunAlreadyAcknowledgedError
 
-INTERNAL_ACTIONS_CLIENT_HEADER = {"x-port-automation-client": "true"}
+INTERNAL_ACTIONS_CLIENT_HEADER = {"x-port-reserved-usage": "true"}
 
 
 class ActionsClientMixin:
