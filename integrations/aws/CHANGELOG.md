@@ -7,12 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.215 (2025-12-08)
+## 0.2.218 (2025-12-08)
 
 ### Bug Fixes
 
 - Move account discovery to resync start. AWS account list is now refreshed before each resync cycle, fixing an issue where changes in AWS Organizations (e.g., added/removed accounts) weren't detected unless the integration was restarted. (Fixes PORT-16916)
 
+
+
+## 0.2.217 (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.7
+
+
+## 0.2.216 (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.6
+
+
+## 0.2.215 (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.4
 
 
 ## 0.2.214 (2025-12-08)
