@@ -4,7 +4,7 @@ import json
 from typing import Iterable, Any, TypeVar, Callable, Awaitable
 
 from loguru import logger
-from pydantic import BaseModel, parse_obj_as, ValidationError
+from pydantic import BaseModel
 
 
 from port_ocean.clients.port.client import PortClient
@@ -24,10 +24,24 @@ def zip_and_sum(collection: Iterable[T]) -> T:
 
 
 def validate_result(result: Any) -> RAW_RESULT:
-    try:
-        return parse_obj_as(list[dict[str, Any]], result)
-    except ValidationError as e:
-        raise RawObjectValidationException(f"Expected list[dict[str, Any]], Error: {e}")
+    if isinstance(result, list):
+        for index, item in enumerate(result):
+            if isinstance(item, dict):
+                for key in item.keys():
+                    if not isinstance(key, str):
+                        raise RawObjectValidationException(
+                            f"Expected list[dict[str, Any]], Error: Key {key} is not a string"
+                        )
+            else:
+                raise RawObjectValidationException(
+                    f"Expected list[dict[str, Any]], Error: Item {index} is not a dict"
+                )
+
+    else:
+        raise RawObjectValidationException(
+            "Expected list[dict[str, Any]], Error: Result is not a list"
+        )
+    return result
 
 
 def is_same_entity(first_entity: Entity, second_entity: Entity) -> bool:
