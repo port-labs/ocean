@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.31.8 (2025-12-09)
+
+### Improvements
+
+- Ocean core: Bumped minimum requirements for starlette and aiostream
+- Docs- bumped prism-react-renderer
+
 ## 0.31.7 (2025-12-09)
 
 ### Improvements
