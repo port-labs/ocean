@@ -77,6 +77,52 @@ class TestGitLabClient:
             assert results[0]["__languages"] == mock_languages
             mock_get_languages.assert_called_once_with("test/test-project")
 
+    async def test_get_projects_with_project_query_config(
+        self, client: GitLabClient
+    ) -> None:
+        """Test project fetching and enrichment with languages and labels via REST."""
+        # Arrange
+        mock_projects = [
+            {
+                "id": "1",
+                "name": "Test Project",
+                "path_with_namespace": "test/test-project",
+            }
+        ]
+        mock_languages = {"Python": 50.0, "JavaScript": 30.0}
+
+        with (
+            patch.object(client.rest, "get_paginated_resource") as mock_get_resource,
+            patch.object(
+                client.rest,
+                "get_project_languages",
+                AsyncMock(return_value=mock_languages),
+            ) as mock_get_languages,
+        ):
+
+            # Mock get_resource to yield projects
+            mock_get_resource.return_value = async_mock_generator([mock_projects])
+
+            # Act
+            results = []
+            params = {"some": "param", "search": "test"}
+            async for batch in client.get_projects(
+                params=params,
+                max_concurrent=1,
+                include_languages=True,
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 1  # One project in the batch
+            assert results[0]["name"] == "Test Project"
+            assert results[0]["__languages"] == mock_languages
+            mock_get_resource.assert_called_once_with(
+                "projects",
+                params={"all_available": True, "some": "param", "search": "test"},
+            )
+            mock_get_languages.assert_called_once_with("test/test-project")
+
     async def test_get_groups(self, client: GitLabClient) -> None:
         """Test group fetching with default config behavior (use_min_access_level=True, min_access_level=30)"""
 
@@ -102,6 +148,39 @@ class TestGitLabClient:
                 params={
                     "min_access_level": 30,
                     "all_available": True,
+                },
+            )
+
+    async def test_get_groups_with_group_query_config(
+        self, client: GitLabClient
+    ) -> None:
+        """Test group fetching with group query config"""
+
+        # Arrange
+        mock_groups: list[dict[str, Any]] = [{"id": 1, "name": "Test Group"}]
+
+        # Use a context manager for patching
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ) as mock_get_resource:
+            # Act - Test default config behavior (like main.py would call)
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_groups(
+                params={"min_access_level": 30, "search": "test"}
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 1
+            assert results[0]["name"] == "Test Group"
+            mock_get_resource.assert_called_once_with(
+                "groups",
+                params={
+                    "min_access_level": 30,
+                    "all_available": True,
+                    "search": "test",
                 },
             )
 
@@ -635,10 +714,12 @@ class TestGitLabClient:
             "content": mock_file_content,
             "path": "config.yaml",
         }
-        expected_parsed_content = {
-            "key": "value",
-            "ref": mock_referenced_content,
-        }
+        expected_parsed_content = [
+            {
+                "key": "value",
+                "ref": mock_referenced_content,
+            }
+        ]
 
         with (
             patch.object(
