@@ -24,23 +24,21 @@ def zip_and_sum(collection: Iterable[T]) -> T:
 
 
 def validate_result(result: Any) -> RAW_RESULT:
-    if isinstance(result, list):
-        for index, item in enumerate(result):
-            if isinstance(item, dict):
-                for key in item.keys():
-                    if not isinstance(key, str):
-                        raise RawObjectValidationException(
-                            f"Expected list[dict[str, Any]], Error: Key {key} is not a string"
-                        )
-            else:
-                raise RawObjectValidationException(
-                    f"Expected list[dict[str, Any]], Error: Item {index} is not a dict"
-                )
-
-    else:
+    if not isinstance(result, list):
         raise RawObjectValidationException(
             "Expected list[dict[str, Any]], Error: Result is not a list"
         )
+    for index, item in enumerate(result):
+        if not isinstance(item, dict):
+            raise RawObjectValidationException(
+                f"Expected list[dict[str, Any]], Error: Item {index} is not a dict"
+            )
+        for key in item.keys():
+            if not isinstance(key, str):
+                raise RawObjectValidationException(
+                    f"Expected list[dict[str, Any]], Error: Key {key} is not a string"
+                )
+
     return result
 
 

@@ -94,16 +94,30 @@ def _search_as_object(
 ) -> dict[str, Any | None]:
     result: dict[str, dict[str, Any | None] | list[dict[str, Any | None]]] = {}
     for key, value in obj.items():
-        if isinstance(value, list):
-            result[key] = []
-            for obj2 in value:
-                result[key].append(_search_as_object(data, obj2, misconfigurations))
+        try:
+            if isinstance(value, list):
+                result[key] = []
+                for list_item in value:
+                    search_result = _search_as_object(
+                        data, list_item, misconfigurations
+                    )
+                    result[key].append(search_result)
+                    if search_result is None and misconfigurations is not None:
+                        misconfigurations[key] = obj[key]
 
-        elif isinstance(value, dict):
-            result[key] = _search_as_object(data, value, misconfigurations)
+            elif isinstance(value, dict):
+                search_result = _search_as_object(data, value, misconfigurations)
+                result[key] = search_result
+                if search_result is None and misconfigurations is not None:
+                    misconfigurations[key] = obj[key]
 
-        else:
-            result[key] = _search(data, value)
+            else:
+                search_result = _search(data, value)
+                result[key] = search_result
+                if search_result is None and misconfigurations is not None:
+                    misconfigurations[key] = obj[key]
+        except Exception:
+            result[key] = None
 
     return result
 
@@ -142,8 +156,12 @@ def _calculate_entity(
     )
     errors = []
     entities = []
-    if isinstance(result, Exception):
+
+    if isinstance(result, BaseException) and not isinstance(result, Exception):
+        raise result
+    elif isinstance(result, Exception):
         errors.append(result)
+
     entities.append(result)
 
     if errors:
@@ -160,20 +178,6 @@ class JQEntityProcessor(BaseEntityProcessor):
     parsing entities based on PyJQ queries. It supports compiling and executing PyJQ patterns,
     searching for data in dictionaries, and transforming data based on object mappings.
     """
-
-    def _stop_iterator_handler(self, func: Any) -> Any:
-        """
-        Wrap the function to handle StopIteration exceptions.
-        Prevents StopIteration from stopping the thread and skipping further queue processing.
-        """
-
-        def inner() -> Any:
-            try:
-                return func()
-            except StopIteration:
-                return None
-
-        return inner
 
     @staticmethod
     def _format_filter(filter: str) -> str:
@@ -201,6 +205,21 @@ class JQEntityProcessor(BaseEntityProcessor):
         if not ocean.config.allow_environment_variables_jq_access:
             pattern = "def env: {}; {} as $ENV | " + pattern
         return jq.compile(pattern)
+
+    @staticmethod
+    def _stop_iterator_handler(func: Any) -> Any:
+        """
+        Wrap the function to handle StopIteration exceptions.
+        Prevents StopIteration from stopping the thread and skipping further queue processing.
+        """
+
+        def inner() -> Any:
+            try:
+                return func()
+            except StopIteration:
+                return None
+
+        return inner
 
     @staticmethod
     def _notify_mapping_issues(

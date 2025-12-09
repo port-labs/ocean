@@ -112,8 +112,8 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
     while len(result) > 0:
         item = result.pop(0)
         items_to_parse_data = await ocean.app.integration.entity_processor._search(item, items_to_parse)
-        # if event.resource_config.port.items_to_parse_top_level_transform:
-        item = await ocean.app.integration.entity_processor._search(item, jq_expression)
+        if event.resource_config.port.items_to_parse_top_level_transform:
+            item = await ocean.app.integration.entity_processor._search(item, jq_expression)
         if not isinstance(items_to_parse_data, list):
             logger.warning(
                 f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items_to_parse_data)}."
@@ -143,12 +143,10 @@ async def resync_generator_wrapper(
                     result = validate_result(await anext(generator))
 
                     if items_to_parse:
-                        gen = handle_items_to_parse(result, items_to_parse_name, items_to_parse)
+                        items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse)
                         del result
-                        async for batch in gen:
+                        async for batch in items_to_parse_generator:
                             yield batch
-
-
                     else:
                         yield result
 

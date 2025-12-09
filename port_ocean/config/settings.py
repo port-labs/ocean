@@ -1,4 +1,5 @@
 import platform
+import multiprocessing
 from typing import Any, Literal, Optional, Type
 
 from pydantic import AnyHttpUrl, Extra, parse_obj_as, parse_raw_as
@@ -133,7 +134,9 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
     lakehouse_enabled: bool = False
     yield_items_to_parse_batch_size: int = 200
-    process_in_queue_max_workers: int = 10
+    process_in_queue_max_workers: int = Field(
+        default_factory=lambda: multiprocessing.cpu_count()
+    )
 
     streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
     actions_processor: ActionsProcessorSettings = Field(
