@@ -19,7 +19,6 @@ from typing import cast, Any
 
 
 class DeploymentWebhookProcessor(BaseDeploymentWebhookProcessor):
-
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.DEPLOYMENT]
 
@@ -43,6 +42,11 @@ class DeploymentWebhookProcessor(BaseDeploymentWebhookProcessor):
             logger.info(
                 f"Deployment {repo}/{deployment_id} filtered out by selector criteria"
             )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        if not await self.should_process_repo_search(payload, resource_config):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
