@@ -1433,13 +1433,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.31.3"
+version = "0.31.6"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.31.3-py3-none-any.whl", hash = "sha256:e8bb458e654111695c95f292672297fc71d20b66fd43e32f0b49865f5ca2e494"},
-    {file = "port_ocean-0.31.3.tar.gz", hash = "sha256:4cc824ce26501ed0827d99e42011a536be5289e299fcc6742eec3307f881f957"},
+    {file = "port_ocean-0.31.6-py3-none-any.whl", hash = "sha256:79546e314c69633ca87b242ff8da2051175ad40f86d7b5af09c740d82dd892c2"},
+    {file = "port_ocean-0.31.6.tar.gz", hash = "sha256:17209b7e1e8aa5f9c01bbee8722be9aa869a98c54611dd7c6f0ec16ca8f147ef"},
 ]
 
 [package.dependencies]
@@ -1468,9 +1468,9 @@ pyyaml = ">=6.0,<7.0"
 rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli\""}
 six = ">=1.16.0,<2.0.0"
 tomli = ">=2.0.1,<3.0.0"
-urllib3 = ">=2.5.0,<3.0.0"
+urllib3 = ">=2.6.0,<3.0.0"
 uvicorn = ">=0.34.3,<0.35.0"
-werkzeug = ">=2.3.4,<4.0.0"
+werkzeug = ">=3.1.4,<4.0.0"
 
 [package.extras]
 cli = ["click (>=8.1.3,<9.0.0)", "cookiecutter (>=2.1.1,<3.0.0)", "jinja2-time (>=0.2.0,<0.3.0)", "rich (>=13.4.1,<14.0.0)"]
@@ -2093,20 +2093,20 @@ files = [
 
 [[package]]
 name = "urllib3"
-version = "2.5.0"
+version = "2.6.1"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "urllib3-2.5.0-py3-none-any.whl", hash = "sha256:e6b01673c0fa6a13e374b50871808eb3bf7046c4b125b216f6bf1cc604cff0dc"},
-    {file = "urllib3-2.5.0.tar.gz", hash = "sha256:3fc47733c7e419d4bc3f6b3dc2b4f890bb743906a30d56ba4a5bfa4bbff92760"},
+    {file = "urllib3-2.6.1-py3-none-any.whl", hash = "sha256:e67d06fe947c36a7ca39f4994b08d73922d40e6cca949907be05efa6fd75110b"},
+    {file = "urllib3-2.6.1.tar.gz", hash = "sha256:5379eb6e1aba4088bae84f8242960017ec8d8e3decf30480b3a1abdaa9671a3f"},
 ]
 
 [package.extras]
-brotli = ["brotli (>=1.0.9)", "brotlicffi (>=0.8.0)"]
+brotli = ["brotli (>=1.2.0)", "brotlicffi (>=1.2.0.0)"]
 h2 = ["h2 (>=4,<5)"]
 socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
-zstd = ["zstandard (>=0.18.0)"]
+zstd = ["backports-zstd (>=1.0.0)"]
 
 [[package]]
 name = "uvicorn"
@@ -2192,4 +2192,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "8e9e26db4ef6cded95b80a28c7800bc53aee7f61d4c2e3206eebf549c1f8d1e9"
+content-hash = "f1d24dd65cccc1b9913d1c7180e1de68de486f516ee692566dab74c9626dbd03"

@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.0 (2025-12-09)
+
+
+### Improvements
+
+- Refactor the integration to make requests more concurrent
+
+
+## 0.2.113 (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.6
+
+
 ## 0.2.112 (2025-12-08)
 
 
 ### Improvements
 
-- Use more concurrency in the integration
+- Bumped ocean version to ^0.31.4
 
 
 ## 0.2.111 (2025-12-08)
