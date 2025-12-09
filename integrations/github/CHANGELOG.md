@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 4.4.2-beta (2025-12-09)
+## 4.4.3-beta (2025-12-10)
 
 
 ### Features
 
 - Added an optional GraphQL-based pull request exporter for GitHub that returns graphql data when `api` is set to `graphql`, while preserving existing REST behavior by default.
 - Added a webhook ping processor to gracefully handle GitHub `ping` events without affecting stored entities.
+
+
+## 4.4.2-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.0
 
 
 ## 4.4.1-beta (2025-12-09)
