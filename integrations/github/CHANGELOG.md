@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.1.16-beta (2025-12-09)
+
+
+### Features
+
+- Added an optional GraphQL-based pull request exporter for GitHub that returns richer PR metadata when `includeExtraFields` is enabled, while preserving existing REST behavior by default.
+- Added a webhook ping processor to gracefully handle GitHub `ping` events without affecting stored entities.
+
+
 ## 4.1.15-beta (2025-12-04)
 
 

@@ -194,6 +194,152 @@ LIST_EXTERNAL_IDENTITIES_GQL = f"""
     }}
 """
 
+
+PR_FIELDS = """
+  url
+  id
+  number
+  state
+  locked
+  title
+  body
+  createdAt
+  updatedAt
+  closedAt
+  mergedAt
+  isDraft
+  headRefName
+  baseRefName
+  mergeable
+  reviewDecision
+  authorAssociation
+  activeLockReason
+
+  additions
+  deletions
+  changedFiles
+
+  headRefOid
+  headRef {
+    name
+    target {
+      ... on Commit {
+        oid
+      }
+    }
+  }
+
+  baseRef {
+    name
+    target {
+      ... on Commit {
+        oid
+      }
+    }
+  }
+
+  mergeCommit {
+    oid
+  }
+
+  author {
+    login
+    avatarUrl
+    url
+    __typename
+  }
+
+  assignees(first: 10) {
+    nodes {
+      login
+      avatarUrl
+    }
+  }
+
+  reviewRequests(first: 10) {
+    nodes {
+      requestedReviewer {
+        ... on User {
+          login
+          avatarUrl
+        }
+        ... on Team {
+          name
+          slug
+        }
+      }
+    }
+  }
+
+  labels(first: 10) {
+    nodes {
+      name
+      color
+    }
+  }
+
+  milestone {
+    number
+    title
+    description
+    dueOn
+    url
+  }
+
+  comments { totalCount }
+  reviewThreads { totalCount }
+  commits { totalCount }
+
+  autoMergeRequest {
+    enabledAt
+    mergeMethod
+    commitHeadline
+    commitBody
+  }
+"""
+
+LIST_PULL_REQUESTS_GQL = f"""
+{PAGE_INFO_FRAGMENT}
+query ListPullRequests(
+  $organization: String!,
+  $repo: String!,
+  $states: [PullRequestState!],
+  $first: Int = 25,
+  $after: String
+) {{
+  repository(owner: $organization, name: $repo) {{
+    pullRequests(
+      first: $first,
+      after: $after,
+      states: $states,
+      orderBy: {{ field: CREATED_AT, direction: DESC }}
+    ) {{
+      nodes {{
+{PR_FIELDS}
+      }}
+      pageInfo {{
+        ...PageInfoFields
+      }}
+    }}
+  }}
+}}
+"""
+
+PULL_REQUEST_DETAILS_GQL = f"""
+{PAGE_INFO_FRAGMENT}
+query PullRequestDetails(
+  $organization: String!,
+  $repo: String!,
+  $prNumber: Int!
+) {{
+  repository(owner: $organization, name: $repo) {{
+    pullRequest(number: $prNumber) {{
+{PR_FIELDS}
+    }}
+  }}
+}}
+"""
+
 REPOSITORY_FRAGMENT = """
 fragment RepositoryFields on Repository {
   id

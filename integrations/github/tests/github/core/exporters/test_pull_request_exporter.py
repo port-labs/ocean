@@ -2,10 +2,15 @@ from typing import Any, AsyncGenerator, Generator
 import pytest
 from unittest.mock import patch, AsyncMock
 from datetime import datetime, UTC, timedelta
-from github.core.exporters.pull_request_exporter import RestPullRequestExporter
+from github.core.exporters.pull_request_exporter import (
+    RestPullRequestExporter,
+    GraphQLPullRequestExporter,
+)
 from github.clients.http.rest_client import GithubRestClient
+from github.clients.http.graphql_client import GithubGraphQLClient
 from port_ocean.context.event import event_context
 from github.core.options import SinglePullRequestOptions, ListPullRequestOptions
+from github.helpers.gql_queries import LIST_PULL_REQUESTS_GQL, PULL_REQUEST_DETAILS_GQL
 
 TEST_PULL_REQUESTS = [
     {
@@ -30,7 +35,7 @@ TEST_PULL_REQUESTS = [
 @pytest.fixture
 def mock_datetime() -> Generator[datetime, None, None]:
     """Fixture that mocks the datetime module for consistent testing."""
-    with patch("github.core.exporters.pull_request_exporter.datetime") as mock_dt:
+    with patch("github.core.exporters.pull_request_exporter.utils.datetime") as mock_dt:
         mock_dt.now.return_value = datetime(
             2025, 8, 19, 12, 0, 0, tzinfo=UTC
         )  # do not change this value
@@ -319,3 +324,288 @@ class TestPullRequestExporter:
         assert flat_results[0]["id"] == 1  # First recent PR
         assert flat_results[1]["id"] == 3  # Second recent PR
         assert flat_results[2]["id"] == 4  # Third recent PR
+
+
+@pytest.mark.asyncio
+class TestGraphQLPullRequestExporter:
+    async def test_get_resource(self, graphql_client: GithubGraphQLClient) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+
+        mock_pr_node = {
+            "id": 1,
+            "number": 101,
+            "title": "GraphQL PR",
+            "state": "OPEN",
+            "assignees": {"nodes": []},
+            "reviewRequests": {"nodes": []},
+            "comments": {"totalCount": 2},
+            "reviewThreads": {"totalCount": 1},
+            "commits": {"totalCount": 3},
+        }
+        mock_response = {
+            "data": {"repository": {"pullRequest": mock_pr_node}},
+        }
+
+        with (
+            patch(
+                "github.core.exporters.pull_request_exporter.core.parse_github_options",
+                return_value=("repo1", "test-org", {"pr_number": 101}),
+            ) as mock_parse,
+            patch.object(
+                graphql_client,
+                "send_api_request",
+                return_value=mock_response,
+            ) as mock_request,
+        ):
+            pr = await exporter.get_resource(
+                SinglePullRequestOptions(
+                    organization="test-org",
+                    repo_name="repo1",
+                    pr_number=101,
+                )
+            )
+
+        expected_variables = {
+            "organization": "test-org",
+            "repo": "repo1",
+            "prNumber": 101,
+        }
+        expected_payload = graphql_client.build_graphql_payload(
+            query=PULL_REQUEST_DETAILS_GQL,
+            variables=expected_variables,
+        )
+
+        mock_parse.assert_called_once()
+        mock_request.assert_called_once_with(
+            graphql_client.base_url,
+            method="POST",
+            json_data=expected_payload,
+        )
+
+        # Normalization assertions
+        assert pr["__organization"] == "test-org"
+        assert pr["__repository"] == "repo1"
+        assert pr["comments"] == 2
+        assert pr["review_comments"] == 1
+        assert pr["commits"] == 3
+        assert pr["state"] == "open"
+
+    async def test_get_paginated_resources_open_and_closed(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+
+        open_nodes = [
+            {
+                "id": 1,
+                "number": 11,
+                "title": "Open PR",
+                "state": "OPEN",
+                "assignees": {"nodes": []},
+                "reviewRequests": {"nodes": []},
+                "comments": {"totalCount": 0},
+                "reviewThreads": {"totalCount": 0},
+                "commits": {"totalCount": 1},
+            }
+        ]
+        closed_nodes = [
+            {
+                "id": 2,
+                "number": 12,
+                "title": "Closed PR",
+                "state": "CLOSED",
+                "assignees": {"nodes": []},
+                "reviewRequests": {"nodes": []},
+                "comments": {"totalCount": 1},
+                "reviewThreads": {"totalCount": 0},
+                "commits": {"totalCount": 2},
+                "updatedAt": "2025-08-10T15:08:15Z",
+            }
+        ]
+
+        async def mock_open(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield open_nodes
+
+        async def mock_closed(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield closed_nodes
+
+        with (
+            patch.object(
+                graphql_client,
+                "send_paginated_request",
+                side_effect=[mock_open(), mock_closed()],
+            ) as mock_paginated,
+            patch(
+                "github.core.exporters.pull_request_exporter.core.filter_prs_by_updated_at",
+                side_effect=lambda prs, field, since: prs,
+            ),
+        ):
+            async with event_context("test_event"):
+                options = ListPullRequestOptions(
+                    organization="test-org",
+                    states=["open", "closed"],
+                    repo_name="repo1",
+                    max_results=10,
+                    since=30,
+                )
+                batches = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        # We expect two batches: one for open and one for closed PRs
+        assert len(batches) == 2
+        assert len(batches[0]) == 1
+        assert len(batches[1]) == 1
+
+        # Ensure GraphQL variables were built correctly for both calls
+        mock_paginated.assert_any_call(
+            LIST_PULL_REQUESTS_GQL,
+            {
+                "organization": "test-org",
+                "repo": "repo1",
+                "states": ["OPEN"],
+                "__path": "repository.pullRequests",
+            },
+        )
+        mock_paginated.assert_any_call(
+            LIST_PULL_REQUESTS_GQL,
+            {
+                "organization": "test-org",
+                "repo": "repo1",
+                "states": ["CLOSED"],
+                "__path": "repository.pullRequests",
+            },
+        )
+
+    async def test_closed_prs_use_updated_at_filter_and_max_results(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+
+        pr_nodes = [
+            {"id": 1, "updatedAt": "2025-08-10T15:08:15Z"},
+            {"id": 2, "updatedAt": "2025-08-05T15:08:15Z"},
+            {"id": 3, "updatedAt": "2025-07-01T15:08:15Z"},
+        ]
+
+        async def mock_closed(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield pr_nodes
+
+        with (
+            patch.object(
+                graphql_client,
+                "send_paginated_request",
+                side_effect=mock_closed,
+            ) as mock_paginated,
+            patch(
+                "github.core.exporters.pull_request_exporter.core.filter_prs_by_updated_at",
+                side_effect=lambda prs, field, since: prs[:2],
+            ) as mock_filter,
+            patch.object(
+                GraphQLPullRequestExporter,
+                "_normalize_pr_node",
+                side_effect=lambda pr, repo, org: {
+                    **pr,
+                    "__repository": repo,
+                    "__organization": org,
+                },
+            ) as mock_normalize,
+        ):
+            async with event_context("test_event"):
+                options = ListPullRequestOptions(
+                    organization="test-org",
+                    states=["closed"],
+                    repo_name="repo1",
+                    max_results=2,
+                    since=30,
+                )
+                batches = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+        # Only one batch, limited by max_results and filter output
+        assert len(batches) == 1
+        assert len(batches[0]) == 2
+
+        mock_filter.assert_called_once()
+        # Ensure the GraphQL exporter uses "updatedAt" field for filtering
+        assert mock_filter.call_args.args[1] == "updatedAt"
+
+        mock_paginated.assert_called_once_with(
+            LIST_PULL_REQUESTS_GQL,
+            {
+                "organization": "test-org",
+                "repo": "repo1",
+                "states": ["CLOSED"],
+                "__path": "repository.pullRequests",
+            },
+        )
+        assert mock_normalize.call_count == 2
+
+
+class TestGraphQLPullRequestExporterInternals:
+    def test_normalize_pr_node_enriches_and_flattens(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+
+        pr_node = {
+            "id": "PR_kw",
+            "state": "OPEN",
+            "assignees": {"nodes": [{"login": "assignee"}]},
+            "reviewRequests": {"nodes": []},
+            "comments": {"totalCount": 5},
+            "reviewThreads": {"totalCount": 2},
+            "commits": {"totalCount": 3},
+        }
+
+        normalized = exporter._normalize_pr_node(
+            pr_node, repo_name="repo1", organization="test-org"
+        )
+
+        assert normalized["assignees"] == [{"login": "assignee"}]
+        assert normalized["requested_reviewers"] == []
+        assert normalized["comments"] == 5
+        assert normalized["review_comments"] == 2
+        assert normalized["commits"] == 3
+        assert normalized["state"] == "open"
+        assert normalized["__repository"] == "repo1"
+        assert normalized["__organization"] == "test-org"
+
+    def test_extract_requested_reviewers_handles_users_and_teams(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        exporter = GraphQLPullRequestExporter(graphql_client)
+
+        pr_node = {
+            "reviewRequests": {
+                "nodes": [
+                    {
+                        "requestedReviewer": {
+                            "__typename": "User",
+                            "login": "user1",
+                        }
+                    },
+                    {
+                        "requestedReviewer": {
+                            "__typename": "Team",
+                            "name": "team-name",
+                            "slug": "team-slug",
+                        }
+                    },
+                ]
+            }
+        }
+
+        reviewers = exporter._extract_requested_reviewers(pr_node)
+
+        assert reviewers == [
+            {"login": "user1", "type": "User"},
+            {"name": "team-name", "slug": "team-slug", "type": "Team"},
+        ]

@@ -109,6 +109,11 @@ class GithubPullRequestSelector(RepoSearchSelector):
         le=90,
         description="Only fetch pull requests created within the last N days (1-90 days)",
     )
+    include_extra_fields: bool = Field(
+        default=False,
+        alias="includeExtraFields",
+        description="Include extra fields in the pull request data",
+    )
 
 
 class GithubPullRequestConfig(ResourceConfig):

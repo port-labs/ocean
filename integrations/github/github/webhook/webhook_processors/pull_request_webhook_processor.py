@@ -1,15 +1,19 @@
-from typing import cast
+from typing import Any, cast
 from loguru import logger
 from github.webhook.events import PULL_REQUEST_EVENTS
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import GithubClientType, ObjectKind
 from github.clients.client_factory import create_github_client
+from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
 )
-from github.core.exporters.pull_request_exporter import RestPullRequestExporter
+from github.core.exporters.pull_request_exporter import (
+    GraphQLPullRequestExporter,
+    RestPullRequestExporter,
+)
 from github.core.options import SinglePullRequestOptions
 from integration import GithubPullRequestConfig
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
@@ -55,7 +59,11 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 deleted_raw_results=[pull_request],
             )
 
-        exporter = RestPullRequestExporter(create_github_client())
+        exporter: AbstractGithubExporter[Any] = (
+            GraphQLPullRequestExporter(create_github_client(GithubClientType.GRAPHQL))
+            if config.selector.include_extra_fields
+            else RestPullRequestExporter(create_github_client())
+        )
         data_to_upsert = await exporter.get_resource(
             SinglePullRequestOptions(
                 organization=organization, repo_name=repo_name, pr_number=number
