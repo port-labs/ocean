@@ -6,11 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-## 0.31.6
+## 0.31.6 (2025-12-09)
 
 ### Improvements
 
-- Add log on partial upsert bulk failure
+- Ocean core: Bumped minimum requirements for werkzeug & urllib3
+
+## 0.31.5 (2025-12-08)
+
+### Improvements
+
+- Change the example sending logic, so instead of collecting the
+examples in a class after a successful transformation, always send the
+examples ahead of each JQ transformation
 
 ## 0.31.4 (2025-12-08)
 
