@@ -1,23 +1,15 @@
-from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from loguru import logger
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError, Timeout
+from utils import ObjectKind, build_resource_url
 
 PAGE_SIZE = 50
 WEBHOOK_TIMEOUT = "00:00:50"
 CLIENT_TIMEOUT = 60
 KINDS_WITH_LIMITATION = ["deployment"]
 MAX_ITEMS_LIMITATION = 100
-
-
-class ObjectKind(StrEnum):
-    SPACE = "space"
-    PROJECT = "project"
-    DEPLOYMENT = "deployment"
-    RELEASE = "release"
-    MACHINE = "machine"
 
 
 class OctopusClient:
@@ -29,25 +21,11 @@ class OctopusClient:
         self.client.timeout = Timeout(CLIENT_TIMEOUT)
         self.client.headers.update(self.api_auth_header)
 
-    def _build_resource_url(self, resource: dict[str, Any], kind: str) -> str:
-        resource_id = resource["Id"]
-        space_id = resource.get("SpaceId", "")
-        base = f"{self.server_url}/app#/{space_id}"
-
-        paths: dict[str, str] = {
-            ObjectKind.SPACE: f"{self.server_url}/app#/{resource_id}",
-            ObjectKind.PROJECT: f"{base}/projects/{resource_id}",
-            ObjectKind.RELEASE: f"{base}/releases/{resource_id}",
-            ObjectKind.DEPLOYMENT: f"{base}/deployments/{resource_id}",
-            ObjectKind.MACHINE: f"{base}/infrastructure/machines/{resource_id}/settings",
-        }
-        return paths.get(kind, "")
-
     def _enrich_with_url(
         self, resources: list[dict[str, Any]], kind: str
     ) -> list[dict[str, Any]]:
         return [
-            {**resource, "__url": self._build_resource_url(resource, kind)}
+            {**resource, "__url": build_resource_url(resource, kind, self.server_url)}
             for resource in resources
         ]
 
@@ -112,13 +90,13 @@ class OctopusClient:
             f"{space_id}/{resource_kind}/{resource_id}"
         )
         kind = ObjectKind(resource_kind.rstrip("s"))
-        resource["__url"] = self._build_resource_url(resource, kind)
+        resource["__url"] = build_resource_url(resource, kind, self.server_url)
         return resource
 
     async def get_single_space(self, space_id: str) -> dict[str, Any]:
         """Get a single space by ID."""
         space = await self._send_api_request(f"{ObjectKind.SPACE}s/{space_id}")
-        space["__url"] = self._build_resource_url(space, ObjectKind.SPACE)
+        space["__url"] = build_resource_url(space, ObjectKind.SPACE, self.server_url)
         return space
 
     @cache_iterator_result()

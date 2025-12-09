@@ -3,7 +3,8 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from client import OctopusClient, ObjectKind
+from client import OctopusClient
+from utils import ObjectKind
 
 TRACKED_EVENTS = [
     "spaces",
