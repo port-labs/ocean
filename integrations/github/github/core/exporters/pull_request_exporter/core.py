@@ -1,4 +1,5 @@
 from typing import Any, cast
+from datetime import datetime
 
 from loguru import logger
 
@@ -48,7 +49,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name, organization, extras = parse_github_options(dict(options))
         states = extras["states"]
         max_results = extras["max_results"]
-        since = extras["since"]
+        updated_after = extras["updated_after"]
 
         logger.info(
             f"Starting pull request export for repository {repo_name} from {organization}"
@@ -62,7 +63,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
         if "closed" in states:
             async for closed_batch in self._fetch_closed_pull_requests(
-                organization, cast(str, repo_name), max_results, since
+                organization, cast(str, repo_name), max_results, updated_after
             ):
                 yield closed_batch
 
@@ -89,7 +90,11 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             yield batch
 
     async def _fetch_closed_pull_requests(
-        self, organization: str, repo_name: str, max_results: int, since: int
+        self,
+        organization: str,
+        repo_name: str,
+        max_results: int,
+        updated_after: datetime,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         endpoint = self._build_pull_request_paginated_endpoint(organization, repo_name)
         params = {
@@ -128,7 +133,9 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
                 enrich_with_organization(
                     enrich_with_repository(pr, repo_name), organization
                 )
-                for pr in filter_prs_by_updated_at(limited_batch, "updated_at", since)
+                for pr in filter_prs_by_updated_at(
+                    limited_batch, "updated_at", updated_after
+                )
             ]
 
             yield enriched_batch
@@ -175,7 +182,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         repo_name, organization, extras = parse_github_options(dict(options))
         states = extras["states"]
         max_results = extras["max_results"]
-        since = extras["since"]
+        updated_after = extras["updated_after"]
 
         if "open" in states:
             async for batch in self._fetch_open_pull_requests(
@@ -185,14 +192,14 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
 
         if "closed" in states:
             async for batch in self._fetch_closed_pull_requests(
-                organization, cast(str, repo_name), max_results, since
+                organization, cast(str, repo_name), max_results, updated_after
             ):
                 yield batch
 
     async def _fetch_open_pull_requests(
         self, organization: str, repo_name: str, states: list[str]
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Generic fetcher used for both open and closed (without since/max_results)."""
+        """Generic fetcher used for both open and closed (without updated_after/max_results)."""
         variables = {
             "organization": organization,
             "repo": repo_name,
@@ -225,7 +232,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         organization: str,
         repo_name: str,
         max_results: int,
-        since: int,
+        updated_after: datetime,
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         variables = {
@@ -242,7 +249,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         ):
             if not pr_nodes:
                 logger.info(
-                    f"[Closed PRs] No more closed pull requests returned for repository {repo_name} from {organization}; stopping."
+                    f"No more closed pull requests returned for repository {repo_name} from {organization}; stopping."
                 )
                 break
 
@@ -254,13 +261,15 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             batch_count = len(limited_batch)
 
             logger.info(
-                f"[Closed PRs] Fetched closed pull requests batch of {batch_count} from {repo_name} from {organization} "
+                f"Fetched closed pull requests batch of {batch_count} from {repo_name} from {organization} "
                 f"(total so far: {total_count + batch_count}/{max_results})"
             )
 
             enriched_batch = [
                 self._normalize_pr_node(pr, repo_name, organization)
-                for pr in filter_prs_by_updated_at(limited_batch, "updatedAt", since)
+                for pr in filter_prs_by_updated_at(
+                    limited_batch, "updatedAt", updated_after
+                )
             ]
 
             yield enriched_batch
@@ -271,16 +280,19 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         self, pr_node: dict[str, Any], repo_name: str, organization: str
     ) -> dict[str, Any]:
         """Centralized normalization — used by ALL code paths."""
-        assignees = pr_node["assignees"]["nodes"]
 
         normalized = {
             **pr_node,
-            "assignees": assignees,
+            "assignees": pr_node["assignees"]["nodes"],
+            "reviewRequests": pr_node["reviewRequests"]["nodes"],
+            "labels": pr_node["labels"]["nodes"],
             "requested_reviewers": self._extract_requested_reviewers(pr_node),
             "comments": pr_node["comments"]["totalCount"],
             "review_comments": pr_node["reviewThreads"]["totalCount"],
             "commits": pr_node["commits"]["totalCount"],
             "state": pr_node["state"].lower(),
+            "mergeable_state": pr_node["mergeStateStatus"].lower(),
+            "mergeable": True if pr_node["mergeable"] == "MERGEABLE" else False,
         }
 
         return enrich_with_organization(

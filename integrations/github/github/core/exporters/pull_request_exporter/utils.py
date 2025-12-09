@@ -1,11 +1,10 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 
 def filter_prs_by_updated_at(
-    prs: list[dict[str, Any]], updated_at_field: str, since: int
+    prs: list[dict[str, Any]], updated_at_field: str, updated_after: datetime
 ) -> list[dict[str, Any]]:
-    cutoff = datetime.now(UTC) - timedelta(days=since)
 
     return [
         pr
@@ -13,5 +12,5 @@ def filter_prs_by_updated_at(
         if datetime.strptime(pr[updated_at_field], "%Y-%m-%dT%H:%M:%SZ").replace(
             tzinfo=UTC
         )
-        >= cutoff
+        >= updated_after
     ]

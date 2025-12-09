@@ -64,7 +64,7 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         exporter: AbstractGithubExporter[Any] = (
             GraphQLPullRequestExporter(create_github_client(GithubClientType.GRAPHQL))
-            if config.selector.include_extra_fields
+            if config.selector.api == GithubClientType.GRAPHQL
             else RestPullRequestExporter(create_github_client())
         )
         data_to_upsert = await exporter.get_resource(

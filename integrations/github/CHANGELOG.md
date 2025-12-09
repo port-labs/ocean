@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added an optional GraphQL-based pull request exporter for GitHub that returns richer PR metadata when `includeExtraFields` is enabled, while preserving existing REST behavior by default.
+- Added an optional GraphQL-based pull request exporter for GitHub that returns graphql data when `api` is set to `graphql`, while preserving existing REST behavior by default.
 - Added a webhook ping processor to gracefully handle GitHub `ping` events without affecting stored entities.
 
 

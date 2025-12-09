@@ -34,7 +34,7 @@ def resource_config() -> GithubPullRequestConfig:
         selector=GithubPullRequestSelector(
             query="true",
             states=["open"],
-            includeExtraFields=False,
+            api="rest",
         ),
         port=PortResourceConfig(
             entity=MappingsConfig(

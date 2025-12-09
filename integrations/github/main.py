@@ -376,7 +376,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     pull_request_exporter: AbstractGithubExporter[Any] = (
         GraphQLPullRequestExporter(graphql_client)
-        if config.selector.include_extra_fields
+        if config.selector.api == GithubClientType.GRAPHQL
         else RestPullRequestExporter(rest_client)
     )
 
@@ -404,7 +404,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 repo_name=repo["name"],
                                 states=list(config.selector.states),
                                 max_results=config.selector.max_results,
-                                since=config.selector.since,
+                                updated_after=config.selector.updated_after,
                             )
                         )
                     )

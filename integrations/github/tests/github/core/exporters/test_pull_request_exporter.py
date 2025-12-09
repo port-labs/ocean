@@ -90,7 +90,7 @@ class TestPullRequestExporter:
     async def test_get_paginated_resources_various_states(
         self,
         rest_client: GithubRestClient,
-        mock_datetime: datetime,
+        mock_datetime: Any,
         states: list[str],
         expected_calls: list[dict[str, Any]],
     ) -> None:
@@ -110,7 +110,8 @@ class TestPullRequestExporter:
                     states=states,
                     repo_name="repo1",
                     max_results=10,
-                    since=60,
+                    updated_after=mock_datetime.now(mock_datetime.UTC)
+                    - mock_datetime.timedelta(days=60),
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -140,7 +141,7 @@ class TestPullRequestExporter:
             assert actual_calls == expected_call_args
 
     async def test_get_paginated_resources_respects_max_results(
-        self, rest_client: GithubRestClient, mock_datetime: datetime
+        self, rest_client: GithubRestClient, mock_datetime: Any
     ) -> None:
         exporter = RestPullRequestExporter(rest_client)
 
@@ -174,7 +175,8 @@ class TestPullRequestExporter:
                     states=["closed"],
                     repo_name="repo1",
                     max_results=5,
-                    since=60,
+                    updated_after=mock_datetime.now(mock_datetime.UTC)
+                    - mock_datetime.timedelta(days=60),
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -199,7 +201,8 @@ class TestPullRequestExporter:
                     states=["closed"],
                     repo_name="repo1",
                     max_results=5,
-                    since=60,
+                    updated_after=mock_datetime.now(mock_datetime.UTC)
+                    - mock_datetime.timedelta(days=60),
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -215,7 +218,7 @@ class TestPullRequestExporter:
         ]
 
     async def test_since_parameter_filters_closed_prs(
-        self, rest_client: GithubRestClient, mock_datetime: datetime
+        self, rest_client: GithubRestClient, mock_datetime: Any
     ) -> None:
         """Test that the since parameter correctly filters closed PRs and interacts with max_results."""
         exporter = RestPullRequestExporter(rest_client)
@@ -288,7 +291,8 @@ class TestPullRequestExporter:
                     states=["closed"],
                     repo_name="repo1",
                     max_results=10,
-                    since=30,
+                    updated_after=mock_datetime.now(mock_datetime.UTC)
+                    - mock_datetime.timedelta(days=30),
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -310,7 +314,8 @@ class TestPullRequestExporter:
                     states=["closed"],
                     repo_name="repo1",
                     max_results=3,
-                    since=90,
+                    updated_after=mock_datetime.now(mock_datetime.UTC)
+                    - mock_datetime.timedelta(days=90),
                 )
                 results = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -341,6 +346,9 @@ class TestGraphQLPullRequestExporter:
             "comments": {"totalCount": 2},
             "reviewThreads": {"totalCount": 1},
             "commits": {"totalCount": 3},
+            "labels": {"nodes": []},
+            "mergeStateStatus": "CLEAN",
+            "mergeable": "MERGEABLE",
         }
         mock_response = {
             "data": {"repository": {"pullRequest": mock_pr_node}},
@@ -391,7 +399,7 @@ class TestGraphQLPullRequestExporter:
         assert pr["state"] == "open"
 
     async def test_get_paginated_resources_open_and_closed(
-        self, graphql_client: GithubGraphQLClient
+        self, graphql_client: GithubGraphQLClient, mock_datetime: Any
     ) -> None:
         exporter = GraphQLPullRequestExporter(graphql_client)
 
@@ -406,6 +414,9 @@ class TestGraphQLPullRequestExporter:
                 "comments": {"totalCount": 0},
                 "reviewThreads": {"totalCount": 0},
                 "commits": {"totalCount": 1},
+                "labels": {"nodes": []},
+                "mergeStateStatus": "CLEAN",
+                "mergeable": "MERGEABLE",
             }
         ]
         closed_nodes = [
@@ -420,6 +431,9 @@ class TestGraphQLPullRequestExporter:
                 "reviewThreads": {"totalCount": 0},
                 "commits": {"totalCount": 2},
                 "updatedAt": "2025-08-10T15:08:15Z",
+                "labels": {"nodes": []},
+                "mergeStateStatus": "CLEAN",
+                "mergeable": "MERGEABLE",
             }
         ]
 
@@ -450,7 +464,8 @@ class TestGraphQLPullRequestExporter:
                     states=["open", "closed"],
                     repo_name="repo1",
                     max_results=10,
-                    since=30,
+                    updated_after=mock_datetime.now(mock_datetime.UTC)
+                    - mock_datetime.timedelta(days=30),
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -482,7 +497,7 @@ class TestGraphQLPullRequestExporter:
         )
 
     async def test_closed_prs_use_updated_at_filter_and_max_results(
-        self, graphql_client: GithubGraphQLClient
+        self, graphql_client: GithubGraphQLClient, mock_datetime: Any
     ) -> None:
         exporter = GraphQLPullRequestExporter(graphql_client)
 
@@ -505,7 +520,7 @@ class TestGraphQLPullRequestExporter:
             ) as mock_paginated,
             patch(
                 "github.core.exporters.pull_request_exporter.core.filter_prs_by_updated_at",
-                side_effect=lambda prs, field, since: prs[:2],
+                side_effect=lambda prs, field, updated_after: prs[:2],
             ) as mock_filter,
             patch.object(
                 GraphQLPullRequestExporter,
@@ -523,7 +538,8 @@ class TestGraphQLPullRequestExporter:
                     states=["closed"],
                     repo_name="repo1",
                     max_results=2,
-                    since=30,
+                    updated_after=mock_datetime.now(mock_datetime.UTC)
+                    - mock_datetime.timedelta(days=30),
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -563,6 +579,9 @@ class TestGraphQLPullRequestExporterInternals:
             "comments": {"totalCount": 5},
             "reviewThreads": {"totalCount": 2},
             "commits": {"totalCount": 3},
+            "labels": {"nodes": []},
+            "mergeStateStatus": "CLEAN",
+            "mergeable": "MERGEABLE",
         }
 
         normalized = exporter._normalize_pr_node(

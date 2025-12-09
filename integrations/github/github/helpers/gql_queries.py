@@ -198,6 +198,7 @@ LIST_EXTERNAL_IDENTITIES_GQL = f"""
 PR_FIELDS = """
   url
   id
+  fullDatabaseId
   number
   state
   locked
@@ -211,9 +212,16 @@ PR_FIELDS = """
   headRefName
   baseRefName
   mergeable
+  mergeStateStatus
   reviewDecision
   authorAssociation
   activeLockReason
+  merged
+  permalink
+  canBeRebased
+  closed
+  maintainerCanModify
+  lastEditedAt
 
   additions
   deletions
@@ -238,15 +246,26 @@ PR_FIELDS = """
     }
   }
 
-  mergeCommit {
-    oid
-  }
-
   author {
     login
     avatarUrl
     url
     __typename
+  }
+
+  mergedBy {
+    login
+    avatarUrl
+    url
+    __typename
+  }
+
+  mergeCommit {
+    oid
+  }
+
+  potentialMergeCommit {
+    oid
   }
 
   assignees(first: 10) {
@@ -273,8 +292,12 @@ PR_FIELDS = """
 
   labels(first: 10) {
     nodes {
+      id
+      url
       name
       color
+      isDefault
+      description
     }
   }
 
