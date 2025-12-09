@@ -5,7 +5,7 @@ from concurrent.futures import ProcessPoolExecutor
 import re
 from asyncio import Task
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 import jq  # type: ignore
 from loguru import logger
@@ -35,8 +35,6 @@ class MappedEntity:
 
     entity: dict[str, Any] = field(default_factory=dict)
     did_entity_pass_selector: bool = False
-    raw_data: Optional[dict[str, Any] | tuple[dict[str, Any], str]] = None
-    raw_data_index: Optional[int] = None
     misconfigurations: dict[str, str] = field(default_factory=dict)
 
 
@@ -124,7 +122,6 @@ def _get_mapped_entity(
         return MappedEntity(
             mapped_entity,
             did_entity_pass_selector=should_run,
-            raw_data_index=index if should_run else None,
             misconfigurations=misconfigurations,
         )
 
@@ -314,7 +311,6 @@ class JQEntityProcessor(BaseEntityProcessor):
             return MappedEntity(
                 mapped_entity,
                 did_entity_pass_selector=should_run,
-                raw_data=data if should_run else None,
                 misconfigurations=misconfigurations,
             )
 
