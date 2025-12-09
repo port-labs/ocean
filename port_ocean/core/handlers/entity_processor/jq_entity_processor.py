@@ -5,7 +5,7 @@ from concurrent.futures import ProcessPoolExecutor
 import re
 from asyncio import Task
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 import jq  # type: ignore
 from loguru import logger
@@ -40,10 +40,10 @@ class MappedEntity:
 
 # Set globals for multiprocessing of batch data. When a process forks, it inherits these globals by reference.
 # We will take advantage of COW to avoid pickling the data.
-_MULTIPROCESS_JQ_BATCH_DATA: list[dict[str, Any]] = []
-_MULTIPROCESS_JQ_BATCH_MAPPINGS: dict[str, Any] = {}
-_MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY: str = ""
-_MULTIPROCESS_JQ_BATCH_PARSE_ALL: bool = False
+_MULTIPROCESS_JQ_BATCH_DATA: list[dict[str, Any]] | None = None
+_MULTIPROCESS_JQ_BATCH_MAPPINGS: dict[str, Any] | None = None
+_MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY: str | None = None
+_MULTIPROCESS_JQ_BATCH_PARSE_ALL: bool | None = None
 
 _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS: dict[str, Any] = {}
 
@@ -92,7 +92,7 @@ def _search_as_object(
     obj: dict[str, Any],
     misconfigurations: dict[str, str] | None = None,
 ) -> dict[str, Any | None]:
-    result: dict[str, dict[str, Any | None] | list[dict[str, Any | None]]] = {}
+    result: dict[str, Any | None | list[Any | None]] = {}
     for key, value in obj.items():
         try:
             if isinstance(value, list):
@@ -101,7 +101,7 @@ def _search_as_object(
                     search_result = _search_as_object(
                         data, list_item, misconfigurations
                     )
-                    result[key].append(search_result)
+                    cast(list[dict[str, Any | None]], result[key]).append(search_result)
                     if search_result is None and misconfigurations is not None:
                         misconfigurations[key] = obj[key]
 
@@ -147,18 +147,41 @@ def _calculate_entity(
 ) -> tuple[list[MappedEntity], list[Exception]]:
     # Access data directly from globals to avoid pickling.
     global _MULTIPROCESS_JQ_BATCH_DATA, _MULTIPROCESS_JQ_BATCH_MAPPINGS, _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY, _MULTIPROCESS_JQ_BATCH_PARSE_ALL
-    data = _MULTIPROCESS_JQ_BATCH_DATA[index]
-    raw_entity_mappings = _MULTIPROCESS_JQ_BATCH_MAPPINGS
-    selector_query = _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY
-    parse_all = _MULTIPROCESS_JQ_BATCH_PARSE_ALL
-    result = _get_mapped_entity(
-        index, data, raw_entity_mappings, selector_query, parse_all
+    data = (
+        _MULTIPROCESS_JQ_BATCH_DATA[index]
+        if _MULTIPROCESS_JQ_BATCH_DATA is not None
+        else None
     )
-    errors = []
-    entities = []
+    if data is None:
+        return [], [Exception(f"Data is missing for index: {index}")]
+    raw_entity_mappings = (
+        _MULTIPROCESS_JQ_BATCH_MAPPINGS
+        if _MULTIPROCESS_JQ_BATCH_MAPPINGS is not None
+        else None
+    )
+    selector_query = (
+        _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY
+        if _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY is not None
+        else None
+    )
+    parse_all = (
+        _MULTIPROCESS_JQ_BATCH_PARSE_ALL
+        if _MULTIPROCESS_JQ_BATCH_PARSE_ALL is not None
+        else False
+    )
+    result = _get_mapped_entity(
+        index,
+        data,
+        cast(dict[str, Any], raw_entity_mappings),
+        cast(str, selector_query),
+        parse_all,
+    )
+    errors: list[Exception] = []
+    entities: list[MappedEntity] = [result]
 
     if isinstance(result, BaseException) and not isinstance(result, Exception):
         raise result
+
     elif isinstance(result, Exception):
         errors.append(result)
 
@@ -420,8 +443,8 @@ class JQEntityProcessor(BaseEntityProcessor):
         _MULTIPROCESS_JQ_BATCH_PARSE_ALL = parse_all
         # Fork a new process to calculate the entities.
         # Use indexes to acess data to have the lowest pickling overhead.
-        calculated_entities_results = []
-        errors = []
+        calculated_entities_results: list[MappedEntity] = []
+        errors: list[Exception] = []
         pool = ProcessPoolExecutor(
             max_workers=ocean.config.process_in_queue_max_workers,
             mp_context=multiprocessing.get_context("fork"),
