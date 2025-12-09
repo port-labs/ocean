@@ -10,6 +10,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
+- Added log on partial bulk upsert failures
+
+
+## 0.31.6 (2025-12-09)
+
+### Improvements
+
 - Ocean core: Bumped minimum requirements for werkzeug & urllib3
 
 ## 0.31.5 (2025-12-08)
