@@ -22,7 +22,6 @@ from github.webhook.webhook_processors.base_repository_webhook_processor import 
 
 
 class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
-
     async def _validate_payload(self, payload: EventPayload) -> bool:
         return "pull_request" in payload and "number" in payload["pull_request"]
 
@@ -43,12 +42,16 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
         number = pull_request["number"]
         repo_name = payload["repository"]["name"]
         organization = payload["organization"]["login"]
+        config = cast(GithubPullRequestConfig, resource_config)
 
         logger.info(
             f"Processing pull request event: {action} for {repo_name}/{number} from {organization}"
         )
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
-        config = cast(GithubPullRequestConfig, resource_config)
         if action == "closed" and "closed" not in config.selector.states:
             logger.info(
                 f"Pull request {repo_name}/{number} was closed and will be deleted from {organization}"

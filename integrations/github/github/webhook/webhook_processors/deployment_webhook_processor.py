@@ -17,7 +17,6 @@ from github.webhook.webhook_processors.base_deployment_webhook_processor import 
 
 
 class DeploymentWebhookProcessor(BaseDeploymentWebhookProcessor):
-
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.DEPLOYMENT]
 
@@ -34,6 +33,11 @@ class DeploymentWebhookProcessor(BaseDeploymentWebhookProcessor):
         logger.info(
             f"Processing deployment event: {action} for {resource_config_kind} in {repo} from {organization}"
         )
+
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         client = create_github_client()
         deployment_exporter = RestDeploymentExporter(client)
