@@ -577,7 +577,6 @@ class EntityClientMixin:
         if query.get("rules"):
             query["rules"].extend(default_query["rules"])
 
-        logger.info(f"Searching entities with custom query: {query}")
         response = await self.client.post(
             f"{self.auth.api_url}/entities/search",
             json=query,
