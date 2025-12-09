@@ -9,6 +9,7 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 from urllib.parse import quote
+from wcmatch import glob
 
 from gitlab.helpers.utils import parse_file_content
 
@@ -35,9 +36,14 @@ class GitLabClient:
             "GET", f"projects/{project_id}/releases/{tag_name}"
         )
 
-    async def get_project(self, project_path: str | int) -> dict[str, Any]:
+    async def get_project(
+        self, project_path: str | int, include_languages: bool = False
+    ) -> dict[str, Any]:
         encoded_path = quote(str(project_path), safe="")
-        return await self.rest.send_api_request("GET", f"projects/{encoded_path}")
+        project = await self.rest.send_api_request("GET", f"projects/{encoded_path}")
+        if include_languages:
+            return await self._enrich_project_with_languages(project)
+        return project
 
     async def get_group(self, group_id: int) -> dict[str, Any]:
         return await self.rest.send_api_request("GET", f"groups/{group_id}")
@@ -364,16 +370,41 @@ class GitLabClient:
         ref: str = "main",
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch repository tree (folders only) for a project."""
+
         project_path = project["path_with_namespace"]
-        params = {"ref": ref, "path": path, "recursive": False}
-        async for batch in self.rest.get_paginated_project_resource(
-            project_path, "repository/tree", params
-        ):
-            if folders_batch := [item for item in batch if item["type"] == "tree"]:
-                yield [
-                    {"folder": folder, "repo": project, "__branch": ref}
-                    for folder in folders_batch
+        is_wildcard = any(c in path for c in "*?[]")
+
+        if is_wildcard:
+            # For wildcard patterns, we need to recursively search and filter using globmatch
+            params = {"ref": ref, "path": "", "recursive": True}
+
+            async for batch in self.rest.get_paginated_project_resource(
+                project_path, "repository/tree", params
+            ):
+                folders_batch = [
+                    item
+                    for item in batch
+                    if item["type"] == "tree"
+                    and glob.globmatch(
+                        item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
+                    )
                 ]
+                if folders_batch:
+                    yield [
+                        {"folder": folder, "repo": project, "__branch": ref}
+                        for folder in folders_batch
+                    ]
+        else:
+            # For exact paths, use non-recursive search
+            params = {"ref": ref, "path": path, "recursive": False}
+            async for batch in self.rest.get_paginated_project_resource(
+                project_path, "repository/tree", params
+            ):
+                if folders_batch := [item for item in batch if item["type"] == "tree"]:
+                    yield [
+                        {"folder": folder, "repo": project, "__branch": ref}
+                        for folder in folders_batch
+                    ]
 
     async def get_repository_folders(
         self, path: str, repository: str, branch: Optional[str] = None
@@ -410,20 +441,8 @@ class GitLabClient:
         self,
         file: dict[str, Any],
     ) -> dict[str, Any]:
-
         repo = await self.get_project(file["project_id"])
-        file["repo"] = repo
-        return {
-            "file": file,
-            "__type": (
-                "path"
-                if isinstance(file["content"], dict)
-                and file["content"].get("path") is not None
-                else "content"
-            ),
-            "repo": repo,
-            "__base_jq": ".file.content",
-        }
+        return {"file": file, "repo": repo}
 
     async def _enrich_files_with_repos(
         self,
@@ -509,19 +528,11 @@ class GitLabClient:
             parsed_content = await anyio.to_thread.run_sync(
                 parse_file_content, file_data["content"], file_path, context
             )
-            if parsed_content.get("should_resolve_references", False):
-                file_resolved_content = await self._resolve_file_references(
-                    parsed_content.get("content"), project_id, ref
-                )
-                parsed_content["content"] = file_resolved_content
-            file_data["content"] = (
-                parsed_content
-                if not parsed_content.get("content")
-                else parsed_content["content"]
+            parsed_content = await self._resolve_file_references(
+                parsed_content, project_id, ref
             )
+            file_data["content"] = parsed_content
 
-        if isinstance(file_data["content"], str):
-            file_data["content"] = {"content": file_data["content"]}
         return file_data
 
     async def _process_file_batch(
