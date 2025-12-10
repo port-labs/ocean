@@ -36,7 +36,7 @@ async def on_organization_resync(kind: str) -> list[dict[str, Any]]:
 async def on_targets_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     snyk_client = init_client()
     all_organizations = await snyk_client.get_organizations_in_groups()
-    tasks = (snyk_client.get_paginated_targets(org) for org in all_organizations)
+    tasks = (snyk_client.get_paginated_targets(org["id"]) for org in all_organizations)
     async for targets in stream_async_iterators_tasks(*tasks):
         logger.debug(f"Received batch with {len(targets)} targets")
         yield targets

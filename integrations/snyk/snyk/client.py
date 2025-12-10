@@ -190,14 +190,14 @@ class SnykClient:
             yield enrich_batch_with_org(projects, org)
 
     async def get_single_target_by_project_id(
-        self, org: dict[str, Any], project_id: str
+        self, org_id: str, project_id: str
     ) -> dict[str, Any]:
-        project = await self.get_single_project(org["id"], project_id)
+        project = await self.get_single_project(org_id, project_id)
         target_id = (
             project.get("relationships", {}).get("target", {}).get("data", {}).get("id")
         )
 
-        url = f"{self.rest_api_url}/orgs/{org['id']}/targets/{target_id}"
+        url = f"{self.rest_api_url}/orgs/{org_id}/targets/{target_id}"
 
         response = await self._send_api_request(
             url=url, method="GET", version=f"{self.snyk_api_version}"
@@ -209,7 +209,7 @@ class SnykClient:
         target = response["data"]
 
         async def process_target(target_data: dict[str, Any]) -> dict[str, Any]:
-            async for projects in self.get_paginated_projects(org):
+            async for projects in self.get_paginated_projects(org_id):
                 target_data.setdefault("__projects", []).extend(
                     self._get_projects_by_target(projects, target_data["id"])
                 )
@@ -219,18 +219,18 @@ class SnykClient:
         return target
 
     async def get_paginated_targets(
-        self, org: dict[str, Any]
+        self, org_id: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info(f"Fetching paginated targets for organization: {org['id']}")
+        logger.info(f"Fetching paginated targets for organization: {org_id}")
 
-        url = f"/orgs/{org['id']}/targets"
+        url = f"/orgs/{org_id}/targets"
         query_params = {"version": self.snyk_api_version}
         async for targets in self._get_paginated_resources(
             url_path=url, query_params=query_params
         ):
 
             async def process_target(target_data: dict[str, Any]) -> dict[str, Any]:
-                async for projects in self.get_paginated_projects(org):
+                async for projects in self.get_paginated_projects(org_id):
                     target_data.setdefault("__projects", []).extend(
                         self._get_projects_by_target(projects, target_data["id"])
                     )
