@@ -266,13 +266,12 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
                 yield mock_data["values"]
 
             mock_paginated.return_value = mock_generator()
-            options = PullRequestSelectorOptions(states=["OPEN"])
+            options = PullRequestSelectorOptions(pull_request_query='state="OPEN"')
             async for prs in mock_client.get_pull_requests("test-repo", options):
                 assert prs == mock_data["values"]
             mock_paginated.assert_called_once_with(
                 f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
-                params={"state": ["OPEN"], "pagelen": 50},
-                max_results=None,
+                params={"pagelen": 50, "q": 'state="OPEN"'},
             )
 
 
@@ -499,26 +498,29 @@ async def test_get_pull_requests_multiple_states(mock_client: BitbucketClient) -
 
             mock_paginated.return_value = mock_generator()
 
-            options_single = PullRequestSelectorOptions(states=["OPEN"])
+            options_single = PullRequestSelectorOptions(
+                pull_request_query='state="OPEN"'
+            )
             async for prs in mock_client.get_pull_requests("test-repo", options_single):
                 assert prs == mock_data["values"]
 
             options_multi = PullRequestSelectorOptions(
-                states=["OPEN", "MERGED"], max_results=10
+                pull_request_query='state="OPEN" OR state="MERGED"'
             )
             async for prs in mock_client.get_pull_requests("test-repo", options_multi):
                 assert prs == mock_data["values"]
 
             mock_paginated.assert_any_call(
                 f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
-                params={"pagelen": PULL_REQUEST_PAGE_SIZE, "state": ["OPEN"]},
-                max_results=None,
+                params={"pagelen": PULL_REQUEST_PAGE_SIZE, "q": 'state="OPEN"'},
             )
 
             mock_paginated.assert_any_call(
                 f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
-                params={"pagelen": PULL_REQUEST_PAGE_SIZE, "state": ["OPEN", "MERGED"]},
-                max_results=10,
+                params={
+                    "pagelen": PULL_REQUEST_PAGE_SIZE,
+                    "q": 'state="OPEN" OR state="MERGED"',
+                },
             )
 
             assert mock_paginated.call_count == 2

@@ -38,21 +38,11 @@ class PullRequestWebhookProcessor(_BitbucketAbstractWebhookProcessor):
         )
         selector = cast(PullRequestResourceConfig, resource_config).selector
         options: PullRequestSelectorOptions = PullRequestSelectorOptions(
-            states=selector.states,
             user_role=selector.user_role,
             repo_query=selector.repo_query,
-            max_results=selector.max_results,
+            pull_request_query=selector.pull_request_query,
         )
-        if not self._check_state_filter(raw_pull_request, options):
-            logger.info(
-                f"Pull request state {raw_pull_request['state']} does not match any of the states in the selector: {options['states']}. Skipping..."
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
 
-        # filter by repository role or repository query
         if not await self._check_repository_filter(
             payload["repository"]["uuid"], options
         ):
@@ -75,11 +65,6 @@ class PullRequestWebhookProcessor(_BitbucketAbstractWebhookProcessor):
     async def validate_payload(self, payload: EventPayload) -> bool:
         required_fields = ["repository", "pullrequest"]
         return all(field in payload for field in required_fields)
-
-    def _check_state_filter(
-        self, pull_request: dict[str, Any], options: PullRequestSelectorOptions
-    ) -> bool:
-        return pull_request["state"] in options["states"]
 
     async def _check_repository_filter(
         self, repo_uuid: str, options: PullRequestSelectorOptions

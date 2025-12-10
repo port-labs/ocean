@@ -51,16 +51,10 @@ class RepositorySelector(Selector):
 
 
 class PullRequestSelector(RepositorySelector):
-    states: list[Literal["OPEN", "MERGED", "DECLINED", "SUPERSEDED"]] = Field(
-        default=["OPEN"],
-        alias="states",
-        description="Filter pull requests by state",
-    )
-    max_results: int = Field(
-        default=100,
-        ge=1,
-        alias="maxResults",
-        description="Maximum number of pull requests to fetch that are not in the OPEN state",
+    pull_request_query: str = Field(
+        default='state="OPEN"',
+        alias="pullRequestQuery",
+        description='Query string to narrow pull requests as per Bitbucket filtering (e.g., state="OPEN")',
     )
 
 

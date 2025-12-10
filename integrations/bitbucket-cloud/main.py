@@ -80,10 +80,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             client.get_pull_requests(
                 repo.get("slug", repo["name"].lower().replace(" ", "-")),
                 options=PullRequestSelectorOptions(
-                    states=selector.states,
                     user_role=selector.user_role,
                     repo_query=selector.repo_query,
-                    max_results=selector.max_results,
+                    pull_request_query=selector.pull_request_query,
                 ),
             )
             for repo in repositories
