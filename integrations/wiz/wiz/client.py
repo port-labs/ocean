@@ -162,14 +162,8 @@ class WizClient:
         variables: dict[str, Any] = {
             "first": page_size,
             "orderBy": {"direction": "DESC", "field": "CREATED_AT"},
-            "filterBy": {"status": options["status_list"]},
         }
-
-        if options["severity_list"]:
-            variables["filterBy"]["severity"] = options["severity_list"]
-
-        if options["type_list"]:
-            variables["filterBy"]["type"] = options["type_list"]
+        variables.update(self._enrich_variables_with_issue_options(variables, options))
 
         async for issues in self._get_paginated_resources(
             resource="issues", variables=variables, max_pages=options["max_pages"]
@@ -203,7 +197,9 @@ class WizClient:
             event.attributes.setdefault(CacheKeys.PROJECTS, []).extend(projects)
             yield projects
 
-    async def get_single_issue(self, issue_id: str) -> dict[str, Any]:
+    async def get_single_issue(
+        self, issue_id: str, options: IssueOptions
+    ) -> dict[str, Any]:
         logger.info(f"Fetching issue with id {issue_id}")
 
         query_variables = {
@@ -211,6 +207,25 @@ class WizClient:
             "filterBy": {"id": issue_id},
         }
 
+        query_variables.update(
+            self._enrich_variables_with_issue_options(query_variables, options)
+        )
         response_data = await self.make_graphql_query(ISSUES_GQL, query_variables)
         issue = response_data.get("issues", {}).get("nodes", [])[0]
         return issue
+
+    def _enrich_variables_with_issue_options(
+        self, variables: dict[str, Any], options: IssueOptions
+    ) -> dict[str, Any]:
+        if "filterBy" not in variables:
+            variables["filterBy"] = {}
+
+        variables["filterBy"]["status"] = options["status_list"]
+
+        if options["severity_list"]:
+            variables["filterBy"]["severity"] = options["severity_list"]
+
+        if options["type_list"]:
+            variables["filterBy"]["type"] = options["type_list"]
+
+        return variables
