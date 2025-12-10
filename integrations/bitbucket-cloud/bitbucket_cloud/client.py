@@ -8,7 +8,6 @@ from bitbucket_cloud.helpers.rate_limiter import RollingWindowLimiter
 from bitbucket_cloud.helpers.auth import BitbucketAuthFacade, AbstractAuth
 from bitbucket_cloud.helpers.token_manager import TokenRateLimiterContext, TokenManager
 from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig
-from bitbucket_cloud.webhook_processors.options import PullRequestSelectorOptions
 
 PULL_REQUEST_PAGE_SIZE = 50
 PAGE_SIZE = 100
@@ -253,13 +252,10 @@ class BitbucketClient:
             yield contents
 
     async def get_pull_requests(
-        self, repo_slug: str, options: PullRequestSelectorOptions
+        self, repo_slug: str, params: dict[str, Any] = {}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get pull requests for a repository."""
-        params: dict[str, Any] = {
-            "pagelen": PULL_REQUEST_PAGE_SIZE,
-            "q": options["pull_request_query"],
-        }
+        params["pagelen"] = PULL_REQUEST_PAGE_SIZE
         async for pull_requests in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests",
             params=params,

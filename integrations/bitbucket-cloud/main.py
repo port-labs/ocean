@@ -31,7 +31,7 @@ from bitbucket_cloud.helpers.folder import (
     process_folder_patterns,
 )
 from bitbucket_cloud.helpers.file_kind import process_file_patterns
-from bitbucket_cloud.utils import build_repo_params
+from bitbucket_cloud.utils import build_repo_params, build_pull_request_params
 from bitbucket_cloud.webhook_processors.options import PullRequestSelectorOptions
 
 
@@ -75,15 +75,16 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = init_client()
     selector = cast(PullRequestResourceConfig, event.resource_config).selector
     params: dict[str, Any] = build_repo_params(selector.user_role, selector.repo_query)
+    options = PullRequestSelectorOptions(
+        user_role=selector.user_role,
+        repo_query=selector.repo_query,
+        pull_request_query=selector.pull_request_query,
+    )
     async for repositories in client.get_repositories(params=params):
         tasks = [
             client.get_pull_requests(
                 repo.get("slug", repo["name"].lower().replace(" ", "-")),
-                options=PullRequestSelectorOptions(
-                    user_role=selector.user_role,
-                    repo_query=selector.repo_query,
-                    pull_request_query=selector.pull_request_query,
-                ),
+                params=build_pull_request_params(options),
             )
             for repo in repositories
         ]

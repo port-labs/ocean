@@ -7,6 +7,7 @@ from bitbucket_cloud.client import BitbucketClient, PULL_REQUEST_PAGE_SIZE
 from bitbucket_cloud.helpers.token_manager import TokenManager
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
 from bitbucket_cloud.webhook_processors.options import PullRequestSelectorOptions
+from bitbucket_cloud.utils import build_pull_request_params
 
 
 @pytest.fixture
@@ -267,7 +268,9 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
 
             mock_paginated.return_value = mock_generator()
             options = PullRequestSelectorOptions(pull_request_query='state="OPEN"')
-            async for prs in mock_client.get_pull_requests("test-repo", options):
+            async for prs in mock_client.get_pull_requests(
+                "test-repo", params=build_pull_request_params(options)
+            ):
                 assert prs == mock_data["values"]
             mock_paginated.assert_called_once_with(
                 f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
@@ -501,13 +504,17 @@ async def test_get_pull_requests_multiple_states(mock_client: BitbucketClient) -
             options_single = PullRequestSelectorOptions(
                 pull_request_query='state="OPEN"'
             )
-            async for prs in mock_client.get_pull_requests("test-repo", options_single):
+            async for prs in mock_client.get_pull_requests(
+                "test-repo", params=build_pull_request_params(options_single)
+            ):
                 assert prs == mock_data["values"]
 
             options_multi = PullRequestSelectorOptions(
                 pull_request_query='state="OPEN" OR state="MERGED"'
             )
-            async for prs in mock_client.get_pull_requests("test-repo", options_multi):
+            async for prs in mock_client.get_pull_requests(
+                "test-repo", params=build_pull_request_params(options_multi)
+            ):
                 assert prs == mock_data["values"]
 
             mock_paginated.assert_any_call(
