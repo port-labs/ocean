@@ -112,9 +112,9 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
     while len(result) > 0:
         item = result.pop(0)
         entity_processor = cast(JQEntityProcessor, ocean.app.integration.entity_processor)
-        items_to_parse_data =  entity_processor._search(item, items_to_parse)
+        items_to_parse_data =  await entity_processor._search(item, items_to_parse)
         if event.resource_config.port.items_to_parse_top_level_transform:
-            item = entity_processor._search(item, jq_expression)
+            item = await entity_processor._search(item, jq_expression)
         if not isinstance(items_to_parse_data, list):
             logger.warning(
                 f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items_to_parse_data)}."
