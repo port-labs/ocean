@@ -42,22 +42,6 @@ resources:
             language: if .language then .language else "" end
           relations:
             organization: .owner.login
-  - kind: folder
-    selector:
-      query: 'true'
-      folders:
-        - path: '*/*'
-    port:
-      entity:
-        mappings:
-          identifier: .__repository.name + "/" + .folder.path | gsub(" "; "")
-          title: .folder.path | tostring
-          blueprint: '"githubRepository"'
-          properties:
-            url: >-
-              .__repository.html_url + "/tree/" + .__repository.default_branch +
-              "/" + .folder.path
-            readme: file://README.md
   - kind: pull-request
     selector:
       query: 'true'
@@ -88,39 +72,3 @@ resources:
                 (((($mergedTimestamp - $createdTimestamp) / 3600) * 100 | floor) / 100) end)
           relations:
             repository: .__repository
-  - kind: file
-    selector:
-      query: 'true'
-      files:
-        - path: '**/CODEOWNERS'
-          skipParsing: true
-    port:
-      itemsToParse: >-
-        (. as $root | .content | split("\n") |
-        map(gsub("^[[:space:]]+|[[:space:]]+$"; "")) |
-        map(select((test("^[[:space:]]*#") | not) and (length > 0))) | map(
-            (split(" ") | map(select(length > 0))) as $tokens
-            | {
-                scope: ($tokens[0]),
-                identifier: ($tokens[0]
-                          | gsub("\\*\\*"; "doublestar")
-                          | gsub("\\*"; "star")),
-                users: ($tokens[1:] | map(select(contains("/") | not) | gsub("@"; ""))),
-                teams: ($tokens[1:] | map(select(test("^@[^ ]+/[^ ]+$")) | split("/") | .[-1])),
-                repoName: $root.repository.name,
-                filePath: $root.metadata.path
-            }
-          )
-        )
-      entity:
-        mappings:
-          identifier: .item.repoName + "_" + .item.identifier + "_codeowners"
-          title: .item.scope + " codeowners"
-          blueprint: '"githubCodeowners"'
-          properties:
-            scope: .item.scope
-            location: .item.filePath
-            users: .item.users
-            teams: .item.teams
-          relations:
-            repository: .item.repoName

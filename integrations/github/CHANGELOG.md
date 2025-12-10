@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.4.4-beta (2025-12-10)
+
+
+### Improvements
+
+- Removed folder kind and codeowners from integration default
+
+
 ## 4.4.3-beta (2025-12-10)
 
 
