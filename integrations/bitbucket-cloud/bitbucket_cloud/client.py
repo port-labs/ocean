@@ -119,11 +119,13 @@ class BitbucketClient:
         params: Optional[dict[str, Any]] = None,
         method: str = "GET",
         data_key: str = "values",
+        max_results: Optional[int] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if params is None:
             params = {
                 "pagelen": PAGE_SIZE,
             }
+        total_yielded = 0
         while True:
             if hasattr(self.auth, "token_manager") and self.auth.token_manager:
                 async with TokenRateLimiterContext(self.auth.token_manager) as ctx:
@@ -138,8 +140,20 @@ class BitbucketClient:
                         url, params=params, method=method
                     )
 
-            if values := response.get(data_key, []):
-                yield values
+            values: list[dict[str, Any]] = response.get(data_key, [])
+            if not values:
+                break
+
+            if max_results:
+                remaining = max_results - total_yielded
+                if remaining < len(values):
+                    values = values[:remaining]
+                    yield values
+                    return
+
+            total_yielded += len(values)
+            yield values
+
             url = response.get("next")
             params = None
             if not url:
@@ -256,10 +270,12 @@ class BitbucketClient:
             "pagelen": PULL_REQUEST_PAGE_SIZE,
             "state": options["states"],
         }
+        has_non_open_states = any(state != "OPEN" for state in options["states"])
 
         async for pull_requests in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests",
             params=params,
+            max_results=options["max_results"] if has_non_open_states else None,
         ):
             logger.info(
                 f"Fetched batch of {len(pull_requests)} pull requests from repository {repo_slug} in workspace {self.workspace}"

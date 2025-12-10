@@ -56,6 +56,12 @@ class PullRequestSelector(RepositorySelector):
         alias="states",
         description="Filter pull requests by state",
     )
+    max_results: int = Field(
+        default=100,
+        ge=1,
+        alias="maxResults",
+        description="Maximum number of pull requests to fetch that are not in the OPEN state",
+    )
 
 
 class FolderPattern(BaseModel):
