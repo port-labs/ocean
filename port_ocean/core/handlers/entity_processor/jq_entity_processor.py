@@ -300,19 +300,29 @@ class JQEntityProcessor(BaseEntityProcessor):
             max_workers=ocean.config.process_in_queue_max_workers,
             mp_context=multiprocessing.get_context("fork"),
         )
-        calculated_entities_results, errors = zip_and_sum(
-            await asyncio.gather(
-                *[
-                    asyncio.wait_for(
-                        asyncio.get_event_loop().run_in_executor(
-                            pool, _calculate_entity, index
-                        ),
-                        timeout=ocean.config.process_in_queue_timeout,
-                    )
-                    for index in range(len(raw_results))
-                ],
-            )
+        loop = asyncio.get_running_loop()
+        results_with_errors = await asyncio.gather(
+            *[
+                asyncio.wait_for(
+                    loop.run_in_executor(pool, _calculate_entity, index),
+                    timeout=ocean.config.process_in_queue_timeout,
+                )
+                for index in range(len(raw_results))
+            ],
+            return_exceptions=True,
         )
+        successful_results: list[tuple[list[MappedEntity], list[Exception]]] = []
+        for item in results_with_errors:
+            if isinstance(item, BaseException) and not isinstance(item, Exception):
+                raise item
+            if isinstance(item, Exception):
+                errors.append(item)
+            else:
+                successful_results.append(item)
+
+        if successful_results:
+            calculated_entities_results, entity_errors = zip_and_sum(successful_results)
+            errors.extend(entity_errors)
         pool.shutdown(wait=False)
         del pool
         # Clear globals to avoid memory leaks.
