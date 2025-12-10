@@ -20,10 +20,15 @@ class TestJQEntityProcessor:
         mock_context = AsyncMock()
         mock_context.config = MagicMock()
         mock_context.config.process_in_queue_max_workers = 4
+        mock_context.config.process_in_queue_timeout = 10
         mock_context.config.allow_environment_variables_jq_access = True
         monkeypatch.setattr(PortOceanContext, "app", mock_context)
         ocean._app = mock_context
-        return JQEntityProcessor(mock_context)
+        processor = JQEntityProcessor(mock_context)
+        # Set up entity_processor for multiprocess access in _calculate_entity
+        mock_context.integration = MagicMock()
+        mock_context.integration.entity_processor = processor
+        return processor
 
     async def test_compile(self, mocked_processor: JQEntityProcessor) -> None:
         pattern = ".foo"
@@ -33,7 +38,7 @@ class TestJQEntityProcessor:
     async def test_search(self, mocked_processor: JQEntityProcessor) -> None:
         data = {"foo": "bar"}
         pattern = ".foo"
-        result = await mocked_processor._search(data, pattern)
+        result = mocked_processor._search(data, pattern)
         assert result == "bar"
 
     async def test_search_with_single_quotes(
@@ -41,7 +46,7 @@ class TestJQEntityProcessor:
     ) -> None:
         data = {"repository": "ocean", "organization": "port"}
         pattern = ".organization + '/' + .repository"
-        result = await mocked_processor._search(data, pattern)
+        result = mocked_processor._search(data, pattern)
         assert result == "port/ocean"
 
     async def test_search_with_single_quotes_in_the_end(
@@ -49,7 +54,7 @@ class TestJQEntityProcessor:
     ) -> None:
         data = {"organization": "port"}
         pattern = ".organization + '/'"
-        result = await mocked_processor._search(data, pattern)
+        result = mocked_processor._search(data, pattern)
         assert result == "port/"
 
     async def test_search_with_single_quotes_in_the_start(
@@ -57,7 +62,7 @@ class TestJQEntityProcessor:
     ) -> None:
         data = {"organization": "port"}
         pattern = "'/' + .organization"
-        result = await mocked_processor._search(data, pattern)
+        result = mocked_processor._search(data, pattern)
         assert result == "/port"
 
     async def test_search_as_bool(self, mocked_processor: JQEntityProcessor) -> None:

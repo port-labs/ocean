@@ -2,14 +2,14 @@ import asyncio
 import multiprocessing
 import re
 from contextlib import contextmanager
-from typing import Any, AsyncGenerator, Awaitable, Callable, Generator
+from typing import Any, AsyncGenerator, Awaitable, Callable, Generator, cast
 
-import ijson
 from loguru import logger
 
 from port_ocean.clients.port.utils import _http_client as _port_http_client
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
@@ -111,9 +111,10 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
 
     while len(result) > 0:
         item = result.pop(0)
-        items_to_parse_data = await ocean.app.integration.entity_processor._search(item, items_to_parse)
+        entity_processor = cast(JQEntityProcessor, ocean.app.integration.entity_processor)
+        items_to_parse_data =  entity_processor._search(item, items_to_parse)
         if event.resource_config.port.items_to_parse_top_level_transform:
-            item = await ocean.app.integration.entity_processor._search(item, jq_expression)
+            item = entity_processor._search(item, jq_expression)
         if not isinstance(items_to_parse_data, list):
             logger.warning(
                 f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items_to_parse_data)}."

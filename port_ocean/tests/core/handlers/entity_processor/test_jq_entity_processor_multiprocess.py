@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
+    JQEntityProcessor,
     MappedEntity,
     _calculate_entity,
 )
@@ -27,6 +28,10 @@ class TestCalculateEntity:
         ) as mock_ocean:
             mock_ocean.config = MagicMock()
             mock_ocean.config.allow_environment_variables_jq_access = True
+            # Set up a real JQEntityProcessor so _get_mapped_entity works correctly
+            mock_context = MagicMock()
+            entity_processor = JQEntityProcessor(mock_context)
+            mock_ocean.integration.entity_processor = entity_processor
             jq_module._MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS.clear()
             yield mock_ocean
 
@@ -159,6 +164,10 @@ class TestIntegration:
         ) as mock_ocean:
             mock_ocean.config = MagicMock()
             mock_ocean.config.allow_environment_variables_jq_access = True
+            # Set up a real JQEntityProcessor so _get_mapped_entity works correctly
+            mock_context = MagicMock()
+            entity_processor = JQEntityProcessor(mock_context)
+            mock_ocean.integration.entity_processor = entity_processor
             jq_module._MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS.clear()
             yield mock_ocean
 
