@@ -1,0 +1,73 @@
+identifier: harborUser
+title: Harbor User
+icon: User
+schema:
+  properties:
+    username:
+      type: string
+      title: Username
+      description: Unique username as defined in Harbor
+    display_name:
+      type: string
+      title: Display Name
+      description: Preferred display name from Harbor user profile
+    email:
+      type: string
+      format: email
+      title: Email
+      description: Email linked to the Harbor account when available
+    creation_time:
+      type: string
+      format: date-time
+      title: Creation Time
+      description: Timestamp when the user was created
+    update_time:
+      type: string
+      format: date-time
+      title: Update Time
+      description: Timestamp of the last profile update
+    is_robot:
+      type: boolean
+      title: Robot Account
+      description: Indicates whether the account is a Harbor robot user
+    is_admin:
+      type: boolean
+      title: System Admin
+      description: Indicates whether the user is a Harbor system administrator
+    projects:
+      type: array
+      title: Projects
+      description: Harbor projects the user belongs to
+      items:
+        type: string
+    project_roles:
+      type: array
+      title: Project Roles
+      description: Roles assigned to the user across Harbor projects
+      items:
+        type: object
+        properties:
+          project:
+            type: string
+            title: Project
+          role:
+            type: string
+            title: Role
+    role_names:
+      type: array
+      title: Role Names
+      description: Distinct role names attached to the user
+      items:
+        type: string
+  required:
+    - username
+mirrorProperties: {}
+calculationProperties: {}
+aggregationProperties: {}
+relations:
+  projects:
+    target: harborProject
+    title: Projects
+    description: Harbor projects the user is a member of
+    many: true
+    required: false
