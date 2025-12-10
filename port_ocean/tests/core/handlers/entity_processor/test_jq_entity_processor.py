@@ -63,36 +63,24 @@ class TestJQEntityProcessor:
     async def test_search_as_bool(self, mocked_processor: JQEntityProcessor) -> None:
         data = {"foo": True}
         pattern = ".foo"
-        result = await mocked_processor._search_as_bool(data, pattern)
+        result = mocked_processor._search_as_bool(data, pattern)
         assert result is True
 
     async def test_search_as_object(self, mocked_processor: JQEntityProcessor) -> None:
         data = {"foo": {"bar": "baz"}}
         obj = {"foo": ".foo.bar"}
-        result = await mocked_processor._search_as_object(data, obj)
+        result = mocked_processor._search_as_object(data, obj)
         assert result == {"foo": "baz"}
 
     async def test_get_mapped_entity(self, mocked_processor: JQEntityProcessor) -> None:
         data = {"foo": "bar"}
         raw_entity_mappings = {"foo": ".foo"}
         selector_query = '.foo == "bar"'
-        result = await mocked_processor._get_mapped_entity(
+        result = mocked_processor._get_mapped_entity(
             data, raw_entity_mappings, selector_query
         )
         assert result.entity == {"foo": "bar"}
         assert result.did_entity_pass_selector is True
-
-    async def test_calculate_entity(self, mocked_processor: JQEntityProcessor) -> None:
-        data = {"foo": "bar"}
-        raw_entity_mappings = {"foo": ".foo"}
-        selector_query = '.foo == "bar"'
-        result, errors = await mocked_processor._calculate_entity(
-            data, raw_entity_mappings, selector_query
-        )
-        assert len(result) == 1
-        assert result[0].entity == {"foo": "bar"}
-        assert result[0].did_entity_pass_selector is True
-        assert not errors
 
     async def test_parse_items(self, mocked_processor: JQEntityProcessor) -> None:
         mapping = Mock()
@@ -191,7 +179,7 @@ class TestJQEntityProcessor:
             "referencedBy": [],
         }
         pattern = '.subViews | map(select((.qualifier | IN("VW", "SVW"))) | .key)'
-        result = await mocked_processor._search(data, pattern)
+        result = mocked_processor._search(data, pattern)
         assert result == ["GetPort_SelfService_Second", "Python"]
 
     async def test_failure_of_jq_expression(
@@ -199,7 +187,7 @@ class TestJQEntityProcessor:
     ) -> None:
         data = {"foo": "bar"}
         pattern = ".foo."
-        result = await mocked_processor._search(data, pattern)
+        result = mocked_processor._search(data, pattern)
         assert result is None
 
     async def test_search_as_object_failure(
@@ -207,7 +195,7 @@ class TestJQEntityProcessor:
     ) -> None:
         data = {"foo": {"bar": "baz"}}
         obj = {"foo": ".foo.bar."}
-        result = await mocked_processor._search_as_object(data, obj)
+        result = mocked_processor._search_as_object(data, obj)
         assert result == {"foo": None}
 
     async def test_double_quotes_in_jq_expression(
@@ -215,7 +203,7 @@ class TestJQEntityProcessor:
     ) -> None:
         data = {"foo": "bar"}
         pattern = '"shalom"'
-        result = await mocked_processor._search(data, pattern)
+        result = mocked_processor._search(data, pattern)
         assert result == "shalom"
 
     async def test_search_as_bool_failure(
@@ -227,7 +215,7 @@ class TestJQEntityProcessor:
             EntityProcessorException,
             match="Expected boolean value, got value:bar of type: <class 'str'> instead",
         ):
-            await mocked_processor._search_as_bool(data, pattern)
+            mocked_processor._search_as_bool(data, pattern)
 
     @pytest.mark.parametrize(
         "pattern, expected",
@@ -253,7 +241,7 @@ class TestJQEntityProcessor:
                 {"name": "another_parameter", "value": "another_value2"},
             ]
         }
-        result = await mocked_processor._search(data, pattern)
+        result = mocked_processor._search(data, pattern)
         assert result == expected
 
     async def test_return_a_list_of_values(
@@ -261,7 +249,7 @@ class TestJQEntityProcessor:
     ) -> None:
         data = {"parameters": ["parameter_value", "another_value", "another_value2"]}
         pattern = ".parameters"
-        result = await mocked_processor._search(data, pattern)
+        result = mocked_processor._search(data, pattern)
         assert result == ["parameter_value", "another_value", "another_value2"]
 
     @pytest.mark.timeout(3)
@@ -274,7 +262,7 @@ class TestJQEntityProcessor:
         data = {"foo": "bar"}
         pattern = ".foo"
         for _ in range(10000):
-            result = await mocked_processor._search(data, pattern)
+            result = mocked_processor._search(data, pattern)
             assert result == "bar"
 
     @pytest.mark.timeout(30)
