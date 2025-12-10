@@ -39,6 +39,11 @@ class ReleaseWebhookProcessor(BaseRepositoryWebhookProcessor):
             f"Processing release event: {action} for release {release_id} in {repo_name} from {organization}"
         )
 
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         if action in RELEASE_DELETE_EVENTS:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[release]

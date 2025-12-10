@@ -26,6 +26,11 @@ class WorkflowRunWebhookProcessor(BaseWorkflowRunWebhookProcessor):
             f"Processing workflow run event: {action} of organization: {organization}"
         )
 
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         if action in WORKFLOW_DELETE_EVENTS:
             logger.info(
                 f"Workflow run {workflow_run['name']} was deleted from organization: {organization}"
