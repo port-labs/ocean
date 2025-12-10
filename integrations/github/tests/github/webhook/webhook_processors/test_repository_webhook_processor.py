@@ -47,7 +47,6 @@ def repository_webhook_processor(
 
 @pytest.mark.asyncio
 class TestRepositoryWebhookProcessor:
-
     @pytest.mark.parametrize(
         "github_event,result", [(ObjectKind.REPOSITORY, True), ("invalid", False)]
     )
@@ -146,7 +145,7 @@ class TestRepositoryWebhookProcessor:
         self,
         repository_webhook_processor: RepositoryWebhookProcessor,
         resource_config: GithubRepositoryConfig,
-        include_relationships: List[Literal["collaborators", "teams"]],
+        include_relationships: List[Literal["collaborators", "teams", "sbom"]],
     ) -> None:
         """Test that webhook processor handles included_relationships correctly."""
         repo_data = {
