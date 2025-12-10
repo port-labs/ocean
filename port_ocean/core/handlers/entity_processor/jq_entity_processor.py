@@ -1,5 +1,4 @@
 import asyncio
-import inspect
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 import re
@@ -66,11 +65,13 @@ def _calculate_entity(
 
     try:
         entity_processor = cast(JQEntityProcessor, ocean.integration.entity_processor)
-        entity = entity_processor._get_mapped_entity(
-            data,
-            raw_entity_mappings,
-            selector_query,
-            parse_all,
+        entity = asyncio.get_event_loop().run_until_complete(
+            entity_processor._get_mapped_entity(
+                data,
+                raw_entity_mappings,
+                selector_query,
+                parse_all,
+            )
         )
         return [entity], []
     except Exception as e:
@@ -149,7 +150,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                 f"{entity_mapping_fault_counter} transformations of batch failed due to empty, null or missing values"
             )
 
-    def _search(self, data: dict[str, Any], pattern: str) -> Any:
+    async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
             compiled_pattern = self._compile(pattern)
             return compiled_pattern.input_value(data).first()
@@ -159,7 +160,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             )
             return None
 
-    def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
+    async def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
         compiled_pattern = self._compile(pattern)
         value = compiled_pattern.input_value(data).first()
         if isinstance(value, bool):
@@ -168,7 +169,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             f"Expected boolean value, got value:{value} of type: {type(value)} instead"
         )
 
-    def _search_as_object(
+    async def _search_as_object(
         self,
         data: dict[str, Any],
         obj: dict[str, Any],
@@ -180,7 +181,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                 if isinstance(value, list):
                     result[key] = []
                     for list_item in value:
-                        search_result = self._search_as_object(
+                        search_result = await self._search_as_object(
                             data, list_item, misconfigurations
                         )
                         cast(list[dict[str, Any | None]], result[key]).append(
@@ -190,7 +191,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                             misconfigurations[key] = obj[key]
 
                 elif isinstance(value, dict):
-                    search_result = self._search_as_object(
+                    search_result = await self._search_as_object(
                         data, value, misconfigurations
                     )
                     result[key] = search_result
@@ -198,11 +199,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                         misconfigurations[key] = obj[key]
 
                 else:
-                    search_result = self._search(data, value)
-                    if inspect.isawaitable(search_result):
-                        search_result = asyncio.get_event_loop().run_until_complete(
-                            search_result
-                        )
+                    search_result = await self._search(data, value)
                     result[key] = search_result
                     if search_result is None and misconfigurations is not None:
                         misconfigurations[key] = obj[key]
@@ -211,17 +208,17 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         return result
 
-    def _get_mapped_entity(
+    async def _get_mapped_entity(
         self,
         data: dict[str, Any],
         raw_entity_mappings: dict[str, Any],
         selector_query: str,
         parse_all: bool = False,
     ) -> MappedEntity:
-        should_run = self._search_as_bool(data, selector_query)
+        should_run = await self._search_as_bool(data, selector_query)
         if parse_all or should_run:
             misconfigurations: dict[str, str] = {}
-            mapped_entity = self._search_as_object(
+            mapped_entity = await self._search_as_object(
                 data, raw_entity_mappings, misconfigurations
             )
             return MappedEntity(
