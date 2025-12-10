@@ -180,7 +180,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
     async def get_paginated_resources[
         self, ExporterOptionsT: ListPullRequestOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        repo_name, organization, extras = parse_github_options(dict(options))
+        _, organization, extras = parse_github_options(dict(options))
         states = extras["states"]
         max_results = extras["max_results"]
         updated_after = extras["updated_after"]
@@ -299,11 +299,10 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             "state": pr_node["state"].lower(),
             "mergeable_state": pr_node["mergeStateStatus"].lower(),
             "mergeable": True if pr_node["mergeable"] == "MERGEABLE" else False,
-            "__repository_object": repo,
         }
 
         return enrich_with_organization(
-            enrich_with_repository(normalized, repo_name), organization
+            enrich_with_repository(normalized, repo_name, repo=repo), organization
         )
 
     def _extract_requested_reviewers(
