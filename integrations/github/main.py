@@ -570,6 +570,7 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 repo_name=repo["name"],
                                 detailed=selector.detailed,
                                 protection_rules=selector.protection_rules,
+                                repo=repo,
                             )
                         )
                     )

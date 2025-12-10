@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.4.3-beta (2025-12-10)
+
+
+### Improvements
+
+- Enriched branch exporter and webhook processor responses with repository metadata, including the underlying repository object, to enable richer mappings and downstream processing.
+
+
 ## 4.4.2-beta (2025-12-09)
 
 

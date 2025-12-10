@@ -62,7 +62,10 @@ def enrich_with_organization(
 
 
 def enrich_with_repository(
-    response: Dict[str, Any], repo_name: str, key: str = "__repository"
+    response: Dict[str, Any],
+    repo_name: str,
+    key: str = "__repository",
+    repo: Optional[dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Helper function to enrich response with repository information.
     Args:
@@ -72,7 +75,10 @@ def enrich_with_repository(
     Returns:
         The enriched response
     """
+
     response[key] = repo_name
+    if repo:
+        response["__repository_object"] = repo
     return response
 
 
