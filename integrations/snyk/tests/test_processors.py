@@ -266,7 +266,7 @@ async def test_handleEvent_projectUpdated_targetReturnedFromClient_updatedRawRes
         mock_client = AsyncMock()
 
         async def mock_get_target(*args: Any, **kwargs: Any) -> dict[str, Any]:
-            assert args[0] == "test-org-id"
+            assert args[0] == payload["org"]
             assert args[1] == "test-project-id"
             return mock_target
 
