@@ -1,11 +1,11 @@
 from io import StringIO
 from typing import Any, cast
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from loguru import logger
 
-from port_ocean.context.ocean import PortOceanContext
+from port_ocean.context.ocean import PortOceanContext, ocean
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
 )
@@ -18,7 +18,11 @@ class TestJQEntityProcessor:
     @pytest.fixture
     def mocked_processor(self, monkeypatch: Any) -> JQEntityProcessor:
         mock_context = AsyncMock()
+        mock_context.config = MagicMock()
+        mock_context.config.process_in_queue_max_workers = 4
+        mock_context.config.allow_environment_variables_jq_access = True
         monkeypatch.setattr(PortOceanContext, "app", mock_context)
+        ocean._app = mock_context
         return JQEntityProcessor(mock_context)
 
     async def test_compile(self, mocked_processor: JQEntityProcessor) -> None:
@@ -288,13 +292,13 @@ class TestJQEntityProcessor:
         }
         mapping.port.items_to_parse = None
         mapping.selector.query = '.foo == "bar"'
-        raw_results = [{"foo": "bar"}]
-        for _ in range(10000):
-            result = await mocked_processor._parse_items(mapping, raw_results)
-            assert isinstance(result, CalculationResult)
-            assert len(result.entity_selector_diff.passed) == 1
-            assert result.entity_selector_diff.passed[0].properties.get("foo") == "bar"
-            assert not result.errors
+        raw_results = [{"foo": "bar"} for _ in range(10000)]
+
+        item = await mocked_processor._parse_items(mapping, raw_results)
+        assert isinstance(item, CalculationResult)
+        assert len(item.entity_selector_diff.passed) == 10000
+        assert item.entity_selector_diff.passed[0].properties.get("foo") == "bar"
+        assert not item.errors
 
     async def test_parse_items_wrong_mapping(
         self, mocked_processor: JQEntityProcessor

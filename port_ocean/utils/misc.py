@@ -1,6 +1,7 @@
 import inspect
 from enum import Enum
 from importlib.util import module_from_spec, spec_from_file_location
+import multiprocessing
 from pathlib import Path
 from time import time
 from types import ModuleType
@@ -74,3 +75,27 @@ def load_module(file_path: str) -> ModuleType:
     spec.loader.exec_module(module)
 
     return module
+
+
+def get_cgroup_cpu_limit() -> int:
+    try:
+        with open("/sys/fs/cgroup/cpu.max", "r") as f:
+            content = f.read().strip().split()
+            # content will be like ['200000', '100000'] (quota, period) or ['max', '100000']
+            if content[0] == "max":
+                return (
+                    multiprocessing.cpu_count()
+                )  # No limit imposed, return host count
+
+            quota_us = int(content[0])
+            period_us = int(content[1])
+            # Calculate the number of full CPUs: quota / period
+            limit = int(quota_us // period_us)
+            return limit if limit > 0 else 1
+    except FileNotFoundError:
+        # Fallback for cgroups v1 or other issues, might need to implement v1 logic
+        # or use a reliable environment variable as a safeguard
+        return multiprocessing.cpu_count()
+    except Exception as e:
+        print(f"Error reading cgroup limit: {e}")
+        return multiprocessing.cpu_count()
