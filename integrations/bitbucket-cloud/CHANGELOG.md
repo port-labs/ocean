@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.10 (2025-12-10)
+## 0.3.11 (2025-12-10)
 
 
 ### Improvements
 
 - Removed folder kind from integration default
 - Removed codeowners mapping and blueprint from integration default resources
+
+
+## 0.3.10 (2025-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.1
 
 
 ## 0.3.9 (2025-12-09)
