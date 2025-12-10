@@ -42,6 +42,22 @@ resources:
             language: if .language then .language else "" end
           relations:
             organization: .owner.login
+  - kind: folder
+    selector:
+      query: 'true'
+      folders:
+        - path: '*/*'
+    port:
+      entity:
+        mappings:
+          identifier: .__repository.name + "/" + .folder.path | gsub(" "; "")
+          title: .folder.path | tostring
+          blueprint: '"githubRepository"'
+          properties:
+            url: >-
+              .__repository.html_url + "/tree/" + .__repository.default_branch +
+              "/" + .folder.path
+            readme: file://README.md
   - kind: pull-request
     selector:
       query: 'true'
