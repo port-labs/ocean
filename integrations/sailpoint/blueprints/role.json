@@ -1,0 +1,34 @@
+{
+  "identifier": "sailpoint_role",
+  "title": "SailPoint Role",
+  "icon": "ShieldCheck",
+  "schema": {
+    "properties": {
+      "name": { "type": "string" },
+      "description": { "type": "string" },
+      "type": { "type": "string", "enum": ["BUSINESS", "IT", "OTHER"] },
+      "riskScore": { "type": "number" },
+      "ownerId": { "type": "string", "description": "Identity ID of the role owner" },
+      "createdAt": { "type": "string", "format": "date-time" },
+      "updatedAt": { "type": "string", "format": "date-time" }
+    },
+    "required": ["name", "type"]
+  },
+  "relations": {
+    "accessProfiles": {
+      "title": "Access Profiles",
+      "target": "sailpoint_access_profile",
+      "many": true
+    },
+    "entitlements": {
+      "title": "Entitlements",
+      "target": "sailpoint_entitlement",
+      "many": true
+    },
+    "identities": {
+      "title": "Assigned Identities",
+      "target": "sailpoint_identity",
+      "many": true
+    }
+  }
+}
