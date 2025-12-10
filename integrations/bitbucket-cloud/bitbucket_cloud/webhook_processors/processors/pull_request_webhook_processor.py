@@ -41,6 +41,7 @@ class PullRequestWebhookProcessor(_BitbucketAbstractWebhookProcessor):
             states=selector.states,
             user_role=selector.user_role,
             repo_query=selector.repo_query,
+            max_results=selector.max_results,
         )
         if not self._check_state_filter(raw_pull_request, options):
             logger.info(
