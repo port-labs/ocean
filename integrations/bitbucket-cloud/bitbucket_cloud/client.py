@@ -146,8 +146,7 @@ class BitbucketClient:
 
             if max_results:
                 remaining = max_results - total_yielded
-                if remaining < len(values):
-                    values = values[:remaining]
+                if remaining >= len(values):
                     yield values
                     return
 
