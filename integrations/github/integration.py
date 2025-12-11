@@ -161,6 +161,22 @@ class GithubCodeScanningAlertConfig(ResourceConfig):
     kind: Literal["code-scanning-alerts"]
 
 
+class GithubDeploymentSelector(RepoSearchSelector):
+    task: Optional[str] = Field(
+        default=None,
+        description="Filter deployments by task name (e.g., deploy or deploy:migrations)",
+    )
+    environment: Optional[str] = Field(
+        default=None,
+        description="Filter deployments by environment name (e.g., staging or production)",
+    )
+
+
+class GithubDeploymentConfig(ResourceConfig):
+    selector: GithubDeploymentSelector
+    kind: Literal["deployment"]
+
+
 class GithubSecretScanningAlertSelector(RepoSearchSelector):
     state: Literal["open", "resolved", "all"] = Field(
         default="open",
@@ -251,6 +267,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubIssueConfig
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig
+        | GithubDeploymentConfig
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig

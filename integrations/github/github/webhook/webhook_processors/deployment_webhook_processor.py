@@ -14,6 +14,8 @@ from github.core.exporters.deployment_exporter import RestDeploymentExporter
 from github.webhook.webhook_processors.base_deployment_webhook_processor import (
     BaseDeploymentWebhookProcessor,
 )
+from integration import GithubDeploymentConfig, GithubDeploymentSelector
+from typing import cast, Any
 
 
 class DeploymentWebhookProcessor(BaseDeploymentWebhookProcessor):
@@ -34,6 +36,16 @@ class DeploymentWebhookProcessor(BaseDeploymentWebhookProcessor):
             f"Processing deployment event: {action} for {resource_config_kind} in {repo} from {organization}"
         )
 
+        config = cast(GithubDeploymentConfig, resource_config)
+
+        if not self._check_deployment_filters(config.selector, deployment):
+            logger.info(
+                f"Deployment {repo}/{deployment_id} filtered out by selector criteria"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         if not await self.should_process_repo_search(payload, resource_config):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
@@ -52,3 +64,16 @@ class DeploymentWebhookProcessor(BaseDeploymentWebhookProcessor):
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
+
+    def _check_deployment_filters(
+        self, selector: GithubDeploymentSelector, deployment: dict[str, Any]
+    ) -> bool:
+        """Check if deployment matches selector task and environment filters."""
+
+        if selector.task and deployment["task"] != selector.task:
+            return False
+
+        if selector.environment and deployment["environment"] != selector.environment:
+            return False
+
+        return True
