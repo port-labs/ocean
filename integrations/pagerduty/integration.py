@@ -61,6 +61,8 @@ class PagerdutyServiceAPIQueryParams(BaseModel):
 
 class PagerdutyScheduleAPIQueryParams(BaseModel):
     include: list[str] | None
+    until: str | None
+    since: str | None
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
