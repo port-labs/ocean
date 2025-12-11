@@ -8,7 +8,7 @@ from datetime import datetime
 from logging.handlers import MemoryHandler
 from traceback import format_exception
 from typing import Any
-
+from json import dumps
 from loguru import logger
 
 from port_ocean import Ocean
@@ -18,7 +18,7 @@ from port_ocean.context.ocean import ocean
 def _serialize_record(record: logging.LogRecord) -> dict[str, Any]:
     extra = {**deepcopy(record.__dict__["extra"])}
     if isinstance(extra.get("exc_info"), Exception):
-        serialized_exception = "".join(format_exception(extra.get("exc_info")))
+        serialized_exception = dumps("".join(format_exception(extra.get("exc_info"))))
         extra["exc_info"] = serialized_exception
     return {
         "message": record.msg,
