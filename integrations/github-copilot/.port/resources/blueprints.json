@@ -68,5 +68,245 @@
     },
     "aggregationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "github_copilot_billing",
+    "title": "GitHub Copilot Billing",
+    "icon": "TwoCoins",
+    "schema": {
+      "properties": {
+        "organization": {
+          "type": "string",
+          "title": "Organization"
+        },
+        "seat_breakdown": {
+          "type": "object",
+          "title": "Seat Breakdown"
+        },
+        "total_seats": {
+          "type": "number",
+          "title": "Total Seats"
+        },
+        "active_seats": {
+          "type": "number",
+          "title": "Active Seats"
+        },
+        "inactive_seats": {
+          "type": "number",
+          "title": "Inactive Seats"
+        },
+        "added_this_cycle": {
+          "type": "number",
+          "title": "Added This Cycle"
+        },
+        "pending_invitation": {
+          "type": "number",
+          "title": "Pending Invitation"
+        },
+        "pending_cancellation": {
+          "type": "number",
+          "title": "Pending Cancellation"
+        },
+        "seat_management_setting": {
+          "type": "string",
+          "title": "Seat Management Setting",
+          "enum": ["assign_all", "assign_selected"],
+          "enumColors": {
+            "assign_all": "green",
+            "assign_selected": "blue"
+          }
+        },
+        "ide_chat": {
+          "type": "string",
+          "title": "IDE Chat",
+          "enum": ["enabled", "disabled"],
+          "enumColors": {
+            "enabled": "green",
+            "disabled": "red"
+          }
+        },
+        "platform_chat": {
+          "type": "string",
+          "title": "Platform Chat",
+          "enum": ["enabled", "disabled"],
+          "enumColors": {
+            "enabled": "green",
+            "disabled": "red"
+          }
+        },
+        "cli": {
+          "type": "string",
+          "title": "CLI",
+          "enum": ["enabled", "disabled"],
+          "enumColors": {
+            "enabled": "green",
+            "disabled": "red"
+          }
+        },
+        "public_code_suggestions": {
+          "type": "string",
+          "title": "Public Code Suggestions",
+          "enum": ["allow", "block"],
+          "enumColors": {
+            "allow": "yellow",
+            "block": "green"
+          }
+        },
+        "plan_type": {
+          "type": "string",
+          "title": "Plan Type",
+          "enum": ["business", "enterprise"],
+          "enumColors": {
+            "business": "blue",
+            "enterprise": "purple"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "seat_utilization_percentage": {
+        "title": "Seat Utilization %",
+        "icon": "DefaultProperty",
+        "calculation": "if (.properties.total_seats == 0) then 0 else ((.properties.active_seats / .properties.total_seats) * 100 | round) end",
+        "type": "number"
+      },
+      "unused_seats": {
+        "title": "Unused Seats",
+        "icon": "DefaultProperty",
+        "calculation": ".properties.total_seats - .properties.active_seats",
+        "type": "number"
+      }
+    },
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "github_copilot_seat",
+    "title": "GitHub Copilot Seat",
+    "icon": "GitHubActions",
+    "schema": {
+      "properties": {
+        "organization": {
+          "type": "string",
+          "title": "Organization"
+        },
+        "username": {
+          "type": "string",
+          "title": "Username"
+        },
+        "user_id": {
+          "type": "number",
+          "title": "User ID"
+        },
+        "user_type": {
+          "type": "string",
+          "title": "User Type"
+        },
+        "user_avatar_url": {
+          "type": "string",
+          "title": "Avatar URL",
+          "format": "url"
+        },
+        "user_url": {
+          "type": "string",
+          "title": "User URL",
+          "format": "url"
+        },
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "title": "Updated At",
+          "format": "date-time"
+        },
+        "pending_cancellation_date": {
+          "type": "string",
+          "title": "Pending Cancellation Date",
+          "format": "date-time"
+        },
+        "last_activity_at": {
+          "type": "string",
+          "title": "Last Activity At",
+          "format": "date-time"
+        },
+        "last_activity_editor": {
+          "type": "string",
+          "title": "Last Activity Editor"
+        },
+        "last_authenticated_at": {
+          "type": "string",
+          "title": "Last Authenticated At",
+          "format": "date-time"
+        },
+        "plan_type": {
+          "type": "string",
+          "title": "Plan Type",
+          "enum": ["business", "enterprise"],
+          "enumColors": {
+            "business": "blue",
+            "enterprise": "purple"
+          }
+        },
+        "assigning_team_name": {
+          "type": "string",
+          "title": "Assigning Team Name"
+        },
+        "assigning_team_slug": {
+          "type": "string",
+          "title": "Assigning Team Slug"
+        },
+        "assigning_team_url": {
+          "type": "string",
+          "title": "Assigning Team URL",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "days_since_last_activity": {
+        "title": "Days Since Last Activity",
+        "icon": "DefaultProperty",
+        "calculation": "if .properties.last_activity_at then ((now - (.properties.last_activity_at | fromdateiso8601)) / 86400 | floor) else null end",
+        "type": "number"
+      },
+      "is_inactive": {
+        "title": "Is Inactive",
+        "icon": "DefaultProperty",
+        "calculation": "if .properties.last_activity_at then ((now - (.properties.last_activity_at | fromdateiso8601)) / 86400) > 30 else true end",
+        "type": "boolean",
+        "colorized": true,
+        "colors": {
+          "true": "red",
+          "false": "green"
+        }
+      },
+      "is_pending_cancellation": {
+        "title": "Pending Cancellation",
+        "icon": "DefaultProperty",
+        "calculation": ".properties.pending_cancellation_date != null",
+        "type": "boolean",
+        "colorized": true,
+        "colors": {
+          "true": "red",
+          "false": "green"
+        }
+      }
+    },
+    "aggregationProperties": {},
+    "relations": {
+      "billing": {
+        "title": "Billing",
+        "target": "github_copilot_billing",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
