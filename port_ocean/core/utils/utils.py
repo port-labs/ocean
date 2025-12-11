@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import json
+import os
 from typing import Iterable, Any, TypeVar, Callable, Awaitable
 
 from loguru import logger
@@ -54,6 +55,16 @@ async def validate_integration_runtime(
     requested_runtime: Runtime,
 ) -> None:
     logger.debug("Validating integration runtime")
+
+    # Allow skipping runtime validation for local testing via environment variable
+    skip_validation = os.getenv("OCEAN__SKIP_RUNTIME_VALIDATION", "").lower() == "true"
+    if skip_validation:
+        logger.warning(
+            "Skipping runtime validation (OCEAN__SKIP_RUNTIME_VALIDATION is set). "
+            "This should only be used for local testing!"
+        )
+        return
+
     current_integration = await port_client.get_current_integration(
         should_raise=False, should_log=False
     )
