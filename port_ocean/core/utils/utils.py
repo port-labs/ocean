@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import json
-from typing import Iterable, Any, TypeVar, Callable, Awaitable
+from typing import Iterable, Any, TypeVar, Callable, Awaitable, AsyncGenerator
 
 from loguru import logger
 from pydantic import BaseModel
@@ -181,8 +181,9 @@ def are_entities_different(first_entity: Entity, second_entity: Entity) -> bool:
     return False
 
 
-def resolve_entities_diff(
-    source_entities: list[Entity], target_entities: list[Entity]
+async def resolve_entities_diff(
+    source_entities: list[Entity],
+    target_entities_generator: AsyncGenerator[Entity, None],
 ) -> list[Entity]:
     """
     Maps the entities into filtered list of source entities, excluding matches found in target that needs to be upserted
@@ -193,24 +194,34 @@ def resolve_entities_diff(
     Returns:
         list[Entity]: Filtered list of source entities, excluding matches found in target
     """
-    target_entities_dict = {}
     source_entities_dict = {}
-    changed_entities = []
 
-    for entity in target_entities:
-        key = (entity.identifier, entity.blueprint)
-        target_entities_dict[key] = entity
+    if (
+        len(
+            [
+                entity
+                for entity in source_entities
+                if entity.is_using_search_identifier or entity.is_using_search_relation
+            ]
+        )
+        > 0
+    ):
+        return source_entities
 
     for entity in source_entities:
-        if entity.is_using_search_identifier or entity.is_using_search_relation:
-            return source_entities
         key = (entity.identifier, entity.blueprint)
         source_entities_dict[key] = entity
 
-        entity_at_target = target_entities_dict.get(key, None)
-        if entity_at_target is None:
-            changed_entities.append(entity)
-        elif are_entities_different(entity, target_entities_dict[key]):
-            changed_entities.append(entity)
+    async for batch_target_entities in target_entities_generator:
+        if len(batch_target_entities) == 0:
+            continue
 
-    return changed_entities
+        for entity in batch_target_entities:
+            key = (entity.identifier, entity.blueprint)
+
+            if key in source_entities_dict and not are_entities_different(
+                entity, source_entities_dict.get(key)
+            ):
+                source_entities_dict.pop(key, None)
+
+    return list(source_entities_dict.values())

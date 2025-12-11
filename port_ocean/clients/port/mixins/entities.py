@@ -260,7 +260,6 @@ class EntityClientMixin:
             for entity_result in result.get("entities", [])
         }
         error_entities = {error["index"]: error for error in result.get("errors", [])}
-
         if error_entities:
             sample_errors = {
                 idx: {
