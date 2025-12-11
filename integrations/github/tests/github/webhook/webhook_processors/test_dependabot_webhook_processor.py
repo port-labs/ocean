@@ -278,3 +278,120 @@ class TestDependabotAlertWebhookProcessor:
         from github.webhook.events import DEPENDABOT_ACTION_TO_STATE
 
         assert DEPENDABOT_ACTION_TO_STATE[action] == expected_state
+
+
+class TestDependabotAlertFiltering:
+    """Tests for dependabot alert filtering functionality."""
+
+    def test_severity_filter_matches(
+        self, dependabot_webhook_processor: DependabotAlertWebhookProcessor
+    ) -> None:
+        """Test severity filter accepts alerts with matching severity."""
+        selector = GithubDependabotAlertSelector(
+            query="true", severity=["high", "critical"]
+        )
+
+        # Alert has severity "high" which is in the filter
+        alert = {
+            "security_advisory": {"severity": "high"},
+            "dependency": {"package": {"ecosystem": "npm"}},
+        }
+        assert (
+            dependabot_webhook_processor._check_alert_filters(selector, alert) is True
+        )
+
+    def test_severity_filter_no_match(
+        self, dependabot_webhook_processor: DependabotAlertWebhookProcessor
+    ) -> None:
+        """Test severity filter rejects alerts without matching severity."""
+        selector = GithubDependabotAlertSelector(query="true", severity=["critical"])
+
+        # Alert has severity "medium" which is not in the filter
+        alert = {
+            "security_advisory": {"severity": "medium"},
+            "dependency": {"package": {"ecosystem": "npm"}},
+        }
+        assert (
+            dependabot_webhook_processor._check_alert_filters(selector, alert) is False
+        )
+
+    def test_ecosystem_filter_matches(
+        self, dependabot_webhook_processor: DependabotAlertWebhookProcessor
+    ) -> None:
+        """Test ecosystem filter accepts alerts with matching ecosystem."""
+        selector = GithubDependabotAlertSelector(
+            query="true", ecosystems=["npm", "pip"]
+        )
+
+        alert = {
+            "security_advisory": {"severity": "low"},
+            "dependency": {"package": {"ecosystem": "npm"}},
+        }
+        assert (
+            dependabot_webhook_processor._check_alert_filters(selector, alert) is True
+        )
+
+    def test_ecosystem_filter_no_match(
+        self, dependabot_webhook_processor: DependabotAlertWebhookProcessor
+    ) -> None:
+        """Test ecosystem filter rejects alerts without matching ecosystem."""
+        selector = GithubDependabotAlertSelector(query="true", ecosystems=["maven"])
+
+        # Alert has ecosystem "npm" which is not in the filter
+        alert = {
+            "security_advisory": {"severity": "low"},
+            "dependency": {"package": {"ecosystem": "npm"}},
+        }
+        assert (
+            dependabot_webhook_processor._check_alert_filters(selector, alert) is False
+        )
+
+    def test_multiple_filters_all_match(
+        self, dependabot_webhook_processor: DependabotAlertWebhookProcessor
+    ) -> None:
+        """Test that alert must match ALL filters (severity AND ecosystem)."""
+        selector = GithubDependabotAlertSelector(
+            query="true", severity=["high"], ecosystems=["npm"]
+        )
+        # Alert matches both severity and ecosystem
+        alert = {
+            "security_advisory": {"severity": "high"},
+            "dependency": {"package": {"ecosystem": "npm"}},
+        }
+
+        assert (
+            dependabot_webhook_processor._check_alert_filters(selector, alert) is True
+        )
+
+    def test_multiple_filters_partial_match(
+        self, dependabot_webhook_processor: DependabotAlertWebhookProcessor
+    ) -> None:
+        """Test that alert is rejected if it doesn't match ALL filters."""
+        selector = GithubDependabotAlertSelector(
+            query="true", severity=["high"], ecosystems=["maven"]
+        )
+
+        # Alert matches severity but not ecosystem
+        alert = {
+            "security_advisory": {"severity": "high"},
+            "dependency": {"package": {"ecosystem": "npm"}},
+        }
+
+        assert (
+            dependabot_webhook_processor._check_alert_filters(selector, alert) is False
+        )
+
+    def test_filters_no_filters_specified(
+        self, dependabot_webhook_processor: DependabotAlertWebhookProcessor
+    ) -> None:
+        """Test filters accept alerts when no severity/ecosystem filters are specified."""
+        selector = GithubDependabotAlertSelector(query="true")  # No filters
+
+        alert = {
+            "security_advisory": {"severity": "low"},
+            "dependency": {"package": {"ecosystem": "rubygems"}},
+        }
+
+        assert (
+            dependabot_webhook_processor._check_alert_filters(selector, alert) is True
+        )
