@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Support since & until in selector params
+- Support since & until in selector params for schedule kind
 
 ## 0.4.19 (2025-12-10)
 
