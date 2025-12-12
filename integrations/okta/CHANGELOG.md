@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.0 (2025-12-12)
+
+
+### Improvements
+
+- First stable release of the Okta integration
+
+
 ## 0.1.32-beta (2025-12-10)
 
 
@@ -140,7 +148,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Move Okta to Identity Providers
-- 
+-
 ## 0.1.15-beta (2025-11-23)
 
 
