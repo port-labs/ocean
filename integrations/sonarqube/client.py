@@ -28,6 +28,9 @@ def turn_sequence_to_chunks(
 MAX_PORTFOLIO_REQUESTS = 20
 MAX_ISSUES_REQUESTS = 10000
 
+# This is necessary because otherwise we would exhaust the connection pool.
+MAX_CONCURRENT_REQUESTS = 100
+
 
 class Endpoints:
     COMPONENTS = "components/search_projects"
@@ -76,6 +79,7 @@ class SonarQubeClient:
         self.webhook_invoke_url = (
             f"{self.app_host}/integration/webhook" if self.app_host else ""
         )
+        self.semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
 
     @property
     def api_auth_params(self) -> dict[str, Any]:
@@ -109,14 +113,15 @@ class SonarQubeClient:
             f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
         try:
-            response = await self.http_client.request(
-                method=method,
-                url=f"{self.base_url}/api/{endpoint}",
-                params=query_params,
-                json=json_data,
-            )
-            response.raise_for_status()
-            return response.json()
+            async with self.semaphore:
+                response = await self.http_client.request(
+                    method=method,
+                    url=f"{self.base_url}/api/{endpoint}",
+                    params=query_params,
+                    json=json_data,
+                )
+                response.raise_for_status()
+                return response.json()
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
