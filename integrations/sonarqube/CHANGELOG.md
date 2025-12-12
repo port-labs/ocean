@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.272 (2025-12-10)
+
+
+### Improvements
+
+- Add a semaphore to Sonarqube client to control pool timeout
+
+
 ## 0.1.271 (2025-12-10)
 
 
