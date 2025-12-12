@@ -198,7 +198,7 @@ class TestOAuthClientCredentialsAuthenticator:
                 token_type="Bearer",
             )
 
-        oauth_authenticator._fetch_token = mock_fetch_token
+        setattr(oauth_authenticator, "_fetch_token", mock_fetch_token)
 
         import asyncio
 

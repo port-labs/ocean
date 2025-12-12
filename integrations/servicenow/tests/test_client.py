@@ -1,6 +1,6 @@
 import pytest
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 import httpx
 
 from client import ServicenowClient
@@ -122,8 +122,9 @@ class TestServicenowClient:
                     records.extend(batch)
 
                 # Verify the request was made with correct params
-                servicenow_client.http_client.get.assert_called_once()
-                call_args = servicenow_client.http_client.get.call_args
+                mock_get = servicenow_client.http_client.get
+                mock_get.assert_called_once()  # type: ignore[attr-defined]
+                call_args = mock_get.call_args  # type: ignore[attr-defined]
                 assert "incident" in call_args[1]["url"]
                 assert (
                     call_args[1]["params"]["sysparm_query"]
@@ -319,7 +320,8 @@ class TestServicenowClient:
                     pass
 
                 # Verify default ordering was added
-                call_args = servicenow_client.http_client.get.call_args
+                mock_get = servicenow_client.http_client.get
+                call_args = mock_get.call_args  # type: ignore[attr-defined]
                 assert (
                     call_args[1]["params"]["sysparm_query"]
                     == "ORDERBYDESCsys_created_on"
@@ -355,7 +357,8 @@ class TestServicenowClient:
                     pass
 
                 # Verify custom ordering was preserved and default was appended
-                call_args = servicenow_client.http_client.get.call_args
+                mock_get = servicenow_client.http_client.get
+                call_args = mock_get.call_args  # type: ignore[attr-defined]
                 assert (
                     "active=true^ORDERBYuser_name^ORDERBYDESCsys_created_on"
                     in call_args[1]["params"]["sysparm_query"]
