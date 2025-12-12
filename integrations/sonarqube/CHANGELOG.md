@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.272 (2025-12-11)
 
 
-### Bug fixes
+### Bug Fixes
 
 - Prevent certain http status codes from crashing resync
 
