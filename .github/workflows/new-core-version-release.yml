@@ -1,0 +1,205 @@
+name: Tag main branch
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'pyproject.toml'
+  # manual run
+  workflow_dispatch:
+
+
+jobs:
+  tag-main:
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-latest
+    outputs:
+      current_tag: ${{ steps.get_current_version.outputs.current_tag }}
+      prev_tag: ${{ steps.get_previous_version.outputs.prev_tag }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Get current version
+        id: get_current_version
+        run: |
+          # Get the current version from pyproject.toml
+          CURRENT_TAG=$(grep -E '^version = ".*"' pyproject.toml | cut -d'"' -f2)
+          echo "current_tag=${CURRENT_TAG}" >> $GITHUB_ENV
+          echo "::set-output name=current_tag::${CURRENT_TAG}"
+
+      - name: Get previous version
+        id: get_previous_version
+        run: |
+          # Get the version from the previous commit for comparison
+          PREV_TAG=$(git show HEAD~1:pyproject.toml | grep -E '^version = ".*"' | cut -d'"' -f2)
+          echo "prev_tag=${PREV_TAG}" >> $GITHUB_ENV
+          echo "::set-output name=prev_tag::${PREV_TAG}"
+
+      - name: Tag main
+        run: |
+          if [ "${current_tag}" == "${prev_tag}" ]; then
+            echo "Version has not changed. Skipping tagging."
+            exit 0
+          fi
+          git config --global user.email "bot@email.com"
+          git config --global user.name "bot"
+          LATEST_COMMIT_MESSAGE=$(git log -1 --pretty=format:%s)
+          git tag -a "v${current_tag}" -m "${LATEST_COMMIT_MESSAGE}"
+          git push origin main --tags
+
+  create-release:
+    needs: tag-main
+    if: needs.tag-main.outputs.current_tag != needs.tag-main.outputs.prev_tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ needs.tag-main.outputs.current_tag }}
+          release_name: "Release ${{ needs.tag-main.outputs.current_tag }}"
+          body: |
+            Automated release created for version ${{ needs.tag-main.outputs.current_tag }}.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish_ocean:
+    needs: create-release
+    env:
+        PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+    name: Publish Ocean
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+      - name: Make install and build
+        run: |
+            make install
+            make build
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: ${{ env.PYPI_USERNAME }}
+          password: ${{ env.PYPI_PASSWORD }}
+          packages-dir: ${{github.workspace}}/dist
+
+      - name: Remove 'v' from version name
+        continue-on-error: true
+        run: echo "VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//g')" >> $GITHUB_ENV
+
+      - name: Send internal release notification
+        if: env.VERSION != ''
+        continue-on-error: true
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.OCEAN_SLACK_WEBHOOK }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":tada: *New Version of Ocean Framework Released!* :tada:"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "We are excited to announce the release of a new version of the Ocean framework! :ocean: :rocket:"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Version:* `${{ env.VERSION }}`"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "<https://ocean.getport.io/changelog/${{ env.VERSION }}|Check out the Changelog>"
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Happy sailing! :ocean: :heart:"
+                  }
+                }
+              ]
+            }
+
+  create_branch_and_open_pr:
+    needs: publish_ocean
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+
+    - name: Get package version
+      id: version
+      run: |
+        version=$(poetry search port-ocean | grep port-ocean | sed 's/.*(\(.*\))/\1/')
+        pr_name="Apply Ocean version $version to all integrations"
+        branch_name="apply-ocean-$version-to-all-integrations"
+        echo "Branch Name: $branch_name"
+        echo "PR Name: $pr_name"
+        echo "pr_name=$pr_name" >> $GITHUB_OUTPUT
+        echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
+        echo "version=$version" >> $GITHUB_OUTPUT
+
+    - name: Apply changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+        ./scripts/bump-all.sh ${{ steps.version.outputs.version }}
+
+    - name: Open pull request
+      uses: peter-evans/create-pull-request@v7
+      with:
+        token: ${{ secrets.MACHINE_USER_TOKEN }}
+        title: ${{ steps.version.outputs.pr_name }}
+        branch: ${{ steps.version.outputs.branch_name }}
+        base: main
+        body: |
+            This PR was automatically created by a GitHub Action.
+
+            ## What does this PR do?
+            Apply Ocean version ${{ steps.version.outputs.version }} to all integrations
+
+            ## How should this be manually tested?
+            ./scripts/bump-all.sh ^${{ steps.version.outputs.version }}
