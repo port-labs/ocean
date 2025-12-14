@@ -18,6 +18,7 @@ from port_ocean.context.ocean import ocean
 
 def _remove_posix_paths(extra: dict[str, Any], max_depth: int = 100) -> dict[str, Any]:
     if max_depth <= 0:
+        logger.warning("Max depth reached, skipping path removal")
         return extra
     for key, value in extra.items():
         if isinstance(value, list):
