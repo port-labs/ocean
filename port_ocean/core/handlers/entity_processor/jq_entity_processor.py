@@ -48,6 +48,9 @@ _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS: dict[str, Any] = {}
 def _calculate_entity(
     index: int,
 ) -> tuple[list[MappedEntity], list[Exception]]:
+    from port_ocean.core.integrations.mixins.utils import clear_http_client_context
+
+    clear_http_client_context()
     # Access data directly from globals to avoid pickling.
     global _MULTIPROCESS_JQ_BATCH_DATA, _MULTIPROCESS_JQ_BATCH_MAPPINGS, _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY, _MULTIPROCESS_JQ_BATCH_PARSE_ALL
     if None in [
