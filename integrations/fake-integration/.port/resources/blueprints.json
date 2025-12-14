@@ -56,5 +56,72 @@
                 "many": false
             }
         }
+    },
+    {
+        "identifier": "fake-repository",
+        "title": "Fake Repository",
+        "icon": "GitBranch",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Name"
+                },
+                "status": {
+                    "type": "string",
+                    "title": "Status"
+                },
+                "readme": {
+                    "type": "string",
+                    "description": "Readme file",
+                    "title": "Readme",
+                    "format": "markdown"
+                },
+                "language": {
+                    "type": "string",
+                    "title": "Language"
+                },
+                "url": {
+                    "type": "string",
+                    "format": "url",
+                    "title": "Repository URL"
+                }
+            }
+        },
+        "relations": {
+            "person": {
+                "title": "Person",
+                "description": "Fake Person",
+                "target": "fake-person",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "fake-project",
+        "title": "Fake Project",
+        "icon": "Project",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Name"
+                },
+                "status": {
+                    "type": "string",
+                    "title": "Status"
+                }
+            }
+        },
+        "relations": {
+            "person": {
+                "title": "Person",
+                "description": "Fake Person",
+                "target": "fake-person",
+                "required": false,
+                "many": false
+            }
+        }
     }
 ]
