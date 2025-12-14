@@ -12,6 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Increase timeout
 - Clear http context.
+- Fix posix path error when sending logs.
 
 ## 0.32.1 (2025-12-10)
 
