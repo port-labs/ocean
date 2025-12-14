@@ -109,7 +109,7 @@ installationDocs:
     enabled: true
     docs: build-your-software-catalog/custom-integration/ocean-custom-integration/overview
 saas:
-  enabled: false
+  enabled: true
   liveEvents:
     enabled: false
 deploymentMethodOverride:
