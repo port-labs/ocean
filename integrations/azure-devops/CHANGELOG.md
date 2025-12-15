@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.13 (2025-12-15)
+
+### Bug Fixes
+
+- Removed cache prom client
+
+
+## 0.6.12 (2025-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.3
+
+
+## 0.6.11 (2025-12-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.2
+
+
+## 0.6.10 (2025-12-10)
+
+
+### Improvements
+
+- Removed codeowners mapping and blueprint from integration default resources
+- Removed folder kind from integration default
+
+
+## 0.6.9 (2025-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.1
+
+
+## 0.6.8 (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.0
+
+
 ## 0.6.7 (2025-12-09)
 
 

@@ -88,6 +88,15 @@ class AzureDevopsClient(HTTPBaseClient):
         return azure_devops_client
 
     @classmethod
+    def create_from_ocean_config_no_cache(cls) -> "AzureDevopsClient":
+        azure_devops_client = cls(
+            ocean.integration_config["organization_url"].strip("/"),
+            ocean.integration_config["personal_access_token"],
+            ocean.integration_config["webhook_auth_username"],
+        )
+        return azure_devops_client
+
+    @classmethod
     def _repository_is_healthy(cls, repository: dict[str, Any]) -> bool:
         UNHEALTHY_PROJECT_STATES = {
             "deleted",

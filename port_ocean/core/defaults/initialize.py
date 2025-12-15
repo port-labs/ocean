@@ -96,9 +96,7 @@ async def _initialize_required_integration_settings(
 
     logger.info("Checking for diff in integration configuration")
     changelog_destination = (
-        integration_config.event_listener.get_changelog_destination_details().get(
-            "changelog_destination"
-        )
+        integration_config.event_listener.get_changelog_destination_details()
     )
     if (
         integration.get("changelogDestination") != changelog_destination
