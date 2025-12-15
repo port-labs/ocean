@@ -1,0 +1,89 @@
+resources:
+  # First resource: projects
+  - kind: /projects
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .project_id | tostring
+          title: .name
+          blueprint: '"harborProject"'
+          properties:
+            project_id: .project_id
+            project_name: .name
+            number_of_repos: .repo_count
+            public: .metadata.public
+            owner_id: .owner_id | tostring
+            owner_name: .owner_name
+            created_at: .creation_time
+            updated_at: .update_time
+
+  # Second resource: repositories
+  - kind: /repositories
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"harborRepository"'
+          properties:
+            repository_id: .id
+            name: .name
+            project_id: .project_id
+            artifact_count: .artifact_count
+            pull_count: .pull_count
+            creation_time: .creation_time
+            update_time: .update_time
+          relations:
+            project: .project_id | tostring
+
+  # Third resource: artifacts
+  - kind: /artifacts
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .digest
+          title: (.tags[0].name // "untagged") + "@" + (.digest | split(":")[1] | .[0:12])
+          blueprint: '"harborArtifact"'
+          properties:
+            digest: .digest
+            type: .type
+            media_type: .media_type
+            manifest_media_type: .manifest_media_type
+            size: .size
+            push_time: .push_time
+            pull_time: .pull_time
+            tags: if .tags then [.tags[] | .name] else [] end
+            project_id: .project_id
+            repository_id: .repository_id
+            architecture: .extra_attrs.architecture
+            os: .extra_attrs.os
+            created: .extra_attrs.created
+          relations:
+            project: .project_id | tostring
+            repository: .repository_id | tostring
+
+  # Fourth resource: users
+  - kind: /users
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .user_id | tostring
+          title: .username
+          blueprint: '"harborUser"'
+          properties:
+            user_id: .user_id
+            username: .username
+            email: .email
+            realname: .realname
+            admin_role_in_auth: .admin_role_in_auth
+            sysadmin_flag: .sysadmin_flag
+            creation_time: .creation_time
+            update_time: .update_time

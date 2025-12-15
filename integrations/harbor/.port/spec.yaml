@@ -1,0 +1,55 @@
+description: Harbor integration for Port Ocean
+title: Harbor
+features:
+  - type: exporter
+    section: Other
+    resources:
+      - kind: /projects
+      - kind: /repositories
+      - kind: /artifacts
+      - kind: /users
+configurations:
+  - name: baseUrl
+    type: string
+    required: true
+    description: The base URL of your API
+  - name: authType
+    type: string
+    required: true
+    default: "none"
+    description: Authentication type (e.g., none, bearer, basic)
+  - name: paginationType
+    type: string
+    required: true
+    default: "page"
+    description: Pagination strategy (e.g., page, offset, cursor)
+  - name: paginationParam
+    type: string
+    required: false
+    default: "page"
+    description: Query parameter name for page number
+  - name: sizeParam
+    type: string
+    required: false
+    default: "page_size"
+    description: Query parameter name for page size
+  - name: verifySsl
+    type: boolean
+    required: false
+    default: false
+    description: Whether to verify SSL certificates
+  - name: webhookSecret
+    type: string
+    required: true
+    sensitive: true
+    description: Secret token for authenticating incoming webhook requests from Harbor
+  - name: username
+    type: string
+    required: true
+    sensitive: true
+    description: Username for authenticating with the Harbor API
+  - name: password
+    type: string
+    required: true
+    sensitive: true
+    description: Password for authenticating with the Harbor API

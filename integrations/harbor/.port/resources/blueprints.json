@@ -1,0 +1,233 @@
+[
+    {
+        "identifier": "harborProject",
+        "title": "Harbor Project",
+        "icon": "DefaultBlueprint",
+        "schema": {
+            "properties": {
+                "project_id": {
+                    "type": "number",
+                    "title": "Project ID"
+                },
+                "project_name": {
+                    "type": "string",
+                    "title": "Porject Name"
+                },
+                "public": {
+                    "type": "string",
+                    "title": "Public"
+                },
+                "number_of_repos": {
+                    "type": "number",
+                    "title": "Number of Repos"
+                },
+                "owner_id": {
+                    "type": "string",
+                    "title": "Owner ID"
+                },
+                "owner_name": {
+                    "type": "string",
+                    "title": "Owner Name"
+                },
+                "created_at": {
+                    "type": "string",
+                    "title": "Created At"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "title": "Updated At"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {}
+    },
+    {
+        "identifier": "harborRepository",
+        "title": "Harbor Repository",
+        "icon": "DefaultBlueprint",
+        "schema": {
+            "properties": {
+                "repository_id": {
+                    "type": "number",
+                    "title": "Repository ID"
+                },
+                "name": {
+                    "type": "string",
+                    "title": "Repository Name"
+                },
+                "project_id": {
+                    "type": "number",
+                    "title": "Project ID"
+                },
+                "artifact_count": {
+                    "type": "number",
+                    "title": "Artifact Count"
+                },
+                "pull_count": {
+                    "type": "number",
+                    "title": "Pull Count"
+                },
+                "creation_time": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                },
+                "update_time": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {
+            "project": {
+                "target": "harborProject",
+                "title": "Project",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "harborArtifact",
+        "title": "Harbor Artifact",
+        "icon": "DefaultBlueprint",
+        "schema": {
+            "properties": {
+                "digest": {
+                    "type": "string",
+                    "title": "Digest"
+                },
+                "type": {
+                    "type": "string",
+                    "title": "Type"
+                },
+                "media_type": {
+                    "type": "string",
+                    "title": "Media Type"
+                },
+                "manifest_media_type": {
+                    "type": "string",
+                    "title": "Manifest Media Type"
+                },
+                "size": {
+                    "type": "number",
+                    "title": "Size (bytes)"
+                },
+                "push_time": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Push Time"
+                },
+                "pull_time": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Pull Time"
+                },
+                "tags": {
+                    "type": "array",
+                    "title": "Tags",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "project_id": {
+                    "type": "number",
+                    "title": "Project ID"
+                },
+                "repository_id": {
+                    "type": "number",
+                    "title": "Repository ID"
+                },
+                "architecture": {
+                    "type": "string",
+                    "title": "Architecture"
+                },
+                "os": {
+                    "type": "string",
+                    "title": "Operating System"
+                },
+                "created": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+            "relations": {
+            "project": {
+                "target": "harborProject",
+                "title": "Project",
+                "required": false,
+                "many": false
+            },
+            "repository": {
+                "target": "harborRepository",
+                "title": "Repository",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "harborUser",
+        "title": "Harbor User",
+        "icon": "DefaultBlueprint",
+        "schema": {
+            "properties": {
+                "user_id": {
+                    "type": "number",
+                    "title": "User ID"
+                },
+                "username": {
+                    "type": "string",
+                    "title": "Username"
+                },
+                "email": {
+                    "type": "string",
+                    "format": "email",
+                    "title": "Email"
+                },
+                "realname": {
+                    "type": "string",
+                    "title": "Real Name"
+                },
+                "admin_role_in_auth": {
+                    "type": "boolean",
+                    "title": "Admin Role in Auth"
+                },
+                "sysadmin_flag": {
+                    "type": "boolean",
+                    "title": "System Admin"
+                },
+                "creation_time": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Created At"
+                },
+                "update_time": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Updated At"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {}
+    }
+]
