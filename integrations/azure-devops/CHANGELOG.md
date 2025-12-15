@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Bumped ocean version to ^0.32.2
+- Removed cache prom client
 
 
 ## 0.6.12 (2025-12-15)
