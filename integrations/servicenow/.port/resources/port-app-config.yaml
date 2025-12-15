@@ -58,3 +58,39 @@ resources:
             createdBy: .sys_created_by
             isActive: .active
             priority: .priority
+  - kind: rm_release
+    selector:
+      query: 'true'
+      apiQueryParams:
+        sysparmDisplayValue: 'true'
+        sysparmExcludeReferenceLink: 'false'
+        sysparmFields: 'sys_id,number,name,state,release_type,description,start_date,end_date,scheduled_start_date,scheduled_end_date,assigned_to,assignment_group,priority,risk_score,risk_level,backout_plan,test_plan,implementation_plan,sys_created_on,sys_created_by,sys_updated_on,sys_updated_by,active'
+    port:
+      entity:
+        mappings:
+          identifier: .sys_id
+          title: (.name // .number // "Release")
+          blueprint: '"servicenowRelease"'
+          properties:
+            number: .number | tostring
+            name: .name
+            state: .state
+            releaseType: .release_type
+            description: .description
+            startDate: '.start_date | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            endDate: '.end_date | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            scheduledStartDate: '.scheduled_start_date | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            scheduledEndDate: '.scheduled_end_date | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            assignedTo: .assigned_to.link
+            assignmentGroup: .assignment_group.link
+            priority: .priority
+            riskScore: .risk_score
+            riskLevel: .risk_level
+            backoutPlan: .backout_plan
+            testPlan: .test_plan
+            implementationPlan: .implementation_plan
+            createdOn: '.sys_created_on | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            createdBy: .sys_created_by
+            updatedOn: '.sys_updated_on | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            updatedBy: .sys_updated_by
+            isActive: .active
