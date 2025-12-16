@@ -91,14 +91,12 @@ class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         """Check if alert matches selector severity and ecosystem filters."""
         security_advisory = alert["security_advisory"]
 
-        # Check severity filter - use advisory severity directly
         alert_severity = security_advisory["severity"]
         if selector.severity and alert_severity.lower() not in {
             s.lower() for s in selector.severity
         }:
             return False
 
-        # Check ecosystem filter
         package = alert["dependency"]["package"]
         alert_ecosystem = package["ecosystem"]
         if selector.ecosystems and alert_ecosystem.lower() not in {
