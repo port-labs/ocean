@@ -21,7 +21,7 @@ class CacheKeys(StrEnum):
 
 
 PAGE_SIZE = 100
-CONCURRENT_REQUESTS = 200
+CONCURRENT_REQUESTS = 100
 
 
 class SnykClient:
