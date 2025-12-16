@@ -197,11 +197,10 @@ class IntegrationClientMixin:
         json: dict[str, Any] = {}
         if _type:
             json["installationAppType"] = _type
-        if changelog_destination:
-            json["changelogDestination"] = changelog_destination
         if port_app_config:
             json["config"] = port_app_config.to_request()
 
+        json["changelogDestination"] = changelog_destination
         json["actionsProcessingEnabled"] = actions_processing_enabled
         json["version"] = self.integration_version
 

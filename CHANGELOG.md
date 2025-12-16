@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.32.3 (2025-12-15)
+
+### Bug fixes
+
+- Fixed an issue where starting with POLLING and changing to KAFKA event listener would cause the integration to not receive messages
+
+
+## 0.32.2 (2025-12-14)
+
+### Bug fixes
+
+- Increase timeout
+- Clear http context.
+- Fix posix path error when sending logs.
+
+## 0.32.1 (2025-12-10)
+
+### Bug fixes
+
+- handle overwrite of `_search` with process pool
+
+## 0.32.0 (2025-12-09)
+
+### Improvements
+
+- Add multiprocessing
+- Memory optimizations
+
+
 ## 0.31.7 (2025-12-09)
 
 ### Improvements
