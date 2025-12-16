@@ -29,6 +29,7 @@ MAX_PORTFOLIO_REQUESTS = 20
 MAX_ISSUES_REQUESTS = 10000
 
 # This is necessary because otherwise we would exhaust the connection pool.
+# 100 is the default httpx connection pool size.
 MAX_CONCURRENT_REQUESTS = 100
 
 
