@@ -11,10 +11,10 @@ import pytest
 
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
-    MappedEntity,
     _calculate_entity,
 )
 import port_ocean.core.handlers.entity_processor.jq_entity_processor as jq_module
+from port_ocean.core.handlers.entity_processor.models import MappedEntity
 
 
 class TestCalculateEntity:
