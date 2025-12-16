@@ -56,6 +56,12 @@ class SonarQubeClient:
     The client is used to interact with the SonarQube API to fetch data.
     """
 
+    _IGNORED_ERRORS = {
+        404: "Resource not found at endpoint.",
+        403: "Request forbidden.",
+        401: "Unauthorized request.",
+    }
+
     def __init__(
         self,
         base_url: str,
@@ -121,10 +127,8 @@ class SonarQubeClient:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
-            if e.response.status_code == 404:
-                logger.warning(
-                    f"Resource not found for endpoint {endpoint} with query params {query_params}: {e.response.text}"
-                )
+            if e.response.status_code in self._IGNORED_ERRORS:
+                logger.warning(self._IGNORED_ERRORS[e.response.status_code])
                 return {}
             raise
 
@@ -147,6 +151,8 @@ class SonarQubeClient:
                     query_params=query_params,
                     json_data=json_data,
                 )
+                if not response:
+                    break
                 resources = response.get(data_key, [])
                 if not resources:
                     logger.warning(f"No {data_key} found in response: {response}")
@@ -189,9 +195,6 @@ class SonarQubeClient:
                 logger.error(
                     "The request exceeded the maximum number of issues that can be returned (10,000) from SonarQube API. Consider using apiFilters in the config mapping to narrow the scope of your search. Returning accumulated issues and skipping further results."
                 )
-
-            if e.response.status_code == 404:
-                logger.error(f"Resource not found: {e.response.text}")
 
             raise
         except httpx.HTTPError as e:

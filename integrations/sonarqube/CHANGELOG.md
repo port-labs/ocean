@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.274 (2025-12-15)
+
+
+### Bug Fixes
+
+- Prevent certain http status codes from crashing resync
+
+
+## 0.1.273 (2025-12-15)
+
+
+- Bumped ocean version to ^0.32.3
+
+
+## 0.1.272 (2025-12-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.2
+
+
+## 0.1.271 (2025-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.1
+
+
 ## 0.1.270 (2025-12-09)
 
 
