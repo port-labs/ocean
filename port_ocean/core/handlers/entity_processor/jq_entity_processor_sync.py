@@ -1,30 +1,15 @@
 import re
-from dataclasses import dataclass, field
 from typing import Any, cast
 
 import jq  # type: ignore
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
-from port_ocean.core.handlers.entity_processor.base import BaseEntityProcessor
+from port_ocean.core.handlers.entity_processor.models import MappedEntity
 from port_ocean.exceptions.core import EntityProcessorException
 
-_MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS: dict[str, Any] = {}
 
-
-@dataclass
-class MappedEntity:
-    """Represents the entity after applying the mapping
-
-    This class holds the mapping entity along with the selector boolean value and optionally the raw data.
-    """
-
-    entity: dict[str, Any] = field(default_factory=dict)
-    did_entity_pass_selector: bool = False
-    misconfigurations: dict[str, str] = field(default_factory=dict)
-
-
-class JQEntityProcessorSync(BaseEntityProcessor):
+class JQEntityProcessorSync:
     """Processes and parses entities using JQ expressions.
 
     This class extends the BaseEntityProcessor and provides methods for processing and
@@ -32,8 +17,10 @@ class JQEntityProcessorSync(BaseEntityProcessor):
     searching for data in dictionaries, and transforming data based on object mappings.
     """
 
-    @staticmethod
-    def _format_filter(filter: str) -> str:
+    def __init__(self, compile_patterns: dict[str, Any]):
+        self.compiled_patterns: dict[str, Any] = compile_patterns
+
+    def _format_filter(self, filter: str) -> str:
         """
         Convert single quotes to double quotes in JQ expressions.
         Only replaces single quotes that are opening or closing string delimiters,
@@ -51,23 +38,20 @@ class JQEntityProcessorSync(BaseEntityProcessor):
         )
         return formatted_filter
 
-    @staticmethod
-    def _compile(pattern: str) -> Any:
-        global _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS
-        # Convert single quotes to double quotes for JQ compatibility
-        pattern = JQEntityProcessorSync._format_filter(pattern)
+    def _compile(self, pattern: str) -> Any:
+        pattern = self._format_filter(pattern)
         if not ocean.config.allow_environment_variables_jq_access:
             pattern = "def env: {}; {} as $ENV | " + pattern
-        if pattern in _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS:
-            return _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS[pattern]
+        if pattern in self.compiled_patterns:
+
+            return self.compiled_patterns[pattern]
         compiled_pattern = jq.compile(pattern)
-        _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS[pattern] = compiled_pattern
+        self.compiled_patterns[pattern] = compiled_pattern
         return compiled_pattern
 
-    @staticmethod
-    def _search(data: dict[str, Any], pattern: str) -> Any:
+    def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
-            compiled_pattern = JQEntityProcessorSync._compile(pattern)
+            compiled_pattern = self._compile(pattern)
             return compiled_pattern.input_value(data).first()
         except Exception as exc:
             logger.error(
@@ -75,9 +59,8 @@ class JQEntityProcessorSync(BaseEntityProcessor):
             )
             return None
 
-    @staticmethod
-    def _search_as_bool(data: dict[str, Any] | str, pattern: str) -> bool:
-        compiled_pattern = JQEntityProcessorSync._compile(pattern)
+    def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
+        compiled_pattern = self._compile(pattern)
         value = compiled_pattern.input_value(data).first()
         if isinstance(value, bool):
             return value
@@ -85,8 +68,8 @@ class JQEntityProcessorSync(BaseEntityProcessor):
             f"Expected boolean value, got value:{value} of type: {type(value)} instead"
         )
 
-    @staticmethod
     def _search_as_object(
+        self,
         data: dict[str, Any],
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
@@ -97,7 +80,7 @@ class JQEntityProcessorSync(BaseEntityProcessor):
                 if isinstance(value, list):
                     result[key] = []
                     for list_item in value:
-                        search_result = JQEntityProcessorSync._search_as_object(
+                        search_result = self._search_as_object(
                             data, list_item, misconfigurations
                         )
                         cast(list[dict[str, Any | None]], result[key]).append(
@@ -107,7 +90,7 @@ class JQEntityProcessorSync(BaseEntityProcessor):
                             misconfigurations[key] = obj[key]
 
                 elif isinstance(value, dict):
-                    search_result = JQEntityProcessorSync._search_as_object(
+                    search_result = self._search_as_object(
                         data, value, misconfigurations
                     )
                     result[key] = search_result
@@ -115,7 +98,7 @@ class JQEntityProcessorSync(BaseEntityProcessor):
                         misconfigurations[key] = obj[key]
 
                 else:
-                    search_result = JQEntityProcessorSync._search(data, value)
+                    search_result = self._search(data, value)
                     result[key] = search_result
                     if search_result is None and misconfigurations is not None:
                         misconfigurations[key] = obj[key]
@@ -124,21 +107,21 @@ class JQEntityProcessorSync(BaseEntityProcessor):
 
         return result
 
-    @staticmethod
     def _get_mapped_entity(
+        self,
         data: dict[str, Any],
         raw_entity_mappings: dict[str, Any],
         selector_query: str,
         parse_all: bool = False,
     ) -> MappedEntity:
-        should_run = JQEntityProcessorSync._search_as_bool(data, selector_query)
+        should_run = self._search_as_bool(data, selector_query)
         if parse_all or should_run:
             misconfigurations: dict[str, str] = {}
-            mapped_entity = JQEntityProcessorSync._search_as_object(
+            mapped_entity = self._search_as_object(
                 data, raw_entity_mappings, misconfigurations
             )
             return MappedEntity(
-                mapped_entity,
+                entity=mapped_entity,
                 did_entity_pass_selector=should_run,
                 misconfigurations=misconfigurations,
             )
