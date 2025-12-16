@@ -17,7 +17,7 @@ class GitManipulationHandler(JQEntityProcessor):
         return await super()._search(data, pattern)
 
     async def _search_by_file(self, data: Dict[str, Any], pattern: str) -> Any:
-        client = AzureDevopsClient.create_from_ocean_config()
+        client = AzureDevopsClient.create_from_ocean_config_no_cache()
         repository_id, branch = parse_repository_payload(data)
         file_path = pattern.replace(FILE_PROPERTY_PREFIX, "")
         file_raw_content = await client.get_file_by_branch(

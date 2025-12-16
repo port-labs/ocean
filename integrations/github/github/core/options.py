@@ -59,6 +59,7 @@ class ListIssueOptions(RepositoryIdentifier):
     """Options for listing issues."""
 
     state: Required[str]
+    labels: NotRequired[Optional[str]]
 
 
 class SingleUserOptions(SingleOrganizationOptions):
@@ -151,6 +152,9 @@ class SingleDeploymentOptions(RepositoryIdentifier):
 class ListDeploymentsOptions(RepositoryIdentifier):
     """Options for listing deployments."""
 
+    task: NotRequired[Optional[str]]
+    environment: NotRequired[Optional[str]]
+
 
 class SingleDependabotAlertOptions(RepositoryIdentifier):
     """Options for fetching a single Dependabot alert."""
@@ -162,6 +166,8 @@ class ListDependabotAlertOptions(RepositoryIdentifier):
     """Options for listing Dependabot alerts."""
 
     state: Required[list[str]]
+    severity: NotRequired[Optional[str]]
+    ecosystem: NotRequired[Optional[str]]
 
 
 class SingleCodeScanningAlertOptions(RepositoryIdentifier):
@@ -174,6 +180,7 @@ class ListCodeScanningAlertOptions(RepositoryIdentifier):
     """Options for listing code scanning alerts."""
 
     state: Required[str]
+    severity: NotRequired[Optional[str]]
 
 
 class FileContentOptions(RepositoryIdentifier):

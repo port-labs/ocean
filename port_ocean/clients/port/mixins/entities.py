@@ -5,7 +5,7 @@ from urllib.parse import quote_plus
 
 import httpx
 from loguru import logger
-from starlette import status
+from starlette import status as starlette_status
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
@@ -139,7 +139,7 @@ class EntityClientMixin:
             )
 
             if (
-                response.status_code == status.HTTP_404_NOT_FOUND
+                response.status_code == starlette_status.HTTP_404_NOT_FOUND
                 and not result.get("ok")
                 and result.get("error") == PortAPIErrorMessage.NOT_FOUND.value
             ):
@@ -577,7 +577,6 @@ class EntityClientMixin:
         if query.get("rules"):
             query["rules"].extend(default_query["rules"])
 
-        logger.info(f"Searching entities with custom query: {query}")
         response = await self.client.post(
             f"{self.auth.api_url}/entities/search",
             json=query,

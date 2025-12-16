@@ -19,7 +19,11 @@ from port_ocean.core.models import (
     ProcessExecutionMode,
     Runtime,
 )
-from port_ocean.utils.misc import get_integration_name, get_spec_file
+from port_ocean.utils.misc import (
+    get_cgroup_cpu_limit,
+    get_integration_name,
+    get_spec_file,
+)
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
@@ -132,7 +136,11 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
     lakehouse_enabled: bool = False
-    yield_items_to_parse_batch_size: int = 500
+    yield_items_to_parse_batch_size: int = 200
+    process_in_queue_timeout: int = 10
+    process_in_queue_max_workers: int = Field(
+        default_factory=lambda: get_cgroup_cpu_limit()
+    )
 
     streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
     actions_processor: ActionsProcessorSettings = Field(

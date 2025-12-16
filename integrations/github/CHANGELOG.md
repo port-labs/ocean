@@ -7,6 +7,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.4.10-beta (2025-12-17)
+
+
+### Features
+
+- Added severity selector for code scanning alert ingestion and webhooks
+- Added severity and ecosystem selectors for dependabot alert ingestion and webhooks
+
+
+## 4.4.9-beta (2025-12-17)
+
+
+### Features
+
+- Added task and environment selectors for deployment ingestion and webhooks
+
+
+## 4.4.8-beta (2025-12-16)
+
+
+### Features
+
+- Added support for labels selector when ingesting issues, allowing filtering by label in the issues ingestion.
+
+
+## 4.4.7-beta (2025-12-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.4
+
+
+## 4.4.6-beta (2025-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.3
+
+
+## 4.4.5-beta (2025-12-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.2
+
+
+## 4.4.4-beta (2025-12-10)
+
+
+### Improvements
+
+- Removed folder kind and codeowners from integration default
+
+
+## 4.4.3-beta (2025-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.1
+
+
+## 4.4.2-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.0
+
+
 ## 4.4.1-beta (2025-12-09)
 
 
