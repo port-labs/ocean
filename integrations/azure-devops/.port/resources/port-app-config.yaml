@@ -30,6 +30,7 @@ resources:
           properties:
             url: .remoteUrl
             readme: file://README.md
+            codeowners: file://CODEOWNERS
           relations:
             project: .project.id | gsub(" "; "")
   - kind: repository-policy
