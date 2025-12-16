@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.4.7-beta (2025-12-16)
+
+
+### Improvements
+
+- Enriched branch exporter and webhook processor responses with repository metadata, including the underlying repository object, to enable richer mappings and downstream processing.
+
+
+## 4.4.6-beta (2025-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.3
+
+
+## 4.4.5-beta (2025-12-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.2
+
+
+## 4.4.4-beta (2025-12-10)
+
+
+### Improvements
+
+- Removed folder kind and codeowners from integration default
+
+
+## 4.4.3-beta (2025-12-10)
+
+
+### Improvements
+
+<<<<<<< HEAD
+- Enriched branch exporter and webhook processor responses with repository metadata, including the underlying repository object, to enable richer mappings and downstream processing.
+=======
+- Bumped ocean version to ^0.32.1
+>>>>>>> 5a0839e4a3d0473fdec4834803254cf6c0ac1917
+
+
 ## 4.4.2-beta (2025-12-09)
 
 
