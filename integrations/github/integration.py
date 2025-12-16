@@ -121,6 +121,15 @@ class GithubIssueSelector(RepoSearchSelector):
         default="open",
         description="Filter by issue state (open, closed, all)",
     )
+    labels: Optional[list[str]] = Field(
+        default=None,
+        description="Filter issues by labels. Issues must have ALL of the specified labels. Example: ['bug', 'enhancement']",
+    )
+
+    @property
+    def labels_str(self) -> Optional[str]:
+        """Convert labels list to comma-separated string for GitHub API."""
+        return ",".join(self.labels) if self.labels else None
 
 
 class GithubIssueConfig(ResourceConfig):
@@ -197,6 +206,22 @@ class GithubCodeScanningAlertSelector(RepoSearchSelector):
 class GithubCodeScanningAlertConfig(ResourceConfig):
     selector: GithubCodeScanningAlertSelector
     kind: Literal["code-scanning-alerts"]
+
+
+class GithubDeploymentSelector(RepoSearchSelector):
+    task: Optional[str] = Field(
+        default=None,
+        description="Filter deployments by task name (e.g., deploy or deploy:migrations)",
+    )
+    environment: Optional[str] = Field(
+        default=None,
+        description="Filter deployments by environment name (e.g., staging or production)",
+    )
+
+
+class GithubDeploymentConfig(ResourceConfig):
+    selector: GithubDeploymentSelector
+    kind: Literal["deployment"]
 
 
 class GithubSecretScanningAlertSelector(RepoSearchSelector):
@@ -289,6 +314,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubIssueConfig
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig
+        | GithubDeploymentConfig
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig
