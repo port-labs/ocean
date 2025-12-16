@@ -41,6 +41,7 @@ class RepoSearchSelector(Selector):
 class GithubRepositorySelector(RepoSearchSelector):
     include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
         default_factory=list,
+        max_items=3,
         description="Specify the relationships to include in the repository",
     )
 
