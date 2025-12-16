@@ -152,6 +152,9 @@ class SingleDeploymentOptions(RepositoryIdentifier):
 class ListDeploymentsOptions(RepositoryIdentifier):
     """Options for listing deployments."""
 
+    task: NotRequired[Optional[str]]
+    environment: NotRequired[Optional[str]]
+
 
 class SingleDependabotAlertOptions(RepositoryIdentifier):
     """Options for fetching a single Dependabot alert."""
