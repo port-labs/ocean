@@ -125,6 +125,53 @@ async def test_sonarqube_client_will_send_api_request(
     assert response == PURE_PROJECTS[0]
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status_code", [401, 403, 404])
+async def test_send_api_request_should_not_raise_exception_for_ignored_errors(
+    status_code: int,
+    mock_ocean_context: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    sonarqube_client.http_client = MockHttpxClient(  # type: ignore
+        [
+            {"status_code": status_code, "json": {"errors": [{"msg": "some error"}]}},
+        ]
+    )
+
+    result = await sonarqube_client._send_api_request("test")
+
+    assert result == {}
+
+
+@pytest.mark.asyncio
+async def test_send_api_request_should_raise_exception_for_unignored_errors(
+    mock_ocean_context: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    sonarqube_client.http_client = MockHttpxClient(  # type: ignore
+        [
+            {"status_code": 500, "json": {"errors": [{"msg": "some error"}]}},
+        ]
+    )
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await sonarqube_client._send_api_request("test")
+
+
 async def test_sonarqube_client_will_repeatedly_make_pagination_request(
     projects: list[dict[str, Any]], monkeypatch: Any, mock_ocean_context: Any
 ) -> None:
@@ -203,7 +250,6 @@ async def test_pagination_with_large_dataset(
     ]
 
     async with event_context("test_event"):
-
         monkeypatch.setattr(
             sonarqube_client, "get_single_project", mock_get_single_project
         )
