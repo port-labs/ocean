@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.4.8-beta (2025-12-16)
+
+
+### Features
+
+- Added support for labels selector when ingesting issues, allowing filtering by label in the issues ingestion.
+
+
+## 4.4.7-beta (2025-12-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.4
+
+
 ## 4.4.6-beta (2025-12-15)
 
 
