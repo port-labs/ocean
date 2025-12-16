@@ -194,7 +194,8 @@
         "sources": {
           "type": "array",
           "title": "Sources",
-          "description": "This presents the sources of a multi-source Argocd app.",
+          "icon": "Url",
+          "description": "This represents the sources of a multi-source Argocd app.",
           "items": {
             "type": "string"
           }
