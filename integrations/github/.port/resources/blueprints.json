@@ -203,49 +203,5 @@
                 "many": false
             }
         }
-    },
-    {
-        "identifier": "githubCodeowners",
-        "description": "This blueprint represents a CODEOWNERS file in a GitHub repository",
-        "title": "GitHub Codeowners",
-        "icon": "Github",
-        "schema": {
-            "properties": {
-                "location": {
-                    "type": "string",
-                    "title": "File location",
-                    "description": "File path to CODEOWNERS file"
-                },
-                "scope": {
-                    "icon": "Github",
-                    "type": "string",
-                    "title": "Scope",
-                    "description": "The scope which the user/team owns"
-                },
-                "users": {
-                    "type": "array",
-                    "title": "Users",
-                    "description": "Users who own this scope"
-                },
-                "teams": {
-                    "type": "array",
-                    "title": "Teams",
-                    "description": "Teams who own this scope"
-                }
-            },
-            "required": []
-        },
-        "mirrorProperties": {},
-        "calculationProperties": {},
-        "aggregationProperties": {},
-        "relations": {
-            "repository": {
-                "title": "Repository",
-                "description": "The repository which the CODEOWNERS file resides in",
-                "target": "githubRepository",
-                "required": false,
-                "many": false
-            }
-        }
     }
 ]
