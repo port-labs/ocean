@@ -1,3 +1,37 @@
+# Changelog - Ocean - bitbucket
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+<!-- towncrier release notes start -->
+
+## 0.3.13 (2025-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.3
+
+
+## 0.3.12 (2025-12-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.2
+
+
+## 0.3.11 (2025-12-10)
+
+
+### Improvements
+
+- Removed folder kind from integration default
+- Removed codeowners mapping and blueprint from integration default resources
+
+
 ## 0.3.10 (2025-12-10)
 
 
@@ -77,15 +111,6 @@
 
 - Bumped ocean version to ^0.30.7
 
-
-# Changelog - Ocean - bitbucket
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-<!-- towncrier release notes start -->\
 
 ## 0.3.0 (2025-12-03)
 
