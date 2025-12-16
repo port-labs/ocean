@@ -44,11 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-<<<<<<< HEAD
-- Enriched branch exporter and webhook processor responses with repository metadata, including the underlying repository object, to enable richer mappings and downstream processing.
-=======
 - Bumped ocean version to ^0.32.1
->>>>>>> 5a0839e4a3d0473fdec4834803254cf6c0ac1917
 
 
 ## 4.4.2-beta (2025-12-09)
