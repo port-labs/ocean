@@ -25,10 +25,13 @@ class TargetWebhookProcessor(SnykBaseWebhookProcessor):
         organization = get_matching_organization(
             await snyk_client.get_all_organizations(), organization_id
         )
-        if organization:
-            data_to_update = await snyk_client.get_single_target_by_project_id(
-                organization, project_id
+        if not organization:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
             )
+        data_to_update = await snyk_client.get_single_target_by_project_id(
+            organization, project_id
+        )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_update], deleted_raw_results=[]
