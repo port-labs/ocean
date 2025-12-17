@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.32.4 (2025-12-16)
+
+### Bug fixes
+
+- Update the core to handle jq calculations without a loop, the search functions that need to be executed by the
+  overwriten function will execute in the event loop.
+ that we can merge them.
+
+
 ## 0.32.3 (2025-12-15)
 
 ### Bug fixes
