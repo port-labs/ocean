@@ -140,7 +140,10 @@ class TestTagWebhookProcessor:
             # Verify exporter was called with correct options
             mock_exporter.get_resource.assert_called_once_with(
                 SingleTagOptions(
-                    organization="test-org", repo_name="test-repo", tag_name=tag_ref
+                    organization="test-org",
+                    repo_name="test-repo",
+                    tag_name=tag_ref,
+                    repo={"name": "test-repo"},
                 )
             )
 
