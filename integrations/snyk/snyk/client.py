@@ -192,7 +192,7 @@ class SnykClient:
     async def get_single_target_by_project_id(
         self, org: dict[str, Any], project_id: str
     ) -> dict[str, Any]:
-        project = await self.get_single_project(org, project_id)
+        project = await self.get_single_project(org["id"], project_id)
         target_id = (
             project.get("relationships", {}).get("target", {}).get("data", {}).get("id")
         )
