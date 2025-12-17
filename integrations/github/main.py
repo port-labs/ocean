@@ -93,6 +93,7 @@ from integration import (
     GithubBranchConfig,
     GithubSecretScanningAlertConfig,
     GithubUserConfig,
+    GithubDeploymentConfig,
 )
 
 
@@ -451,6 +452,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 state=config.selector.state,
+                                labels=config.selector.labels_str,
                             )
                         )
                     )
@@ -534,7 +536,7 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     tasks.append(
                         tag_exporter.get_paginated_resources(
                             ListTagOptions(
-                                organization=org_name, repo_name=repo["name"]
+                                organization=org_name, repo_name=repo["name"], repo=repo
                             )
                         )
                     )
@@ -580,6 +582,7 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 repo_name=repo["name"],
                                 detailed=selector.detailed,
                                 protection_rules=selector.protection_rules,
+                                repo=repo,
                             )
                         )
                     )
@@ -642,7 +645,7 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     deployment_exporter = RestDeploymentExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    config = cast(GithubRepoSearchConfig, event.resource_config)
+    config = cast(GithubDeploymentConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -666,6 +669,8 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             ListDeploymentsOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
+                                task=config.selector.task,
+                                environment=config.selector.environment,
                             )
                         )
                     )
@@ -711,6 +716,8 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 state=list(config.selector.states),
+                                severity=config.selector.severity_str,
+                                ecosystem=config.selector.ecosystems_str,
                             )
                         )
                     )
@@ -755,6 +762,7 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 state=config.selector.state,
+                                severity=config.selector.severity,
                             )
                         )
                     )

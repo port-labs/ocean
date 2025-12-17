@@ -75,6 +75,7 @@ def enrich_with_repository(
     Returns:
         The enriched response
     """
+
     response[key] = repo_name
     if repo:
         response["__repository_object"] = repo
@@ -171,3 +172,28 @@ async def enrich_user_with_primary_email(
     if primary_email:
         user["email"] = primary_email["email"]
     return user
+
+
+def issue_matches_labels(
+    issue_labels: list[dict[str, Any]], required_labels: Optional[list[str]]
+) -> bool:
+    """
+    Check if an issue's labels match the required labels filter.
+
+    Args:
+        issue_labels: List of label objects from webhook payload
+        required_labels: List of required labels
+
+    Returns:
+        True if issue matches (has ALL of the required labels), False otherwise
+    """
+    if not required_labels:
+        return True
+
+    required_set = {label.lower() for label in required_labels}
+    if not required_set:
+        return True
+
+    issue_label_names = {label["name"].lower() for label in issue_labels}
+
+    return required_set.issubset(issue_label_names)
