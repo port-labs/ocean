@@ -166,16 +166,17 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
         logger.info(f"Deleting {len(entities)} entities")
+        delete_batch_size = ocean.config.delete_entities_max_batch_size
         if event.port_app_config.delete_dependent_entities:
             while entities:
-                batch = entities[:1000]
+                batch = entities[:delete_batch_size]
                 await self.context.port_client.batch_delete_entities(
                     batch,
                     event.port_app_config.get_port_request_options(),
                     user_agent_type,
                     should_raise=False,
                 )
-                entities = entities[1000:]
+                entities = entities[delete_batch_size:]
         else:
             ordered_deleted_entities = (
                 EntityTopologicalSorter.order_by_entities_dependencies(entities)
