@@ -189,6 +189,15 @@ class SnykClient:
         ):
             yield enrich_batch_with_org(projects, org)
 
+    async def _process_target(
+        self, org: dict[str, Any], target_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        async for projects in self.get_paginated_projects(org):
+            target_data.setdefault("__projects", []).extend(
+                self._get_projects_by_target(projects, target_data["id"])
+            )
+        return target_data
+
     async def get_single_target_by_project_id(
         self, org: dict[str, Any], project_id: str
     ) -> dict[str, Any]:
@@ -208,14 +217,7 @@ class SnykClient:
 
         target = response["data"]
 
-        async def process_target(target_data: dict[str, Any]) -> dict[str, Any]:
-            async for projects in self.get_paginated_projects(org):
-                target_data.setdefault("__projects", []).extend(
-                    self._get_projects_by_target(projects, target_data["id"])
-                )
-            return target_data
-
-        await asyncio.gather(process_target(target))
+        await self._process_target(org, target)
         return target
 
     async def get_paginated_targets(
@@ -228,16 +230,8 @@ class SnykClient:
         async for targets in self._get_paginated_resources(
             url_path=url, query_params=query_params
         ):
-
-            async def process_target(target_data: dict[str, Any]) -> dict[str, Any]:
-                async for projects in self.get_paginated_projects(org):
-                    target_data.setdefault("__projects", []).extend(
-                        self._get_projects_by_target(projects, target_data["id"])
-                    )
-                return target_data
-
             targets_with_project_data = await asyncio.gather(
-                *[process_target(target_data) for target_data in targets]
+                *[self._process_target(org, target_data) for target_data in targets]
             )
             yield targets_with_project_data
 
