@@ -45,7 +45,10 @@ class TestRestTagExporter:
             mock_request.return_value = mock_response.json()
             tag = await exporter.get_resource(
                 SingleTagOptions(
-                    organization="test-org", repo_name="repo1", tag_name="v1.0"
+                    organization="test-org",
+                    repo_name="repo1",
+                    tag_name="v1.0",
+                    repo={"name": "repo1"},
                 )
             )
 
@@ -70,7 +73,9 @@ class TestRestTagExporter:
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
         ) as mock_request:
             async with event_context("test_event"):
-                options = ListTagOptions(organization="test-org", repo_name="repo1")
+                options = ListTagOptions(
+                    organization="test-org", repo_name="repo1", repo={"name": "repo1"}
+                )
                 exporter = RestTagExporter(rest_client)
 
                 tags: list[list[dict[str, Any]]] = [

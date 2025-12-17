@@ -29,7 +29,10 @@ from github.core.exporters.deployment_exporter import RestDeploymentExporter
 from github.core.exporters.environment_exporter import RestEnvironmentExporter
 from github.core.exporters.file_exporter import RestFileExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
-from github.core.exporters.pull_request_exporter import RestPullRequestExporter
+from github.core.exporters.pull_request_exporter import (
+    GraphQLPullRequestExporter,
+    RestPullRequestExporter,
+)
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )
@@ -90,6 +93,7 @@ from integration import (
     GithubBranchConfig,
     GithubSecretScanningAlertConfig,
     GithubUserConfig,
+    GithubDeploymentConfig,
 )
 
 
@@ -365,12 +369,18 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     rest_client = create_github_client()
+    graphql_client = create_github_client(GithubClientType.GRAPHQL)
     org_exporter = RestOrganizationExporter(rest_client)
     repository_exporter = RestRepositoryExporter(rest_client)
-    pull_request_exporter = RestPullRequestExporter(rest_client)
-
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubPullRequestConfig, event.resource_config)
+
+    is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
+    pull_request_exporter: AbstractGithubExporter[Any] = (
+        GraphQLPullRequestExporter(graphql_client)
+        if is_graphql_api
+        else RestPullRequestExporter(rest_client)
+    )
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -396,7 +406,8 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 repo_name=repo["name"],
                                 states=list(config.selector.states),
                                 max_results=config.selector.max_results,
-                                since=config.selector.since,
+                                updated_after=config.selector.updated_after,
+                                repo=repo if is_graphql_api else None,
                             )
                         )
                     )
@@ -441,6 +452,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 state=config.selector.state,
+                                labels=config.selector.labels_str,
                             )
                         )
                     )
@@ -524,7 +536,7 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     tasks.append(
                         tag_exporter.get_paginated_resources(
                             ListTagOptions(
-                                organization=org_name, repo_name=repo["name"]
+                                organization=org_name, repo_name=repo["name"], repo=repo
                             )
                         )
                     )
@@ -570,6 +582,7 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 repo_name=repo["name"],
                                 detailed=selector.detailed,
                                 protection_rules=selector.protection_rules,
+                                repo=repo,
                             )
                         )
                     )
@@ -632,7 +645,7 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     deployment_exporter = RestDeploymentExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    config = cast(GithubRepoSearchConfig, event.resource_config)
+    config = cast(GithubDeploymentConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -656,6 +669,8 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             ListDeploymentsOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
+                                task=config.selector.task,
+                                environment=config.selector.environment,
                             )
                         )
                     )
@@ -701,6 +716,8 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 state=list(config.selector.states),
+                                severity=config.selector.severity_str,
+                                ecosystem=config.selector.ecosystems_str,
                             )
                         )
                     )
@@ -745,6 +762,7 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 state=config.selector.state,
+                                severity=config.selector.severity,
                             )
                         )
                     )

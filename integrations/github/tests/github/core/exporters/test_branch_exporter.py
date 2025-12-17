@@ -49,6 +49,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     branch_name="main",
                     protection_rules=False,
+                    repo={"name": "repo1"},
                 )
             )
 
@@ -77,6 +78,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     protection_rules=False,
                     detailed=False,
+                    repo={"name": "repo1"},
                 )
                 exporter = RestBranchExporter(rest_client)
 
@@ -122,6 +124,7 @@ class TestRestBranchExporter:
                         repo_name="repo1",
                         branch_name="main",
                         protection_rules=True,
+                        repo={"name": "repo1"},
                     )
                 )
 
@@ -161,6 +164,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     detailed=True,
                     protection_rules=False,
+                    repo={"name": "repo1"},
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -206,6 +210,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     detailed=False,
                     protection_rules=True,
+                    repo={"name": "repo1"},
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -259,6 +264,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     detailed=True,
                     protection_rules=True,
+                    repo={"name": "repo1"},
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
