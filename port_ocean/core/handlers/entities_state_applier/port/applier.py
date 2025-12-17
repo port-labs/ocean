@@ -15,7 +15,7 @@ from port_ocean.helpers.metric.utils import TimeMetric
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import EntityDiff
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
-from port_ocean.core.utils.utils import is_same_entity, get_port_diff
+from port_ocean.core.utils.utils import _get_entity_key, get_port_diff
 
 
 class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
@@ -42,13 +42,18 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
 
         allowed_entities_to_delete = []
 
+        map_related_entities = {
+            _get_entity_key(entity): entity for entity in related_entities
+        }
+        map_entities_to_protect = {
+            _get_entity_key(entity): entity for entity in entities_to_protect
+        }
         for entity_to_delete in entities_to_delete:
-            is_part_of_related = any(
-                is_same_entity(entity, entity_to_delete) for entity in related_entities
+            is_part_of_related = (
+                _get_entity_key(entity_to_delete) in map_related_entities
             )
-            is_part_of_created = any(
-                is_same_entity(entity, entity_to_delete)
-                for entity in entities_to_protect
+            is_part_of_created = (
+                _get_entity_key(entity_to_delete) in map_entities_to_protect
             )
             if is_part_of_related:
                 if event.port_app_config.create_missing_related_entities:
@@ -61,7 +66,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
             elif not is_part_of_created:
                 allowed_entities_to_delete.append(entity_to_delete)
 
-        await self.delete(allowed_entities_to_delete, user_agent_type)
+        return await self.delete(allowed_entities_to_delete, user_agent_type)
 
     async def apply_diff(
         self,
@@ -85,7 +90,6 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         entity_deletion_threshold: float | None = None,
     ) -> None:
         diff = get_port_diff(entities["before"], entities["after"])
-
         if not diff.deleted:
             ocean.metrics.inc_metric(
                 name=MetricType.OBJECT_COUNT_NAME,
@@ -163,17 +167,19 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
     ) -> None:
         logger.info(f"Deleting {len(entities)} entities")
         if event.port_app_config.delete_dependent_entities:
-            await self.context.port_client.batch_delete_entities(
-                entities,
-                event.port_app_config.get_port_request_options(),
-                user_agent_type,
-                should_raise=False,
-            )
+            while entities:
+                batch = entities[:1000]
+                await self.context.port_client.batch_delete_entities(
+                    batch,
+                    event.port_app_config.get_port_request_options(),
+                    user_agent_type,
+                    should_raise=False,
+                )
+                entities = entities[1000:]
         else:
             ordered_deleted_entities = (
                 EntityTopologicalSorter.order_by_entities_dependencies(entities)
             )
-
             for entity in ordered_deleted_entities:
                 await self.context.port_client.delete_entity(
                     entity,
