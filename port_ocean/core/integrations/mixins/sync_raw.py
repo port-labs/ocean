@@ -203,7 +203,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         BATCH_SIZE = 50
 
-        async def async_generator_target_entities(_entities: list[Entity]) -> AsyncGenerator[Entity, None]:
+        async def async_generator_target_entities(_entities: list[Entity]) -> AsyncGenerator[list[Entity], None]:
             # fetch entities from port in batches
             logger.info(f"Fetching entities from port in batches of for diff calculation, using non paginated api",batch_size=BATCH_SIZE)
             for start_index in range(0, len(_entities), BATCH_SIZE):
