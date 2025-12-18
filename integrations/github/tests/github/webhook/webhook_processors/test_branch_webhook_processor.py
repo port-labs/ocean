@@ -48,7 +48,6 @@ def branch_webhook_processor(
 
 @pytest.mark.asyncio
 class TestBranchWebhookProcessor:
-
     @pytest.mark.parametrize(
         "github_event,ref,ref_type,result",
         [
@@ -155,6 +154,7 @@ class TestBranchWebhookProcessor:
                     repo_name="test-repo",
                     branch_name=branch_name,
                     protection_rules=protection_rules,
+                    repo={"name": "test-repo"},
                 )
             )
 

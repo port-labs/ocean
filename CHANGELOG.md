@@ -6,6 +6,87 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.32.5 (2025-12-18)
+
+### Bug fixes
+
+- Update compare entities with port to use async generator and compare entities incrementaly.
+- Update delete diff to use maps for comparing.
+- When deleteing entities batch by 1k.
+
+
+## 0.32.4 (2025-12-16)
+
+### Bug fixes
+
+- Update the core to handle jq calculations without a loop, the search functions that need to be executed by the
+  overwriten function will execute in the event loop.
+ that we can merge them.
+
+
+## 0.32.3 (2025-12-15)
+
+### Bug fixes
+
+- Fixed an issue where starting with POLLING and changing to KAFKA event listener would cause the integration to not receive messages
+
+
+## 0.32.2 (2025-12-14)
+
+### Bug fixes
+
+- Increase timeout
+- Clear http context.
+- Fix posix path error when sending logs.
+
+## 0.32.1 (2025-12-10)
+
+### Bug fixes
+
+- handle overwrite of `_search` with process pool
+
+## 0.32.0 (2025-12-09)
+
+### Improvements
+
+- Add multiprocessing
+- Memory optimizations
+
+
+## 0.31.7 (2025-12-09)
+
+### Improvements
+
+- Added log on partial bulk upsert failures
+- Updated react & react-dom versions
+
+
+## 0.31.6 (2025-12-09)
+
+### Improvements
+
+- Ocean core: Bumped minimum requirements for werkzeug & urllib3
+
+## 0.31.5 (2025-12-08)
+
+### Improvements
+
+- Change the example sending logic, so instead of collecting the
+examples in a class after a successful transformation, always send the
+examples ahead of each JQ transformation
+
+## 0.31.4 (2025-12-08)
+
+### Improvements
+
+- Add flag `itemsToParseTopLevelTransform` to control the top level payload form.
+
+## 0.31.3 (2025-12-08)
+
+### Bug fixes
+
+- fix webhook processor crashing when entity identifier is a dictionary
+
 ## 0.31.2 (2025-12-07)
 
 ### Vulnerabilities
@@ -32,7 +113,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Improvements
 
 - Make mapping errors have error log instead of info
-
 
 ## 0.30.6 (2025-11-27)
 

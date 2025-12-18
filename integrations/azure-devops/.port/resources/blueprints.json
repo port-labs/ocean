@@ -62,6 +62,11 @@
           "format": "markdown",
           "icon": "Book"
         },
+        "codeowners": {
+          "title": "CODEOWNERS",
+          "type": "string",
+          "format": "markdown"
+        },
         "workItemLinking": {
           "title": "Work Item Linking",
           "default": false,
@@ -330,50 +335,6 @@
         "title": "Project",
         "target": "azureDevopsProject",
         "required": true,
-        "many": false
-      }
-    }
-  },
-  {
-    "identifier": "azureDevopsCodeowners",
-    "description": "This blueprint represents a CODEOWNERS file in an Azure DevOps repository",
-    "title": "Azure DevOps Codeowners",
-    "icon": "AzureDevops",
-    "schema": {
-      "properties": {
-        "location": {
-          "type": "string",
-          "title": "File location",
-          "description": "File path to CODEOWNERS file"
-        },
-        "scope": {
-          "icon": "AzureDevops",
-          "type": "string",
-          "title": "Scope",
-          "description": "The scope which the user/team owns"
-        },
-        "users": {
-          "type": "array",
-          "title": "Users",
-          "description": "Users who own this scope"
-        },
-        "teams": {
-          "type": "array",
-          "title": "Teams",
-          "description": "Teams who own this scope"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
-      "service": {
-        "title": "Service",
-        "description": "The repository which the CODEOWNERS file resides in",
-        "target": "service",
-        "required": false,
         "many": false
       }
     }

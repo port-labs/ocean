@@ -12,19 +12,19 @@ from github.core.options import SingleTagOptions
 
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
 )
 from github.helpers.utils import ObjectKind
+from integration import GithubRepoSearchConfig, RepoSearchSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+    return GithubRepoSearchConfig(
         kind=ObjectKind.TAG,
-        selector=Selector(query="true"),
+        selector=RepoSearchSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -47,7 +47,6 @@ def tag_webhook_processor(
 
 @pytest.mark.asyncio
 class TestTagWebhookProcessor:
-
     @pytest.mark.parametrize(
         "github_event,ref,ref_type,result",
         [
@@ -141,7 +140,10 @@ class TestTagWebhookProcessor:
             # Verify exporter was called with correct options
             mock_exporter.get_resource.assert_called_once_with(
                 SingleTagOptions(
-                    organization="test-org", repo_name="test-repo", tag_name=tag_ref
+                    organization="test-org",
+                    repo_name="test-repo",
+                    tag_name=tag_ref,
+                    repo={"name": "test-repo"},
                 )
             )
 

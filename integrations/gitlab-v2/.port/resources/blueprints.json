@@ -11,6 +11,11 @@
           "format": "markdown",
           "icon": "Book"
         },
+        "codeowners": {
+          "title": "CODEOWNERS",
+          "type": "string",
+          "format": "markdown"
+        },
         "url": {
           "title": "URL",
           "format": "url",
@@ -198,50 +203,6 @@
     "relations": {
       "project": {
         "title": "Service",
-        "target": "service",
-        "required": false,
-        "many": false
-      }
-    }
-  },
-  {
-    "identifier": "gitlabCodeowners",
-    "description": "This blueprint represents a CODEOWNERS file in a GitLab project",
-    "title": "GitLab Codeowners",
-    "icon": "GitLab",
-    "schema": {
-      "properties": {
-        "location": {
-          "type": "string",
-          "title": "File location",
-          "description": "File path to CODEOWNERS file"
-        },
-        "scope": {
-          "icon": "GitLab",
-          "type": "string",
-          "title": "Scope",
-          "description": "The scope which the user/team owns"
-        },
-        "users": {
-          "type": "array",
-          "title": "Users",
-          "description": "Users who own this scope"
-        },
-        "teams": {
-          "type": "array",
-          "title": "Teams",
-          "description": "Teams who own this scope"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
-      "project": {
-        "title": "Service",
-        "description": "The project which the CODEOWNERS file resides in",
         "target": "service",
         "required": false,
         "many": false

@@ -4,7 +4,7 @@ import uuid
 from graphlib import CycleError
 import inspect
 import typing
-from typing import Callable, Awaitable, Any
+from typing import AsyncGenerator, Callable, Awaitable, Any
 import multiprocessing
 import httpx
 from loguru import logger
@@ -202,24 +202,19 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             return entities
 
         BATCH_SIZE = 50
-        entities_at_port_with_properties = []
 
-        # Process entities in batches
-        for start_index in range(0, len(entities), BATCH_SIZE):
-            entities_batch = entities[start_index : start_index + BATCH_SIZE]
-            batch_results = await self._fetch_entities_batch_from_port(
-                entities_batch, resource, user_agent_type
-            )
-            entities_at_port_with_properties.extend(batch_results)
+        async def async_generator_target_entities(_entities: list[Entity]) -> AsyncGenerator[list[Entity], None]:
+            # fetch entities from port in batches
+            logger.info(f"Fetching entities from port in batches of for diff calculation, using non paginated api",batch_size=BATCH_SIZE)
+            for start_index in range(0, len(_entities), BATCH_SIZE):
+                entities_batch = _entities[start_index : start_index + BATCH_SIZE]
+                batch_results = await self._fetch_entities_batch_from_port(
+                    entities_batch, resource, user_agent_type
+                )
+                yield batch_results
 
-        logger.info(
-            "Got entities from port with properties and relations",
-            port_entities=len(entities_at_port_with_properties),
-        )
 
-        if len(entities_at_port_with_properties) > 0:
-            return resolve_entities_diff(entities, entities_at_port_with_properties)
-        return entities
+        return await resolve_entities_diff(entities, async_generator_target_entities(entities))
 
     async def _fetch_entities_batch_from_port(
         self,
