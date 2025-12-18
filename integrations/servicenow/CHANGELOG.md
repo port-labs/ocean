@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Added support for vulnerability
+- Added example blueprint and mapping for vulnerability
 - Added tests for client
 
 
