@@ -264,9 +264,11 @@ async def test_handleEvent_projectUpdated_targetReturnedFromClient_updatedRawRes
         "webhook_processors.target_webhook_processor.init_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
+        mock_organization = {"id": "test-org-id", "name": "Test Org"}
+        mock_client.get_all_organizations.return_value = [mock_organization]
 
         async def mock_get_target(*args: Any, **kwargs: Any) -> dict[str, Any]:
-            assert args[0] == "test-org-id"
+            assert args[0] == mock_organization
             assert args[1] == "test-project-id"
             return mock_target
 
