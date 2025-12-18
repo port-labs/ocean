@@ -139,7 +139,8 @@ class BaseCheckmarxAuthenticator(ABC):
             self._access_token = cached_token["access_token"]
             self._refresh_token = cached_token["refresh_token"]
             expires_in = cached_token["expires_in"]
-            self._token_expires_at = time.time() + expires_in
+            cached_at = cached_token["cached_at"]
+            self._token_expires_at = cached_at + expires_in
             return self._access_token
 
         # If not in cache or expired, refresh the token
