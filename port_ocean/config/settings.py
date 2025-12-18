@@ -137,7 +137,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
     lakehouse_enabled: bool = False
     yield_items_to_parse_batch_size: int = 200
-    process_in_queue_timeout: int = 20
+    process_in_queue_timeout: int = 120
     process_in_queue_max_workers: int = Field(
         default_factory=lambda: get_cgroup_cpu_limit()
     )
