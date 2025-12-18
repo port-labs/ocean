@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.57 (2025-12-18)
+
+
+### Features
+
+- Added support for release management
+- Added example blueprint and mapping for release management
+
+
 ## 0.2.56 (2025-12-18)
 
 
