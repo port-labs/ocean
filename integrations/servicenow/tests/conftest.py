@@ -105,35 +105,12 @@ SAMPLE_INCIDENT_DATA = {
 
 SAMPLE_VULNERABILITY_DATA = {
     "sys_id": "v1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+    "number": "VIT0010001",
     "state": "2",
-    "severity": "3",
-    "cvss_score": "7.5",
-    "cvss_v3_score": "7.8",
-    "first_found": "2024-01-15 10:30:00",
-    "last_found": "2024-01-20 14:45:00",
-    "due_date": "2024-02-15 00:00:00",
-    "assigned_to": {
-        "link": "https://test-instance.service-now.com/api/now/table/sys_user/1234567890abcdef1234567890abcdef",
-        "value": "1234567890abcdef1234567890abcdef",
-        "display_value": "John Doe",
-    },
-    "assignment_group": {
-        "link": "https://test-instance.service-now.com/api/now/table/sys_user_group/9876543210fedcba9876543210fedcba",
-        "value": "9876543210fedcba9876543210fedcba",
-        "display_value": "Security Operations",
-    },
     "priority": "2",
     "risk_score": "85",
-    "vulnerability": {
-        "link": "https://test-instance.service-now.com/api/now/table/sn_vuln_vulnerability/abcdef1234567890abcdef1234567890",
-        "value": "abcdef1234567890abcdef1234567890",
-        "display_value": "CVE-2024-12345 - Remote Code Execution",
-    },
-    "ci_item": {
-        "link": "https://test-instance.service-now.com/api/now/table/cmdb_ci_server/11111111111111111111111111111111",
-        "value": "11111111111111111111111111111111",
-        "display_value": "Production Web Server 01",
-    },
+    "first_found": "2024-01-15",
+    "last_found": "2024-01-20",
     "sys_created_on": "2024-01-15 10:30:00",
     "sys_created_by": "admin",
     "sys_updated_on": "2024-01-20 14:45:00",

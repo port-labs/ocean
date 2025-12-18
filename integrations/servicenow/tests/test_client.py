@@ -136,7 +136,7 @@ class TestServicenowClient:
     async def test_get_paginated_resource_vulnerabilities(
         self, servicenow_client: ServicenowClient
     ) -> None:
-        """Test fetching vulnerabilities from sn_vuln_vulnerable_item table."""
+        """Test fetching vulnerabilities from sn_vul_vulnerable_item table."""
         mock_response = MagicMock()
         mock_response.json.return_value = {"result": [SAMPLE_VULNERABILITY_DATA]}
         mock_response.headers.get.return_value = ""
@@ -154,7 +154,7 @@ class TestServicenowClient:
             ):
                 vulnerabilities: list[dict[str, Any]] = []
                 async for batch in servicenow_client.get_paginated_resource(
-                    resource_kind="sn_vuln_vulnerable_item"
+                    resource_kind="sn_vul_vulnerable_item"
                 ):
                     vulnerabilities.extend(batch)
 
@@ -163,8 +163,8 @@ class TestServicenowClient:
                     vulnerabilities[0]["sys_id"] == SAMPLE_VULNERABILITY_DATA["sys_id"]
                 )
                 assert vulnerabilities[0]["state"] == "2"
-                assert vulnerabilities[0]["severity"] == "3"
-                assert vulnerabilities[0]["cvss_score"] == "7.5"
+                assert vulnerabilities[0]["priority"] == "2"
+                assert vulnerabilities[0]["risk_score"] == "85"
 
     @pytest.mark.asyncio
     async def test_get_paginated_resource_error_handling(
