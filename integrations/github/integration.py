@@ -1,5 +1,6 @@
 from fastapi import Request
 from pydantic import BaseModel, Field
+from datetime import datetime, timedelta, timezone
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -39,8 +40,9 @@ class RepoSearchSelector(Selector):
 
 
 class GithubRepositorySelector(RepoSearchSelector):
-    include: Optional[List[Literal["collaborators", "teams"]]] = Field(
+    include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
         default_factory=list,
+        max_items=3,
         description="Specify the relationships to include in the repository",
     )
 
@@ -107,8 +109,17 @@ class GithubPullRequestSelector(RepoSearchSelector):
         default=60,
         ge=1,
         le=90,
-        description="Only fetch pull requests created within the last N days (1-90 days)",
+        description="Only fetch pull requests updated within the last N days (1-90 days)",
     )
+    api: Literal["rest", "graphql"] = Field(
+        default="rest",
+        description="Select the API to use for fetching pull requests",
+    )
+
+    @property
+    def updated_after(self) -> datetime:
+        """Convert the since days to a timezone-aware datetime object."""
+        return datetime.now(timezone.utc) - timedelta(days=self.since)
 
 
 class GithubPullRequestConfig(ResourceConfig):
