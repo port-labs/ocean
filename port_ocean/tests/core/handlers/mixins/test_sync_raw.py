@@ -727,16 +727,26 @@ async def test_map_entities_compared_with_port_with_multiple_batches_all_batches
     ]
 
     # Mock port client to return our port entities in batches
-    with patch.object(
-        mock_ocean.port_client,
-        "search_entities",
+    # Note: The implementation uses ocean.port_client.search_entities (global ocean)
+    with patch(
+        "port_ocean.core.integrations.mixins.sync_raw.ocean.port_client.search_entities",
         new_callable=AsyncMock,
         side_effect=[port_entities_batch1, port_entities_batch2],
     ) as mock_search_entities:
-        # Mock resolve_entities_diff to return all entities
+        # Mock resolve_entities_diff to consume the generator and return all entities
+        # This ensures the generator is consumed, triggering the batch calls
+        async def mock_resolve_entities_diff_side_effect(
+            source_entities: list[Entity],
+            target_entities_generator: AsyncGenerator[list[Entity], None],
+        ) -> list[Entity]:
+            # Consume the generator to trigger batch calls
+            async for _ in target_entities_generator:
+                pass
+            return third_party_entities
+
         with patch(
             "port_ocean.core.integrations.mixins.sync_raw.resolve_entities_diff",
-            return_value=third_party_entities,
+            side_effect=mock_resolve_entities_diff_side_effect,
         ) as mock_resolve_entities_diff:
             # Execute test
             changed_entities = (
