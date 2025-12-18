@@ -10,7 +10,12 @@ from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookSubscription
-from azure_devops.webhooks.events import RepositoryEvents, PullRequestEvents, PushEvents
+from azure_devops.webhooks.events import (
+    RepositoryEvents,
+    PullRequestEvents,
+    PushEvents,
+    PipelineEvents,
+)
 
 from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
@@ -61,6 +66,8 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
     ),
     WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH),
     WebhookSubscription(publisherId="tfs", eventType=RepositoryEvents.REPO_CREATED),
+    WebhookSubscription(publisherId="tfs", eventType=PipelineEvents.BUILD_COMPLETED),
+    WebhookSubscription(publisherId="tfs", eventType=PipelineEvents.BUILD_STARTED),
 ]
 
 
