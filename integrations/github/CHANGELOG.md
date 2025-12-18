@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.5.1-beta (2025-12-18)
+
+
+### Improvements
+
+- Added codeowners property to repository blueprint with file:// mapping to sync CODEOWNERS file content from repositories
+
+
+## 4.5.0-beta (2025-12-17)
+
+
+### Features
+
+- Dependency graph SBOM can now be returned in the repository by adding "sbom" to included relationships.
+
+
 ## 4.4.12-beta (2025-12-17)
 
 
@@ -20,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Improvements
-
+ 
 - Enriched branch and tag exporter and webhook processors responses with repository metadata, including the underlying repository object, to enable richer mappings and downstream processing.
 
 

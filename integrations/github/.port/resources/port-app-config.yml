@@ -38,6 +38,7 @@ resources:
             visibility: if .private then "private" else "public" end
             defaultBranch: .default_branch
             readme: file://README.md
+            codeowners: file://CODEOWNERS
             url: .html_url
             language: if .language then .language else "" end
           relations:

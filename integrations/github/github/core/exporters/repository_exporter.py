@@ -21,6 +21,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     _ENRICHMENT_METHODS: ClassVar[dict[str, str]] = {
         "collaborators": "_enrich_repository_with_collaborators",
         "teams": "_enrich_repository_with_teams",
+        "sbom": "_enrich_repository_with_sbom",
     }
 
     async def get_resource[
@@ -209,4 +210,16 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             all_teams.extend(teams)
 
         repository["__teams"] = all_teams
+        return repository
+
+    async def _enrich_repository_with_sbom(
+        self, repository: Dict[str, Any], organization: str
+    ) -> RAW_ITEM:
+        repo_name = repository["name"]
+
+        url = f"{self.client.base_url}/repos/{organization}/{repo_name}/dependency-graph/sbom"
+        response = await self.client.send_api_request(url)
+        sbom = response.get("sbom", {})
+
+        repository["__sbom"] = sbom
         return repository
