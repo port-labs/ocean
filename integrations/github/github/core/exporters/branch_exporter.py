@@ -29,6 +29,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         branch_name = params["branch_name"]
         protection_rules = bool(params["protection_rules"])
         repo_name = cast(str, repo_name)
+        repo = params.pop("repo")
 
         response = await self.fetch_branch(repo_name, branch_name, organization)
 
@@ -42,7 +43,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
         return enrich_with_organization(
-            enrich_with_repository(response, repo_name), organization
+            enrich_with_repository(response, repo_name, repo=repo), organization
         )
 
     async def get_paginated_resources[
@@ -54,6 +55,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         detailed = bool(params.pop("detailed"))
         protection_rules = bool(params.pop("protection_rules"))
         repo_name = cast(str, repo_name)
+        repo = params.pop("repo")
 
         async for branches in self.client.send_paginated_request(
             f"{self.client.base_url}/repos/{organization}/{repo_name}/branches",
@@ -63,9 +65,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched batch of {len(branches)} branches from repository {repo_name} from {organization}"
             )
             tasks = [
-                self._hydrate_branch(
-                    repo_name, organization, b, detailed, protection_rules
-                )
+                self._hydrate_branch(repo, organization, b, detailed, protection_rules)
                 for b in branches
             ]
             hydrated = await asyncio.gather(*tasks)
@@ -76,12 +76,14 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def _hydrate_branch(
         self,
-        repo_name: str,
+        repo: dict[str, Any],
         organization: str,
         branch: dict[str, Any],
         detailed: bool,
         protection_rules: bool,
     ) -> dict[str, Any]:
+
+        repo_name = repo["name"]
         branch_name = branch["name"]
 
         if detailed:
@@ -96,7 +98,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             )
 
         return enrich_with_organization(
-            enrich_with_repository(branch, repo_name), organization
+            enrich_with_repository(branch, repo_name, repo=repo), organization
         )
 
     async def _enrich_branch_with_protection_rules(
