@@ -15,8 +15,7 @@
         },
         "createdOn": {
           "title": "Created On",
-          "type": "string",
-          "format": "date-time"
+          "type": "string"
         },
         "createdBy": {
           "title": "Created By",
@@ -46,8 +45,7 @@
         },
         "createdOn": {
           "title": "Created On",
-          "type": "string",
-          "format": "date-time"
+          "type": "string"
         },
         "createdBy": {
           "title": "Created By",
@@ -102,8 +100,7 @@
         },
         "createdOn": {
           "title": "Created On",
-          "type": "string",
-          "format": "date-time"
+          "type": "string"
         },
         "createdBy": {
           "title": "Created By",
@@ -116,116 +113,6 @@
         "priority": {
           "title": "Priority",
           "type": "string"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {}
-  },
-  {
-    "identifier": "servicenowVulnerability",
-    "title": "Servicenow Vulnerability",
-    "icon": "Servicenow",
-    "schema": {
-      "properties": {
-        "state": {
-          "title": "State",
-          "type": "string"
-        },
-        "severity": {
-          "title": "Severity",
-          "type": "string"
-        },
-        "cvssScore": {
-          "title": "CVSS Score",
-          "type": "number"
-        },
-        "cvssV3Score": {
-          "title": "CVSS V3 Score",
-          "type": "number"
-        },
-        "firstFound": {
-          "title": "First Found",
-          "type": "string",
-          "format": "date-time"
-        },
-        "lastFound": {
-          "title": "Last Found",
-          "type": "string",
-          "format": "date-time"
-        },
-        "dueDate": {
-          "title": "Due Date",
-          "type": "string",
-          "format": "date-time"
-        },
-        "assignedTo": {
-          "title": "Assigned To",
-          "type": "string",
-          "format": "url"
-        },
-        "assignedGroup": {
-          "title": "Assigned Group",
-          "type": "string",
-          "format": "url"
-        },
-        "priority": {
-          "title": "Priority",
-          "type": "string"
-        },
-        "riskScore": {
-          "title": "Risk Score",
-          "type": "number"
-        },
-        "vulnerabilityId": {
-          "title": "Vulnerability ID",
-          "type": "string"
-        },
-        "cveId": {
-          "title": "CVE ID",
-          "type": "string"
-        },
-        "vulnerabilityTitle": {
-          "title": "Vulnerability Title",
-          "type": "string"
-        },
-        "vulnerabilityDescription": {
-          "title": "Vulnerability Description",
-          "type": "string"
-        },
-        "ciItem": {
-          "title": "CI Item",
-          "type": "string",
-          "format": "url"
-        },
-        "ciItemName": {
-          "title": "CI Item Name",
-          "type": "string"
-        },
-        "createdOn": {
-          "title": "Created On",
-          "type": "string",
-          "format": "date-time"
-        },
-        "createdBy": {
-          "title": "Created By",
-          "type": "string"
-        },
-        "updatedOn": {
-          "title": "Updated On",
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedBy": {
-          "title": "Updated By",
-          "type": "string"
-        },
-        "isActive": {
-          "title": "Is Active",
-          "type": "boolean"
         }
       },
       "required": []

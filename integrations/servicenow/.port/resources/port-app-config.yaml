@@ -58,36 +58,3 @@ resources:
             createdBy: .sys_created_by
             isActive: .active
             priority: .priority
-  - kind: sn_vuln_vulnerable_item
-    selector:
-      query: 'true'
-      apiQueryParams:
-        sysparmDisplayValue: 'true'
-        sysparmExcludeReferenceLink: 'false'
-        sysparmFields: 'sys_id,state,severity,cvss_score,cvss_v3_score,first_found,last_found,due_date,assigned_to,assignment_group,priority,risk_score,vulnerability,ci_item,sys_created_on,sys_created_by,sys_updated_on,sys_updated_by,active'
-    port:
-      entity:
-        mappings:
-          identifier: .sys_id
-          title: ((.vulnerability.display_value // .vulnerability.value // "Vulnerability") | tostring) + " - " + ((.ci_item.display_value // .ci_item.value // "Unknown CI") | tostring)
-          blueprint: '"servicenowVulnerability"'
-          properties:
-            state: .state
-            severity: .severity
-            cvssScore: .cvss_score
-            cvssV3Score: .cvss_v3_score
-            firstFound: '.first_found | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
-            lastFound: '.last_found | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
-            dueDate: '.due_date | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
-            assignedTo: .assigned_to.link
-            assignedGroup: .assignment_group.link
-            priority: .priority
-            riskScore: .risk_score
-            vulnerabilityId: .vulnerability.value
-            ciItem: .ci_item.link
-            ciItemName: .ci_item.display_value
-            createdOn: '.sys_created_on | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
-            createdBy: .sys_created_by
-            updatedOn: '.sys_updated_on | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
-            updatedBy: .sys_updated_by
-            isActive: .active
