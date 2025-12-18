@@ -1,0 +1,34 @@
+{
+  "result": [
+    {
+      "sys_id": "053892cb47357650360b3b12d16d43eb",
+      "number": "REL0010001",
+      "name": "Test Release Project - Port Integration",
+      "type": "Feature",
+      "workflow_state": "Complete",
+      "description": "Test release project created for Port Ocean integration testing",
+      "planned_start_date": "",
+      "planned_end_date": "",
+      "actual_start_date": "",
+      "actual_end_date": "2025-12-18",
+      "due_date": "",
+      "requested_date": "",
+      "priority": "4 - Low",
+      "risk": "Low",
+      "manager": "",
+      "requested_by": "",
+      "product": "",
+      "phases": null,
+      "phases_wanted": "true",
+      "release_history": "2025-12-18 03:37:47 - System (Release history)\nPhase Build added to project\n\n2025-12-18 03:37:47 - System (Release history)\nPhase Plan added to project\n\n2025-12-18 03:37:47 - System (Release history)\nPhase Accept added to project\n\n2025-12-18 03:37:47 - System (Release history)\nPhase Release added to project\n\n2025-12-18 03:37:47 - System (Release history)\nPhase Deploy added to project\n\n2025-12-18 03:37:47 - System (Release history)\nPhase Back Out added to project\n",
+      "notes": "",
+      "short_description": "",
+      "parent": "",
+      "sys_created_on": "2025-12-18 03:37:46",
+      "sys_created_by": "admin",
+      "sys_updated_on": "2025-12-18 03:37:47",
+      "sys_updated_by": "system",
+      "active": "false"
+    }
+  ]
+}

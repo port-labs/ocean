@@ -1,0 +1,72 @@
+[
+  {
+    "identifier": "servicenowRelease",
+    "title": "Servicenow Release",
+    "icon": "Servicenow",
+    "schema": {
+      "properties": {
+        "number": {
+          "title": "Release Number",
+          "type": "string"
+        },
+        "name": {
+          "title": "Release Name",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "workflowState": {
+          "title": "Workflow State",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "string"
+        },
+        "risk": {
+          "title": "Risk",
+          "type": "string"
+        },
+        "plannedStartDate": {
+          "title": "Planned Start Date",
+          "type": "string"
+        },
+        "plannedEndDate": {
+          "title": "Planned End Date",
+          "type": "string"
+        },
+        "createdOn": {
+          "title": "Created On",
+          "type": "string"
+        },
+        "createdBy": {
+          "title": "Created By",
+          "type": "string"
+        },
+        "updatedOn": {
+          "title": "Updated On",
+          "type": "string"
+        },
+        "updatedBy": {
+          "title": "Updated By",
+          "type": "string"
+        },
+        "isActive": {
+          "title": "Is Active",
+          "type": "boolean"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  }
+]
