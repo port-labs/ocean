@@ -7,13 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 4.4.8-beta (2025-12-16)
+## 4.5.1-beta (2025-12-18)
 
 
 ### Improvements
 
 - Added codeowners property to repository blueprint with file:// mapping to sync CODEOWNERS file content from repositories
+
+
+## 4.5.0-beta (2025-12-17)
+
+
+### Features
+
+- Dependency graph SBOM can now be returned in the repository by adding "sbom" to included relationships.
+
+
+## 4.4.12-beta (2025-12-17)
+
+
+### Features
+
+- Added an optional GraphQL-based pull request exporter for GitHub that returns graphql data when `api` is set to `graphql`, while preserving existing REST behavior by default.
+- Added a webhook ping processor to gracefully handle GitHub `ping` events without affecting stored entities.
+
+
+## 4.4.11-beta (2025-12-17)
+
+
+### Improvements
  
+- Enriched branch and tag exporter and webhook processors responses with repository metadata, including the underlying repository object, to enable richer mappings and downstream processing.
+
+
+## 4.4.10-beta (2025-12-17)
+
+
+### Features
+
+- Added severity selector for code scanning alert ingestion and webhooks
+- Added severity and ecosystem selectors for dependabot alert ingestion and webhooks
+
+
+## 4.4.9-beta (2025-12-17)
+
+
+### Features
+
+- Added task and environment selectors for deployment ingestion and webhooks
+
+
+## 4.4.8-beta (2025-12-16)
+
+
+### Features
+
+- Added support for labels selector when ingesting issues, allowing filtering by label in the issues ingestion.
+
 
 ## 4.4.7-beta (2025-12-16)
 

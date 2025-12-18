@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, List, NotRequired, Optional, Required, TypedDict
 
 from github.helpers.models import RepoSearchParams
@@ -33,6 +34,7 @@ class RepositoryIdentifier(SingleOrganizationOptions):
     """Options for identifying a repository."""
 
     repo_name: Required[str]
+    repo: NotRequired[Optional[dict[str, Any]]]
 
 
 class SinglePullRequestOptions(RepositoryIdentifier):
@@ -46,7 +48,7 @@ class ListPullRequestOptions(RepositoryIdentifier):
 
     states: Required[list[str]]
     max_results: Required[int]
-    since: Required[int]
+    updated_after: Required[datetime]
 
 
 class SingleIssueOptions(RepositoryIdentifier):
@@ -59,6 +61,7 @@ class ListIssueOptions(RepositoryIdentifier):
     """Options for listing issues."""
 
     state: Required[str]
+    labels: NotRequired[Optional[str]]
 
 
 class SingleUserOptions(SingleOrganizationOptions):
@@ -151,6 +154,9 @@ class SingleDeploymentOptions(RepositoryIdentifier):
 class ListDeploymentsOptions(RepositoryIdentifier):
     """Options for listing deployments."""
 
+    task: NotRequired[Optional[str]]
+    environment: NotRequired[Optional[str]]
+
 
 class SingleDependabotAlertOptions(RepositoryIdentifier):
     """Options for fetching a single Dependabot alert."""
@@ -162,6 +168,8 @@ class ListDependabotAlertOptions(RepositoryIdentifier):
     """Options for listing Dependabot alerts."""
 
     state: Required[list[str]]
+    severity: NotRequired[Optional[str]]
+    ecosystem: NotRequired[Optional[str]]
 
 
 class SingleCodeScanningAlertOptions(RepositoryIdentifier):
@@ -174,6 +182,7 @@ class ListCodeScanningAlertOptions(RepositoryIdentifier):
     """Options for listing code scanning alerts."""
 
     state: Required[str]
+    severity: NotRequired[Optional[str]]
 
 
 class FileContentOptions(RepositoryIdentifier):

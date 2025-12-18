@@ -55,7 +55,7 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        if self._event_type == "delete":
+        if self._event_type == "delete" or payload.get("deleted", False):
             data_to_delete = {"name": branch_name}
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[data_to_delete]
@@ -71,6 +71,7 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
                 repo_name=repo_name,
                 branch_name=branch_name,
                 protection_rules=selector.protection_rules,
+                repo=repo,
             )
         )
 
