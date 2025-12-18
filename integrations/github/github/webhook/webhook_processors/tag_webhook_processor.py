@@ -60,7 +60,10 @@ class TagWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         data_to_upsert = await exporter.get_resource(
             SingleTagOptions(
-                organization=organization, repo_name=repo_name, tag_name=tag_ref
+                organization=organization,
+                repo_name=repo_name,
+                tag_name=tag_ref,
+                repo=repo,
             )
         )
 

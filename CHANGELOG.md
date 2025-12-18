@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.32.5 (2025-12-18)
+
+### Bug fixes
+
+- Update compare entities with port to use async generator and compare entities incrementaly.
+- Update delete diff to use maps for comparing.
+- When deleteing entities batch by 1k.
+
+
+## 0.32.4 (2025-12-16)
+
+### Bug fixes
+
+- Update the core to handle jq calculations without a loop, the search functions that need to be executed by the
+  overwriten function will execute in the event loop.
+ that we can merge them.
+
+
+## 0.32.3 (2025-12-15)
+
+### Bug fixes
+
+- Fixed an issue where starting with POLLING and changing to KAFKA event listener would cause the integration to not receive messages
+
+
+## 0.32.2 (2025-12-14)
+
+### Bug fixes
+
+- Increase timeout
+- Clear http context.
+- Fix posix path error when sending logs.
+
 ## 0.32.1 (2025-12-10)
 
 ### Bug fixes
