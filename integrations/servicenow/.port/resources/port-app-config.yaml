@@ -58,13 +58,13 @@ resources:
             createdBy: .sys_created_by
             isActive: .active
             priority: .priority
-  - kind: rm_release
+  - kind: release_project
     selector:
       query: 'true'
       apiQueryParams:
         sysparmDisplayValue: 'true'
         sysparmExcludeReferenceLink: 'false'
-        sysparmFields: 'sys_id,number,name,state,release_type,description,start_date,end_date,scheduled_start_date,scheduled_end_date,assigned_to,assignment_group,priority,risk_score,risk_level,backout_plan,test_plan,implementation_plan,sys_created_on,sys_created_by,sys_updated_on,sys_updated_by,active'
+        sysparmFields: 'sys_id,number,name,type,workflow_state,description,planned_start_date,planned_end_date,actual_start_date,actual_end_date,due_date,requested_date,priority,risk,manager,requested_by,product,phases,phases_wanted,release_history,notes,short_description,parent,sys_created_on,sys_created_by,sys_updated_on,sys_updated_by,active'
     port:
       entity:
         mappings:
@@ -72,23 +72,15 @@ resources:
           title: (.name // .number // "Release")
           blueprint: '"servicenowRelease"'
           properties:
-            number: .number | tostring
+            number: .number
             name: .name
-            state: .state
-            releaseType: .release_type
+            type: .type
+            workflowState: .workflow_state
             description: .description
-            startDate: '.start_date | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
-            endDate: '.end_date | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
-            scheduledStartDate: '.scheduled_start_date | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
-            scheduledEndDate: '.scheduled_end_date | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
-            assignedTo: .assigned_to.link
-            assignmentGroup: .assignment_group.link
             priority: .priority
-            riskScore: .risk_score
-            riskLevel: .risk_level
-            backoutPlan: .backout_plan
-            testPlan: .test_plan
-            implementationPlan: .implementation_plan
+            risk: .risk
+            plannedStartDate: .planned_start_date
+            plannedEndDate: .planned_end_date
             createdOn: '.sys_created_on | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
             createdBy: .sys_created_by
             updatedOn: '.sys_updated_on | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'

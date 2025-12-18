@@ -139,76 +139,37 @@
           "title": "Release Name",
           "type": "string"
         },
-        "state": {
-          "title": "State",
+        "type": {
+          "title": "Type",
           "type": "string"
         },
-        "releaseType": {
-          "title": "Release Type",
+        "workflowState": {
+          "title": "Workflow State",
           "type": "string"
         },
         "description": {
           "title": "Description",
           "type": "string"
         },
-        "startDate": {
-          "title": "Start Date",
-          "type": "string",
-          "format": "date-time"
-        },
-        "endDate": {
-          "title": "End Date",
-          "type": "string",
-          "format": "date-time"
-        },
-        "scheduledStartDate": {
-          "title": "Scheduled Start Date",
-          "type": "string",
-          "format": "date-time"
-        },
-        "scheduledEndDate": {
-          "title": "Scheduled End Date",
-          "type": "string",
-          "format": "date-time"
-        },
-        "assignedTo": {
-          "title": "Assigned To",
-          "type": "string",
-          "format": "url"
-        },
-        "assignmentGroup": {
-          "title": "Assignment Group",
-          "type": "string",
-          "format": "url"
-        },
         "priority": {
           "title": "Priority",
           "type": "string"
         },
-        "riskScore": {
-          "title": "Risk Score",
-          "type": "number"
-        },
-        "riskLevel": {
-          "title": "Risk Level",
+        "risk": {
+          "title": "Risk",
           "type": "string"
         },
-        "backoutPlan": {
-          "title": "Backout Plan",
+        "plannedStartDate": {
+          "title": "Planned Start Date",
           "type": "string"
         },
-        "testPlan": {
-          "title": "Test Plan",
-          "type": "string"
-        },
-        "implementationPlan": {
-          "title": "Implementation Plan",
+        "plannedEndDate": {
+          "title": "Planned End Date",
           "type": "string"
         },
         "createdOn": {
           "title": "Created On",
-          "type": "string",
-          "format": "date-time"
+          "type": "string"
         },
         "createdBy": {
           "title": "Created By",
@@ -216,8 +177,7 @@
         },
         "updatedOn": {
           "title": "Updated On",
-          "type": "string",
-          "format": "date-time"
+          "type": "string"
         },
         "updatedBy": {
           "title": "Updated By",
