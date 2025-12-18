@@ -15,7 +15,8 @@
         },
         "createdOn": {
           "title": "Created On",
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "createdBy": {
           "title": "Created By",
@@ -45,7 +46,8 @@
         },
         "createdOn": {
           "title": "Created On",
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "createdBy": {
           "title": "Created By",
@@ -100,7 +102,8 @@
         },
         "createdOn": {
           "title": "Created On",
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "createdBy": {
           "title": "Created By",
