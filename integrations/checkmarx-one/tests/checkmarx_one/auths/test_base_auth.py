@@ -259,6 +259,7 @@ class TestBaseCheckmarxAuthenticator:
             assert authenticator._access_token == "cached_access_token"
             assert authenticator._refresh_token == "cached_refresh_token"
             # Verify expiration is calculated from cached_at, not current time
+            assert authenticator._token_expires_at is not None
             assert abs(authenticator._token_expires_at - expected_expires_at) < 1.0
 
     @pytest.mark.asyncio
@@ -282,6 +283,7 @@ class TestBaseCheckmarxAuthenticator:
         ):
             # Load token first time
             await authenticator._get_access_token()
+            assert authenticator._token_expires_at is not None
             first_expires_at = authenticator._token_expires_at
 
             # Wait a bit
@@ -289,6 +291,7 @@ class TestBaseCheckmarxAuthenticator:
 
             # Load token second time
             await authenticator._get_access_token()
+            assert authenticator._token_expires_at is not None
             second_expires_at = authenticator._token_expires_at
 
             # Expiration should be the same (not extended)
