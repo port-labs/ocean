@@ -1,12 +1,11 @@
 import asyncio
 import json
-from collections import Counter
 from typing import Any, Literal
 from urllib.parse import quote_plus
 
 import httpx
 from loguru import logger
-from starlette import status
+from starlette import status as starlette_status
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
@@ -140,7 +139,7 @@ class EntityClientMixin:
             )
 
             if (
-                response.status_code == status.HTTP_404_NOT_FOUND
+                response.status_code == starlette_status.HTTP_404_NOT_FOUND
                 and not result.get("ok")
                 and result.get("error") == PortAPIErrorMessage.NOT_FOUND.value
             ):
@@ -262,6 +261,25 @@ class EntityClientMixin:
         }
         error_entities = {error["index"]: error for error in result.get("errors", [])}
 
+        if error_entities:
+            sample_errors = {
+                idx: {
+                    "identifier": entities[idx].identifier,
+                    "blueprint": entities[idx].blueprint,
+                    "error": error_entities[idx].get("message")
+                    or error_entities[idx].get("error"),
+                }
+                for idx in list(error_entities.keys())[:5]  # Sample up to 5 errors
+            }
+
+            logger.error(
+                "Bulk upsert completed with entity-specific failures",
+                extra={
+                    "failed_count": len(error_entities),
+                    "sample_errors": sample_errors,
+                },
+            )
+
         ocean.metrics.inc_metric(
             name=MetricType.OBJECT_COUNT_NAME,
             labels=[
@@ -357,26 +375,6 @@ class EntityClientMixin:
         """
         entities_results: list[tuple[bool, Entity]] = []
         blueprint = entities[0].blueprint
-
-        identifier_counts = Counter((e.blueprint, e.identifier) for e in entities)
-        duplicates: dict[tuple[str, str], int] = {
-            key: cnt for key, cnt in identifier_counts.items() if cnt > 1
-        }
-
-        if duplicates:
-            # Total number of *extra* occurrences beyond the first appearance of each entity
-            duplicate_count = sum(cnt - 1 for cnt in duplicates.values())
-
-            # Show up to 5 example (blueprint, identifier) pairs to avoid noisy logs
-            duplicate_examples = list(duplicates)[:5]
-
-            logger.warning(
-                "Detected duplicate entities (by blueprint and identifier) that may not be ingested because an identical identifier existed",
-                extra={
-                    "duplicate_examples": duplicate_examples,
-                    "duplicate_count": duplicate_count,
-                },
-            )
 
         bulk_size = self.calculate_entities_batch_size(entities)
         bulks = [
@@ -579,7 +577,6 @@ class EntityClientMixin:
         if query.get("rules"):
             query["rules"].extend(default_query["rules"])
 
-        logger.info(f"Searching entities with custom query: {query}")
         response = await self.client.post(
             f"{self.auth.api_url}/entities/search",
             json=query,

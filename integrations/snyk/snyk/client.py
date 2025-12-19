@@ -4,7 +4,8 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from httpx import URL, Timeout
 from loguru import logger
-from port_ocean.utils import http_async_client
+from port_ocean.helpers.retry import RetryConfig
+from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.utils.cache import cache_coroutine_result, cache_iterator_result
 from aiolimiter import AsyncLimiter
 from snyk.utils import enrich_batch_with_org
@@ -45,7 +46,13 @@ class SnykClient:
         self.group_ids = group_ids
         self.rest_api_url = f"{api_url}/rest"
         self.webhook_secret = webhook_secret
-        self.http_client = http_async_client
+        retry_config = RetryConfig(
+            retryable_methods=[
+                "POST",
+                "GET",
+            ],
+        )
+        self.http_client = OceanAsyncClient(retry_config=retry_config)
         self.http_client.headers.update(self.api_auth_header)
         self.http_client.timeout = Timeout(30)
         self.snyk_api_version = "2024-06-21"

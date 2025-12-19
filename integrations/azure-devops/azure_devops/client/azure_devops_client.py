@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import json
+from collections import defaultdict
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError, ReadTimeout
 from loguru import logger
@@ -84,6 +85,15 @@ class AzureDevopsClient(HTTPBaseClient):
             ocean.integration_config["webhook_auth_username"],
         )
         event.attributes["azure_devops_client"] = azure_devops_client
+        return azure_devops_client
+
+    @classmethod
+    def create_from_ocean_config_no_cache(cls) -> "AzureDevopsClient":
+        azure_devops_client = cls(
+            ocean.integration_config["organization_url"].strip("/"),
+            ocean.integration_config["personal_access_token"],
+            ocean.integration_config["webhook_auth_username"],
+        )
         return azure_devops_client
 
     @classmethod
@@ -1352,10 +1362,10 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         repo: dict[str, Any],
         folder_pattern: FolderPattern,
-        repo_mapping: RepositoryBranchMapping,
+        repo_mapping: RepositoryBranchMapping | None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        branch = repo_mapping.branch
-        if branch is None and "defaultBranch" in repo:
+        branch = repo_mapping.branch if repo_mapping else None
+        if not branch and "defaultBranch" in repo:
             branch = repo["defaultBranch"].replace("refs/heads/", "")
 
         async for found_folders in self.get_repository_folders(
@@ -1375,7 +1385,7 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         repo: dict[str, Any],
         repo_pattern_map: dict[
-            str, list[tuple[FolderPattern, RepositoryBranchMapping]]
+            str, list[tuple[FolderPattern, RepositoryBranchMapping | None]]
         ],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         repo_name = repo["name"]
@@ -1403,42 +1413,68 @@ class AzureDevopsClient(HTTPBaseClient):
             return None
         return response.json()
 
+    async def _get_repositories_for_project(
+        self, project_name: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get repositories for a specific project."""
+        project = await self.get_single_project(project_name)
+        if not project:
+            logger.warning(f"Project {project_name} not found")
+            return
+
+        repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
+        repos_response = await self.send_request("GET", repos_url)
+        if repos_response:
+            yield repos_response.json()["value"]
+
     async def process_folder_patterns(
         self,
         folder_patterns: list[FolderPattern],
-        project_name: str,
+        project_name: str | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Process folder patterns and yield matching folders with optimized performance.
 
         Args:
             folder_patterns: List of folder patterns to process
-            project_name: The project name
+            project_name: The project name (optional). If None, syncs from all projects.
         """
         # Create a mapping of repository names to their patterns
         repo_pattern_map: dict[
-            str, list[tuple[FolderPattern, RepositoryBranchMapping]]
-        ] = {}
+            str, list[tuple[FolderPattern, RepositoryBranchMapping | None]]
+        ] = defaultdict(list)
+        global_patterns: list[FolderPattern] = []
+
         for pattern in folder_patterns:
-            for repo_mapping in pattern.repos:
-                if repo_mapping.name not in repo_pattern_map:
-                    repo_pattern_map[repo_mapping.name] = []
-                repo_pattern_map[repo_mapping.name].append((pattern, repo_mapping))
+            if not pattern.repos:
+                global_patterns.append(pattern)
+            else:
+                for repo_mapping in pattern.repos:
+                    repo_pattern_map[repo_mapping.name].append((pattern, repo_mapping))
 
-        # Process only the specified repositories
         tasks = []
-        for repo_name, patterns in repo_pattern_map.items():
-            repo = await self.get_repository_by_name(project_name, repo_name)
-            if not repo:
-                logger.warning(
-                    f"Repository {repo_name} in project {project_name} not found, skipping"
-                )
-                continue
+        repositories = (
+            self._get_repositories_for_project(project_name)
+            if project_name
+            else self.generate_repositories()
+        )
 
-            tasks.append(
-                self._process_repository_folder_patterns(
-                    repo, dict([(repo_name, patterns)])
-                )
-            )
+        async for repo_batch in repositories:
+            for repo in repo_batch:
+                # Check if repo has specific patterns
+                if repo["name"] in repo_pattern_map:
+                    tasks.append(
+                        self._process_repository_folder_patterns(
+                            repo, {repo["name"]: repo_pattern_map[repo["name"]]}
+                        )
+                    )
+                # Apply global patterns to all repos
+                elif global_patterns:
+                    tasks.append(
+                        self._process_repository_folder_patterns(
+                            repo,
+                            {repo["name"]: [(gp, None) for gp in global_patterns]},
+                        )
+                    )
 
         async for result in stream_async_iterators_tasks(*tasks):
             yield result

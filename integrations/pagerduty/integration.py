@@ -61,11 +61,23 @@ class PagerdutyServiceAPIQueryParams(BaseModel):
 
 class PagerdutyScheduleAPIQueryParams(BaseModel):
     include: list[str] | None
+    until: int | None = Field(
+        default=None,
+        description="Number of months ahead to calculate 'until' date",
+    )
+    since: int | None = Field(
+        default=None,
+        description="Number of months back to calculate 'since' date",
+    )
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
         if include := value.pop("include", None):
             value["include[]"] = include
+        if until := value.pop("until", None):
+            value["until"] = get_date_range_for_upcoming_n_months(until)[1]
+        if since := value.pop("since", None):
+            value["since"] = get_date_range_for_last_n_months(since)[0]
         return value
 
 
