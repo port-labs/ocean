@@ -41,11 +41,16 @@ class SingleAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
 class SingleAccountStrategy(SingleAccountHealthCheckMixin):
     """Strategy for handling a single AWS account."""
 
+    async def authenticate(self) -> None:
+        """Authenticate and create sessions by calling healthcheck if needed."""
+        if not self._session:
+            await self.healthcheck()
+
     async def get_account_sessions(
         self,
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
-        if not self._session:
-            await self.healthcheck()
+        await self.authenticate()
+
         if not self._session:
             raise AWSSessionError(
                 "Session could not be established for single account."

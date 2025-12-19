@@ -104,11 +104,16 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
 class MultiAccountStrategy(MultiAccountHealthCheckMixin):
     """Strategy for handling multiple AWS accounts using explicit role ARNs."""
 
+    async def authenticate(self) -> None:
+        """Authenticate and create sessions by calling healthcheck if needed."""
+        if not (self._valid_arns and self._valid_sessions):
+            await self.healthcheck()
+
     async def get_account_sessions(
         self, **kwargs: Any
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
-        if not (self._valid_arns and self._valid_sessions):
-            await self.healthcheck()
+        await self.authenticate()
+
         if not (self._valid_arns and self._valid_sessions):
             raise AWSSessionError(
                 "Account sessions not initialized. Run healthcheck first."

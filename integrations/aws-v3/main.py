@@ -32,6 +32,13 @@ from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
 from resync import ResyncAWSService
+from aws.auth.session_factory import initialize_account_sessions
+
+
+@ocean.on_resync_start()
+async def initialize_aws_sessions() -> None:
+    """Initialize and authenticate AWS account sessions before resync"""
+    await initialize_account_sessions()
 
 
 @ocean.on_resync(ObjectKind.S3_BUCKET)
