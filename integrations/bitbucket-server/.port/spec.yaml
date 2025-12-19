@@ -34,7 +34,7 @@ configurations:
     type: boolean
     description: Whether the Bitbucket Server version is 8.7 or older
     required: false
-  - name: bitbucketRateLimit
+  - name: bitbucketRateLimitQuota
     type: integer
     default: "1000"
     description: Maximum number of API requests allowed within the rate limit window. Default is 1000 requests per hour.
