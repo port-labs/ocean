@@ -116,8 +116,24 @@ jobs:
         run: |
           SINGLE_TAG=$(echo "${{ steps.prepare_tags.outputs.tags }}" | awk -F ',' '{print $1}')
           IMAGE_NAME=$(echo "${SINGLE_TAG}" | sed 's/.*\///' | cut -d':' -f1)
+          IMAGE_SIZE_MB=$(jq -n "$(docker image inspect "${SINGLE_TAG}" --format='{{.Size}}') / 1048576")
           echo "image_tag=${SINGLE_TAG}" >> $GITHUB_OUTPUT
           echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+          echo "image_size_mb=${IMAGE_SIZE_MB}" >> $GITHUB_OUTPUT
+
+      - name: Send image size metric to New Relic
+        uses: ./.github/actions/new-relic-metric
+        with:
+          new_relic_api_key: ${{ secrets.NEW_RELIC_API_KEY }}
+          metric_name: "ocean.integration.image_size_mb"
+          metric_value: ${{ steps.image_info.outputs.image_size_mb }}
+          metric_attributes: |
+            {
+              "image_name": "${{ steps.image_info.outputs.image_name }}",
+              "image_tag": "${{ steps.image_info.outputs.image_tag }}",
+              "image_size_mb": ${{ steps.image_info.outputs.image_size_mb }},
+              "platform": "${{ matrix.platform }}"
+            }
 
       - name: Calculate max allowed size
         id: calc_max_size
