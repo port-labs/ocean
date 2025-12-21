@@ -10,9 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug fixes
 
-- Update compare entities with port to use async generator and compare entities incrementaly.
-- Update delete diff to use maps for comparing.
-- When deleteing entities batch by 1k.
+- Fix .env.example coockiecutter generation to conceal Port secrets
 
 
 ## 0.32.5 (2025-12-18)
