@@ -28,3 +28,5 @@ def handle_private_integration_flags():
 
 if __name__ == "__main__":
     handle_private_integration_flags()
+    if os.path.exists(".env.development"):
+        shutil.move(".env.development", ".env")
