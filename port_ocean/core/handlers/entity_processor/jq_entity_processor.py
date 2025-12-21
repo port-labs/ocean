@@ -1,5 +1,6 @@
 import asyncio
 from asyncio.tasks import Task
+from functools import lru_cache
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 import re
@@ -34,13 +35,10 @@ _MULTIPROCESS_JQ_BATCH_MAPPINGS: dict[str, Any] | None = None
 _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY: str | None = None
 _MULTIPROCESS_JQ_BATCH_PARSE_ALL: bool | None = None
 
-_MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS: dict[str, Any] = {}
-
 
 def _calculate_entity(
     index: int,
 ) -> tuple[list[MappedEntity], list[Exception]]:
-    global _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS
     # Access data directly from globals to avoid pickling.
     global _MULTIPROCESS_JQ_BATCH_DATA, _MULTIPROCESS_JQ_BATCH_MAPPINGS, _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY, _MULTIPROCESS_JQ_BATCH_PARSE_ALL
     if None in [
@@ -57,9 +55,8 @@ def _calculate_entity(
     parse_all = cast(bool, _MULTIPROCESS_JQ_BATCH_PARSE_ALL)
 
     try:
-        entity = JQEntityProcessorSync(
-            _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS
-        )._get_mapped_entity(
+        processor = JQEntityProcessorSync()
+        entity = processor._get_mapped_entity(
             data,
             raw_entity_mappings,
             selector_query,
@@ -227,15 +224,12 @@ class JQEntityProcessor(BaseEntityProcessor):
         )
         return formatted_filter
 
+    @lru_cache
     def _compile(self, pattern: str) -> Any:
-        global _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS
         pattern = self._format_filter(pattern)
         if not ocean.config.allow_environment_variables_jq_access:
             pattern = "def env: {}; {} as $ENV | " + pattern
-        if pattern in _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS:
-            return _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS[pattern]
         compiled_pattern = jq.compile(pattern)
-        _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS[pattern] = compiled_pattern
         return compiled_pattern
 
     @staticmethod
@@ -324,22 +318,20 @@ class JQEntityProcessor(BaseEntityProcessor):
         _MULTIPROCESS_JQ_BATCH_PARSE_ALL = parse_all
         # Fork a new process to calculate the entities.
         # Use indexes to acess data to have the lowest pickling overhead.
-        pool = ProcessPoolExecutor(
+        loop = asyncio.get_running_loop()
+        with ProcessPoolExecutor(
             max_workers=ocean.config.process_in_queue_max_workers,
             mp_context=multiprocessing.get_context("fork"),
-        )
-        loop = asyncio.get_running_loop()
-        results = await gather_and_split_errors_from_results(
-            [
-                asyncio.wait_for(
-                    loop.run_in_executor(pool, _calculate_entity, index),
-                    timeout=ocean.config.process_in_queue_timeout,
-                )
-                for index in range(len(raw_results))
-            ]
-        )
-        pool.shutdown(wait=False)
-        del pool
+        ) as pool:
+            results = await gather_and_split_errors_from_results(
+                [
+                    asyncio.wait_for(
+                        loop.run_in_executor(pool, _calculate_entity, index),
+                        timeout=ocean.config.process_in_queue_timeout,
+                    )
+                    for index in range(len(raw_results))
+                ]
+            )
         # Clear globals to avoid memory leaks.
         _MULTIPROCESS_JQ_BATCH_DATA = None
         _MULTIPROCESS_JQ_BATCH_MAPPINGS = None

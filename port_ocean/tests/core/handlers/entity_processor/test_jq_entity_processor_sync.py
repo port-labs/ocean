@@ -28,7 +28,7 @@ class TestJQEntityProcessorSync:
             "port_ocean.core.handlers.entity_processor.jq_entity_processor_sync.ocean",
             mock_ocean,
         )
-        processor = JQEntityProcessorSync(compile_patterns={})
+        processor = JQEntityProcessorSync()
         return processor
 
     def test_format_filter(self, mocked_processor: JQEntityProcessorSync) -> None:
@@ -68,7 +68,7 @@ class TestJQEntityProcessorSync:
             "port_ocean.core.handlers.entity_processor.jq_entity_processor_sync.ocean",
             mock_ocean,
         )
-        processor = JQEntityProcessorSync(compile_patterns={})
+        processor = JQEntityProcessorSync()
         pattern = ".foo"
         compiled = processor._compile(pattern)
         assert compiled is not None
@@ -307,10 +307,12 @@ class TestJQEntityProcessorSync:
         assert pattern in mocked_processor.compiled_patterns
 
     def test_compile_patterns_initialization(self) -> None:
-        """Test that compile_patterns can be initialized with existing patterns."""
-        existing_patterns = {".foo": "cached_pattern"}
-        processor = JQEntityProcessorSync(compile_patterns=existing_patterns)
-        assert processor.compiled_patterns == existing_patterns
+        """Test that compile_patterns is a dict that can store compiled patterns."""
+        # Clear the class-level cache first since it's shared across instances
+        JQEntityProcessorSync.compiled_patterns.clear()
+        processor = JQEntityProcessorSync()
+        assert processor.compiled_patterns == {}
+        assert isinstance(processor.compiled_patterns, dict)
 
     def test_search_with_complex_selector(
         self, mocked_processor: JQEntityProcessorSync

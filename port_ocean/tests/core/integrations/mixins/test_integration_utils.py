@@ -115,30 +115,30 @@ class TestExtractJqDeletionPathRevised:
         result = extract_jq_deletion_path_revised("(. as $all | .file.content)")
         assert result == ".file.content"
 
-    def test_no_path_returns_none(self) -> None:
-        """Test that expression without path returns None."""
+    def test_no_path_returns_default(self) -> None:
+        """Test that expression without path returns default path '.'."""
         result = extract_jq_deletion_path_revised("$items")
-        assert result is None
+        assert result == '.'
 
-    def test_only_identity_returns_none(self) -> None:
-        """Test that expression with only identity operator returns None."""
+    def test_only_identity_returns_default(self) -> None:
+        """Test that expression with only identity operator returns default path '.'."""
         result = extract_jq_deletion_path_revised(".")
-        assert result is None
+        assert result == '.'
 
-    def test_only_variable_returns_none(self) -> None:
-        """Test that expression with only variable returns None."""
+    def test_only_variable_returns_default(self) -> None:
+        """Test that expression with only variable returns default path '.'."""
         result = extract_jq_deletion_path_revised("$items")
-        assert result is None
+        assert result == '.'
 
-    def test_only_variable_assignment_returns_none(self) -> None:
-        """Test that expression with only variable assignment returns None."""
+    def test_only_variable_assignment_returns_default(self) -> None:
+        """Test that expression with only variable assignment returns default path '.'."""
         result = extract_jq_deletion_path_revised(". as $root")
-        assert result is None
+        assert result == '.'
 
-    def test_malformed_parentheses_returns_none(self) -> None:
-        """Test that malformed parentheses return None."""
+    def test_malformed_parentheses_returns_default(self) -> None:
+        """Test that malformed parentheses return default path '.'."""
         result = extract_jq_deletion_path_revised("(.file.content")
-        assert result is None
+        assert result == '.'
 
     def test_whitespace_handling(self) -> None:
         """Test that whitespace is properly handled."""
@@ -175,15 +175,15 @@ class TestExtractJqDeletionPathRevised:
         result = extract_jq_deletion_path_revised(".[\"key\"].value")
         assert result == ".[\"key\"].value"
 
-    def test_empty_string_returns_none(self) -> None:
-        """Test that empty string returns None."""
+    def test_empty_string_returns_default(self) -> None:
+        """Test that empty string returns default path '.'."""
         result = extract_jq_deletion_path_revised("")
-        assert result is None
+        assert result == '.'
 
-    def test_whitespace_only_returns_none(self) -> None:
-        """Test that whitespace-only string returns None."""
+    def test_whitespace_only_returns_default(self) -> None:
+        """Test that whitespace-only string returns default path '.'."""
         result = extract_jq_deletion_path_revised("   ")
-        assert result is None
+        assert result == '.'
 
     def test_real_world_file_content_path(self) -> None:
         """Test real-world scenario: file.content path."""

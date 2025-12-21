@@ -17,8 +17,7 @@ class JQEntityProcessorSync:
     searching for data in dictionaries, and transforming data based on object mappings.
     """
 
-    def __init__(self, compile_patterns: dict[str, Any]):
-        self.compiled_patterns: dict[str, Any] = compile_patterns
+    compiled_patterns: dict[str, Any] = {}
 
     def _format_filter(self, filter: str) -> str:
         """
