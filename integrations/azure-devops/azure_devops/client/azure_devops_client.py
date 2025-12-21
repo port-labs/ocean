@@ -67,7 +67,6 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
     WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH),
     WebhookSubscription(publisherId="tfs", eventType=RepositoryEvents.REPO_CREATED),
     WebhookSubscription(publisherId="tfs", eventType=PipelineEvents.BUILD_COMPLETED),
-    WebhookSubscription(publisherId="tfs", eventType=PipelineEvents.BUILD_STARTED),
 ]
 
 

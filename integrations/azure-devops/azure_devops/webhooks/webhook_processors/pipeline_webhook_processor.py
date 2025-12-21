@@ -25,7 +25,7 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         resource = payload.get("resource", {})
 
         # For build events, validate build resource structure
-        if event_type in [PipelineEvents.BUILD_COMPLETED, PipelineEvents.BUILD_STARTED]:
+        if event_type == PipelineEvents.BUILD_COMPLETED:
             return bool(resource.get("id") and resource.get("definition"))
 
         # For push events, validate repository structure
@@ -39,11 +39,9 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
             event_type = event.payload["eventType"]
-            # Handle build events (existing functionality)
-            if PipelineEvents(event_type):
+            if event_type == PipelineEvents.BUILD_COMPLETED:
                 return True
-            # Handle push events for pipeline YAML changes (new functionality)
-            if PushEvents(event_type):
+            if event_type == PushEvents.PUSH:
                 return await self._has_pipeline_yaml_changes(event.payload)
             return False
         except ValueError:
@@ -117,14 +115,11 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         client = AzureDevopsClient.create_from_ocean_config()
         event_type = payload.get("eventType", "")
         resource = payload["resource"]
-
-        # Handle push events for pipeline YAML changes
         if event_type == PushEvents.PUSH:
             return await self._handle_pipeline_yaml_change_event(
                 payload, resource_config, client
             )
 
-        # Handle build events (existing functionality)
         build_id = resource.get("id")
         definition = resource.get("definition", {})
 
