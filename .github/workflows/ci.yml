@@ -116,22 +116,22 @@ jobs:
         run: |
           SINGLE_TAG=$(echo "${{ steps.prepare_tags.outputs.tags }}" | awk -F ',' '{print $1}')
           IMAGE_NAME=$(echo "${SINGLE_TAG}" | sed 's/.*\///' | cut -d':' -f1)
-          echo "image_tag=${SINGLE_TAG}" >> $GITHUB_OUTPUT
-          echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
           IMAGE_SIZE_BYTES=$(docker image inspect "${SINGLE_TAG}" --format='{{.Size}}')
           echo "image_size_bytes=${IMAGE_SIZE_BYTES}" >> $GITHUB_OUTPUT
+          echo "image_tag=${SINGLE_TAG}" >> $GITHUB_OUTPUT
+          echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
 
       - name: Send image size metric to New Relic
         uses: ./.github/actions/new-relic-metric
         with:
           new_relic_api_key: ${{ secrets.NEW_RELIC_API_KEY }}
-          metric_name: "ocean.integration.image_size_mb"
+          metric_name: "ocean.integration.image_size_bytes"
           metric_value: ${{ steps.image_info.outputs.image_size_bytes }}
           metric_attributes: |
             {
               "image_name": "${{ steps.image_info.outputs.image_name }}",
               "image_tag": "${{ steps.image_info.outputs.image_tag }}",
-              "image_size_bytes": ${{ steps.image_info.outputs.image_size_bytes }},
+              "image_size_bytes": "${{ steps.image_info.outputs.image_size_bytes }}",
               "platform": "${{ matrix.platform }}"
             }
 
