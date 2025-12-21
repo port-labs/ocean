@@ -183,6 +183,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/newrelic",
+      "envFile": "${workspaceFolder}/integrations/newrelic/.env",
+      "justMyCode": true,
+      "name": "Run newrelic integration",
+      "program": "${workspaceFolder}/integrations/newrelic/debug.py",
+      "python": "${workspaceFolder}/integrations/newrelic/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/port_ocean/cli",
       "justMyCode": true,
       "name": "Run ocean new command",

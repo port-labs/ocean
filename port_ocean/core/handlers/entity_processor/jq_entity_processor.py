@@ -1,5 +1,6 @@
 import asyncio
 from asyncio.tasks import Task
+from functools import lru_cache
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor
 import re
@@ -40,7 +41,6 @@ _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS: dict[str, Any] = {}
 def _calculate_entity(
     index: int,
 ) -> tuple[list[MappedEntity], list[Exception]]:
-    global _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS
     # Access data directly from globals to avoid pickling.
     global _MULTIPROCESS_JQ_BATCH_DATA, _MULTIPROCESS_JQ_BATCH_MAPPINGS, _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY, _MULTIPROCESS_JQ_BATCH_PARSE_ALL
     if None in [
@@ -57,9 +57,7 @@ def _calculate_entity(
     parse_all = cast(bool, _MULTIPROCESS_JQ_BATCH_PARSE_ALL)
 
     try:
-        entity = JQEntityProcessorSync(
-            _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS
-        )._get_mapped_entity(
+        entity = JQEntityProcessorSync()._get_mapped_entity(
             data,
             raw_entity_mappings,
             selector_query,
@@ -227,16 +225,13 @@ class JQEntityProcessor(BaseEntityProcessor):
         )
         return formatted_filter
 
+    @lru_cache
     def _compile(self, pattern: str) -> Any:
-        global _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS
         pattern = self._format_filter(pattern)
         if not ocean.config.allow_environment_variables_jq_access:
             pattern = "def env: {}; {} as $ENV | " + pattern
-        if pattern in _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS:
-            return _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS[pattern]
-        compiled_pattern = jq.compile(pattern)
-        _MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS[pattern] = compiled_pattern
-        return compiled_pattern
+
+        return jq.compile(pattern)
 
     @staticmethod
     def _stop_iterator_handler(func: Any) -> Any:

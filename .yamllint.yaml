@@ -7,11 +7,12 @@ yaml-files:
 
 ignore: |
   **/node_modules/**
+  .git/**
   .gitignore
   .yamlignore
   **/{{cookiecutter.integration_slug}}/**
   **/.mypy_cache/**
-  **/.venv/**
+  **/.venv*/**
   docs/**
   deployment/**
 

@@ -28,7 +28,7 @@ class TestJQEntityProcessorSync:
             "port_ocean.core.handlers.entity_processor.jq_entity_processor_sync.ocean",
             mock_ocean,
         )
-        processor = JQEntityProcessorSync(compile_patterns={})
+        processor = JQEntityProcessorSync()
         return processor
 
     def test_format_filter(self, mocked_processor: JQEntityProcessorSync) -> None:
@@ -68,7 +68,7 @@ class TestJQEntityProcessorSync:
             "port_ocean.core.handlers.entity_processor.jq_entity_processor_sync.ocean",
             mock_ocean,
         )
-        processor = JQEntityProcessorSync(compile_patterns={})
+        processor = JQEntityProcessorSync()
         pattern = ".foo"
         compiled = processor._compile(pattern)
         assert compiled is not None
@@ -299,18 +299,12 @@ class TestJQEntityProcessorSync:
         assert "missing" in result.misconfigurations
 
     def test_pattern_caching(self, mocked_processor: JQEntityProcessorSync) -> None:
-        """Test that patterns are cached correctly."""
+        """Test that patterns are compiled correctly."""
         pattern = ".foo"
         compiled1 = mocked_processor._compile(pattern)
         compiled2 = mocked_processor._compile(pattern)
-        assert compiled1 is compiled2
-        assert pattern in mocked_processor.compiled_patterns
-
-    def test_compile_patterns_initialization(self) -> None:
-        """Test that compile_patterns can be initialized with existing patterns."""
-        existing_patterns = {".foo": "cached_pattern"}
-        processor = JQEntityProcessorSync(compile_patterns=existing_patterns)
-        assert processor.compiled_patterns == existing_patterns
+        assert compiled1 is not None
+        assert compiled2 is not None
 
     def test_search_with_complex_selector(
         self, mocked_processor: JQEntityProcessorSync

@@ -140,6 +140,7 @@ exclude = [
     'port_ocean/cli/cookiecutter',
     'venv',
     '.venv',
+    '.venv-docker',
     'integrations',
     'docs',
     'node_modules'
@@ -162,7 +163,7 @@ disallow_untyped_defs = true
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
-exclude = ['venv', '.venv', 'integrations']
+exclude = ['venv', '.venv', '.venv-docker', 'integrations']
 target-version = "py311"
 
 [tool.pydantic-mypy]
@@ -184,6 +185,7 @@ exclude = '''
   |\.ini
   |Dockerfile
   |\.venv
+  |\.venv-docker
   |integrations
   |docs
   |node_modules

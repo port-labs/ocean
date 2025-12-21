@@ -17,9 +17,6 @@ class JQEntityProcessorSync:
     searching for data in dictionaries, and transforming data based on object mappings.
     """
 
-    def __init__(self, compile_patterns: dict[str, Any]):
-        self.compiled_patterns: dict[str, Any] = compile_patterns
-
     def _format_filter(self, filter: str) -> str:
         """
         Convert single quotes to double quotes in JQ expressions.
@@ -42,12 +39,8 @@ class JQEntityProcessorSync:
         pattern = self._format_filter(pattern)
         if not ocean.config.allow_environment_variables_jq_access:
             pattern = "def env: {}; {} as $ENV | " + pattern
-        if pattern in self.compiled_patterns:
 
-            return self.compiled_patterns[pattern]
-        compiled_pattern = jq.compile(pattern)
-        self.compiled_patterns[pattern] = compiled_pattern
-        return compiled_pattern
+        return jq.compile(pattern)
 
     def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
