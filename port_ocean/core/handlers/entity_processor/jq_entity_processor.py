@@ -55,8 +55,7 @@ def _calculate_entity(
     parse_all = cast(bool, _MULTIPROCESS_JQ_BATCH_PARSE_ALL)
 
     try:
-        processor = JQEntityProcessorSync()
-        entity = processor._get_mapped_entity(
+        entity = JQEntityProcessorSync._get_mapped_entity(
             data,
             raw_entity_mappings,
             selector_query,
