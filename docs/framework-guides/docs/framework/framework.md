@@ -2,6 +2,6 @@
 
 This section outlines the different features and components provided by the Ocean framework to make the development of new integrations for Port easier and more efficient.
 
-- To understand how the Ocean framework works internally, refer to the [Framework Architecture](./architecture.md) section.
+- To understand how the Ocean framework works internally, refer to the [Framework Architecture](./architecture/) section.
 - To learn about features and abstractions provided by the Ocean framework, refer to the [features](./features/features.md) section.
 - To learn about Ocean's CLI interface, refer to the [CLI](./cli/cli.md) section.

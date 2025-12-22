@@ -21,11 +21,11 @@ Ocean is a framework that orchestrates data synchronization between third-party 
 
 ## Architecture Documentation
 
-- **[Initialization Flow](./architecture/initialization.md)** - How Ocean initializes when an integration starts
-- **[Event Listeners](./architecture/event-listeners.md)** - How event listeners monitor and trigger resyncs
-- **[Data Flow](./architecture/data-flow.md)** - Complete data flow from resync trigger to Port synchronization
-- **[Webhook Processing](./architecture/webhooks.md)** - How Ocean processes webhooks from third-party systems
-- **[Framework Internals](./architecture/internals.md)** - Event context, metrics, error handling, and caching
+- **[Initialization Flow](./initialization.md)** - How Ocean initializes when an integration starts
+- **[Event Listeners](./event-listeners.md)** - How event listeners monitor and trigger resyncs
+- **[Data Flow](./data-flow.md)** - Complete data flow from resync trigger to Port synchronization
+- **[Webhook Processing](./webhooks.md)** - How Ocean processes webhooks from third-party systems
+- **[Framework Internals](./internals.md)** - Event context, metrics, error handling, and caching
 
 ## High-Level Architecture
 
