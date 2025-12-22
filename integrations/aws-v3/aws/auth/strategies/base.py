@@ -23,8 +23,3 @@ class HealthCheckMixin(ABC):
     @abstractmethod
     async def healthcheck(self) -> bool:
         pass
-
-    @abstractmethod
-    async def authenticate(self) -> None:
-        """Authenticate and create sessions by calling healthcheck if needed."""
-        pass

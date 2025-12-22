@@ -90,11 +90,11 @@ async def _get_strategy() -> StrategyType:
     return await AccountStrategyFactory.get()
 
 
-async def initialize_account_sessions() -> None:
-    """Initialize and authenticate all AWS account sessions before resync."""
+async def initialize_aws_account_sessions() -> None:
+    """Validate and initialize all AWS account sessions before resync."""
     logger.info("Initializing AWS account sessions")
     strategy = await _get_strategy()
-    await strategy.authenticate()
+    await strategy.healthcheck()
     logger.info("AWS account sessions initialized successfully")
 
 

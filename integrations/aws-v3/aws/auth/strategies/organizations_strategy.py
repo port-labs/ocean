@@ -295,16 +295,12 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
     4. Provides sessions for all accessible accounts
     """
 
-    async def authenticate(self) -> None:
-        """Authenticate and create sessions by calling healthcheck if needed."""
-        if not (self.valid_arns and self.valid_sessions):
-            await self.healthcheck()
-
     async def get_account_sessions(
         self, **kwargs: Any
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
         """Get sessions for all accessible accounts."""
-        await self.authenticate()
+        if not (self.valid_arns and self.valid_sessions):
+            await self.healthcheck()
 
         if not (self.valid_arns and self.valid_sessions):
             raise AWSSessionError(
