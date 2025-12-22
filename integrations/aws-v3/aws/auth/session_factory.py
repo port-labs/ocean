@@ -85,20 +85,15 @@ class AccountInfo(TypedDict):
     Name: str
 
 
-async def _get_strategy() -> StrategyType:
-    """Get the cached strategy instance, creating it if necessary."""
-    return await AccountStrategyFactory.get()
-
-
 async def initialize_aws_account_sessions() -> None:
     """Validate and initialize all AWS account sessions before resync."""
     logger.info("Initializing AWS account sessions")
-    strategy = await _get_strategy()
+    strategy = await AccountStrategyFactory.get()
     await strategy.healthcheck()
     logger.info("AWS account sessions initialized successfully")
 
 
 async def get_all_account_sessions() -> AsyncIterator[tuple[AccountInfo, AioSession]]:
-    strategy = await _get_strategy()
+    strategy = await AccountStrategyFactory.get()
     async for account_info, session in strategy.get_account_sessions():
         yield AccountInfo(Id=account_info["Id"], Name=account_info["Name"]), session
