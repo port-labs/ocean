@@ -124,7 +124,7 @@ class MyLiveEventProcessor(AbstractWebhookProcessor):
     # ... rest of implementation
 ```
 
-For detailed implementation examples, see the [Implementing Live Events](../../developing-an-integration/implementing-webhooks.md) guide.
+For detailed implementation examples, see the [Implementing Live Events](../../developing-an-integration/implementing-live-events.md) guide.
 
 ## Approach 2: Direct Endpoint Handlers (Legacy)
 
@@ -229,4 +229,4 @@ When your integration receives a live event:
 4. **Processing** - The event is processed (fetching updated data, etc.)
 5. **Port Update** - Results are transformed using JQ mappings and applied to Port
 
-For more details on the architecture, see the [Live Events Processing Architecture](../architecture/webhooks.md) guide.
+For more details on the architecture, see the [Live Events Processing Architecture](../architecture/live-events.md) guide.

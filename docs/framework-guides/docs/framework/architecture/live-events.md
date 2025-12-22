@@ -76,4 +76,4 @@ Processors include built-in error handling:
 - **Error hooks** via `on_error()` method
 - **Cancellation support** via `cancel()` method
 
-For more details on implementing live event processors, see the [Implementing Live Events](../../developing-an-integration/implementing-webhooks.md) guide.
+For more details on implementing live event processors, see the [Implementing Live Events](../../developing-an-integration/implementing-live-events.md) guide.
