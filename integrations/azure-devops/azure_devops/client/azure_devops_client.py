@@ -832,7 +832,6 @@ class AzureDevopsClient(HTTPBaseClient):
                     )
                     yield await self._enrich_boards(board_data, project_id, team["id"])
 
-                # AI! I've just added this piece of code. Add a test case to verify the functionality.
                 except httpx.HTTPStatusError as e:
                     # Azure Devops API throws 500 errors when you try to fetch boards for teams that
                     # are not in a sprint iteration. We should skip those.
