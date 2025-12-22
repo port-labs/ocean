@@ -38,7 +38,8 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         client = AzureDevopsClient.create_from_ocean_config()
         resource = payload["resource"]
         work_item_id = resource.get("id")
-        project_id = resource.get("project", {}).get("id")
+        resource_containers = payload.get("resourceContainers", {})
+        project_id = resource_containers.get("project", {}).get("id")
 
         if not work_item_id:
             logger.warning("Work item webhook payload missing work item ID")
@@ -54,13 +55,22 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
         event_type = payload.get("eventType", "")
 
+        project = await client.get_single_project(project_id)
+        if not project:
+            logger.warning(
+                f"Project with ID {project_id} not found, cannot enrich work item"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         # Handle work item deletion
         if event_type == WorkItemEvents.WORK_ITEM_DELETED:
             logger.info(f"Work item {work_item_id} deleted, returning for deletion")
-            # Return a minimal work item structure for deletion
             deleted_work_item = {
                 "id": work_item_id,
                 "__projectId": project_id,
+                "__project": project,
             }
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[deleted_work_item]
@@ -80,6 +90,7 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
             # Add project context to work item
             work_item["__projectId"] = project_id
+            work_item["__project"] = project
 
             return WebhookEventRawResults(
                 updated_raw_results=[work_item], deleted_raw_results=[]
