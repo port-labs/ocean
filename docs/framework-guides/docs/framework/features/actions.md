@@ -11,7 +11,11 @@ The Ocean framework provides a robust system for executing integration actions. 
 
 ## Overview
 
-When a user performs an action in Port on an entity managed by an Ocean integration, the action is triggered and must be executed by the integration. The Ocean framework abstracts the complexity of managing concurrent execution, respecting API rate limits, and handling failures through its action execution system.
+Actions provide a critical backstream capability in Ocean: they allow Port and its users not only to pull data from third-party systems, but also to write data or trigger changes back in those systems. Typical use cases include remediating issues (e.g., restarting a resource, unlocking an account), provisioning resources, or invoking custom workflows such as syncing state or rotating credentials.
+
+Actions can be used to perform operations on any external resource or service your integration can access, regardless of whether that resource is explicitly modeled within your integration.
+
+When a user triggers an action in Port, the Ocean framework ensures the action is reliably queued and executed by the relevant integration. The framework abstracts away concurrency, API rate limiting, and error handling, so actions are processed predictably and can scale as needed.
 
 ### Key Components
 
