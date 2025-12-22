@@ -4,6 +4,7 @@ import json
 from collections import defaultdict
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError, ReadTimeout
+import httpx
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -740,7 +741,7 @@ class AzureDevopsClient(HTTPBaseClient):
             if not batch_ids:
                 continue
             logger.debug(
-                f"Processing batch {i//page_size + 1}/{number_of_batches} with {len(batch_ids)} work items for project {project_id}"
+                f"Processing batch {i // page_size + 1}/{number_of_batches} with {len(batch_ids)} work items for project {project_id}"
             )
             work_items_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/workitems"
             params = {
@@ -820,13 +821,25 @@ class AzureDevopsClient(HTTPBaseClient):
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
         async for teams_in_project in self._get_paginated_by_top_and_skip(teams_url):
             for team in teams_in_project:
-                get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
-                response = await self.send_request("GET", get_boards_url)
-                if not response:
-                    continue
-                board_data = response.json().get("value", [])
-                logger.info(f"Found {len(board_data)} boards for project {project_id}")
-                yield await self._enrich_boards(board_data, project_id, team["id"])
+                try:
+                    get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
+                    response = await self.send_request("GET", get_boards_url)
+                    if not response:
+                        continue
+                    board_data = response.json().get("value", [])
+                    logger.info(
+                        f"Found {len(board_data)} boards for project {project_id}"
+                    )
+                    yield await self._enrich_boards(board_data, project_id, team["id"])
+
+                # AI! I've just added this piece of code. Add a test case to verify the functionality.
+                except httpx.HTTPStatusError as e:
+                    # Azure Devops API throws 500 errors when you try to fetch boards for teams that
+                    # are not in a sprint iteration. We should skip those.
+                    if e.response.status_code == 500:
+                        continue
+                    else:
+                        raise
 
     @cache_iterator_result()
     async def get_boards_in_organization(
