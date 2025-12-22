@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.41 (2025-12-17)
+## 0.1.42 (2025-12-17)
 
 
 ### Bug Fixes
 
 - Fixed token expiration time incorrectly recalculated when loading from cache. The expiration time is now correctly calculated from the original cached timestamp instead of the current time.
+
+
+## 0.1.41 (2025-12-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.5
 
 
 ## 0.1.40 (2025-12-16)
