@@ -1,7 +1,7 @@
 ---
 title: Data Flow Architecture
 sidebar_label: 🔄 Data Flow Architecture
-sidebar_position: 4
+sidebar_position: 5
 description: Complete data flow from resync trigger to Port synchronization
 ---
 

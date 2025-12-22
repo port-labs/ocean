@@ -17,14 +17,14 @@ Ocean is a framework that orchestrates data synchronization between third-party 
 - **Data Extraction**: Running user-defined resync functions
 - **Data Transformation**: Converting raw data to Port entities using JQ mappings
 - **State Synchronization**: Comparing and syncing entities with Port
-- **Real-time Updates**: Processing webhooks from third-party systems
+- **Real-time Updates**: Processing live events from third-party systems
 
 ## Architecture Documentation
 
 - **[Initialization Flow](./initialization.md)** - How Ocean initializes when an integration starts
 - **[Event Listeners](./event-listeners.md)** - How event listeners monitor and trigger resyncs
 - **[Data Flow](./data-flow.md)** - Complete data flow from resync trigger to Port synchronization
-- **[Webhook Processing](./webhooks.md)** - How Ocean processes webhooks from third-party systems
+- **[Live Events Processing](./webhooks.md)** - How Ocean processes live events from third-party systems
 - **[Framework Internals](./internals.md)** - Event context, metrics, error handling, and caching
 
 ## High-Level Architecture
