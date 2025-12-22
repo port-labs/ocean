@@ -43,7 +43,7 @@ Here's how Jira implements live event processors for issues and projects. This i
 #### Issue Live Event Processor
 
 <details>
-<summary><b>Issue Webhook Processor (Click to expand)</b></summary>
+<summary><b>Issue Live Event Processor (Click to expand)</b></summary>
 
 ```python showLineNumbers
 from typing import Any, cast
