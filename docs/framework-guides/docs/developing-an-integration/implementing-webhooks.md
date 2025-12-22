@@ -2,24 +2,26 @@
 sidebar_position: 4
 ---
 
-# ⚓ Implementing Webhooks
+# ⚓ Implementing Live Events
 
 ## Introduction
 
-Webhooks are a crucial part of any integration, allowing real-time updates from your service to be reflected in Port. Port Ocean uses **webhook processors** to handle incoming events from your service. By **subclassing** `AbstractWebhookProcessor`, you define how to:
+Live events are a crucial part of any integration, allowing real-time updates from your service to be reflected in Port. Port Ocean uses **live event processors** (implemented via `AbstractWebhookProcessor`) to handle incoming events from your service. By **subclassing** `AbstractWebhookProcessor`, you define how to:
 
-- **Authenticate** and **validate** webhook data
+- **Authenticate** and **validate** live event data
 - **Decide** whether a given event is relevant
 - **Fetch** relevant data from your service
 - **Return** updated or deleted data to Port
 
+:::note Terminology
+While we use "live events" in documentation, the underlying implementation uses webhooks (HTTP POST requests). The code still references "webhook" in class names and modules (e.g., `AbstractWebhookProcessor`, `WebhookEvent`) for technical accuracy.
+:::
 
 You already have `AbstractWebhookProcessor` from the `port_ocean.core.handlers.webhook.abstract_webhook_processor` module. This base class defines the main interface your processors must implement.
 
+## Creating Live Event Processors
 
-## Creating Webhook Processors
-
-Let's look at how to implement webhook processors. We'll use Jira as an example, but the concepts apply to any service.
+Let's look at how to implement live event processors. We'll use Jira as an example, but the concepts apply to any service.
 
 ### Required Methods
 
@@ -36,9 +38,9 @@ Let's look at how to implement webhook processors. We'll use Jira as an example,
 
 ### Example Implementation
 
-Here's how Jira implements webhook processors for issues and projects. This is just one example - your implementation will depend on your service's event structure.
+Here's how Jira implements live event processors for issues and projects. This is just one example - your implementation will depend on your service's event structure.
 
-#### Issue Webhook Processor
+#### Issue Live Event Processor
 
 <details>
 <summary><b>Issue Webhook Processor (Click to expand)</b></summary>
@@ -114,10 +116,10 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
 
 </details>
 
-#### Project Webhook Processor
+#### Project Live Event Processor
 
 <details>
-<summary><b>Project Webhook Processor (Click to expand)</b></summary>
+<summary><b>Project Live Event Processor (Click to expand)</b></summary>
 
 ```python showLineNumbers
 from loguru import logger
@@ -179,13 +181,13 @@ class ProjectWebhookProcessor(AbstractWebhookProcessor):
 
 </details>
 
-## Webhook Registration
+## Live Event Processor Registration
 
-In the `main.py` file of your integration, you must register webhook processors that handle different types of events.
-This will allow the integration to start the processors which will receive webhook events from your service and process them accordingly.
+In the `main.py` file of your integration, you must register live event processors that handle different types of events.
+This will allow the integration to start the processors which will receive live events from your service and process them accordingly.
 
 <details>
-<summary><b>Example: Jira Webhook Registration</b></summary>
+<summary><b>Example: Jira Live Event Processor Registration</b></summary>
 
 ```python showLineNumbers
 from port_ocean.context.ocean import ocean
@@ -195,23 +197,23 @@ from webhook_processors.user_webhook_processor import UserWebhookProcessor
 
 # All other content of the main.py file
 
-# Register webhook processors for different resource types
+# Register live event processors for different resource types
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
 ```
 </details>
 
-For detailed implementation of webhook processors, see the [Implementing Webhooks](implementing-webhooks.md) guide.
+For an overview of live events and when to use processors vs direct endpoints, see the [Live Events](../framework/features/live-events.md) guide.
 
+## How Live Events Work in Ocean
 
-## How Webhooks Work in Ocean
-
-When your service sends a webhook event to the integration:
+When your service sends a live event (via webhook) to the integration:
 
 1. **Event Reception**
-   - Ocean receives the webhook event
+   - Ocean receives the live event via HTTP POST
    - Creates a `WebhookEvent` object with payload and headers
+   - Adds the event to a processing queue
 
 2. **Processor Selection**
    - Each processor checks `should_process_event`
@@ -223,32 +225,36 @@ When your service sends a webhook event to the integration:
    - Return results in `WebhookEventRawResults`
 
 4. **Port Update**
-   - Ocean maps the results to Port entities
+   - Ocean maps the results to Port entities using JQ transformations
    - Updates or deletes entities as needed
 
-:::tip Webhook Flow
-The webhook flow follows this pattern:
+:::tip Live Event Flow
+The live event flow follows this pattern:
 ```
-Service Event → Webhook Processor → Data Fetching → Port Update
+Service Event → Live Event Processor → Data Fetching → Port Update
 ```
 :::
 
-## Best Practices for Webhook Implementation
+## Best Practices for Live Event Implementation
 
 1. **Security**
-   - Always implement proper authentication
-   - Validate webhook payloads
-   - Use secure communication channels
+   - Always implement proper authentication in `authenticate()`
+   - Validate event payloads in `validate_payload()`
+   - Use secure communication channels (HTTPS)
 
 2. **Error Handling**
-   - Handle missing or invalid data
-   - Implement retry mechanisms
+   - Handle missing or invalid data gracefully
+   - Leverage built-in retry mechanisms (configure `max_retries`, etc.)
    - Log errors for debugging
 
-3. **Maintenance**
+3. **Performance**
    - Keep processors focused and single-purpose
+   - Use `should_process_event()` to filter events early
+   - Fetch only necessary data from your service
+
+4. **Maintenance**
    - Document event types and payloads
-   - Monitor webhook performance
+   - Monitor live event processing performance
+   - Test authentication and validation logic thoroughly
 
-
-Remember, the Jira example above is just one way to implement webhooks. Your implementation will depend on your service's event structure and requirements.
+Remember, the Jira example above is just one way to implement live events. Your implementation will depend on your service's event structure and requirements.
