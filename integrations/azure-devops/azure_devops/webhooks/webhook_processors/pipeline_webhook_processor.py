@@ -147,9 +147,7 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 )
 
             # Try to fetch the pipeline using the pipelines API (for YAML pipelines)
-            pipeline_url = (
-                f"{client._organization_base_url}/{project_id}/_apis/pipelines/{pipeline_id}"
-            )
+            pipeline_url = f"{client._organization_base_url}/{project_id}/_apis/pipelines/{pipeline_id}"
             pipeline_response_obj = await client.send_request("GET", pipeline_url)
 
             if pipeline_response_obj:
@@ -177,9 +175,7 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             logger.debug(
                 f"Pipeline not found via pipelines API, trying build definitions API for definition {pipeline_id}"
             )
-            build_def_url = (
-                f"{client._organization_base_url}/{project_id}/_apis/build/definitions/{pipeline_id}"
-            )
+            build_def_url = f"{client._organization_base_url}/{project_id}/_apis/build/definitions/{pipeline_id}"
             build_def_response_obj = await client.send_request("GET", build_def_url)
 
             if build_def_response_obj:
@@ -187,7 +183,9 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 # Convert build definition to pipeline format
                 pipeline_response = {
                     "id": str(build_definition.get("id", pipeline_id)),
-                    "name": build_definition.get("name", definition.get("name", "Unknown Pipeline")),
+                    "name": build_definition.get(
+                        "name", definition.get("name", "Unknown Pipeline")
+                    ),
                     "__projectId": project_id,
                 }
 
@@ -282,9 +280,7 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                     f"No pipelines directly linked to repository {repo_id}, checking build definitions"
                 )
                 # Fetch build definitions that might be linked to this repository
-                build_defs_url = (
-                    f"{client._organization_base_url}/{project_id}/_apis/build/definitions"
-                )
+                build_defs_url = f"{client._organization_base_url}/{project_id}/_apis/build/definitions"
                 build_defs_response = await client.send_request("GET", build_defs_url)
 
                 if build_defs_response:
