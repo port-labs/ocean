@@ -793,7 +793,7 @@ class AzureDevopsClient(HTTPBaseClient):
         """
         work_item_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/workitems/{work_item_id}"
         params = {
-            "api-version": "7.1-preview.3",
+            "api-version": API_PARAMS["api-version"],
             "$expand": expand,
         }
         response = await self.send_request("GET", work_item_url, params=params)

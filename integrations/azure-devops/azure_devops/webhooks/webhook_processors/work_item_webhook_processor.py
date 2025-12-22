@@ -21,7 +21,7 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         if not await super().validate_payload(payload):
             return False
 
-        resource = payload.get("resource", {})
+        resource = payload["resource"]
         work_item_id = resource.get("id")
         return work_item_id is not None
 
@@ -29,7 +29,7 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         try:
             event_type = event.payload["eventType"]
             return bool(WorkItemEvents(event_type))
-        except ValueError:
+        except (KeyError, ValueError):
             return False
 
     async def handle_event(
@@ -38,8 +38,7 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         client = AzureDevopsClient.create_from_ocean_config()
         resource = payload["resource"]
         work_item_id = resource.get("id")
-        resource_containers = payload.get("resourceContainers", {})
-        project_id = resource_containers.get("project", {}).get("id")
+        project_id = payload["resourceContainers"]["project"]["id"]
 
         if not work_item_id:
             logger.warning("Work item webhook payload missing work item ID")
@@ -53,7 +52,7 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        event_type = payload.get("eventType", "")
+        event_type = payload["eventType"]
 
         project = await client.get_single_project(project_id)
         if not project:
@@ -69,8 +68,6 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             logger.info(f"Work item {work_item_id} deleted, returning for deletion")
             deleted_work_item = {
                 "id": work_item_id,
-                "__projectId": project_id,
-                "__project": project,
             }
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[deleted_work_item]

@@ -318,11 +318,8 @@ async def test_work_item_handle_event_deleted(
     assert len(result.updated_raw_results) == 0
     assert len(result.deleted_raw_results) == 1
     assert result.deleted_raw_results[0]["id"] == 999
-    assert result.deleted_raw_results[0]["__projectId"] == "project-999"
-    assert result.deleted_raw_results[0]["__project"] == {
-        "id": "project-999",
-        "name": "Test Project",
-    }
+    assert "__projectId" not in result.deleted_raw_results[0]
+    assert "__project" not in result.deleted_raw_results[0]
 
 
 @pytest.mark.asyncio
