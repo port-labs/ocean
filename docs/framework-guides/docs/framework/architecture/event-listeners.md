@@ -13,10 +13,7 @@ Event listeners are the entry point for resync requests. They monitor Port for c
 
 1. **POLLING**: Queries Port API at intervals
 2. **KAFKA**: Consumes messages from Kafka topic
-3. **WEBHOOK**: Receives HTTP requests from Port
-4. **ONCE**: Runs resync once and exits
-5. **WEBHOOKS_ONLY**: Only processes webhooks, no resync
-6. **ACTIONS_ONLY**: Only processes actions, no resync
+3. **ONCE**: Runs resync once and exits
 
 ## Event Listener Flow
 
