@@ -156,7 +156,6 @@ class HarborClient:
         Args:
             endpoint: API endpoint path
             params: Optional query parameters (will be merged with pagination params)
-            page_size: Number of items per page
         
         Yields:
             Lists of resource dictionaries for each page

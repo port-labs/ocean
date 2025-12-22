@@ -117,27 +117,33 @@ async def test_extract_items_from_response_empty() -> None:
     assert items == []
 
 
-@pytest.mark.asyncio
-async def test_get_paginated_resources(mock_harbor_client: HarborClient) -> None:
-    """Test paginated resource fetching."""
-    with patch.object(
-        mock_harbor_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        # First page with full results, second page with fewer results
-        mock_request.side_effect = [
-            [{"id": 1}, {"id": 2}],
-            [{"id": 3}],  # Less than page_size, should stop pagination
-        ]
+    @pytest.mark.asyncio
+    async def test_get_paginated_resources(mock_harbor_client: HarborClient) -> None:
+        """Test paginated resource fetching."""
+        with patch.object(
+            mock_harbor_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            # First page with full results (exactly PAGE_SIZE), second page with fewer results
+            # Create a full page of 50 items, then a partial page
+            from harbor.client import PAGE_SIZE
+            
+            first_page = [{"id": i} for i in range(1, PAGE_SIZE + 1)]  # Exactly PAGE_SIZE items
+            second_page = [{"id": PAGE_SIZE + 1}]  # Less than PAGE_SIZE, should stop pagination
+            
+            mock_request.side_effect = [
+                first_page,
+                second_page,
+            ]
 
-        results = []
-        async for batch in mock_harbor_client.get_paginated_resources(
-            "/api/v2.0/projects",
-        ):
-            results.extend(batch)
+            results = []
+            async for batch in mock_harbor_client.get_paginated_resources(
+                "/api/v2.0/projects",
+            ):
+                results.extend(batch)
 
-        assert len(results) == 3
+        assert len(results) == PAGE_SIZE + 1
         assert results[0]["id"] == 1
-        assert results[2]["id"] == 3
+        assert results[PAGE_SIZE]["id"] == PAGE_SIZE + 1
         assert mock_request.call_count == 2
 
 
@@ -339,5 +345,6 @@ async def test_get_paginated_resources_with_params(
         call_args = mock_request.call_args_list[0]
         assert call_args[1]["params"]["public"] == "true"
         assert call_args[1]["params"]["page"] == 1
-        assert call_args[1]["params"]["page_size"] == 10
+        # PAGE_SIZE default is 50
+        assert call_args[1]["params"]["page_size"] == 50
 

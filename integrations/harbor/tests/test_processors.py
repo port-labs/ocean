@@ -12,7 +12,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
-from harbor.overrides import ArtifactSelector
+from integration import ArtifactSelector
 from webhook_processors.artifact_webhook_processor import ArtifactWebhookProcessor
 
 
