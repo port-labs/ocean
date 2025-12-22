@@ -72,10 +72,10 @@ class BaseCheckmarxAuthenticator(ABC):
             cached_data = await ocean.app.cache_provider.get(cache_key)
 
             if cached_data:
-                cached_time = cached_data.get("cached_at", 0)
-                cached_expires_at = cached_data["expires_in"]  # in seconds
                 current_time = time.time()
-                if (current_time - cached_time) < (cached_expires_at - 60):
+                token_expires_at = cached_data["token_expires_at"]
+
+                if current_time < (token_expires_at - 60):
                     logger.info(f"Using cached token for tenant {self.tenant}")
                     return cached_data
                 else:
@@ -87,10 +87,14 @@ class BaseCheckmarxAuthenticator(ABC):
             return None
 
     async def _cache_token(self, token_data: TokenResponse) -> None:
-        """Cache the token data with current timestamp."""
+        """Cache only essential token data: tokens and absolute expiration time."""
         try:
             cache_key = self._get_cache_key()
-            cache_data = {**token_data, "cached_at": time.time()}
+            cache_data = {
+                "access_token": token_data["access_token"],
+                "refresh_token": token_data["refresh_token"],
+                "token_expires_at": self._token_expires_at,
+            }
             await ocean.app.cache_provider.set(cache_key, cache_data)
             logger.debug(f"Token cached successfully for tenant {self.tenant}")
         except FailedToWriteCacheError as e:
@@ -138,9 +142,8 @@ class BaseCheckmarxAuthenticator(ABC):
         if cached_token:
             self._access_token = cached_token["access_token"]
             self._refresh_token = cached_token["refresh_token"]
-            expires_in = cached_token["expires_in"]
-            cached_at = cached_token["cached_at"]
-            self._token_expires_at = cached_at + expires_in
+            # Use stored expiration time (always set when caching)
+            self._token_expires_at = cached_token["token_expires_at"]
             return self._access_token
 
         # If not in cache or expired, refresh the token

@@ -237,17 +237,14 @@ class TestBaseCheckmarxAuthenticator:
     async def test_get_access_token_from_cache_correct_expiration(
         self, authenticator: MockAuthenticator
     ) -> None:
-        """Test that token expiration is correctly calculated when loading from cache."""
-        # Simulate a token cached 10 minutes ago with 30 minute expiration
-        cached_at = time.time() - 600  # 10 minutes ago
-        expires_in = 1800  # 30 minutes
-        expected_expires_at = cached_at + expires_in
+        """Test that token expiration is correctly restored when loading from cache."""
+        # Simulate a token that expires in 20 minutes
+        expected_expires_at = time.time() + 1200  # 20 minutes from now
 
         cached_token = {
             "access_token": "cached_access_token",
             "refresh_token": "cached_refresh_token",
-            "expires_in": expires_in,
-            "cached_at": cached_at,
+            "token_expires_at": expected_expires_at,
         }
 
         with patch.object(
@@ -267,16 +264,12 @@ class TestBaseCheckmarxAuthenticator:
         self, authenticator: MockAuthenticator
     ) -> None:
         """Test that loading token from cache multiple times doesn't extend expiration."""
-        cached_at = time.time() - 600  # 10 minutes ago
-        expires_in = 1800  # 30 minutes
+        expected_expires_at = time.time() + 1200  # 20 minutes from now
         cached_token = {
             "access_token": "cached_access_token",
             "refresh_token": "cached_refresh_token",
-            "expires_in": expires_in,
-            "cached_at": cached_at,
+            "token_expires_at": expected_expires_at,
         }
-
-        expected_expires_at = cached_at + expires_in
 
         with patch.object(
             authenticator, "_get_cached_token", return_value=cached_token
