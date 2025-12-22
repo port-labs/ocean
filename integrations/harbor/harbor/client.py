@@ -146,7 +146,6 @@ class HarborClient:
         self,
         endpoint: str,
         params: Optional[dict[str, Any]] = None,
-        page_size: int = PAGE_SIZE,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetch paginated data from the Harbor API.
@@ -188,7 +187,7 @@ class HarborClient:
             yield items
 
             # Check if we've reached the last page
-            if len(items) < page_size:
+            if len(items) < PAGE_SIZE:
                 logger.debug(f"Last page reached for {endpoint}")
                 break
 
@@ -238,7 +237,6 @@ class HarborClient:
         async for batch in self.get_paginated_resources(
             endpoint="/projects",
             params=params,
-            page_size=page_size,
         ):
             logger.debug(f"Fetched {len(batch)} projects")
             yield batch
@@ -262,7 +260,6 @@ class HarborClient:
         async for batch in self.get_paginated_resources(
             endpoint="/repositories",
             params=params,
-            page_size=page_size,
         ):
             logger.debug(f"Fetched {len(batch)} repositories")
             yield batch
@@ -293,7 +290,6 @@ class HarborClient:
         async for batch in self.get_paginated_resources(
             endpoint=endpoint,
             params=params,
-            page_size=page_size,
         ):
             logger.debug(f"Fetched {len(batch)} artifacts")
             yield batch
@@ -368,7 +364,6 @@ class HarborClient:
         async for batch in self.get_paginated_resources(
             endpoint="/users",
             params=params,
-            page_size=page_size,
         ):
             logger.debug(f"Fetched {len(batch)} users")
             yield batch

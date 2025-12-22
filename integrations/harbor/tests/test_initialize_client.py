@@ -5,7 +5,52 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from harbor.client import HarborClient
-from initialize_client import create_harbor_client
+from initialize_client import get_harbor_client, reset_harbor_client
+
+
+@pytest.fixture(autouse=True)
+def reset_client_between_tests() -> None:
+    """Reset the singleton client before each test to ensure test isolation."""
+    reset_harbor_client()
+    yield
+    reset_harbor_client()
+
+
+def test_get_harbor_client_singleton() -> None:
+    """Test that get_harbor_client returns the same instance (singleton pattern)."""
+    with patch("initialize_client.ocean") as mock_ocean:
+        mock_config = MagicMock()
+        mock_config.get = MagicMock(side_effect=lambda key, default=None: {
+            "base_url": "https://harbor.example.com",
+            "verify_ssl": False,
+            "auth_type": "none",
+        }.get(key, default))
+        mock_ocean.integration_config = mock_config
+
+        client1 = get_harbor_client()
+        client2 = get_harbor_client()
+
+        # Should return the same instance
+        assert client1 is client2
+
+
+def test_reset_harbor_client() -> None:
+    """Test that reset_harbor_client creates a new instance on next call."""
+    with patch("initialize_client.ocean") as mock_ocean:
+        mock_config = MagicMock()
+        mock_config.get = MagicMock(side_effect=lambda key, default=None: {
+            "base_url": "https://harbor.example.com",
+            "verify_ssl": False,
+            "auth_type": "none",
+        }.get(key, default))
+        mock_ocean.integration_config = mock_config
+
+        client1 = get_harbor_client()
+        reset_harbor_client()
+        client2 = get_harbor_client()
+
+        # Should be different instances after reset
+        assert client1 is not client2
 
 
 def test_create_harbor_client_with_basic_auth() -> None:
@@ -22,7 +67,7 @@ def test_create_harbor_client_with_basic_auth() -> None:
         }.get(key, default))
         mock_ocean.integration_config = mock_config
 
-        client = create_harbor_client()
+        client = get_harbor_client()
 
         assert isinstance(client, HarborClient)
         assert client.base_url == "https://harbor.example.com"
@@ -40,7 +85,7 @@ def test_create_harbor_client_without_auth() -> None:
         }.get(key, default))
         mock_ocean.integration_config = mock_config
 
-        client = create_harbor_client()
+        client = get_harbor_client()
 
         assert isinstance(client, HarborClient)
         assert client.base_url == "https://harbor.example.com"
@@ -57,7 +102,7 @@ def test_create_harbor_client_default_verify_ssl() -> None:
         }.get(key, default))
         mock_ocean.integration_config = mock_config
 
-        client = create_harbor_client()
+        client = get_harbor_client()
 
         assert isinstance(client, HarborClient)
         # Default should be False
@@ -78,7 +123,7 @@ def test_create_harbor_client_with_partial_credentials() -> None:
         }.get(key, default))
         mock_ocean.integration_config = mock_config
 
-        client = create_harbor_client()
+        client = get_harbor_client()
 
         assert isinstance(client, HarborClient)
         # Should initialize without auth since credentials are incomplete
@@ -99,7 +144,7 @@ def test_create_harbor_client_integration() -> None:
         }.get(key, default))
         mock_ocean.integration_config = mock_config
 
-        client = create_harbor_client()
+        client = get_harbor_client()
 
         assert isinstance(client, HarborClient)
         assert client.base_url == "https://registry.harbor.io"

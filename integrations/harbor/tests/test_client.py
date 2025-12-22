@@ -131,7 +131,7 @@ async def test_get_paginated_resources(mock_harbor_client: HarborClient) -> None
 
         results = []
         async for batch in mock_harbor_client.get_paginated_resources(
-            "/api/v2.0/projects", page_size=2
+            "/api/v2.0/projects",
         ):
             results.extend(batch)
 
@@ -332,7 +332,6 @@ async def test_get_paginated_resources_with_params(
         async for batch in mock_harbor_client.get_paginated_resources(
             "/api/v2.0/projects",
             params={"public": "true"},
-            page_size=10,
         ):
             results.extend(batch)
 

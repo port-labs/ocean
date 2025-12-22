@@ -32,7 +32,7 @@ def artifact_webhook_processor(event: WebhookEvent) -> ArtifactWebhookProcessor:
 def resource_config() -> ResourceConfig:
     """Create a basic resource config."""
     return ResourceConfig(
-        kind="/artifacts",
+        kind="artifacts",
         selector=ArtifactSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -111,7 +111,7 @@ async def test_get_matching_kinds(
     """Test get_matching_kinds returns correct kind."""
     event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
     kinds = await artifact_webhook_processor.get_matching_kinds(event)
-    assert kinds == ["/artifacts"]
+    assert kinds == ["artifacts"]
 
 
 @pytest.mark.asyncio
@@ -323,11 +323,11 @@ async def test_handle_event_push_artifact_success(
     }
 
     with patch(
-        "webhook_processors.artifact_webhook_processor.create_harbor_client"
-    ) as mock_create_client:
+        "webhook_processors.artifact_webhook_processor.get_harbor_client"
+    ) as mock_get_client:
         mock_client = AsyncMock()
         mock_client.get_single_artifact = AsyncMock(return_value=mock_artifact)
-        mock_create_client.return_value = mock_client
+        mock_get_client.return_value = mock_client
 
         result = await artifact_webhook_processor.handle_event(payload, resource_config)
 
@@ -363,11 +363,11 @@ async def test_handle_event_push_artifact_not_found(
     }
 
     with patch(
-        "webhook_processors.artifact_webhook_processor.create_harbor_client"
-    ) as mock_create_client:
+        "webhook_processors.artifact_webhook_processor.get_harbor_client"
+    ) as mock_get_client:
         mock_client = AsyncMock()
         mock_client.get_single_artifact = AsyncMock(return_value=None)
-        mock_create_client.return_value = mock_client
+        mock_get_client.return_value = mock_client
 
         result = await artifact_webhook_processor.handle_event(payload, resource_config)
 
@@ -395,13 +395,13 @@ async def test_handle_event_push_artifact_api_error(
     }
 
     with patch(
-        "webhook_processors.artifact_webhook_processor.create_harbor_client"
-    ) as mock_create_client:
+        "webhook_processors.artifact_webhook_processor.get_harbor_client"
+    ) as mock_get_client:
         mock_client = AsyncMock()
         mock_client.get_single_artifact = AsyncMock(
             side_effect=Exception("API Error")
         )
-        mock_create_client.return_value = mock_client
+        mock_get_client.return_value = mock_client
 
         result = await artifact_webhook_processor.handle_event(payload, resource_config)
 
@@ -461,11 +461,11 @@ async def test_handle_event_with_digest_reference(
     }
 
     with patch(
-        "webhook_processors.artifact_webhook_processor.create_harbor_client"
-    ) as mock_create_client:
+        "webhook_processors.artifact_webhook_processor.get_harbor_client"
+    ) as mock_get_client:
         mock_client = AsyncMock()
         mock_client.get_single_artifact = AsyncMock(return_value=mock_artifact)
-        mock_create_client.return_value = mock_client
+        mock_get_client.return_value = mock_client
 
         result = await artifact_webhook_processor.handle_event(payload, resource_config)
 

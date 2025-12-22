@@ -5,7 +5,7 @@ from typing import Any
 from loguru import logger
 
 from harbor.utils import parse_resource_url
-from initialize_client import create_harbor_client
+from initialize_client import get_harbor_client
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -68,7 +68,7 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
         Returns:
             List of resource kind strings
         """
-        return ["/artifacts"]
+        return ["artifacts"]
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         """
@@ -249,7 +249,7 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
         Returns:
             WebhookEventRawResults with the updated artifact
         """
-        client = create_harbor_client()
+        client = get_harbor_client()
         
         logger.info(
             f"Fetching fresh artifact data for {project_name}/{repository_name} "

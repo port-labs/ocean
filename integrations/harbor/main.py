@@ -1,5 +1,6 @@
 """Main entry point for Harbor integration."""
 
+import asyncio
 from typing import cast
 
 from loguru import logger
@@ -9,11 +10,15 @@ from integration import (
     ProjectResourceConfig,
 )
 from harbor.utils import split_repository_name
-from initialize_client import create_harbor_client
+from initialize_client import get_harbor_client
 from kinds import Kinds
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import (
+    semaphore_async_iterator,
+    stream_async_iterators_tasks,
+)
 from webhook_processors.artifact_webhook_processor import ArtifactWebhookProcessor
 
 
@@ -31,16 +36,18 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     Yields:
         Batches of project dictionaries
     """
-    client = create_harbor_client()
+    client = get_harbor_client()
     
     # Get the resource config and selector for this kind
     resource_config = cast(ProjectResourceConfig, event.resource_config)
     selector = resource_config.selector
     
     # Build query parameters from selector
+    # Use getattr to safely access attributes that might not exist
     params = {}
-    if selector.public is not None:
-        params["public"] = str(selector.public).lower()
+    public = getattr(selector, "public", None)
+    if public is not None:
+        params["public"] = str(public).lower()
     
     logger.info(f"Starting resync for Harbor projects with params: {params}")
     
@@ -65,8 +72,7 @@ async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     Yields:
         Batches of repository dictionaries
     """
-    client = create_harbor_client()
-    
+    client = get_harbor_client()
     
     # Fetch repositories from Harbor API
     async for repositories_batch in client.get_repositories(params={}):
@@ -82,11 +88,12 @@ async def on_resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     Resync Harbor artifacts from the API.
     
     This is a nested resource that requires:
-    1. Fetching all repositories
-    2. For each repository, fetching artifacts
+    1. Fetching repositories as they stream
+    2. For each repository batch, fetching artifacts concurrently
     
     Yields batches of artifacts from the Harbor API using pagination.
     Uses the selector configuration to filter artifacts.
+    Processes repositories as they stream to avoid memory issues.
     
     Args:
         kind: The resource kind being resynced
@@ -94,66 +101,98 @@ async def on_resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     Yields:
         Batches of artifact dictionaries
     """
-    client = create_harbor_client()
+    client = get_harbor_client()
     
     # Get the resource config and selector for this kind
     resource_config = cast(ArtifactResourceConfig, event.resource_config)
     selector = resource_config.selector
     
     # Build query parameters from selector
+    # Use getattr to safely access attributes that might not exist
     params = {}
-    if selector.tag:
-        params["q"] = f"tags={selector.tag}"
-    if selector.digest:
-        params["digest"] = selector.digest
-    if selector.label:
-        params["with_label"] = selector.label
-    if selector.media_type:
-        params["media_type"] = selector.media_type
-    if selector.created_since:
-        params["q"] = f"creation_time>={selector.created_since}"
+    tag = getattr(selector, "tag", None)
+    digest = getattr(selector, "digest", None)
+    label = getattr(selector, "label", None)
+    media_type = getattr(selector, "media_type", None)
+    created_since = getattr(selector, "created_since", None)
+    
+    if tag:
+        params["q"] = f"tags={tag}"
+    if digest:
+        params["digest"] = digest
+    if label:
+        params["with_label"] = label
+    if media_type:
+        params["media_type"] = media_type
+    if created_since:
+        params["q"] = f"creation_time>={created_since}"
 
     logger.info(
         f"Starting resync for Harbor artifacts with params: {params}")
     
-    # First, fetch all repositories to know which artifacts to query
-    repositories = []
+    # Use a semaphore to limit concurrent artifact fetching per repository batch
+    # This prevents overwhelming the API while still allowing concurrency
+    semaphore = asyncio.Semaphore(10)  # Match MAX_CONCURRENT_REQUESTS from client
+    
+    # Process repositories as they stream in batches
     async for repositories_batch in client.get_repositories(params={}):
-        repositories.extend(repositories_batch)
-    
-    logger.info(f"Found {len(repositories)} repositories to fetch artifacts from")
-    
-    # Now fetch artifacts for each repository
-    for repository in repositories:
-        # The repository name is in format "project_name/repository_name"
-        repo_name = repository.get("name", "")
-        
-        try:
-            # Split the repository name to get project and repo
-            project_name, repository_name = split_repository_name(repo_name)
-        except ValueError as e:
-            logger.warning(f"Skipping repository due to invalid name: {str(e)}")
+        if not repositories_batch:
             continue
+            
+        logger.info(
+            f"Processing batch of {len(repositories_batch)} repositories for artifacts"
+        )
         
-        logger.info(f"Fetching artifacts for repository: {repo_name}")
-        
-        try:
-            async for artifacts_batch in client.get_artifacts_for_repository(
-                project_name=project_name,
-                repository_name=repository_name,
-                params=params,
-            ):
-                if artifacts_batch:
-                    logger.info(
-                        f"Received {len(artifacts_batch)} artifacts from {repo_name}"
+        # Create async iterator tasks for each repository in the batch
+        tasks = []
+        for repository in repositories_batch:
+            repo_name = repository.get("name", "")
+            
+            try:
+                # Split the repository name to get project and repo
+                project_name, repository_name = split_repository_name(repo_name)
+            except ValueError as e:
+                logger.warning(f"Skipping repository due to invalid name: {str(e)}")
+                continue
+            
+            # Create an async iterator function for this repository
+            # Capture variables in closure to avoid issues with loop variable capture
+            async def create_artifact_iterator(
+                proj_name: str, repo_name: str, repo_full_name: str
+            ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+                """Helper function to fetch artifacts for a single repository."""
+                try:
+                    logger.debug(f"Fetching artifacts for repository: {repo_full_name}")
+                    async for artifacts_batch in client.get_artifacts_for_repository(
+                        project_name=proj_name,
+                        repository_name=repo_name,
+                        params=params,
+                    ):
+                        if artifacts_batch:
+                            logger.debug(
+                                f"Received {len(artifacts_batch)} artifacts from {repo_full_name}"
+                            )
+                            yield artifacts_batch
+                except Exception as e:
+                    logger.error(
+                        f"Failed to fetch artifacts for repository {repo_full_name}: {str(e)}"
                     )
-                    yield artifacts_batch
-                    
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch artifacts for repository {repo_name}: {str(e)}"
+                    # Don't re-raise - just skip this repository
+                    return
+            
+            # Wrap the async iterator with semaphore for concurrency control
+            # Use lambda with default arguments to properly capture closure variables
+            tasks.append(
+                semaphore_async_iterator(
+                    semaphore,
+                    lambda p=project_name, r=repository_name, n=repo_name: create_artifact_iterator(p, r, n),
+                )
             )
-            continue
+        
+        # Stream artifacts from all repositories concurrently as they become available
+        if tasks:
+            async for artifacts_batch in stream_async_iterators_tasks(*tasks):
+                yield artifacts_batch
 
 
 @ocean.on_resync(Kinds.USER)
@@ -169,7 +208,7 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     Yields:
         Batches of user dictionaries
     """
-    client = create_harbor_client()
+    client = get_harbor_client()
     
     # Fetch users from Harbor API
     async for users_batch in client.get_users(params={}):

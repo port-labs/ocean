@@ -27,7 +27,7 @@ class ProjectResourceConfig(ResourceConfig):
     """Resource configuration for Harbor projects."""
     
     selector: ProjectSelector
-    kind: Literal["/projects"]
+    kind: Literal["projects"]
 
 
 class ArtifactSelector(Selector):
@@ -64,7 +64,7 @@ class ArtifactResourceConfig(ResourceConfig):
     """Resource configuration for Harbor artifacts."""
     
     selector: ArtifactSelector
-    kind: Literal["/artifacts"]
+    kind: Literal["artifacts"]
 
 
 class HarborPortAppConfig(PortAppConfig):

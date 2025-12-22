@@ -1,6 +1,6 @@
 resources:
   # First resource: projects
-  - kind: /projects
+  - kind: projects
     selector:
       query: 'true'
     port:
@@ -20,7 +20,7 @@ resources:
             updated_at: .update_time
 
   # Second resource: repositories
-  - kind: /repositories
+  - kind: repositories
     selector:
       query: 'true'
     port:
@@ -41,7 +41,7 @@ resources:
             project: .project_id | tostring
 
   # Third resource: artifacts
-  - kind: /artifacts
+  - kind: artifacts
     selector:
       query: 'true'
     port:
@@ -69,7 +69,7 @@ resources:
             repository: .repository_id | tostring
 
   # Fourth resource: users
-  - kind: /users
+  - kind: users
     selector:
       query: 'true'
     port:

@@ -3,13 +3,16 @@ from typing import Optional
 from harbor.client import HarborClient
 from port_ocean.context.ocean import ocean
 
+# Module-level singleton client instance
+_harbor_client: Optional[HarborClient] = None
 
-def create_harbor_client() -> HarborClient:
+
+def _create_harbor_client() -> HarborClient:
     """
-    Create and return a Harbor client instance with configuration from ocean.
+    Create a new Harbor client instance with configuration from ocean.
     
-    This factory function centralizes client creation logic and handles
-    authentication based on the configured auth type.
+    This is an internal function that creates a new client instance.
+    Use get_harbor_client() to get the singleton instance.
     
     Returns:
         HarborClient: Configured Harbor API client
@@ -32,4 +35,44 @@ def create_harbor_client() -> HarborClient:
         username=username,
         password=password,
     )
+
+
+def get_harbor_client() -> HarborClient:
+    """
+    Get or create the singleton Harbor client instance.
+    
+    This function implements a singleton pattern to ensure only one
+    HarborClient instance exists per integration instance. The client
+    is created on first access and reused for subsequent calls.
+    
+    This prevents:
+    - Race conditions from concurrent handler execution
+    - Unnecessary object creation overhead
+    - Configuration conflicts from multiple client instances
+    
+    Returns:
+        HarborClient: The singleton Harbor API client instance
+    """
+    global _harbor_client
+    
+    if _harbor_client is None:
+        _harbor_client = _create_harbor_client()
+    
+    return _harbor_client
+
+
+def reset_harbor_client() -> None:
+    """
+    Reset the singleton client instance.
+    
+    This is primarily useful for testing or when configuration changes
+    require a new client instance. The next call to get_harbor_client()
+    will create a new client with the updated configuration.
+    """
+    global _harbor_client
+    _harbor_client = None
+
+
+# Backward compatibility alias
+create_harbor_client = get_harbor_client
 
