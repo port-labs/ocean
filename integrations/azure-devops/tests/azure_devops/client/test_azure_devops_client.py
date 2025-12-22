@@ -1598,12 +1598,16 @@ async def test_get_boards_skips_team_on_500_error(
             board["__enriched"] = True
         return boards
 
-    with patch.object(
-        mock_azure_client, "_get_paginated_by_top_and_skip", side_effect=mock_paginated_teams
-    ), patch.object(
-        mock_azure_client, "send_request", side_effect=mock_send_request
-    ), patch.object(
-        mock_azure_client, "_enrich_boards", side_effect=mock_enrich_boards
+    with (
+        patch.object(
+            mock_azure_client,
+            "_get_paginated_by_top_and_skip",
+            side_effect=mock_paginated_teams,
+        ),
+        patch.object(mock_azure_client, "send_request", side_effect=mock_send_request),
+        patch.object(
+            mock_azure_client, "_enrich_boards", side_effect=mock_enrich_boards
+        ),
     ):
         all_boards = []
         async for boards_batch in mock_azure_client._get_boards(project_id):
