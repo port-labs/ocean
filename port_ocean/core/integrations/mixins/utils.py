@@ -10,7 +10,6 @@ from port_ocean.clients.port.utils import _http_client as _port_http_client
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers import JQEntityProcessor
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
@@ -26,11 +25,10 @@ from port_ocean.exceptions.core import (
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
 from port_ocean.utils.async_http import _http_client
 
-def extract_jq_deletion_path_revised(jq_expression: str) -> str:
+def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
     """
     Revised function to extract a simple path suitable for del() by analyzing pipe segments.
     """
-    default_path = '.'
     expr = jq_expression.strip()
 
     # 1. Handle surrounding parentheses and extract the main chain
@@ -39,7 +37,7 @@ def extract_jq_deletion_path_revised(jq_expression: str) -> str:
         if match_paren:
             chain = match_paren.group(1).strip()
         else:
-            return default_path
+            return None
     else:
         chain = expr
 
@@ -81,7 +79,7 @@ def extract_jq_deletion_path_revised(jq_expression: str) -> str:
             return path
 
     # Default case: No suitable path found after checking all segments
-    return default_path
+    return None
 
 @contextmanager
 def resync_error_handling() -> Generator[None, None, None]:
@@ -106,18 +104,16 @@ async def resync_function_wrapper(
         results = await fn(kind)
         return validate_result(results)
 
-async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, items_to_parse: str) -> AsyncGenerator[list[dict[str, Any]], None]:
-    delete_target = extract_jq_deletion_path_revised(items_to_parse)
+async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, items_to_parse: str | None = None) -> AsyncGenerator[list[dict[str, Any]], None]:
+    delete_target = extract_jq_deletion_path_revised(items_to_parse) or '.'
     jq_expression = f". | del({delete_target})"
     batch_size = ocean.config.yield_items_to_parse_batch_size
 
-    batch: list[dict[str, Any]] = []
     while len(result) > 0:
         item = result.pop(0)
         entity_processor = cast(JQEntityProcessor, ocean.app.integration.entity_processor)
         items_to_parse_data =  await entity_processor._search(item, items_to_parse)
-        resource_config = cast(ResourceConfig, event.resource_config)
-        if resource_config and resource_config.port.items_to_parse_top_level_transform:
+        if event.resource_config.port.items_to_parse_top_level_transform:
             item = await entity_processor._search(item, jq_expression)
         if not isinstance(items_to_parse_data, list):
             logger.warning(
@@ -125,6 +121,7 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
                 f" Skipping..."
             )
             continue
+        batch = []
         while len(items_to_parse_data) > 0:
             if (len(batch) >= batch_size):
                 yield batch
@@ -132,8 +129,8 @@ async def handle_items_to_parse(result: RAW_RESULT, items_to_parse_name: str, it
             merged_item = {**item}
             merged_item[items_to_parse_name] = items_to_parse_data.pop(0)
             batch.append(merged_item)
-    if len(batch) > 0:
-        yield batch
+        if len(batch) > 0:
+            yield batch
 
 async def resync_generator_wrapper(
     fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str, items_to_parse_name: str, items_to_parse: str | None = None
@@ -145,6 +142,7 @@ async def resync_generator_wrapper(
             try:
                 with resync_error_handling():
                     result = validate_result(await anext(generator))
+
                     if items_to_parse:
                         items_to_parse_generator = handle_items_to_parse(result, items_to_parse_name, items_to_parse)
                         del result
@@ -180,7 +178,7 @@ def unsupported_kind_response(
     return [], [KindNotImplementedException(kind, available_resync_kinds)]
 
 class ProcessWrapper(multiprocessing.Process):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     async def join_async(self) -> None:
