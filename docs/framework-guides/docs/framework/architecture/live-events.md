@@ -7,7 +7,7 @@ description: How Ocean processes live events from third-party systems
 
 # 🪝 Live Events Processing Architecture
 
-Ocean processes live events from third-party systems (delivered via webhooks) to provide real-time updates to Port.
+Ocean processes live events from third-party systems (delivered via HTTP webhooks) to provide real-time updates to Port.
 
 :::note Terminology
 Live events are delivered to Ocean via HTTP webhooks (POST requests). While we use "live events" in documentation, the technical implementation uses webhooks as the transport mechanism.

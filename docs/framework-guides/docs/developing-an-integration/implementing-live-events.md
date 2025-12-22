@@ -14,7 +14,8 @@ Live events are a crucial part of any integration, allowing real-time updates fr
 - **Return** updated or deleted data to Port
 
 :::note Terminology
-While we use "live events" in documentation, the underlying implementation uses webhooks (HTTP POST requests). The code still references "webhook" in class names and modules (e.g., `AbstractWebhookProcessor`, `WebhookEvent`) for technical accuracy.
+While we use "live events" in documentation, the underlying implementation uses [webhooks](https://www.redhat.com/en/topics/automation/what-is-a-webhook)
+ (HTTP POST requests). The code still references "webhook" in class names and modules (e.g., `AbstractWebhookProcessor`, `WebhookEvent`) for technical accuracy.
 :::
 
 You already have `AbstractWebhookProcessor` from the `port_ocean.core.handlers.webhook.abstract_webhook_processor` module. This base class defines the main interface your processors must implement.
