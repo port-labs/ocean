@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jenkins"
-version = "0.2.35"
+version = "0.2.36"
 description = "Jenkins Integration to Port Ocean"
 authors = ["Albert Luganga <ahosea15@gmail.com>"]
 
