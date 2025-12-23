@@ -117,10 +117,9 @@ jobs:
           set +e  # Don't exit on individual command failures
           IMAGE="ghcr.io/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}:${{ steps.prepare_tags.outputs.version }}"
           MANIFEST=$(docker buildx imagetools inspect "${IMAGE}" --raw)
-
-          if [[ -z "${MANIFEST}" ]]; then
+          if [[ $? -ne 0 ]]; then
             echo "⚠️ Failed to get manifest for ${IMAGE}"
-            exit 0
+            continue
           fi
 
           for arch in amd64 arm64; do
