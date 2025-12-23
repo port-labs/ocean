@@ -353,7 +353,7 @@ async def test_work_item_handle_event_missing_project_id(
         "eventType": WorkItemEvents.WORK_ITEM_CREATED,
         "publisherId": "tfs",
         "resource": {"id": 123},
-        "resourceContainers": {"project": {"id": None}}
+        "resourceContainers": {"project": {"id": None}},
     }
     resource_config = MagicMock()
 
