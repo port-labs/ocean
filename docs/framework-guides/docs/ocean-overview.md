@@ -91,7 +91,7 @@ Integrations powered by the Ocean framework support two methods to get the desir
 <br/>
 <br/>
 
-**Real-time updates mode** - (optional) as the integration runs, it can listen to webhook events sent by the 3rd-party system and send the results to Port in real-time:
+**Real-time updates mode** - (optional) as the integration runs, it can listen to live events sent by the 3rd-party system (via webhooks) and send the results to Port in real-time:
 
 <OceanRealTimeArchSvg/>
 
