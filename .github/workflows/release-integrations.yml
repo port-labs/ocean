@@ -114,8 +114,14 @@ jobs:
         continue-on-error: true
         id: image_size
         run: |
+          set +e  # Don't exit on individual command failures
           IMAGE="ghcr.io/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}:${{ steps.prepare_tags.outputs.version }}"
           MANIFEST=$(docker buildx imagetools inspect "${IMAGE}" --raw)
+
+          if [[ -z "${MANIFEST}" ]]; then
+            echo "⚠️ Failed to get manifest for ${IMAGE}"
+            exit 0
+          fi
 
           for arch in amd64 arm64; do
             DIGEST=$(echo "${MANIFEST}" | jq -r ".manifests[] | select(.platform.architecture==\"${arch}\") | .digest")
