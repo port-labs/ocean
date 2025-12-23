@@ -21,18 +21,30 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         if not await super().validate_payload(payload):
             return False
 
-        event_type = payload.get("eventType", "")
-        resource = payload.get("resource", {})
+        event_type = payload["eventType"]
+        resource = payload["resource"]
 
         # For build events, validate build resource structure
         if event_type == PipelineEvents.BUILD_COMPLETED:
-            return bool(resource.get("id") and resource.get("definition"))
+            build_id = resource.get("id")
+            definition = resource.get("definition", {})
+            if not build_id or not definition:
+                return False
+            # Validate project and pipeline_id are present
+            project = resource.get("project", {})
+            project_id = project.get("id")
+            pipeline_id = definition.get("id")
+            return project_id is not None and pipeline_id is not None
 
         # For push events, validate repository structure
         if event_type == PushEvents.PUSH:
             repository = resource.get("repository", {})
             ref_updates = resource.get("refUpdates")
-            return bool(repository.get("id") and repository.get("name") and ref_updates)
+            repo_id = repository.get("id")
+            repo_name = repository.get("name")
+            project = repository.get("project", {})
+            project_id = project.get("id")
+            return bool(repo_id and repo_name and ref_updates and project_id)
 
         return False
 
@@ -44,7 +56,7 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             if event_type == PushEvents.PUSH:
                 return await self._has_pipeline_yaml_changes(event.payload)
             return False
-        except ValueError:
+        except (KeyError, ValueError):
             return False
 
     async def _has_pipeline_yaml_changes(self, payload: EventPayload) -> bool:
@@ -113,38 +125,20 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         client = AzureDevopsClient.create_from_ocean_config()
-        event_type = payload.get("eventType", "")
+        event_type = payload["eventType"]
         resource = payload["resource"]
         if event_type == PushEvents.PUSH:
             return await self._handle_pipeline_yaml_change_event(
                 payload, resource_config, client
             )
 
-        build_id = resource.get("id")
-        definition = resource.get("definition", {})
-
-        if not build_id or not definition:
-            logger.warning(
-                f"Pipeline webhook payload missing required fields: build_id={build_id}, definition={definition}"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
         try:
             # Extract project and pipeline information from the build resource
-            project = resource.get("project", {})
-            project_id = project.get("id")
-            definition = resource.get("definition", {})
-            pipeline_id = definition.get("id")
 
-            if not project_id or not pipeline_id:
-                logger.warning(
-                    f"Missing project_id or pipeline_id in webhook payload: project_id={project_id}, pipeline_id={pipeline_id}"
-                )
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[]
-                )
+            project = resource["project"]
+            project_id = project["id"]
+            definition = resource["definition"]
+            pipeline_id = definition["id"]
 
             # Try to fetch the pipeline using the pipelines API (for YAML pipelines)
             pipeline_url = f"{client._organization_base_url}/{project_id}/_apis/pipelines/{pipeline_id}"
@@ -170,8 +164,6 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                     updated_raw_results=[pipeline_response], deleted_raw_results=[]
                 )
 
-            # If pipelines API fails, try build definitions API (for classic builds)
-            # Note: This converts classic build definitions to pipeline format
             logger.debug(
                 f"Pipeline not found via pipelines API, trying build definitions API for definition {pipeline_id}"
             )
@@ -226,21 +218,13 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         """Handle push events that contain pipeline YAML file changes."""
         try:
             resource = payload["resource"]
-            repository = resource.get("repository", {})
-            repo_id = repository.get("id")
-            project = repository.get("project", {})
-            project_id = project.get("id")
-
-            if not repo_id or not project_id:
-                logger.warning(
-                    f"Missing repository or project info: repo_id={repo_id}, project_id={project_id}"
-                )
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[]
-                )
+            repository = resource["repository"]
+            repo_id = repository["id"]
+            project = repository["project"]
+            project_id = project["id"]
 
             logger.info(
-                f"Processing pipeline YAML change for repository {repository.get('name')} in project {project_id}"
+                f"Processing pipeline YAML change for repository {repository['name']} in project {project_id}"
             )
 
             # Fetch all pipelines for the project
@@ -309,7 +293,7 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
             if updated_pipelines:
                 logger.info(
-                    f"Found {len(updated_pipelines)} pipeline(s) to update for repository {repository.get('name')}"
+                    f"Found {len(updated_pipelines)} pipeline(s) to update for repository {repository['name']}"
                 )
 
             return WebhookEventRawResults(

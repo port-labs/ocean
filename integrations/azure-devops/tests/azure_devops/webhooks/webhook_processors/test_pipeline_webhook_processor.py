@@ -45,7 +45,11 @@ async def test_pipeline_validate_payload_build_completed(
     valid_payload = {
         "eventType": PipelineEvents.BUILD_COMPLETED,
         "publisherId": "tfs",
-        "resource": {"id": 123, "definition": {"id": 456, "name": "Test Pipeline"}},
+        "resource": {
+            "id": 123,
+            "definition": {"id": 456, "name": "Test Pipeline"},
+            "project": {"id": "project-123"},
+        },
     }
     assert await pipeline_processor.validate_payload(valid_payload) is True
 
@@ -66,7 +70,11 @@ async def test_pipeline_validate_payload_push(
         "eventType": PushEvents.PUSH,
         "publisherId": "tfs",
         "resource": {
-            "repository": {"id": "repo-123", "name": "test-repo"},
+            "repository": {
+                "id": "repo-123",
+                "name": "test-repo",
+                "project": {"id": "project-123"},
+            },
             "refUpdates": [{"name": "refs/heads/main"}],
         },
     }
