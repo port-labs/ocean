@@ -825,7 +825,11 @@ class AzureDevopsClient(HTTPBaseClient):
                     response = await self.send_request("GET", get_boards_url)
                     if not response:
                         continue
+
                     board_data = response.json().get("value", [])
+                    if not board_data:
+                        continue
+
                     logger.info(
                         f"Found {len(board_data)} boards for project {project_id}"
                     )
