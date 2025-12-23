@@ -36,27 +36,14 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         event_type = payload["eventType"]
         resource = payload["resource"]
 
-        # For build events, validate build resource structure
+        # For build events, validate essential fields needed to fetch pipeline
         if event_type == PipelineEvents.BUILD_COMPLETED:
-            build_id = resource.get("id")
-            definition = resource.get("definition", {})
-            if not build_id or not definition:
-                return False
-            # Validate project and pipeline_id are present
-            project = resource.get("project", {})
-            project_id = project.get("id")
-            pipeline_id = definition.get("id")
-            return project_id is not None and pipeline_id is not None
+            return bool(resource.get("id") and resource.get("definition"))
 
-        # For push events, validate repository structure
+        # For push events, validate essential fields needed to check for YAML changes
         if event_type == PushEvents.PUSH:
             repository = resource.get("repository", {})
-            ref_updates = resource.get("refUpdates")
-            repo_id = repository.get("id")
-            repo_name = repository.get("name")
-            project = repository.get("project", {})
-            project_id = project.get("id")
-            return bool(repo_id and repo_name and ref_updates and project_id)
+            return bool(repository.get("id") and resource.get("refUpdates"))
 
         return False
 
