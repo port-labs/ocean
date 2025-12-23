@@ -124,10 +124,6 @@ jobs:
               echo "⚠️ Failed to get digest for ${arch}"
               continue
             fi
-            if [[ "${DIGEST}" == "sha256:"* ]]; then
-              DIGEST="${DIGEST#sha256:}"
-            fi
-
             echo "📦 ${arch} digest: ${DIGEST}"
 
             LAYER_MANIFEST=$(docker buildx imagetools inspect "${IMAGE}@${DIGEST}" --raw)
