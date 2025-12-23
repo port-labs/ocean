@@ -1,3 +1,5 @@
+from typing import Any
+
 from loguru import logger
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.webhooks.webhook_processors.base_processor import (
@@ -11,6 +13,16 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from azure_devops.misc import Kind
 from azure_devops.webhooks.events import PipelineEvents, PushEvents
+from integration import AzureDevopsPipelineResourceConfig
+
+# Common pipeline YAML file patterns to detect pipeline definition changes
+PIPELINE_YAML_PATTERNS = [
+    "azure-pipelines.yml",
+    "azure-pipelines.yaml",
+    ".azure-pipelines/",
+    "**/*azure-pipelines*.yml",
+    "**/*azure-pipelines*.yaml",
+]
 
 
 class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
@@ -68,15 +80,6 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             if not ref_updates:
                 return False
 
-            # Common pipeline YAML file patterns
-            pipeline_patterns = [
-                "azure-pipelines.yml",
-                "azure-pipelines.yaml",
-                ".azure-pipelines/",
-                "**/*azure-pipelines*.yml",
-                "**/*azure-pipelines*.yaml",
-            ]
-
             client = AzureDevopsClient.create_from_ocean_config()
             repository = resource.get("repository", {})
             repo_id = repository.get("id")
@@ -84,6 +87,9 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             project_id = project.get("id")
 
             if not repo_id or not project_id:
+                logger.debug(
+                    f"Missing repository or project info: repo_id={repo_id}, project_id={project_id}"
+                )
                 return False
 
             # Check each ref update for pipeline YAML changes
@@ -106,19 +112,24 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                         # Check if any changed file matches pipeline YAML patterns
                         if any(
                             pattern.lower() in file_path or file_path.endswith(pattern)
-                            for pattern in pipeline_patterns
+                            for pattern in PIPELINE_YAML_PATTERNS
                         ):
                             logger.info(
-                                f"Detected pipeline YAML file change: {file_path}"
+                                f"Detected pipeline YAML file change: {file_path} in repository {repo_id}"
                             )
                             return True
-                except Exception as e:
-                    logger.debug(f"Error checking commit changes: {e}")
+                except (KeyError, ValueError) as e:
+                    logger.debug(
+                        f"Error checking commit changes for commit {commit_id}: {e}"
+                    )
                     continue
 
             return False
-        except Exception as e:
-            logger.error(f"Error checking for pipeline YAML changes: {e}")
+        except (KeyError, ValueError) as e:
+            logger.error(
+                f"Error checking for pipeline YAML changes in payload: {e}",
+                exc_info=True,
+            )
             return False
 
     async def handle_event(
@@ -133,33 +144,20 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             )
 
         try:
-            # Extract project and pipeline information from the build resource
-
             project = resource["project"]
             project_id = project["id"]
             definition = resource["definition"]
             pipeline_id = definition["id"]
 
             # Try to fetch the pipeline using the pipelines API (for YAML pipelines)
-            pipeline_url = f"{client._organization_base_url}/{project_id}/_apis/pipelines/{pipeline_id}"
-            pipeline_response_obj = await client.send_request("GET", pipeline_url)
-
-            if pipeline_response_obj:
-                pipeline_response = pipeline_response_obj.json()
-                # Add project context to pipeline
+            pipeline_response = await self._fetch_pipeline_from_pipelines_api(
+                client, project_id, pipeline_id
+            )
+            if pipeline_response:
                 pipeline_response["__projectId"] = project_id
-
-                # If the resource config includes repository enrichment, fetch it
-                from integration import AzureDevopsPipelineResourceConfig
-
-                if isinstance(resource_config, AzureDevopsPipelineResourceConfig):
-                    if resource_config.selector.include_repo:
-                        pipelines = await client.enrich_pipelines_with_repository(
-                            [pipeline_response]
-                        )
-                        if pipelines:
-                            pipeline_response = pipelines[0]
-
+                pipeline_response = await self._enrich_pipeline_with_repository(
+                    client, resource_config, pipeline_response
+                )
                 return WebhookEventRawResults(
                     updated_raw_results=[pipeline_response], deleted_raw_results=[]
                 )
@@ -167,31 +165,13 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             logger.debug(
                 f"Pipeline not found via pipelines API, trying build definitions API for definition {pipeline_id}"
             )
-            build_def_url = f"{client._organization_base_url}/{project_id}/_apis/build/definitions/{pipeline_id}"
-            build_def_response_obj = await client.send_request("GET", build_def_url)
-
-            if build_def_response_obj:
-                build_definition = build_def_response_obj.json()
-                # Convert build definition to pipeline format
-                pipeline_response = {
-                    "id": str(build_definition.get("id", pipeline_id)),
-                    "name": build_definition.get(
-                        "name", definition.get("name", "Unknown Pipeline")
-                    ),
-                    "__projectId": project_id,
-                }
-
-                # If the resource config includes repository enrichment, fetch it
-                from integration import AzureDevopsPipelineResourceConfig
-
-                if isinstance(resource_config, AzureDevopsPipelineResourceConfig):
-                    if resource_config.selector.include_repo:
-                        pipelines = await client.enrich_pipelines_with_repository(
-                            [pipeline_response]
-                        )
-                        if pipelines:
-                            pipeline_response = pipelines[0]
-
+            pipeline_response = await self._fetch_pipeline_from_build_definitions_api(
+                client, project_id, pipeline_id, definition
+            )
+            if pipeline_response:
+                pipeline_response = await self._enrich_pipeline_with_repository(
+                    client, resource_config, pipeline_response
+                )
                 return WebhookEventRawResults(
                     updated_raw_results=[pipeline_response], deleted_raw_results=[]
                 )
@@ -203,11 +183,71 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        except Exception as e:
-            logger.error(f"Error processing pipeline webhook event: {e}")
+        except (KeyError, ValueError) as e:
+            logger.error(
+                f"Error processing pipeline webhook event: {e}",
+                exc_info=True,
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
+        except Exception as e:
+            logger.error(
+                f"Unexpected error processing pipeline webhook event: {e}",
+                exc_info=True,
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+    async def _fetch_pipeline_from_pipelines_api(
+        self, client: AzureDevopsClient, project_id: str, pipeline_id: int
+    ) -> dict[str, Any] | None:
+        """Fetch pipeline from Azure DevOps Pipelines API."""
+        pipeline_url = f"{client._organization_base_url}/{project_id}/_apis/pipelines/{pipeline_id}"
+        pipeline_response_obj = await client.send_request("GET", pipeline_url)
+        if pipeline_response_obj:
+            return pipeline_response_obj.json()
+        return None
+
+    async def _fetch_pipeline_from_build_definitions_api(
+        self,
+        client: AzureDevopsClient,
+        project_id: str,
+        pipeline_id: int,
+        definition: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """Fetch pipeline from Azure DevOps Build Definitions API."""
+        build_def_url = f"{client._organization_base_url}/{project_id}/_apis/build/definitions/{pipeline_id}"
+        build_def_response_obj = await client.send_request("GET", build_def_url)
+        if build_def_response_obj:
+            build_definition = build_def_response_obj.json()
+            return {
+                "id": str(build_definition.get("id", pipeline_id)),
+                "name": build_definition.get(
+                    "name", definition.get("name", "Unknown Pipeline")
+                ),
+                "__projectId": project_id,
+            }
+        return None
+
+    async def _enrich_pipeline_with_repository(
+        self,
+        client: AzureDevopsClient,
+        resource_config: ResourceConfig,
+        pipeline_response: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Enrich pipeline with repository information if configured."""
+        if (
+            isinstance(resource_config, AzureDevopsPipelineResourceConfig)
+            and resource_config.selector.include_repo
+        ):
+            pipelines = await client.enrich_pipelines_with_repository(
+                [pipeline_response]
+            )
+            if pipelines:
+                return pipelines[0]
+        return pipeline_response
 
     async def _handle_pipeline_yaml_change_event(
         self,
@@ -227,69 +267,28 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 f"Processing pipeline YAML change for repository {repository['name']} in project {project_id}"
             )
 
-            # Fetch all pipelines for the project
-            pipelines_url = (
-                f"{client._organization_base_url}/{project_id}/_apis/pipelines"
-            )
-            pipelines_response = await client.send_request("GET", pipelines_url)
-
-            if not pipelines_response:
-                logger.warning(f"Could not fetch pipelines for project {project_id}")
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[]
-                )
-
-            pipelines_data = pipelines_response.json()
-            pipelines = pipelines_data.get("value", [])
-
+            # Fetch pipelines for the project
+            pipelines = await self._fetch_pipelines_for_project(client, project_id)
             if not pipelines:
-                logger.info(f"No pipelines found for project {project_id}")
                 return WebhookEventRawResults(
                     updated_raw_results=[], deleted_raw_results=[]
                 )
 
-            # Filter pipelines that are associated with this repository
-            updated_pipelines = []
-            for pipeline in pipelines:
-                # Check if pipeline is linked to the repository
-                # For YAML pipelines, check repository property
-                pipeline_repo = pipeline.get("repository", {})
-                if pipeline_repo.get("id") == repo_id:
-                    pipeline["__projectId"] = project_id
-                    updated_pipelines.append(pipeline)
+            # Filter pipelines by repository
+            updated_pipelines = self._filter_pipelines_by_repository(
+                pipelines, repo_id, project_id
+            )
 
-            # If no direct repository link, try to get pipelines via build definitions
+            # If no direct repository link, try build definitions
             if not updated_pipelines:
-                logger.debug(
-                    f"No pipelines directly linked to repository {repo_id}, checking build definitions"
+                updated_pipelines = await self._fetch_build_definitions_by_repository(
+                    client, project_id, repo_id
                 )
-                # Fetch build definitions that might be linked to this repository
-                build_defs_url = f"{client._organization_base_url}/{project_id}/_apis/build/definitions"
-                build_defs_response = await client.send_request("GET", build_defs_url)
-
-                if build_defs_response:
-                    build_defs_data = build_defs_response.json()
-                    build_defs = build_defs_data.get("value", [])
-
-                    for build_def in build_defs:
-                        build_def_repo = build_def.get("repository", {})
-                        if build_def_repo.get("id") == repo_id:
-                            # Convert build definition to pipeline format
-                            pipeline_response = {
-                                "id": str(build_def.get("id", "")),
-                                "name": build_def.get("name", "Unknown Pipeline"),
-                                "__projectId": project_id,
-                            }
-                            updated_pipelines.append(pipeline_response)
 
             # Enrich pipelines with repository if configured
-            from integration import AzureDevopsPipelineResourceConfig
-
-            if isinstance(resource_config, AzureDevopsPipelineResourceConfig):
-                if resource_config.selector.include_repo:
-                    updated_pipelines = await client.enrich_pipelines_with_repository(
-                        updated_pipelines
-                    )
+            updated_pipelines = await self._enrich_pipelines_with_repository(
+                client, resource_config, updated_pipelines
+            )
 
             if updated_pipelines:
                 logger.info(
@@ -300,8 +299,77 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 updated_raw_results=updated_pipelines, deleted_raw_results=[]
             )
 
-        except Exception as e:
-            logger.error(f"Error processing pipeline YAML change event: {e}")
+        except (KeyError, ValueError) as e:
+            logger.error(
+                f"Error processing pipeline YAML change event: {e}", exc_info=True
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
+
+    async def _fetch_pipelines_for_project(
+        self, client: AzureDevopsClient, project_id: str
+    ) -> list[dict[str, Any]]:
+        """Fetch all pipelines for a project."""
+        pipelines_url = f"{client._organization_base_url}/{project_id}/_apis/pipelines"
+        pipelines_response = await client.send_request("GET", pipelines_url)
+
+        if (
+            not pipelines_response
+            or (pipelines := pipelines_response.json().get("value")) is None
+        ):
+            logger.info(f"No pipelines found for project {project_id}")
+            return []
+        return pipelines
+
+    def _filter_pipelines_by_repository(
+        self, pipelines: list[dict[str, Any]], repo_id: str, project_id: str
+    ) -> list[dict[str, Any]]:
+        """Filter pipelines that are associated with a repository."""
+        updated_pipelines = []
+        for pipeline in pipelines:
+            pipeline_repo = pipeline.get("repository", {})
+            if pipeline_repo.get("id") == repo_id:
+                pipeline["__projectId"] = project_id
+                updated_pipelines.append(pipeline)
+        return updated_pipelines
+
+    async def _fetch_build_definitions_by_repository(
+        self, client: AzureDevopsClient, project_id: str, repo_id: str
+    ) -> list[dict[str, Any]]:
+        """Fetch build definitions linked to a repository."""
+        logger.debug(
+            f"No pipelines directly linked to repository {repo_id}, checking build definitions"
+        )
+        build_defs_url = (
+            f"{client._organization_base_url}/{project_id}/_apis/build/definitions"
+        )
+        build_defs_response = await client.send_request("GET", build_defs_url)
+
+        if not build_defs_response:
+            return []
+
+        build_defs = build_defs_response.json().get("value", [])
+        return [
+            {
+                "id": str(build_def.get("id", "")),
+                "name": build_def.get("name", "Unknown Pipeline"),
+                "__projectId": project_id,
+            }
+            for build_def in build_defs
+            if build_def.get("repository", {}).get("id") == repo_id
+        ]
+
+    async def _enrich_pipelines_with_repository(
+        self,
+        client: AzureDevopsClient,
+        resource_config: ResourceConfig,
+        pipelines: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Enrich pipelines with repository information if configured."""
+        if (
+            isinstance(resource_config, AzureDevopsPipelineResourceConfig)
+            and resource_config.selector.include_repo
+        ):
+            return await client.enrich_pipelines_with_repository(pipelines)
+        return pipelines
