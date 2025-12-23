@@ -9,7 +9,6 @@ from azure_devops.webhooks.webhook_processors.pipeline_webhook_processor import 
 )
 from azure_devops.webhooks.events import PipelineEvents, PushEvents
 from azure_devops.misc import Kind
-from integration import AzureDevopsPipelineResourceConfig
 
 
 @pytest.fixture
@@ -280,7 +279,7 @@ async def test_pipeline_handle_event_build_completed_with_repo_enrichment(
 
     original_isinstance = builtins.isinstance
 
-    def mock_isinstance(obj, cls):
+    def mock_isinstance(obj: object, cls: type | tuple[type, ...]) -> bool:
         if (
             hasattr(cls, "__name__")
             and cls.__name__ == "AzureDevopsPipelineResourceConfig"
