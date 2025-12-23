@@ -4,7 +4,6 @@ import json
 from collections import defaultdict
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError, ReadTimeout
-import httpx
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -832,13 +831,15 @@ class AzureDevopsClient(HTTPBaseClient):
                     )
                     yield await self._enrich_boards(board_data, project_id, team["id"])
 
-                except httpx.HTTPStatusError as e:
+                except HTTPStatusError as e:
                     # Azure Devops API throws 500 errors when you try to fetch boards for teams that
                     # are not in a sprint iteration. We should skip those.
                     if e.response.status_code == 500:
+                        logger.warning(
+                            f"Fetching board for team {team['id']} failed - possibly due to not being assigned to an iteration."  # AI! improve this logging message
+                        )
                         continue
-                    else:
-                        raise
+                    raise
 
     @cache_iterator_result()
     async def get_boards_in_organization(
