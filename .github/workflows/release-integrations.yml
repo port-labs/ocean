@@ -124,7 +124,15 @@ jobs:
               exit 1
             fi
 
-            SIZE=$(docker images "${IMAGE}" --format '{{.Size}}')
+            SIZE=$(docker images "${IMAGE}" --format '{{.VirtualSize}}' | \
+              awk '{
+                val = $0
+                gsub(/[^0-9.]/,"",val)
+                if ($0 ~ /GB/) print int(val * 1073741824)
+                else if ($0 ~ /MB/) print int(val * 1048576)
+                else if ($0 ~ /KB/) print int(val * 1024)
+                else print int(val)
+              }')
             if [[ -z "${SIZE}" ]]; then
               echo "⚠️ Failed to get size for ${arch}"
               exit 1
