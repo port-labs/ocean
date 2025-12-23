@@ -125,7 +125,7 @@ jobs:
             fi
 
             SIZE=$(docker images "${IMAGE}" --format '{{.VirtualSize}}' | \
-              awk '{
+              awk 'BEGIN{IGNORECASE=1} {
                 val = $0
                 gsub(/[^0-9.]/,"",val)
                 if ($0 ~ /GB/) print int(val * 1073741824)
