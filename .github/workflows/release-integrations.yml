@@ -119,6 +119,15 @@ jobs:
 
           for arch in amd64 arm64; do
             DIGEST=$(echo "${MANIFEST}" | jq -r ".manifests[] | select(.platform.architecture==\"${arch}\") | .digest")
+
+            if [[ -z "${DIGEST}" || "${DIGEST}" == "null" ]]; then
+              echo "⚠️ Failed to get digest for ${arch}"
+              continue
+            fi
+            if [[ "${DIGEST}" == "sha256:"* ]]; then
+              DIGEST="${DIGEST#sha256:}"
+            fi
+
             echo "📦 ${arch} digest: ${DIGEST}"
 
             LAYER_MANIFEST=$(docker buildx imagetools inspect "${IMAGE}@${DIGEST}" --raw)
