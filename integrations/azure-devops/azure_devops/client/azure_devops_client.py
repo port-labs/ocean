@@ -836,7 +836,8 @@ class AzureDevopsClient(HTTPBaseClient):
                     # are not in a sprint iteration. We should skip those.
                     if e.response.status_code == 500:
                         logger.warning(
-                            f"Fetching board for team {team['id']} failed - possibly due to not being assigned to an iteration."  # AI! improve this logging message
+                            f"Skipping board fetch for team {team['id']} in project {project_id} due to a server error (HTTP 500). "
+                            "This can occur if the team is not assigned to an iteration."
                         )
                         continue
                     raise
