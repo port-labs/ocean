@@ -115,34 +115,34 @@ jobs:
         id: image_size
         run: |
           IMAGE="ghcr.io/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}:${{ steps.prepare_tags.outputs.version }}"
-          MANIFEST=$(docker buildx imagetools inspect "${IMAGE}" --raw)
-          if [[ $? -ne 0 || -z "${MANIFEST}" || "${MANIFEST}" == "null" ]]; then
-            echo "⚠️ Failed to get manifest for ${IMAGE}"
-            exit 1
-          fi
 
           for arch in amd64 arm64; do
-            DIGEST=$(echo "${MANIFEST}" | jq -r ".manifests[] | select(.platform.architecture==\"${arch}\") | .digest")
-
-            if [[ $? -ne 0 || -z "${DIGEST}" || "${DIGEST}" == "null" ]]; then
-              echo "⚠️ Failed to get digest for ${arch} or digest is null"
-              exit 1
-            fi
-            echo "📦 ${arch} digest: ${DIGEST}"
-
-            LAYER_MANIFEST=$(docker buildx imagetools inspect "${IMAGE}@${DIGEST}" --raw)
-            if [[ $? -ne 0 || -z "${LAYER_MANIFEST}" || "${LAYER_MANIFEST}" == "null" ]]; then
-              echo "⚠️ Failed to get layer manifest for ${arch} or layer manifest is null"
-              exit 1
-            fi
-            SIZE=$(echo "${LAYER_MANIFEST}" | jq "[.layers[].size] | add")
-            if [[ $? -ne 0 || -z "${SIZE}" || "${SIZE}" == "null" ]]; then
-              echo "⚠️ Failed to add sizes for ${arch} or size is null"
+            echo "📦 Pulling ${arch} image..."
+            docker pull --platform "linux/${arch}" "${IMAGE}"
+            if [[ $? -ne 0 ]]; then
+              echo "⚠️ Failed to pull ${arch} image"
               exit 1
             fi
 
-            echo "✅ ${arch} size: ${SIZE} bytes"
+            SIZE=$(docker images "${IMAGE}" --format '{{.VirtualSize}}' | \
+              awk 'BEGIN{IGNORECASE=1} {
+                val = $0
+                gsub(/[^0-9.]/,"",val)
+                if ($0 ~ /GB/) print int(val * 1073741824)
+                else if ($0 ~ /MB/) print int(val * 1048576)
+                else if ($0 ~ /KB/) print int(val * 1024)
+                else print int(val)
+              }')
+            if [[ -z "${SIZE}" ]]; then
+              echo "⚠️ Failed to get size for ${arch}"
+              exit 1
+            fi
+
+            echo "✅ ${arch} size: ${SIZE}"
             echo "size_bytes_linux_${arch}=${SIZE}" >> $GITHUB_OUTPUT
+
+            # Remove image to free space before pulling next arch
+            docker rmi "${IMAGE}" || true
           done
 
       - name: Track image size in New Relic (amd64)
