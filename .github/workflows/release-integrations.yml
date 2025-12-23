@@ -118,39 +118,60 @@ jobs:
           MANIFEST=$(docker buildx imagetools inspect "${IMAGE}" --raw)
 
           for arch in amd64 arm64; do
-            SIZE=$(echo "${MANIFEST}" | jq "[.manifests[] | select(.platform.architecture==\"${arch}\") | .size] | add")
-            SIZE_MB=$(jq -n "${SIZE} / 1048576" | xargs printf "%.2f")
-            echo "size_mb_linux_${arch}=${SIZE_MB}" >> $GITHUB_OUTPUT
+            DIGEST=$(echo "${MANIFEST}" | jq -r ".manifests[] | select(.platform.architecture==\"${arch}\") | .digest")
+
+            if [[ -z "${DIGEST}" || "${DIGEST}" == "null" ]]; then
+              echo "⚠️ Failed to get digest for ${arch}"
+              continue
+            fi
+            if [[ "${DIGEST}" == "sha256:"* ]]; then
+              DIGEST="${DIGEST#sha256:}"
+            fi
+
+            echo "📦 ${arch} digest: ${DIGEST}"
+
+            LAYER_MANIFEST=$(docker buildx imagetools inspect "${IMAGE}@${DIGEST}" --raw)
+            SIZE=$(echo "${LAYER_MANIFEST}" | jq "[.layers[].size] | add")
+
+            if [[ -z "${SIZE}" || "${SIZE}" == "null" ]]; then
+              echo "⚠️ Failed to get size for ${arch}"
+              continue
+            fi
+
+            echo "✅ ${arch} size: ${SIZE} bytes"
+            echo "size_bytes_linux_${arch}=${SIZE}" >> $GITHUB_OUTPUT
           done
 
       - name: Track image size in New Relic (amd64)
+        if: steps.image_size.outputs.size_bytes_linux_amd64
         continue-on-error: true
         uses: ./.github/actions/new-relic-metric
         with:
           metric_name: "image.size"
-          metric_value: ${{ steps.image_size.outputs.size_mb_linux_amd64 }}
+          metric_value: ${{ steps.image_size.outputs.size_bytes_linux_amd64 }}
           new_relic_api_key: ${{ secrets.NEW_RELIC_INGEST_API_KEY }}
           metric_attributes: |
             {
               "image_name": "port-ocean-${{ steps.prepare_tags.outputs.type }}",
               "image_version": "${{ steps.prepare_tags.outputs.version }}",
               "platform": "linux/amd64",
-              "size_mb": "${{ steps.image_size.outputs.size_mb_linux_amd64 }}"
+              "size_bytes": ${{ steps.image_size.outputs.size_bytes_linux_amd64 }}
             }
 
       - name: Track image size in New Relic (arm64)
+        if: steps.image_size.outputs.size_bytes_linux_arm64
         continue-on-error: true
         uses: ./.github/actions/new-relic-metric
         with:
           metric_name: "image.size"
-          metric_value: ${{ steps.image_size.outputs.size_mb_linux_arm64 }}
+          metric_value: ${{ steps.image_size.outputs.size_bytes_linux_arm64 }}
           new_relic_api_key: ${{ secrets.NEW_RELIC_INGEST_API_KEY }}
           metric_attributes: |
             {
               "image_name": "port-ocean-${{ steps.prepare_tags.outputs.type }}",
               "image_version": "${{ steps.prepare_tags.outputs.version }}",
               "platform": "linux/arm64",
-              "size_mb": "${{ steps.image_size.outputs.size_mb_linux_arm64 }}"
+              "size_bytes": ${{ steps.image_size.outputs.size_bytes_linux_arm64 }}
             }
 
       - name: Configure AWS Credentials 🔒
