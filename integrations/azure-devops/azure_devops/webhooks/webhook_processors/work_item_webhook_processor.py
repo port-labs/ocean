@@ -23,7 +23,14 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
         resource = payload["resource"]
         work_item_id = resource.get("id")
-        return work_item_id is not None
+        if work_item_id is None:
+            return False
+
+        try:
+            project_id = payload["resourceContainers"]["project"]["id"]
+            return project_id is not None
+        except (KeyError, TypeError):
+            return False
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
@@ -37,20 +44,8 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     ) -> WebhookEventRawResults:
         client = AzureDevopsClient.create_from_ocean_config()
         resource = payload["resource"]
-        work_item_id = resource.get("id")
+        work_item_id = resource["id"]
         project_id = payload["resourceContainers"]["project"]["id"]
-
-        if not work_item_id:
-            logger.warning("Work item webhook payload missing work item ID")
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
-
-        if not project_id:
-            logger.warning("Work item webhook payload missing project ID")
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
 
         event_type = payload["eventType"]
 

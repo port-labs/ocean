@@ -129,7 +129,10 @@ async def test_work_item_validate_payload_valid(
     valid_payload = {
         "eventType": WorkItemEvents.WORK_ITEM_CREATED,
         "publisherId": "tfs",
-        "resource": {"id": 123, "project": {"id": "project-123"}},
+        "resource": {"id": 123},
+        "resourceContainers": {
+            "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"}
+        },
     }
     assert await work_item_processor.validate_payload(valid_payload) is True
 
@@ -323,7 +326,7 @@ async def test_work_item_handle_event_deleted(
 
 
 @pytest.mark.asyncio
-async def test_work_item_handle_event_missing_work_item_id(
+async def test_work_item_validate_payload_missing_work_item_id(
     work_item_processor: WorkItemWebhookProcessor,
     mock_event_context: None,
 ) -> None:
@@ -335,17 +338,11 @@ async def test_work_item_handle_event_missing_work_item_id(
             "project": {"id": "project-123", "baseUrl": "https://dev.azure.com/test/"}
         },
     }
-    resource_config = MagicMock()
-
-    result = await work_item_processor.handle_event(payload, resource_config)
-
-    assert isinstance(result, WebhookEventRawResults)
-    assert len(result.updated_raw_results) == 0
-    assert len(result.deleted_raw_results) == 0
+    assert await work_item_processor.validate_payload(payload) is False
 
 
 @pytest.mark.asyncio
-async def test_work_item_handle_event_missing_project_id(
+async def test_work_item_validate_payload_missing_project_id(
     work_item_processor: WorkItemWebhookProcessor,
     mock_event_context: None,
 ) -> None:
@@ -355,13 +352,34 @@ async def test_work_item_handle_event_missing_project_id(
         "resource": {"id": 123},
         "resourceContainers": {"project": {"id": None}},
     }
-    resource_config = MagicMock()
+    assert await work_item_processor.validate_payload(payload) is False
 
-    result = await work_item_processor.handle_event(payload, resource_config)
 
-    assert isinstance(result, WebhookEventRawResults)
-    assert len(result.updated_raw_results) == 0
-    assert len(result.deleted_raw_results) == 0
+@pytest.mark.asyncio
+async def test_work_item_validate_payload_missing_resource_containers(
+    work_item_processor: WorkItemWebhookProcessor,
+    mock_event_context: None,
+) -> None:
+    payload = {
+        "eventType": WorkItemEvents.WORK_ITEM_CREATED,
+        "publisherId": "tfs",
+        "resource": {"id": 123},
+    }
+    assert await work_item_processor.validate_payload(payload) is False
+
+
+@pytest.mark.asyncio
+async def test_work_item_validate_payload_missing_project_in_containers(
+    work_item_processor: WorkItemWebhookProcessor,
+    mock_event_context: None,
+) -> None:
+    payload = {
+        "eventType": WorkItemEvents.WORK_ITEM_CREATED,
+        "publisherId": "tfs",
+        "resource": {"id": 123},
+        "resourceContainers": {},
+    }
+    assert await work_item_processor.validate_payload(payload) is False
 
 
 @pytest.mark.asyncio
