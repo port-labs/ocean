@@ -156,6 +156,20 @@ configurations:
     type: string
     default: "10"
     description: "Maximum concurrent API requests (uses Ocean's built-in rate limiting and caching)"
+interface:
+  sections:
+  - label: Advanced Configuration
+    configurationNames:
+    - paginationType
+    - pageSize
+    - paginationParam
+    - sizeParam
+    - startPage
+    - cursorPath
+    - hasMorePath
+    - timeout
+    - verifySsl
+    - maxConcurrentRequests
 installationDocs:
   saas:
     - name: SaasOAuth2
@@ -175,7 +189,7 @@ installationDocs:
     enabled: true
     docs: build-your-software-catalog/custom-integration/ocean-custom-integration/overview
 saas:
-  enabled: false
+  enabled: true
   liveEvents:
     enabled: false
 deploymentMethodOverride:
