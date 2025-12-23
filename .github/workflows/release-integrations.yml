@@ -134,6 +134,7 @@ jobs:
           done
 
       - name: Track image size in New Relic (amd64)
+        if: steps.image_size.outputs.size_bytes_linux_amd64
         continue-on-error: true
         uses: ./.github/actions/new-relic-metric
         with:
@@ -149,6 +150,7 @@ jobs:
             }
 
       - name: Track image size in New Relic (arm64)
+        if: steps.image_size.outputs.size_bytes_linux_arm64
         continue-on-error: true
         uses: ./.github/actions/new-relic-metric
         with:
