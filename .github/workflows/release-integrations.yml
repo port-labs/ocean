@@ -114,12 +114,11 @@ jobs:
         continue-on-error: true
         id: image_size
         run: |
-          set +e  # Don't exit on individual command failures
           IMAGE="ghcr.io/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}:${{ steps.prepare_tags.outputs.version }}"
           MANIFEST=$(docker buildx imagetools inspect "${IMAGE}" --raw)
           if [[ $? -ne 0 || -z "${MANIFEST}" || "${MANIFEST}" == "null" ]]; then
             echo "⚠️ Failed to get manifest for ${IMAGE}"
-            continue
+            exit 1
           fi
 
           for arch in amd64 arm64; do
@@ -127,19 +126,19 @@ jobs:
 
             if [[ $? -ne 0 || -z "${DIGEST}" || "${DIGEST}" == "null" ]]; then
               echo "⚠️ Failed to get digest for ${arch} or digest is null"
-              continue
+              exit 1
             fi
             echo "📦 ${arch} digest: ${DIGEST}"
 
             LAYER_MANIFEST=$(docker buildx imagetools inspect "${IMAGE}@${DIGEST}" --raw)
             if [[ $? -ne 0 || -z "${LAYER_MANIFEST}" || "${LAYER_MANIFEST}" == "null" ]]; then
               echo "⚠️ Failed to get layer manifest for ${arch} or layer manifest is null"
-              continue
+              exit 1
             fi
             SIZE=$(echo "${LAYER_MANIFEST}" | jq "[.layers[].size] | add")
             if [[ $? -ne 0 || -z "${SIZE}" || "${SIZE}" == "null" ]]; then
               echo "⚠️ Failed to add sizes for ${arch} or size is null"
-              continue
+              exit 1
             fi
 
             echo "✅ ${arch} size: ${SIZE} bytes"
