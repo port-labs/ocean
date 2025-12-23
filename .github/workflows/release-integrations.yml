@@ -118,7 +118,9 @@ jobs:
           MANIFEST=$(docker buildx imagetools inspect "${IMAGE}" --raw)
 
           for arch in amd64 arm64; do
-            SIZE=$(echo "${MANIFEST}" | jq "[.manifests[] | select(.platform.architecture==\"${arch}\") | .size] | add")
+            DIGEST=$(echo "${MANIFEST}" | jq -r ".manifests[] | select(.platform.architecture==\"${arch}\") | .digest")
+            LAYER_MANIFEST=$(docker buildx imagetools inspect "${IMAGE}@${DIGEST}" --raw)
+            SIZE=$(echo "${LAYER_MANIFEST}" | jq "[.layers[].size] | add")
             SIZE_MB=$(jq -n "${SIZE} / 1048576" | xargs printf "%.2f")
             echo "size_mb_linux_${arch}=${SIZE_MB}" >> $GITHUB_OUTPUT
           done
