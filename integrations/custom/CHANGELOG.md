@@ -1,3 +1,11 @@
+## 0.2.38-beta (2025-12-23)
+
+
+### Improvements
+
+- Added advanced configuration section to the custom integration
+
+
 ## 0.2.37-beta (2025-12-23)
 
 
