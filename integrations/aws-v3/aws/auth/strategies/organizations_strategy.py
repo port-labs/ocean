@@ -1,4 +1,4 @@
-from aws.auth.strategies.base import AWSSessionStrategy, HealthCheckMixin
+from aws.auth.strategies.base import AWSSessionStrategy, HealthCheckMixin, CachedHealthCheckMixin
 from aws.auth.utils import (
     AWSOrganizationsNotInUseError,
     AWSSessionError,
@@ -180,11 +180,66 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
             )
 
 
-class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin):
+class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, CachedHealthCheckMixin):
     """Mixin for organizations health checking with batching and concurrency."""
 
     DEFAULT_CONCURRENCY = 10
     DEFAULT_BATCH_SIZE = 10
+
+    def _get_cache_key(self) -> str:
+        """Generate cache key for healthcheck results."""
+        role_arn = self._get_organization_account_role_arn()
+        external_id = self.config.get("external_id", "")
+        region = self.config.get("region", "")
+        return f"aws_org_healthcheck:{role_arn}:{external_id}:{region}"
+
+    async def _extract_cache_data(self) -> dict[str, Any]:
+        """Extract data to cache after successful healthcheck."""
+        return {
+            "valid_arns": self._valid_arns,
+            "discovered_accounts": self._discovered_accounts,
+        }
+
+    async def _restore_from_cache_data(self, cache_data: dict[str, Any]) -> bool:
+        """Restore strategy state from cached data."""
+        try:
+            valid_arns = cache_data.get("valid_arns", [])
+            discovered_accounts = cache_data.get("discovered_accounts", [])
+
+            if not valid_arns:
+                return False
+
+            # Restore discovered accounts
+            self._discovered_accounts = discovered_accounts or []
+
+            # Recreate sessions for valid ARNs
+            self._valid_arns = []
+            self._valid_sessions = {}
+
+            logger.info(f"Recreating {len(valid_arns)} sessions from cache")
+            for role_arn in valid_arns:
+                account_id = extract_account_from_arn(role_arn)
+                session = await self._can_assume_role_in_account(account_id)
+                if session:
+                    self._valid_arns.append(role_arn)
+                    self._valid_sessions[role_arn] = session
+                else:
+                    logger.warning(
+                        f"Failed to recreate session for {role_arn}, skipping"
+                    )
+
+            if not self._valid_arns:
+                return False
+
+            logger.info(
+                f"Successfully restored {len(self._valid_arns)}/{len(valid_arns)} "
+                f"sessions from cache"
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"Error restoring from cache: {e}", exc_info=True)
+            return False
 
     async def _can_assume_role_in_account(self, account_id: str) -> AioSession | None:
         """Check if we can assume the specified role in a given account."""
@@ -212,6 +267,11 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin
 
     async def healthcheck(self) -> bool:
         """Perform health check by discovering accounts and validating role assumption."""
+        # Try cache first
+        if await self._try_load_from_cache():
+            return True
+
+        # Cache miss - run healthcheck
         try:
             # Discover accounts first
             accounts = await self.discover_accounts()
@@ -267,12 +327,14 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin
                     f"Batch {batch_num}/{total_batches}: {successful}/{len(batch)} accounts validated"
                 )
             logger.info(
-                f"Health check complete: {len(self.valid_arns)}/{len(accounts)} accounts accessible"
+                f"Health check complete: {len(self._valid_arns)}/{len(accounts)} accounts accessible"
             )
 
-            if not self.valid_arns:
+            if not self._valid_arns:
                 raise AWSSessionError("No accounts are accessible after health check")
 
+            # Save to cache after successful healthcheck
+            await self._save_to_cache()
             return True
 
         except Exception as e:
@@ -299,21 +361,26 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
         self, **kwargs: Any
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
         """Get sessions for all accessible accounts."""
-        if not (self.valid_arns and self.valid_sessions):
+        if not (self._valid_arns and self._valid_sessions):
+            logger.info("Healthcheck results not cached, running healthcheck...")
             await self.healthcheck()
+        else:
+            logger.debug(
+                f"Using cached healthcheck results: {len(self._valid_arns)} accounts"
+            )
 
-        if not (self.valid_arns and self.valid_sessions):
+        if not (self._valid_arns and self._valid_sessions):
             raise AWSSessionError(
                 "Account sessions not initialized. Run healthcheck first."
             )
 
-        logger.info(f"Providing {len(self.valid_arns)} pre-validated AWS sessions")
+        logger.info(f"Providing {len(self._valid_arns)} pre-validated AWS sessions")
 
         # Map role ARNs back to account information
         account_map = {account["Id"]: account for account in self._discovered_accounts}
 
-        for role_arn in self.valid_arns:
-            session = self.valid_sessions[role_arn]
+        for role_arn in self._valid_arns:
+            session = self._valid_sessions[role_arn]
             account_id = extract_account_from_arn(role_arn)
 
             # Get account info from discovered accounts
@@ -331,5 +398,5 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
             yield account_info, session
 
         logger.info(
-            f"Session provision complete: {len(self.valid_arns)} sessions yielded"
+            f"Session provision complete: {len(self._valid_arns)} sessions yielded"
         )
