@@ -23,5 +23,3 @@ class BaseConfigChangeWebhookProcessor(AbstractWebhookProcessor):
     async def trigger_resync(self) -> None:
         """Trigger a full resync for the integration."""
         await ocean.sync_raw_all()
-
-

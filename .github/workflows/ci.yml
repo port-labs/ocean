@@ -136,7 +136,15 @@ jobs:
               exit 0
           fi
 
-          BASELINE_SIZE_BYTES=$(docker image inspect "${BASELINE_IMAGE}" --format='{{.Size}}')
+          BASELINE_SIZE_BYTES=$(docker images "${BASELINE_IMAGE}" --format '{{.VirtualSize}}' | \
+            awk 'BEGIN{IGNORECASE=1} {
+              val = $0
+              gsub(/[^0-9.]/,"",val)
+              if ($0 ~ /GB/) print int(val * 1073741824)
+              else if ($0 ~ /MB/) print int(val * 1048576)
+              else if ($0 ~ /KB/) print int(val * 1024)
+              else print int(val)
+            }')
 
           # Try to get version from label, fallback to 'latest'
           BASELINE_VERSION=$(docker image inspect "${BASELINE_IMAGE}" --format='{{ index .Config.Labels "INTEGRATION_VERSION" }}')
@@ -159,6 +167,7 @@ jobs:
           echo "📊 Threshold: ${THRESHOLD}%"
 
           echo "baseline_bytes=${BASELINE_SIZE_BYTES}" >> $GITHUB_OUTPUT
+          echo "baseline_mb=${BASELINE_MB}" >> $GITHUB_OUTPUT
           echo "baseline_version=${BASELINE_VERSION}" >> $GITHUB_OUTPUT
           echo "max_size_bytes=${MAX_SIZE_BYTES}" >> $GITHUB_OUTPUT
           echo "skip_check=false" >> $GITHUB_OUTPUT
@@ -172,21 +181,24 @@ jobs:
         run: |
           NEW_IMAGE="${{ steps.image_info.outputs.image_tag }}"
           BASELINE_BYTES="${{ steps.calc_max_size.outputs.baseline_bytes }}"
+          BASELINE_MB="${{ steps.calc_max_size.outputs.baseline_mb }}"
           BASELINE_VERSION="${{ steps.calc_max_size.outputs.baseline_version }}"
           MAX_BYTES="${{ steps.calc_max_size.outputs.max_size_bytes }}"
           THRESHOLD="${{ env.SIZE_INCREASE_THRESHOLD }}"
 
-          NEW_SIZE_BYTES=$(docker image inspect "${NEW_IMAGE}" --format='{{.Size}}')
+          NEW_SIZE_BYTES=$(docker images "${NEW_IMAGE}" --format '{{.VirtualSize}}' | \
+            awk 'BEGIN{IGNORECASE=1} {
+              val = $0
+              gsub(/[^0-9.]/,"",val)
+              if ($0 ~ /GB/) print int(val * 1073741824)
+              else if ($0 ~ /MB/) print int(val * 1048576)
+              else if ($0 ~ /KB/) print int(val * 1024)
+              else print int(val)
+            }')
 
           # Calculate values for display using jq
           NEW_SIZE_MB=$(jq -n "${NEW_SIZE_BYTES} / 1048576")
-          BASELINE_MB=$(jq -n "${BASELINE_BYTES} / 1048576")
           DIFF_MB=$(jq -n "(${NEW_SIZE_BYTES} - ${BASELINE_BYTES}) / 1048576")
-
-          # Format to 2 decimal places
-          NEW_SIZE_MB_FMT=$(printf "%.2f" $NEW_SIZE_MB)
-          BASELINE_MB_FMT=$(printf "%.2f" $BASELINE_MB)
-          DIFF_MB_FMT=$(printf "%.2f" $DIFF_MB)
 
           image_size_exceeded=$(jq -n "${NEW_SIZE_BYTES} > ${MAX_BYTES}")
 
@@ -194,9 +206,9 @@ jobs:
           {
             echo "image_size_exceeded=${image_size_exceeded}"
             if [[ "$image_size_exceeded" == "true" ]]; then
-              echo "new_size_mb=${NEW_SIZE_MB_FMT}"
-              echo "baseline_mb=${BASELINE_MB_FMT}"
-              echo "diff_mb=${DIFF_MB_FMT}"
+              echo "new_size_mb=${NEW_SIZE_MB}"
+              echo "baseline_mb=${BASELINE_MB}"
+              echo "diff_mb=${DIFF_MB}"
               echo "baseline_version=${BASELINE_VERSION}"
             fi
           } >> "$GITHUB_OUTPUT"
@@ -204,16 +216,16 @@ jobs:
           # Log results and exit if limit exceeded
           if [[ "$image_size_exceeded" == "true" ]]; then
             echo "❌ FAILURE: Image size limit exceeded!"
-            echo "   Current Size: ${NEW_SIZE_MB_FMT} MB"
-            echo "   Baseline Size: ${BASELINE_MB_FMT} MB (Version: ${BASELINE_VERSION})"
-            echo "   Difference: +${DIFF_MB_FMT} MB"
+            echo "   Current Size: ${NEW_SIZE_MB} MB"
+            echo "   Baseline Size: ${BASELINE_MB} MB (Version: ${BASELINE_VERSION})"
+            echo "   Difference: +${DIFF_MB} MB"
             echo "   Allowed Increase: ${THRESHOLD}%"
             [[ "${FAIL_ON_LIMIT}" == "true" ]] && exit 1
           else
             echo "✅ SUCCESS: Image size is within limits."
-            echo "   Current Size: ${NEW_SIZE_MB_FMT} MB"
-            echo "   Baseline Size: ${BASELINE_MB_FMT} MB"
-            echo "   Difference: ${DIFF_MB_FMT} MB"
+            echo "   Current Size: ${NEW_SIZE_MB} MB"
+            echo "   Baseline Size: ${BASELINE_MB} MB"
+            echo "   Difference: ${DIFF_MB} MB"
           fi
 
       - name: Comment if image size limit exceeded
