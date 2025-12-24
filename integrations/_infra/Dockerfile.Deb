@@ -46,7 +46,7 @@ RUN apt-get update \
         openssl \
         curl \
         acl \
-        jq \
+        libyaml-dev \
     && apt-get clean
 
 LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}

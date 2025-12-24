@@ -6,7 +6,6 @@ from github.clients.http.graphql_client import GithubGraphQLClient
 from github.helpers.exceptions import GraphQLClientError, GraphQLErrorGroup
 
 
-@pytest.mark.asyncio
 class TestGithubGraphQLClient:
     def test_graphql_base_url_github_com(
         self, authenticator: AbstractGitHubAuthenticator
@@ -28,6 +27,7 @@ class TestGithubGraphQLClient:
         )
         assert client.base_url == "https://ghe.example.com/api/graphql"
 
+    @pytest.mark.asyncio
     async def test_handle_graphql_errors(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
@@ -69,6 +69,7 @@ class TestGithubGraphQLClient:
             assert str(exc_info.value.errors[0]) == "Error 1"
             assert str(exc_info.value.errors[1]) == "Error 2"
 
+    @pytest.mark.asyncio
     async def test_handle_graphql_success(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
@@ -100,6 +101,7 @@ class TestGithubGraphQLClient:
                 {"id": 1, "name": "repo1"}
             ]
 
+    @pytest.mark.asyncio
     async def test_send_paginated_request_single_page(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
@@ -133,6 +135,7 @@ class TestGithubGraphQLClient:
             assert len(results) == 1
             assert results[0] == [{"id": 1, "name": "repo1"}]
 
+    @pytest.mark.asyncio
     async def test_send_paginated_request_multiple_pages(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
@@ -183,6 +186,7 @@ class TestGithubGraphQLClient:
             assert results[0] == [{"id": 1, "name": "repo1"}]
             assert results[1] == [{"id": 2, "name": "repo2"}]
 
+    @pytest.mark.asyncio
     async def test_send_paginated_request_empty_response(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:
@@ -215,6 +219,7 @@ class TestGithubGraphQLClient:
 
             assert len(results) == 0
 
+    @pytest.mark.asyncio
     async def test_send_paginated_request_missing_path(
         self, authenticator: AbstractGitHubAuthenticator
     ) -> None:

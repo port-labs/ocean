@@ -23,6 +23,7 @@ class GitHubAuthenticatorFactory:
         organization: Optional[str] = None,
         token: Optional[str] = None,
         app_id: Optional[str] = None,
+        installation_id: Optional[str] = None,
         private_key: Optional[str] = None,
     ) -> AbstractGitHubAuthenticator:
         if token:
@@ -37,6 +38,7 @@ class GitHubAuthenticatorFactory:
             )
             return GitHubAppAuthenticator(
                 app_id=app_id,
+                installation_id=installation_id,
                 private_key=private_key,
                 organization=organization,
                 github_host=github_host,
@@ -76,12 +78,14 @@ class GithubClientFactory:
                 logger.error(f"Invalid client type: {client_type}")
                 raise ValueError(f"Invalid client type: {client_type}")
 
-            github_organization = ocean.integration_config["github_organization"]
             authenticator = GitHubAuthenticatorFactory.create(
                 github_host=ocean.integration_config["github_host"],
-                organization=github_organization,
+                organization=ocean.integration_config.get("github_organization"),
                 token=ocean.integration_config.get("github_token"),
                 app_id=ocean.integration_config.get("github_app_id"),
+                installation_id=ocean.integration_config.get(
+                    "github_app_installation_id"
+                ),
                 private_key=ocean.integration_config.get("github_app_private_key"),
             )
 

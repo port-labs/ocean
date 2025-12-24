@@ -62,7 +62,10 @@ def enrich_with_organization(
 
 
 def enrich_with_repository(
-    response: Dict[str, Any], repo_name: str, key: str = "__repository"
+    response: Dict[str, Any],
+    repo_name: str,
+    key: str = "__repository",
+    repo: Optional[dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Helper function to enrich response with repository information.
     Args:
@@ -72,7 +75,10 @@ def enrich_with_repository(
     Returns:
         The enriched response
     """
+
     response[key] = repo_name
+    if repo:
+        response["__repository_object"] = repo
     return response
 
 
@@ -150,3 +156,44 @@ async def get_repository_metadata(
     url = f"{client.base_url}/repos/{organization}/{repo_name}"
     logger.info(f"Fetching metadata for repository: {repo_name} from {organization}")
     return await client.send_api_request(url)
+
+
+@cache.cache_coroutine_result()
+async def enrich_user_with_primary_email(
+    client: "AbstractGithubClient", user: Dict[str, Any]
+) -> Dict[str, Any]:
+    response = await client.make_request(f"{client.base_url}/user/emails")
+    data: list[dict[str, Any]] = response.json()
+    if not data:
+        logger.error("Failed to fetch user emails")
+        return user
+
+    primary_email = next((item for item in data if item["primary"] is True), None)
+    if primary_email:
+        user["email"] = primary_email["email"]
+    return user
+
+
+def issue_matches_labels(
+    issue_labels: list[dict[str, Any]], required_labels: Optional[list[str]]
+) -> bool:
+    """
+    Check if an issue's labels match the required labels filter.
+
+    Args:
+        issue_labels: List of label objects from webhook payload
+        required_labels: List of required labels
+
+    Returns:
+        True if issue matches (has ALL of the required labels), False otherwise
+    """
+    if not required_labels:
+        return True
+
+    required_set = {label.lower() for label in required_labels}
+    if not required_set:
+        return True
+
+    issue_label_names = {label["name"].lower() for label in issue_labels}
+
+    return required_set.issubset(issue_label_names)

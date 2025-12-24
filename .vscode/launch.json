@@ -1,7 +1,6 @@
 {
   "version": "0.2.0",
   "configurations": [
-
     {
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/jira",
@@ -313,6 +312,17 @@
       "name": "Run jenkins integration",
       "program": "${workspaceFolder}/integrations/jenkins/debug.py",
       "python": "${workspaceFolder}/integrations/jenkins/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/wiz",
+      "envFile": "${workspaceFolder}/integrations/wiz/.env",
+      "justMyCode": true,
+      "name": "Run wiz integration",
+      "program": "${workspaceFolder}/integrations/wiz/debug.py",
+      "python": "${workspaceFolder}/integrations/wiz/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
     },

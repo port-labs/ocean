@@ -7,6 +7,316 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.18 (2025-12-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.8
+
+
+## 0.6.17 (2025-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.7
+
+
+## 0.6.16 (2025-12-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.5
+
+
+## 0.6.15 (2025-12-16)
+
+
+### Improvements
+
+- Added codeowners property to repository blueprint with file:// mapping to sync CODEOWNERS file content from repositories
+
+
+## 0.6.14 (2025-12-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.4
+
+
+## 0.6.13 (2025-12-15)
+
+### Bug Fixes
+
+- Removed cache prom client
+
+
+## 0.6.12 (2025-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.3
+
+
+## 0.6.11 (2025-12-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.2
+
+
+## 0.6.10 (2025-12-10)
+
+
+### Improvements
+
+- Removed codeowners mapping and blueprint from integration default resources
+- Removed folder kind from integration default
+
+
+## 0.6.9 (2025-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.1
+
+
+## 0.6.8 (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.0
+
+
+## 0.6.7 (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.7
+
+
+## 0.6.6 (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.6
+
+
+## 0.6.5 (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.4
+
+
+## 0.6.4 (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.3
+
+
+## 0.6.3 (2025-12-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.2
+
+
+## 0.6.2 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.1
+
+
+## 0.6.1 (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.0
+
+
+## 0.6.0 (2025-12-01)
+
+
+### Features
+
+- Added folder kind to integration default with wildcard pattern support
+- Added support for syncing folders from all repositories when repos are not specified
+- Made `project_name` and `repos` optional in folder selector configuration
+- Added support for flexible repository selection: all projects, specific project, or specific repos
+
+
+## 0.5.1 (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
+## 0.5.0 (2025-11-17)
+
+
+### Improvements
+
+- Added support for ingesting CODEOWNERS files in the default mapping
+
+
+## 0.4.44 (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
+## 0.4.43 (2025-11-28)
+
+
+### Improvements
+
+- Use Azure DevOps service `.id` as `identifier` for `repository` kind to ensure stable, unique keys and avoid normalization issues during resync and live events.
+- Update identifiers for repository-policy, work-item and release in default mapping
+
+
+## 0.4.42 (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 0.4.41 (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 0.4.40 (2025-11-25)
+
+
+### Features
+
+- Added support for `min_time_in_days` selector option in pull request kind
+- Added support for `max_results` selector option for closed pull requests
+
+
+## 0.4.39 (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 0.4.38 (2025-11-24)
+
+
+### Improvements
+
+- Enrich Pipeline Deployments with Project Data
+
+
+## 0.4.37 (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 0.4.36 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.4.35 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.4.34 (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.4.33 (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+## 0.4.32 (2025-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
+## 0.4.31 (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 0.4.30 (2025-11-13)
+
+
+### Bug Fixes
+
+- Updated `PULL_REQUEST_SEARCH_CRITERIA` so that filters for both "abandoned" and "completed" pull requests now include a closed time range to improve query accuracy.
+- Added new tests to validate that "abandoned" and "completed" pull request filters correctly utilize the "closed" time range.
+
+
+## 0.4.30 (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 0.4.30 (2025-11-14)
+
+
+### Bug Fixes
+
+- Fixed file pattern processing to handle multiple glob patterns with the same base path instead of only processing the first pattern
+
+
 ## 0.4.29 (2025-11-10)
 
 

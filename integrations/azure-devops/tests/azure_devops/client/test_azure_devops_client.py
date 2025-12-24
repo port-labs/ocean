@@ -874,7 +874,10 @@ async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
         ]
 
     async def mock_get_paginated_by_top_and_skip(
-        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+        url: str,
+        additional_params: Optional[Dict[str, Any]] = None,
+        max_results: Optional[int] = None,
+        **kwargs: Any,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         if "pullrequests" in url:
             yield EXPECTED_PULL_REQUESTS
@@ -2056,11 +2059,41 @@ async def test_process_folder_patterns(
             "project": {"name": project_name, "id": "project-123"},
         }
 
+    async def mock_get_repositories_for_project(
+        project_name: str,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        repos_data = [
+            {
+                "name": "repo1",
+                "id": "repo1-id",
+                "project": {"name": project_name, "id": "project-123"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "name": "repo2",
+                "id": "repo2-id",
+                "project": {"name": project_name, "id": "project-123"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "name": "repo3",
+                "id": "repo3-id",
+                "project": {"name": project_name, "id": "project-123"},
+                "defaultBranch": "refs/heads/develop",
+            },
+        ]
+        yield repos_data
+
     with (
         patch.object(
             mock_azure_client,
             "generate_repositories",
             side_effect=mock_generate_repositories,
+        ),
+        patch.object(
+            mock_azure_client,
+            "_get_repositories_for_project",
+            side_effect=mock_get_repositories_for_project,
         ),
         patch.object(
             mock_azure_client,
@@ -2533,20 +2566,23 @@ async def test_generate_files_with_multiple_glob_patterns_different_recursion() 
     async for batch in client.generate_files(paths):
         results.extend(batch)
 
-    # The actual behavior shows that only 3 files are returned:
+    # With multiple patterns sharing the same base path, all patterns should be processed:
     # - src/main.js (matches src/*.js)
+    # - src/components/Button.ts (matches src/**/*.ts)
+    # - src/utils/helper.ts (matches src/**/*.ts)
     # - docs/README.md (matches docs/**/*.md)
     # - docs/api/reference.md (matches docs/**/*.md)
     #
-    # The TypeScript files and other JavaScript files are not being matched
-    # This suggests the glob filtering might not be working as expected
-    assert len(results) == 3
+    # Note: src/components/Button.js does NOT match any pattern (src/*.js only matches one level)
+    assert len(results) == 5
 
     # Check what we actually got
     paths_returned = [r["file"]["path"] for r in results]
 
     # Check that we got the expected files
     assert "src/main.js" in paths_returned
+    assert "src/components/Button.ts" in paths_returned
+    assert "src/utils/helper.ts" in paths_returned
     assert "docs/README.md" in paths_returned
     assert "docs/api/reference.md" in paths_returned
 
@@ -2990,7 +3026,9 @@ async def test_generate_pipeline_deployments() -> None:
     ):
         # ACT
         deployments: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            1, {"id": "proj1", "name": "Project One"}
+        ):
             deployments.extend(deployment_batch)
 
         # ASSERT
@@ -3008,7 +3046,9 @@ async def test_generate_pipeline_deployments_will_skip_404() -> None:
 
     with patch.object(client._client, "request", side_effect=mock_make_request):
         deployments: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            1, {"id": "proj1", "name": "Project One"}
+        ):
             deployments.extend(deployment_batch)
 
         assert not deployments
@@ -3042,12 +3082,16 @@ async def test_generate_pipeline_deployments_with_multiple_environments() -> Non
     ):
         # Test environment 1
         deployments_env1: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            1, {"id": "proj1", "name": "Project One"}
+        ):
             deployments_env1.extend(deployment_batch)
 
         # Test environment 2
         deployments_env2: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 2):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            2, {"id": "proj1", "name": "Project One"}
+        ):
             deployments_env2.extend(deployment_batch)
 
         # ASSERT

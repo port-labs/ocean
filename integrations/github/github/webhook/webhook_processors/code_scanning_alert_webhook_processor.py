@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Any
 from loguru import logger
 from github.webhook.events import (
     CODE_SCANNING_ALERT_ACTION_TO_STATE,
@@ -9,7 +9,7 @@ from github.helpers.utils import (
     enrich_with_organization,
 )
 from github.clients.client_factory import create_github_client
-from integration import GithubCodeScanningAlertConfig
+from integration import GithubCodeScanningAlertConfig, GithubCodeScanningAlertSelector
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
 )
@@ -50,7 +50,20 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         config = cast(GithubCodeScanningAlertConfig, resource_config)
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         possible_states = CODE_SCANNING_ALERT_ACTION_TO_STATE.get(action, [])
+
+        if not self._check_alert_filters(config.selector, alert):
+            logger.info(
+                f"Code scanning alert {repo_name}/{alert_number} filtered out by selector criteria"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         if not possible_states:
             logger.info(
@@ -87,3 +100,12 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
+
+    def _check_alert_filters(
+        self, selector: GithubCodeScanningAlertSelector, alert: dict[str, Any]
+    ) -> bool:
+        """Check if alert matches selector severity filter."""
+        alert_severity = alert["rule"]["severity"]
+        if selector.severity and alert_severity.lower() != selector.severity.lower():
+            return False
+        return True

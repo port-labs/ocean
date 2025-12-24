@@ -7,6 +7,380 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.5.4-beta (2025-12-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.8
+
+
+## 4.5.3-beta (2025-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.7
+
+
+## 4.5.2-beta (2025-12-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.5
+
+
+## 4.5.1-beta (2025-12-18)
+
+
+### Improvements
+
+- Added codeowners property to repository blueprint with file:// mapping to sync CODEOWNERS file content from repositories
+
+
+## 4.5.0-beta (2025-12-17)
+
+
+### Features
+
+- Dependency graph SBOM can now be returned in the repository by adding "sbom" to included relationships.
+
+
+## 4.4.12-beta (2025-12-17)
+
+
+### Features
+
+- Added an optional GraphQL-based pull request exporter for GitHub that returns graphql data when `api` is set to `graphql`, while preserving existing REST behavior by default.
+- Added a webhook ping processor to gracefully handle GitHub `ping` events without affecting stored entities.
+
+
+## 4.4.11-beta (2025-12-17)
+
+
+### Improvements
+ 
+- Enriched branch and tag exporter and webhook processors responses with repository metadata, including the underlying repository object, to enable richer mappings and downstream processing.
+
+
+## 4.4.10-beta (2025-12-17)
+
+
+### Features
+
+- Added severity selector for code scanning alert ingestion and webhooks
+- Added severity and ecosystem selectors for dependabot alert ingestion and webhooks
+
+
+## 4.4.9-beta (2025-12-17)
+
+
+### Features
+
+- Added task and environment selectors for deployment ingestion and webhooks
+
+
+## 4.4.8-beta (2025-12-16)
+
+
+### Features
+
+- Added support for labels selector when ingesting issues, allowing filtering by label in the issues ingestion.
+
+
+## 4.4.7-beta (2025-12-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.4
+
+
+## 4.4.6-beta (2025-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.3
+
+
+## 4.4.5-beta (2025-12-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.2
+
+
+## 4.4.4-beta (2025-12-10)
+
+
+### Improvements
+
+- Removed folder kind and codeowners from integration default
+
+
+## 4.4.3-beta (2025-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.1
+
+
+## 4.4.2-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.0
+
+
+## 4.4.1-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.7
+
+
+## 4.4.0-beta (2025-12-08)
+
+
+### Improvements
+
+- Add webhook support to repo search
+
+
+## 4.3.3-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.6
+
+
+## 4.3.2-beta (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.4
+
+
+## 4.3.1-beta (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.3
+
+
+## 4.3.0-beta (2025-11-28)
+
+
+### Improvements
+
+- Added folder kind to integration default
+
+
+## 4.2.0-beta (2025-11-17)
+
+
+### Improvements
+
+- Added support for ingesting CODEOWNERS files in the default mapping
+
+
+## 4.1.16-beta (2025-12-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.2
+
+
+## 4.1.15-beta (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.1
+
+
+## 4.1.14-beta (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.0
+
+
+## 4.1.13-beta (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
+## 4.1.12-beta (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
+## 4.1.11-beta (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 4.1.10-beta (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 4.1.9-beta (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 4.1.8-beta (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 4.1.7-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 4.1.6-beta (2025-11-23)
+
+
+### Improvements
+
+- Change section to Git Providers in spec.yaml
+
+
+## 4.1.5-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 4.1.4-beta (2025-11-23)
+
+
+### Improvements
+
+- Use GitHub Search API for repository export when authenticated as a GitHub App with Personal Account, falling back to list API otherwise.
+
+
+## 4.1.3-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 4.1.2-beta (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+## 4.1.1-beta (2025-11-20)
+
+
+### Improvements
+
+- Adapt to the new ocean core itemstoparse logic
+
+## 4.1.0-beta (2025-11-19)
+
+
+### Bug Fixes
+
+- Fixed GitHub App authentication by requiring installation ID as a configuration parameter instead of fetching it dynamically, improving reliability and reducing API calls
+
+
+## 4.0.0-beta (2025-11-19)
+
+
+### Improvements
+
+- Optional syncing of the authenticated user's personal account as a pseudo-organization when `includeAuthenticatedUser` is enabled.
+- Repository exporter now supports both Organization and User contexts by selecting the correct API and handling visibility/affiliation accordingly.
+- Propagated organization type through repository selectors and options.
+- Introduced helper to centralize repository option construction.
+- During user resync, enrich the personal user with their primary email when needed.
+- Improved HTTP client error messages to include the HTTP method for clearer diagnostics.
+
+
+## 3.3.10-beta (2025-11-19)
+
+
+### Improvements
+
+- dispatch workflow action spec naming improvements
+
+
+## 3.3.9-beta (2025-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
+## 3.3.8-beta (2025-11-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.7
+
+
+## 3.3.7-beta (2025-11-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.6
+
+
+## 3.3.6-beta (2025-11-16)
+
+
+### Improvements
+
+- Revise OAuth configuration spec
+
+
 ## 3.3.5-beta (2025-11-13)
 
 

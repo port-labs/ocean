@@ -1,5 +1,6 @@
 from fastapi import Request
 from pydantic import BaseModel, Field
+from datetime import datetime, timedelta, timezone
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -39,8 +40,9 @@ class RepoSearchSelector(Selector):
 
 
 class GithubRepositorySelector(RepoSearchSelector):
-    include: Optional[List[Literal["collaborators", "teams"]]] = Field(
+    include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
         default_factory=list,
+        max_items=3,
         description="Specify the relationships to include in the repository",
     )
 
@@ -107,8 +109,17 @@ class GithubPullRequestSelector(RepoSearchSelector):
         default=60,
         ge=1,
         le=90,
-        description="Only fetch pull requests created within the last N days (1-90 days)",
+        description="Only fetch pull requests updated within the last N days (1-90 days)",
     )
+    api: Literal["rest", "graphql"] = Field(
+        default="rest",
+        description="Select the API to use for fetching pull requests",
+    )
+
+    @property
+    def updated_after(self) -> datetime:
+        """Convert the since days to a timezone-aware datetime object."""
+        return datetime.now(timezone.utc) - timedelta(days=self.since)
 
 
 class GithubPullRequestConfig(ResourceConfig):
@@ -121,6 +132,15 @@ class GithubIssueSelector(RepoSearchSelector):
         default="open",
         description="Filter by issue state (open, closed, all)",
     )
+    labels: Optional[list[str]] = Field(
+        default=None,
+        description="Filter issues by labels. Issues must have ALL of the specified labels. Example: ['bug', 'enhancement']",
+    )
+
+    @property
+    def labels_str(self) -> Optional[str]:
+        """Convert labels list to comma-separated string for GitHub API."""
+        return ",".join(self.labels) if self.labels else None
 
 
 class GithubIssueConfig(ResourceConfig):
@@ -142,6 +162,38 @@ class GithubDependabotAlertSelector(RepoSearchSelector):
         default=["open"],
         description="Filter alerts by state (auto_dismissed, dismissed, fixed, open)",
     )
+    severity: Optional[list[Literal["low", "medium", "high", "critical"]]] = Field(
+        default=None,
+        description="Filter alerts by severities. A comma-separated list of severities. If specified, only alerts with these severities will be returned. Example: ['low', 'medium']",
+    )
+    ecosystems: Optional[
+        list[
+            Literal[
+                "composer",
+                "go",
+                "maven",
+                "npm",
+                "nuget",
+                "pip",
+                "pub",
+                "rubygems",
+                "rust",
+            ]
+        ]
+    ] = Field(
+        default=None,
+        description="Filter alerts by ecosystems. Only alerts for these ecosystems will be returned. Example: ['npm', 'pip']",
+    )
+
+    @property
+    def severity_str(self) -> Optional[str]:
+        """Convert severity list to comma-separated string for GitHub API."""
+        return ",".join(self.severity) if self.severity else None
+
+    @property
+    def ecosystems_str(self) -> Optional[str]:
+        """Convert ecosystems list to comma-separated string for GitHub API."""
+        return ",".join(self.ecosystems) if self.ecosystems else None
 
 
 class GithubDependabotAlertConfig(ResourceConfig):
@@ -154,11 +206,33 @@ class GithubCodeScanningAlertSelector(RepoSearchSelector):
         default="open",
         description="Filter alerts by state (open, closed, dismissed, fixed)",
     )
+    severity: Optional[
+        Literal["critical", "high", "medium", "low", "warning", "note", "error"]
+    ] = Field(
+        default=None,
+        description="Filter alerts by severity level. If specified, only code scanning alerts with this severity will be returned.",
+    )
 
 
 class GithubCodeScanningAlertConfig(ResourceConfig):
     selector: GithubCodeScanningAlertSelector
     kind: Literal["code-scanning-alerts"]
+
+
+class GithubDeploymentSelector(RepoSearchSelector):
+    task: Optional[str] = Field(
+        default=None,
+        description="Filter deployments by task name (e.g., deploy or deploy:migrations)",
+    )
+    environment: Optional[str] = Field(
+        default=None,
+        description="Filter deployments by environment name (e.g., staging or production)",
+    )
+
+
+class GithubDeploymentConfig(ResourceConfig):
+    selector: GithubDeploymentSelector
+    kind: Literal["deployment"]
 
 
 class GithubSecretScanningAlertSelector(RepoSearchSelector):
@@ -239,6 +313,11 @@ class GithubPortAppConfig(PortAppConfig):
             "member of) for Classic PAT authentication."
         ),
     )
+    include_authenticated_user: bool = Field(
+        default=False,
+        alias="includeAuthenticatedUser",
+        description="Include the authenticated user's personal account",
+    )
     repository_type: str = Field(alias="repositoryType", default="all")
     resources: list[
         GithubRepositoryConfig
@@ -246,6 +325,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubIssueConfig
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig
+        | GithubDeploymentConfig
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig

@@ -19,6 +19,9 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
+    JQEntityProcessor,
+)
 from port_ocean.core.handlers.queue import LocalQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -304,6 +307,9 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
         ocean_mock.config = MagicMock()
         ocean_mock.config.port = MagicMock()
         ocean_mock.config.port.port_app_config_cache_ttl = 60
+        ocean_mock.config.process_in_queue_max_workers = 4
+        ocean_mock.config.process_in_queue_timeout = 10
+        ocean_mock.config.allow_environment_variables_jq_access = True
         ocean_mock.port_client = mock_port_client
         ocean_mock.integration_router = APIRouter()
         ocean_mock.fast_api_app = FastAPI()
@@ -314,6 +320,9 @@ def mock_ocean(mock_port_client: PortClient) -> Ocean:
 def mock_context(mock_ocean: Ocean) -> PortOceanContext:
     context = PortOceanContext(mock_ocean)
     ocean._app = context.app
+    # Set up integration.entity_processor for multiprocess _calculate_entity access
+    mock_ocean.integration = MagicMock()
+    mock_ocean.integration.entity_processor = JQEntityProcessor(context)
     return context
 
 
@@ -672,6 +681,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessed_en
     )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
+    await mock_context.app.integration.initialize_handlers()
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
         mock_context.app.integration_router,
         SignalHandler(),
@@ -1100,6 +1110,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedFor
     )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
+    await mock_context.app.integration.initialize_handlers()
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
         mock_context.app.integration_router,
         SignalHandler(),
@@ -1235,6 +1246,7 @@ async def test_integrationTest_postRequestSent_webhookEventRawResultProcessedwit
     )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
+    await mock_context.app.integration.initialize_handlers()
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
         mock_context.app.integration_router,
         SignalHandler(),
@@ -1514,6 +1526,7 @@ async def test_integrationTest_postRequestSent_oneProcessorThrowsException_onlyS
     )
     test_path = "/webhook-test"
     mock_context.app.integration = BaseIntegration(ocean)
+    await mock_context.app.integration.initialize_handlers()
     mock_context.app.webhook_manager = LiveEventsProcessorManager(
         mock_context.app.integration_router,
         SignalHandler(),

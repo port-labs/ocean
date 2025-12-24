@@ -26,10 +26,10 @@ RUN apt-get update \
         python3-pip \
         python3-poetry \
         build-essential\
-        jq \
         git \
         python3-venv \
         acl \
+        libyaml-dev \
     && apt-get clean
 
 ARG BUILD_CONTEXT
@@ -54,7 +54,6 @@ COPY . .
 RUN rm -rf .venv-docker ${BUILD_CONTEXT}/.venv-docker
 RUN python3 -m venv .venv-docker
 RUN python3 -m venv ${BUILD_CONTEXT}/.venv-docker
-
 
 WORKDIR /app/${BUILD_CONTEXT}
 

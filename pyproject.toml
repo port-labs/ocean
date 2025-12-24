@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.29.5"
+version = "0.32.8"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -69,6 +69,7 @@ pytest-cov = "^6.0.0"
 ijson = "^3.4.0"
 aiofiles = "^24.1.0"
 cryptography = "^44.0.1"
+jmespath = "^1.0.1"
 
 [tool.poetry.extras]
 cli = ["click", "rich", "cookiecutter", "jinja2-time"]
