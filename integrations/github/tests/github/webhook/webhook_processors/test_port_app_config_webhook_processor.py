@@ -2,6 +2,13 @@ import pytest
 from typing import Any, Dict
 from unittest.mock import AsyncMock
 
+from port_ocean.core.handlers.port_app_config.models import (
+    EntityMapping,
+    MappingsConfig,
+    PortResourceConfig,
+    ResourceConfig,
+    Selector,
+)
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
@@ -15,8 +22,26 @@ from github.webhook.webhook_processors.port_app_config_webhook_processor import 
 )
 
 
+def _build_dummy_resource_config() -> ResourceConfig:
+    """Build a minimal valid ResourceConfig instance for tests."""
+    entity_mapping = EntityMapping(
+        identifier="id",
+        title=None,
+        icon=None,
+        blueprint="githubRepository",
+        team=None,
+    )
+    return ResourceConfig(
+        kind="test",
+        selector=Selector(query="true"),
+        port=PortResourceConfig(entity=MappingsConfig(mappings=entity_mapping)),
+    )
+
+
 @pytest.fixture
-def port_app_config_webhook_processor(mock_webhook_event: WebhookEvent) -> PortAppConfigWebhookProcessor:  # type: ignore[name-defined]
+def port_app_config_webhook_processor(
+    mock_webhook_event: WebhookEvent,
+) -> PortAppConfigWebhookProcessor:
     return PortAppConfigWebhookProcessor(event=mock_webhook_event)
 
 
@@ -43,21 +68,32 @@ class TestPortAppConfigWebhookProcessor:
             headers={"x-github-event": "push"},
         )
 
-        assert await port_app_config_webhook_processor._should_process_event(event) is True
+        assert (
+            await port_app_config_webhook_processor._should_process_event(event) is True
+        )
 
         # Wrong event type
         event.headers = {"x-github-event": "issues"}
-        assert await port_app_config_webhook_processor._should_process_event(event) is False
+        assert (
+            await port_app_config_webhook_processor._should_process_event(event)
+            is False
+        )
 
         # Wrong repo
         event.headers = {"x-github-event": "push"}
         event.payload["repository"]["name"] = "some-other-repo"
-        assert await port_app_config_webhook_processor._should_process_event(event) is False
+        assert (
+            await port_app_config_webhook_processor._should_process_event(event)
+            is False
+        )
 
         # Not a branch ref
         event.payload["repository"]["name"] = ORG_CONFIG_REPO
         event.payload["ref"] = "refs/tags/v1.0.0"
-        assert await port_app_config_webhook_processor._should_process_event(event) is False
+        assert (
+            await port_app_config_webhook_processor._should_process_event(event)
+            is False
+        )
 
     async def test_validate_payload_valid(
         self,
@@ -78,7 +114,10 @@ class TestPortAppConfigWebhookProcessor:
             "repository": {"name": ORG_CONFIG_REPO, "default_branch": "main"},
             "organization": {"login": "test-org"},
         }
-        assert await port_app_config_webhook_processor.validate_payload(invalid_payload) is False
+        assert (
+            await port_app_config_webhook_processor.validate_payload(invalid_payload)
+            is False
+        )
 
     @pytest.mark.asyncio
     async def test_handle_event_triggers_resync_when_config_changed_and_repo_managed(
@@ -104,22 +143,27 @@ class TestPortAppConfigWebhookProcessor:
         async def mock_get_integration(*_: Any, **__: Any) -> Dict[str, Any]:
             return {"config": {"repoManagedMapping": True}}
 
-        ocean.port_client.get_current_integration = AsyncMock(  # type: ignore[attr-defined]
-            side_effect=mock_get_integration
+        monkeypatch.setattr(
+            ocean.port_client,
+            "get_current_integration",
+            AsyncMock(side_effect=mock_get_integration),
         )
 
         # Arrange: patch trigger_resync so we don't actually resync or require port_app_config
         called: Dict[str, bool] = {"resync_called": False}
 
-        async def mock_trigger_resync() -> None:
+        async def mock_trigger_resync(*_: Any, **__: Any) -> None:
             called["resync_called"] = True
 
         monkeypatch.setattr(
-            PortAppConfigWebhookProcessor, "trigger_resync", mock_trigger_resync
+            "github.webhook.webhook_processors.port_app_config_webhook_processor.PortAppConfigWebhookProcessor.trigger_resync",
+            mock_trigger_resync,
         )
 
         # Act
-        result = await port_app_config_webhook_processor.handle_event(payload, ResourceConfig())  # type: ignore[arg-type]
+        result = await port_app_config_webhook_processor.handle_event(
+            payload, _build_dummy_resource_config()
+        )
 
         # Assert
         assert isinstance(result, WebhookEventRawResults)
@@ -146,25 +190,28 @@ class TestPortAppConfigWebhookProcessor:
         )
 
         # Arrange: integration is repo-managed
-        ocean.port_client.get_current_integration = AsyncMock(  # type: ignore[attr-defined]
-            return_value={"config": {"repoManagedMapping": True}}
+        monkeypatch.setattr(
+            ocean.port_client,
+            "get_current_integration",
+            AsyncMock(return_value={"config": {"repoManagedMapping": True}}),
         )
 
         # Patch trigger_resync
         called: Dict[str, bool] = {"resync_called": False}
 
-        async def mock_trigger_resync() -> None:
+        async def mock_trigger_resync(*_: Any, **__: Any) -> None:
             called["resync_called"] = True
 
         monkeypatch.setattr(
-            PortAppConfigWebhookProcessor, "trigger_resync", mock_trigger_resync
+            "github.webhook.webhook_processors.port_app_config_webhook_processor.PortAppConfigWebhookProcessor.trigger_resync",
+            mock_trigger_resync,
         )
 
         # Act
-        result = await port_app_config_webhook_processor.handle_event(payload, ResourceConfig())  # type: ignore[arg-type]
+        result = await port_app_config_webhook_processor.handle_event(
+            payload, _build_dummy_resource_config()
+        )
 
         # Assert
         assert isinstance(result, WebhookEventRawResults)
         assert called["resync_called"] is False
-
-
