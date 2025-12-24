@@ -102,7 +102,7 @@ class TestPortAppConfigWebhookProcessor:
 
         # Arrange: integration is repo-managed
         async def mock_get_integration(*_: Any, **__: Any) -> Dict[str, Any]:
-            return {"config": {"mappingSource": "repo"}}
+            return {"config": {"repoManagedMapping": True}}
 
         ocean.port_client.get_current_integration = AsyncMock(  # type: ignore[attr-defined]
             side_effect=mock_get_integration
@@ -147,7 +147,7 @@ class TestPortAppConfigWebhookProcessor:
 
         # Arrange: integration is repo-managed
         ocean.port_client.get_current_integration = AsyncMock(  # type: ignore[attr-defined]
-            return_value={"config": {"mappingSource": "repo"}}
+            return_value={"config": {"repoManagedMapping": True}}
         )
 
         # Patch trigger_resync

@@ -23,8 +23,6 @@ from github.clients.client_factory import create_github_client
 from github.helpers.port_app_config import ORG_CONFIG_FILE, ORG_CONFIG_REPO
 
 
-
-
 class PortAppConfigWebhookProcessor(
     BaseConfigChangeWebhookProcessor, _GithubAbstractWebhookProcessor
 ):
@@ -36,7 +34,7 @@ class PortAppConfigWebhookProcessor(
     - Listens to GitHub `push` events.
     - Filters events to the `.github-private` repository on its default branch.
     - If any commit in the push touches `port-app-config.yml` and the integration
-      mapping is managed via `mappingSource: "repo"`, triggers a full resync.
+      mapping is managed via `repoManagedMapping: true`, triggers a full resync.
     """
 
     async def validate_payload(self, payload: EventPayload) -> bool:

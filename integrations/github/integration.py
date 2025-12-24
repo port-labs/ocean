@@ -436,8 +436,8 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
             """
             Retrieve the Port app config for the GitHub Ocean integration.
 
-            - If `config.mappingSource == "repo"` (set from Port UI), ignore the API
-              mapping and load the Port app config from a GitHub organization config
+            - If `config.repoManagedMapping` is true, ignore the API mapping
+              and load the Port app config from a GitHub organization config
               repository (global mapping).
             - Otherwise, if `config` is non-empty, use it as-is (standard mapping).
             - If `config` is empty and no repo source is specified, treat it as an
@@ -464,7 +464,7 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
                 return raw_config
 
             logger.error(
-                "Integration Port app config is empty and no repo-based mappingSource "
-                "was specified"
+                "Integration Port app config is empty and no repoManagedMapping "
+                "flag was specified"
             )
             raise EmptyPortAppConfigError()

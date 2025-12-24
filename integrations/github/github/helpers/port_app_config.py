@@ -14,7 +14,8 @@ ORG_CONFIG_FILE = "port-app-config.yml"
 
 def is_repo_managed_mapping(integration: Dict[str, Any]) -> bool:
     """Check if the mapping is managed by the repository."""
-    return integration.get("config", {}).get("mappingSource") == "repo"
+    config = integration.get("config") or {}
+    return bool(config.get("repoManagedMapping"))
 
 
 async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
