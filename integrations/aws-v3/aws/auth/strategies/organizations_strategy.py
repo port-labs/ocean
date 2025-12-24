@@ -7,6 +7,7 @@ from aws.auth.utils import (
 from aws.auth.providers.base import CredentialProvider
 from aiobotocore.session import AioSession
 from loguru import logger
+from port_ocean.utils.cache import cache_coroutine_result
 import asyncio
 from typing import Any, AsyncIterator, Dict, List
 from botocore.utils import ArnParser
@@ -186,18 +187,12 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, CachedHealthChec
     DEFAULT_CONCURRENCY = 10
     DEFAULT_BATCH_SIZE = 10
 
-    def _get_cache_key(self) -> str:
-        """Generate cache key for healthcheck results."""
-        role_arn = self._get_organization_account_role_arn()
-        external_id = self.config.get("external_id", "")
-        region = self.config.get("region", "")
-        return f"aws_org_healthcheck:{role_arn}:{external_id}:{region}"
-
-    async def _extract_cache_data(self) -> dict[str, Any]:
-        """Extract data to cache after successful healthcheck."""
+    def _get_cache_key_params(self) -> dict[str, str | None]:
+        """Get parameters that should be used for cache key generation."""
         return {
-            "valid_arns": self._valid_arns,
-            "discovered_accounts": self._discovered_accounts,
+            "role_arn": self._get_organization_account_role_arn(),
+            "external_id": self.config.get("external_id"),
+            "region": self.config.get("region"),
         }
 
     async def _restore_from_cache_data(self, cache_data: dict[str, Any]) -> bool:
@@ -207,7 +202,15 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, CachedHealthChec
             discovered_accounts = cache_data.get("discovered_accounts", [])
 
             if not valid_arns:
+                logger.warning("Cache data contains no valid ARNs")
                 return False
+
+            # Check if this is a cache hit (data exists but sessions not yet restored)
+            is_cache_hit = not self._valid_arns and not self._valid_sessions
+            if is_cache_hit:
+                logger.info(
+                    f"Loading healthcheck results from cache: {len(valid_arns)} accounts found"
+                )
 
             # Restore discovered accounts
             self._discovered_accounts = discovered_accounts or []
@@ -229,6 +232,7 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, CachedHealthChec
                     )
 
             if not self._valid_arns:
+                logger.error("Failed to recreate any sessions from cache")
                 return False
 
             logger.info(
@@ -265,85 +269,115 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, CachedHealthChec
             )
             return None
 
+    @cache_coroutine_result()
+    async def _get_healthcheck_data(
+        self,
+        role_arn: str,
+        external_id: str | None,
+        region: str | None,
+    ) -> dict[str, Any]:
+        """
+        Get healthcheck data. Decorator automatically handles caching.
+        This method only runs if cache miss.
+        Returns dict with cacheable data (valid_arns, discovered_accounts).
+        """
+        logger.info("Cache miss - running healthcheck for organizations strategy")
+        
+        # Discover accounts first
+        accounts = await self.discover_accounts()
+        if not accounts:
+            logger.warning("No accounts discovered in the organization")
+            return {"valid_arns": [], "discovered_accounts": []}
+
+        logger.info(
+            f"Starting health check for {len(accounts)} discovered accounts"
+        )
+
+        # Validate role assumption for each account
+        valid_arns: list[str] = []
+        discovered_accounts: list[Dict[str, str]] = []
+        semaphore = asyncio.Semaphore(self.DEFAULT_CONCURRENCY)
+
+        async def check_account(
+            account: Dict[str, str],
+        ) -> tuple[str, str | None]:
+            """Check if role can be assumed in account. Returns (role_arn, role_arn or None)."""
+            async with semaphore:
+                session = await self._can_assume_role_in_account(account["Id"])
+                role_arn = self._build_role_arn(account["Id"])
+                return role_arn if session else None
+
+        # Process accounts in batches
+        total_batches = (
+            len(accounts) + self.DEFAULT_BATCH_SIZE - 1
+        ) // self.DEFAULT_BATCH_SIZE
+
+        for batch_num, batch_start in enumerate(
+            range(0, len(accounts), self.DEFAULT_BATCH_SIZE), 1
+        ):
+            batch = accounts[batch_start : batch_start + self.DEFAULT_BATCH_SIZE]
+            logger.debug(
+                f"Processing batch {batch_num}/{total_batches} ({len(batch)} accounts)"
+            )
+
+            tasks = [check_account(account) for account in batch]
+            successful = 0
+
+            for account, task in zip(batch, tasks):
+                try:
+                    role_arn_result = await task
+                    if role_arn_result:
+                        valid_arns.append(role_arn_result)
+                        discovered_accounts.append(account)
+                        successful += 1
+                        logger.debug(
+                            f"Role '{role_arn_result}' assumption validated for account {account['Id']}"
+                        )
+                except Exception as e:
+                    logger.warning(
+                        f"Health check failed for account {account['Id']}: {e}"
+                    )
+
+            logger.debug(
+                f"Batch {batch_num}/{total_batches}: {successful}/{len(batch)} accounts validated"
+            )
+
+        logger.info(
+            f"Health check complete: {len(valid_arns)}/{len(accounts)} accounts accessible"
+        )
+
+        if not valid_arns:
+            raise AWSSessionError("No accounts are accessible after health check")
+
+        # Return cacheable data (no AioSession objects - they're not pickleable)
+        return {
+            "valid_arns": valid_arns,
+            "discovered_accounts": discovered_accounts,
+        }
+
     async def healthcheck(self) -> bool:
         """Perform health check by discovering accounts and validating role assumption."""
-        # Try cache first
-        if await self._try_load_from_cache():
-            return True
-
-        # Cache miss - run healthcheck
         try:
-            # Discover accounts first
-            accounts = await self.discover_accounts()
-            if not accounts:
-                logger.warning("No accounts discovered in the organization")
-                return False
+            # Get cache key parameters
+            params = self._get_cache_key_params()
 
-            logger.info(
-                f"Starting health check for {len(accounts)} discovered accounts"
-            )
+            # Get healthcheck data (decorator handles cache automatically)
+            cache_data = await self._get_healthcheck_data(**params)
 
-            # Validate role assumption for each account
-            semaphore = asyncio.Semaphore(self.DEFAULT_CONCURRENCY)
-
-            async def check_account(
-                account: Dict[str, str],
-            ) -> tuple[str, AioSession | None]:
-                async with semaphore:
-                    session = await self._can_assume_role_in_account(account["Id"])
-                    return account["Id"], session
-
-            # Process accounts in batches
-            total_batches = (
-                len(accounts) + self.DEFAULT_BATCH_SIZE - 1
-            ) // self.DEFAULT_BATCH_SIZE
-
-            for batch_num, batch_start in enumerate(
-                range(0, len(accounts), self.DEFAULT_BATCH_SIZE), 1
-            ):
-                batch = accounts[batch_start : batch_start + self.DEFAULT_BATCH_SIZE]
-                logger.debug(
-                    f"Processing batch {batch_num}/{total_batches} ({len(batch)} accounts)"
+            # Restore sessions from cached data
+            if not await self._restore_from_cache_data(cache_data):
+                raise AWSSessionError(
+                    "Failed to restore from cache or no valid accounts found"
                 )
 
-                tasks = [check_account(account) for account in batch]
-                successful = 0
-
-                for account, task in zip(batch, tasks):
-                    try:
-                        account_id, session = await task
-                        if session:
-                            self._add_account_to_valid_accounts(account_id, session)
-                            successful += 1
-                            logger.debug(
-                                f"Role '{self._build_role_arn(account_id)}' assumption validated for account {account_id}"
-                            )
-                    except Exception as e:
-                        logger.warning(
-                            f"Health check failed for account {account['Id']}: {e}"
-                        )
-
-                logger.debug(
-                    f"Batch {batch_num}/{total_batches}: {successful}/{len(batch)} accounts validated"
-                )
-            logger.info(
-                f"Health check complete: {len(self._valid_arns)}/{len(accounts)} accounts accessible"
-            )
-
-            if not self._valid_arns:
-                raise AWSSessionError("No accounts are accessible after health check")
-
-            # Save to cache after successful healthcheck
-            await self._save_to_cache()
             return True
 
+        except AWSOrganizationsNotInUseError:
+            logger.info("Falling back to single account mode")
+            return await self._fallback_to_single_account()
         except Exception as e:
-            if isinstance(e, AWSOrganizationsNotInUseError):
-                logger.info("Falling in to single account mode")
-                return await self._fallback_to_single_account()
-            else:
-                logger.error(f"Health check failed: {e}")
-                raise AWSSessionError(f"Organizations health check failed: {e}")
+            logger.error(f"Health check failed: {e}")
+            raise AWSSessionError(f"Organizations health check failed: {e}")
 
 
 class OrganizationsStrategy(OrganizationsHealthCheckMixin):
