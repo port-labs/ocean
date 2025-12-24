@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for repo-managed Port app config for the GitHub Ocean integration, loading mapping from `.github-private/port-app-config.yml` and triggering a resync on config changes.
 
 
+## 4.5.5-beta (2025-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.9
+
+
 ## 4.5.4-beta (2025-12-23)
 
 
