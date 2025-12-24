@@ -124,25 +124,28 @@ jobs:
               exit 1
             fi
 
-            SIZE=$(docker images "${IMAGE}" --format '{{.VirtualSize}}' | \
-              awk 'BEGIN{IGNORECASE=1} {
-                val = $0
-                gsub(/[^0-9.]/,"",val)
-                if ($0 ~ /GB/) print int(val * 1073741824)
-                else if ($0 ~ /MB/) print int(val * 1048576)
-                else if ($0 ~ /KB/) print int(val * 1024)
-                else print int(val)
-              }')
-            if [[ -z "${SIZE}" ]]; then
-              echo "⚠️ Failed to get size for ${arch}"
+            # `docker images` can output multiple rows for the same reference; pick a single deterministic value.
+            RAW_SIZE="$(docker images "${IMAGE}" --format '{{.VirtualSize}}' | head -n 1)"
+            if [[ -z "${RAW_SIZE}" ]]; then
+              echo "⚠️ Failed to get virtual size for ${arch}"
               exit 1
             fi
 
-            echo "✅ ${arch} size: ${SIZE}"
+            echo "🔎 Debug: raw 'docker images ${IMAGE}' output (${arch}): ${RAW_SIZE}"
+
+            SIZE="$(
+              awk -v s="${RAW_SIZE}" 'BEGIN{IGNORECASE=1
+                val = s
+                gsub(/[^0-9.]/,"",val)
+                if (s ~ /GB/) print int(val * 1073741824)
+                else if (s ~ /MB/) print int(val * 1048576)
+                else if (s ~ /KB/) print int(val * 1024)
+                else print int(val)
+              }'
+            )"
+            echo "🔎 Debug: converted size for ${arch}: ${SIZE}"
             echo "size_bytes_linux_${arch}=${SIZE}" >> $GITHUB_OUTPUT
 
-            # Remove image to free space before pulling next arch
-            docker rmi "${IMAGE}" || true
           done
 
       - name: Track image size in New Relic (amd64)
