@@ -17,3 +17,13 @@ class PushEvents(StrEnum):
 
 class RepositoryEvents(StrEnum):
     REPO_CREATED = "git.repo.created"
+
+
+class PipelineEvents(StrEnum):
+    """
+    Events for Azure DevOps pipeline/build webhooks.
+    https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops
+    """
+
+    BUILD_COMPLETED = "build.complete"
+    BUILD_STARTED = "build.started"

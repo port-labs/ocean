@@ -27,6 +27,9 @@ from azure_devops.webhooks.webhook_processors.pull_request_processor import (
 from azure_devops.webhooks.webhook_processors.repository_processor import (
     RepositoryWebhookProcessor,
 )
+from azure_devops.webhooks.webhook_processors.pipeline_webhook_processor import (
+    PipelineWebhookProcessor,
+)
 from integration import (
     AzureDevopsPipelineResourceConfig,
     AzureDevopsProjectResourceConfig,
@@ -328,3 +331,4 @@ ocean.add_webhook_processor("/webhook", FileWebhookProcessor)
 ocean.add_webhook_processor("/webhook", GitopsWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FolderWebhookProcessor)
 ocean.add_webhook_processor("/webhook", BranchWebhookProcessor)
+ocean.add_webhook_processor("/webhook", PipelineWebhookProcessor)
