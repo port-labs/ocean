@@ -4,6 +4,8 @@
 
 - Enabled saas for the custom integration
 
+## 0.2.40-beta (2025-12-24)
+
 ### Improvements
 
 - Bumped ocean version to ^0.32.9
