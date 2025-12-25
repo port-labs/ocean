@@ -41,7 +41,7 @@ configurations:
     description: AWS API Key for custom events, used to validate the event source for real-time event updates.
   - name: maximumConcurrentAccounts
     type: integer
-    require: false
+    required: false
     description: The number of concurrent accounts to scan. By default, it is set to 50. [DEPRECATED] This configuration will be removed in a future version.
     default: 10
 deploymentMethodRequirements:
