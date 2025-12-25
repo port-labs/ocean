@@ -1,5 +1,10 @@
-## 0.2.40-beta (2025-12-24)
+## 0.2.41-beta (2025-12-24)
 
+### Improvements
+
+- Enabled saas for the custom integration
+
+## 0.2.40-beta (2025-12-24)
 
 ### Improvements
 
