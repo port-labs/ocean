@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.6.0-beta (2025-12-24)
+
+
+### Features
+
+- Added support for repo-managed Port app config for the GitHub Ocean integration, loading mapping from `.github-private/port-app-config.yml` and triggering a resync on config changes.
+
+
 ## 4.5.5-beta (2025-12-24)
 
 

@@ -1,6 +1,7 @@
-from fastapi import Request
-from pydantic import BaseModel, Field
 from datetime import datetime, timedelta, timezone
+from fastapi import Request
+from loguru import logger
+from pydantic import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -8,6 +9,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
+from port_ocean.exceptions.api import EmptyPortAppConfigError
 from port_ocean.core.handlers.queue import GroupQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -23,14 +25,18 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
-from github.entity_processors.file_entity_processor import FileEntityProcessor
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from typing import Any, Dict, List, Optional, Type, Literal
-from loguru import logger
 from port_ocean.utils.signal import signal_handler
+from typing import Any, Dict, List, Optional, Type, Literal
+
+from github.entity_processors.file_entity_processor import FileEntityProcessor
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import ObjectKind
 from github.webhook.live_event_group_selector import get_primary_id
+from github.helpers.port_app_config import (
+    is_repo_managed_mapping,
+    load_org_port_app_config,
+)
 
 FILE_PROPERTY_PREFIX = "file://"
 
@@ -425,3 +431,40 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GithubPortAppConfig
+
+        async def _get_port_app_config(self) -> dict[str, Any]:
+            """
+            Retrieve the Port app config for the GitHub Ocean integration.
+
+            - If `config.repoManagedMapping` is true, ignore the API mapping
+              and load the Port app config from a GitHub organization config
+              repository (global mapping).
+            - Otherwise, if `config` is non-empty, use it as-is (standard mapping).
+            - If `config` is empty and no repo source is specified, treat it as an
+              invalid/empty mapping.
+            """
+            logger.info("Fetching GitHub Port app config")
+
+            integration = await self.context.port_client.get_current_integration()
+            raw_config = integration.get("config") or {}
+
+            if is_repo_managed_mapping(integration):
+                integration_cfg = self.context.integration_config
+                github_org = integration_cfg.get("github_organization")
+                if not github_org:
+                    logger.error(
+                        "mapping is managed by the repository but github_organization is missing "
+                        "from the integration configuration."
+                    )
+                    raise EmptyPortAppConfigError()
+                return await load_org_port_app_config(github_org)
+
+            if raw_config:
+                logger.debug("Using Port integration config from API")
+                return raw_config
+
+            logger.error(
+                "Integration Port app config is empty and no repoManagedMapping "
+                "flag was specified"
+            )
+            raise EmptyPortAppConfigError()
