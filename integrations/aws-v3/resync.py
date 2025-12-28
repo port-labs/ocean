@@ -76,10 +76,6 @@ class RegionalResyncStrategy(ResyncStrategy):
         self.max_concurrent = max_concurrent
 
     async def run(self, regions: List[str]) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
-        logger.info(
-            f"Processing {self.kind} across {len(regions)} regions for account {self.account_id}"
-        )
         semaphore = asyncio.Semaphore(self.max_concurrent)
 
         tasks = [
