@@ -108,12 +108,11 @@ class MultiAccountStrategy(MultiAccountHealthCheckMixin):
         self, **kwargs: Any
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
         if not (self._valid_arns and self._valid_sessions):
-            await self.healthcheck()
-
-        if not (self._valid_arns and self._valid_sessions):
-            raise AWSSessionError(
-                "Account sessions not initialized. Run healthcheck first."
-            )
+            success = await self.healthcheck()
+            if not success:
+                raise AWSSessionError(
+                    "Account sessions not initialized. Run healthcheck first."
+                )
 
         logger.info(f"Providing {len(self._valid_arns)} pre-validated AWS sessions")
 

@@ -46,11 +46,6 @@ class SingleAccountStrategy(SingleAccountHealthCheckMixin):
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
         if not self._session:
             await self.healthcheck()
-
-        if not self._session:
-            raise AWSSessionError(
-                "Session could not be established for single account."
-            )
         account_id = self.account_id
         if account_id is None:
             raise AWSSessionError("Account ID is not set for single account session.")
