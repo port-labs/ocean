@@ -60,8 +60,8 @@ class AccountStrategyFactory:
         return SingleAccountStrategy
 
     @classmethod
-    async def get(cls) -> StrategyType:
-        """Get the cached strategy instance, creating it if necessary."""
+    async def create(cls) -> StrategyType:
+        """Create or get the cached strategy instance."""
         if cls._cached_strategy is not None:
             return cls._cached_strategy
         config = ocean.integration_config
@@ -88,12 +88,12 @@ class AccountInfo(TypedDict):
 async def initialize_aws_account_sessions() -> None:
     """Validate and initialize all AWS account sessions before resync."""
     logger.info("Initializing AWS account sessions")
-    strategy = await AccountStrategyFactory.get()
+    strategy = await AccountStrategyFactory.create()
     await strategy.healthcheck()
     logger.info("AWS account sessions initialized successfully")
 
 
 async def get_all_account_sessions() -> AsyncIterator[tuple[AccountInfo, AioSession]]:
-    strategy = await AccountStrategyFactory.get()
+    strategy = await AccountStrategyFactory.create()
     async for account_info, session in strategy.get_account_sessions():
         yield AccountInfo(Id=account_info["Id"], Name=account_info["Name"]), session
