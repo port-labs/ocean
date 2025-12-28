@@ -1,0 +1,100 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+
+resources:
+  - kind: project
+    selector:
+      query: "true"
+      public: null
+      name: null
+    port:
+      entity:
+        mappings:
+          identifier: .project_id | tostring
+          title: .name
+          blueprint: '"harborProject"'
+          properties:
+            projectId: .project_id
+            ownerName: .owner_name
+            public: .metadata.public == "true"
+            repoCount: .repo_count
+            creationTime: .creation_time
+            updateTime: .update_time
+
+  - kind: user
+    selector:
+      query: "true"
+      username: null
+    port:
+      entity:
+        mappings:
+          identifier: .user_id | tostring
+          title: .username
+          blueprint: '"harborUser"'
+          properties:
+            userId: .user_id
+            username: .username
+            email: .email
+            realname: .realname
+            admin: .sysadmin_flag
+            comment: .comment
+            creationTime: .creation_time
+            updateTime: .update_time
+
+  - kind: repository
+    selector:
+      query: "true"
+      projectName: null
+      nameContains: null
+      nameStartsWith: null
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"harborRepository"'
+          properties:
+            repositoryId: .id
+            projectId: .project_id
+            name: .name
+            description: .description
+            artifactCount: .artifact_count
+            pullCount: .pull_count
+            creationTime: .creation_time
+            updateTime: .update_time
+          relations:
+            project: .project_id | tostring
+
+  - kind: artifact
+    selector:
+      query: "true"
+      tag: null
+      digest: null
+      labels: null
+      mediaType: null
+      withScanOverview: true
+      withTag: true
+      withLabel: false
+    port:
+      entity:
+        mappings:
+          identifier: .digest
+          title: >-
+            .tags[0].name // (.digest | split(":")[1] | .[0:12])
+          blueprint: '"harborArtifact"'
+          properties:
+            artifactId: .id
+            digest: .digest
+            type: .type
+            mediaType: .media_type
+            manifestMediaType: .manifest_media_type
+            size: .size
+            tags: '[.tags[]?.name] // []'
+            pushTime: .push_time
+            pullTime: .pull_time
+            projectName: ._project_name
+            repositoryName: ._repository_name
+            scanOverview: .scan_overview
+          relations:
+            repository: .repository_id | tostring
+            project: .project_id | tostring
