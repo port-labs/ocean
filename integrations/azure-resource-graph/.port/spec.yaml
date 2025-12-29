@@ -12,6 +12,7 @@ configurations:
     type: string
     required: false
     default: "https://management.azure.com"
+    description: "The base URL of the Azure."
   - name: azureClientId
     type: string
     required: true
