@@ -85,7 +85,7 @@ class PullRequestWebhookProcessor(_BitbucketAbstractWebhookProcessor):
         logger.info(f"Repository filter check with params: {params}")
 
         async for repositories in self._webhook_client.get_repositories(params=params):
-            # returns a list containing only the repository if it matches the filter
+            # If any page yields at least one repository, the filter matches
             if repositories:
                 return True
         return False
