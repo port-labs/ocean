@@ -98,8 +98,8 @@ async def get_all_account_sessions() -> AsyncIterator[tuple[AccountInfo, AioSess
     strategy = AccountStrategyFactory._cached_strategy
     if not strategy:
         raise AWSSessionError(
-                "No AWS account strategy found. AWS account sessions cannot be retrieved."
-            )
+            "No AWS account strategy found. AWS account sessions cannot be retrieved."
+        )
     async for account_info, session in strategy.get_account_sessions():
         yield AccountInfo(Id=account_info["Id"], Name=account_info["Name"]), session
 
