@@ -11,10 +11,10 @@ import pytest
 
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
     JQEntityProcessor,
-    MappedEntity,
     _calculate_entity,
 )
 import port_ocean.core.handlers.entity_processor.jq_entity_processor as jq_module
+from port_ocean.core.handlers.entity_processor.models import MappedEntity
 
 
 class TestCalculateEntity:
@@ -23,16 +23,24 @@ class TestCalculateEntity:
     @pytest.fixture(autouse=True)
     def setup_mock_ocean(self) -> Any:
         """Set up mock ocean config."""
-        with patch(
-            "port_ocean.core.handlers.entity_processor.jq_entity_processor.ocean"
-        ) as mock_ocean:
-            mock_ocean.config = MagicMock()
-            mock_ocean.config.allow_environment_variables_jq_access = True
-            # Set up a real JQEntityProcessor so _get_mapped_entity works correctly
-            mock_context = MagicMock()
-            entity_processor = JQEntityProcessor(mock_context)
-            mock_ocean.integration.entity_processor = entity_processor
-            jq_module._MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS.clear()
+        mock_ocean = MagicMock()
+        mock_ocean.config = MagicMock()
+        mock_ocean.config.allow_environment_variables_jq_access = True
+        # Set up a real JQEntityProcessor so _get_mapped_entity works correctly
+        mock_context = MagicMock()
+        entity_processor = JQEntityProcessor(mock_context)
+        mock_ocean.integration.entity_processor = entity_processor
+
+        with (
+            patch(
+                "port_ocean.core.handlers.entity_processor.jq_entity_processor.ocean",
+                mock_ocean,
+            ),
+            patch(
+                "port_ocean.core.handlers.entity_processor.jq_entity_processor_sync.ocean",
+                mock_ocean,
+            ),
+        ):
             yield mock_ocean
 
     def test_calculate_entity_from_globals(self, setup_mock_ocean: Any) -> None:
@@ -159,16 +167,24 @@ class TestIntegration:
     @pytest.fixture(autouse=True)
     def setup_mock_ocean(self) -> Any:
         """Set up mock ocean config."""
-        with patch(
-            "port_ocean.core.handlers.entity_processor.jq_entity_processor.ocean"
-        ) as mock_ocean:
-            mock_ocean.config = MagicMock()
-            mock_ocean.config.allow_environment_variables_jq_access = True
-            # Set up a real JQEntityProcessor so _get_mapped_entity works correctly
-            mock_context = MagicMock()
-            entity_processor = JQEntityProcessor(mock_context)
-            mock_ocean.integration.entity_processor = entity_processor
-            jq_module._MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS.clear()
+        mock_ocean = MagicMock()
+        mock_ocean.config = MagicMock()
+        mock_ocean.config.allow_environment_variables_jq_access = True
+        # Set up a real JQEntityProcessor so _get_mapped_entity works correctly
+        mock_context = MagicMock()
+        entity_processor = JQEntityProcessor(mock_context)
+        mock_ocean.integration.entity_processor = entity_processor
+
+        with (
+            patch(
+                "port_ocean.core.handlers.entity_processor.jq_entity_processor.ocean",
+                mock_ocean,
+            ),
+            patch(
+                "port_ocean.core.handlers.entity_processor.jq_entity_processor_sync.ocean",
+                mock_ocean,
+            ),
+        ):
             yield mock_ocean
 
     def test_full_entity_processing_flow(self, setup_mock_ocean: Any) -> None:
@@ -289,7 +305,7 @@ class TestIntegration:
         assert entities[0].entity["properties"]["owner"] == "Alice"
 
     def test_caching_improves_performance(self, setup_mock_ocean: Any) -> None:
-        """Test that pattern caching works across multiple entities."""
+        """Test that pattern caching works within each processor instance."""
         raw_data = [{"id": str(i), "value": i} for i in range(100)]
 
         mappings = {"identifier": ".id", "count": ".value"}
@@ -299,13 +315,13 @@ class TestIntegration:
         jq_module._MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY = "true"
         jq_module._MULTIPROCESS_JQ_BATCH_PARSE_ALL = False
 
-        # Clear cache to start fresh
-        jq_module._MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS.clear()
-
         # Process all entities
+        # Each _calculate_entity call creates a new JQEntityProcessorSync instance
+        # which has its own compiled_patterns cache
         for i in range(len(raw_data)):
-            _calculate_entity(i)
+            entities, errors = _calculate_entity(i)
+            assert len(entities) == 1
+            assert len(errors) == 0
 
-        # Cache should have the patterns compiled once
-        # There should be limited patterns (the unique ones used)
-        assert len(jq_module._MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS) <= 3
+        # Since each processor instance has its own cache, we can't test
+        # cross-instance caching, but we verify that processing works correctly

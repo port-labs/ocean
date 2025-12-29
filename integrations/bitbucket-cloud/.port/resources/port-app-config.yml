@@ -26,6 +26,7 @@ resources:
             url: ".links.html.href"
             defaultBranch: .mainbranch.name
             readme: file://README.md
+            codeowners: file://CODEOWNERS
           relations:
             project: '.project.uuid | gsub("[{-}]"; "")'
   - kind: pull-request

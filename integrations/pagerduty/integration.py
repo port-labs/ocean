@@ -69,6 +69,7 @@ class PagerdutyScheduleAPIQueryParams(BaseModel):
         default=None,
         description="Number of months back to calculate 'since' date",
     )
+    time_zone: str | None
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
