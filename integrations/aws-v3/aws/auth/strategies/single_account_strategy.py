@@ -49,8 +49,16 @@ class SingleAccountStrategy(SingleAccountHealthCheckMixin):
         account_id = self.account_id
         if account_id is None:
             raise AWSSessionError("Account ID is not set for single account session.")
+        if self._session is None:
+            raise AWSSessionError("Session is not set for single account.")
         account_info = {
             "Id": account_id,
             "Name": f"Account {account_id}",
         }
         yield account_info, self._session
+
+    def reset(self) -> None:
+        """Reset strategy state by clearing single account session and account ID."""
+        self._session = None
+        self.account_id = None
+        logger.debug("Reset single account strategy state")

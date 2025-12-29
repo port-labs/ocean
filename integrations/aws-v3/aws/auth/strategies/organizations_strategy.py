@@ -217,7 +217,7 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin
             accounts = await self.discover_accounts()
             if not accounts:
                 logger.warning("No accounts discovered in the organization")
-                return False
+                raise AWSSessionError("No accounts discovered in the organization")
 
             logger.info(
                 f"Starting health check for {len(accounts)} discovered accounts"
@@ -300,11 +300,7 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
         """Get sessions for all accessible accounts."""
         if not (self._valid_arns and self._valid_sessions):
-            success = await self.healthcheck()
-            if not success:
-                raise AWSSessionError(
-                    "Account sessions not initialized. Run healthcheck first."
-                )
+            await self.healthcheck()
 
         logger.info(f"Providing {len(self._valid_arns)} pre-validated AWS sessions")
 
@@ -331,4 +327,15 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
 
         logger.info(
             f"Session provision complete: {len(self._valid_arns)} sessions yielded"
+        )
+
+    def reset(self) -> None:
+        """Reset strategy state by clearing all cached sessions, ARNs, and discovered accounts."""
+        session_count = len(self._valid_sessions)
+        self._valid_sessions.clear()
+        self._valid_arns.clear()
+        self._discovered_accounts.clear()
+        self._organization_session = None
+        logger.debug(
+            f"Reset organizations strategy state: cleared {session_count} sessions"
         )

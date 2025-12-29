@@ -4,6 +4,7 @@ from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
+from aws.auth.utils import AWSSessionError
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from aiobotocore.session import AioSession
@@ -94,6 +95,18 @@ async def initialize_aws_account_sessions() -> None:
 
 
 async def get_all_account_sessions() -> AsyncIterator[tuple[AccountInfo, AioSession]]:
-    strategy = await AccountStrategyFactory.create()
+    strategy = AccountStrategyFactory._cached_strategy
+    if not strategy:
+        raise AWSSessionError(
+                "No AWS account strategy found. AWS account sessions cannot be retrieved."
+            )
     async for account_info, session in strategy.get_account_sessions():
         yield AccountInfo(Id=account_info["Id"], Name=account_info["Name"]), session
+
+
+async def clear_aws_account_sessions() -> None:
+    """Reset AWS account sessions after resync completes."""
+    strategy = AccountStrategyFactory._cached_strategy
+    if strategy:
+        strategy.reset()
+        logger.debug("All cached AWS account sessions have been cleared and reset.")
