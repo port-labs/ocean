@@ -73,7 +73,13 @@ class BaseCheckmarxAuthenticator(ABC):
 
             if cached_data:
                 current_time = time.time()
-                token_expires_at = cached_data["token_expires_at"]
+                token_expires_at = cached_data.get("token_expires_at")
+
+                if token_expires_at is None:
+                    logger.info(
+                        f"Cached token missing expiration info for tenant {self.tenant}, treating as expired"
+                    )
+                    return None
 
                 if current_time < (token_expires_at - 60):
                     logger.info(f"Using cached token for tenant {self.tenant}")
@@ -142,8 +148,8 @@ class BaseCheckmarxAuthenticator(ABC):
         if cached_token:
             self._access_token = cached_token["access_token"]
             self._refresh_token = cached_token["refresh_token"]
-            # Use stored expiration time (always set when caching)
-            self._token_expires_at = cached_token["token_expires_at"]
+            # Use stored expiration time (backward compatible: defaults to None if missing)
+            self._token_expires_at = cached_token.get("token_expires_at")
             return self._access_token
 
         # If not in cache or expired, refresh the token
