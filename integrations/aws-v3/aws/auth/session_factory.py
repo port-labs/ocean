@@ -4,7 +4,6 @@ from aws.auth.providers.assume_role_provider import AssumeRoleProvider
 from aws.auth.providers.static_provider import StaticCredentialProvider
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
-from aws.auth.utils import AWSSessionError
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from aiobotocore.session import AioSession
