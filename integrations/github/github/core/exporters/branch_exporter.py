@@ -22,9 +22,9 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         response = await self.client.send_api_request(endpoint)
         return response
 
-    async def get_resource[ExporterOptionsT: SingleBranchOptions](
-        self, options: ExporterOptionsT
-    ) -> RAW_ITEM:
+    async def get_resource[
+        ExporterOptionsT: SingleBranchOptions
+    ](self, options: ExporterOptionsT) -> RAW_ITEM:
 
         repo_name, organization, params = parse_github_options(dict(options))
         branch_name = params["branch_name"]
@@ -47,9 +47,9 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             enrich_with_repository(response, repo_name, repo=repo), organization
         )
 
-    async def get_paginated_resources[ExporterOptionsT: ListBranchOptions](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionsT: ListBranchOptions
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all branches in the repository with pagination."""
 
         repo_name, organization, params = parse_github_options(dict(options))
