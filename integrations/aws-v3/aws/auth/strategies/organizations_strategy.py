@@ -267,10 +267,10 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin
                     f"Batch {batch_num}/{total_batches}: {successful}/{len(batch)} accounts validated"
                 )
             logger.info(
-                f"Health check complete: {len(self._valid_arns)}/{len(accounts)} accounts accessible"
+                f"Health check complete: {len(self.valid_arns)}/{len(accounts)} accounts accessible"
             )
 
-            if not self._valid_arns:
+            if not self.valid_arns:
                 raise AWSSessionError("No accounts are accessible after health check")
 
             return True
@@ -299,16 +299,16 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
         self, **kwargs: Any
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
         """Get sessions for all accessible accounts."""
-        if not (self._valid_arns and self._valid_sessions):
+        if not (self.valid_arns and self.valid_sessions):
             await self.healthcheck()
 
-        logger.info(f"Providing {len(self._valid_arns)} pre-validated AWS sessions")
+        logger.info(f"Providing {len(self.valid_arns)} pre-validated AWS sessions")
 
         # Map role ARNs back to account information
         account_map = {account["Id"]: account for account in self._discovered_accounts}
 
-        for role_arn in self._valid_arns:
-            session = self._valid_sessions[role_arn]
+        for role_arn in self.valid_arns:
+            session = self.valid_sessions[role_arn]
             account_id = extract_account_from_arn(role_arn)
 
             # Get account info from discovered accounts
@@ -326,16 +326,5 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
             yield account_info, session
 
         logger.info(
-            f"Session provision complete: {len(self._valid_arns)} sessions yielded"
-        )
-
-    def reset(self) -> None:
-        """Reset strategy state by clearing all cached sessions, ARNs, and discovered accounts."""
-        session_count = len(self._valid_sessions)
-        self._valid_sessions.clear()
-        self._valid_arns.clear()
-        self._discovered_accounts.clear()
-        self._organization_session = None
-        logger.debug(
-            f"Reset organizations strategy state: cleared {session_count} sessions"
+            f"Session provision complete: {len(self.valid_arns)} sessions yielded"
         )

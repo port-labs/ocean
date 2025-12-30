@@ -95,18 +95,13 @@ async def initialize_aws_account_sessions() -> None:
 
 
 async def get_all_account_sessions() -> AsyncIterator[tuple[AccountInfo, AioSession]]:
-    strategy = AccountStrategyFactory._cached_strategy
-    if not strategy:
-        raise AWSSessionError(
-            "No AWS account strategy found. AWS account sessions cannot be retrieved."
-        )
+    strategy = await AccountStrategyFactory.create()
     async for account_info, session in strategy.get_account_sessions():
         yield AccountInfo(Id=account_info["Id"], Name=account_info["Name"]), session
 
 
 async def clear_aws_account_sessions() -> None:
-    """Reset AWS account sessions after resync completes."""
-    strategy = AccountStrategyFactory._cached_strategy
-    if strategy:
-        strategy.reset()
-        logger.debug("All cached AWS account sessions have been cleared and reset.")
+    """Clear AWS account sessions after resync completes by deleting the cached strategy."""
+    if AccountStrategyFactory._cached_strategy:
+        AccountStrategyFactory._cached_strategy = None
+        logger.debug("All cached AWS account sessions have been cleared.")

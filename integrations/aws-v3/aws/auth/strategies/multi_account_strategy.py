@@ -126,12 +126,3 @@ class MultiAccountStrategy(MultiAccountHealthCheckMixin):
         logger.debug(
             f"Session provision complete: {len(self._valid_arns)} sessions yielded"
         )
-
-    def reset(self) -> None:
-        """Reset strategy state by clearing all cached sessions and ARNs."""
-        session_count = len(self._valid_sessions)
-        self._valid_sessions.clear()
-        self._valid_arns.clear()
-        logger.debug(
-            f"Reset multi-account strategy state: cleared {session_count} sessions."
-        )

@@ -18,14 +18,6 @@ class AWSSessionStrategy(ABC):
         """Yield (AccountInfo, AioSession) pairs for each account managed by this strategy."""
         pass
 
-    @abstractmethod
-    def reset(self) -> None:
-        """
-        Reset strategy state by clearing cached sessions and ARNs.
-        Called after resync completes to free memory and prepare for next cycle.
-        """
-        pass
-
 
 class HealthCheckMixin(ABC):
     @abstractmethod

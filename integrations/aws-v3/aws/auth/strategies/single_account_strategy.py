@@ -56,9 +56,3 @@ class SingleAccountStrategy(SingleAccountHealthCheckMixin):
             "Name": f"Account {account_id}",
         }
         yield account_info, self._session
-
-    def reset(self) -> None:
-        """Reset strategy state by clearing single account session and account ID."""
-        self._session = None
-        self.account_id = None
-        logger.debug("Reset single account strategy state")
