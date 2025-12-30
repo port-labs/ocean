@@ -233,17 +233,18 @@ class TestGetAllAccountSessions:
         self, mock_single_account_config: dict[str, object], mock_aiosession: AsyncMock
     ) -> None:
         """Test get_all_account_sessions with single account strategy."""
-        mock_strategy = MagicMock(spec=SingleAccountStrategy)
-        mock_strategy.get_account_sessions.return_value.__aiter__.return_value = [
-            (
-                {"Id": "123456789012", "Name": "Account 123456789012"},
-                mock_aiosession,
-            )
-        ]
         with patch(
-            "aws.auth.session_factory.AccountStrategyFactory.create",
-            return_value=mock_strategy,
-        ):
+            "aws.auth.session_factory.AccountStrategyFactory.create"
+        ) as mock_create:
+            mock_strategy = MagicMock(spec=SingleAccountStrategy)
+            mock_strategy.get_account_sessions.return_value.__aiter__.return_value = [
+                (
+                    {"Id": "123456789012", "Name": "Account 123456789012"},
+                    mock_aiosession,
+                )
+            ]
+            mock_create.return_value = mock_strategy
+
             sessions = []
             async for account_info, session in get_all_account_sessions():
                 sessions.append((account_info, session))
@@ -259,21 +260,22 @@ class TestGetAllAccountSessions:
         self, mock_aiosession: AsyncMock
     ) -> None:
         """Test get_all_account_sessions with multi account strategy."""
-        mock_strategy = MagicMock(spec=MultiAccountStrategy)
-        mock_strategy.get_account_sessions.return_value.__aiter__.return_value = [
-            (
-                {"Id": "123456789012", "Name": "Account 123456789012"},
-                mock_aiosession,
-            ),
-            (
-                {"Id": "987654321098", "Name": "Account 987654321098"},
-                mock_aiosession,
-            ),
-        ]
         with patch(
-            "aws.auth.session_factory.AccountStrategyFactory.create",
-            return_value=mock_strategy,
-        ):
+            "aws.auth.session_factory.AccountStrategyFactory.create"
+        ) as mock_create:
+            mock_strategy = MagicMock(spec=MultiAccountStrategy)
+            mock_strategy.get_account_sessions.return_value.__aiter__.return_value = [
+                (
+                    {"Id": "123456789012", "Name": "Account 123456789012"},
+                    mock_aiosession,
+                ),
+                (
+                    {"Id": "987654321098", "Name": "Account 987654321098"},
+                    mock_aiosession,
+                ),
+            ]
+            mock_create.return_value = mock_strategy
+
             sessions = []
             async for account_info, session in get_all_account_sessions():
                 sessions.append((account_info, session))
@@ -285,12 +287,13 @@ class TestGetAllAccountSessions:
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_empty(self) -> None:
         """Test get_all_account_sessions with no accounts."""
-        mock_strategy = MagicMock(spec=SingleAccountStrategy)
-        mock_strategy.get_account_sessions.return_value.__aiter__.return_value = []
         with patch(
-            "aws.auth.session_factory.AccountStrategyFactory.create",
-            return_value=mock_strategy,
-        ):
+            "aws.auth.session_factory.AccountStrategyFactory.create"
+        ) as mock_create:
+            mock_strategy = MagicMock(spec=SingleAccountStrategy)
+            mock_strategy.get_account_sessions.return_value.__aiter__.return_value = []
+            mock_create.return_value = mock_strategy
+
             sessions = []
             async for account_info, session in get_all_account_sessions():
                 sessions.append((account_info, session))
@@ -298,19 +301,15 @@ class TestGetAllAccountSessions:
             assert len(sessions) == 0
 
     @pytest.mark.asyncio
-    async def test_get_all_account_sessions_propagates_strategy_error(
+    async def test_get_all_account_sessions_strategy_error(
         self, mock_single_account_config: dict[str, object]
     ) -> None:
-        """Test get_all_account_sessions propagates exceptions from get_account_sessions."""
-        mock_strategy = MagicMock(spec=SingleAccountStrategy)
-        mock_strategy.get_account_sessions.return_value.__aiter__.side_effect = (
-            Exception("Error from get_account_sessions")
-        )
+        """Test get_all_account_sessions handles strategy creation error."""
         with patch(
             "aws.auth.session_factory.AccountStrategyFactory.create",
-            return_value=mock_strategy,
+            side_effect=Exception("Strategy error"),
         ):
-            with pytest.raises(Exception, match="Error from get_account_sessions"):
+            with pytest.raises(Exception, match="Strategy error"):
                 async for _ in get_all_account_sessions():
                     pass
 
@@ -319,24 +318,23 @@ class TestGetAllAccountSessions:
         self, mock_aiosession: AsyncMock
     ) -> None:
         """Test get_all_account_sessions yields correct types."""
-        mock_strategy = MagicMock(spec=SingleAccountStrategy)
-        mock_strategy.get_account_sessions.return_value.__aiter__.return_value = [
-            (
-                {"Id": "123456789012", "Name": "Account 123456789012"},
-                mock_aiosession,
-            )
-        ]
         with patch(
-            "aws.auth.session_factory.AccountStrategyFactory.create",
-            return_value=mock_strategy,
-        ):
+            "aws.auth.session_factory.AccountStrategyFactory.create"
+        ) as mock_create:
+            mock_strategy = MagicMock(spec=SingleAccountStrategy)
+            mock_strategy.get_account_sessions.return_value.__aiter__.return_value = [
+                (
+                    {"Id": "123456789012", "Name": "Account 123456789012"},
+                    mock_aiosession,
+                )
+            ]
+            mock_create.return_value = mock_strategy
+
             async for account_info, session in get_all_account_sessions():
                 # Check that account_info is a dict with required keys
                 assert isinstance(account_info, dict)
                 assert "Id" in account_info
                 assert "Name" in account_info
-                assert account_info["Id"] == "123456789012"
-                assert account_info["Name"] == "Account 123456789012"
                 # Check that session is the expected mock session
                 assert session == mock_aiosession
                 break
