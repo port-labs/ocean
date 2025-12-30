@@ -228,13 +228,6 @@ class TestAccountStrategyFactory:
 class TestGetAllAccountSessions:
     """Test get_all_account_sessions function."""
 
-    @pytest.fixture(autouse=True)
-    def reset_cached_strategy(self) -> Generator[None, None, None]:
-        """Reset the cached strategy by clearing the class variable."""
-        AccountStrategyFactory._cached_strategy = None
-        yield
-        AccountStrategyFactory._cached_strategy = None
-
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_single_account(
         self, mock_single_account_config: dict[str, object], mock_aiosession: AsyncMock
@@ -247,17 +240,19 @@ class TestGetAllAccountSessions:
                 mock_aiosession,
             )
         ]
-        AccountStrategyFactory._cached_strategy = mock_strategy
+        with patch(
+            "aws.auth.session_factory.AccountStrategyFactory.create",
+            return_value=mock_strategy,
+        ):
+            sessions = []
+            async for account_info, session in get_all_account_sessions():
+                sessions.append((account_info, session))
 
-        sessions = []
-        async for account_info, session in get_all_account_sessions():
-            sessions.append((account_info, session))
-
-        assert len(sessions) == 1
-        account_info, session = sessions[0]
-        assert account_info["Id"] == "123456789012"
-        assert account_info["Name"] == "Account 123456789012"
-        assert session == mock_aiosession
+            assert len(sessions) == 1
+            account_info, session = sessions[0]
+            assert account_info["Id"] == "123456789012"
+            assert account_info["Name"] == "Account 123456789012"
+            assert session == mock_aiosession
 
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_multi_account(
@@ -275,28 +270,32 @@ class TestGetAllAccountSessions:
                 mock_aiosession,
             ),
         ]
-        AccountStrategyFactory._cached_strategy = mock_strategy
+        with patch(
+            "aws.auth.session_factory.AccountStrategyFactory.create",
+            return_value=mock_strategy,
+        ):
+            sessions = []
+            async for account_info, session in get_all_account_sessions():
+                sessions.append((account_info, session))
 
-        sessions = []
-        async for account_info, session in get_all_account_sessions():
-            sessions.append((account_info, session))
-
-        assert len(sessions) == 2
-        assert sessions[0][0]["Id"] == "123456789012"
-        assert sessions[1][0]["Id"] == "987654321098"
+            assert len(sessions) == 2
+            assert sessions[0][0]["Id"] == "123456789012"
+            assert sessions[1][0]["Id"] == "987654321098"
 
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_empty(self) -> None:
         """Test get_all_account_sessions with no accounts."""
         mock_strategy = MagicMock(spec=SingleAccountStrategy)
         mock_strategy.get_account_sessions.return_value.__aiter__.return_value = []
-        AccountStrategyFactory._cached_strategy = mock_strategy
+        with patch(
+            "aws.auth.session_factory.AccountStrategyFactory.create",
+            return_value=mock_strategy,
+        ):
+            sessions = []
+            async for account_info, session in get_all_account_sessions():
+                sessions.append((account_info, session))
 
-        sessions = []
-        async for account_info, session in get_all_account_sessions():
-            sessions.append((account_info, session))
-
-        assert len(sessions) == 0
+            assert len(sessions) == 0
 
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_propagates_strategy_error(
@@ -307,11 +306,13 @@ class TestGetAllAccountSessions:
         mock_strategy.get_account_sessions.return_value.__aiter__.side_effect = (
             Exception("Error from get_account_sessions")
         )
-        AccountStrategyFactory._cached_strategy = mock_strategy
-
-        with pytest.raises(Exception, match="Error from get_account_sessions"):
-            async for _ in get_all_account_sessions():
-                pass
+        with patch(
+            "aws.auth.session_factory.AccountStrategyFactory.create",
+            return_value=mock_strategy,
+        ):
+            with pytest.raises(Exception, match="Error from get_account_sessions"):
+                async for _ in get_all_account_sessions():
+                    pass
 
     @pytest.mark.asyncio
     async def test_get_all_account_sessions_yields_correct_types(
@@ -325,18 +326,20 @@ class TestGetAllAccountSessions:
                 mock_aiosession,
             )
         ]
-        AccountStrategyFactory._cached_strategy = mock_strategy
-
-        async for account_info, session in get_all_account_sessions():
-            # Check that account_info is a dict with required keys
-            assert isinstance(account_info, dict)
-            assert "Id" in account_info
-            assert "Name" in account_info
-            assert account_info["Id"] == "123456789012"
-            assert account_info["Name"] == "Account 123456789012"
-            # Check that session is the expected mock session
-            assert session == mock_aiosession
-            break
+        with patch(
+            "aws.auth.session_factory.AccountStrategyFactory.create",
+            return_value=mock_strategy,
+        ):
+            async for account_info, session in get_all_account_sessions():
+                # Check that account_info is a dict with required keys
+                assert isinstance(account_info, dict)
+                assert "Id" in account_info
+                assert "Name" in account_info
+                assert account_info["Id"] == "123456789012"
+                assert account_info["Name"] == "Account 123456789012"
+                # Check that session is the expected mock session
+                assert session == mock_aiosession
+                break
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_single_account_success(
