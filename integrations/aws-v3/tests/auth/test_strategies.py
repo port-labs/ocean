@@ -253,17 +253,23 @@ class TestMultiAccountHealthCheckMixin:
 
     @pytest.mark.asyncio
     async def test_healthcheck_no_arns(self, strategy: MultiAccountStrategy) -> None:
-        """Test healthcheck fails when no role ARNs provided."""
+        """Test healthcheck raises when no role ARNs provided."""
         strategy.config = {"region": "us-west-2"}  # No account_role_arn
-        result = await strategy.healthcheck()
-        assert result is False
+        with pytest.raises(
+            AWSSessionError,
+            match="No account_role_arns provided for multi-account strategy",
+        ):
+            await strategy.healthcheck()
 
     @pytest.mark.asyncio
     async def test_healthcheck_empty_arns(self, strategy: MultiAccountStrategy) -> None:
-        """Test healthcheck fails when empty role ARNs list provided."""
-        strategy.config = {"account_role_arn": [], "region": "us-west-2"}
-        result = await strategy.healthcheck()
-        assert result is False
+        """Test healthcheck raises when empty role ARNs list provided."""
+        strategy.config = {"account_role_arns": [], "region": "us-west-2"}
+        with pytest.raises(
+            AWSSessionError,
+            match="No account_role_arns provided for multi-account strategy",
+        ):
+            await strategy.healthcheck()
 
     @pytest.mark.asyncio
     async def test_healthcheck_partial_failure(
@@ -550,10 +556,10 @@ class TestOrganizationsHealthCheckMixin:
     async def test_healthcheck_no_accounts(
         self, strategy: OrganizationsStrategy
     ) -> None:
-        """Test healthcheck fails when no accounts discovered."""
+        """Test healthcheck raises when no accounts discovered."""
         with patch.object(strategy, "discover_accounts", return_value=[]):
-            result = await strategy.healthcheck()
-            assert result is False
+            with pytest.raises(AWSSessionError, match="No accounts discovered"):
+                await strategy.healthcheck()
 
     @pytest.mark.asyncio
     async def test_healthcheck_partial_failure(

@@ -50,7 +50,9 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
         arns = normalize_arn_list(self.config.get("account_role_arns", []))
         if not arns:
             logger.error("No account_role_arns provided for healthcheck")
-            return False
+            raise AWSSessionError(
+                "No account_role_arns provided for multi-account strategy"
+            )
 
         logger.info(f"Starting AWS account health check for {len(arns)} role ARNs")
 
@@ -109,10 +111,6 @@ class MultiAccountStrategy(MultiAccountHealthCheckMixin):
     ) -> AsyncIterator[tuple[dict[str, str], AioSession]]:
         if not (self._valid_arns and self._valid_sessions):
             await self.healthcheck()
-        if not (self._valid_arns and self._valid_sessions):
-            raise AWSSessionError(
-                "Account sessions not initialized. Run healthcheck first."
-            )
 
         logger.info(f"Providing {len(self._valid_arns)} pre-validated AWS sessions")
 

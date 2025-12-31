@@ -3,7 +3,11 @@ from unittest.mock import MagicMock, patch
 from unittest.mock import AsyncMock
 from typing import Generator
 
-from aws.auth.session_factory import AccountStrategyFactory, get_all_account_sessions
+from aws.auth.session_factory import (
+    AccountStrategyFactory,
+    get_all_account_sessions,
+    clear_aws_account_sessions,
+)
 from aws.auth.strategies.single_account_strategy import SingleAccountStrategy
 from aws.auth.strategies.multi_account_strategy import MultiAccountStrategy
 from aws.auth.providers.static_provider import StaticCredentialProvider
@@ -338,6 +342,34 @@ class TestGetAllAccountSessions:
                 # Check that session is the expected mock session
                 assert session == mock_aiosession
                 break
+
+    @pytest.mark.asyncio
+    async def test_clear_aws_account_sessions_clears_strategy_and_state(
+        self, mock_aiosession: AsyncMock
+    ) -> None:
+        """Test that clear_aws_account_sessions clears the cached strategy and all its state."""
+        # Create a mock strategy with state (ARNs, sessions)
+        mock_strategy = MagicMock(spec=MultiAccountStrategy)
+        mock_strategy._valid_arns = ["arn:aws:iam::123456789012:role/TestRole"]
+        mock_strategy._valid_sessions = {
+            "arn:aws:iam::123456789012:role/TestRole": mock_aiosession
+        }
+
+        # Set the cached strategy
+        AccountStrategyFactory._cached_strategy = mock_strategy
+
+        # Verify strategy exists and has state
+        assert AccountStrategyFactory._cached_strategy is not None
+        assert AccountStrategyFactory._cached_strategy._valid_arns == [
+            "arn:aws:iam::123456789012:role/TestRole"
+        ]
+        assert len(AccountStrategyFactory._cached_strategy._valid_sessions) == 1
+
+        # Clear the strategy
+        await clear_aws_account_sessions()
+
+        # Verify strategy is cleared (which makes all ARNs, sessions, and state eligible for GC)
+        assert AccountStrategyFactory._cached_strategy is None
 
     @pytest.mark.asyncio
     async def test_get_account_sessions_single_account_success(

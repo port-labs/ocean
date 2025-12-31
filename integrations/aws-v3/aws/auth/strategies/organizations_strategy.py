@@ -217,7 +217,7 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin
             accounts = await self.discover_accounts()
             if not accounts:
                 logger.warning("No accounts discovered in the organization")
-                return False
+                raise AWSSessionError("No accounts discovered in the organization")
 
             logger.info(
                 f"Starting health check for {len(accounts)} discovered accounts"
@@ -301,11 +301,6 @@ class OrganizationsStrategy(OrganizationsHealthCheckMixin):
         """Get sessions for all accessible accounts."""
         if not (self.valid_arns and self.valid_sessions):
             await self.healthcheck()
-
-        if not (self.valid_arns and self.valid_sessions):
-            raise AWSSessionError(
-                "Account sessions not initialized. Run healthcheck first."
-            )
 
         logger.info(f"Providing {len(self.valid_arns)} pre-validated AWS sessions")
 
