@@ -37,7 +37,7 @@
     "react-dom": "^19.2.0",
     "redocusaurus": "^2.2.2",
     "remark-math": "^6.0.0",
-    "sass": "^1.94.0",
+    "sass": "^1.94.2",
     "stream": "^0.0.3",
     "timers": "^0.1.1",
     "xml2js": "^0.6.2"
