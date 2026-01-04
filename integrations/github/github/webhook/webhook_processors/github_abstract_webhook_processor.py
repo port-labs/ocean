@@ -62,7 +62,7 @@ class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
             return False
 
         identifier = (
-            f"Personal Account - {event.payload["repository"]["full_name"]}"
+            f"Personal Account - {event.payload['repository']['full_name']}"
             if self.is_personal_account_webhook(event.payload)
             else event.payload["organization"]["login"]
         )
