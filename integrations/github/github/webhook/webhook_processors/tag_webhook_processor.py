@@ -38,7 +38,7 @@ class TagWebhookProcessor(BaseRepositoryWebhookProcessor):
         tag_ref = payload["ref"]
         repo = payload["repository"]
         repo_name = repo["name"]
-        organization = payload["organization"]["login"]
+        organization = self.get_organization(payload)["login"]
 
         logger.info(
             f"Processing tag event: {self._event_type} for tag {tag_ref} in {repo_name} from {organization}"

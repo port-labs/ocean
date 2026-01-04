@@ -7,6 +7,9 @@ from dateutil.parser import parse
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.utils.cache import cache_coroutine_result
+from loguru import logger
+
 import httpx
 
 
@@ -59,3 +62,17 @@ class AbstractGitHubAuthenticator(ABC):
             retry_config=retry_config,
             timeout=ocean.config.client_timeout,
         )
+
+    @cache_coroutine_result()
+    async def is_personal_org(self, github_host: str, organization: str) -> bool:
+        try:
+            url = f"{github_host}/users/{organization}"
+            response = await self.client.get(url)
+            response.raise_for_status()
+            user_data = response.json()
+            return user_data["type"] == "User"
+        except Exception:
+            logger.exception(
+                "Failed to check if organization is personal, assuming it is not a personal org"
+            )
+            return False

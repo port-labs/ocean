@@ -39,7 +39,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         repository = payload["repository"]
         branch = payload.get("ref", "").replace("refs/heads/", "")
         ref = payload["after"]
-        organization = payload["organization"]["login"]
+        organization = self.get_organization(payload)["login"]
 
         logger.info(
             f"Processing push event for repository {repository['name']} of organization: {organization} on branch {branch} at ref {ref}"

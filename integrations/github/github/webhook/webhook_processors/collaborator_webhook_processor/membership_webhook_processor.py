@@ -64,7 +64,7 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
         member = payload["member"]
         team_slug = payload["team"]["slug"]
         member_login = member["login"]
-        organization = payload["organization"]["login"]
+        organization = self.get_organization(payload)["login"]
 
         logger.info(
             f"Handling membership event: {action} for {member_login} in team {team_slug}"

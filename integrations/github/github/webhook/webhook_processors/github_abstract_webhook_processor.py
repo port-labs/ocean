@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Any
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
@@ -59,9 +60,28 @@ class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
     async def should_process_event(self, event: WebhookEvent) -> bool:
         if not (event._original_request and await self._should_process_event(event)):
             return False
-        return await self._verify_webhook_signature(
-            event.payload["organization"]["login"], event._original_request
+
+        identifier = (
+            f"Personal Account - {event.payload["repository"]["full_name"]}"
+            if self.is_personal_account_webhook(event.payload)
+            else event.payload["organization"]["login"]
         )
+        return await self._verify_webhook_signature(identifier, event._original_request)
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return "organization" in payload and "login" in payload["organization"]
+        if self.is_personal_account_webhook(payload):
+            repo = payload.get("repository", {})
+            owner = repo.get("owner", {})
+            return bool(repo and owner and owner.get("login"))
+        org = payload.get("organization", {})
+        return bool(org and org.get("login"))
+
+    def is_personal_account_webhook(self, payload: EventPayload) -> bool:
+        return "repository" in payload and "organization" not in payload
+
+    def get_organization(self, payload: EventPayload) -> dict[str, Any]:
+        return (
+            payload["repository"]["owner"]
+            if self.is_personal_account_webhook(payload)
+            else payload["organization"]
+        )
