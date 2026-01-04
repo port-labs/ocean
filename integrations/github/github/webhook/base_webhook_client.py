@@ -147,7 +147,7 @@ class BaseGithubWebhookClient(GithubRestClient):
                 error=http_err,
                 **target.log_scope,
             )
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             logger.error(
                 "Unexpected error occurred while creating webhook with URL {webhook_url}: {error}",
                 webhook_url=webhook_url,
