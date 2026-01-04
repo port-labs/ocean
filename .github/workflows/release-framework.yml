@@ -5,8 +5,6 @@ on:
       - main
     paths:
       - 'pyproject.toml'
-  # manual run
-  workflow_dispatch:
 
 env:
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
@@ -75,6 +73,8 @@ jobs:
 
   publish_ocean:
     name: Publish framework to PyPI
+    needs: tag-main
+    if: needs.tag-main.outputs.current_tag != needs.tag-main.outputs.prev_tag
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python 3.12
@@ -92,9 +92,8 @@ jobs:
             make install
             make build
 
-      - name: Remove 'v' from version name
-        continue-on-error: true
-        run: echo "VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//g')" >> $GITHUB_ENV
+      - name: Set version from tag-main output
+        run: echo "VERSION=${{ needs.tag-main.outputs.current_tag }}" >> $GITHUB_ENV
 
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
