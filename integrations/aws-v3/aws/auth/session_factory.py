@@ -86,7 +86,7 @@ class AccountInfo(TypedDict):
 
 
 async def initialize_aws_account_sessions() -> None:
-    """Validate and initialize all AWS account sessions before resync."""
+    """Validate and initialize all AWS account sessions"""
     logger.info("Initializing AWS account sessions")
     strategy = await AccountStrategyFactory.create()
     await strategy.healthcheck()
