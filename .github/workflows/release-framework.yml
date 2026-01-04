@@ -24,9 +24,10 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get current version
         id: get_current_version
@@ -34,25 +35,25 @@ jobs:
           # Get the current version from pyproject.toml
           CURRENT_TAG=$(grep -E '^version = ".*"' pyproject.toml | cut -d'"' -f2)
           echo "current_tag=${CURRENT_TAG}" >> $GITHUB_ENV
-          echo "::set-output name=current_tag::${CURRENT_TAG}"
+          echo "current_tag=${CURRENT_TAG}" >> $GITHUB_OUTPUT
       - name: Get previous version
         id: get_previous_version
         run: |
           # Get the version from the previous commit for comparison
-          PREV_TAG=$(git show HEAD~1:pyproject.toml | grep -E '^version = ".*"' | cut -d'"' -f2)
+          # Handle case where HEAD~1 doesn't exist (first commit) or file doesn't exist
+          PREV_TAG=$(git show HEAD~1:pyproject.toml 2>/dev/null | grep -E '^version = ".*"' | cut -d'"' -f2 || echo "")
           echo "prev_tag=${PREV_TAG}" >> $GITHUB_ENV
-          echo "::set-output name=prev_tag::${PREV_TAG}"
+          echo "prev_tag=${PREV_TAG}" >> $GITHUB_OUTPUT
       - name: Tag main
+        if: steps.get_current_version.outputs.current_tag != steps.get_previous_version.outputs.prev_tag
         run: |
-          if [ "${current_tag}" == "${prev_tag}" ]; then
-            echo "Version has not changed. Skipping tagging."
-            exit 0
-          fi
-          git config --global user.email "bot@email.com"
-          git config --global user.name "bot"
+          CURRENT_TAG="${{ steps.get_current_version.outputs.current_tag }}"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
           LATEST_COMMIT_MESSAGE=$(git log -1 --pretty=format:%s)
-          git tag -a "v${current_tag}" -m "${LATEST_COMMIT_MESSAGE}"
-          git push origin main --tags
+          git tag -a "v${CURRENT_TAG}" -m "${LATEST_COMMIT_MESSAGE}"
+          # Explicitly push the tag (not a branch)
+          git push origin refs/tags/v${CURRENT_TAG}
   create-release:
     name: Create release
     needs: tag-main
@@ -61,15 +62,14 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Release
-        uses: actions/create-release@v1
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ needs.tag-main.outputs.current_tag }}
-          release_name: "Release ${{ needs.tag-main.outputs.current_tag }}"
-          body: |
-            Automated release created for version ${{ needs.tag-main.outputs.current_tag }}.
+          tag_name: v${{ needs.tag-main.outputs.current_tag }}
+          name: Ocean Framework ${{ needs.tag-main.outputs.current_tag }}
+          generate_release_notes: true
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(needs.tag-main.outputs.current_tag, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -84,6 +84,8 @@ jobs:
 
       - name: Checkout Repo
         uses: actions/checkout@v5
+        with:
+          ref: v${{ needs.tag-main.outputs.current_tag }}
 
       - name: Make install and build
         run: |
