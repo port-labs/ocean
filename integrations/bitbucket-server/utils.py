@@ -29,7 +29,7 @@ def initialize_client() -> BitbucketClient:
             bool,
             config.get("bitbucket_is_version8_point7_or_older"),
         ),
-        rate_limit=int(config["bitbucket_rate_limit"]),
+        rate_limit=int(config["bitbucket_rate_limit_quota"]),
         rate_limit_window=int(config["bitbucket_rate_limit_window"]),
         page_size=DEFAULT_PAGE_SIZE,
         max_concurrent_requests=DEFAULT_MAX_CONCURRENT_REQUESTS,

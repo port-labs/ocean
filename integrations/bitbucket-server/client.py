@@ -198,63 +198,60 @@ class BitbucketClient:
         async for project_batch in self.get_paginated_resource("projects"):
             yield cast(list[dict[str, Any]], project_batch)
 
-    async def _get_projects_with_filter(
-        self, projects_filter: set[str]
-    ) -> list[dict[str, Any]]:
+    def _create_regex_from_project_keys(self, project_keys: set[str]) -> re.Pattern:
         """
-        Internal method to fetch specific projects by their keys.
+        Convert a set of project keys to a regex pattern.
 
         Args:
-            projects_filter: Set of project keys to fetch
+            project_keys: Set of project keys to convert
 
         Returns:
-            List of filtered project data
+            Compiled regex pattern matching any of the provided keys
         """
-        projects = dict[str, dict[str, Any]]()
-        async for project_batch in self.get_projects():
-            logger.info(f"Received project batch: {project_batch}")
-            filtered_projects = filter(
-                lambda project: project["key"] in projects_filter, project_batch
-            )
-            projects.update({project["key"]: project for project in filtered_projects})
-            if len(projects) == len(projects_filter):
-                break
-        return list(projects.values())
+        # Escape special regex characters in project keys and create pattern
+        escaped_keys = [re.escape(key) for key in project_keys]
+        pattern = f"^({'|'.join(escaped_keys)})$"
+        return re.compile(pattern)
 
     @cache_iterator_result()
     async def get_projects(
         self, projects_filter: Optional[set[str]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
-        Get projects from Bitbucket, optionally filtered by project keys.
-        Also applies regex/suffix filters if configured.
+        Get projects from Bitbucket, optionally filtered by project keys or regex pattern.
+        When projects_filter is provided, it's converted to a regex pattern.
+        If both projects_filter and project_filter_regex are set, both patterns must match (AND logic).
 
         Args:
-            projects_filter: Optional set of project keys to filter by
+            projects_filter: Optional set of project keys to filter by (converted to regex internally)
 
         Yields:
             Batches of project data
         """
+        # Convert projects_filter set to regex pattern if provided
+        projects_regex = None
+        if projects_filter:
+            projects_regex = self._create_regex_from_project_keys(projects_filter)
+
         logger.info(
             f"Getting projects with filter: {projects_filter}, "
-            f"regex: {self.project_filter_regex}"
+            f"regex: {self.project_filter_regex}, "
+            f"projects_regex: {projects_regex}"
         )
-        if projects_filter:
-            filtered_projects = await self._get_projects_with_filter(projects_filter)
-            # Apply regex/suffix filters
-            final_projects = [
-                p for p in filtered_projects if self._should_include_project(p["key"])
+
+        async for project_batch in self._get_all_projects():
+            # Apply filtering: must match projects_regex (if provided) AND project_filter_regex (if set)
+            filtered_batch = [
+                p
+                for p in project_batch
+                if (not projects_regex or projects_regex.match(p["key"]))
+                and (
+                    not self.project_filter_regex
+                    or self.project_filter_regex.match(p["key"])
+                )
             ]
-            if final_projects:
-                yield final_projects
-        else:
-            async for project_batch in self._get_all_projects():
-                # Apply regex/suffix filters to each batch
-                filtered_batch = [
-                    p for p in project_batch if self._should_include_project(p["key"])
-                ]
-                if filtered_batch:
-                    yield filtered_batch
+            if filtered_batch:
+                yield filtered_batch
 
     async def get_repositories_for_project(
         self, project_key: str
