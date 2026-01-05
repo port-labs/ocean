@@ -80,20 +80,130 @@ The goal of Ocean is to provide a layer of abstraction for a multitude of common
 
 To learn more about the tools and abstractions provided by the Ocean framework to make it easier to develop new integrations, refer to the [features](./framework/features/features.md) docs.
 
-## How do Ocean integrations work?
+## What is an Integration?
 
-Integrations powered by the Ocean framework support two methods to get the desired information from the desired 3rd-party:
+An **integration** is a standalone Python application that acts as a bridge between a 3rd-party system (like GitLab, Jira, AWS, etc.) and Port. Each integration is responsible for:
 
-**Exporter mode** - when the integration starts, and also every time its configuration changes, it will query the 3rd-party system, gather the desired information and send it to Port:
+- **Extracting** data from the external system via its APIs
+- **Transforming** that data using configurable JQ mappings
+- **Synchronizing** the transformed data as entities into your Port catalog
+
+Think of an integration as a specialized connector that knows how to talk to one specific 3rd-party tool and translate its data into Port's universal entity model.
+
+### Operating Modes
+
+Integrations powered by the Ocean framework support two methods to get data from 3rd-party systems:
+
+**Exporter mode** — When the integration starts, and also every time its configuration changes, it queries the 3rd-party system, gathers the desired information, and sends it to Port:
 
 <OceanExporterArchSvg/>
 
 <br/>
 <br/>
 
-**Real-time updates mode** - (optional) as the integration runs, it can listen to live events sent by the 3rd-party system (via webhooks) and send the results to Port in real-time:
+**Real-time updates mode** — (Optional) As the integration runs, it can listen to live events sent by the 3rd-party system (via webhooks) and send the results to Port in real-time:
 
 <OceanRealTimeArchSvg/>
+
+<br/>
+
+Most integrations implement both modes: exporter mode ensures a complete sync of all data, while real-time mode keeps Port updated between syncs without waiting for the next scheduled resync.
+
+### Relationship to Ocean Core
+
+The Ocean framework is structured as a **monorepo** with two main components:
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| **Ocean Core** | `port_ocean/` | The shared framework library providing common abstractions, handlers, and utilities |
+| **Integrations** | `integrations/` | Individual integration implementations for specific 3rd-party systems |
+
+**Ocean Core** (`port_ocean/`) provides:
+- Authentication with Port's REST API
+- High-throughput entity ingestion pipelines
+- JQ-based data transformation engine
+- Event listener infrastructure (polling, webhooks, Kafka)
+- Resync orchestration and state management
+- Webhook processor management for live events
+- CLI tools for scaffolding and development
+
+**Integrations** consume the core framework and implement:
+- API clients specific to the 3rd-party system
+- Resync handlers that define *what* data to fetch
+- Webhook processors for real-time event handling
+- Custom resource configurations and selectors
+
+This separation allows integration developers to focus solely on the 3rd-party system logic while Ocean Core handles all the complexity of communicating with Port.
+
+### Basic Integration Structure
+
+Every integration follows a consistent file structure:
+
+```
+my-integration/
+├── main.py                 # Core resync handlers and webhook processors
+├── integration.py          # Custom resource configs and integration class
+├── pyproject.toml          # Python dependencies and metadata
+├── Makefile                # Common development commands
+├── .port/
+│   ├── spec.yaml           # Integration specification and configuration schema
+│   └── resources/
+│       ├── blueprints.json       # Default Port blueprints
+│       └── port-app-config.yaml  # Default entity mappings
+├── my_integration/         # (Optional) Additional modules
+│   ├── clients/            # API client implementations
+│   ├── helpers/            # Utility functions
+│   └── webhook/            # Webhook processors
+└── tests/                  # Unit and integration tests
+```
+
+**Key files explained:**
+
+| File | Purpose |
+|------|---------|
+| `main.py` | Defines `@ocean.on_resync()` handlers that fetch data from the 3rd-party system, and registers webhook processors for live events |
+| `integration.py` | Extends the base integration with custom resource configurations, selectors, and entity processors |
+| `.port/spec.yaml` | Declares the integration's configuration schema (required parameters, secrets, features) |
+| `.port/resources/` | Contains default blueprints and entity mappings that get created in Port |
+
+### How an Integration Runs
+
+When an integration starts, the following sequence occurs:
+
+1. **Initialization**: Ocean Core loads the integration configuration from `spec.yaml` and connects to Port
+2. **Default Resources**: Blueprints and mappings from `.port/resources/` are created/updated in Port
+3. **Event Listener Setup**: Based on configuration, sets up polling, webhook, or Kafka-based event listening
+4. **On Start Hooks**: Any `@ocean.on_start()` handlers execute (e.g., creating webhooks in the 3rd-party system)
+5. **Resync Loop**: The integration fetches data from the 3rd-party system and syncs it to Port
+6. **Live Events**: If configured, webhook processors handle real-time updates
+
+### Important Things to Note
+
+:::tip Key Concepts
+Understanding these concepts will help you develop effective integrations:
+:::
+
+1. **Async-First Architecture**: All data fetching and processing uses Python's `async/await`. Use generators (`yield`) to stream large datasets without memory issues.
+
+2. **Kind-Based Organization**: Data is organized by "kinds" (e.g., `project`, `group`, `merge-request`). Each kind has its own resync handler and can have custom selectors for filtering.
+
+3. **JQ Mappings**: Raw API responses are transformed into Port entities using JQ expressions defined in `port-app-config.yaml`. The integration doesn't need to know about Port's entity structure.
+
+4. **Resource Configurations**: Custom `Selector` and `ResourceConfig` classes in `integration.py` allow users to filter and customize what data gets synced.
+
+5. **Webhook Processors**: For live events, create processor classes that inherit from `AbstractWebhookProcessor` and implement the `should_process_event` and `get_matching_kinds` methods.
+
+6. **Event Contexts**: Ocean provides context objects (`ocean` and `event`) that give access to configuration, the current event being processed, and the Port client.
+
+7. **Batching and Streaming**: Use `async for` with generators to yield data in batches. This prevents memory exhaustion and enables incremental progress.
+
+8. **Configuration Precedence**: Integration config comes from multiple sources (environment variables, `.env` files, Port's integration settings). Ocean Core merges these automatically.
+
+:::caution Common Pitfalls
+- **Don't block the event loop**: Avoid synchronous I/O operations; use the async HTTP client from Ocean Core
+- **Don't fetch everything at once**: Implement pagination and yield batches to handle large datasets
+- **Don't hardcode mappings**: Let users define their own JQ mappings in Port's UI or config files
+:::
 
 ## Next steps
 
