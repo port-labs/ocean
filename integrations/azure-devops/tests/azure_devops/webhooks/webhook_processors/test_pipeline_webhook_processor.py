@@ -363,11 +363,8 @@ async def test_pipeline_handle_event_build_completed_missing_fields(
     }
     resource_config = MagicMock()
 
-    result = await pipeline_processor.handle_event(payload, resource_config)
-
-    assert isinstance(result, WebhookEventRawResults)
-    assert len(result.updated_raw_results) == 0
-    assert len(result.deleted_raw_results) == 0
+    with pytest.raises(KeyError):
+        await pipeline_processor.handle_event(payload, resource_config)
 
 
 @pytest.mark.asyncio
@@ -537,8 +534,7 @@ async def test_pipeline_handle_event_exception(
     processor = PipelineWebhookProcessor(
         WebhookEvent(trace_id="test", payload=payload, headers={})
     )
-    result = await processor.handle_event(payload, resource_config)
 
-    assert isinstance(result, WebhookEventRawResults)
-    assert len(result.updated_raw_results) == 0
-    assert len(result.deleted_raw_results) == 0
+    # Exception should propagate since there's no exception handling in handle_event
+    with pytest.raises(Exception, match="API Error"):
+        await processor.handle_event(payload, resource_config)

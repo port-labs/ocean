@@ -36,14 +36,33 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         event_type = payload["eventType"]
         resource = payload["resource"]
 
-        # For build events, validate essential fields needed to fetch pipeline
+        # For build events, validate all fields needed in handle_event
         if event_type == PipelineEvents.BUILD_COMPLETED:
-            return bool(resource.get("id") and resource.get("definition"))
+            if "id" not in resource or "definition" not in resource:
+                return False
+            definition = resource["definition"]
+            if "id" not in definition or "project" not in resource:
+                return False
+            project = resource["project"]
+            if "id" not in project:
+                return False
+            return True
 
-        # For push events, validate essential fields needed to check for YAML changes
+        # For push events, validate all fields
         if event_type == PushEvents.PUSH:
-            repository = resource.get("repository", {})
-            return bool(repository.get("id") and resource.get("refUpdates"))
+            if "repository" not in resource or "refUpdates" not in resource:
+                return False
+            repository = resource["repository"]
+            if (
+                "id" not in repository
+                or "name" not in repository
+                or "project" not in repository
+            ):
+                return False
+            project = repository["project"]
+            if "id" not in project:
+                return False
+            return True
 
         return False
 
@@ -60,64 +79,40 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
     async def _has_pipeline_yaml_changes(self, payload: EventPayload) -> bool:
         """Check if push event contains changes to pipeline YAML files."""
-        try:
-            resource = payload.get("resource", {})
-            ref_updates = resource.get("refUpdates", [])
+        resource = payload["resource"]
+        ref_updates = resource["refUpdates"]
 
-            if not ref_updates:
-                return False
+        client = AzureDevopsClient.create_from_ocean_config()
+        repository = resource["repository"]
+        repo_id = repository["id"]
+        project = repository["project"]
+        project_id = project["id"]
 
-            client = AzureDevopsClient.create_from_ocean_config()
-            repository = resource.get("repository", {})
-            repo_id = repository.get("id")
-            project = repository.get("project", {})
-            project_id = project.get("id")
+        # Check each ref update for pipeline YAML changes
+        for ref_update in ref_updates:
+            commit_id = ref_update["newObjectId"]
 
-            if not repo_id or not project_id:
-                logger.debug(
-                    f"Missing repository or project info: repo_id={repo_id}, project_id={project_id}"
-                )
-                return False
-
-            # Check each ref update for pipeline YAML changes
-            for ref_update in ref_updates:
-                commit_id = ref_update.get("newObjectId")
-                if not commit_id:
-                    continue
-
-                # Get commit changes
-                try:
-                    changes_response = await client.get_commit_changes(
-                        project_id, repo_id, commit_id
-                    )
-                    if not changes_response:
-                        continue
-
-                    changed_files = changes_response.get("changes", [])
-                    for changed_file in changed_files:
-                        file_path = changed_file.get("item", {}).get("path", "").lower()
-                        # Check if any changed file matches pipeline YAML patterns
-                        if any(
-                            pattern.lower() in file_path or file_path.endswith(pattern)
-                            for pattern in PIPELINE_YAML_PATTERNS
-                        ):
-                            logger.info(
-                                f"Detected pipeline YAML file change: {file_path} in repository {repo_id}"
-                            )
-                            return True
-                except (KeyError, ValueError) as e:
-                    logger.debug(
-                        f"Error checking commit changes for commit {commit_id}: {e}"
-                    )
-                    continue
-
-            return False
-        except (KeyError, ValueError) as e:
-            logger.error(
-                f"Error checking for pipeline YAML changes in payload: {e}",
-                exc_info=True,
+            # Get commit changes
+            changes_response = await client.get_commit_changes(
+                project_id, repo_id, commit_id
             )
-            return False
+            if not changes_response:
+                continue
+
+            changed_files = changes_response["changes"]
+            for changed_file in changed_files:
+                file_path = changed_file["item"]["path"].lower()
+                # Check if any changed file matches pipeline YAML patterns
+                if any(
+                    pattern.lower() in file_path or file_path.endswith(pattern)
+                    for pattern in PIPELINE_YAML_PATTERNS
+                ):
+                    logger.info(
+                        f"Detected pipeline YAML file change: {file_path} in repository {repo_id}"
+                    )
+                    return True
+
+        return False
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -130,62 +125,42 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 payload, resource_config, client
             )
 
-        try:
-            project = resource["project"]
-            project_id = project["id"]
-            definition = resource["definition"]
-            pipeline_id = definition["id"]
+        project = resource["project"]
+        project_id = project["id"]
+        definition = resource["definition"]
+        pipeline_id = definition["id"]
 
-            # Try to fetch the pipeline using the pipelines API (for YAML pipelines)
-            pipeline_response = await self._fetch_pipeline_from_pipelines_api(
-                client, project_id, pipeline_id
-            )
-            if pipeline_response:
-                pipeline_response["__projectId"] = project_id
-                pipeline_response = await self._enrich_pipeline_with_repository(
-                    client, resource_config, pipeline_response
-                )
-                return WebhookEventRawResults(
-                    updated_raw_results=[pipeline_response], deleted_raw_results=[]
-                )
-
-            logger.debug(
-                f"Pipeline not found via pipelines API, trying build definitions API for definition {pipeline_id}"
-            )
-            pipeline_response = await self._fetch_pipeline_from_build_definitions_api(
-                client, project_id, pipeline_id, definition
-            )
-            if pipeline_response:
-                pipeline_response = await self._enrich_pipeline_with_repository(
-                    client, resource_config, pipeline_response
-                )
-                return WebhookEventRawResults(
-                    updated_raw_results=[pipeline_response], deleted_raw_results=[]
-                )
-
-            logger.warning(
-                f"Pipeline/Build definition with ID {pipeline_id} not found in project {project_id}"
+        # Try to fetch the pipeline using the pipelines API (for YAML pipelines)
+        pipeline_response = await self._fetch_pipeline_from_pipelines_api(
+            client, project_id, pipeline_id
+        )
+        if pipeline_response:
+            pipeline_response["__projectId"] = project_id
+            pipeline_response = await self._enrich_pipeline_with_repository(
+                client, resource_config, pipeline_response
             )
             return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
+                updated_raw_results=[pipeline_response], deleted_raw_results=[]
             )
 
-        except (KeyError, ValueError) as e:
-            logger.error(
-                f"Error processing pipeline webhook event: {e}",
-                exc_info=True,
+        logger.debug(
+            f"Pipeline not found via pipelines API, trying build definitions API for definition {pipeline_id}"
+        )
+        pipeline_response = await self._fetch_pipeline_from_build_definitions_api(
+            client, project_id, pipeline_id, definition
+        )
+        if pipeline_response:
+            pipeline_response = await self._enrich_pipeline_with_repository(
+                client, resource_config, pipeline_response
             )
             return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
+                updated_raw_results=[pipeline_response], deleted_raw_results=[]
             )
-        except Exception as e:
-            logger.error(
-                f"Unexpected error processing pipeline webhook event: {e}",
-                exc_info=True,
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[], deleted_raw_results=[]
-            )
+
+        logger.warning(
+            f"Pipeline/Build definition with ID {pipeline_id} not found in project {project_id}"
+        )
+        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
     async def _fetch_pipeline_from_pipelines_api(
         self, client: AzureDevopsClient, project_id: str, pipeline_id: int
@@ -243,56 +218,47 @@ class PipelineWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         client: AzureDevopsClient,
     ) -> WebhookEventRawResults:
         """Handle push events that contain pipeline YAML file changes."""
-        try:
-            resource = payload["resource"]
-            repository = resource["repository"]
-            repo_id = repository["id"]
-            project = repository["project"]
-            project_id = project["id"]
+        resource = payload["resource"]
+        repository = resource["repository"]
+        repo_id = repository["id"]
+        project = repository["project"]
+        project_id = project["id"]
 
-            logger.info(
-                f"Processing pipeline YAML change for repository {repository['name']} in project {project_id}"
-            )
+        logger.info(
+            f"Processing pipeline YAML change for repository {repository['name']} in project {project_id}"
+        )
 
-            # Fetch pipelines for the project
-            pipelines = await self._fetch_pipelines_for_project(client, project_id)
-            if not pipelines:
-                return WebhookEventRawResults(
-                    updated_raw_results=[], deleted_raw_results=[]
-                )
-
-            # Filter pipelines by repository
-            updated_pipelines = self._filter_pipelines_by_repository(
-                pipelines, repo_id, project_id
-            )
-
-            # If no direct repository link, try build definitions
-            if not updated_pipelines:
-                updated_pipelines = await self._fetch_build_definitions_by_repository(
-                    client, project_id, repo_id
-                )
-
-            # Enrich pipelines with repository if configured
-            updated_pipelines = await self._enrich_pipelines_with_repository(
-                client, resource_config, updated_pipelines
-            )
-
-            if updated_pipelines:
-                logger.info(
-                    f"Found {len(updated_pipelines)} pipeline(s) to update for repository {repository['name']}"
-                )
-
-            return WebhookEventRawResults(
-                updated_raw_results=updated_pipelines, deleted_raw_results=[]
-            )
-
-        except (KeyError, ValueError) as e:
-            logger.error(
-                f"Error processing pipeline YAML change event: {e}", exc_info=True
-            )
+        # Fetch pipelines for the project
+        pipelines = await self._fetch_pipelines_for_project(client, project_id)
+        if not pipelines:
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
+
+        # Filter pipelines by repository
+        updated_pipelines = self._filter_pipelines_by_repository(
+            pipelines, repo_id, project_id
+        )
+
+        # If no direct repository link, try build definitions
+        if not updated_pipelines:
+            updated_pipelines = await self._fetch_build_definitions_by_repository(
+                client, project_id, repo_id
+            )
+
+        # Enrich pipelines with repository if configured
+        updated_pipelines = await self._enrich_pipelines_with_repository(
+            client, resource_config, updated_pipelines
+        )
+
+        if updated_pipelines:
+            logger.info(
+                f"Found {len(updated_pipelines)} pipeline(s) to update for repository {repository['name']}"
+            )
+
+        return WebhookEventRawResults(
+            updated_raw_results=updated_pipelines, deleted_raw_results=[]
+        )
 
     async def _fetch_pipelines_for_project(
         self, client: AzureDevopsClient, project_id: str

@@ -28,6 +28,7 @@ class PipelineEvents(StrEnum):
     BUILD_COMPLETED = "build.complete"
     BUILD_STARTED = "build.started"
 
+
 class WorkItemEvents(StrEnum):
     """
     Events for Azure DevOps work item webhooks.
