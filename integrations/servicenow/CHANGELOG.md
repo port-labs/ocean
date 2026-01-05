@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.60 (2025-01-05)
+
+
+### Features
+
+- Added example blueprint and mapping for vulnerability
+- Added tests for client
+
+
 ## 0.2.59 (2025-12-24)
 
 

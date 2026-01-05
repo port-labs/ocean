@@ -1,4 +1,4 @@
-from typing import Union, cast
+from typing import Union, cast, Any
 
 from loguru import logger
 
@@ -24,11 +24,15 @@ from integration import (
     BitbucketFolderSelector,
     BitbucketFileResourceConfig,
     BitbucketFileSelector,
+    RepositoryResourceConfig,
+    PullRequestResourceConfig,
 )
 from bitbucket_cloud.helpers.folder import (
     process_folder_patterns,
 )
 from bitbucket_cloud.helpers.file_kind import process_file_patterns
+from bitbucket_cloud.utils import build_repo_params, build_pull_request_params
+from bitbucket_cloud.webhook_processors.options import PullRequestSelectorOptions
 
 
 @ocean.on_start()
@@ -59,7 +63,9 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the workspace."""
     client = init_client()
-    async for repositories in client.get_repositories():
+    selector = cast(RepositoryResourceConfig, event.resource_config).selector
+    params: dict[str, Any] = build_repo_params(selector.user_role, selector.repo_query)
+    async for repositories in client.get_repositories(params=params):
         yield repositories
 
 
@@ -67,10 +73,18 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all pull requests from all repositories."""
     client = init_client()
-    async for repositories in client.get_repositories():
+    selector = cast(PullRequestResourceConfig, event.resource_config).selector
+    params: dict[str, Any] = build_repo_params(selector.user_role, selector.repo_query)
+    options = PullRequestSelectorOptions(
+        user_role=selector.user_role,
+        repo_query=selector.repo_query,
+        pull_request_query=selector.pull_request_query,
+    )
+    async for repositories in client.get_repositories(params=params):
         tasks = [
             client.get_pull_requests(
-                repo.get("slug", repo["name"].lower().replace(" ", "-"))
+                repo.get("slug", repo["name"].lower().replace(" ", "-")),
+                params=build_pull_request_params(options),
             )
             for repo in repositories
         ]
@@ -86,8 +100,12 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     selector = cast(BitbucketFolderSelector, config.selector)
     client = init_client()
-
-    async for matching_folders in process_folder_patterns(selector.folders, client):
+    params: dict[str, Any] = build_repo_params(selector.user_role, selector.repo_query)
+    async for matching_folders in process_folder_patterns(
+        selector.folders,
+        client,
+        params=params,
+    ):
         yield matching_folders
 
 
