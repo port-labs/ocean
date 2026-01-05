@@ -15,6 +15,7 @@ from azure_devops.webhooks.events import (
     PullRequestEvents,
     PushEvents,
     PipelineEvents,
+    WorkItemEvents,
 )
 
 from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
@@ -67,6 +68,12 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
     WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH),
     WebhookSubscription(publisherId="tfs", eventType=RepositoryEvents.REPO_CREATED),
     WebhookSubscription(publisherId="tfs", eventType=PipelineEvents.BUILD_COMPLETED),
+    WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_CREATED),
+    WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_UPDATED),
+    WebhookSubscription(
+        publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_COMMENTED
+    ),
+    WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_DELETED),
 ]
 
 
@@ -774,6 +781,27 @@ class AzureDevopsClient(HTTPBaseClient):
             work_item["__projectId"] = project["id"]
             work_item["__project"] = project
         return work_items
+
+    async def get_work_item(
+        self, project_id: str, work_item_id: int, expand: str = "All"
+    ) -> Optional[dict[str, Any]]:
+        """
+        Fetches a single work item by ID from Azure DevOps.
+
+        :param project_id: The project ID containing the work item.
+        :param work_item_id: The work item ID to fetch.
+        :param expand: Expand options for work items. Allowed values are 'None', 'Fields', 'Relations', 'Links' and 'All'. Default value is 'All'.
+        :return: The work item data or None if not found.
+        """
+        work_item_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/workitems/{work_item_id}"
+        params = {
+            "api-version": API_PARAMS["api-version"],
+            "$expand": expand,
+        }
+        response = await self.send_request("GET", work_item_url, params=params)
+        if not response:
+            return None
+        return response.json()
 
     async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any] | None:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
