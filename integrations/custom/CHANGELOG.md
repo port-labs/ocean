@@ -1,3 +1,10 @@
+## 0.2.42-beta (2025-01-05)
+
+### Feature
+
+- Add support for skip token pagination
+
+
 ## 0.2.41-beta (2025-12-24)
 
 ### Improvements
