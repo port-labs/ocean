@@ -29,8 +29,21 @@ from azure_devops.webhooks.webhook_processors.repository_processor import (
 )
 from azure_devops.webhooks.webhook_processors.pipeline_webhook_processor import (
     PipelineWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.pipeline_stage_webhook_processor import (
+    PipelineStageWebhookProcessor,
+)
 from azure_devops.webhooks.webhook_processors.work_item_webhook_processor import (
     WorkItemWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.build_webhook_processor import (
+    BuildWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor import (
+    PipelineRunWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.pipeline_deployment_webhook_processor import (
+    PipelineDeploymentWebhookProcessor,
 )
 from integration import (
     AzureDevopsPipelineResourceConfig,
@@ -334,4 +347,8 @@ ocean.add_webhook_processor("/webhook", GitopsWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FolderWebhookProcessor)
 ocean.add_webhook_processor("/webhook", BranchWebhookProcessor)
 ocean.add_webhook_processor("/webhook", PipelineWebhookProcessor)
+ocean.add_webhook_processor("/webhook", PipelineStageWebhookProcessor)
 ocean.add_webhook_processor("/webhook", WorkItemWebhookProcessor)
+ocean.add_webhook_processor("/webhook", BuildWebhookProcessor)
+ocean.add_webhook_processor("/webhook", PipelineRunWebhookProcessor)
+ocean.add_webhook_processor("/webhook", PipelineDeploymentWebhookProcessor)
