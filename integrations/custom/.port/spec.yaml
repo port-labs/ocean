@@ -18,7 +18,7 @@ configurations:
     type: string
     default: "none"
     description: "Authentication method: none, bearer_token, basic, or api_key"
-    enum: ["none", "bearer_token", "basic", "api_key"]
+    enum: ["bearer_token", "basic", "api_key", "none"]
   - name: apiToken
     required: false
     type: string
@@ -78,7 +78,7 @@ configurations:
     type: string
     default: "none"
     description: "Pagination method: none, offset, page, or cursor"
-    enum: ["none", "offset", "page", "cursor"]
+    enum: ["offset", "page", "cursor", "none"]
   - name: pageSize
     required: false
     type: string
@@ -189,7 +189,7 @@ installationDocs:
     enabled: true
     docs: build-your-software-catalog/custom-integration/ocean-custom-integration/overview
 saas:
-  enabled: false
+  enabled: true
   liveEvents:
     enabled: false
 deploymentMethodOverride:
