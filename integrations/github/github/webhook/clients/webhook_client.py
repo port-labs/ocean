@@ -1,4 +1,4 @@
-from typing import Any, AsyncIterator
+from typing import AsyncIterator
 
 from github.webhook.clients.base_webhook_client import (
     BaseGithubWebhookClient,
@@ -7,26 +7,21 @@ from github.webhook.clients.base_webhook_client import (
 
 
 class GithubWebhookClient(BaseGithubWebhookClient):
-    def __init__(
-        self, *, organization: str, webhook_secret: str | None = None, **kwargs: Any
-    ):
-        """
-        Initialize the GitHub organization webhook client.
+    """
+    Initialize the GitHub organization webhook client.
 
-        GitHub organization-scoped webhook client.
+    GitHub organization-scoped webhook client.
 
-        This client manages webhooks at the organization level:
-        - GET  /orgs/{org}/hooks
-        - POST /orgs/{org}/hooks
-        - PATCH /orgs/{org}/hooks/{hook_id}
+    This client manages webhooks at the organization level:
+    - GET  /orgs/{org}/hooks
+    - POST /orgs/{org}/hooks
+    - PATCH /orgs/{org}/hooks/{hook_id}
 
-        Args:
-            organization: GitHub organization login.
-            webhook_secret: Optional secret for authenticating incoming webhooks.
-            **kwargs: Passed through to `GithubRestClient` (via `BaseGithubWebhookClient`).
-        """
-        super().__init__(webhook_secret=webhook_secret, **kwargs)
-        self.organization = organization
+    Args:
+        organization: GitHub organization login.
+        webhook_secret: Optional secret for authenticating incoming webhooks.
+        **kwargs: Passed through to `GithubRestClient` (via `BaseGithubWebhookClient`).
+    """
 
     async def iter_hook_targets(self) -> AsyncIterator[HookTarget]:
         yield HookTarget(

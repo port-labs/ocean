@@ -110,7 +110,7 @@ async def _create_webhooks_for_organization(org_name: str, base_url: str) -> Non
 
     client = await GithubWebhookClientFactory.create(
         authenticator=authenticator,
-        org_name=org_name,
+        organization=org_name,
         webhook_secret=webhook_secret,
     )
 

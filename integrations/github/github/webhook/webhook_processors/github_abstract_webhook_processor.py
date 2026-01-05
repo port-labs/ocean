@@ -79,7 +79,7 @@ class _GithubAbstractWebhookProcessor(AbstractWebhookProcessor):
     def is_personal_account_webhook(self, payload: EventPayload) -> bool:
         return "repository" in payload and "organization" not in payload
 
-    def get_organization(self, payload: EventPayload) -> dict[str, Any]:
+    def get_webhook_payload_organization(self, payload: EventPayload) -> dict[str, Any]:
         return (
             payload["repository"]["owner"]
             if self.is_personal_account_webhook(payload)

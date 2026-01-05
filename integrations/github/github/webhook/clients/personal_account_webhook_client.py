@@ -6,35 +6,27 @@ from github.webhook.clients.base_webhook_client import (
 )
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 
+UNSUPPORTED_REPO_EVENTS = {"organization", "team", "membership", "member"}
+
 
 class GithubPersonalAccountWebhookClient(BaseGithubWebhookClient):
-    def __init__(
-        self,
-        *,
-        organization: str,
-        webhook_secret: str | None = None,
-        **kwargs: Any,
-    ):
-        """
-        Initialize the GitHub repository webhook client.
+    """
+    Initialize the GitHub repository webhook client.
 
-        GitHub repository-scoped webhook client.
+    GitHub repository-scoped webhook client.
 
-        This client manages webhooks at the repository level:
-        - GET  /repos/{owner}/{repo}/hooks
-        - POST /repos/{owner}/{repo}/hooks
-        - PATCH /repos/{owner}/{repo}/hooks/{hook_id}
+    This client manages webhooks at the repository level:
+    - GET  /repos/{owner}/{repo}/hooks
+    - POST /repos/{owner}/{repo}/hooks
+    - PATCH /repos/{owner}/{repo}/hooks/{hook_id}
 
-        Args:
-            webhook_secret: Optional secret for authenticating incoming webhooks.
-            **kwargs: Passed through to `GithubRestClient` (via `BaseGithubWebhookClient`).
-        """
-        super().__init__(webhook_secret=webhook_secret, **kwargs)
-        self.organization = organization
+    Args:
+        webhook_secret: Optional secret for authenticating incoming webhooks.
+        **kwargs: Passed through to `GithubRestClient` (via `BaseGithubWebhookClient`).
+    """
 
     def get_supported_events(self) -> list[str]:
-        disallowed_for_repo = {"organization", "team", "membership", "member"}
-        return [e for e in WEBHOOK_CREATE_EVENTS if e not in disallowed_for_repo]
+        return [e for e in WEBHOOK_CREATE_EVENTS if e not in UNSUPPORTED_REPO_EVENTS]
 
     async def _iter_owned_repositories(self) -> "Optional[List[Dict[str, Any]]]":
         """

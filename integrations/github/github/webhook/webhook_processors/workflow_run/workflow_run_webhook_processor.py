@@ -20,7 +20,7 @@ class WorkflowRunWebhookProcessor(BaseWorkflowRunWebhookProcessor):
         action = payload["action"]
         repo = payload["repository"]
         workflow_run = payload["workflow_run"]
-        organization = self.get_organization(payload)["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Processing workflow run event: {action} of organization: {organization}"

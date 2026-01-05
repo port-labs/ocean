@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+import asyncio
 from typing import Any, AsyncIterator, Dict, List
 
 from httpx import HTTPStatusError
@@ -30,8 +29,11 @@ class BaseGithubWebhookClient(GithubRestClient):
     Subclasses must implement the hooks collection URL and single-hook URL.
     """
 
-    def __init__(self, *, webhook_secret: str | None = None, **kwargs: Any):
+    def __init__(
+        self, *, organization: str, webhook_secret: str | None = None, **kwargs: Any
+    ):
         super().__init__(**kwargs)
+        self.organization = organization
         self.webhook_secret = webhook_secret
         if self.webhook_secret:
             logger.info(
@@ -94,7 +96,7 @@ class BaseGithubWebhookClient(GithubRestClient):
             json_data=webhook_data,
         )
 
-    async def _patch_webhook_secret_if_needed(
+    async def _patch_webhook_config(
         self, webhook_id: str, webhook_url: str, target: HookTarget
     ) -> None:
         logger.info(
@@ -106,11 +108,17 @@ class BaseGithubWebhookClient(GithubRestClient):
     async def upsert_webhook(self, base_url: str) -> None:
         webhook_url = f"{base_url}/integration{WEBHOOK_PATH}"
 
+        tasks = []
         async for target in self.iter_hook_targets():
-            await self._upsert_for_target(
-                target=target,
-                webhook_url=webhook_url,
+            tasks.append(
+                asyncio.create_task(
+                    self._upsert_for_target(
+                        target=target,
+                        webhook_url=webhook_url,
+                    )
+                )
             )
+        await asyncio.gather(*tasks)
 
     async def _upsert_for_target(
         self,
@@ -133,7 +141,7 @@ class BaseGithubWebhookClient(GithubRestClient):
             logger.info(f"Found existing webhook with ID: {existing_webhook_id}")
 
             if bool(self.webhook_secret) ^ bool(existing_webhook_secret):
-                await self._patch_webhook_secret_if_needed(
+                await self._patch_webhook_config(
                     existing_webhook_id, webhook_url, target
                 )
                 return

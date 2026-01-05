@@ -43,7 +43,7 @@ class CodeScanningAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         alert_number = alert["number"]
         repo_name = repo["name"]
-        organization = self.get_organization(payload)["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Processing code scanning alert event: {action} for alert {alert_number} in {repo_name} from {organization}"

@@ -42,7 +42,7 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
         action = payload["action"]
         repo = payload["repository"]
         name = repo["name"]
-        organization = self.get_organization(payload)["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
         resource_config = cast(GithubRepositoryConfig, resource_config)
 
         logger.info(

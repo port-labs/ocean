@@ -63,7 +63,7 @@ class PortAppConfigWebhookProcessor(
     async def handle_event(
         self, payload: EventPayload, _: ResourceConfig
     ) -> WebhookEventRawResults:
-        organization = self.get_organization(payload)["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
         repository = payload["repository"]
         repo_name = repository["name"]
         default_branch = repository["default_branch"]

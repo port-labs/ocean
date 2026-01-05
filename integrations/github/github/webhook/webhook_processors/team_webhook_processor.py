@@ -41,7 +41,7 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
     ) -> WebhookEventRawResults:
         action = payload["action"]
         team = payload["team"]
-        organization = self.get_organization(payload)["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(f"Processing org event: {action} of {organization}")
 

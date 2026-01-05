@@ -49,7 +49,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        organization = self.get_organization(payload)["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
         repository = payload["repository"]
         before_sha = payload["before"]
         after_sha = payload["after"]

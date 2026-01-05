@@ -12,12 +12,12 @@ class GithubWebhookClientFactory:
     async def create(
         *,
         authenticator: AbstractGitHubAuthenticator,
-        org_name: str,
+        organization: str,
         webhook_secret: str | None,
     ) -> BaseGithubWebhookClient:
         config = integration_config(authenticator)
         is_personal_org = await authenticator.is_personal_org(
-            config["github_host"], org_name
+            config["github_host"], organization
         )
 
         client_cls = (
@@ -27,6 +27,6 @@ class GithubWebhookClientFactory:
         )
         return client_cls(
             **config,
-            organization=org_name,
+            organization=organization,
             webhook_secret=webhook_secret,
         )

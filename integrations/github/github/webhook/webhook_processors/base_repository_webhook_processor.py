@@ -48,7 +48,7 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
             GithubPortAppConfig, event.port_app_config
         ).repository_type
         selector = cast(RepoSearchSelector, config.selector)
-        organization = self.get_organization(payload)
+        organization = self.get_webhook_payload_organization(payload)
         repo = payload["repository"]
 
         if selector.repo_search is None:

@@ -50,7 +50,7 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
         """
         repo = payload["repository"]
         repo_name = repo["name"]
-        organization = self.get_organization(payload)["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         if not await self.should_process_repo_search(payload, resource_config):
             return WebhookEventRawResults(

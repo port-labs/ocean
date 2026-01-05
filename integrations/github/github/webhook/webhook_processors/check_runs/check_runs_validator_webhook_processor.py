@@ -48,7 +48,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
         repo_name = payload["repository"]["name"]
         base_sha = pull_request["base"]["sha"]
         head_sha = pull_request["head"]["sha"]
-        organization = self.get_organization(payload)["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         if action not in ["opened", "synchronize", "reopened", "edited"]:
             logger.info(
