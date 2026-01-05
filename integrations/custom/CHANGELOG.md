@@ -1,3 +1,40 @@
+## 0.2.41-beta (2025-12-24)
+
+### Improvements
+
+- Enabled saas for the custom integration
+
+## 0.2.40-beta (2025-12-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.9
+
+
+## 0.2.39-beta (2025-12-23)
+
+
+### Improvements
+
+- Convert custom integration to saas false
+
+
+## 0.2.38-beta (2025-12-23)
+
+
+### Improvements
+
+- Added advanced configuration section to the custom integration
+
+
+## 0.2.37-beta (2025-12-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.8
+
+
 ## 0.2.36-beta (2025-12-22)
 
 
