@@ -3,8 +3,8 @@ from typing import Any, AsyncGenerator, Dict, List
 from unittest.mock import AsyncMock, patch
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
-from github.webhook.base_webhook_client import HookTarget
-from github.webhook.personal_account_webhook_client import (
+from github.webhook.clients.base_webhook_client import HookTarget
+from github.webhook.clients.personal_account_webhook_client import (
     GithubPersonalAccountWebhookClient,
 )
 from github.webhook.events import WEBHOOK_CREATE_EVENTS

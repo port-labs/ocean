@@ -1,6 +1,9 @@
 from typing import Any, AsyncIterator, Dict, List, Optional
 
-from github.webhook.base_webhook_client import BaseGithubWebhookClient, HookTarget
+from github.webhook.clients.base_webhook_client import (
+    BaseGithubWebhookClient,
+    HookTarget,
+)
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 
 

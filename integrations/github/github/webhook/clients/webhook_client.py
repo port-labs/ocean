@@ -1,6 +1,9 @@
 from typing import Any, AsyncIterator
 
-from github.webhook.base_webhook_client import BaseGithubWebhookClient, HookTarget
+from github.webhook.clients.base_webhook_client import (
+    BaseGithubWebhookClient,
+    HookTarget,
+)
 
 
 class GithubWebhookClient(BaseGithubWebhookClient):

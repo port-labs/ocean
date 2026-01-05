@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from typing import Any, AsyncGenerator, Dict, List
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
-from github.webhook.base_webhook_client import HookTarget
-from github.webhook.webhook_client import GithubWebhookClient
+from github.webhook.clients.base_webhook_client import HookTarget
+from github.webhook.clients.webhook_client import GithubWebhookClient
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 
 

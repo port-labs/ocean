@@ -19,7 +19,7 @@ from github.clients.client_factory import (
     GitHubAuthenticatorFactory,
     create_github_client,
 )
-from github.webhook.client_factory import GithubWebhookClientFactory
+from github.webhook.clients.client_factory import GithubWebhookClientFactory
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.clients.utils import (
     get_github_organizations,

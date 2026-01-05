@@ -1,10 +1,10 @@
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
 from github.clients.utils import integration_config
-from github.webhook.base_webhook_client import BaseGithubWebhookClient
-from github.webhook.personal_account_webhook_client import (
+from github.webhook.clients.base_webhook_client import BaseGithubWebhookClient
+from github.webhook.clients.personal_account_webhook_client import (
     GithubPersonalAccountWebhookClient,
 )
-from github.webhook.webhook_client import GithubWebhookClient
+from github.webhook.clients.webhook_client import GithubWebhookClient
 
 
 class GithubWebhookClientFactory:
