@@ -1,9 +1,10 @@
-from typing import Any, Optional, Literal
+from typing import Any, Optional
 from bitbucket_cloud.webhook_processors.options import PullRequestSelectorOptions
+from integration import UserRole
 
 
 def build_repo_params(
-    user_role: Optional[Literal["member", "contributor", "admin", "owner"]] = None,
+    user_role: Optional[UserRole] = None,
     repo_query: Optional[str] = None,
 ) -> dict[str, Any]:
     """Build the parameters for the repository filter."""

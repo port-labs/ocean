@@ -23,6 +23,8 @@ from loguru import logger
 
 FILE_PROPERTY_PREFIX = "file://"
 
+UserRole = Literal["member", "contributor", "admin", "owner"]
+
 
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
@@ -38,7 +40,7 @@ class RepositoryBranchMapping(BaseModel):
 
 
 class RepositorySelector(Selector):
-    user_role: Optional[Literal["member", "contributor", "admin", "owner"]] = Field(
+    user_role: Optional[UserRole] = Field(
         default=None,
         alias="userRole",
         description="Filter repositories by authenticated user's role: member, contributor, admin, or owner",
