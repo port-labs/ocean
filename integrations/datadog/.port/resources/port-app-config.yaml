@@ -3,7 +3,7 @@ createMissingRelatedEntities: true
 resources:
   - kind: user
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -16,11 +16,11 @@ resources:
             status: .attributes.status
             disabled: .attributes.disabled
             verified: .attributes.verified
-            createdAt: .attributes.created_at | todate
+            createdAt: .attributes.created_at
   - kind: team
     selector:
-      query: 'true'
-      includeMembers: 'true'
+      query: "true"
+      includeMembers: "true"
     port:
       entity:
         mappings:
@@ -32,7 +32,7 @@ resources:
             handle: .attributes.handle
             userCount: .attributes.user_count
             summary: .attributes.summary
-            createdAt: .attributes.created_at | todate
+            createdAt: .attributes.created_at
           relations:
             members: if .__members then [.__members[] | .id] else [] end
   - kind: host
@@ -146,7 +146,7 @@ resources:
             tags: .tags_by_source
   - kind: serviceDependency
     selector:
-      query: 'true'
+      query: "true"
       environment: prod
       startTime: 1
     port:
