@@ -113,7 +113,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         event_payload: EventPayload,
     ) -> list[dict[str, Any]]:
         client = create_github_client()
-        organization = event_payload["organization"]["login"]
+        organization = self.get_organization(event_payload)["login"]
 
         commit_diff = await fetch_commit_diff(
             client,
