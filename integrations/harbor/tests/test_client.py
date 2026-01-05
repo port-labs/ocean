@@ -13,7 +13,7 @@ from harbor.client import HarborClient, PAGE_SIZE
 async def test_client_initialization(mock_harbor_client: HarborClient) -> None:
     """Test the correct initialization of HarborClient with authentication."""
     assert mock_harbor_client.base_url == "https://harbor.example.com"
-    assert isinstance(mock_harbor_client.client.auth, BasicAuth)
+    assert isinstance(mock_harbor_client._auth, BasicAuth)
 
 
 @pytest.mark.asyncio
@@ -22,7 +22,7 @@ async def test_client_initialization_no_auth(
 ) -> None:
     """Test the correct initialization of HarborClient without authentication."""
     assert mock_harbor_client_no_auth.base_url == "https://harbor.example.com"
-    assert mock_harbor_client_no_auth.client.auth is None
+    assert mock_harbor_client_no_auth._auth is None
 
 
 @pytest.mark.asyncio
@@ -37,7 +37,7 @@ async def test_send_api_request_success(mock_harbor_client: HarborClient) -> Non
             json={"key": "value"},
         )
         response = await mock_harbor_client._send_api_request(
-            "GET", "/api/v2.0/projects"
+            "GET", "/projects"
         )
         assert response["key"] == "value"
 
@@ -52,7 +52,7 @@ async def test_send_api_request_failure(mock_harbor_client: HarborClient) -> Non
             404, request=Request("GET", "http://example.com")
         )
         with pytest.raises(Exception):
-            await mock_harbor_client._send_api_request("GET", "/api/v2.0/projects")
+            await mock_harbor_client._send_api_request("GET", "/projects")
 
 
 @pytest.mark.asyncio
@@ -79,7 +79,7 @@ async def test_send_api_request_rate_limit_retry(
 
         with patch("asyncio.sleep", new_callable=AsyncMock):
             response = await mock_harbor_client._send_api_request(
-                "GET", "/api/v2.0/projects"
+                "GET", "/projects"
             )
             assert response["key"] == "value"
             assert mock_request.call_count == 2
@@ -137,7 +137,7 @@ async def test_extract_items_from_response_empty() -> None:
 
             results = []
             async for batch in mock_harbor_client.get_paginated_resources(
-                "/api/v2.0/projects",
+                "/projects",
             ):
                 results.extend(batch)
 
@@ -159,7 +159,7 @@ async def test_get_paginated_resources_empty_response(
 
         results = []
         async for batch in mock_harbor_client.get_paginated_resources(
-            "/api/v2.0/projects"
+            "/projects"
         ):
             results.extend(batch)
 
@@ -336,7 +336,7 @@ async def test_get_paginated_resources_with_params(
 
         results = []
         async for batch in mock_harbor_client.get_paginated_resources(
-            "/api/v2.0/projects",
+            "/projects",
             params={"public": "true"},
         ):
             results.extend(batch)

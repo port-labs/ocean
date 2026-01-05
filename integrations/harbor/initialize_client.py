@@ -1,5 +1,7 @@
 from typing import Optional
 
+from loguru import logger
+
 from harbor.client import HarborClient
 from port_ocean.context.ocean import ocean
 
@@ -19,6 +21,7 @@ def _create_harbor_client() -> HarborClient:
     """
     base_url = ocean.integration_config.get("base_url")
     verify_ssl = ocean.integration_config.get("verify_ssl", False)
+    api_version = ocean.integration_config.get("api_version", "v2.0")
     auth_type = ocean.integration_config.get("auth_type", "none")
     
     # Determine authentication credentials based on auth type
@@ -28,12 +31,18 @@ def _create_harbor_client() -> HarborClient:
     if auth_type == "basic":
         username = ocean.integration_config.get("username")
         password = ocean.integration_config.get("password")
+        logger.info(f"Basic auth configured - username: {username}, password: {'***' if password else None}")
+    else:
+        logger.info(f"Auth type is '{auth_type}', not using basic auth")
+    
+    logger.info(f"Harbor client configured - base_url: {base_url}, api_version: {api_version}")
     
     return HarborClient(
         base_url=base_url,
         verify_ssl=verify_ssl,
         username=username,
         password=password,
+        api_version=api_version,
     )
 
 

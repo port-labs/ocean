@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from httpx import BasicAuth
 
 from harbor.client import HarborClient
 from initialize_client import get_harbor_client, reset_harbor_client
@@ -148,5 +149,6 @@ def test_create_harbor_client_integration() -> None:
 
         assert isinstance(client, HarborClient)
         assert client.base_url == "https://registry.harbor.io"
-        assert client.client.auth is not None
+        assert client._auth is not None
+        assert isinstance(client._auth, BasicAuth)
 

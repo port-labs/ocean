@@ -35,6 +35,7 @@ class HarborClient:
         verify_ssl: bool = False,
         username: Optional[str] = None,
         password: Optional[str] = None,
+        api_version: str = "v2.0",
     ) -> None:
         """
         Initialize the Harbor client.
@@ -44,8 +45,15 @@ class HarborClient:
             verify_ssl: Whether to verify SSL certificates
             username: Username for Basic Auth (optional)
             password: Password for Basic Auth (optional)
+            api_version: Harbor API version (e.g., v2.0, v2.1). Defaults to v2.0.
         """
+        if not base_url:
+            raise ValueError(
+                "Harbor base_url is required but was not provided. "
+                "Please set the 'baseUrl' configuration in your integration config."
+            )
         self.base_url = base_url.rstrip("/")
+        self.api_version = api_version.strip("/")  # Remove any leading/trailing slashes
         self.client = http_async_client
         self.client.timeout = Timeout(DEFAULT_TIMEOUT)
         self.client.verify = verify_ssl
@@ -68,11 +76,14 @@ class HarborClient:
             username: Username for Basic Auth
             password: Password for Basic Auth
         """
+        # Store auth for use in requests - don't set on shared client
+        self._auth: Optional[BasicAuth] = None
+        
         if username and password:
-            self.client.auth = BasicAuth(username, password)
-            logger.debug("Harbor client configured with Basic Auth")
+            self._auth = BasicAuth(username, password)
+            logger.info("Harbor client configured with Basic Auth")
         else:
-            logger.debug("Harbor client configured without authentication")
+            logger.info("Harbor client configured without authentication")
 
     async def _send_api_request(
         self,
@@ -104,8 +115,13 @@ class HarborClient:
             HTTPStatusError: For HTTP error responses (except 429 which is retried)
             RequestError: For connection/request errors
         """
-        # Construct full URL
-        url = f"{self.base_url}{endpoint}" if not endpoint.startswith("http") else endpoint
+        # Construct full URL with API version
+        if endpoint.startswith("http"):
+            url = endpoint
+        else:
+            # Ensure endpoint starts with /
+            endpoint = endpoint if endpoint.startswith("/") else f"/{endpoint}"
+            url = f"{self.base_url}/api/{self.api_version}{endpoint}"
 
         try:
             async with self._semaphore:
@@ -115,6 +131,7 @@ class HarborClient:
                     params=params,
                     json=json_data,
                     headers=headers,
+                    auth=self._auth,  # Pass auth explicitly for each request
                 )
                 response.raise_for_status()
                 return response.json()

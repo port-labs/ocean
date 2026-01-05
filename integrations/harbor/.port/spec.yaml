@@ -12,7 +12,12 @@ configurations:
   - name: baseUrl
     type: string
     required: true
-    description: The base URL of your API
+    description: The base URL of your Harbor instance (without /api/version, e.g., http://localhost:8081)
+  - name: apiVersion
+    type: string
+    required: false
+    default: "v2.0"
+    description: Harbor API version (e.g., v2.0, v2.1)
   - name: authType
     type: string
     required: true

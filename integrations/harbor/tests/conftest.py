@@ -54,6 +54,6 @@ def mock_harbor_client_no_auth() -> HarborClient:
         password=None,
     )
     # Ensure auth is not set
-    client.client.auth = None
+    client._auth = None
     return client
 
