@@ -198,7 +198,9 @@ class BitbucketClient:
         async for project_batch in self.get_paginated_resource("projects"):
             yield cast(list[dict[str, Any]], project_batch)
 
-    def _create_regex_from_project_keys(self, project_keys: set[str]) -> re.Pattern:
+    def _create_regex_from_project_keys(
+        self, project_keys: set[str]
+    ) -> re.Pattern[str]:
         """
         Convert a set of project keys to a regex pattern.
 
