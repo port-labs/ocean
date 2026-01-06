@@ -6,6 +6,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.32.9 (2025-12-24)
+
+### Improvements
+
+- Added `BaseConfigChangeWebhookProcessor` base class for config change webhooks, exposing a `trigger_resync` hook that performs a full `ocean.sync_raw_all()` resync for the integration.
+
+
+## 0.32.8 (2025-12-23)
+
+### Bug fixes
+
+- Remove setup instruction for .env.example copying from CLI flow
+
+
+## 0.32.7 (2025-12-22)
+
+### Bug fixes
+
+- Update the pool to be used as context so its closed propely.
+- Update loop to accumulate batches over multiple objects.
+- Update jq processor sync to use cache that is local to it's process.
+
+
+## 0.32.6 (2025-12-21)
+
+### Bug fixes
+
+- Fix .env.example coockiecutter generation to conceal Port secrets
+
+
+## 0.32.5 (2025-12-18)
+
+### Bug fixes
+
+- Update compare entities with port to use async generator and compare entities incrementaly.
+- Update delete diff to use maps for comparing.
+- When deleteing entities batch by 1k.
+
+
 ## 0.32.4 (2025-12-16)
 
 ### Bug fixes

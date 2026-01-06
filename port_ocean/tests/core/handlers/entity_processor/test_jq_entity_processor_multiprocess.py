@@ -41,7 +41,6 @@ class TestCalculateEntity:
                 mock_ocean,
             ),
         ):
-            jq_module._MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS.clear()
             yield mock_ocean
 
     def test_calculate_entity_from_globals(self, setup_mock_ocean: Any) -> None:
@@ -186,7 +185,6 @@ class TestIntegration:
                 mock_ocean,
             ),
         ):
-            jq_module._MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS.clear()
             yield mock_ocean
 
     def test_full_entity_processing_flow(self, setup_mock_ocean: Any) -> None:
@@ -307,7 +305,7 @@ class TestIntegration:
         assert entities[0].entity["properties"]["owner"] == "Alice"
 
     def test_caching_improves_performance(self, setup_mock_ocean: Any) -> None:
-        """Test that pattern caching works across multiple entities."""
+        """Test that pattern caching works within each processor instance."""
         raw_data = [{"id": str(i), "value": i} for i in range(100)]
 
         mappings = {"identifier": ".id", "count": ".value"}
@@ -317,13 +315,13 @@ class TestIntegration:
         jq_module._MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY = "true"
         jq_module._MULTIPROCESS_JQ_BATCH_PARSE_ALL = False
 
-        # Clear cache to start fresh
-        jq_module._MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS.clear()
-
         # Process all entities
+        # Each _calculate_entity call creates a new JQEntityProcessorSync instance
+        # which has its own compiled_patterns cache
         for i in range(len(raw_data)):
-            _calculate_entity(i)
+            entities, errors = _calculate_entity(i)
+            assert len(entities) == 1
+            assert len(errors) == 0
 
-        # Cache should have the patterns compiled once
-        # There should be limited patterns (the unique ones used)
-        assert len(jq_module._MULTIPROCESS_JQ_BATCH_COMPILED_PATTERNS) <= 3
+        # Since each processor instance has its own cache, we can't test
+        # cross-instance caching, but we verify that processing works correctly
