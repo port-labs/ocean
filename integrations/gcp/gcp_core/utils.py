@@ -166,6 +166,9 @@ def get_credentials_json() -> str:
 
 def get_service_account_project_id() -> str:
     "get project id associated with service account"
+    gcp_project_env = os.getenv("GCP_PROJECT")
+    if isinstance(gcp_project_env, str):
+        return gcp_project_env
     try:
         default_credentials = json.loads(get_credentials_json())
         project_id = default_credentials.get("project_id") or default_credentials.get(
@@ -177,13 +180,9 @@ def get_service_account_project_id() -> str:
 
         return project_id
     except FileNotFoundError as e:
-        gcp_project_env = os.getenv("GCP_PROJECT")
-        if isinstance(gcp_project_env, str):
-            return gcp_project_env
-        else:
-            raise ValueError(
-                f"Couldn't figure out the service account's project id. You can specify it using the GCP_PROJECT environment variable. Error: {str(e)}"
-            )
+        raise ValueError(
+            f"Couldn't figure out the service account's project id. You can specify it using the GCP_PROJECT environment variable. Error: {str(e)}"
+        )
     except KeyError as e:
         raise ValueError(
             f"Couldn't figure out the service account's project id. Key: {str(e)} doesn't exist in the credentials file."
@@ -192,7 +191,6 @@ def get_service_account_project_id() -> str:
         raise ValueError(
             f"Couldn't figure out the service account's project id. Error: {str(e)}"
         )
-    raise ValueError("Couldn't figure out the service account's project id.")
 
 
 async def get_quotas_for_project(

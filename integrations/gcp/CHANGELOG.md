@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.233 (2025-01-06)
+
+
+### Improvements
+
+- Look for `GCP_PROJECT` first when fetching project_id
+
+
 ## 0.1.232 (2025-12-25)
 
 
