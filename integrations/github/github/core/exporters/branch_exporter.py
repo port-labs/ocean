@@ -1,5 +1,6 @@
 import asyncio
 from typing import Any, cast
+from urllib.parse import quote
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
@@ -17,7 +18,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
     async def fetch_branch(
         self, repo_name: str, branch_name: str, organization: str
     ) -> RAW_ITEM:
-        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/branches/{branch_name}"
+        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/branches/{quote(branch_name)}"
         response = await self.client.send_api_request(endpoint)
         return response
 
@@ -109,7 +110,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
         endpoint = (
             f"{self.client.base_url}/repos/"
-            f"{organization}/{repo_name}/branches/{branch_name}/protection"
+            f"{organization}/{repo_name}/branches/{quote(branch_name)}/protection"
         )
 
         protection_rules = await self.client.send_api_request(endpoint)

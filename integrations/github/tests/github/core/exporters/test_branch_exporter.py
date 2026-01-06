@@ -1,4 +1,5 @@
 from typing import Any, AsyncGenerator
+from urllib.parse import quote
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
@@ -277,3 +278,62 @@ class TestRestBranchExporter:
                     b.get("__protection_rules") == {"enabled": True} for b in result
                 )
                 assert all(b.get("__repository") == "repo1" for b in result)
+
+    async def test_fetch_branch_url_encodes_special_characters(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """Test that branch names with special characters are properly URL-encoded."""
+        exporter = RestBranchExporter(rest_client)
+        branch_name_with_special_chars = "feature/test-branch-33%-with-special-chars"
+        expected_encoded_name = quote(branch_name_with_special_chars)
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "name": branch_name_with_special_chars,
+            "commit": {"sha": "abc123"},
+        }
+
+        with patch.object(
+            rest_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = mock_response.json()
+            await exporter.fetch_branch(
+                "repo1", branch_name_with_special_chars, "test-org"
+            )
+
+            # Verify the URL contains the properly encoded branch name
+            mock_request.assert_called_once()
+            called_url = mock_request.call_args[0][0]
+            assert expected_encoded_name in called_url
+            assert (
+                branch_name_with_special_chars not in called_url
+                or quote(branch_name_with_special_chars) in called_url
+            )
+
+    async def test_enrich_branch_with_protection_rules_url_encodes_special_characters(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """Test that branch names with special characters are properly URL-encoded when fetching protection rules."""
+        exporter = RestBranchExporter(rest_client)
+        branch_name_with_special_chars = "feature/test-branch-33%-with-special-chars"
+        expected_encoded_name = quote(branch_name_with_special_chars)
+
+        branch_data = {
+            "name": branch_name_with_special_chars,
+            "commit": {"sha": "abc123"},
+        }
+
+        with patch.object(
+            rest_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = {"enabled": True}
+            await exporter._enrich_branch_with_protection_rules(
+                "repo1", branch_data, "test-org"
+            )
+
+            # Verify the URL contains the properly encoded branch name
+            mock_request.assert_called_once()
+            called_url = mock_request.call_args[0][0]
+            assert expected_encoded_name in called_url
+            assert f"/branches/{expected_encoded_name}/protection" in called_url
