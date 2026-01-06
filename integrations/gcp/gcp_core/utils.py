@@ -133,9 +133,9 @@ class AssetTypesWithSpecialHandling(enum.StrEnum):
     CLOUD_RESOURCE = "cloudResource"
 
 
-def get_current_resource_config() -> typing.Union[
-    ResourceConfig, GCPCloudResourceConfig
-]:
+def get_current_resource_config() -> (
+    typing.Union[ResourceConfig, GCPCloudResourceConfig]
+):
     """
     Returns the current resource config, accessible only inside an event context
     """
