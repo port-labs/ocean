@@ -76,10 +76,6 @@ class RegionalResyncStrategy(ResyncStrategy):
         self.max_concurrent = max_concurrent
 
     async def run(self, regions: List[str]) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
-        logger.info(
-            f"Processing {self.kind} across {len(regions)} regions for account {self.account_id}"
-        )
         semaphore = asyncio.Semaphore(self.max_concurrent)
 
         tasks = [
@@ -187,7 +183,7 @@ class ResyncAWSService:
         semaphore = asyncio.Semaphore(self.max_concurrent_accounts)
         tasks: List[AsyncIterator[List[Dict[Any, Any]]]] = []
 
-        logger.info(f"Starting account discovery for {self.kind}")
+        logger.info(f"Starting resync for {self.kind}")
 
         async for account, session in get_all_account_sessions():
             account_id = account["Id"]
@@ -230,9 +226,7 @@ class ResyncAWSService:
                 )
                 continue
 
-        logger.info(
-            f"Account discovery complete: {len(tasks)} accounts queued for processing"
-        )
+        logger.info(f"Queued {len(tasks)} accounts for {self.kind} resync")
 
         if not tasks:
             logger.warning("No accounts available for processing")
