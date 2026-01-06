@@ -115,31 +115,37 @@ jobs:
         id: image_size
         run: |
           IMAGE="ghcr.io/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}:${{ steps.prepare_tags.outputs.version }}"
-          MANIFEST=$(docker buildx imagetools inspect "${IMAGE}" --raw)
 
           for arch in amd64 arm64; do
-            DIGEST=$(echo "${MANIFEST}" | jq -r ".manifests[] | select(.platform.architecture==\"${arch}\") | .digest")
-
-            if [[ -z "${DIGEST}" || "${DIGEST}" == "null" ]]; then
-              echo "⚠️ Failed to get digest for ${arch}"
-              continue
-            fi
-            if [[ "${DIGEST}" == "sha256:"* ]]; then
-              DIGEST="${DIGEST#sha256:}"
+            echo "📦 Pulling ${arch} image..."
+            docker pull --platform "linux/${arch}" "${IMAGE}"
+            if [[ $? -ne 0 ]]; then
+              echo "⚠️ Failed to pull ${arch} image"
+              exit 1
             fi
 
-            echo "📦 ${arch} digest: ${DIGEST}"
-
-            LAYER_MANIFEST=$(docker buildx imagetools inspect "${IMAGE}@${DIGEST}" --raw)
-            SIZE=$(echo "${LAYER_MANIFEST}" | jq "[.layers[].size] | add")
-
-            if [[ -z "${SIZE}" || "${SIZE}" == "null" ]]; then
-              echo "⚠️ Failed to get size for ${arch}"
-              continue
+            # `docker images` can output multiple rows for the same reference; pick a single deterministic value.
+            RAW_SIZE="$(docker images "${IMAGE}" --format '{{.VirtualSize}}' | head -n 1)"
+            if [[ -z "${RAW_SIZE}" ]]; then
+              echo "⚠️ Failed to get virtual size for ${arch}"
+              exit 1
             fi
 
-            echo "✅ ${arch} size: ${SIZE} bytes"
+            echo "🔎 Debug: raw 'docker images ${IMAGE}' output (${arch}): ${RAW_SIZE}"
+
+            SIZE="$(
+              awk -v s="${RAW_SIZE}" 'BEGIN{IGNORECASE=1
+                val = s
+                gsub(/[^0-9.]/,"",val)
+                if (s ~ /GB/) print int(val * 1073741824)
+                else if (s ~ /MB/) print int(val * 1048576)
+                else if (s ~ /KB/) print int(val * 1024)
+                else print int(val)
+              }'
+            )"
+            echo "🔎 Debug: converted size for ${arch}: ${SIZE}"
             echo "size_bytes_linux_${arch}=${SIZE}" >> $GITHUB_OUTPUT
+
           done
 
       - name: Track image size in New Relic (amd64)
