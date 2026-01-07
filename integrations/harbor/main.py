@@ -1,6 +1,7 @@
 """Main entry point for Harbor integration."""
 
 import asyncio
+from functools import partial
 from typing import cast
 
 from loguru import logger
@@ -112,14 +113,17 @@ async def on_resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 logger.warning(f"Skipping repository due to invalid name: {str(e)}")
                 continue
             
-            def make_iterator(p: str, r: str, n: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-                """Create an artifact iterator for a repository."""
-                return create_artifact_iterator(client, p, r, n, params)
-            
             tasks.append(
                 semaphore_async_iterator(
                     semaphore,
-                    lambda p=project_name, r=repository_name, n=repo_name: make_iterator(p, r, n),
+                    partial(
+                        create_artifact_iterator,
+                        client,
+                        project_name,
+                        repository_name,
+                        repo_name,
+                        params,
+                    ),
                 )
             )
         
