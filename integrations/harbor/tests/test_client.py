@@ -17,12 +17,31 @@ async def test_client_initialization(mock_harbor_client: HarborClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_client_initialization_no_auth(
-    mock_harbor_client_no_auth: HarborClient,
-) -> None:
-    """Test the correct initialization of HarborClient without authentication."""
-    assert mock_harbor_client_no_auth.base_url == "https://harbor.example.com"
-    assert mock_harbor_client_no_auth._auth is None
+async def test_client_initialization_no_auth() -> None:
+    """Test that HarborClient requires authentication credentials."""
+    # Test that missing username raises ValueError
+    with pytest.raises(ValueError, match="Username is required"):
+        HarborClient(
+            base_url="https://harbor.example.com",
+            username="",  # Empty username
+            password="test_password",
+        )
+    
+    # Test that missing password raises ValueError
+    with pytest.raises(ValueError, match="Password is required"):
+        HarborClient(
+            base_url="https://harbor.example.com",
+            username="test_user",
+            password="",  # Empty password
+        )
+    
+    # Test that None username raises ValueError (from type checking or validation)
+    with pytest.raises((ValueError, TypeError)):
+        HarborClient(
+            base_url="https://harbor.example.com",
+            username=None,  # type: ignore
+            password="test_password",
+        )
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,13 @@
 """Utility functions for Harbor integration."""
 
-from typing import Tuple
+from typing import TYPE_CHECKING, Any, Tuple
+
 from loguru import logger
+
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+if TYPE_CHECKING:
+    from harbor.client import HarborClient
 
 
 def parse_resource_url(resource_url: str) -> Tuple[str, str, str]:
@@ -88,4 +94,45 @@ def split_repository_name(repository_name: str) -> Tuple[str, str]:
     
     parts = repository_name.split("/", 1)
     return parts[0], parts[1]
+
+
+async def create_artifact_iterator(
+    client: "HarborClient",
+    proj_name: str,
+    repo_name: str,
+    repo_full_name: str,
+    params: dict[str, Any],
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Fetch artifacts for a single repository.
+    
+    This is an async generator that yields batches of artifacts from a Harbor repository.
+    
+    Args:
+        client: HarborClient instance for making API calls
+        proj_name: Project name
+        repo_name: Repository name
+        repo_full_name: Full repository name (project/repo) for logging purposes
+        params: Query parameters for filtering artifacts
+    
+    Yields:
+        Batches of artifact dictionaries
+    """
+    try:
+        logger.debug(f"Fetching artifacts for repository: {repo_full_name}")
+        async for artifacts_batch in client.get_artifacts_for_repository(
+            project_name=proj_name,
+            repository_name=repo_name,
+            params=params,
+        ):
+            if artifacts_batch:
+                logger.debug(
+                    f"Received {len(artifacts_batch)} artifacts from {repo_full_name}"
+                )
+                yield artifacts_batch
+    except Exception as e:
+        logger.error(
+            f"Failed to fetch artifacts for repository {repo_full_name}: {str(e)}"
+        )
+        return
 

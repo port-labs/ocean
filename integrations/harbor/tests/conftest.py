@@ -18,7 +18,6 @@ def mock_ocean_context() -> None:
         mock_ocean_app.config.integration.config = {
             "base_url": "https://harbor.example.com",
             "verify_ssl": False,
-            "auth_type": "basic",
             "username": "admin",
             "password": "password123",
             "pageSize": 100,
@@ -37,23 +36,8 @@ def mock_harbor_client() -> HarborClient:
     """Fixture to initialize HarborClient with mock parameters."""
     return HarborClient(
         base_url="https://harbor.example.com",
-        verify_ssl=False,
         username="test_user",
         password="test_password",
-    )
-
-
-@pytest.fixture
-def mock_harbor_client_no_auth() -> HarborClient:
-    """Fixture to initialize HarborClient without authentication."""
-    # Create a fresh client without credentials
-    client = HarborClient(
-        base_url="https://harbor.example.com",
         verify_ssl=False,
-        username=None,
-        password=None,
     )
-    # Ensure auth is not set
-    client._auth = None
-    return client
 

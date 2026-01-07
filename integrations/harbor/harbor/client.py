@@ -8,7 +8,6 @@ from loguru import logger
 
 from port_ocean.utils import http_async_client
 
-# Constants for API configuration
 MAX_CONCURRENT_REQUESTS = 10
 PAGE_SIZE = 50
 DEFAULT_TIMEOUT = 30
@@ -17,73 +16,53 @@ DEFAULT_TIMEOUT = 30
 class HarborClient:
     """
     Client for interacting with the Harbor Registry API.
-    
-    This client handles:
-    - API authentication (Basic Auth or no auth)
-    - Rate limiting through semaphores
-    - Pagination for resource fetching
-    - Error handling and retries
-    
-    Attributes:
-        base_url: Base URL of the Harbor instance
-        client: HTTP client for making requests
     """
 
     def __init__(
         self,
         base_url: str,
+        username: str,
+        password: str,
         verify_ssl: bool = False,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
         api_version: str = "v2.0",
     ) -> None:
         """
         Initialize the Harbor client.
-        
-        Args:
-            base_url: Base URL of the Harbor instance (e.g., https://harbor.example.com)
-            verify_ssl: Whether to verify SSL certificates
-            username: Username for Basic Auth (optional)
-            password: Password for Basic Auth (optional)
-            api_version: Harbor API version (e.g., v2.0, v2.1). Defaults to v2.0.
         """
         if not base_url:
             raise ValueError(
                 "Harbor base_url is required but was not provided. "
                 "Please set the 'baseUrl' configuration in your integration config."
             )
+        if not username:
+            raise ValueError(
+                "Username is required for Harbor API authentication."
+            )
+        if not password:
+            raise ValueError(
+                "Password is required for Harbor API authentication."
+            )
+        
         self.base_url = base_url.rstrip("/")
-        self.api_version = api_version.strip("/")  # Remove any leading/trailing slashes
+        self.api_version = api_version.strip("/")
         self.client = http_async_client
         self.client.timeout = Timeout(DEFAULT_TIMEOUT)
         self.client.verify = verify_ssl
         
-        # Configure authentication
         self._configure_authentication(username, password)
         
-        # Rate limiting semaphore
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
     def _configure_authentication(
         self, 
-        username: Optional[str], 
-        password: Optional[str]
+        username: str, 
+        password: str
     ) -> None:
         """
-        Configure client authentication based on provided credentials.
-        
-        Args:
-            username: Username for Basic Auth
-            password: Password for Basic Auth
+        Configure client authentication with Basic Auth.
         """
-        # Store auth for use in requests - don't set on shared client
-        self._auth: Optional[BasicAuth] = None
-        
-        if username and password:
-            self._auth = BasicAuth(username, password)
-            logger.info("Harbor client configured with Basic Auth")
-        else:
-            logger.info("Harbor client configured without authentication")
+        self._auth = BasicAuth(username, password)
+        logger.info(f"Harbor client configured with Basic Auth - username: {username}")
 
     async def _send_api_request(
         self,
@@ -95,31 +74,10 @@ class HarborClient:
     ) -> Any:
         """
         Send an HTTP request to the Harbor API.
-        
-        This method handles:
-        - Rate limiting via semaphore
-        - Automatic retry on 429 (rate limit) errors
-        - Error logging
-        
-        Args:
-            method: HTTP method (GET, POST, PUT, DELETE, etc.)
-            endpoint: API endpoint path (will be appended to base_url)
-            params: Optional query parameters
-            json_data: Optional JSON request body
-            headers: Optional additional headers
-        
-        Returns:
-            JSON response from the API
-        
-        Raises:
-            HTTPStatusError: For HTTP error responses (except 429 which is retried)
-            RequestError: For connection/request errors
         """
-        # Construct full URL with API version
         if endpoint.startswith("http"):
             url = endpoint
         else:
-            # Ensure endpoint starts with /
             endpoint = endpoint if endpoint.startswith("/") else f"/{endpoint}"
             url = f"{self.base_url}/api/{self.api_version}{endpoint}"
 
@@ -131,14 +89,14 @@ class HarborClient:
                     params=params,
                     json=json_data,
                     headers=headers,
-                    auth=self._auth,  # Pass auth explicitly for each request
+                    auth=self._auth,
                 )
                 response.raise_for_status()
                 return response.json()
 
         except HTTPStatusError as e:
             if e.response.status_code == 429:
-                # Handle rate limiting with retry
+
                 retry_after = int(e.response.headers.get("Retry-After", "60"))
                 logger.warning(
                     f"Rate limited (429) for {method} {endpoint}. "
@@ -166,23 +124,12 @@ class HarborClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetch paginated data from the Harbor API.
-        
-        Harbor uses page-based pagination with 'page' and 'page_size' parameters.
-        This method yields batches of resources until all pages are exhausted.
-        
-        Args:
-            endpoint: API endpoint path
-            params: Optional query parameters (will be merged with pagination params)
-        
-        Yields:
-            Lists of resource dictionaries for each page
         """
         if params is None:
             params = {}
 
         page = 1
         while True:
-            # Merge pagination params with existing params
             request_params = {**params, "page": page, "page_size": PAGE_SIZE}
 
             logger.debug(f"Fetching page {page} from {endpoint}")
@@ -193,7 +140,6 @@ class HarborClient:
                 params=request_params,
             )
 
-            # Handle different response formats
             items = self._extract_items_from_response(response)
 
             if not items:
@@ -202,7 +148,6 @@ class HarborClient:
 
             yield items
 
-            # Check if we've reached the last page
             if len(items) < PAGE_SIZE:
                 logger.debug(f"Last page reached for {endpoint}")
                 break
@@ -213,16 +158,6 @@ class HarborClient:
     def _extract_items_from_response(response: Any) -> list[dict[str, Any]]:
         """
         Extract items from API response.
-        
-        Harbor API can return either:
-        - A list directly
-        - A dict with items in various keys ('items', 'data', 'results')
-        
-        Args:
-            response: API response (list or dict)
-        
-        Returns:
-            List of items
         """
         if isinstance(response, list):
             return response
@@ -241,13 +176,6 @@ class HarborClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetch projects from Harbor.
-        
-        Args:
-            params: Optional query parameters (e.g., {'public': 'true'})
-            page_size: Number of items per page
-        
-        Yields:
-            Batches of project dictionaries
         """
         logger.info("Fetching projects from Harbor")
         async for batch in self.get_paginated_resources(
@@ -264,13 +192,6 @@ class HarborClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetch repositories from Harbor.
-        
-        Args:
-            params: Optional query parameters
-            page_size: Number of items per page
-        
-        Yields:
-            Batches of repository dictionaries
         """
         logger.info("Fetching repositories from Harbor")
         async for batch in self.get_paginated_resources(
@@ -289,15 +210,6 @@ class HarborClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetch artifacts for a specific repository.
-        
-        Args:
-            project_name: Name of the project
-            repository_name: Name of the repository (without project prefix)
-            params: Optional query parameters
-            page_size: Number of items per page
-        
-        Yields:
-            Batches of artifact dictionaries
         """
         endpoint = f"/projects/{project_name}/repositories/{repository_name}/artifacts"
         
@@ -318,15 +230,6 @@ class HarborClient:
     ) -> Optional[dict[str, Any]]:
         """
         Fetch a single artifact from Harbor API.
-        
-        Args:
-            project_name: Name of the project (e.g., "opensource")
-            repository_name: Name of the repository (e.g., "nginx")
-            reference: Artifact reference - either a tag name or digest
-                      (e.g., "latest" or "sha256:460a7081...")
-        
-        Returns:
-            Artifact data as a dictionary, or None if not found
         """
         endpoint = (
             f"/projects/{project_name}/repositories/{repository_name}"
@@ -352,7 +255,7 @@ class HarborClient:
                     f"Artifact not found: {project_name}/{repository_name}/{reference}"
                 )
                 return None
-            # Re-raise other HTTP errors
+
             raise
             
         except Exception as e:
@@ -368,13 +271,6 @@ class HarborClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetch users from Harbor.
-        
-        Args:
-            params: Optional query parameters
-            page_size: Number of items per page
-        
-        Yields:
-            Batches of user dictionaries
         """
         logger.info("Fetching users from Harbor")
         async for batch in self.get_paginated_resources(

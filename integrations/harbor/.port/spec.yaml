@@ -4,10 +4,10 @@ features:
   - type: exporter
     section: Other
     resources:
-      - kind: /projects
-      - kind: /repositories
-      - kind: /artifacts
-      - kind: /users
+      - kind: projects
+      - kind: repositories
+      - kind: artifacts
+      - kind: users
 configurations:
   - name: baseUrl
     type: string
@@ -18,26 +18,6 @@ configurations:
     required: false
     default: "v2.0"
     description: Harbor API version (e.g., v2.0, v2.1)
-  - name: authType
-    type: string
-    required: true
-    default: "none"
-    description: Authentication type (e.g., none, bearer, basic)
-  - name: paginationType
-    type: string
-    required: true
-    default: "page"
-    description: Pagination strategy (e.g., page, offset, cursor)
-  - name: paginationParam
-    type: string
-    required: false
-    default: "page"
-    description: Query parameter name for page number
-  - name: sizeParam
-    type: string
-    required: false
-    default: "page_size"
-    description: Query parameter name for page size
   - name: verifySsl
     type: boolean
     required: false

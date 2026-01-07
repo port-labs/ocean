@@ -18,24 +18,31 @@ def _create_harbor_client() -> HarborClient:
     
     Returns:
         HarborClient: Configured Harbor API client
+    
+    Raises:
+        ValueError: If required configuration (base_url, username, password) is missing
     """
     base_url = ocean.integration_config.get("base_url")
     verify_ssl = ocean.integration_config.get("verify_ssl", False)
     api_version = ocean.integration_config.get("api_version", "v2.0")
-    auth_type = ocean.integration_config.get("auth_type", "none")
     
-    # Determine authentication credentials based on auth type
-    username: Optional[str] = None
-    password: Optional[str] = None
+    # Basic Auth is required - username and password must be provided
+    username = ocean.integration_config.get("username")
+    password = ocean.integration_config.get("password")
     
-    if auth_type == "basic":
-        username = ocean.integration_config.get("username")
-        password = ocean.integration_config.get("password")
-        logger.info(f"Basic auth configured - username: {username}, password: {'***' if password else None}")
-    else:
-        logger.info(f"Auth type is '{auth_type}', not using basic auth")
+    if not username:
+        raise ValueError(
+            "Username is required for Harbor API authentication. "
+            "Please set the 'username' configuration in your integration config."
+        )
     
-    logger.info(f"Harbor client configured - base_url: {base_url}, api_version: {api_version}")
+    if not password:
+        raise ValueError(
+            "Password is required for Harbor API authentication. "
+            "Please set the 'password' configuration in your integration config."
+        )
+    
+    logger.info(f"Harbor client configured with Basic Auth - username: {username}, base_url: {base_url}, api_version: {api_version}")
     
     return HarborClient(
         base_url=base_url,

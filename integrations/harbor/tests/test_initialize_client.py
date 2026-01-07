@@ -24,7 +24,8 @@ def test_get_harbor_client_singleton() -> None:
         mock_config.get = MagicMock(side_effect=lambda key, default=None: {
             "base_url": "https://harbor.example.com",
             "verify_ssl": False,
-            "auth_type": "none",
+            "username": "test_user",
+            "password": "test_password",
         }.get(key, default))
         mock_ocean.integration_config = mock_config
 
@@ -42,7 +43,8 @@ def test_reset_harbor_client() -> None:
         mock_config.get = MagicMock(side_effect=lambda key, default=None: {
             "base_url": "https://harbor.example.com",
             "verify_ssl": False,
-            "auth_type": "none",
+            "username": "test_user",
+            "password": "test_password",
         }.get(key, default))
         mock_ocean.integration_config = mock_config
 
@@ -62,7 +64,6 @@ def test_create_harbor_client_with_basic_auth() -> None:
         mock_config.get = MagicMock(side_effect=lambda key, default=None: {
             "base_url": "https://harbor.example.com",
             "verify_ssl": True,
-            "auth_type": "basic",
             "username": "admin",
             "password": "password123",
         }.get(key, default))
@@ -76,21 +77,19 @@ def test_create_harbor_client_with_basic_auth() -> None:
 
 
 def test_create_harbor_client_without_auth() -> None:
-    """Test creating HarborClient without authentication."""
+    """Test that HarborClient creation fails when authentication is missing."""
     with patch("initialize_client.ocean") as mock_ocean:
         mock_config = MagicMock()
         mock_config.get = MagicMock(side_effect=lambda key, default=None: {
             "base_url": "https://harbor.example.com",
             "verify_ssl": False,
-            "auth_type": "none",
+            # Missing username and password
         }.get(key, default))
         mock_ocean.integration_config = mock_config
 
-        client = get_harbor_client()
-
-        assert isinstance(client, HarborClient)
-        assert client.base_url == "https://harbor.example.com"
-        assert client.client.verify is False
+        # Should raise ValueError because username is required
+        with pytest.raises(ValueError, match="Username is required"):
+            get_harbor_client()
 
 
 def test_create_harbor_client_default_verify_ssl() -> None:
@@ -99,7 +98,8 @@ def test_create_harbor_client_default_verify_ssl() -> None:
         mock_config = MagicMock()
         mock_config.get = MagicMock(side_effect=lambda key, default=None: {
             "base_url": "https://harbor.example.com",
-            "auth_type": "none",
+            "username": "test_user",
+            "password": "test_password",
         }.get(key, default))
         mock_ocean.integration_config = mock_config
 
@@ -111,24 +111,21 @@ def test_create_harbor_client_default_verify_ssl() -> None:
 
 
 def test_create_harbor_client_with_partial_credentials() -> None:
-    """Test creating HarborClient with basic auth but missing credentials."""
+    """Test that HarborClient creation fails with partial credentials."""
     with patch("initialize_client.ocean") as mock_ocean:
         # Missing password
         mock_config = MagicMock()
         mock_config.get = MagicMock(side_effect=lambda key, default=None: {
             "base_url": "https://harbor.example.com",
             "verify_ssl": False,
-            "auth_type": "basic",
             "username": "admin",
-            "password": None,
+            "password": None,  # Missing password
         }.get(key, default))
         mock_ocean.integration_config = mock_config
 
-        client = get_harbor_client()
-
-        assert isinstance(client, HarborClient)
-        # Should initialize without auth since credentials are incomplete
-        assert client.client.auth is None
+        # Should raise ValueError because password is required
+        with pytest.raises(ValueError, match="Password is required"):
+            get_harbor_client()
 
 
 def test_create_harbor_client_integration() -> None:
@@ -138,7 +135,6 @@ def test_create_harbor_client_integration() -> None:
         mock_config.get = MagicMock(side_effect=lambda key, default=None: {
             "base_url": "https://registry.harbor.io",
             "verify_ssl": True,
-            "auth_type": "basic",
             "username": "test_user",
             "password": "test_pass",
             "pageSize": 50,
