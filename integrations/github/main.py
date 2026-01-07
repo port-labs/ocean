@@ -306,14 +306,9 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             )
                         )
                     )
-                    if len(tasks) == MAX_CONCURRENT_REPOS:
-                        async for workflows in stream_async_iterators_tasks(*tasks):
-                            yield workflows
-                        tasks.clear()
 
-        if tasks:
-            async for workflows in stream_async_iterators_tasks(*tasks):
-                yield workflows
+        async for workflows in stream_async_iterators_tasks(*tasks):
+            yield workflows
 
 
 @ocean.on_resync(ObjectKind.WORKFLOW_RUN)
@@ -418,14 +413,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             )
                         )
                     )
-                    if len(tasks) == MAX_CONCURRENT_REPOS:
-                        async for pull_requests in stream_async_iterators_tasks(*tasks):
-                            yield pull_requests
-                        tasks.clear()
 
-        if tasks:
-            async for pull_requests in stream_async_iterators_tasks(*tasks):
-                yield pull_requests
+        async for pull_requests in stream_async_iterators_tasks(*tasks):
+            yield pull_requests
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
@@ -468,14 +458,9 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             )
                         )
                     )
-                    if len(tasks) == MAX_CONCURRENT_REPOS:
-                        async for issues in stream_async_iterators_tasks(*tasks):
-                            yield issues
-                        tasks.clear()
 
-        if tasks:
-            async for issues in stream_async_iterators_tasks(*tasks):
-                yield issues
+        async for issues in stream_async_iterators_tasks(*tasks):
+            yield issues
 
 
 @ocean.on_resync(ObjectKind.RELEASE)
@@ -515,14 +500,9 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             )
                         )
                     )
-                    if len(tasks) == MAX_CONCURRENT_REPOS:
-                        async for releases in stream_async_iterators_tasks(*tasks):
-                            yield releases
-                        tasks.clear()
 
-        if tasks:
-            async for releases in stream_async_iterators_tasks(*tasks):
-                yield releases
+        async for releases in stream_async_iterators_tasks(*tasks):
+            yield releases
 
 
 @ocean.on_resync(ObjectKind.TAG)
@@ -562,14 +542,9 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             )
                         )
                     )
-                    if len(tasks) == MAX_CONCURRENT_REPOS:
-                        async for tags in stream_async_iterators_tasks(*tasks):
-                            yield tags
-                        tasks.clear()
 
-        if tasks:
-            async for tags in stream_async_iterators_tasks(*tasks):
-                yield tags
+        async for tags in stream_async_iterators_tasks(*tasks):
+            yield tags
 
 
 @ocean.on_resync(ObjectKind.BRANCH)
@@ -662,14 +637,9 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             )
                         )
                     )
-                    if len(tasks) == MAX_CONCURRENT_REPOS:
-                        async for environments in stream_async_iterators_tasks(*tasks):
-                            yield environments
-                        tasks.clear()
 
-        if tasks:
-            async for environments in stream_async_iterators_tasks(*tasks):
-                yield environments
+        async for environments in stream_async_iterators_tasks(*tasks):
+            yield environments
 
 
 @ocean.on_resync(ObjectKind.DEPLOYMENT)
@@ -712,14 +682,9 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             )
                         )
                     )
-                    if len(tasks) == MAX_CONCURRENT_REPOS:
-                        async for deployments in stream_async_iterators_tasks(*tasks):
-                            yield deployments
-                        tasks.clear()
 
-        if tasks:
-            async for deployments in stream_async_iterators_tasks(*tasks):
-                yield deployments
+        async for deployments in stream_async_iterators_tasks(*tasks):
+            yield deployments
 
 
 @ocean.on_resync(ObjectKind.DEPENDABOT_ALERT)
@@ -764,14 +729,9 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             )
                         )
                     )
-                    if len(tasks) == MAX_CONCURRENT_REPOS:
-                        async for alerts in stream_async_iterators_tasks(*tasks):
-                            yield alerts
-                        tasks.clear()
 
-        if tasks:
-            async for alerts in stream_async_iterators_tasks(*tasks):
-                yield alerts
+        async for alerts in stream_async_iterators_tasks(*tasks):
+            yield alerts
 
 
 @ocean.on_resync(ObjectKind.CODE_SCANNING_ALERT)
@@ -814,14 +774,9 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             )
                         )
                     )
-                    if len(tasks) == MAX_CONCURRENT_REPOS:
-                        async for alerts in stream_async_iterators_tasks(*tasks):
-                            yield alerts
-                        tasks.clear()
 
-        if tasks:
-            async for alerts in stream_async_iterators_tasks(*tasks):
-                yield alerts
+        async for alerts in stream_async_iterators_tasks(*tasks):
+            yield alerts
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
@@ -910,14 +865,9 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             )
                         )
                     )
-                    if len(tasks) == MAX_CONCURRENT_REPOS:
-                        async for collaborators in stream_async_iterators_tasks(*tasks):
-                            yield collaborators
-                        tasks.clear()
 
-        if tasks:
-            async for collaborators in stream_async_iterators_tasks(*tasks):
-                yield collaborators
+        async for collaborators in stream_async_iterators_tasks(*tasks):
+            yield collaborators
 
 
 @ocean.on_resync(ObjectKind.SECRET_SCANNING_ALERT)
@@ -960,14 +910,9 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
                             )
                         )
                     )
-                    if len(tasks) == MAX_CONCURRENT_REPOS:
-                        async for alerts in stream_async_iterators_tasks(*tasks):
-                            yield alerts
-                        tasks.clear()
 
-        if tasks:
-            async for alerts in stream_async_iterators_tasks(*tasks):
-                yield alerts
+        async for alerts in stream_async_iterators_tasks(*tasks):
+            yield alerts
 
 
 # Register webhook processors
