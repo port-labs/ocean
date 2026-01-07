@@ -1,4 +1,3 @@
-from enum import StrEnum
 from typing import Any, cast
 import asyncio
 from loguru import logger
@@ -8,17 +7,10 @@ from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
-from integration import TeamResourceConfig
+from integration import TeamResourceConfig, ObjectKind
 from clients.sentry import SentryClient
-
-
-class ObjectKind(StrEnum):
-    PROJECT = "project"
-    ISSUE = "issue"
-    PROJECT_TAG = "project-tag"
-    ISSUE_TAG = "issue-tag"
-    USER = "user"
-    TEAM = "team"
+from webhook_processors.issue_webhook_processor import SentryIssueWebhookProcessor
+from webhook_processors.webhook_client import SentryWebhookClient
 
 
 def init_client() -> SentryClient:
@@ -120,3 +112,29 @@ async def on_resync_issue_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     logger.info(f"Collected {len(issues_with_tags)} issues with tags")
                     yield issues_with_tags
+
+
+@ocean.on_start()
+async def on_start() -> None:
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
+    base_url = ocean.app.base_url
+    if not base_url:
+        logger.warning(
+            "No base URL found for the integration, skipping webhook creation"
+        )
+        return
+
+    webhook_url = f"{base_url.rstrip('/')}/integration/webhook"
+    client = SentryWebhookClient(
+        ocean.integration_config["sentry_host"],
+        ocean.integration_config["sentry_token"],
+        ocean.integration_config["sentry_organization"],
+    )
+    await client.ensure_service_hooks(webhook_url)
+
+
+# Webhook processor registration
+ocean.add_webhook_processor("/webhook", SentryIssueWebhookProcessor)

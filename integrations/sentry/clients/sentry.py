@@ -45,7 +45,6 @@ class SentryClient:
             max_attempts=5,
         )
         self._client = OceanAsyncClient(retry_config=retry_config)
-        self.selector = cast(SentryResourceConfig, event.resource_config).selector
         self._rate_limiter = SentryRateLimiter()
 
     @staticmethod
@@ -176,26 +175,28 @@ class SentryClient:
     async def _get_project_tags_iterator(
         self, project: dict[str, Any]
     ) -> AsyncIterator[list[dict[str, Any]]]:
+        selector = cast(SentryResourceConfig, event.resource_config).selector
         try:
-            url = f"{self.api_url}/projects/{self.organization}/{project['slug']}/tags/{self.selector.tag}/values/"
+            url = f"{self.api_url}/projects/{self.organization}/{project['slug']}/tags/{selector.tag}/values/"
             tags = await self._get_single_resource(url)
             yield [{**project, "__tags": tag} for tag in tags]
         except ResourceNotFoundError:
             logger.debug(
-                f"No values found for project {project['slug']} and tag {self.selector.tag} in {self.organization}"
+                f"No values found for project {project['slug']} and tag {selector.tag} in {self.organization}"
             )
             yield []
 
     async def _get_issue_tags_iterator(
         self, issue: dict[str, Any]
     ) -> AsyncIterator[list[dict[str, Any]]]:
+        selector = cast(SentryResourceConfig, event.resource_config).selector
         try:
-            url = f"{self.api_url}/organizations/{self.organization}/issues/{issue['id']}/tags/{self.selector.tag}/values/"
+            url = f"{self.api_url}/organizations/{self.organization}/issues/{issue['id']}/tags/{selector.tag}/values/"
             tags = await self._get_single_resource(url)
             yield [{**issue, "__tags": tags}]
         except ResourceNotFoundError:
             logger.debug(
-                f"No values found for issue {issue['id']} and tag {self.selector.tag} in {self.organization}"
+                f"No values found for issue {issue['id']} and tag {selector.tag} in {self.organization}"
             )
             yield []
 

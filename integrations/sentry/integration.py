@@ -1,5 +1,6 @@
 from pydantic.fields import Field
 from typing import Literal
+from enum import StrEnum
 
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
@@ -9,6 +10,15 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+
+
+class ObjectKind(StrEnum):
+    PROJECT = "project"
+    ISSUE = "issue"
+    PROJECT_TAG = "project-tag"
+    ISSUE_TAG = "issue-tag"
+    USER = "user"
+    TEAM = "team"
 
 
 class SentrySelector(Selector):
