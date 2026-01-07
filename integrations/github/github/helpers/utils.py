@@ -1,3 +1,4 @@
+import asyncio
 from enum import StrEnum
 from typing import (
     Any,
@@ -13,6 +14,8 @@ from typing import (
 from loguru import logger
 
 from port_ocean.utils import cache
+
+TASK_CONCURRENCY_LIMIT = asyncio.Semaphore(10)
 
 
 if TYPE_CHECKING:

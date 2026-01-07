@@ -10,6 +10,7 @@ from github.helpers.utils import (
     enrich_with_repository,
     parse_github_options,
     enrich_with_organization,
+    TASK_CONCURRENCY_LIMIT,
 )
 
 
@@ -65,15 +66,37 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             logger.info(
                 f"Fetched batch of {len(branches)} branches from repository {repo_name} from {organization}"
             )
+
             tasks = [
-                self._hydrate_branch(repo, organization, b, detailed, protection_rules)
-                for b in branches
+                self._run_branch_hydration(
+                    repo,
+                    organization,
+                    branch,
+                    detailed,
+                    protection_rules,
+                )
+                for branch in branches
             ]
+
             hydrated = await asyncio.gather(*tasks)
-
-            logger.info(f"Processed {len(hydrated)} branches for '{repo_name}'.")
-
             yield hydrated
+
+    async def _run_branch_hydration(
+        self,
+        repo: dict[str, Any],
+        organization: str,
+        branch: dict[str, Any],
+        detailed: bool,
+        protection_rules: bool,
+    ) -> dict[str, Any]:
+        async with TASK_CONCURRENCY_LIMIT:
+            return await self._hydrate_branch(
+                repo,
+                organization,
+                branch,
+                detailed,
+                protection_rules,
+            )
 
     async def _hydrate_branch(
         self,
@@ -83,7 +106,6 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         detailed: bool,
         protection_rules: bool,
     ) -> dict[str, Any]:
-
         repo_name = repo["name"]
         branch_name = branch["name"]
 
@@ -114,8 +136,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
         protection_rules = await self.client.send_api_request(endpoint)
-
-        branch = {**branch, "__protection_rules": protection_rules}
+        branch["__protection_rules"] = protection_rules
 
         logger.debug(
             f"Fetched protection rules for branch '{branch_name}' in repo '{repo_name}'."

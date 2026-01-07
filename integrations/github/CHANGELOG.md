@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.6.1-beta (2026-01-07)
+
+
+### Improvements
+
+- Standardized concurrency control across resync handlers by applying consistent repository-level task batching.
+- Refactored internal exporter execution to separate unit-of-work scheduling from business logic, improving scalability and fairness under load.
+- Improved async task orchestration to prevent unbounded fan-out while preserving streaming behavior.
+
+
+
 ## 4.6.0-beta (2026-01-05)
 
 
