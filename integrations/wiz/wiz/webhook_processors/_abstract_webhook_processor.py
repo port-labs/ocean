@@ -20,7 +20,7 @@ class _WizAbstractWebhookProcessor(AbstractWebhookProcessor):
     ]
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
-        credentials = headers.get("Authorization")
+        credentials = headers.get("authorization")
         if (
             not credentials
             or credentials.split(" ")[0] != "Bearer"
