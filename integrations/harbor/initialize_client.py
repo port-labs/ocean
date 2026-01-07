@@ -42,6 +42,12 @@ def _create_harbor_client() -> HarborClient:
             "Please set the 'password' configuration in your integration config."
         )
     
+    if not base_url:
+        raise ValueError(
+            "Base URL is required for Harbor API. "
+            "Please set the 'baseUrl' configuration in your integration config."
+        )
+    
     logger.info(f"Harbor client configured with Basic Auth - username: {username}, base_url: {base_url}, api_version: {api_version}")
     
     return HarborClient(

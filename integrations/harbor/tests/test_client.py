@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from httpx import BasicAuth, Request, Response
 
-from harbor.client import HarborClient, PAGE_SIZE
+from harbor.client import HarborClient
 
 
 @pytest.mark.asyncio
@@ -131,7 +131,7 @@ async def test_extract_items_from_response_dict_with_data() -> None:
 @pytest.mark.asyncio
 async def test_extract_items_from_response_empty() -> None:
     """Test extracting items from an empty or invalid response."""
-    response = {}
+    response: dict[str, Any] = {}
     items = HarborClient._extract_items_from_response(response)
     assert items == []
 

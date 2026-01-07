@@ -1,7 +1,5 @@
 """Webhook processor for Harbor artifact events."""
 
-from typing import Any
-
 from loguru import logger
 
 from harbor.utils import parse_resource_url

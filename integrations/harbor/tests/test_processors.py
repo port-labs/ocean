@@ -119,8 +119,8 @@ async def test_authenticate_with_valid_secret(
     artifact_webhook_processor: ArtifactWebhookProcessor,
 ) -> None:
     """Test authentication succeeds with valid secret."""
-    payload = {}
-    headers = {"Authorization": "secret123"}
+    payload: dict[str, Any] = {}
+    headers: dict[str, str] = {"Authorization": "secret123"}
 
     with patch("webhook_processors.artifact_webhook_processor.ocean") as mock_ocean:
         # Use MagicMock for sync method
@@ -137,8 +137,8 @@ async def test_authenticate_with_invalid_secret(
     artifact_webhook_processor: ArtifactWebhookProcessor,
 ) -> None:
     """Test authentication fails with invalid secret."""
-    payload = {}
-    headers = {"Authorization": "wrong_secret"}
+    payload: dict[str, Any] = {}
+    headers: dict[str, str] = {"Authorization": "wrong_secret"}
 
     with patch("webhook_processors.artifact_webhook_processor.ocean") as mock_ocean:
         mock_config = MagicMock()
@@ -154,8 +154,8 @@ async def test_authenticate_without_header(
     artifact_webhook_processor: ArtifactWebhookProcessor,
 ) -> None:
     """Test authentication fails without authorization header."""
-    payload = {}
-    headers = {}
+    payload: dict[str, Any] = {}
+    headers: dict[str, str] = {}
 
     with patch("webhook_processors.artifact_webhook_processor.ocean") as mock_ocean:
         mock_config = MagicMock()
@@ -171,8 +171,8 @@ async def test_authenticate_no_secret_configured(
     artifact_webhook_processor: ArtifactWebhookProcessor,
 ) -> None:
     """Test authentication succeeds when no secret is configured."""
-    payload = {}
-    headers = {}
+    payload: dict[str, Any] = {}
+    headers: dict[str, str] = {}
 
     with patch("webhook_processors.artifact_webhook_processor.ocean") as mock_ocean:
         mock_config = MagicMock()

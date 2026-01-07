@@ -1,5 +1,6 @@
 """Unit tests for Harbor client initialization."""
 
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,7 +11,7 @@ from initialize_client import get_harbor_client, reset_harbor_client
 
 
 @pytest.fixture(autouse=True)
-def reset_client_between_tests() -> None:
+def reset_client_between_tests() -> Generator[None, None, None]:
     """Reset the singleton client before each test to ensure test isolation."""
     reset_harbor_client()
     yield
@@ -73,7 +74,7 @@ def test_create_harbor_client_with_basic_auth() -> None:
 
         assert isinstance(client, HarborClient)
         assert client.base_url == "https://harbor.example.com"
-        assert client.client.verify is True
+        assert client.verify_ssl is True
 
 
 def test_create_harbor_client_without_auth() -> None:
@@ -107,7 +108,7 @@ def test_create_harbor_client_default_verify_ssl() -> None:
 
         assert isinstance(client, HarborClient)
         # Default should be False
-        assert client.client.verify is False
+        assert client.verify_ssl is False
 
 
 def test_create_harbor_client_with_partial_credentials() -> None:

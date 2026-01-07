@@ -3,10 +3,8 @@
 import asyncio
 from typing import Any, AsyncGenerator, Optional
 
-from httpx import BasicAuth, HTTPStatusError, RequestError, Timeout
+from httpx import AsyncClient, BasicAuth, HTTPStatusError, RequestError, Timeout
 from loguru import logger
-
-from port_ocean.utils import http_async_client
 
 MAX_CONCURRENT_REQUESTS = 10
 PAGE_SIZE = 50
@@ -45,9 +43,13 @@ class HarborClient:
         
         self.base_url = base_url.rstrip("/")
         self.api_version = api_version.strip("/")
-        self.client = http_async_client
-        self.client.timeout = Timeout(DEFAULT_TIMEOUT)
-        self.client.verify = verify_ssl
+        self.verify_ssl = verify_ssl
+        
+        # Create our own client instance so we can control SSL verification
+        self.client = AsyncClient(
+            timeout=Timeout(DEFAULT_TIMEOUT),
+            verify=verify_ssl,
+        )
         
         self._configure_authentication(username, password)
         
@@ -163,7 +165,10 @@ class HarborClient:
             return response
         elif isinstance(response, dict):
             # Check common keys for items in dict responses
-            return response.get("items", response.get("data", response.get("results", [])))
+            items = response.get("items") or response.get("data") or response.get("results")
+            if isinstance(items, list):
+                return items
+            return []
         else:
             return []
 
