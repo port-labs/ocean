@@ -103,3 +103,21 @@ actions:
         title: Workflow inputs
         type: jqObject
         description: 'The following values will be sent upon the action invocation. You can use JQ to reference the action trigger data by writing double brackets, for example: {{ .trigger.by.user.email }}. You can reference secrets using {{ .secrets["secret-name"] }}. <a href="https://docs.port.io/actions-and-automations/create-self-service-experiences/setup-the-backend/#define-the-actions-payload" target="_blank">Learn more</a>'
+installationDocs:
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: true
+      docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?installation-methods=hosted-by-port#setup
+  githubWorkflow:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?installation-methods=one-time-ci&cicd-method=github#setup
+  gitlabCI:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?installation-methods=one-time-ci&cicd-method=GitLab#setup
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?installation-methods=real-time-self-hosted&cicd-method=GitLab&deploy=helm#setup
+  docker:
+    enabled: false
