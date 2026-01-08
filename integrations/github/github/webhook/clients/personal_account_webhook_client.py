@@ -1,10 +1,11 @@
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import AsyncIterator
 
 from github.webhook.clients.base_webhook_client import (
     BaseGithubWebhookClient,
     HookTarget,
 )
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 UNSUPPORTED_REPO_EVENTS = {"organization", "team", "membership", "member"}
 
@@ -28,25 +29,20 @@ class GithubPersonalAccountWebhookClient(BaseGithubWebhookClient):
     def get_supported_events(self) -> list[str]:
         return [e for e in WEBHOOK_CREATE_EVENTS if e not in UNSUPPORTED_REPO_EVENTS]
 
-    async def _iter_owned_repositories(self) -> "Optional[List[Dict[str, Any]]]":
+    async def _iter_owned_repositories(self) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """
-        Fetch a batch of repositories owned by the authenticated user.
+        Iterate over batches of repositories owned by the authenticated user.
 
-        Returns a list of repository dicts as returned by GitHub's REST API.
+        Yields lists of repository dicts as returned by GitHub's REST API.
         """
         async for repos in self.send_paginated_request(
             f"{self.base_url}/user/repos",
             {"affiliation": "owner"},
         ):
-            return repos
-        return None
+            yield repos
 
     async def iter_hook_targets(self) -> AsyncIterator[HookTarget]:
-
-        async for repos in self.send_paginated_request(
-            f"{self.base_url}/user/repos",
-            {"affiliation": "owner"},
-        ):
+        async for repos in self._iter_owned_repositories():
             for repo in repos:
                 owner = repo["owner"]["login"]
                 repo_name = repo["name"]
