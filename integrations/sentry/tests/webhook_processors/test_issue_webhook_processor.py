@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, patch
 
 from webhook_processors.issue_webhook_processor import SentryIssueWebhookProcessor
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -32,37 +32,54 @@ def _resource_config() -> ResourceConfig:
 
 @pytest.mark.asyncio
 class TestSentryIssueWebhookProcessor:
-    async def test_should_process_event_issue_resource(self) -> None:
-        """Should process events with Sentry-Hook-Resource: issue."""
-        mock_request = Mock()
-        mock_request.headers = {"sentry-hook-resource": "issue"}
-
-        event = WebhookEvent(
-            trace_id="t1",
-            payload={},
-            headers={"sentry-hook-resource": "issue"},
-            original_request=mock_request,
-        )
-
+    async def test_should_process_event(self) -> None:
+        """Should always return True for issue events as per implementation."""
+        event = WebhookEvent(trace_id="t1", payload={}, headers={})
         processor = SentryIssueWebhookProcessor(event)
         result = await processor._should_process_event(event)
         assert result is True
 
-    async def test_should_not_process_event_other_resource(self) -> None:
-        """Should not process events with other Sentry-Hook-Resource values."""
-        mock_request = Mock()
-        mock_request.headers = {"sentry-hook-resource": "error"}
-
-        event = WebhookEvent(
-            trace_id="t2",
-            payload={},
-            headers={"sentry-hook-resource": "error"},
-            original_request=mock_request,
-        )
-
+    async def test_handle_sentry_event_success(self) -> None:
+        """Test handling of Sentry service hook events with active issue."""
+        event = WebhookEvent(trace_id="t8", payload={}, headers={})
         processor = SentryIssueWebhookProcessor(event)
-        result = await processor._should_process_event(event)
-        assert result is False
+
+        payload = {"group": {"id": "12345"}, "project": {"slug": "test-project"}}
+
+        mock_client = AsyncMock()
+        mock_issue = {"id": "12345", "title": "Test Issue"}
+        mock_client.get_issue.return_value = mock_issue
+
+        with patch(
+            "webhook_processors.issue_webhook_processor.init_webhook_client",
+            return_value=mock_client,
+        ):
+            result = await processor.handle_event(payload, _resource_config())
+
+        assert len(result.updated_raw_results) == 1
+        assert result.updated_raw_results[0]["id"] == "12345"
+        assert result.deleted_raw_results == []
+        mock_client.get_issue.assert_called_once_with("12345")
+
+    async def test_handle_sentry_event_deleted(self) -> None:
+        """Test handling of Sentry service hook events when issue is not found."""
+        event = WebhookEvent(trace_id="t9", payload={}, headers={})
+        processor = SentryIssueWebhookProcessor(event)
+
+        payload = {"group": {"id": "12345"}, "project": {"slug": "test-project"}}
+
+        mock_client = AsyncMock()
+        mock_client.get_issue.return_value = None
+
+        with patch(
+            "webhook_processors.issue_webhook_processor.init_webhook_client",
+            return_value=mock_client,
+        ):
+            result = await processor.handle_event(payload, _resource_config())
+
+        assert result.updated_raw_results == []
+        assert len(result.deleted_raw_results) == 1
+        assert result.deleted_raw_results[0]["id"] == "12345"
 
     async def test_handle_event_created_action(self) -> None:
         """Issue created events should add to updated_raw_results."""

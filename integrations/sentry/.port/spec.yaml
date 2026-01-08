@@ -28,11 +28,6 @@ configurations:
     required: true
     type: string
     description: "Sentry organization"
-  - name: sentryWebhookSecret
-    required: false
-    type: string
-    sensitive: true
-    description: "Client secret for verifying Sentry webhook signatures (HMAC-SHA256)"
 saas:
   enabled: true
   liveEvents:

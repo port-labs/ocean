@@ -37,11 +37,12 @@ class SentryWebhookClient(SentryClient):
                 return
 
             logger.info(f"Creating service hook for project {project_slug}")
-            await self.create_project_hook(
+            hook: dict[str, Any] = await self.create_project_hook(
                 project_slug,
                 webhook_url,
-                ["issue.created", "issue.resolved", "issue.assigned"],
+                ["event.alert", "event.created"],
             )
+            logger.info(f"Service hook created for project {project_slug}: {hook}")
         except Exception as e:
             logger.error(
                 f"Failed to create service hook for project {project_slug}: {e}"

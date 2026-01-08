@@ -163,14 +163,23 @@ class SentryClient:
                 logger.error(f"HTTP occurred while fetching Sentry data: {e}")
                 raise
 
-    async def _get_single_resource(self, url: str) -> list[dict[str, Any]]:
+    async def _get_tags(self, url: str) -> list[dict[str, Any]]:
+        logger.debug(f"Getting tags from Sentry for URL: {url}")
+        try:
+            response = await self.send_api_request("GET", url)
+            return response.json()
+        except httpx.HTTPStatusError:
+            logger.debug(f"Ignoring non-fatal error for tags: {url}")
+            return []
+
+    async def _get_single_resource(self, url: str) -> dict[str, Any]:
         logger.debug(f"Getting single resource from Sentry for URL: {url}")
         try:
             response = await self.send_api_request("GET", url)
             return response.json()
         except httpx.HTTPStatusError:
             logger.debug(f"Ignoring non-fatal error for single resource: {url}")
-            return []
+            return {}
 
     async def _get_project_tags_iterator(
         self, project: dict[str, Any]
@@ -178,7 +187,7 @@ class SentryClient:
         selector = cast(SentryResourceConfig, event.resource_config).selector
         try:
             url = f"{self.api_url}/projects/{self.organization}/{project['slug']}/tags/{selector.tag}/values/"
-            tags = await self._get_single_resource(url)
+            tags = await self._get_tags(url)
             yield [{**project, "__tags": tag} for tag in tags]
         except ResourceNotFoundError:
             logger.debug(
@@ -192,7 +201,7 @@ class SentryClient:
         selector = cast(SentryResourceConfig, event.resource_config).selector
         try:
             url = f"{self.api_url}/organizations/{self.organization}/issues/{issue['id']}/tags/{selector.tag}/values/"
-            tags = await self._get_single_resource(url)
+            tags = await self._get_tags(url)
             yield [{**issue, "__tags": tags}]
         except ResourceNotFoundError:
             logger.debug(
@@ -204,7 +213,9 @@ class SentryClient:
     async def get_paginated_projects(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for project in self._get_paginated_resource(f"{self.api_url}/projects/"):
+        async for project in self._get_paginated_resource(
+            f"{self.api_url}/organizations/{self.organization}/projects/"
+        ):
             yield project
 
     @cache_iterator_result()
@@ -274,3 +285,10 @@ class SentryClient:
             f"Received a total of {len(team_members_List)} members for team {team_slug}"
         )
         return team_members_List
+
+    async def get_issue(self, issue_id: str) -> dict[str, Any]:
+        logger.info(f"Getting issue for issue_id {issue_id}")
+        issue = await self._get_single_resource(
+            f"{self.api_url}/organizations/{self.organization}/issues/{issue_id}/",
+        )
+        return issue

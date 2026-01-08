@@ -10,7 +10,7 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from integration import TeamResourceConfig, ObjectKind
 from clients.sentry import SentryClient
 from webhook_processors.issue_webhook_processor import SentryIssueWebhookProcessor
-from webhook_processors.webhook_client import SentryWebhookClient
+from webhook_processors.init_client import init_webhook_client
 
 
 def init_client() -> SentryClient:
@@ -128,11 +128,7 @@ async def on_start() -> None:
         return
 
     webhook_url = f"{base_url.rstrip('/')}/integration/webhook"
-    client = SentryWebhookClient(
-        ocean.integration_config["sentry_host"],
-        ocean.integration_config["sentry_token"],
-        ocean.integration_config["sentry_organization"],
-    )
+    client = init_webhook_client()
     await client.ensure_service_hooks(webhook_url)
 
 
