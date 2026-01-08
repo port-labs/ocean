@@ -8,7 +8,7 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 from bitbucket_cloud.entity_processors.file_entity_processor import FileEntityProcessor
-from typing import Any, Literal, Type
+from typing import Any, Literal, Type, Optional
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from pydantic import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
@@ -23,6 +23,8 @@ from loguru import logger
 
 FILE_PROPERTY_PREFIX = "file://"
 
+UserRole = Literal["member", "contributor", "admin", "owner"]
+
 
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
@@ -34,6 +36,27 @@ class RepositoryBranchMapping(BaseModel):
         default="default",
         alias="branch",
         description="Specify the branch to bring the folders from",
+    )
+
+
+class RepositorySelector(Selector):
+    user_role: Optional[UserRole] = Field(
+        default=None,
+        alias="userRole",
+        description="Filter repositories by authenticated user's role: member, contributor, admin, or owner",
+    )
+    repo_query: Optional[str] = Field(
+        default=None,
+        alias="repoQuery",
+        description='Query string to narrow repositories as per Bitbucket filtering (e.g., name="my-repo")',
+    )
+
+
+class PullRequestSelector(RepositorySelector):
+    pull_request_query: str = Field(
+        default='state="OPEN"',
+        alias="pullRequestQuery",
+        description='Query string to narrow pull requests as per Bitbucket filtering (e.g., state="OPEN")',
     )
 
 
@@ -50,7 +73,7 @@ class FolderPattern(BaseModel):
     )
 
 
-class BitbucketFolderSelector(Selector):
+class BitbucketFolderSelector(RepositorySelector):
     query: str = Field(default="", description="Query string to filter folders")
     folders: list[FolderPattern] = Field(
         default_factory=list,
@@ -97,9 +120,23 @@ class BitbucketFileResourceConfig(ResourceConfig):
     selector: BitbucketFileSelector
 
 
+class RepositoryResourceConfig(ResourceConfig):
+    kind: Literal["repository"]
+    selector: RepositorySelector
+
+
+class PullRequestResourceConfig(ResourceConfig):
+    kind: Literal["pull-request"]
+    selector: PullRequestSelector
+
+
 class BitbucketAppConfig(PortAppConfig):
     resources: list[
-        BitbucketFolderResourceConfig | BitbucketFileResourceConfig | ResourceConfig
+        BitbucketFolderResourceConfig
+        | BitbucketFileResourceConfig
+        | PullRequestResourceConfig
+        | RepositoryResourceConfig
+        | ResourceConfig
     ] = Field(
         default_factory=list,
         alias="resources",
