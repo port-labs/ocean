@@ -442,8 +442,9 @@ class TestGitLabClient:
                 "username": "user1",
                 "name": "User One",
                 "email": "user1@example.com",
+                "access_level": 10,
             },
-            {"id": 2, "username": "user2", "name": "User Two"},
+            {"id": 2, "username": "user2", "name": "User Two", "access_level": 10},
         ]
 
         with patch.object(
