@@ -442,8 +442,9 @@ class TestGitLabClient:
                 "username": "user1",
                 "name": "User One",
                 "email": "user1@example.com",
+                "access_level": 30
             },
-            {"id": 2, "username": "user2", "name": "User Two"},
+            {"id": 2, "username": "user2", "name": "User Two", "access_level": 40},
         ]
 
         with patch.object(
@@ -465,6 +466,8 @@ class TestGitLabClient:
             assert result["__members"][1]["username"] == "user2"
             assert result["__members"][0]["email"] == "user1@example.com"
             assert result["__members"][1]["email"] is None
+            assert result["__members"][0]["access_level"] == 30
+            assert result["__members"][1]["access_level"] == 40
             mock_get_members.assert_called_once_with("456", True, False)
 
     async def test_enrich_batch(self, client: GitLabClient) -> None:
