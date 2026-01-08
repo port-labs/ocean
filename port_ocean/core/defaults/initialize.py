@@ -272,6 +272,34 @@ async def _create_resources(
         logger.error(f"Failed to create resources: {err}. continuing...")
 
 
+def _assign_resources_origin(
+    integration_config: IntegrationConfiguration,
+    is_integration_provision_enabled: bool,
+    has_provision_feature_flag: bool,
+) -> None:
+    if (
+        not integration_config.create_port_resources_origin
+        and is_integration_provision_enabled
+    ):
+        logger.info("Setting resources origin to be Port")
+        integration_config.create_port_resources_origin = CreatePortResourcesOrigin.Port
+
+    if (
+        integration_config.create_port_resources_origin
+        == CreatePortResourcesOrigin.Port
+    ):
+        logger.info(
+            "Resources origin is set to be Port, verifying integration is supported"
+        )
+        if not is_integration_provision_enabled or not has_provision_feature_flag:
+            logger.info(
+                "Port origin for Integration is not supported, changing resources origin to use Ocean"
+            )
+            integration_config.create_port_resources_origin = (
+                CreatePortResourcesOrigin.Ocean
+            )
+
+
 async def _initialize_defaults(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
@@ -290,30 +318,9 @@ async def _initialize_defaults(
         await port_client.get_organization_feature_flags()
     )
 
-    if (
-        not integration_config.create_port_resources_origin
-        and is_integration_provision_enabled
-    ):
-        # Need to set default since spec is missing
-        logger.info(
-            f"Setting resources origin to be Port (integration {integration_config.integration.type} is supported)"
-        )
-        integration_config.create_port_resources_origin = CreatePortResourcesOrigin.Port
-
-    if (
-        integration_config.create_port_resources_origin
-        == CreatePortResourcesOrigin.Port
-    ):
-        logger.info(
-            "Resources origin is set to be Port, verifying integration is supported"
-        )
-        if not is_integration_provision_enabled or not has_provision_feature_flag:
-            logger.info(
-                "Port origin for Integration is not supported, changing resources origin to use Ocean"
-            )
-            integration_config.create_port_resources_origin = (
-                CreatePortResourcesOrigin.Ocean
-            )
+    _assign_resources_origin(
+        integration_config, is_integration_provision_enabled, has_provision_feature_flag
+    )
 
     if (
         integration_config.create_port_resources_origin
@@ -323,17 +330,17 @@ async def _initialize_defaults(
         logger.warning("No defaults found. Skipping initialization...")
         return None
 
-    if (
-        (defaults and defaults.port_app_config)
-        or integration_config.create_port_resources_origin
-        == CreatePortResourcesOrigin.Port
-    ):
-        await _initialize_required_integration_settings(
-            port_client,
-            integration_config,
-            defaults.port_app_config if defaults else None,
-            has_provision_feature_flag=has_provision_feature_flag,
-        )
+    default_config = (
+        defaults.port_app_config
+        if defaults.port_app_config and integration_config.initialize_port_resources
+        else PortAppConfig(resources=[])
+    )
+    await _initialize_required_integration_settings(
+        port_client=port_client,
+        integration_config=integration_config,
+        default_config=default_config,
+        has_provision_feature_flag=has_provision_feature_flag,
+    )
 
     if (
         integration_config.create_port_resources_origin
