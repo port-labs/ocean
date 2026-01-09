@@ -26,6 +26,12 @@ class GitHubAuthenticatorFactory:
         installation_id: Optional[str] = None,
         private_key: Optional[str] = None,
     ) -> AbstractGitHubAuthenticator:
+        if ocean.app.config.oauth_access_token_file_path is not None and token:
+            logger.debug(
+                "githubToken is disabled when OAuth is enabled. Ignoring token and using GitHub App authentication."
+            )
+            token = None
+
         if token:
             logger.debug(
                 f"Creating Personal Token Authenticator for select organizations for PAT on {github_host}"

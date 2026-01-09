@@ -47,6 +47,7 @@ def mock_ocean_context() -> None:
             "github_host": TEST_INTEGRATION_CONFIG["github_host"],
             "webhook_secret": TEST_INTEGRATION_CONFIG["webhook_secret"],
         }
+        mock_ocean_app.config.oauth_access_token_file_path = None
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
         mock_ocean_app.base_url = "https://baseurl.com"
