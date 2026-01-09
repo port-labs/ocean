@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from httpx import Request, Response
+from httpx import Request, Response, HTTPStatusError
 from port_ocean.context.event import EventContext, event_context
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -1555,6 +1555,67 @@ async def test_get_columns() -> None:
 
         # ASSERT
         assert columns == EXPECTED_COLUMNS
+
+
+@pytest.mark.asyncio
+async def test_get_boards_skips_team_on_500_error(
+    mock_azure_client: AzureDevopsClient,
+) -> None:
+    """
+    Tests that the _get_boards method skips a team if the Azure DevOps API returns a 500 error,
+    which can happen for teams not in a sprint iteration.
+    """
+    project_id = "project123"
+    teams = [
+        {"id": "team1", "name": "Team With Boards"},
+        {"id": "team2", "name": "Team Without Boards (500 error)"},
+    ]
+    boards_for_team1 = [{"id": "board1", "name": "Board 1"}]
+
+    async def mock_paginated_teams(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield teams
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "team1" in url and "boards" in url:
+            return Response(status_code=200, json={"value": boards_for_team1})
+        if "team2" in url and "boards" in url:
+            raise HTTPStatusError(
+                "Internal Server Error",
+                request=Request("GET", url),
+                response=Response(status_code=500),
+            )
+        return None
+
+    async def mock_enrich_boards(
+        boards: list[dict[str, Any]], project_id: str, team_id: str
+    ) -> list[dict[str, Any]]:
+        # Simple passthrough enrichment for test
+        for board in boards:
+            board["__enriched"] = True
+        return boards
+
+    with (
+        patch.object(
+            mock_azure_client,
+            "_get_paginated_by_top_and_skip",
+            side_effect=mock_paginated_teams,
+        ),
+        patch.object(mock_azure_client, "send_request", side_effect=mock_send_request),
+        patch.object(
+            mock_azure_client, "_enrich_boards", side_effect=mock_enrich_boards
+        ),
+    ):
+        all_boards = []
+        async for boards_batch in mock_azure_client._get_boards(project_id):
+            all_boards.extend(boards_batch)
+
+        assert len(all_boards) == 1
+        assert all_boards[0]["id"] == "board1"
+        assert all_boards[0]["__enriched"] is True
 
 
 @pytest.mark.asyncio
