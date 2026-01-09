@@ -36,3 +36,21 @@ configurations:
     type: string
     sensitive: true
     description: OAuth Client Secret for Client Credentials authentication. To configure OAuth, see the <a href="https://www.servicenow.com/docs/bundle/zurich-platform-security/page/integrate/machine-identity/task/configure-an-oauth-client-credential-grant.html" target="_blank">ServiceNow OAuth documentation</a>
+installationDocs:
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: true
+      docs: build-your-software-catalog/sync-data-to-catalog/incident-management/servicenow?installation-methods=hosted-by-port#setup
+  githubWorkflow:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/servicenow?installation-methods=one-time-ci&cicd-method=github#setup
+  gitlabCI:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/servicenow?installation-methods=one-time-ci&cicd-method=gitlab#setup
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/servicenow?installation-methods=real-time-self-hosted&cicd-method=gitlab&deploy=helm#setup
+  docker:
+    enabled: false
