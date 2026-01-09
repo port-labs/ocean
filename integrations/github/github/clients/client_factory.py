@@ -32,12 +32,6 @@ class GitHubAuthenticatorFactory:
             )
             token = None
 
-        if token:
-            logger.debug(
-                f"Creating Personal Token Authenticator for select organizations for PAT on {github_host}"
-            )
-            return PersonalTokenAuthenticator(token)
-
         if organization and app_id and private_key:
             logger.debug(
                 f"Creating GitHub App Authenticator for {organization} on {github_host}"
@@ -49,6 +43,12 @@ class GitHubAuthenticatorFactory:
                 organization=organization,
                 github_host=github_host,
             )
+
+        if token:
+            logger.debug(
+                f"Creating Personal Token Authenticator for select organizations for PAT on {github_host}"
+            )
+            return PersonalTokenAuthenticator(token)
 
         raise MissingCredentials("No valid GitHub credentials provided.")
 

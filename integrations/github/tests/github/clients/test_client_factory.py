@@ -68,8 +68,8 @@ class TestGitHubAuthenticatorFactory:
         assert authenticator.organization == "test-org"
         assert authenticator.app_id == "test-app-id"
 
-    def test_create_prefers_token_over_app_when_oauth_disabled(self) -> None:
-        """Test that token takes precedence over app credentials when OAuth is disabled."""
+    def test_create_prefers_app_over_token_when_oauth_disabled(self) -> None:
+        """Test that GitHub App credentials take precedence over token when OAuth is disabled."""
         # OAuth is disabled by default in conftest.py, so no patch needed
         authenticator = GitHubAuthenticatorFactory.create(
             github_host="https://api.github.com",
@@ -80,9 +80,10 @@ class TestGitHubAuthenticatorFactory:
             private_key="-----BEGIN PRIVATE KEY-----\ntest-key\n-----END PRIVATE KEY-----",
         )
 
-        # Token should take precedence
-        assert isinstance(authenticator, PersonalTokenAuthenticator)
-        assert authenticator._token.token == "test-token"
+        # GitHub App should take precedence
+        assert isinstance(authenticator, GitHubAppAuthenticator)
+        assert authenticator.organization == "test-org"
+        assert authenticator.app_id == "test-app-id"
 
     def test_create_raises_error_when_no_credentials(self) -> None:
         """Test that MissingCredentials is raised when no credentials are provided."""
