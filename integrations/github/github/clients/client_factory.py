@@ -26,11 +26,11 @@ class GitHubAuthenticatorFactory:
         installation_id: Optional[str] = None,
         private_key: Optional[str] = None,
     ) -> AbstractGitHubAuthenticator:
-        if token:
+        if ocean.app.config.oauth_access_token_file_path is not None and token:
             logger.debug(
-                f"Creating Personal Token Authenticator for select organizations for PAT on {github_host}"
+                "githubToken is disabled when OAuth is enabled. Ignoring token and using GitHub App authentication."
             )
-            return PersonalTokenAuthenticator(token)
+            token = None
 
         if organization and app_id and private_key:
             logger.debug(
@@ -43,6 +43,12 @@ class GitHubAuthenticatorFactory:
                 organization=organization,
                 github_host=github_host,
             )
+
+        if token:
+            logger.debug(
+                f"Creating Personal Token Authenticator for select organizations for PAT on {github_host}"
+            )
+            return PersonalTokenAuthenticator(token)
 
         raise MissingCredentials("No valid GitHub credentials provided.")
 
