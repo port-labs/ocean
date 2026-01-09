@@ -10,7 +10,7 @@ from integration import (
     BitbucketPullRequestResourceConfig,
     ObjectKind,
 )
-from utils import initialize_client
+from initialize_client import initialize_client
 from webhook_processors.processors import (
     ProjectWebhookProcessor,
     PullRequestWebhookProcessor,
