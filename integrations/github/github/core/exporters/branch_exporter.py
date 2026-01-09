@@ -10,7 +10,6 @@ from github.helpers.utils import (
     enrich_with_repository,
     parse_github_options,
     enrich_with_organization,
-    TASK_CONCURRENCY_LIMIT,
 )
 
 
@@ -58,22 +57,36 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         protection_rules = bool(params.pop("protection_rules"))
         repo_name = cast(str, repo_name)
         repo = params.pop("repo")
+        branch_names = params.pop("branch_names", [])
+        is_explicit = bool(branch_names)
 
-        async for branches in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{organization}/{repo_name}/branches",
-            params,
-        ):
+        if branch_names:
+
+            async def _explicit_branches() -> ASYNC_GENERATOR_RESYNC_TYPE:
+                yield [{"name": name} for name in branch_names if name]
+
+            branches_iterator = _explicit_branches()
+        else:
+            branches_iterator = self.client.send_paginated_request(
+                f"{self.client.base_url}/repos/{organization}/{repo_name}/branches",
+                params,
+            )
+
+        async for branches in branches_iterator:
             logger.info(
                 f"Fetched batch of {len(branches)} branches from repository {repo_name} from {organization}"
             )
+
+            batch_concurrency_limit = asyncio.Semaphore(10)
 
             tasks = [
                 self._run_branch_hydration(
                     repo,
                     organization,
                     branch,
-                    detailed,
+                    is_explicit or detailed,
                     protection_rules,
+                    batch_concurrency_limit,
                 )
                 for branch in branches
             ]
@@ -88,8 +101,9 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         branch: dict[str, Any],
         detailed: bool,
         protection_rules: bool,
+        batch_concurrency_limit: asyncio.Semaphore,
     ) -> dict[str, Any]:
-        async with TASK_CONCURRENCY_LIMIT:
+        async with batch_concurrency_limit:
             return await self._hydrate_branch(
                 repo,
                 organization,

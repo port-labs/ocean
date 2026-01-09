@@ -299,6 +299,11 @@ class GithubBranchSelector(RepoSearchSelector):
         alias="protectionRules",
         description="Include protection rules for the branch",
     )
+    branch_names: List[str] = Field(
+        default_factory=list,
+        alias="branchNames",
+        description="List of branch names to fetch. If provided, the branch names will be fetched explicitly and not using pagination.",
+    )
 
 
 class GithubBranchConfig(ResourceConfig):

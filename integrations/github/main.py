@@ -583,8 +583,9 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             ListBranchOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
-                                detailed=selector.detailed,
                                 protection_rules=selector.protection_rules,
+                                detailed=selector.detailed,
+                                branch_names=selector.branch_names,
                                 repo=repo,
                             )
                         )
