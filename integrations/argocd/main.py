@@ -83,6 +83,7 @@ async def on_application_event_webhook_handler(request: Request) -> None:
 
     if data["action"] == "upsert":
         application = await argocd_client.get_application_by_name(
-            data["application_name"]
+            data["application_name"],
+            namespace=data.get("application_namespace"),
         )
         await ocean.register_raw(ObjectKind.APPLICATION, [application])
