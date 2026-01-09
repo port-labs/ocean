@@ -42,7 +42,7 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
         number = pull_request["number"]
         repo = payload["repository"]
         repo_name = repo["name"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
         config = cast(GithubPullRequestConfig, resource_config)
 
         logger.info(
