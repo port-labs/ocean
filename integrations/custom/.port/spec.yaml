@@ -77,8 +77,8 @@ configurations:
     required: false
     type: string
     default: "none"
-    description: "Pagination method: none, offset, page, or cursor"
-    enum: ["offset", "page", "cursor", "none"]
+    description: "Pagination method: none, offset, page, cursor, or skip_token"
+    enum: ["none", "offset", "page", "cursor", "skip_token"]
   - name: pageSize
     required: false
     type: string
@@ -87,7 +87,7 @@ configurations:
     dependencies:
       - on: paginationType
         when:
-          in: ["offset", "page", "cursor"]
+          in: ["offset", "page", "cursor", "skip_token"]
         then:
           required: false
   - name: paginationParam
@@ -97,17 +97,17 @@ configurations:
     dependencies:
       - on: paginationType
         when:
-          in: ["offset", "page", "cursor"]
+          in: ["offset", "page", "cursor", "skip_token"]
         then:
           required: false
   - name: sizeParam
     required: false
     type: string
-    description: "Query parameter name for page size/limit. Examples: 'limit', 'size', 'page[size]', 'per_page'. Defaults vary by paginationType."
+    description: "Query parameter name for page size/limit. Examples: 'limit', 'size', 'page[size]', 'per_page', '$top'. Defaults vary by paginationType."
     dependencies:
       - on: paginationType
         when:
-          in: ["offset", "page", "cursor"]
+          in: ["offset", "page", "cursor", "skip_token"]
         then:
           required: false
   - name: startPage
@@ -138,7 +138,38 @@ configurations:
     dependencies:
       - on: paginationType
         when:
-          in: ["offset", "page", "cursor"]
+          in: ["offset", "page", "cursor", "skip_token"]
+        then:
+          required: false
+  - name: skipTokenParam
+    required: false
+    type: string
+    default: "skiptoken"
+    description: "Query parameter name for skip token in requests (used with skip_token pagination). Default: 'skiptoken'"
+    dependencies:
+      - on: paginationType
+        when:
+          equals: skip_token
+        then:
+          required: false
+  - name: nextLinkPath
+    required: false
+    type: string
+    description: "Dot-notation path to extract next link URL from response. Skip token will be extracted from this URL's query parameters. Example: 'links.next', '@odata.nextLink', 'pagination.nextUrl'"
+    dependencies:
+      - on: paginationType
+        when:
+          equals: skip_token
+        then:
+          required: false
+  - name: skipTokenPath
+    required: false
+    type: string
+    description: "Dot-notation path to extract skip token directly from response (alternative to nextLinkPath). Example: 'pagination.skipToken', 'nextToken', 'meta.skip_token'"
+    dependencies:
+      - on: paginationType
+        when:
+          equals: skip_token
         then:
           required: false
   - name: timeout
@@ -156,6 +187,10 @@ configurations:
     type: string
     default: "10"
     description: "Maximum concurrent API requests (uses Ocean's built-in rate limiting and caching)"
+  - name: customHeaders
+    required: false
+    type: string
+    description: "Custom HTTP headers to include in all requests (JSON format). Example: '{\"Accept\": \"application/json\", \"X-API-Version\": \"v2\"}'. Supports environment variable references in values using ${VAR_NAME} syntax."
 interface:
   sections:
     - label: Advanced Configuration
@@ -170,6 +205,7 @@ interface:
         - timeout
         - verifySsl
         - maxConcurrentRequests
+        - customHeaders
 installationDocs:
   saas:
     - name: SaasOAuth2
