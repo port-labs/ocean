@@ -1,6 +1,7 @@
 from typing import Any, cast
 
 from loguru import logger
+
 from github.actions.registry import register_actions_executors
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -18,10 +19,10 @@ from github.clients.client_factory import (
     GitHubAuthenticatorFactory,
     create_github_client,
 )
+from github.webhook.clients.client_factory import GithubWebhookClientFactory
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.clients.utils import (
     get_github_organizations,
-    integration_config,
 )
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.branch_exporter import RestBranchExporter
@@ -76,8 +77,6 @@ from github.helpers.utils import (
     GithubClientType,
     enrich_user_with_primary_email,
 )
-from github.webhook.events import WEBHOOK_CREATE_EVENTS
-from github.webhook.webhook_client import GithubWebhookClient
 
 from integration import (
     GithubFolderResourceConfig,
@@ -100,8 +99,10 @@ MAX_CONCURRENT_REPOS = 10
 
 
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
+    github_host = ocean.integration_config["github_host"]
+    webhook_secret = ocean.integration_config["webhook_secret"]
     authenticator = GitHubAuthenticatorFactory.create(
-        github_host=ocean.integration_config["github_host"],
+        github_host=github_host,
         organization=org_name,
         token=ocean.integration_config.get("github_token"),
         app_id=ocean.integration_config.get("github_app_id"),
@@ -109,14 +110,14 @@ async def _create_webhooks_for_organization(org_name: str, base_url: str) -> Non
         private_key=ocean.integration_config.get("github_app_private_key"),
     )
 
-    client = GithubWebhookClient(
-        **integration_config(authenticator),
+    client = await GithubWebhookClientFactory.create(
+        authenticator=authenticator,
         organization=org_name,
-        webhook_secret=ocean.integration_config["webhook_secret"],
+        webhook_secret=webhook_secret,
     )
 
     logger.info(f"Subscribing to GitHub webhooks for organization: {org_name}")
-    await client.upsert_webhook(base_url, WEBHOOK_CREATE_EVENTS)
+    await client.upsert_webhook(base_url)
 
 
 @ocean.on_start()

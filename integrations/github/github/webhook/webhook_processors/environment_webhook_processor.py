@@ -27,7 +27,7 @@ class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
         environment = payload["deployment"]["environment"]
         repo = payload["repository"]["name"]
         resource_config_kind = resource_config.kind
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Processing deployment event: {action} for {resource_config_kind} in {repo} from {organization}"
