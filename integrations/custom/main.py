@@ -36,7 +36,7 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     method = getattr(selector, "method", "GET")
     query_params = getattr(selector, "query_params", None) or {}
     headers = getattr(selector, "headers", None) or {}
-
+    body = getattr(selector, "body", None) or {}
     # Call each resolved endpoint
     for endpoint, path_params in endpoints:
         logger.info(f"Fetching data from: {method} {endpoint}")
@@ -50,6 +50,7 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 method=method,
                 query_params=query_params,
                 headers=headers,
+                body=body,
             ):
                 logger.info(f"Received {len(batch)} records from {endpoint}")
 
