@@ -384,3 +384,161 @@ class TestHttpServerClient:
         )
 
         assert client.custom_headers == {}
+
+    async def test_post_with_json_body(self) -> None:
+        """Test that POST request with JSON body passes body correctly"""
+        client = HttpServerClient(
+            base_url="https://api.example.com",
+            auth_type="none",
+            auth_config={},
+            pagination_config={"pagination_type": "none"},
+        )
+
+        captured_body: dict[str, Any] | None = None
+        captured_method: str | None = None
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
+        ) -> AsyncMock:
+            nonlocal captured_body, captured_method
+            captured_body = body
+            captured_method = method
+            response = AsyncMock()
+            response.json = AsyncMock(return_value={"results": []})
+            response.raise_for_status = lambda: None
+            return response
+
+        with patch.object(client, "_make_request", mock_make_request):
+            async for _ in client.fetch_paginated_data(
+                endpoint="/api/v1/search",
+                method="POST",
+                body={"query": "status:active", "filters": {"type": "user"}},
+            ):
+                break
+
+        assert captured_method == "POST"
+        assert captured_body is not None
+        assert captured_body["query"] == "status:active"
+        assert captured_body["filters"]["type"] == "user"
+
+    async def test_post_without_body(self) -> None:
+        """Test that POST request without body works (body is None)"""
+        client = HttpServerClient(
+            base_url="https://api.example.com",
+            auth_type="none",
+            auth_config={},
+            pagination_config={"pagination_type": "none"},
+        )
+
+        captured_body: dict[str, Any] | None = "not_set"  # type: ignore[assignment]
+        captured_method: str | None = None
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
+        ) -> AsyncMock:
+            nonlocal captured_body, captured_method
+            captured_body = body
+            captured_method = method
+            response = AsyncMock()
+            response.json = AsyncMock(return_value={"data": []})
+            response.raise_for_status = lambda: None
+            return response
+
+        with patch.object(client, "_make_request", mock_make_request):
+            async for _ in client.fetch_paginated_data(
+                endpoint="/api/v1/resources",
+                method="POST",
+            ):
+                break
+
+        assert captured_method == "POST"
+        assert captured_body is None
+
+    async def test_get_request_ignores_body(self) -> None:
+        """Test that GET request with body still passes body (httpx will ignore it)"""
+        client = HttpServerClient(
+            base_url="https://api.example.com",
+            auth_type="none",
+            auth_config={},
+            pagination_config={"pagination_type": "none"},
+        )
+
+        captured_body: dict[str, Any] | None = None
+        captured_method: str | None = None
+
+        async def mock_make_request(
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
+        ) -> AsyncMock:
+            nonlocal captured_body, captured_method
+            captured_body = body
+            captured_method = method
+            response = AsyncMock()
+            response.json = AsyncMock(return_value={"data": []})
+            response.raise_for_status = lambda: None
+            return response
+
+        with patch.object(client, "_make_request", mock_make_request):
+            async for _ in client.fetch_paginated_data(
+                endpoint="/api/v1/users",
+                method="GET",
+                body={"should": "be_passed"},
+            ):
+                break
+
+        assert captured_method == "GET"
+        assert captured_body == {"should": "be_passed"}
+
+    async def test_body_passed_through_pagination_handlers(self) -> None:
+        """Test that body is passed through all pagination types"""
+        for pagination_type in ["none", "page", "offset", "cursor"]:
+            client = HttpServerClient(
+                base_url="https://api.example.com",
+                auth_type="none",
+                auth_config={},
+                pagination_config={"pagination_type": pagination_type, "page_size": 10},
+            )
+
+            captured_body: dict[str, Any] | None = None
+
+            async def mock_make_request(
+                url: str,
+                method: str,
+                params: dict[str, Any],
+                headers: dict[str, str],
+                body: dict[str, Any] | None = None,
+            ) -> AsyncMock:
+                nonlocal captured_body
+                captured_body = body
+                response = AsyncMock()
+                # Return response that stops pagination
+                response.json = AsyncMock(
+                    return_value={"data": [], "has_more": False, "hasMore": False}
+                )
+                response.raise_for_status = lambda: None
+                return response
+
+            test_body = {"query": f"test_{pagination_type}"}
+
+            with patch.object(client, "_make_request", mock_make_request):
+                async for _ in client.fetch_paginated_data(
+                    endpoint="/api/search",
+                    method="POST",
+                    body=test_body,
+                ):
+                    break
+
+            assert captured_body == test_body, (
+                f"Body not passed correctly for pagination_type={pagination_type}"
+            )

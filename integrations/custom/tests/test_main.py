@@ -177,3 +177,174 @@ class TestListResponseHandling:
 
                 assert len(batch) == 1
                 assert batch[0]["id"] == 1
+
+
+class TestPostWithBodyHandling:
+    """Test cases for POST requests with JSON body"""
+
+    @pytest.mark.asyncio
+    async def test_body_extracted_from_selector_and_passed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that body is extracted from selector and passed to fetch_paginated_data"""
+        with patch(
+            "port_ocean.context.ocean.ocean.integration.on_resync",
+            lambda fn, kind=None: fn,
+        ):
+            import main
+
+            mock_client = AsyncMock()
+
+            mock_resource_config = MagicMock(spec=HttpServerResourceConfig)
+            mock_selector = MagicMock(spec=HttpServerSelector)
+            mock_selector.method = "POST"
+            mock_selector.query_params = {}
+            mock_selector.headers = {}
+            mock_selector.body = {"query": "status:active", "limit": 100}
+            mock_selector.data_path = ".results"
+            mock_resource_config.selector = mock_selector
+
+            monkeypatch.setattr(
+                main, "event", SimpleNamespace(resource_config=mock_resource_config)
+            )
+
+            captured_kwargs: dict[str, Any] = {}
+
+            async def mock_fetch_paginated_data(*args: Any, **kwargs: Any) -> Any:
+                nonlocal captured_kwargs
+                captured_kwargs = kwargs
+                yield [{"results": [{"id": 1}]}]
+
+            mock_client.fetch_paginated_data = mock_fetch_paginated_data
+
+            with (
+                patch("main.init_client", return_value=mock_client),
+                patch("main.resolve_dynamic_endpoints") as mock_resolve,
+                patch("main.ocean") as mock_ocean,
+            ):
+                mock_resolve.return_value = [("/api/v1/search", {})]
+                mock_ocean.app.integration.entity_processor._search = AsyncMock(
+                    return_value=[{"id": 1}]
+                )
+
+                assert main.resync_resources is not None
+                result = main.resync_resources("/api/v1/search")
+                result_iter = cast(AsyncIterator[list[dict[str, Any]]], result)
+
+                await result_iter.__anext__()
+
+                # Verify body was passed correctly
+                assert "body" in captured_kwargs
+                assert captured_kwargs["body"]["query"] == "status:active"
+                assert captured_kwargs["body"]["limit"] == 100
+                assert captured_kwargs["method"] == "POST"
+
+    @pytest.mark.asyncio
+    async def test_body_is_none_when_not_specified(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that body is None when not specified in selector"""
+        with patch(
+            "port_ocean.context.ocean.ocean.integration.on_resync",
+            lambda fn, kind=None: fn,
+        ):
+            import main
+
+            mock_client = AsyncMock()
+
+            mock_resource_config = MagicMock(spec=HttpServerResourceConfig)
+            mock_selector = MagicMock(spec=HttpServerSelector)
+            mock_selector.method = "GET"
+            mock_selector.query_params = {}
+            mock_selector.headers = {}
+            # body not set - should default to None
+            del mock_selector.body  # Remove the attribute
+            mock_selector.data_path = ".data"
+            mock_resource_config.selector = mock_selector
+
+            monkeypatch.setattr(
+                main, "event", SimpleNamespace(resource_config=mock_resource_config)
+            )
+
+            captured_kwargs: dict[str, Any] = {}
+
+            async def mock_fetch_paginated_data(*args: Any, **kwargs: Any) -> Any:
+                nonlocal captured_kwargs
+                captured_kwargs = kwargs
+                yield [{"data": [{"id": 1}]}]
+
+            mock_client.fetch_paginated_data = mock_fetch_paginated_data
+
+            with (
+                patch("main.init_client", return_value=mock_client),
+                patch("main.resolve_dynamic_endpoints") as mock_resolve,
+                patch("main.ocean") as mock_ocean,
+            ):
+                mock_resolve.return_value = [("/api/v1/users", {})]
+                mock_ocean.app.integration.entity_processor._search = AsyncMock(
+                    return_value=[{"id": 1}]
+                )
+
+                assert main.resync_resources is not None
+                result = main.resync_resources("/api/v1/users")
+                result_iter = cast(AsyncIterator[list[dict[str, Any]]], result)
+
+                await result_iter.__anext__()
+
+                # Verify body is None when not specified
+                assert "body" in captured_kwargs
+                assert captured_kwargs["body"] is None
+
+    @pytest.mark.asyncio
+    async def test_post_with_empty_body(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that POST with empty body dict works correctly"""
+        with patch(
+            "port_ocean.context.ocean.ocean.integration.on_resync",
+            lambda fn, kind=None: fn,
+        ):
+            import main
+
+            mock_client = AsyncMock()
+
+            mock_resource_config = MagicMock(spec=HttpServerResourceConfig)
+            mock_selector = MagicMock(spec=HttpServerSelector)
+            mock_selector.method = "POST"
+            mock_selector.query_params = {}
+            mock_selector.headers = {}
+            mock_selector.body = {}  # Empty body
+            mock_selector.data_path = ".data"
+            mock_resource_config.selector = mock_selector
+
+            monkeypatch.setattr(
+                main, "event", SimpleNamespace(resource_config=mock_resource_config)
+            )
+
+            captured_kwargs: dict[str, Any] = {}
+
+            async def mock_fetch_paginated_data(*args: Any, **kwargs: Any) -> Any:
+                nonlocal captured_kwargs
+                captured_kwargs = kwargs
+                yield [{"data": [{"id": 1}]}]
+
+            mock_client.fetch_paginated_data = mock_fetch_paginated_data
+
+            with (
+                patch("main.init_client", return_value=mock_client),
+                patch("main.resolve_dynamic_endpoints") as mock_resolve,
+                patch("main.ocean") as mock_ocean,
+            ):
+                mock_resolve.return_value = [("/api/v1/trigger", {})]
+                mock_ocean.app.integration.entity_processor._search = AsyncMock(
+                    return_value=[{"id": 1}]
+                )
+
+                assert main.resync_resources is not None
+                result = main.resync_resources("/api/v1/trigger")
+                result_iter = cast(AsyncIterator[list[dict[str, Any]]], result)
+
+                await result_iter.__anext__()
+
+                # Empty body should be treated as None (falsy)
+                assert captured_kwargs["body"] is None

@@ -80,6 +80,7 @@ async def query_api_for_parameters(param_config: ApiPathParameter) -> List[str]:
             method=param_config.method,
             query_params=param_config.query_params,
             headers=param_config.headers,
+            body=param_config.body,
         ):
             # Process each raw response in the batch
             for response_item in batch:

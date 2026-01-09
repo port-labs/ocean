@@ -16,6 +16,9 @@ class ApiPathParameter(BaseModel):
     query_params: Optional[Dict[str, Any]] = Field(
         default=None, description="Query parameters for discovery endpoint"
     )
+    body: Optional[Dict[str, Any]] = Field(
+        default=None, description="Request body for discovery endpoint"
+    )
     headers: Optional[Dict[str, str]] = Field(
         default=None, description="Headers for discovery endpoint"
     )
@@ -41,6 +44,7 @@ class HttpServerSelector(Selector):
     query_params: Optional[Dict[str, Any]] = Field(
         default=None, description="Query parameters"
     )
+    body: Optional[Dict[str, Any]] = Field(default=None, description="HTTP request body")
     headers: Optional[Dict[str, str]] = Field(default=None, description="HTTP headers")
     path_parameters: Optional[Dict[str, ApiPathParameter]] = Field(
         default=None, description="Dynamic path parameters"
