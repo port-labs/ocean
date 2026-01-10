@@ -133,6 +133,7 @@ class ListBranchOptions(RepositoryIdentifier):
 
     protection_rules: Required[bool]
     detailed: Required[bool]
+    branch_names: NotRequired[Optional[list[str]]]
 
 
 class SingleEnvironmentOptions(RepositoryIdentifier):

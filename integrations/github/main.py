@@ -95,6 +95,8 @@ from integration import (
     GithubDeploymentConfig,
 )
 
+MAX_CONCURRENT_REPOS = 10
+
 
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
     github_host = ocean.integration_config["github_host"]
@@ -581,15 +583,22 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             ListBranchOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
-                                detailed=selector.detailed,
                                 protection_rules=selector.protection_rules,
+                                detailed=selector.detailed,
+                                branch_names=selector.branch_names,
                                 repo=repo,
                             )
                         )
                     )
 
-        async for branches in stream_async_iterators_tasks(*tasks):
-            yield branches
+                    if len(tasks) == MAX_CONCURRENT_REPOS:
+                        async for branches in stream_async_iterators_tasks(*tasks):
+                            yield branches
+                        tasks.clear()
+
+        if tasks:
+            async for branches in stream_async_iterators_tasks(*tasks):
+                yield branches
 
 
 @ocean.on_resync(ObjectKind.ENVIRONMENT)

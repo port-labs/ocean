@@ -55,6 +55,15 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
+        selector = cast(GithubBranchConfig, resource_config).selector
+        if selector.branch_names and branch_name not in selector.branch_names:
+            logger.debug(
+                f"Skipping branch event for branch '{branch_name}' because it is not in selector.branch_names"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         if self._event_type == "delete" or payload.get("deleted", False):
             data_to_delete = {"name": branch_name}
             return WebhookEventRawResults(
@@ -63,7 +72,6 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         rest_client = create_github_client()
         exporter = RestBranchExporter(rest_client)
-        selector = cast(GithubBranchConfig, resource_config).selector
 
         data_to_upsert = await exporter.get_resource(
             SingleBranchOptions(
