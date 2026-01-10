@@ -33,6 +33,11 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         repo = params.pop("repo")
 
         response = await self.fetch_branch(repo_name, branch_name, organization)
+        if not response:
+            logger.warning(
+                f"No branch found with name: {branch_name} in repository: {repo_name} from {organization}"
+            )
+            return {}
 
         if protection_rules:
             response = await self._enrich_branch_with_protection_rules(
@@ -125,7 +130,13 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
         if detailed:
             branch = await self.fetch_branch(repo_name, branch_name, organization)
-            logger.debug(
+            if not branch:
+                logger.warning(
+                    f"No branch found with name: {branch_name} in repository: {repo_name} from {organization}"
+                )
+                return {}
+
+            logger.info(
                 f"Added extra details for branch '{branch_name}' in repo '{repo_name}'."
             )
 
