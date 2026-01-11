@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Removed limitation to number of prs / number of days back
+- Removed limitation on number of PRs and number of days back for fetching pull requests.
 
 ## 4.7.1-beta (2026-01-11)
 
