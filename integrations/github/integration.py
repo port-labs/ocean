@@ -108,13 +108,11 @@ class GithubPullRequestSelector(RepoSearchSelector):
         alias="maxResults",
         default=100,
         ge=1,
-        le=300,
         description="Limit the number of pull requests returned",
     )
     since: int = Field(
         default=60,
         ge=1,
-        le=90,
         description="Only fetch pull requests updated within the last N days (1-90 days)",
     )
     api: Literal["rest", "graphql"] = Field(
