@@ -113,7 +113,7 @@ class GithubPullRequestSelector(RepoSearchSelector):
     since: int = Field(
         default=60,
         ge=1,
-        description="Only fetch pull requests updated within the last N days (1-90 days)",
+        description="Only fetch pull requests updated within the last N days",
     )
     api: Literal["rest", "graphql"] = Field(
         default="rest",
