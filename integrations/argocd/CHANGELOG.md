@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.270 (2025-01-06)
+
+
+### Improvements
+
+- Support multi-source argocd applications in default mapping
+
+
 ## 0.1.269 (2025-12-24)
 
 
