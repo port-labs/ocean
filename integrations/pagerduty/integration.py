@@ -121,12 +121,12 @@ class PagerdutyIncidentAPIQueryParams(BaseModel):
     incident_key: str | None
     include: list[str] | None
     service_ids: list[str] | None
-    since: str | None
+    since: int | None
     sort_by: str | None
     statuses: list[Literal["triggered", "acknowledged", "resolved"]] | None
     team_ids: list[str] | None
     time_zone: str | None
-    until: str | None
+    until: int | None
     urgencies: list[Literal["high", "low"]] | None
     user_ids: list[str] | None
 
@@ -144,6 +144,10 @@ class PagerdutyIncidentAPIQueryParams(BaseModel):
             value["urgencies[]"] = urgencies
         if user_ids := value.pop("user_ids", None):
             value["user_ids[]"] = user_ids
+        if since := value.pop("since", None):
+            value["since"] = get_date_range_for_last_n_months(since)[0]
+        if until := value.pop("until", None):
+            value["until"] = get_date_range_for_upcoming_n_months(until)[1]
 
         return value
 
