@@ -7,20 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.7.2-beta (2026-01-16)
+
+
+### Bug Fixes
+
+- Fixed authentication issue where GitHub integration could use Personal Access Token (PAT) instead of GitHub App authentication when OAuth is enabled and both credentials were provided. The authenticator factory now prioritizes GitHub App credentials over PAT, ensuring OAuth-provided app credentials are always used even when a token is also present.
+
+
 ## 4.7.1-beta (2026-01-11)
 
 
 ### Improvements
 
 - Bumped ocean version to ^0.32.10
-
-
-## 4.7.1-beta (2026-01-16)
-
-
-### Bug Fixes
-
-- Fixed authentication issue where GitHub integration could use Personal Access Token (PAT) instead of GitHub App authentication when OAuth is enabled and both credentials were provided. The authenticator factory now prioritizes GitHub App credentials over PAT, ensuring OAuth-provided app credentials are always used even when a token is also present.
 
 
 ## 4.7.0-beta (2026-01-05)
