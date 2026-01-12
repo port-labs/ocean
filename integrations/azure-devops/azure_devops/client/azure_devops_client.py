@@ -79,7 +79,7 @@ class AzureDevopsClient(HTTPBaseClient):
     def __init__(
         self,
         organization_url: str,
-        personal_access_token: str,
+        personal_access_token: Optional[str] = None,
         webhook_auth_username: Optional[str] = None,
     ) -> None:
         super().__init__(personal_access_token)
