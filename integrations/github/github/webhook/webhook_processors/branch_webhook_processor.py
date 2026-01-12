@@ -44,7 +44,7 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         branch_name = ref.replace("refs/heads/", "")
         repo_name = repo["name"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Processing branch event: {self._event_type} for branch {branch_name} in {repo_name} from {organization}"
