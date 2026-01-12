@@ -346,21 +346,6 @@ class SkipTokenPagination(PaginationHandler):
                         next_link = self.get_nested_value(response_data, next_link_path)
                     if next_link:
                         next_skip_token = self._extract_token_from_url(next_link)
-                else:
-                    next_link = (
-                        response_data.get("nextLink")
-                        or response_data.get("next_link")
-                        or response_data.get("links", {}).get("next")
-                        or response_data.get("@odata.nextLink")
-                    )
-                    if next_link:
-                        next_skip_token = self._extract_token_from_url(next_link)
-                    if not next_skip_token:
-                        next_skip_token = (
-                            response_data.get("skipToken")
-                            or response_data.get("skip_token")
-                            or response_data.get("nextToken")
-                        )
 
                 if not next_skip_token:
                     break

@@ -403,12 +403,12 @@ OCEAN__INTEGRATION__CONFIG__PAGE_SIZE=999
 ```
 
 **Configuration Options:**
-- `next_link_path`: Path to a URL field in the response. The skip token will be extracted from the URL's query parameters.
-- `skip_token_path`: Path to a field containing the skip token directly (alternative to `next_link_path`).
+- `next_link_path`: Path to a URL field in the response. The skip token will be extracted from the URL's query parameters. Required if `skip_token_path` is not set.
+- `skip_token_path`: Path to a field containing the skip token directly (alternative to `next_link_path`). Required if `next_link_path` is not set.
 - `skip_token_param`: Query parameter name to use when sending the skip token in requests (default: `skiptoken`).
 - `size_param`: Optional query parameter name for page size (e.g., `$top`, `limit`).
 
-If neither `next_link_path` nor `skip_token_path` is configured, the handler will try common field names as fallback: `nextLink`, `next_link`, `links.next`, `@odata.nextLink`.
+**Note:** You must configure either `next_link_path` or `skip_token_path` for skip token pagination to work.
 
 ### No Pagination
 ```yaml
