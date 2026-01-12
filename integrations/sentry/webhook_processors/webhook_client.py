@@ -48,10 +48,11 @@ class SentryWebhookClient(SentryClient):
                 f"Failed to create service hook for project {project_slug}: {e}"
             )
 
-    async def ensure_service_hooks(self, webhook_url: str) -> None:
+    async def ensure_service_hooks(self, base_url: str) -> None:
         """Ensure service hooks exist for all projects."""
 
         logger.info("Ensuring Sentry service hooks exist for all projects")
+        webhook_url = f"{base_url.rstrip('/')}/integration/webhook"
         async for projects in self.get_paginated_projects():
             tasks = [
                 self._check_and_create_project_hook(project["slug"], webhook_url)

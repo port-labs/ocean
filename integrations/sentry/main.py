@@ -127,9 +127,8 @@ async def on_start() -> None:
         )
         return
 
-    webhook_url = f"{base_url.rstrip('/')}/integration/webhook"
     client = init_webhook_client()
-    await client.ensure_service_hooks(webhook_url)
+    await client.ensure_service_hooks(base_url)
 
 
 # Webhook processor registration

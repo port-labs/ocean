@@ -40,7 +40,6 @@ class _SentryBaseWebhookProcessor(AbstractWebhookProcessor):
 
     async def validate_payload(self, payload: EventPayload) -> bool:
         """Validate the webhook payload."""
-        # todo - separate logic for custom integration and service hook
         if "group" in payload and "project" in payload:
             return True
 
