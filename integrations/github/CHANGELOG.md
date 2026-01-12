@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 4.7.1-beta (2026-01-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
+## 4.7.0-beta (2026-01-05)
+
+
+### Features
+
+- Added support for creating webhooks for personal accounts by subscribing at the repository level for owned repositories.
+
+
 ## 4.6.0-beta (2026-01-05)
 
 

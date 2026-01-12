@@ -36,7 +36,7 @@ class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
         action = payload["action"]
         membership = payload["membership"]
         user = membership["user"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(f"Processing event: {action} of organization: {organization}")
 
