@@ -4,10 +4,13 @@ Handlers for HTTP Server integration.
 Provides authentication and pagination handlers using strategy pattern.
 """
 
+import asyncio
 import httpx
 
-from typing import Dict, Any, List, Callable, Awaitable
+from typing import Dict, Any, List, Callable, Awaitable, Optional
 from collections.abc import AsyncGenerator as AsyncGenType
+
+from http_server.overrides import CustomAuthRequestConfig
 
 
 # ============================================================================
@@ -63,6 +66,92 @@ class NoAuth(AuthHandler):
         pass
 
 
+class CustomAuth(AuthHandler):
+    """Custom authentication with dynamic token retrieval"""
+
+    def __init__(
+        self,
+        client: httpx.AsyncClient,
+        config: Dict[str, Any],
+        custom_auth_request: Optional[CustomAuthRequestConfig],
+    ):
+        super().__init__(client, config)
+        self.custom_auth_request = custom_auth_request
+        self.token: Optional[str] = None
+        self._lock = asyncio.Lock()  # Prevent concurrent re-auth
+        self.base_url: str = config.get("base_url", "")
+
+    def setup(self) -> None:
+        """Setup authentication - initial auth will happen on first request or 401"""
+        # For custom auth, we'll authenticate lazily on first request or when we get a 401
+        # This is because setup() is synchronous but auth requests are async
+        pass
+
+    async def authenticate(self) -> None:
+        """Make authentication request and store token"""
+        if not self.custom_auth_request:
+            raise ValueError("customAuthRequest configuration is required")
+
+        # Build the auth URL
+        endpoint = self.custom_auth_request.endpoint
+        if endpoint.startswith(("http://", "https://")):
+            # Full URL provided
+            auth_url = endpoint
+        else:
+            # Relative path - use base_url
+            base_url = self.base_url.rstrip("/")
+            endpoint_path = endpoint.lstrip("/")
+            auth_url = f"{base_url}/{endpoint_path}"
+
+        # Prepare headers
+        headers = (
+            self.custom_auth_request.headers.copy()
+            if self.custom_auth_request.headers
+            else {}
+        )
+
+        # Set Content-Type based on body type if not explicitly set
+        if "Content-Type" not in headers:
+            if self.custom_auth_request.bodyForm:
+                headers["Content-Type"] = "application/x-www-form-urlencoded"
+            elif self.custom_auth_request.body:
+                headers["Content-Type"] = "application/json"
+
+        # Prepare request data
+        json_data = None
+        content = None
+        if self.custom_auth_request.body:
+            json_data = self.custom_auth_request.body
+        elif self.custom_auth_request.bodyForm:
+            content = self.custom_auth_request.bodyForm
+
+        # Prepare query parameters
+        params = self.custom_auth_request.queryParams or {}
+
+        # Make the authentication request
+        method = self.custom_auth_request.method
+        response = await self.client.request(
+            method=method,
+            url=auth_url,
+            headers=headers,
+            params=params,
+            json=json_data,
+            content=content,
+        )
+        response.raise_for_status()
+
+        # Store response for now - token extraction will be added in next step
+        # For now, we'll store the raw response
+        self.auth_response = response.json()
+
+    async def reauthenticate(self) -> None:
+        """Re-authenticate when token expires (401)"""
+        async with self._lock:
+            # Clear existing token before re-authenticating
+            self.token = None
+            await self.authenticate()
+
+
 # Registry of available auth handlers
 AUTH_HANDLERS = {
     "bearer_token": BearerTokenAuth,
@@ -73,9 +162,14 @@ AUTH_HANDLERS = {
 
 
 def get_auth_handler(
-    auth_type: str, client: httpx.AsyncClient, config: Dict[str, Any]
+    auth_type: str,
+    client: httpx.AsyncClient,
+    config: Dict[str, Any],
+    custom_auth_request: Optional[CustomAuthRequestConfig] = None,
 ) -> AuthHandler:
     """Get the appropriate authentication handler"""
+    if auth_type == "custom":
+        return CustomAuth(client, config, custom_auth_request)
     handler_class = AUTH_HANDLERS.get(auth_type, NoAuth)
     return handler_class(client, config)
 
