@@ -1,5 +1,8 @@
+from port_ocean.context.ocean import ocean
 from abc import abstractmethod
-
+import json
+import hmac
+import hashlib
 
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -15,17 +18,31 @@ class _SentryBaseWebhookProcessor(AbstractWebhookProcessor):
     """Base class for Sentry webhook processors with signature verification."""
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
-        return True
-
-    def _get_resource_type(self, headers: EventHeaders) -> str:
-        """Get the Sentry-Hook-Resource header value."""
-        return headers.get("x-servicehook-signature", "")
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        """Validate the integration webhook payload."""
-        if payload.get("group", {}).get("id"):
+        """Authenticate the webhook request."""
+        expected_digest = headers.get("sentry-hook-signature")
+        if not expected_digest:
+            # no authentication required for webhooks registered via API
             return True
-        return False
+
+        webhook_secret: str | None = ocean.integration_config.get(
+            "sentry_webhook_secret"
+        )
+        if not webhook_secret:
+            return False
+        try:
+            body = json.dumps(
+                payload, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8")
+        except (TypeError, ValueError):
+            return False
+
+        digest = hmac.new(
+            key=webhook_secret.encode("utf-8"),
+            msg=body,
+            digestmod=hashlib.sha256,
+        ).hexdigest()
+
+        return hmac.compare_digest(digest, expected_digest)
 
     @abstractmethod
     async def _should_process_event(self, event: WebhookEvent) -> bool:

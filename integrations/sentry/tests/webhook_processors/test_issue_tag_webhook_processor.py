@@ -97,7 +97,7 @@ class TestSentryIssueTagWebhookProcessor:
             result = await processor.handle_event(payload, _resource_config())
 
         assert result.updated_raw_results == []
-        assert result.deleted_raw_results == []
+        assert result.deleted_raw_results == [{"id": "12345"}]
         mock_client.get_issue.assert_called_once_with("12345")
         mock_client.get_issues_tags_from_issues.assert_not_called()
 

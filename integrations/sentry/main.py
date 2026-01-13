@@ -10,6 +10,9 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from integration import TeamResourceConfig, ObjectKind
 from clients.sentry import SentryClient
 from webhook_processors.issue_webhook_processor import SentryIssueWebhookProcessor
+from webhook_processors.custom_integration_webhook_processor import (
+    SentryCustomIntegrationWebhookProcessor,
+)
 from webhook_processors.issue_tag_webhook_processor import (
     SentryIssueTagWebhookProcessor,
 )
@@ -137,3 +140,4 @@ async def on_start() -> None:
 # Webhook processor registration
 ocean.add_webhook_processor("/webhook", SentryIssueWebhookProcessor)
 ocean.add_webhook_processor("/webhook", SentryIssueTagWebhookProcessor)
+ocean.add_webhook_processor("/webhook", SentryCustomIntegrationWebhookProcessor)

@@ -20,6 +20,10 @@ class SentryIssueTagWebhookProcessor(_SentryBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.ISSUE_TAG]
 
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        """Validate the integration webhook payload."""
+        return payload.get("group", {}).get("id") is not None
+
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Check if this is an issue webhook event."""
         return True
