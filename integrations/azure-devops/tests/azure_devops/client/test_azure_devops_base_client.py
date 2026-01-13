@@ -1,12 +1,29 @@
 import pytest
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from httpx import Response, ReadTimeout
+from port_ocean.context.ocean import initialize_port_ocean_context
+from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from azure_devops.client.base_client import (
     HTTPBaseClient,
     CONTINUATION_TOKEN_HEADER,
     PAGE_SIZE,
 )
+
+
+@pytest.fixture(autouse=True)
+def mock_ocean_context() -> None:
+    """Fixture to mock the Ocean context initialization."""
+    try:
+        mock_ocean_app = MagicMock()
+        mock_ocean_app.config.integration.config = {}
+        mock_ocean_app.integration_router = MagicMock()
+        mock_ocean_app.port_client = MagicMock()
+        mock_ocean_app.cache_provider = AsyncMock()
+        mock_ocean_app.cache_provider.get.return_value = None
+        initialize_port_ocean_context(mock_ocean_app)
+    except PortOceanContextAlreadyInitializedError:
+        pass
 
 
 @pytest.fixture

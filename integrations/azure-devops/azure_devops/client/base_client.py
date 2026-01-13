@@ -20,7 +20,7 @@ MAX_TIMEMOUT_RETRIES = 3
 
 
 class HTTPBaseClient(OAuthClient):
-    def __init__(self, personal_access_token: Optional[str]=None) -> None:
+    def __init__(self, personal_access_token: Optional[str] = None) -> None:
         super().__init__()
         self._client = OceanAsyncClient(
             retry_config=RetryConfig(
