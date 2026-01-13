@@ -42,11 +42,11 @@ class HTTPBaseClient(OAuthClient):
         """
         app = getattr(ocean, "app", None)
         config = getattr(app, "config", None) if app is not None else None
-        return bool(
-            getattr(config, "oauth_access_token_file_path", None)
-        )
+        return bool(getattr(config, "oauth_access_token_file_path", None))
 
-    def _ensure_oauth_headers(self, headers: Optional[dict[str, Any]]) -> dict[str, Any]:
+    def _ensure_oauth_headers(
+        self, headers: Optional[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Ensure the Authorization header is set correctly when OAuth is enabled.
         """
