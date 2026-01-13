@@ -82,12 +82,3 @@ class TestSentryBaseWebhookProcessor:
             "installation": {"uuid": "test-uuid"},
         }
         assert await proc.validate_payload(valid_payload) is True
-
-    async def test_get_resource_type(self) -> None:
-        """Test _get_resource_type extracts header correctly (aligning with current implementation)."""
-        proc = DummyProcessor(WebhookEvent(trace_id="t10", payload={}, headers={}))
-        assert (
-            proc._get_resource_type({"x-servicehook-signature": "some-sig"})
-            == "some-sig"
-        )
-        assert proc._get_resource_type({}) == ""

@@ -74,10 +74,11 @@ async def on_resync_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.PROJECT_TAG)
 async def on_resync_project_tag(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sentry_client = init_client()
+    selector = cast(SentryResourceConfig, event.resource_config).selector
     async for projects in sentry_client.get_paginated_projects():
         logger.info(f"Collecting tags from {len(projects)} projects")
         project_tags_batch = await sentry_client.get_projects_tags_from_projects(
-            projects
+            selector.tag, projects
         )
         logger.info(
             f"Collected {len(project_tags_batch)} project tags from {len(projects)} projects"
@@ -103,6 +104,7 @@ async def on_resync_issue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ISSUE_TAG)
 async def on_resync_issue_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sentry_client = init_client()
+    selector = cast(SentryResourceConfig, event.resource_config).selector
     async for project_slugs in sentry_client.get_paginated_project_slugs():
         if project_slugs:
             issue_tasks = [
@@ -111,9 +113,6 @@ async def on_resync_issue_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ]
             async for issue_batch in stream_async_iterators_tasks(*issue_tasks):
                 if issue_batch:
-                    selector = cast(
-                        SentryResourceConfig, event.resource_config
-                    ).selector
                     issues_with_tags = await sentry_client.get_issues_tags_from_issues(
                         selector.tag, issue_batch
                     )
@@ -129,9 +128,6 @@ async def on_start() -> None:
 
     base_url = ocean.app.base_url
     if not base_url:
-        logger.warning(
-            "No base URL found for the integration, skipping webhook creation"
-        )
         return
 
     client = init_webhook_client()

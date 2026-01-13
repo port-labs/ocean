@@ -1,10 +1,8 @@
 from itertools import chain
-from typing import Any, AsyncGenerator, AsyncIterator, cast, Optional, List
+from typing import Any, AsyncGenerator, AsyncIterator, Optional, List
 
 import httpx
-from integration import SentryResourceConfig
 from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
@@ -182,16 +180,15 @@ class SentryClient:
             return {}
 
     async def _get_project_tags_iterator(
-        self, project: dict[str, Any]
+        self, tag: Optional[str], project: dict[str, Any]
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        selector = cast(SentryResourceConfig, event.resource_config).selector
         try:
-            url = f"{self.api_url}/projects/{self.organization}/{project['slug']}/tags/{selector.tag}/values/"
+            url = f"{self.api_url}/projects/{self.organization}/{project['slug']}/tags/{tag}/values/"
             tags = await self._get_tags(url)
-            yield [{**project, "__tags": tag} for tag in tags]
+            yield [{**project, "__tags": tag_item} for tag_item in tags]
         except ResourceNotFoundError:
             logger.debug(
-                f"No values found for project {project['slug']} and tag {selector.tag} in {self.organization}"
+                f"No values found for project {project['slug']} and tag {tag} in {self.organization}"
             )
             yield []
 
@@ -245,10 +242,10 @@ class SentryClient:
         return flatten_list(issues_with_tags)
 
     async def get_projects_tags_from_projects(
-        self, projects: list[dict[str, Any]]
+        self, tag: Optional[str], projects: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         project_tags = []
-        tasks = [self._get_project_tags_iterator(project) for project in projects]
+        tasks = [self._get_project_tags_iterator(tag, project) for project in projects]
         async for project_tags_batch in stream_async_iterators_tasks(*tasks):
             if project_tags_batch:
                 project_tags.append(project_tags_batch)

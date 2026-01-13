@@ -41,6 +41,8 @@ class SentryIssueTagWebhookProcessor(_SentryBaseWebhookProcessor):
             selector = cast(SentryResourceConfig, resource_config).selector
             issue_tags = await client.get_issues_tags_from_issues(selector.tag, [issue])
             updated_results.extend(issue_tags)
+        else:
+            deleted_results.append({"id": issue_id})
 
         return WebhookEventRawResults(
             updated_raw_results=updated_results, deleted_raw_results=deleted_results

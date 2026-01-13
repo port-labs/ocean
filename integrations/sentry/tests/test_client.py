@@ -643,7 +643,9 @@ class TestGetProjectsTagsFromProjects:
         projects = [{"slug": "project-1"}, {"slug": "project-2"}]
 
         # Mock _get_project_tags_iterator to return tags
-        async def mock_get_project_tags_iterator(project: dict[str, Any]) -> Any:
+        async def mock_get_project_tags_iterator(
+            tag: str | None, project: dict[str, Any]
+        ) -> Any:
             yield [{**project, "__tags": {"key": "env", "value": "prod"}}]
 
         with patch.object(
@@ -651,7 +653,9 @@ class TestGetProjectsTagsFromProjects:
             "_get_project_tags_iterator",
             side_effect=mock_get_project_tags_iterator,
         ):
-            result = await sentry_client.get_projects_tags_from_projects(projects)
+            result = await sentry_client.get_projects_tags_from_projects(
+                "environment", projects
+            )
 
             assert len(result) == 2
             for item in result:
