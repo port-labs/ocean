@@ -54,7 +54,7 @@ class TestSentryIssueWebhookProcessor:
         processor = SentryIssueWebhookProcessor(event)
 
         payload = {"group": {"id": "12345"}, "project": {"slug": "test-project"}}
-        result = processor._validate_integration_payload(payload)
+        result = await processor.validate_payload(payload)
         assert result is True
 
     async def test_validate_integration_payload_missing_group(self) -> None:
@@ -63,7 +63,7 @@ class TestSentryIssueWebhookProcessor:
         processor = SentryIssueWebhookProcessor(event)
 
         payload = {"project": {"slug": "test-project"}}
-        result = processor._validate_integration_payload(payload)
+        result = await processor.validate_payload(payload)
         assert result is False
 
     async def test_validate_integration_payload_missing_project_slug(self) -> None:
@@ -72,7 +72,7 @@ class TestSentryIssueWebhookProcessor:
         processor = SentryIssueWebhookProcessor(event)
 
         payload = {"group": {"id": "12345"}, "project": {}}
-        result = processor._validate_integration_payload(payload)
+        result = await processor.validate_payload(payload)
         assert result is False
 
     async def test_handle_event_without_group_returns_empty(self) -> None:

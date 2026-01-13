@@ -21,14 +21,15 @@ class _SentryBaseWebhookProcessor(AbstractWebhookProcessor):
         """Get the Sentry-Hook-Resource header value."""
         return headers.get("x-servicehook-signature", "")
 
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        """Validate the integration webhook payload."""
+        if payload.get("group", {}).get("id"):
+            return True
+        return False
+
     @abstractmethod
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Check if this processor should handle the event."""
-        ...
-
-    @abstractmethod
-    def _validate_integration_payload(self, payload: EventPayload) -> bool:
-        """Validate the custom integration webhook payload."""
         ...
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
@@ -37,10 +38,3 @@ class _SentryBaseWebhookProcessor(AbstractWebhookProcessor):
         if not await self._should_process_event(event):
             return False
         return True
-
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        """Validate the webhook payload."""
-        if "group" in payload and "project" in payload:
-            return True
-
-        return self._validate_integration_payload(payload)

@@ -20,7 +20,7 @@ class DummyProcessor(_SentryBaseWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         return True
 
-    def _validate_integration_payload(self, payload: EventPayload) -> bool:
+    async def validate_payload(self, payload: EventPayload) -> bool:
         return True
 
     async def handle_event(

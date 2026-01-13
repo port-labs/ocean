@@ -24,14 +24,6 @@ class SentryIssueTagWebhookProcessor(_SentryBaseWebhookProcessor):
         """Check if this is an issue webhook event."""
         return True
 
-    def _validate_integration_payload(self, payload: EventPayload) -> bool:
-        """Validate the integration webhook payload."""
-        if payload.get("group", {}).get("id") and payload.get("project", {}).get(
-            "slug"
-        ):
-            return True
-        return False
-
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
