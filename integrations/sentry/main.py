@@ -14,6 +14,7 @@ from webhook_processors.issue_tag_webhook_processor import (
     SentryIssueTagWebhookProcessor,
 )
 from webhook_processors.init_client import init_webhook_client
+from integration import SentryResourceConfig
 
 
 def init_client() -> SentryClient:
@@ -110,8 +111,11 @@ async def on_resync_issue_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ]
             async for issue_batch in stream_async_iterators_tasks(*issue_tasks):
                 if issue_batch:
+                    selector = cast(
+                        SentryResourceConfig, event.resource_config
+                    ).selector
                     issues_with_tags = await sentry_client.get_issues_tags_from_issues(
-                        issue_batch
+                        selector.tag, issue_batch
                     )
                     logger.info(f"Collected {len(issues_with_tags)} issues with tags")
                     yield issues_with_tags

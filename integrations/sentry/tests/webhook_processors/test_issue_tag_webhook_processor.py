@@ -9,16 +9,14 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
-    Selector,
 )
-from integration import ObjectKind
+from integration import ObjectKind, SentryResourceConfig, SentrySelector
 
 
-def _resource_config() -> ResourceConfig:
+def _resource_config() -> SentryResourceConfig:
     """Create a minimal ResourceConfig for testing."""
     port = PortResourceConfig(
         entity=MappingsConfig(
@@ -30,7 +28,9 @@ def _resource_config() -> ResourceConfig:
             )
         )
     )
-    return ResourceConfig(kind="issue_tag", selector=Selector(query="true"), port=port)
+    return SentryResourceConfig(
+        kind="issue-tag", selector=SentrySelector(query="true"), port=port
+    )
 
 
 @pytest.mark.asyncio
@@ -94,7 +94,9 @@ class TestSentryIssueTagWebhookProcessor:
         assert result.updated_raw_results[1]["key"] == "level"
         assert result.deleted_raw_results == []
         mock_client.get_issue.assert_called_once_with("12345")
-        mock_client.get_issues_tags_from_issues.assert_called_once_with("12345")
+        mock_client.get_issues_tags_from_issues.assert_called_once_with(
+            "environment", [mock_issue]
+        )
 
     async def test_handle_sentry_event_issue_not_found(self) -> None:
         """Test handling when issue is not found - should return empty results."""
@@ -138,7 +140,9 @@ class TestSentryIssueTagWebhookProcessor:
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == []
         mock_client.get_issue.assert_called_once_with("12345")
-        mock_client.get_issues_tags_from_issues.assert_called_once_with("12345")
+        mock_client.get_issues_tags_from_issues.assert_called_once_with(
+            "environment", [mock_issue]
+        )
 
     async def test_handle_sentry_event_multiple_tags(self) -> None:
         """Test handling when issue has multiple tags."""

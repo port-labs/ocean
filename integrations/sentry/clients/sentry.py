@@ -196,16 +196,15 @@ class SentryClient:
             yield []
 
     async def _get_issue_tags_iterator(
-        self, issue: dict[str, Any]
+        self, tag: Optional[str], issue: dict[str, Any]
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        selector = cast(SentryResourceConfig, event.resource_config).selector
         try:
-            url = f"{self.api_url}/organizations/{self.organization}/issues/{issue['id']}/tags/{selector.tag}/values/"
+            url = f"{self.api_url}/organizations/{self.organization}/issues/{issue['id']}/tags/{tag}/values/"
             tags = await self._get_tags(url)
             yield [{**issue, "__tags": tags}]
         except ResourceNotFoundError:
             logger.debug(
-                f"No values found for issue {issue['id']} and tag {selector.tag} in {self.organization}"
+                f"No values found for issue {issue['id']} and tag {tag} in {self.organization}"
             )
             yield []
 
@@ -233,10 +232,10 @@ class SentryClient:
             yield issues
 
     async def get_issues_tags_from_issues(
-        self, issues: list[dict[str, Any]]
+        self, tag: Optional[str], issues: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         add_tags_to_issues_tasks = [
-            self._get_issue_tags_iterator(issue) for issue in issues
+            self._get_issue_tags_iterator(tag, issue) for issue in issues
         ]
         issues_with_tags = []
         async for issues_with_tags_batch in stream_async_iterators_tasks(

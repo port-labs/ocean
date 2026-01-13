@@ -15,16 +15,7 @@ from webhook_processors.init_client import init_webhook_client
 
 
 class SentryIssueWebhookProcessor(_SentryBaseWebhookProcessor):
-    """Processor for Sentry issue webhooks.
-
-    Handles issue events with actions: created, resolved, assigned, archived, unresolved.
-    The issue data is in payload['data']['issue'].
-    """
-
-    # Issue actions that result in an upsert
-    UPSERT_ACTIONS = {"created", "resolved", "assigned", "unresolved"}
-    # Issue actions that result in a delete
-    DELETE_ACTIONS = {"archived"}
+    """Processor for Sentry issue webhooks."""
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.ISSUE]

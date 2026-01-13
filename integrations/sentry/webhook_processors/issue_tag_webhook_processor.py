@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -10,7 +10,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 from webhook_processors.base_webhook_processor import _SentryBaseWebhookProcessor
-from integration import ObjectKind
+from integration import ObjectKind, SentryResourceConfig
 from webhook_processors.init_client import init_webhook_client
 
 
@@ -58,7 +58,8 @@ class SentryIssueTagWebhookProcessor(_SentryBaseWebhookProcessor):
         client = init_webhook_client()
         issue = await client.get_issue(issue_id)
         if issue:
-            issue_tags = await client.get_issues_tags_from_issues(issue_id)
+            selector = cast(SentryResourceConfig, resource_config).selector
+            issue_tags = await client.get_issues_tags_from_issues(selector.tag, [issue])
             updated_results.extend(issue_tags)
 
         return WebhookEventRawResults(
