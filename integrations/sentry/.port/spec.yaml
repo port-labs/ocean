@@ -28,7 +28,3 @@ configurations:
     required: true
     type: string
     description: "Sentry organization"
-saas:
-  enabled: true
-  liveEvents:
-    enabled: true
