@@ -45,7 +45,7 @@ RUN apt-get update \
     && apt-get install -y \
         ca-certificates \
         openssl \
-        curl \
+        wget \
         acl \
         sudo \
         libyaml-dev \

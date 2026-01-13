@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.33.0 (2026-01-13)
+
+### Bug fixes
+
+- Image build now uses wget instead of the previously problematic curl package
+
+
 ## 0.32.10 (2026-01-11)
 
 ### Bug fixes
