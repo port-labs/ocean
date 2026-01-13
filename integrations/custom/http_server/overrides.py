@@ -1,5 +1,5 @@
 from typing import Dict, Any, Optional
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, root_validator
 
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -64,6 +64,60 @@ class HttpServerResourceConfig(ResourceConfig):
 
     selector: HttpServerSelector
     kind: str  # Dynamic - the endpoint path
+
+
+class CustomAuthRequestConfig(BaseModel):
+    """Configuration for custom authentication request"""
+
+    endpoint: str = Field(
+        description="Endpoint path or full URL for authentication request (e.g., '/oauth/token' or 'https://auth.example.com/token')"
+    )
+    method: str = Field(
+        default="POST",
+        description="HTTP method for authentication request",
+    )
+    headers: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="HTTP headers for authentication request",
+    )
+    body: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="JSON request body (mutually exclusive with bodyForm)",
+    )
+    bodyForm: Optional[str] = Field(
+        default=None,
+        alias="bodyForm",
+        description="Form-encoded request body (mutually exclusive with body)",
+    )
+    queryParams: Optional[Dict[str, Any]] = Field(
+        default=None,
+        alias="queryParams",
+        description="Query parameters for authentication request",
+    )
+
+    @root_validator
+    def validate_body_exclusivity(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Ensure body and bodyForm are not both specified"""
+        body = values.get("body")
+        body_form = values.get("bodyForm")
+        if body and body_form:
+            raise ValueError(
+                "Cannot specify both 'body' and 'bodyForm' in customAuthRequest"
+            )
+        return values
+
+    @root_validator
+    def validate_method(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate HTTP method"""
+        method = values.get("method", "POST").upper()
+        allowed_methods = {"GET", "POST", "PUT", "PATCH", "DELETE"}
+        if method not in allowed_methods:
+            raise ValueError(f"Method must be one of {allowed_methods}, got: {method}")
+        values["method"] = method
+        return values
+
+    class Config:
+        allow_population_by_field_name = True
 
 
 class HttpServerPortAppConfig(PortAppConfig):

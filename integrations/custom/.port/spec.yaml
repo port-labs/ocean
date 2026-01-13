@@ -17,8 +17,8 @@ configurations:
     required: false
     type: string
     default: "none"
-    description: "Authentication method: none, bearer_token, basic, or api_key"
-    enum: ["bearer_token", "basic", "api_key", "none"]
+    description: "Authentication method: none, bearer_token, basic, api_key, or custom"
+    enum: ["bearer_token", "basic", "api_key", "none", "custom"]
   - name: apiToken
     required: false
     type: string
@@ -156,6 +156,16 @@ configurations:
     type: string
     default: "10"
     description: "Maximum concurrent API requests (uses Ocean's built-in rate limiting and caching)"
+  - name: customAuthRequest
+    required: false
+    type: object
+    description: "Custom authentication request configuration. Required when authType is 'custom'. Example: {\"endpoint\": \"/oauth/token\", \"method\": \"POST\", \"headers\": {\"Content-Type\": \"application/json\"}, \"body\": {\"grant_type\": \"client_credentials\", \"client_id\": \"...\", \"client_secret\": \"...\"}, \"queryParams\": {}}"
+    dependencies:
+      - on: authType
+        when:
+          equals: custom
+        then:
+          required: true
 interface:
   sections:
     - label: Advanced Configuration
