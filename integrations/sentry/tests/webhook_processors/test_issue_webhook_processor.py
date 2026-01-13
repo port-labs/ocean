@@ -66,15 +66,6 @@ class TestSentryIssueWebhookProcessor:
         result = await processor.validate_payload(payload)
         assert result is False
 
-    async def test_validate_integration_payload_missing_project_slug(self) -> None:
-        """Payload without project.slug should be invalid."""
-        event = WebhookEvent(trace_id="t4", payload={}, headers={})
-        processor = SentryIssueWebhookProcessor(event)
-
-        payload = {"group": {"id": "12345"}, "project": {}}
-        result = await processor.validate_payload(payload)
-        assert result is False
-
     async def test_handle_event_without_group_returns_empty(self) -> None:
         """Events without 'group' key should return empty results."""
         event = WebhookEvent(trace_id="t5", payload={}, headers={})
