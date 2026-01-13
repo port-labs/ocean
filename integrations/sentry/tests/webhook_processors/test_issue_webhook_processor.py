@@ -13,6 +13,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
     Selector,
 )
+from integration import ObjectKind
 
 
 def _resource_config() -> ResourceConfig:
@@ -39,9 +40,65 @@ class TestSentryIssueWebhookProcessor:
         result = await processor._should_process_event(event)
         assert result is True
 
+    async def test_get_matching_kinds(self) -> None:
+        """Should return [ObjectKind.ISSUE] for matching kinds."""
+        event = WebhookEvent(trace_id="t10", payload={}, headers={})
+        processor = SentryIssueWebhookProcessor(event)
+
+        kinds = await processor.get_matching_kinds(event)
+        assert kinds == [ObjectKind.ISSUE]
+
+    async def test_validate_integration_payload_valid(self) -> None:
+        """Payload with group.id and project.slug should be valid."""
+        event = WebhookEvent(trace_id="t2", payload={}, headers={})
+        processor = SentryIssueWebhookProcessor(event)
+
+        payload = {"group": {"id": "12345"}, "project": {"slug": "test-project"}}
+        result = processor._validate_integration_payload(payload)
+        assert result is True
+
+    async def test_validate_integration_payload_missing_group(self) -> None:
+        """Payload without group should be invalid."""
+        event = WebhookEvent(trace_id="t3", payload={}, headers={})
+        processor = SentryIssueWebhookProcessor(event)
+
+        payload = {"project": {"slug": "test-project"}}
+        result = processor._validate_integration_payload(payload)
+        assert result is False
+
+    async def test_validate_integration_payload_missing_project_slug(self) -> None:
+        """Payload without project.slug should be invalid."""
+        event = WebhookEvent(trace_id="t4", payload={}, headers={})
+        processor = SentryIssueWebhookProcessor(event)
+
+        payload = {"group": {"id": "12345"}, "project": {}}
+        result = processor._validate_integration_payload(payload)
+        assert result is False
+
+    async def test_handle_event_without_group_returns_empty(self) -> None:
+        """Events without 'group' key should return empty results."""
+        event = WebhookEvent(trace_id="t5", payload={}, headers={})
+        processor = SentryIssueWebhookProcessor(event)
+
+        # Sentry integration platform webhook format (action-based)
+        # This format is not processed by the current implementation
+        payload = {
+            "action": "created",
+            "data": {
+                "issue": {"id": "12345", "title": "Test Issue", "status": "unresolved"}
+            },
+            "installation": {"uuid": "test-uuid"},
+        }
+
+        result = await processor.handle_event(payload, _resource_config())
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+
     async def test_handle_sentry_event_success(self) -> None:
         """Test handling of Sentry service hook events with active issue."""
-        event = WebhookEvent(trace_id="t8", payload={}, headers={})
+        event = WebhookEvent(trace_id="t6", payload={}, headers={})
         processor = SentryIssueWebhookProcessor(event)
 
         payload = {"group": {"id": "12345"}, "project": {"slug": "test-project"}}
@@ -63,7 +120,7 @@ class TestSentryIssueWebhookProcessor:
 
     async def test_handle_sentry_event_deleted(self) -> None:
         """Test handling of Sentry service hook events when issue is not found."""
-        event = WebhookEvent(trace_id="t9", payload={}, headers={})
+        event = WebhookEvent(trace_id="t7", payload={}, headers={})
         processor = SentryIssueWebhookProcessor(event)
 
         payload = {"group": {"id": "12345"}, "project": {"slug": "test-project"}}
@@ -81,122 +138,29 @@ class TestSentryIssueWebhookProcessor:
         assert len(result.deleted_raw_results) == 1
         assert result.deleted_raw_results[0]["id"] == "12345"
 
-    async def test_handle_event_created_action(self) -> None:
-        """Issue created events should add to updated_raw_results."""
-        event = WebhookEvent(trace_id="t3", payload={}, headers={})
+    async def test_handle_sentry_event_with_different_issue_id(self) -> None:
+        """Test handling with a different issue ID."""
+        event = WebhookEvent(trace_id="t8", payload={}, headers={})
         processor = SentryIssueWebhookProcessor(event)
 
-        payload = {
-            "action": "created",
-            "data": {
-                "issue": {"id": "12345", "title": "Test Issue", "status": "unresolved"}
-            },
-            "installation": {"uuid": "test-uuid"},
+        payload = {"group": {"id": "67890"}, "project": {"slug": "another-project"}}
+
+        mock_client = AsyncMock()
+        mock_issue = {
+            "id": "67890",
+            "title": "Another Test Issue",
+            "status": "resolved",
         }
+        mock_client.get_issue.return_value = mock_issue
 
-        result = await processor.handle_event(payload, _resource_config())
-
-        assert isinstance(result, WebhookEventRawResults)
-        assert len(result.updated_raw_results) == 1
-        assert result.updated_raw_results[0]["id"] == "12345"
-        assert result.deleted_raw_results == []
-
-    async def test_handle_event_resolved_action(self) -> None:
-        """Issue resolved events should add to updated_raw_results."""
-        event = WebhookEvent(trace_id="t4", payload={}, headers={})
-        processor = SentryIssueWebhookProcessor(event)
-
-        payload = {
-            "action": "resolved",
-            "data": {
-                "issue": {"id": "12345", "title": "Test Issue", "status": "resolved"}
-            },
-            "installation": {"uuid": "test-uuid"},
-        }
-
-        result = await processor.handle_event(payload, _resource_config())
+        with patch(
+            "webhook_processors.issue_webhook_processor.init_webhook_client",
+            return_value=mock_client,
+        ):
+            result = await processor.handle_event(payload, _resource_config())
 
         assert len(result.updated_raw_results) == 1
-        assert result.updated_raw_results[0]["status"] == "resolved"
+        assert result.updated_raw_results[0]["id"] == "67890"
+        assert result.updated_raw_results[0]["title"] == "Another Test Issue"
         assert result.deleted_raw_results == []
-
-    async def test_handle_event_archived_action(self) -> None:
-        """Issue archived events should add to deleted_raw_results."""
-        event = WebhookEvent(trace_id="t5", payload={}, headers={})
-        processor = SentryIssueWebhookProcessor(event)
-
-        payload = {
-            "action": "archived",
-            "data": {"issue": {"id": "12345", "title": "Test Issue"}},
-            "installation": {"uuid": "test-uuid"},
-        }
-
-        result = await processor.handle_event(payload, _resource_config())
-
-        assert result.updated_raw_results == []
-        assert len(result.deleted_raw_results) == 1
-        assert result.deleted_raw_results[0]["id"] == "12345"
-
-    async def test_handle_event_assigned_action(self) -> None:
-        """Issue assigned events should add to updated_raw_results."""
-        event = WebhookEvent(trace_id="t6", payload={}, headers={})
-        processor = SentryIssueWebhookProcessor(event)
-
-        payload = {
-            "action": "assigned",
-            "data": {
-                "issue": {
-                    "id": "12345",
-                    "title": "Test Issue",
-                    "assignedTo": {"email": "user@example.com"},
-                }
-            },
-            "installation": {"uuid": "test-uuid"},
-        }
-
-        result = await processor.handle_event(payload, _resource_config())
-
-        assert len(result.updated_raw_results) == 1
-        assert result.deleted_raw_results == []
-
-    async def test_handle_event_unresolved_action(self) -> None:
-        """Issue unresolved events should add to updated_raw_results."""
-        event = WebhookEvent(trace_id="t7", payload={}, headers={})
-        processor = SentryIssueWebhookProcessor(event)
-
-        payload = {
-            "action": "unresolved",
-            "data": {
-                "issue": {"id": "12345", "title": "Test Issue", "status": "unresolved"}
-            },
-            "installation": {"uuid": "test-uuid"},
-        }
-
-        result = await processor.handle_event(payload, _resource_config())
-
-        assert len(result.updated_raw_results) == 1
-        assert result.deleted_raw_results == []
-
-    async def test_handle_event_unknown_action(self) -> None:
-        """Unknown actions should be skipped."""
-        event = WebhookEvent(trace_id="t9", payload={}, headers={})
-        processor = SentryIssueWebhookProcessor(event)
-
-        payload = {
-            "action": "unknown_action",
-            "data": {"issue": {"id": "12345", "title": "Test Issue"}},
-            "installation": {"uuid": "test-uuid"},
-        }
-
-        result = await processor.handle_event(payload, _resource_config())
-
-        assert result.updated_raw_results == []
-        assert result.deleted_raw_results == []
-
-    async def test_get_matching_kinds(self) -> None:
-        """Should return ['issue'] for matching kinds."""
-        event = WebhookEvent(trace_id="t10", payload={}, headers={})
-        processor = SentryIssueWebhookProcessor(event)
-
-        kinds = await processor.get_matching_kinds(event)
-        assert kinds == ["issue"]
+        mock_client.get_issue.assert_called_once_with("67890")

@@ -14,20 +14,11 @@ from integration import ObjectKind
 from webhook_processors.init_client import init_webhook_client
 
 
-class SentryIssueWebhookProcessor(_SentryBaseWebhookProcessor):
-    """Processor for Sentry issue webhooks.
-
-    Handles issue events with actions: created, resolved, assigned, archived, unresolved.
-    The issue data is in payload['data']['issue'].
-    """
-
-    # Issue actions that result in an upsert
-    UPSERT_ACTIONS = {"created", "resolved", "assigned", "unresolved"}
-    # Issue actions that result in a delete
-    DELETE_ACTIONS = {"archived"}
+class SentryIssueTagWebhookProcessor(_SentryBaseWebhookProcessor):
+    """Processor for Sentry issue tag webhooks."""
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.ISSUE]
+        return [ObjectKind.ISSUE_TAG]
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Check if this is an issue webhook event."""
@@ -48,7 +39,10 @@ class SentryIssueWebhookProcessor(_SentryBaseWebhookProcessor):
         if "group" in payload:
             return await self._handle_sentry_event(payload, resource_config)
 
-        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+        return WebhookEventRawResults(
+            updated_raw_results=[],
+            deleted_raw_results=[],
+        )
 
     async def _handle_sentry_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -56,7 +50,7 @@ class SentryIssueWebhookProcessor(_SentryBaseWebhookProcessor):
         """Process Sentry issue webhook events."""
         issue_id = payload["group"]["id"]
 
-        logger.info(f"Processing Sentry issue webhook: issue_id={issue_id}")
+        logger.info(f"Processing Sentry issue tag webhook: issue_id={issue_id}")
 
         updated_results: list[dict[str, Any]] = []
         deleted_results: list[dict[str, Any]] = []
@@ -64,9 +58,8 @@ class SentryIssueWebhookProcessor(_SentryBaseWebhookProcessor):
         client = init_webhook_client()
         issue = await client.get_issue(issue_id)
         if issue:
-            updated_results.append(issue)
-        else:
-            deleted_results.append({"id": issue_id})
+            issue_tags = await client.get_issues_tags_from_issues(issue_id)
+            updated_results.extend(issue_tags)
 
         return WebhookEventRawResults(
             updated_raw_results=updated_results, deleted_raw_results=deleted_results
