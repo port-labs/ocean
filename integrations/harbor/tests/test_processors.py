@@ -323,11 +323,16 @@ async def test_handle_event_push_artifact_success(
     }
 
     with patch(
-        "webhook_processors.artifact_webhook_processor.get_harbor_client"
-    ) as mock_get_client:
+        "webhook_processors.artifact_webhook_processor.HarborClientFactory.get_client"
+    ) as mock_get_client, patch(
+        "webhook_processors.artifact_webhook_processor.HarborArtifactExporter"
+    ) as mock_exporter_class:
         mock_client = AsyncMock()
-        mock_client.get_single_artifact = AsyncMock(return_value=mock_artifact)
         mock_get_client.return_value = mock_client
+        
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource = AsyncMock(return_value=mock_artifact)
+        mock_exporter_class.return_value = mock_exporter
 
         result = await artifact_webhook_processor.handle_event(payload, resource_config)
 
@@ -335,12 +340,14 @@ async def test_handle_event_push_artifact_success(
         assert len(result.deleted_raw_results) == 0
         assert result.updated_raw_results[0] == mock_artifact
 
-        # Verify client was called with correct parameters
-        mock_client.get_single_artifact.assert_called_once_with(
-            project_name="library",
-            repository_name="nginx",
-            reference="sha256:abc123",
-        )
+        # Verify exporter was created with client
+        mock_exporter_class.assert_called_once_with(mock_client)
+        # Verify exporter was called with correct parameters
+        mock_exporter.get_resource.assert_called_once()
+        call_args = mock_exporter.get_resource.call_args[0][0]
+        assert call_args["project_name"] == "library"
+        assert call_args["repository_name"] == "nginx"
+        assert call_args["reference"] == "sha256:abc123"
 
 
 @pytest.mark.asyncio
@@ -363,11 +370,16 @@ async def test_handle_event_push_artifact_not_found(
     }
 
     with patch(
-        "webhook_processors.artifact_webhook_processor.get_harbor_client"
-    ) as mock_get_client:
+        "webhook_processors.artifact_webhook_processor.HarborClientFactory.get_client"
+    ) as mock_get_client, patch(
+        "webhook_processors.artifact_webhook_processor.HarborArtifactExporter"
+    ) as mock_exporter_class:
         mock_client = AsyncMock()
-        mock_client.get_single_artifact = AsyncMock(return_value=None)
         mock_get_client.return_value = mock_client
+        
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource = AsyncMock(return_value=None)
+        mock_exporter_class.return_value = mock_exporter
 
         result = await artifact_webhook_processor.handle_event(payload, resource_config)
 
@@ -395,13 +407,18 @@ async def test_handle_event_push_artifact_api_error(
     }
 
     with patch(
-        "webhook_processors.artifact_webhook_processor.get_harbor_client"
-    ) as mock_get_client:
+        "webhook_processors.artifact_webhook_processor.HarborClientFactory.get_client"
+    ) as mock_get_client, patch(
+        "webhook_processors.artifact_webhook_processor.HarborArtifactExporter"
+    ) as mock_exporter_class:
         mock_client = AsyncMock()
-        mock_client.get_single_artifact = AsyncMock(
+        mock_get_client.return_value = mock_client
+        
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource = AsyncMock(
             side_effect=Exception("API Error")
         )
-        mock_get_client.return_value = mock_client
+        mock_exporter_class.return_value = mock_exporter
 
         result = await artifact_webhook_processor.handle_event(payload, resource_config)
 
@@ -461,18 +478,23 @@ async def test_handle_event_with_digest_reference(
     }
 
     with patch(
-        "webhook_processors.artifact_webhook_processor.get_harbor_client"
-    ) as mock_get_client:
+        "webhook_processors.artifact_webhook_processor.HarborClientFactory.get_client"
+    ) as mock_get_client, patch(
+        "webhook_processors.artifact_webhook_processor.HarborArtifactExporter"
+    ) as mock_exporter_class:
         mock_client = AsyncMock()
-        mock_client.get_single_artifact = AsyncMock(return_value=mock_artifact)
         mock_get_client.return_value = mock_client
+        
+        mock_exporter = AsyncMock()
+        mock_exporter.get_resource = AsyncMock(return_value=mock_artifact)
+        mock_exporter_class.return_value = mock_exporter
 
         result = await artifact_webhook_processor.handle_event(payload, resource_config)
 
         assert len(result.updated_raw_results) == 1
-        mock_client.get_single_artifact.assert_called_once_with(
-            project_name="library",
-            repository_name="nginx",
-            reference="sha256:abc123",
-        )
+        mock_exporter.get_resource.assert_called_once()
+        call_args = mock_exporter.get_resource.call_args[0][0]
+        assert call_args["project_name"] == "library"
+        assert call_args["repository_name"] == "nginx"
+        assert call_args["reference"] == "sha256:abc123"
 

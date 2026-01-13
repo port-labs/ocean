@@ -6,7 +6,7 @@ import pytest
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from harbor.client import HarborClient
+from harbor.clients.http.client import HarborClient
 
 
 @pytest.fixture(autouse=True)
@@ -17,10 +17,9 @@ def mock_ocean_context() -> None:
         mock_ocean_app.config = MagicMock()
         mock_ocean_app.config.integration.config = {
             "base_url": "https://harbor.example.com",
-            "verify_ssl": False,
             "username": "admin",
             "password": "password123",
-            "pageSize": 100,
+            "api_version": "v2.0",
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
@@ -38,6 +37,5 @@ def mock_harbor_client() -> HarborClient:
         base_url="https://harbor.example.com",
         username="test_user",
         password="test_password",
-        verify_ssl=False,
     )
 

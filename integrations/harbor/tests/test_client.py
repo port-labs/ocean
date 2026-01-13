@@ -4,16 +4,18 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from httpx import BasicAuth, Request, Response
+from httpx import Request, Response
 
-from harbor.client import HarborClient
+from harbor.clients.http.client import HarborClient
+from harbor.core.exporters.abstract_exporter import AbstractHarborExporter
 
 
 @pytest.mark.asyncio
 async def test_client_initialization(mock_harbor_client: HarborClient) -> None:
     """Test the correct initialization of HarborClient with authentication."""
     assert mock_harbor_client.base_url == "https://harbor.example.com"
-    assert isinstance(mock_harbor_client._auth, BasicAuth)
+    assert mock_harbor_client.username == "test_user"
+    assert mock_harbor_client.password == "test_password"
 
 
 @pytest.mark.asyncio
@@ -34,81 +36,58 @@ async def test_client_initialization_no_auth() -> None:
             username="test_user",
             password="",  # Empty password
         )
+
+
+@pytest.mark.asyncio
+async def test_api_base_url_property(mock_harbor_client: HarborClient) -> None:
+    """Test the api_base_url property."""
+    assert mock_harbor_client.api_base_url == "https://harbor.example.com/api/v2.0"
+
+
+@pytest.mark.asyncio
+async def test_get_auth_headers(mock_harbor_client: HarborClient) -> None:
+    """Test that _get_auth_headers returns correct Basic Auth headers."""
+    headers = mock_harbor_client._get_auth_headers()
     
-    # Test that None username raises ValueError (from type checking or validation)
-    with pytest.raises((ValueError, TypeError)):
-        HarborClient(
-            base_url="https://harbor.example.com",
-            username=None,  # type: ignore
-            password="test_password",
-        )
+    assert "Authorization" in headers
+    assert headers["Authorization"].startswith("Basic ")
+    assert "Content-Type" in headers
+    assert headers["Content-Type"] == "application/json"
+    assert "Accept" in headers
+    assert headers["Accept"] == "application/json"
 
 
 @pytest.mark.asyncio
 async def test_send_api_request_success(mock_harbor_client: HarborClient) -> None:
     """Test successful API requests."""
-    with patch.object(
-        mock_harbor_client.client, "request", new_callable=AsyncMock
-    ) as mock_request:
+    with patch("port_ocean.utils.http_async_client.request", new_callable=AsyncMock) as mock_request:
         mock_request.return_value = Response(
             200,
             request=Request("GET", "http://example.com"),
             json={"key": "value"},
         )
-        response = await mock_harbor_client._send_api_request(
-            "GET", "/projects"
+        response = await mock_harbor_client.send_api_request(
+            "projects"
         )
         assert response["key"] == "value"
 
 
 @pytest.mark.asyncio
 async def test_send_api_request_failure(mock_harbor_client: HarborClient) -> None:
-    """Test API request raising exceptions for non-429 errors."""
-    with patch.object(
-        mock_harbor_client.client, "request", new_callable=AsyncMock
-    ) as mock_request:
+    """Test API request raising exceptions for errors."""
+    with patch("port_ocean.utils.http_async_client.request", new_callable=AsyncMock) as mock_request:
         mock_request.return_value = Response(
             404, request=Request("GET", "http://example.com")
         )
         with pytest.raises(Exception):
-            await mock_harbor_client._send_api_request("GET", "/projects")
-
-
-@pytest.mark.asyncio
-async def test_send_api_request_rate_limit_retry(
-    mock_harbor_client: HarborClient,
-) -> None:
-    """Test API request retries on 429 rate limit."""
-    with patch.object(
-        mock_harbor_client.client, "request", new_callable=AsyncMock
-    ) as mock_request:
-        # First call returns 429, second call succeeds
-        mock_request.side_effect = [
-            Response(
-                429,
-                request=Request("GET", "http://example.com"),
-                headers={"Retry-After": "1"},
-            ),
-            Response(
-                200,
-                request=Request("GET", "http://example.com"),
-                json={"key": "value"},
-            ),
-        ]
-
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            response = await mock_harbor_client._send_api_request(
-                "GET", "/projects"
-            )
-            assert response["key"] == "value"
-            assert mock_request.call_count == 2
+            await mock_harbor_client.send_api_request("projects")
 
 
 @pytest.mark.asyncio
 async def test_extract_items_from_response_list() -> None:
     """Test extracting items from a list response."""
     response = [{"id": 1}, {"id": 2}]
-    items = HarborClient._extract_items_from_response(response)
+    items = AbstractHarborExporter._extract_items_from_response(response)
     assert items == [{"id": 1}, {"id": 2}]
 
 
@@ -116,7 +95,7 @@ async def test_extract_items_from_response_list() -> None:
 async def test_extract_items_from_response_dict_with_items() -> None:
     """Test extracting items from a dict response with 'items' key."""
     response = {"items": [{"id": 1}, {"id": 2}], "total": 2}
-    items = HarborClient._extract_items_from_response(response)
+    items = AbstractHarborExporter._extract_items_from_response(response)
     assert items == [{"id": 1}, {"id": 2}]
 
 
@@ -124,7 +103,7 @@ async def test_extract_items_from_response_dict_with_items() -> None:
 async def test_extract_items_from_response_dict_with_data() -> None:
     """Test extracting items from a dict response with 'data' key."""
     response = {"data": [{"id": 1}, {"id": 2}]}
-    items = HarborClient._extract_items_from_response(response)
+    items = AbstractHarborExporter._extract_items_from_response(response)
     assert items == [{"id": 1}, {"id": 2}]
 
 
@@ -132,33 +111,32 @@ async def test_extract_items_from_response_dict_with_data() -> None:
 async def test_extract_items_from_response_empty() -> None:
     """Test extracting items from an empty or invalid response."""
     response: dict[str, Any] = {}
-    items = HarborClient._extract_items_from_response(response)
+    items = AbstractHarborExporter._extract_items_from_response(response)
     assert items == []
 
 
-    @pytest.mark.asyncio
-    async def test_get_paginated_resources(mock_harbor_client: HarborClient) -> None:
-        """Test paginated resource fetching."""
-        with patch.object(
-            mock_harbor_client, "_send_api_request", new_callable=AsyncMock
-        ) as mock_request:
-            # First page with full results (exactly PAGE_SIZE), second page with fewer results
-            # Create a full page of 50 items, then a partial page
-            from harbor.client import PAGE_SIZE
-            
-            first_page = [{"id": i} for i in range(1, PAGE_SIZE + 1)]  # Exactly PAGE_SIZE items
-            second_page = [{"id": PAGE_SIZE + 1}]  # Less than PAGE_SIZE, should stop pagination
-            
-            mock_request.side_effect = [
-                first_page,
-                second_page,
-            ]
+@pytest.mark.asyncio
+async def test_send_paginated_request(mock_harbor_client: HarborClient) -> None:
+    """Test paginated resource fetching."""
+    with patch.object(
+        mock_harbor_client, "_make_request", new_callable=AsyncMock
+    ) as mock_request:
+        # First page with full results (exactly PAGE_SIZE), second page with fewer results
+        PAGE_SIZE = HarborClient.PAGE_SIZE
+        
+        first_page = [{"id": i} for i in range(1, PAGE_SIZE + 1)]  # Exactly PAGE_SIZE items
+        second_page = [{"id": PAGE_SIZE + 1}]  # Less than PAGE_SIZE, should stop pagination
+        
+        mock_request.side_effect = [
+            Response(200, request=Request("GET", "http://example.com"), json=first_page),
+            Response(200, request=Request("GET", "http://example.com"), json=second_page),
+        ]
 
-            results = []
-            async for batch in mock_harbor_client.get_paginated_resources(
-                "/projects",
-            ):
-                results.extend(batch)
+        results = []
+        async for batch in mock_harbor_client.send_paginated_request(
+            "projects",
+        ):
+            results.extend(batch)
 
         assert len(results) == PAGE_SIZE + 1
         assert results[0]["id"] == 1
@@ -167,18 +145,20 @@ async def test_extract_items_from_response_empty() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_resources_empty_response(
+async def test_send_paginated_request_empty_response(
     mock_harbor_client: HarborClient,
 ) -> None:
     """Test paginated resource fetching with empty first page."""
     with patch.object(
-        mock_harbor_client, "_send_api_request", new_callable=AsyncMock
+        mock_harbor_client, "_make_request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.return_value = []
+        mock_request.return_value = Response(
+            200, request=Request("GET", "http://example.com"), json=[]
+        )
 
         results = []
-        async for batch in mock_harbor_client.get_paginated_resources(
-            "/projects"
+        async for batch in mock_harbor_client.send_paginated_request(
+            "projects"
         ):
             results.extend(batch)
 
@@ -187,175 +167,21 @@ async def test_get_paginated_resources_empty_response(
 
 
 @pytest.mark.asyncio
-async def test_get_projects(mock_harbor_client: HarborClient) -> None:
-    """Test get_projects method."""
-    projects_data: list[dict[str, Any]] = [
-        {"project_id": 1, "name": "Project 1"},
-        {"project_id": 2, "name": "Project 2"},
-    ]
-
-    # Create async generator function
-    async def mock_generator(*args: Any, **kwargs: Any) -> Any:
-        yield projects_data
-
-    # Patch the method to return the generator
-    with patch.object(
-        mock_harbor_client, "get_paginated_resources"
-    ) as mock_paginated:
-        mock_paginated.return_value = mock_generator()
-
-        projects: list[dict[str, Any]] = []
-        async for project_batch in mock_harbor_client.get_projects(
-            params={"public": "true"}
-        ):
-            projects.extend(project_batch)
-
-        assert len(projects) == 2
-        assert projects[0]["name"] == "Project 1"
-
-
-@pytest.mark.asyncio
-async def test_get_repositories(mock_harbor_client: HarborClient) -> None:
-    """Test get_repositories method."""
-    repos_data: list[dict[str, Any]] = [
-        {"id": 1, "name": "library/nginx"},
-        {"id": 2, "name": "library/redis"},
-    ]
-
-    async def mock_generator(*args: Any, **kwargs: Any) -> Any:
-        yield repos_data
-
-    with patch.object(
-        mock_harbor_client, "get_paginated_resources"
-    ) as mock_paginated:
-        mock_paginated.return_value = mock_generator()
-
-        repos: list[dict[str, Any]] = []
-        async for repo_batch in mock_harbor_client.get_repositories():
-            repos.extend(repo_batch)
-
-        assert len(repos) == 2
-        assert repos[0]["name"] == "library/nginx"
-
-
-@pytest.mark.asyncio
-async def test_get_artifacts_for_repository(mock_harbor_client: HarborClient) -> None:
-    """Test get_artifacts_for_repository method."""
-    artifacts_data: list[dict[str, Any]] = [
-        {"digest": "sha256:abc123", "tags": [{"name": "latest"}]},
-        {"digest": "sha256:def456", "tags": [{"name": "v1.0"}]},
-    ]
-
-    async def mock_generator(*args: Any, **kwargs: Any) -> Any:
-        yield artifacts_data
-
-    with patch.object(
-        mock_harbor_client, "get_paginated_resources"
-    ) as mock_paginated:
-        mock_paginated.return_value = mock_generator()
-
-        artifacts: list[dict[str, Any]] = []
-        async for artifact_batch in mock_harbor_client.get_artifacts_for_repository(
-            project_name="library", repository_name="nginx"
-        ):
-            artifacts.extend(artifact_batch)
-
-        assert len(artifacts) == 2
-        assert artifacts[0]["digest"] == "sha256:abc123"
-
-
-@pytest.mark.asyncio
-async def test_get_single_artifact_success(mock_harbor_client: HarborClient) -> None:
-    """Test get_single_artifact method with successful fetch."""
-    artifact_data: dict[str, Any] = {
-        "digest": "sha256:abc123",
-        "tags": [{"name": "latest"}],
-        "size": 12345,
-    }
-
-    with patch.object(
-        mock_harbor_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.return_value = artifact_data
-
-        result = await mock_harbor_client.get_single_artifact(
-            project_name="library",
-            repository_name="nginx",
-            reference="latest",
-        )
-
-        assert result == artifact_data
-        mock_request.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_get_single_artifact_not_found(mock_harbor_client: HarborClient) -> None:
-    """Test get_single_artifact method when artifact is not found."""
-    with patch.object(
-        mock_harbor_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        from httpx import HTTPStatusError
-
-        response = Response(
-            404,
-            request=Request(
-                "GET",
-                "https://harbor.example.com/api/v2.0/projects/library/repositories/nginx/artifacts/latest",
-            ),
-        )
-        mock_request.side_effect = HTTPStatusError(
-            "Not Found", request=response.request, response=response
-        )
-
-        result = await mock_harbor_client.get_single_artifact(
-            project_name="library",
-            repository_name="nginx",
-            reference="latest",
-        )
-
-        assert result is None
-
-
-@pytest.mark.asyncio
-async def test_get_users(mock_harbor_client: HarborClient) -> None:
-    """Test get_users method."""
-    users_data: list[dict[str, Any]] = [
-        {"user_id": 1, "username": "admin"},
-        {"user_id": 2, "username": "developer"},
-    ]
-
-    async def mock_generator(*args: Any, **kwargs: Any) -> Any:
-        yield users_data
-
-    with patch.object(
-        mock_harbor_client, "get_paginated_resources"
-    ) as mock_paginated:
-        mock_paginated.return_value = mock_generator()
-
-        users: list[dict[str, Any]] = []
-        async for user_batch in mock_harbor_client.get_users():
-            users.extend(user_batch)
-
-        assert len(users) == 2
-        assert users[0]["username"] == "admin"
-
-
-@pytest.mark.asyncio
-async def test_get_paginated_resources_with_params(
+async def test_send_paginated_request_with_params(
     mock_harbor_client: HarborClient,
 ) -> None:
     """Test paginated resources with custom parameters."""
     with patch.object(
-        mock_harbor_client, "_send_api_request", new_callable=AsyncMock
+        mock_harbor_client, "_make_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = [
-            [{"id": 1}],
-            [],  # Empty response to stop pagination
+            Response(200, request=Request("GET", "http://example.com"), json=[{"id": 1}]),
+            Response(200, request=Request("GET", "http://example.com"), json=[]),  # Empty response to stop pagination
         ]
 
         results = []
-        async for batch in mock_harbor_client.get_paginated_resources(
-            "/projects",
+        async for batch in mock_harbor_client.send_paginated_request(
+            "projects",
             params={"public": "true"},
         ):
             results.extend(batch)
@@ -366,4 +192,3 @@ async def test_get_paginated_resources_with_params(
         assert call_args[1]["params"]["page"] == 1
         # PAGE_SIZE default is 50
         assert call_args[1]["params"]["page_size"] == 50
-

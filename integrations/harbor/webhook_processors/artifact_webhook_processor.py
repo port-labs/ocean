@@ -2,8 +2,10 @@
 
 from loguru import logger
 
+from harbor.clients.client_factory import HarborClientFactory
+from harbor.core.exporters.artifact_exporter import HarborArtifactExporter
+from harbor.core.options import GetArtifactOptions
 from harbor.utils import parse_resource_url
-from initialize_client import get_harbor_client
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -25,12 +27,6 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
     - PUSH_ARTIFACT: Fetches fresh artifact data and updates Port
     - DELETE_ARTIFACT: Removes artifact from Port
     - PULL_ARTIFACT: Ignored (doesn't change artifact data)
-    
-    This processor:
-    1. Authenticates incoming webhook requests
-    2. Validates the payload structure
-    3. Fetches fresh data from Harbor API for push events
-    4. Returns appropriate results for Port to process
     """
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
@@ -57,31 +53,12 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
         return event_type in ["PUSH_ARTIFACT", "DELETE_ARTIFACT"]
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        """
-        Return the resource kinds this event affects.
-        
-        Args:
-            event: The webhook event
-        
-        Returns:
-            List of resource kind strings
-        """
+        """Return the resource kinds this event affects."""
         return ["artifacts"]
 
     async def authenticate(self, payload: EventPayload, headers: EventHeaders) -> bool:
         """
-        Authenticate the webhook request.
-        
-        Compares the authorization header with the configured webhook secret.
-        If no webhook secret is configured, authentication is skipped.
-        
-        Args:
-            payload: The webhook payload
-            headers: The webhook headers
-        
-        Returns:
-            True if authentication succeeds, False otherwise
-        """
+        Authenticate the webhook request."""
         webhook_secret = ocean.integration_config.get("webhook_secret")
         
         if not webhook_secret:
@@ -112,12 +89,6 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
         - Required fields in event_data: 'resources', 'repository'
         - Resources must be a non-empty list
         - First resource must have 'digest' and 'resource_url'
-        
-        Args:
-            payload: The webhook payload
-        
-        Returns:
-            True if payload is valid, False otherwise
         """
         # Check required top-level fields
         if not payload.get("type"):
@@ -201,7 +172,7 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
             return self._handle_delete_event(digest)
         elif event_type == "PUSH_ARTIFACT":
             return await self._handle_push_event(
-                digest, project_name, repository_name, reference
+                digest, project_name, repository_name
             )
         
         # Should not reach here due to should_process_event() filter
@@ -233,7 +204,6 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
         digest: str,
         project_name: str,
         repository_name: str,
-        reference: str,
     ) -> WebhookEventRawResults:
         """
         Handle PUSH_ARTIFACT event by fetching fresh data from Harbor API.
@@ -242,12 +212,12 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
             digest: The artifact digest
             project_name: The project name
             repository_name: The repository name
-            reference: The artifact reference (tag or digest)
         
         Returns:
             WebhookEventRawResults with the updated artifact
         """
-        client = get_harbor_client()
+        client = HarborClientFactory.get_client()
+        artifact_exporter = HarborArtifactExporter(client)
         
         logger.info(
             f"Fetching fresh artifact data for {project_name}/{repository_name} "
@@ -256,11 +226,12 @@ class ArtifactWebhookProcessor(AbstractWebhookProcessor):
         
         try:
             # Use digest as reference for most reliable fetch
-            artifact = await client.get_single_artifact(
-                project_name=project_name,
-                repository_name=repository_name,
-                reference=digest,
-            )
+            options: GetArtifactOptions = {
+                "project_name": project_name,
+                "repository_name": repository_name,
+                "reference": digest,
+            }
+            artifact = await artifact_exporter.get_resource(options)
             
             if not artifact:
                 logger.warning(
