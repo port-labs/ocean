@@ -181,7 +181,7 @@ class TestGithubAuthenticator:
         with (
             patch.object(
                 github_auth,
-                "_is_personal_org",
+                "is_personal_org",
                 AsyncMock(return_value=False),
             ) as mock_is_personal,
             patch.object(
@@ -217,7 +217,7 @@ class TestGithubAuthenticator:
         with (
             patch.object(
                 github_auth,
-                "_is_personal_org",
+                "is_personal_org",
                 AsyncMock(return_value=True),
             ) as mock_is_personal,
             patch.object(
