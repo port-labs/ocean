@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock, patch
 from webhook_processors.issue_webhook_processor import SentryIssueWebhookProcessor
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
-    WebhookEventRawResults,
 )
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
@@ -65,27 +64,6 @@ class TestSentryIssueWebhookProcessor:
         payload = {"project": {"slug": "test-project"}}
         result = await processor.validate_payload(payload)
         assert result is False
-
-    async def test_handle_event_without_group_returns_empty(self) -> None:
-        """Events without 'group' key should return empty results."""
-        event = WebhookEvent(trace_id="t5", payload={}, headers={})
-        processor = SentryIssueWebhookProcessor(event)
-
-        # Sentry integration platform webhook format (action-based)
-        # This format is not processed by the current implementation
-        payload = {
-            "action": "created",
-            "data": {
-                "issue": {"id": "12345", "title": "Test Issue", "status": "unresolved"}
-            },
-            "installation": {"uuid": "test-uuid"},
-        }
-
-        result = await processor.handle_event(payload, _resource_config())
-
-        assert isinstance(result, WebhookEventRawResults)
-        assert result.updated_raw_results == []
-        assert result.deleted_raw_results == []
 
     async def test_handle_sentry_event_success(self) -> None:
         """Test handling of Sentry service hook events with active issue."""

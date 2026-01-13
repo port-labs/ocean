@@ -28,15 +28,6 @@ class SentryIssueWebhookProcessor(_SentryBaseWebhookProcessor):
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         """Process issue webhook events."""
-        if "group" in payload:
-            return await self._handle_sentry_event(payload, resource_config)
-
-        return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
-
-    async def _handle_sentry_event(
-        self, payload: EventPayload, resource_config: ResourceConfig
-    ) -> WebhookEventRawResults:
-        """Process Sentry issue webhook events."""
         issue_id = payload["group"]["id"]
 
         logger.info(f"Processing Sentry issue webhook: issue_id={issue_id}")

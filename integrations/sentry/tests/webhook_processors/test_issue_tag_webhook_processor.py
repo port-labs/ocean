@@ -6,7 +6,6 @@ from webhook_processors.issue_tag_webhook_processor import (
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
-    WebhookEventRawResults,
 )
 from port_ocean.core.handlers.port_app_config.models import (
     PortResourceConfig,
@@ -49,23 +48,6 @@ class TestSentryIssueTagWebhookProcessor:
 
         kinds = await processor.get_matching_kinds(event)
         assert kinds == [ObjectKind.ISSUE_TAG]
-
-    async def test_handle_event_without_group_returns_empty(self) -> None:
-        """Events without 'group' key should return empty results."""
-        event = WebhookEvent(trace_id="t3", payload={}, headers={})
-        processor = SentryIssueTagWebhookProcessor(event)
-
-        payload = {
-            "action": "created",
-            "data": {"issue": {"id": "12345"}},
-            "installation": {"uuid": "test-uuid"},
-        }
-
-        result = await processor.handle_event(payload, _resource_config())
-
-        assert isinstance(result, WebhookEventRawResults)
-        assert result.updated_raw_results == []
-        assert result.deleted_raw_results == []
 
     async def test_handle_sentry_event_success(self) -> None:
         """Test handling of Sentry service hook events with issue tags."""
