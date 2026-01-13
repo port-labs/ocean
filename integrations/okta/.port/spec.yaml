@@ -34,7 +34,7 @@ installationDocs:
       enabled: false
     - name: Saas
       enabled: true
-      docs: build-your-software-catalog/sync-data-to-catalog/identity-providers/okta?installation-methods=real-time-self-hosted
+      docs: build-your-software-catalog/sync-data-to-catalog/identity-providers/okta?installation-methods=hosted-by-port
   githubWorkflow:
     enabled: true
     docs: build-your-software-catalog/sync-data-to-catalog/identity-providers/okta?installation-methods=one-time-ci&cicd-method=github
