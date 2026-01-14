@@ -20,6 +20,7 @@ from port_ocean.utils.async_iterators import (
 )
 
 from http_server.handlers import get_auth_handler, get_pagination_handler
+from http_server.overrides import CustomAuthRequestConfig
 
 
 class HttpServerClient:
@@ -34,6 +35,7 @@ class HttpServerClient:
         verify_ssl: bool = True,
         max_concurrent_requests: int = 10,
         custom_headers: Optional[Dict[str, str]] = None,
+        custom_auth_request: Optional[CustomAuthRequestConfig] = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.auth_type = auth_type
@@ -56,7 +58,10 @@ class HttpServerClient:
 
         # Configure authentication using handler pattern
         self.auth_handler = get_auth_handler(
-            self.auth_type, self.client, self.auth_config
+            self.auth_type,
+            self.client,
+            self.auth_config,
+            custom_auth_request=custom_auth_request,
         )
         self.auth_handler.setup()
 
@@ -140,32 +145,72 @@ class HttpServerClient:
         params: Dict[str, Any],
         headers: Dict[str, str],
     ) -> httpx.Response:
-        """Make HTTP request using Ocean's built-in client with retry and rate limiting"""
+        """Make HTTP request using Ocean's built-in client with retry and rate limiting.
+        Automatically re-authenticates on 401 errors for custom auth."""
         merged_headers = {
             "User-Agent": "Port-Ocean-HTTP-Integration/1.0",
             **self.custom_headers,
             **headers,
         }
 
-        try:
-            response = await self.client.request(
-                method=method,
-                url=url,
-                params=params,
-                headers=merged_headers,
-            )
-            response.raise_for_status()
-            return response
+        # Apply custom auth token if available
+        if self.auth_type == "custom" and hasattr(
+            self.auth_handler, "apply_auth_to_request"
+        ):
+            merged_headers = self.auth_handler.apply_auth_to_request(merged_headers)
 
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"HTTP error {e.response.status_code} for {method} {url}: {e.response.text}"
-            )
-            raise
+        max_retries = 1  # Only retry once on 401
+        retry_count = 0
 
-        except httpx.RequestError as e:
-            logger.error(f"Request error for {method} {url}: {str(e)}")
-            raise
+        while retry_count <= max_retries:
+            try:
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    headers=merged_headers,
+                )
+
+                # Check for 401 BEFORE raise_for_status() to intercept before RetryTransport retries
+                if (
+                    response.status_code == 401
+                    and retry_count < max_retries
+                    and self.auth_type == "custom"
+                    and hasattr(self.auth_handler, "reauthenticate")
+                ):
+                    logger.info(
+                        f"Received 401 Unauthorized for {method} {url}, attempting re-authentication"
+                    )
+                    try:
+                        await self.auth_handler.reauthenticate()
+                        # Re-apply auth token after re-authentication
+                        if hasattr(self.auth_handler, "apply_auth_to_request"):
+                            merged_headers = self.auth_handler.apply_auth_to_request(
+                                merged_headers
+                            )
+                        retry_count += 1
+                        continue  # Retry the request with new token
+                    except Exception as auth_error:
+                        logger.error(f"Failed to re-authenticate: {str(auth_error)}")
+                        response.raise_for_status()  # Raise the original 401 error
+                        return response  # This won't be reached, but satisfies type checker
+
+                # For all other cases, use normal error handling
+                response.raise_for_status()
+                return response
+
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"HTTP error {e.response.status_code} for {method} {url}: {e.response.text}"
+                )
+                raise
+
+            except httpx.RequestError as e:
+                logger.error(f"Request error for {method} {url}: {str(e)}")
+                raise
+
+        # This should never be reached, but satisfies type checker
+        raise RuntimeError("Unexpected exit from retry loop")
 
     def _extract_items_from_response(self, data: Any) -> List[Dict[str, Any]]:
         """Extract items from API response for processing"""

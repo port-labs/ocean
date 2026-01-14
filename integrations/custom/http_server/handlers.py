@@ -11,6 +11,7 @@ from typing import Dict, Any, List, Callable, Awaitable, Optional
 from collections.abc import AsyncGenerator as AsyncGenType
 
 from http_server.overrides import CustomAuthRequestConfig
+from loguru import logger
 
 
 # ============================================================================
@@ -80,15 +81,26 @@ class CustomAuth(AuthHandler):
         self.token: Optional[str] = None
         self._lock = asyncio.Lock()  # Prevent concurrent re-auth
         self.base_url: str = config.get("base_url", "")
+        self.auth_response: Optional[Dict[str, Any]] = None
+        self.verify_ssl: bool = config.get("verify_ssl", True)
 
     def setup(self) -> None:
-        """Setup authentication - initial auth will happen on first request or 401"""
-        # For custom auth, we'll authenticate lazily on first request or when we get a 401
-        # This is because setup() is synchronous but auth requests are async
-        pass
+        """Setup authentication - performs blocking authentication"""
+        if not self.custom_auth_request:
+            logger.debug(
+                "CustomAuth: No custom_auth_request configured, skipping setup"
+            )
+            return
+        logger.info("CustomAuth: Starting initial authentication during setup")
+        try:
+            self.authenticate()
+            logger.info("CustomAuth: Initial authentication completed successfully")
+        except Exception as e:
+            logger.error(f"CustomAuth: Failed to authenticate during setup: {str(e)}")
+            raise
 
-    async def authenticate(self) -> None:
-        """Make authentication request and store token"""
+    def authenticate(self) -> None:
+        """Make authentication request synchronously and store token (blocking)"""
         if not self.custom_auth_request:
             raise ValueError("customAuthRequest configuration is required")
 
@@ -97,11 +109,15 @@ class CustomAuth(AuthHandler):
         if endpoint.startswith(("http://", "https://")):
             # Full URL provided
             auth_url = endpoint
+            logger.debug(f"CustomAuth: Using full URL for authentication: {auth_url}")
         else:
             # Relative path - use base_url
             base_url = self.base_url.rstrip("/")
             endpoint_path = endpoint.lstrip("/")
             auth_url = f"{base_url}/{endpoint_path}"
+            logger.debug(
+                f"CustomAuth: Built auth URL from base_url and endpoint: {auth_url}"
+            )
 
         # Prepare headers
         headers = (
@@ -114,42 +130,100 @@ class CustomAuth(AuthHandler):
         if "Content-Type" not in headers:
             if self.custom_auth_request.bodyForm:
                 headers["Content-Type"] = "application/x-www-form-urlencoded"
+                logger.debug(
+                    "CustomAuth: Set Content-Type to application/x-www-form-urlencoded"
+                )
             elif self.custom_auth_request.body:
                 headers["Content-Type"] = "application/json"
+                logger.debug("CustomAuth: Set Content-Type to application/json")
 
         # Prepare request data
         json_data = None
         content = None
         if self.custom_auth_request.body:
             json_data = self.custom_auth_request.body
+            logger.debug("CustomAuth: Using JSON body for authentication request")
         elif self.custom_auth_request.bodyForm:
             content = self.custom_auth_request.bodyForm
+            logger.debug(
+                "CustomAuth: Using form-encoded body for authentication request"
+            )
 
         # Prepare query parameters
         params = self.custom_auth_request.queryParams or {}
+        if params:
+            logger.debug(f"CustomAuth: Using query parameters: {list(params.keys())}")
 
-        # Make the authentication request
+        # Make the authentication request using sync client (blocking)
         method = self.custom_auth_request.method
-        response = await self.client.request(
-            method=method,
-            url=auth_url,
-            headers=headers,
-            params=params,
-            json=json_data,
-            content=content,
+        logger.info(
+            f"CustomAuth: Making {method} request to {auth_url} for authentication"
         )
-        response.raise_for_status()
+        with httpx.Client(verify=self.verify_ssl, timeout=30.0) as sync_client:
+            response = sync_client.request(
+                method=method,
+                url=auth_url,
+                headers=headers,
+                params=params,
+                json=json_data,
+                content=content,
+            )
+            logger.debug(
+                f"CustomAuth: Authentication response status: {response.status_code}"
+            )
+            response.raise_for_status()
 
-        # Store response for now - token extraction will be added in next step
-        # For now, we'll store the raw response
-        self.auth_response = response.json()
+            # Store response
+            self.auth_response = response.json()
+            logger.debug("CustomAuth: Stored authentication response")
+
+            # Temporary: Extract token from common response paths for testing
+            if isinstance(self.auth_response, dict):
+                self.token = (
+                    self.auth_response.get("access_token")
+                    or self.auth_response.get("token")
+                    or self.auth_response.get("accessToken")
+                    or self.auth_response.get("auth_token")
+                )
+                if self.token:
+                    logger.info(
+                        "CustomAuth: Successfully extracted token from authentication response"
+                    )
+                else:
+                    logger.warning(
+                        "CustomAuth: No token found in authentication response. "
+                        "Checked paths: access_token, token, accessToken, auth_token"
+                    )
+            else:
+                logger.warning(
+                    f"CustomAuth: Authentication response is not a dict (type: {type(self.auth_response).__name__})"
+                )
 
     async def reauthenticate(self) -> None:
-        """Re-authenticate when token expires (401)"""
+        """Re-authenticate when token expires (401) - async wrapper for sync authenticate"""
         async with self._lock:
+            logger.info("CustomAuth: Starting re-authentication due to 401 error")
             # Clear existing token before re-authenticating
             self.token = None
-            await self.authenticate()
+            logger.debug("CustomAuth: Cleared existing token")
+            # Run sync authenticate in thread pool to avoid blocking
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, self.authenticate)
+            logger.info("CustomAuth: Re-authentication completed successfully")
+
+    def apply_auth_to_request(self, headers: Dict[str, str]) -> Dict[str, str]:
+        """Apply authentication token to request headers.
+
+        This method should be called before making requests to inject the token.
+        For testing purposes - will be properly integrated in next stage.
+        """
+        if self.token:
+            # For now, assume Bearer token - will be configurable in next stage
+            headers["Authorization"] = f"Bearer {self.token}"
+            logger.debug("CustomAuth: Applied Bearer token to request headers")
+        else:
+            logger.debug("CustomAuth: No token available to apply to request headers")
+        return headers
 
 
 # Registry of available auth handlers
