@@ -1,200 +1,216 @@
-from typing import Any, AsyncGenerator
+"""Harbor integration main module."""
+
+import asyncio
+from typing import cast
+
 from loguru import logger
-from harbor.webhooks.processor import ArtifactWebhookProcessor, RepositoryWebhookProcessor
-
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from harbor.factory import HarborClientFactory
-from harbor.utils.constants import HarborKind
-from harbor.webhooks.setup import setup_webhooks_for_all_projects
+from harbor.clients.client_factory import HarborClientFactory
+from harbor.core.exporters.artifact_exporter import HarborArtifactExporter
+from harbor.core.exporters.project_exporter import HarborProjectExporter
+from harbor.core.exporters.repository_exporter import HarborRepositoryExporter
+from harbor.core.exporters.user_exporter import HarborUserExporter
+from harbor.core.options import (
+    ListArtifactOptions,
+    ListProjectOptions,
+    ListRepositoryOptions,
+    ListUserOptions,
+)
+from harbor.helpers.utils import ObjectKind
+from harbor.webhooks.events import WEBHOOK_EVENTS_TO_LISTEN
+from harbor.webhooks.processors.artifact_webhook_processor import (
+    ArtifactWebhookProcessor,
+)
+from harbor.webhooks.processors.project_webhook_processor import (
+    ProjectWebhookProcessor,
+)
+from harbor.webhooks.processors.repository_webhook_processor import (
+    RepositoryWebhookProcessor,
+)
+from harbor.webhooks.webhook_client import HarborWebhookClient
+from integration import (
+    HarborArtifactConfig,
+    HarborProjectConfig,
+    HarborRepositoryConfig,
+    HarborUserConfig,
+)
 
-async def _fetch_repositories_for_project(
-    client,
-    project: dict[str, Any]
-) -> AsyncGenerator[list[dict[str, Any]], None]:
-    """
-    Fetch repositories for a single project
+
+@ocean.on_start()
+async def on_start() -> None:
+    """Initialize the Harbor integration."""
+    logger.info("Starting Harbor Ocean integration")
+
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because event listener is ONCE")
+        return
+
+    base_url = ocean.app.base_url
+    if not base_url:
+        logger.warning("No base_url configured, skipping webhook setup")
+        return
+
+    webhook_secret = ocean.integration_config.get("webhook_secret")
+    if not webhook_secret:
+        logger.warning("No webhook secret configured, skipping webhook setup")
+        return
+
+    client = HarborClientFactory.get_client()
+    project_exporter = HarborProjectExporter(client)
+
+    webhook_client = HarborWebhookClient(client, webhook_secret)
+
+    logger.info("Creating Harbor webhooks for all projects")
+
+    project_options: ListProjectOptions = {}
+    webhook_url = f"{base_url}/webhook"
+
+    async for projects in project_exporter.get_paginated_resources(project_options):
+        tasks = [
+            webhook_client.upsert_webhook(
+                project["name"],
+                webhook_url,
+                WEBHOOK_EVENTS_TO_LISTEN,
+            )
+            for project in projects
+        ]
+
+        await asyncio.gather(*tasks)
+
+    logger.info("Successfully set up Harbor webhooks for all projects")
+
+
+@ocean.on_resync(ObjectKind.PROJECT)
+async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all Harbor projects.
 
     Args:
-        client: Harbor API client
-        project: Project dictionary
+        kind: Resource kind being resynced
+
+    Yields:
+        Batches of projects
+    """
+    logger.info(f"Starting resync for kind: {kind}")
+
+    client = HarborClientFactory.get_client()
+    exporter = HarborProjectExporter(client)
+    config = cast(HarborProjectConfig, event.resource_config)
+
+    options: ListProjectOptions = {
+        "q": config.selector.q,
+        "sort": config.selector.sort,
+    }
+
+    async for projects in exporter.get_paginated_resources(options):
+        yield projects
+
+
+@ocean.on_resync(ObjectKind.USER)
+async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all Harbor users.
+
+    Args:
+        kind: Resource kind being resynced
+
+    Yields:
+        Batches of users
+    """
+    logger.info(f"Starting resync for kind: {kind}")
+
+    client = HarborClientFactory.get_client()
+    exporter = HarborUserExporter(client)
+    config = cast(HarborUserConfig, event.resource_config)
+
+    options: ListUserOptions = {
+        "q": config.selector.q,
+        "sort": config.selector.sort,
+    }
+
+    async for users in exporter.get_paginated_resources(options):
+        yield users
+
+
+@ocean.on_resync(ObjectKind.REPOSITORY)
+async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all Harbor repositories.
+
+    Args:
+        kind: Resource kind being resynced
 
     Yields:
         Batches of repositories
     """
-    project_name = project["name"]
-    try:
-        async for repo_batch in client.get_paginated_resources(
-            HarborKind.REPOSITORY,
-            project_name=project_name
-        ):
-            if repo_batch:
-                logger.info(
-                    f"habor_ocean::main::Yielding {len(repo_batch)} repositories from project '{project_name}'"
-                )
-                yield repo_batch
-    except Exception as e:
-        logger.error(f"harbor_ocean::main::Error fetching repositories for project '{project_name}': {e}")
+    logger.info(f"Starting resync for kind: {kind}")
+
+    client = HarborClientFactory.get_client()
+    project_exporter = HarborProjectExporter(client)
+    repository_exporter = HarborRepositoryExporter(client)
+    config = cast(HarborRepositoryConfig, event.resource_config)
+
+    project_options: ListProjectOptions = {}
+
+    async for projects in project_exporter.get_paginated_resources(project_options):
+        for project in projects:
+            repository_options: ListRepositoryOptions = {
+                "project_name": project["name"],
+                "q": config.selector.q,
+                "sort": config.selector.sort,
+            }
+
+            async for repositories in repository_exporter.get_paginated_resources(repository_options):
+                yield repositories
 
 
-async def _fetch_artifacts_for_project(
-    client,
-    project: dict[str, Any]
-) -> AsyncGenerator[list[dict[str, Any]], None]:
-    """
-    Fetch artifacts for all repositories in a project.
+@ocean.on_resync(ObjectKind.ARTIFACT)
+async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync all Harbor artifacts.
 
     Args:
-        client: Harbor API client
-        project: Project metadata dictionary
+        kind: Resource kind being resynced
 
     Yields:
         Batches of artifacts
     """
-    project_name = project["name"]
+    logger.info(f"Starting resync for kind: {kind}")
 
-    try:
-        async for repo_batch in client.get_paginated_resources(
-            HarborKind.REPOSITORY,
-            project_name=project_name
-        ):
-            for repo in repo_batch:
-                repo_full_name = repo["name"]
+    client = HarborClientFactory.get_client()
+    project_exporter = HarborProjectExporter(client)
+    repository_exporter = HarborRepositoryExporter(client)
+    artifact_exporter = HarborArtifactExporter(client)
+    config = cast(HarborArtifactConfig, event.resource_config)
 
-                try:
-                    async for artifact_batch in client.get_paginated_resources(
-                        HarborKind.ARTIFACT,
-                        project_name=project_name,
-                        repository_name=repo_full_name,
-                    ):
-                        if artifact_batch:
-                            logger.info(
-                                f"harbor_ocean::main::Yielding {len(artifact_batch)} artifacts from '{repo_full_name}'"
-                            )
-                            yield artifact_batch
-                except Exception as e:
-                    logger.error(f"harbor_ocean::main::Error fetching artifacts for '{repo_full_name}': {e}")
+    project_options: ListProjectOptions = {}
 
-    except Exception as e:
-        logger.error(f"harbor_ocean::main::Error processing project '{project_name}' for artifacts: {e}")
+    async for projects in project_exporter.get_paginated_resources(project_options):
+        for project in projects:
+            repository_options: ListRepositoryOptions = {
+                "project_name": project["name"],
+            }
+
+            async for repositories in repository_exporter.get_paginated_resources(repository_options):
+                for repository in repositories:
+                    artifact_options: ListArtifactOptions = {
+                        "project_name": project["name"],
+                        "repository_name": repository["name"],
+                        "q": config.selector.q,
+                        "sort": config.selector.sort,
+                        "with_tag": config.selector.with_tag,
+                        "with_label": config.selector.with_label,
+                        "with_scan_overview": config.selector.with_scan_overview,
+                        "with_sbom_overview": config.selector.with_sbom_overview,
+                        "with_signature": config.selector.with_signature,
+                        "with_immutable_status": config.selector.with_immutable_status,
+                        "with_accessory": config.selector.with_accessory,
+                    }
+
+                    async for artifacts in artifact_exporter.get_paginated_resources(artifact_options):
+                        yield artifacts
 
 
-@ocean.on_resync(HarborKind.PROJECT)
-async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Sync Harbor projects
-    """
-    logger.info(f"harbor_ocean::main::Starting resync for Harbor {kind}")
-
-    try:
-        client = HarborClientFactory.get_client()
-        async for batch in client.get_paginated_resources(HarborKind.PROJECT):
-            logger.info(f"harbor_ocean::main::Yielding {len(batch)} {kind}(s)")
-            yield batch
-    except Exception as e:
-        logger.error(f"harbor_ocean::main::Error syncing {kind}: {e}", exc_info=True)
-        raise
-
-@ocean.on_resync(HarborKind.USER)
-async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Sync Harbor users
-    """
-    logger.info(f"harbor_ocean::main::Starting resync for Harbor {kind}")
-
-    try:
-        client = HarborClientFactory.get_client()
-        async for batch in client.get_paginated_resources(HarborKind.USER):
-            logger.info(f"harbor_ocean::main::Yielding {len(batch)} {kind}(s)")
-            yield batch
-    except Exception as e:
-        logger.error(f"harbor_ocean::main::Error syncing {kind}: {e}", exc_info=True)
-        raise
-
-@ocean.on_resync(HarborKind.REPOSITORY)
-async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Sync Harbor repositories
-
-    Repositories are fetched per project
-
-    Args:
-        kind (str): Resource kind being synced (HarborKind.REPOSITORY)
-
-    Yields:
-        ASYNC_GENERATOR_RESYNC_TYPE: Batches of repositories
-    """
-    logger.info(f"harbor_ocean::main::Starting resync for Harbor {kind}")
-
-    try:
-        client = HarborClientFactory.get_client()
-
-        tasks = []
-        async for project_batch in client.get_paginated_resources(HarborKind.PROJECT):
-            for project in project_batch:
-                tasks.append(_fetch_repositories_for_project(client, project))
-
-        logger.info(f"harbor_ocean::main::Fetching repositories across {len(tasks)} projects")
-
-        async for batch in stream_async_iterators_tasks(*tasks):
-            yield batch
-    except Exception as e:
-        logger.error(f"harbor_ocean::main::Error syncing {kind}: {e}", exc_info=True)
-        raise
-
-@ocean.on_resync(HarborKind.ARTIFACT)
-async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Sync Harbor artifacts
-
-    Artifacts are fetched per repository, which requires fetching projects first
-
-    We processes projects concurrently to speed up the sync.
-
-    Args:
-        kind (str): The kind of resource to sync (HarborKind.ARTIFACT)
-
-    Returns:
-        ASYNC_GENERATOR_RESYNC_TYPE: An async generator yielding batches of artifacts
-    """
-    logger.info(f"harbor_ocean::main::Starting resync for Harbor {kind}")
-
-    try:
-        client = HarborClientFactory.get_client()
-
-        tasks = []
-        async for project_batch in client.get_paginated_resources(HarborKind.PROJECT):
-            for project in project_batch:
-                tasks.append(_fetch_artifacts_for_project(client, project))
-
-        logger.info(f"harbor_ocean::main::Fetching artifacts across {len(tasks)} projects")
-
-        async for batch in stream_async_iterators_tasks(*tasks):
-            yield batch
-
-    except Exception as e:
-        logger.error(f"harbor_ocean::main::Error syncing {kind}: {e}", exc_info=True)
-        raise
-
-@ocean.on_start()
-async def on_start() -> None:
-    logger.info("harbor_ocean::main::Starting goharbor_ocean integration")
-
-    try:
-        client = HarborClientFactory.get_client()
-        logger.info('harbor_ocean::main::Harbor client initiated successfully.')
-    except Exception as e:
-        logger.error(f"harbor_ocean::main::Can't access integration config: {e}")
-        raise
-
-    webhook_url = ocean.integration_config.get('webhook_url')
-    if webhook_url:
-        logger.info(f"harbor_ocean::main::Webhook endpoint URL configured: {webhook_url}")
-        await setup_webhooks_for_all_projects(client, webhook_url)
-    else:
-        logger.warning("harbor_ocean::main::No webhook endpoint URL configured; skipping webhook setup.")
-
-ocean.add_webhook_processor("/webhook", ArtifactWebhookProcessor)
-ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
+# sets-up this integration webhooks to a default `webhooks` URL path
+ocean.add_webhook_processor('/webhook', ArtifactWebhookProcessor)
+ocean.add_webhook_processor('/webhook', ProjectWebhookProcessor)
+ocean.add_webhook_processor('/webhook', RepositoryWebhookProcessor)
