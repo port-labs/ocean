@@ -42,7 +42,7 @@ def mock_ocean_no_secret() -> Generator[MagicMock, None, None]:
 @pytest.mark.asyncio
 class TestSentryBaseWebhookProcessor:
     async def test_should_process_event_with_original_request(self) -> None:
-        """When an original request is present, accept the event."""
+        """When an original request is present without a signature, reject the event."""
         mock_request = Mock()
         mock_request.headers = {}
         mock_request.body = AsyncMock(return_value=b"{}")
@@ -53,29 +53,32 @@ class TestSentryBaseWebhookProcessor:
 
         proc = DummyProcessor(event)
         result = await proc.should_process_event(event)
-        assert result is True
+        assert result is False
 
     async def test_should_process_event_without_original_request(self) -> None:
         """Reject events without original_request."""
-        event = WebhookEvent(trace_id="t5", payload={}, headers={})
+        event = WebhookEvent(
+            trace_id="t5",
+            payload={},
+            headers={"sentry-hook-signature": "test-signature"},
+        )
 
         proc = DummyProcessor(event)
         result = await proc.should_process_event(event)
         assert result is False
 
-    async def test_validate_payload_sentry_service_hook(self) -> None:
-        """Accept valid Sentry service hook payloads (containing group and project)."""
-        proc = DummyProcessor(WebhookEvent(trace_id="t6", payload={}, headers={}))
-        valid_payload = {
-            "group": {"id": "123"},
-            "project": {"slug": "test-project"},
-        }
-        assert await proc.validate_payload(valid_payload) is True
-
-    async def test_validate_payload_custom_integration_valid(self) -> None:
+    async def test_validate_payload_valid(self) -> None:
         """Accept valid custom integration payloads."""
-        proc = DummyProcessor(WebhookEvent(trace_id="t7", payload={}, headers={}))
-        # Implementation calls _validate_integration_payload which we mocked to return True
+        proc = DummyProcessor(
+            WebhookEvent(
+                trace_id="t7",
+                payload={},
+                headers={
+                    "sentry-hook-signature": "test-signature",
+                    "sentry-hook-resource": "issue",
+                },
+            )
+        )
         valid_payload = {
             "action": "created",
             "data": {"issue": {}},

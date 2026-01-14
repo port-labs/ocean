@@ -20,34 +20,19 @@ class SentryIssueTagWebhookProcessor(_SentryBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.ISSUE_TAG]
 
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        """Validate the integration webhook payload."""
-        return payload.get("group", {}).get("id") is not None
-
-    async def _should_process_event(self, event: WebhookEvent) -> bool:
-        """Check if this is an issue webhook event."""
-        return True
-
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
         """Process issue webhook events."""
-        issue_id = payload["group"]["id"]
-
-        logger.info(f"Processing Sentry issue tag webhook: issue_id={issue_id}")
+        issue = payload["data"]["issue"]
+        logger.info(f"Processing Sentry issue tag webhook: issue_id={issue["id"]}")
 
         updated_results: list[dict[str, Any]] = []
-        deleted_results: list[dict[str, Any]] = []
-
+        selector = cast(SentryResourceConfig, resource_config).selector
         client = init_webhook_client()
-        issue = await client.get_issue(issue_id)
-        if issue:
-            selector = cast(SentryResourceConfig, resource_config).selector
-            issue_tags = await client.get_issues_tags_from_issues(selector.tag, [issue])
-            updated_results.extend(issue_tags)
-        else:
-            deleted_results.append({"id": issue_id})
+        issue_tags = await client.get_issues_tags_from_issues(selector.tag, [issue])
+        updated_results.extend(issue_tags)
 
         return WebhookEventRawResults(
-            updated_raw_results=updated_results, deleted_raw_results=deleted_results
+            updated_raw_results=updated_results, deleted_raw_results=[]
         )

@@ -35,15 +35,29 @@ def _resource_config() -> SentryResourceConfig:
 @pytest.mark.asyncio
 class TestSentryIssueTagWebhookProcessor:
     async def test_should_process_event(self) -> None:
-        """Should always return True for issue tag events as per implementation."""
-        event = WebhookEvent(trace_id="t1", payload={}, headers={})
+        """Should return True for issue events as per implementation."""
+        event = WebhookEvent(
+            trace_id="t1",
+            payload={"action": "created", "data": {"issue": {"id": "12345"}}},
+            headers={
+                "sentry-hook-resource": "issue",
+                "sentry-hook-signature": "test-signature",
+            },
+        )
         processor = SentryIssueTagWebhookProcessor(event)
-        result = await processor._should_process_event(event)
+        result = await processor.should_process_event(event)
         assert result is True
 
     async def test_get_matching_kinds(self) -> None:
         """Should return ['issue_tag'] for matching kinds."""
-        event = WebhookEvent(trace_id="t2", payload={}, headers={})
+        event = WebhookEvent(
+            trace_id="t2",
+            payload={},
+            headers={
+                "sentry-hook-resource": "issue",
+                "sentry-hook-signature": "test-signature",
+            },
+        )
         processor = SentryIssueTagWebhookProcessor(event)
 
         kinds = await processor.get_matching_kinds(event)
@@ -51,10 +65,23 @@ class TestSentryIssueTagWebhookProcessor:
 
     async def test_handle_sentry_event_success(self) -> None:
         """Test handling of Sentry service hook events with issue tags."""
-        event = WebhookEvent(trace_id="t4", payload={}, headers={})
+        event = WebhookEvent(
+            trace_id="t4",
+            payload={},
+            headers={
+                "sentry-hook-resource": "issue",
+                "sentry-hook-signature": "test-signature",
+            },
+        )
         processor = SentryIssueTagWebhookProcessor(event)
 
-        payload = {"group": {"id": "12345"}, "project": {"slug": "test-project"}}
+        payload = {
+            "action": "created",
+            "data": {
+                "issue": {"id": "12345", "title": "Test Issue"},
+                "project": {"slug": "test-project"},
+            },
+        }
 
         mock_client = AsyncMock()
         mock_issue = {"id": "12345", "title": "Test Issue"}
@@ -62,7 +89,6 @@ class TestSentryIssueTagWebhookProcessor:
             {"key": "environment", "value": "production"},
             {"key": "level", "value": "error"},
         ]
-        mock_client.get_issue.return_value = mock_issue
         mock_client.get_issues_tags_from_issues.return_value = mock_tags
 
         with patch(
@@ -75,42 +101,32 @@ class TestSentryIssueTagWebhookProcessor:
         assert result.updated_raw_results[0]["key"] == "environment"
         assert result.updated_raw_results[1]["key"] == "level"
         assert result.deleted_raw_results == []
-        mock_client.get_issue.assert_called_once_with("12345")
         mock_client.get_issues_tags_from_issues.assert_called_once_with(
             "environment", [mock_issue]
         )
 
-    async def test_handle_sentry_event_issue_not_found(self) -> None:
-        """Test handling when issue is not found - should return empty results."""
-        event = WebhookEvent(trace_id="t5", payload={}, headers={})
-        processor = SentryIssueTagWebhookProcessor(event)
-
-        payload = {"group": {"id": "12345"}, "project": {"slug": "test-project"}}
-
-        mock_client = AsyncMock()
-        mock_client.get_issue.return_value = None
-
-        with patch(
-            "webhook_processors.issue_tag_webhook_processor.init_webhook_client",
-            return_value=mock_client,
-        ):
-            result = await processor.handle_event(payload, _resource_config())
-
-        assert result.updated_raw_results == []
-        assert result.deleted_raw_results == [{"id": "12345"}]
-        mock_client.get_issue.assert_called_once_with("12345")
-        mock_client.get_issues_tags_from_issues.assert_not_called()
-
     async def test_handle_sentry_event_no_tags(self) -> None:
         """Test handling when issue exists but has no tags."""
-        event = WebhookEvent(trace_id="t6", payload={}, headers={})
+        event = WebhookEvent(
+            trace_id="t6",
+            payload={},
+            headers={
+                "sentry-hook-resource": "issue",
+                "sentry-hook-signature": "test-signature",
+            },
+        )
         processor = SentryIssueTagWebhookProcessor(event)
 
-        payload = {"group": {"id": "12345"}, "project": {"slug": "test-project"}}
+        payload = {
+            "action": "created",
+            "data": {
+                "issue": {"id": "12345", "title": "Test Issue"},
+                "project": {"slug": "test-project"},
+            },
+        }
 
         mock_client = AsyncMock()
         mock_issue = {"id": "12345", "title": "Test Issue"}
-        mock_client.get_issue.return_value = mock_issue
         mock_client.get_issues_tags_from_issues.return_value = []
 
         with patch(
@@ -121,27 +137,28 @@ class TestSentryIssueTagWebhookProcessor:
 
         assert result.updated_raw_results == []
         assert result.deleted_raw_results == []
-        mock_client.get_issue.assert_called_once_with("12345")
         mock_client.get_issues_tags_from_issues.assert_called_once_with(
             "environment", [mock_issue]
         )
 
     async def test_handle_sentry_event_multiple_tags(self) -> None:
         """Test handling when issue has multiple tags."""
-        event = WebhookEvent(trace_id="t7", payload={}, headers={})
+        event = WebhookEvent(
+            trace_id="t7", payload={}, headers={"sentry-hook-resource": "issue"}
+        )
         processor = SentryIssueTagWebhookProcessor(event)
 
-        payload = {"group": {"id": "67890"}, "project": {"slug": "another-project"}}
+        payload = {
+            "data": {"issue": {"id": "67890"}, "project": {"slug": "another-project"}}
+        }
 
         mock_client = AsyncMock()
-        mock_issue = {"id": "67890", "title": "Another Issue"}
         mock_tags = [
             {"key": "browser", "value": "Chrome"},
             {"key": "os", "value": "Windows"},
             {"key": "device", "value": "Desktop"},
             {"key": "release", "value": "v1.2.3"},
         ]
-        mock_client.get_issue.return_value = mock_issue
         mock_client.get_issues_tags_from_issues.return_value = mock_tags
 
         with patch(
