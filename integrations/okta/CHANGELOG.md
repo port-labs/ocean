@@ -12,8 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Updated Okta integration metadata and release artifacts for version 0.1.42
-
+- Fixed non-existing docs reference in installation docs
 
 ## 0.1.41 (2026-01-11)
 
