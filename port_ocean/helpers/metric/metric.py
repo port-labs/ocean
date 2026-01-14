@@ -51,6 +51,22 @@ class MetricType:
     SUCCESS_NAME = "success"
     RATE_LIMIT_WAIT_NAME = "rate_limit_wait_seconds"
 
+    # Resource usage metrics (CPU, memory, latency)
+    CPU_MAX_NAME = "cpu_max_percent"
+    CPU_MEDIAN_NAME = "cpu_median_percent"
+    CPU_AVG_NAME = "cpu_avg_percent"
+    MEMORY_MAX_NAME = "memory_max_bytes"
+    MEMORY_MEDIAN_NAME = "memory_median_bytes"
+    MEMORY_AVG_NAME = "memory_avg_bytes"
+    LATENCY_MAX_NAME = "event_loop_latency_max_ms"
+    LATENCY_MEDIAN_NAME = "event_loop_latency_median_ms"
+    LATENCY_AVG_NAME = "event_loop_latency_avg_ms"
+
+    # HTTP request size metrics
+    REQUEST_SIZE_TOTAL_NAME = "request_size_total_bytes"
+    REQUEST_SIZE_AVG_NAME = "request_size_avg_bytes"
+    REQUEST_SIZE_MEDIAN_NAME = "request_size_median_bytes"
+
 
 class SyncState:
     SYNCING = "syncing"
@@ -87,6 +103,70 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
         MetricType.RATE_LIMIT_WAIT_NAME,
         "rate_limit_wait description",
         ["kind", "phase", "endpoint"],
+    ),
+    # CPU metrics
+    MetricType.CPU_MAX_NAME: (
+        MetricType.CPU_MAX_NAME,
+        "Maximum CPU usage percentage during kind processing",
+        ["kind"],
+    ),
+    MetricType.CPU_MEDIAN_NAME: (
+        MetricType.CPU_MEDIAN_NAME,
+        "Median CPU usage percentage during kind processing",
+        ["kind"],
+    ),
+    MetricType.CPU_AVG_NAME: (
+        MetricType.CPU_AVG_NAME,
+        "Average CPU usage percentage during kind processing",
+        ["kind"],
+    ),
+    # Memory metrics
+    MetricType.MEMORY_MAX_NAME: (
+        MetricType.MEMORY_MAX_NAME,
+        "Maximum memory usage in bytes during kind processing",
+        ["kind"],
+    ),
+    MetricType.MEMORY_MEDIAN_NAME: (
+        MetricType.MEMORY_MEDIAN_NAME,
+        "Median memory usage in bytes during kind processing",
+        ["kind"],
+    ),
+    MetricType.MEMORY_AVG_NAME: (
+        MetricType.MEMORY_AVG_NAME,
+        "Average memory usage in bytes during kind processing",
+        ["kind"],
+    ),
+    # Event loop latency metrics
+    MetricType.LATENCY_MAX_NAME: (
+        MetricType.LATENCY_MAX_NAME,
+        "Maximum event loop latency in milliseconds during kind processing",
+        ["kind"],
+    ),
+    MetricType.LATENCY_MEDIAN_NAME: (
+        MetricType.LATENCY_MEDIAN_NAME,
+        "Median event loop latency in milliseconds during kind processing",
+        ["kind"],
+    ),
+    MetricType.LATENCY_AVG_NAME: (
+        MetricType.LATENCY_AVG_NAME,
+        "Average event loop latency in milliseconds during kind processing",
+        ["kind"],
+    ),
+    # HTTP request size metrics
+    MetricType.REQUEST_SIZE_TOTAL_NAME: (
+        MetricType.REQUEST_SIZE_TOTAL_NAME,
+        "Total size of HTTP responses received during kind processing",
+        ["kind"],
+    ),
+    MetricType.REQUEST_SIZE_AVG_NAME: (
+        MetricType.REQUEST_SIZE_AVG_NAME,
+        "Average size of HTTP responses received during kind processing",
+        ["kind"],
+    ),
+    MetricType.REQUEST_SIZE_MEDIAN_NAME: (
+        MetricType.REQUEST_SIZE_MEDIAN_NAME,
+        "Median size of HTTP responses received during kind processing",
+        ["kind"],
     ),
 }
 
