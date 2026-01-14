@@ -139,5 +139,5 @@ async def on_start() -> None:
 
 # Webhook processor registration
 ocean.add_webhook_processor("/webhook", SentryIssueWebhookProcessor)
-ocean.add_webhook_processor("/webhook", SentryIssueTagWebhookProcessor)
-ocean.add_webhook_processor("/webhook", SentryCustomIntegrationWebhookProcessor)
+# ocean.add_webhook_processor("/webhook", SentryIssueTagWebhookProcessor)
+# ocean.add_webhook_processor("/webhook", SentryCustomIntegrationWebhookProcessor)

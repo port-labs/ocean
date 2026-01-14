@@ -1,5 +1,3 @@
-from typing import Any
-
 from loguru import logger
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -11,7 +9,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 from webhook_processors.base_webhook_processor import _SentryBaseWebhookProcessor
 from integration import ObjectKind
-from webhook_processors.init_client import init_webhook_client
 
 
 class SentryIssueWebhookProcessor(_SentryBaseWebhookProcessor):
@@ -26,6 +23,7 @@ class SentryIssueWebhookProcessor(_SentryBaseWebhookProcessor):
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         """Check if this is an issue webhook event."""
+        # return event.headers.get("")
         return True
 
     async def handle_event(
@@ -33,19 +31,9 @@ class SentryIssueWebhookProcessor(_SentryBaseWebhookProcessor):
     ) -> WebhookEventRawResults:
         """Process issue webhook events."""
         issue_id = payload["group"]["id"]
-
         logger.info(f"Processing Sentry issue webhook: issue_id={issue_id}")
-
-        updated_results: list[dict[str, Any]] = []
-        deleted_results: list[dict[str, Any]] = []
-
-        client = init_webhook_client()
-        issue = await client.get_issue(issue_id)
-        if issue:
-            updated_results.append(issue)
-        else:
-            deleted_results.append({"id": issue_id})
+        issue = payload["group"]
 
         return WebhookEventRawResults(
-            updated_raw_results=updated_results, deleted_raw_results=deleted_results
+            updated_raw_results=[issue], deleted_raw_results=[]
         )

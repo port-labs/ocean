@@ -29,13 +29,10 @@ class _SentryBaseWebhookProcessor(AbstractWebhookProcessor):
         )
         if not webhook_secret:
             return False
-        try:
-            body = json.dumps(
-                payload, separators=(",", ":"), ensure_ascii=False
-            ).encode("utf-8")
-        except (TypeError, ValueError):
-            return False
 
+        body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode(
+            "utf-8"
+        )
         digest = hmac.new(
             key=webhook_secret.encode("utf-8"),
             msg=body,

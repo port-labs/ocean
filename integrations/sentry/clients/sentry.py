@@ -166,8 +166,10 @@ class SentryClient:
         try:
             response = await self.send_api_request("GET", url)
             return response.json()
-        except httpx.HTTPStatusError:
-            logger.debug(f"Ignoring non-fatal error for tags: {url}")
+        except httpx.HTTPStatusError as e:
+            logger.warning(
+                f"Failed to get tags at {url} due to {e.response.status_code}"
+            )
             return []
 
     async def _get_single_resource(self, url: str) -> dict[str, Any]:
@@ -175,8 +177,8 @@ class SentryClient:
         try:
             response = await self.send_api_request("GET", url)
             return response.json()
-        except httpx.HTTPStatusError:
-            logger.debug(f"Ignoring non-fatal error for single resource: {url}")
+        except httpx.HTTPStatusError as e:
+            logger.warning(f"Failed to get single resource at {url} due to {str(e)}")
             return {}
 
     async def _get_project_tags_iterator(

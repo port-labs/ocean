@@ -11,15 +11,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 from webhook_processors.base_webhook_processor import _SentryBaseWebhookProcessor
 from integration import ObjectKind
-
-DELETE_ACTION: str = "ignored"
-EVENT_ACTIONS: list[str] = [
-    "created",
-    "unresolved",
-    "resolved",
-    "assigned",
-    DELETE_ACTION,
-]
+from webhook_processors.event import DELETE_ACTION, EVENT_ACTIONS
 
 
 class SentryCustomIntegrationWebhookProcessor(_SentryBaseWebhookProcessor):
