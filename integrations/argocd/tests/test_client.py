@@ -115,12 +115,14 @@ async def test_get_application_by_name(mock_argocd_client: ArgocdClient) -> None
         assert application == response_data
         mock_request.assert_called_once_with(
             url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}",
-            query_params={}
+            query_params={},
         )
 
 
 @pytest.mark.asyncio
-async def test_get_application_by_name_with_namespace(mock_argocd_client: ArgocdClient) -> None:
+async def test_get_application_by_name_with_namespace(
+    mock_argocd_client: ArgocdClient,
+) -> None:
     application_name = "test-application"
     application_namespace = "test-namespace"
     response_data = {
@@ -146,9 +148,7 @@ async def test_get_application_by_name_with_namespace(mock_argocd_client: Argocd
         assert application == response_data
         mock_request.assert_called_once_with(
             url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}",
-            query_params={
-                "appNamespace": application_namespace
-            }
+            query_params={"appNamespace": application_namespace},
         )
 
 

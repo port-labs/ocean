@@ -180,7 +180,9 @@ class ArgocdClient:
         if batch:
             yield batch
 
-    async def get_application_by_name(self, name: str, namespace: Optional[str] = None) -> dict[str, Any]:
+    async def get_application_by_name(
+        self, name: str, namespace: Optional[str] = None
+    ) -> dict[str, Any]:
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{name}"
         query_params = {}
         if namespace:
