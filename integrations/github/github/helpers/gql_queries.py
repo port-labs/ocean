@@ -69,8 +69,22 @@ FETCH_GITHUB_USER_GQL = """
         }
         """
 
+TEAM_FIELDS_FRAGMENT = """
+fragment TeamFields on Team {
+  slug
+  id
+  databaseId
+  name
+  description
+  privacy
+  notificationSetting
+  url
+}
+"""
+
 LIST_TEAM_MEMBERS_GQL = f"""
 {PAGE_INFO_FRAGMENT}
+{TEAM_FIELDS_FRAGMENT}
 query getTeamMembers(
   $organization: String!,
   $first: Int = 25,         # For team pagination (default handled by GraphQL client if not overridden)
@@ -81,13 +95,7 @@ query getTeamMembers(
   organization(login: $organization){{
     teams(first: $first, after: $after){{ # Team pagination
       nodes{{
-        slug
-        id
-        name
-        description
-        privacy
-        notificationSetting
-        url
+        ...TeamFields
 
         members(first: $memberFirst, after: $memberAfter){{
           nodes{{
@@ -109,20 +117,6 @@ query getTeamMembers(
 }}
 }}
 """
-
-
-TEAM_FIELDS_FRAGMENT = """
-fragment TeamFields on Team {
-  slug
-  id
-  name
-  description
-  privacy
-  notificationSetting
-  url
-}
-"""
-
 
 TEAM_MEMBER_FRAGMENT = """
 fragment TeamMemberFields on Team {
