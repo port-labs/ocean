@@ -67,7 +67,7 @@ class HttpServerResourceConfig(ResourceConfig):
 
 
 class CustomAuthRequestConfig(BaseModel):
-    """Configuration for custom authentication request"""
+    """Configuration for custom authentication request - defines how to make the auth request"""
 
     endpoint: str = Field(
         description="Endpoint path or full URL for authentication request (e.g., '/oauth/token' or 'https://auth.example.com/token')"
@@ -78,21 +78,21 @@ class CustomAuthRequestConfig(BaseModel):
     )
     headers: Optional[Dict[str, str]] = Field(
         default=None,
-        description="HTTP headers for authentication request",
+        description="HTTP headers to send with authentication request",
     )
     body: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="JSON request body (mutually exclusive with bodyForm)",
+        description="JSON request body for authentication request (mutually exclusive with bodyForm)",
     )
     bodyForm: Optional[str] = Field(
         default=None,
         alias="bodyForm",
-        description="Form-encoded request body (mutually exclusive with body)",
+        description="Form-encoded request body for authentication request (mutually exclusive with body)",
     )
     queryParams: Optional[Dict[str, Any]] = Field(
         default=None,
         alias="queryParams",
-        description="Query parameters for authentication request",
+        description="Query parameters to send with authentication request",
     )
 
     @root_validator
@@ -115,6 +115,23 @@ class CustomAuthRequestConfig(BaseModel):
             raise ValueError(f"Method must be one of {allowed_methods}, got: {method}")
         values["method"] = method
         return values
+
+    class Config:
+        allow_population_by_field_name = True
+
+
+class CustomAuthResponseConfig(BaseModel):
+    """Configuration for using authentication response - defines how to apply auth values to subsequent requests"""
+
+    headers: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="HTTP headers to apply to subsequent API requests. Use template syntax {{.jq_path}} to extract values from auth response (e.g., 'Authorization': 'Bearer {{.access_token}}')",
+    )
+    queryParams: Optional[Dict[str, Any]] = Field(
+        default=None,
+        alias="queryParams",
+        description="Query parameters to apply to subsequent API requests. Use template syntax {{.jq_path}} to extract values from auth response (e.g., 'api_key': '{{.access_token}}')",
+    )
 
     class Config:
         allow_population_by_field_name = True

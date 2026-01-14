@@ -6,12 +6,99 @@ Provides authentication and pagination handlers using strategy pattern.
 
 import asyncio
 import httpx
+import re
 
 from typing import Dict, Any, List, Callable, Awaitable, Optional
 from collections.abc import AsyncGenerator as AsyncGenType
 
-from http_server.overrides import CustomAuthRequestConfig
+from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
 from loguru import logger
+from port_ocean.context.ocean import ocean
+
+
+# ============================================================================
+# Template Evaluation Utilities
+# ============================================================================
+
+
+async def _evaluate_template(template: str, auth_response: Dict[str, Any]) -> str:
+    """Evaluate template string by replacing {{.jq_path}} with values from auth_response.
+
+    Example:
+        template = "Bearer {{.access_token}}"
+        auth_response = {"access_token": "abc123", "expires_in": 3600}
+        Returns: "Bearer abc123"
+    """
+    if not auth_response:
+        return template
+
+    # Find all {{...}} patterns
+    pattern = r"\{\{\.([^}]+)\}\}"
+    matches = list(re.finditer(pattern, template))
+
+    if not matches:
+        return template
+
+    # Extract all JQ paths and evaluate them concurrently
+    jq_paths = [match.group(1) for match in matches]
+
+    async def extract_value(jq_path: str) -> str:
+        try:
+            # Prepend dot to JQ path if not already present (JQ requires .field for object access)
+            jq_expression = jq_path if jq_path.startswith(".") else f".{jq_path}"
+            # Use Ocean's JQ processor to extract value (async)
+            value = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
+                auth_response, jq_expression
+            )
+            if value is None:
+                logger.warning(
+                    f"CustomAuth: Template variable '{{.{jq_path}}}' not found in auth response"
+                )
+                return f"{{{{.{jq_path}}}}}"  # Return original template if not found
+            return str(value)
+        except Exception as e:
+            logger.error(
+                f"CustomAuth: Error evaluating template '{{.{jq_path}}}': {str(e)}"
+            )
+            return f"{{{{.{jq_path}}}}}"  # Return original template on error
+
+    # Evaluate all JQ paths concurrently
+    replacements = await asyncio.gather(*[extract_value(path) for path in jq_paths])
+
+    # Replace matches in reverse order to preserve indices
+    result = template
+    for match, replacement in zip(reversed(matches), reversed(replacements)):
+        result = result[: match.start()] + replacement + result[match.end() :]
+
+    return result
+
+
+async def _evaluate_templates_in_dict(
+    data: Dict[str, Any], auth_response: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Recursively evaluate templates in a dictionary (headers, queryParams, etc.)"""
+    if not auth_response:
+        return data
+
+    result: Dict[str, Any] = {}
+    for key, value in data.items():
+        if isinstance(value, str):
+            result[key] = await _evaluate_template(value, auth_response)
+        elif isinstance(value, dict):
+            result[key] = await _evaluate_templates_in_dict(value, auth_response)
+        elif isinstance(value, list):
+            evaluated_items = []
+            for item in value:
+                if isinstance(item, str):
+                    evaluated_items.append(
+                        await _evaluate_template(item, auth_response)
+                    )
+                else:
+                    evaluated_items.append(item)
+            result[key] = evaluated_items
+        else:
+            result[key] = value
+    return result
 
 
 # ============================================================================
@@ -75,9 +162,11 @@ class CustomAuth(AuthHandler):
         client: httpx.AsyncClient,
         config: Dict[str, Any],
         custom_auth_request: Optional[CustomAuthRequestConfig],
+        custom_auth_response: Optional[CustomAuthResponseConfig],
     ):
         super().__init__(client, config)
         self.custom_auth_request = custom_auth_request
+        self.custom_auth_response = custom_auth_response
         self.token: Optional[str] = None
         self._lock = asyncio.Lock()  # Prevent concurrent re-auth
         self.base_url: str = config.get("base_url", "")
@@ -175,29 +264,7 @@ class CustomAuth(AuthHandler):
 
             # Store response
             self.auth_response = response.json()
-            logger.debug("CustomAuth: Stored authentication response")
-
-            # Temporary: Extract token from common response paths for testing
-            if isinstance(self.auth_response, dict):
-                self.token = (
-                    self.auth_response.get("access_token")
-                    or self.auth_response.get("token")
-                    or self.auth_response.get("accessToken")
-                    or self.auth_response.get("auth_token")
-                )
-                if self.token:
-                    logger.info(
-                        "CustomAuth: Successfully extracted token from authentication response"
-                    )
-                else:
-                    logger.warning(
-                        "CustomAuth: No token found in authentication response. "
-                        "Checked paths: access_token, token, accessToken, auth_token"
-                    )
-            else:
-                logger.warning(
-                    f"CustomAuth: Authentication response is not a dict (type: {type(self.auth_response).__name__})"
-                )
+            logger.info("CustomAuth: Stored authentication response")
 
     async def reauthenticate(self) -> None:
         """Re-authenticate when token expires (401) - async wrapper for sync authenticate"""
@@ -211,19 +278,39 @@ class CustomAuth(AuthHandler):
             await loop.run_in_executor(None, self.authenticate)
             logger.info("CustomAuth: Re-authentication completed successfully")
 
-    def apply_auth_to_request(self, headers: Dict[str, str]) -> Dict[str, str]:
-        """Apply authentication token to request headers.
+    async def apply_auth_to_request(
+        self, headers: Dict[str, str], query_params: Optional[Dict[str, Any]] = None
+    ) -> tuple[Dict[str, str], Dict[str, Any]]:
+        """Apply authentication values to request headers and query params using templates.
 
-        This method should be called before making requests to inject the token.
-        For testing purposes - will be properly integrated in next stage.
+        Evaluates templates like {{.access_token}} in headers and queryParams from
+        customAuthResponse config using values from the authentication response.
+
+        Returns:
+            Tuple of (updated_headers, updated_query_params)
         """
-        if self.token:
-            # For now, assume Bearer token - will be configurable in next stage
-            headers["Authorization"] = f"Bearer {self.token}"
-            logger.debug("CustomAuth: Applied Bearer token to request headers")
-        else:
-            logger.debug("CustomAuth: No token available to apply to request headers")
-        return headers
+        if not self.auth_response or not self.custom_auth_response:
+            return headers, query_params or {}
+
+        # Evaluate templates in headers from customAuthResponse config
+        updated_headers = headers.copy()
+        if self.custom_auth_response.headers:
+            evaluated_headers = await _evaluate_templates_in_dict(
+                self.custom_auth_response.headers, self.auth_response
+            )
+            # Merge with existing headers (response config headers take precedence)
+            updated_headers = {**updated_headers, **evaluated_headers}
+
+        # Evaluate templates in query params from customAuthResponse config
+        updated_query_params = query_params.copy() if query_params else {}
+        if self.custom_auth_response.queryParams:
+            evaluated_params = await _evaluate_templates_in_dict(
+                self.custom_auth_response.queryParams, self.auth_response
+            )
+            # Merge with existing query params (response config params take precedence)
+            updated_query_params = {**updated_query_params, **evaluated_params}
+
+        return updated_headers, updated_query_params
 
 
 # Registry of available auth handlers
@@ -240,10 +327,11 @@ def get_auth_handler(
     client: httpx.AsyncClient,
     config: Dict[str, Any],
     custom_auth_request: Optional[CustomAuthRequestConfig] = None,
+    custom_auth_response: Optional[CustomAuthResponseConfig] = None,
 ) -> AuthHandler:
     """Get the appropriate authentication handler"""
     if auth_type == "custom":
-        return CustomAuth(client, config, custom_auth_request)
+        return CustomAuth(client, config, custom_auth_request, custom_auth_response)
     handler_class = AUTH_HANDLERS.get(auth_type, NoAuth)
     return handler_class(client, config)
 

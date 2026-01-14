@@ -20,7 +20,7 @@ from port_ocean.utils.async_iterators import (
 )
 
 from http_server.handlers import get_auth_handler, get_pagination_handler
-from http_server.overrides import CustomAuthRequestConfig
+from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
 
 
 class HttpServerClient:
@@ -36,6 +36,7 @@ class HttpServerClient:
         max_concurrent_requests: int = 10,
         custom_headers: Optional[Dict[str, str]] = None,
         custom_auth_request: Optional[CustomAuthRequestConfig] = None,
+        custom_auth_response: Optional[CustomAuthResponseConfig] = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.auth_type = auth_type
@@ -62,6 +63,7 @@ class HttpServerClient:
             self.client,
             self.auth_config,
             custom_auth_request=custom_auth_request,
+            custom_auth_response=custom_auth_response,
         )
         self.auth_handler.setup()
 
@@ -153,11 +155,13 @@ class HttpServerClient:
             **headers,
         }
 
-        # Apply custom auth token if available
+        # Apply custom auth token if available (evaluates templates in headers/queryParams)
         if self.auth_type == "custom" and hasattr(
             self.auth_handler, "apply_auth_to_request"
         ):
-            merged_headers = self.auth_handler.apply_auth_to_request(merged_headers)
+            merged_headers, params = await self.auth_handler.apply_auth_to_request(
+                merged_headers, params
+            )
 
         max_retries = 1  # Only retry once on 401
         retry_count = 0
@@ -183,10 +187,12 @@ class HttpServerClient:
                     )
                     try:
                         await self.auth_handler.reauthenticate()
-                        # Re-apply auth token after re-authentication
+                        # Re-apply auth token after re-authentication (evaluate templates again)
                         if hasattr(self.auth_handler, "apply_auth_to_request"):
-                            merged_headers = self.auth_handler.apply_auth_to_request(
-                                merged_headers
+                            merged_headers, params = (
+                                await self.auth_handler.apply_auth_to_request(
+                                    merged_headers, params
+                                )
                             )
                         retry_count += 1
                         continue  # Retry the request with new token

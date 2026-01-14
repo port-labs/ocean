@@ -159,7 +159,17 @@ configurations:
   - name: customAuthRequest
     required: false
     type: object
-    description: "Custom authentication request configuration. Required when authType is 'custom'. Example: {\"endpoint\": \"/oauth/token\", \"method\": \"POST\", \"headers\": {\"Content-Type\": \"application/json\"}, \"body\": {\"grant_type\": \"client_credentials\", \"client_id\": \"...\", \"client_secret\": \"...\"}, \"queryParams\": {}}"
+    description: "Custom authentication request configuration. Required when authType is 'custom'. Defines how to make the authentication request. Example: {\"endpoint\": \"/oauth/token\", \"method\": \"POST\", \"headers\": {\"Content-Type\": \"application/json\"}, \"body\": {\"grant_type\": \"client_credentials\", \"client_id\": \"...\", \"client_secret\": \"...\"}, \"queryParams\": {}}"
+    dependencies:
+      - on: authType
+        when:
+          equals: custom
+        then:
+          required: true
+  - name: customAuthResponse
+    required: false
+    type: object
+    description: "Custom authentication response usage configuration. Required when authType is 'custom'. Defines how to use auth response values in subsequent requests using template syntax {{.jq_path}}. Example: {\"headers\": {\"Authorization\": \"Bearer {{.access_token}}\", \"X-TTL\": \"{{.expires_in}}\"}, \"queryParams\": {\"api_key\": \"{{.access_token}}\"}}"
     dependencies:
       - on: authType
         when:

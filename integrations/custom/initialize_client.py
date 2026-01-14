@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional
 from pydantic import parse_raw_as, parse_obj_as
 
 from http_server.client import HttpServerClient
-from http_server.overrides import CustomAuthRequestConfig
+from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
 from port_ocean.context.ocean import ocean
 
 
@@ -54,23 +54,40 @@ def init_client() -> HttpServerClient:
     # Parse custom headers from config
     custom_headers = _parse_custom_headers(config.get("custom_headers"))
 
-    # Parse and validate custom auth request if auth_type is custom
+    # Parse and validate custom auth request and response if auth_type is custom
     custom_auth_request = None
+    custom_auth_response = None
     auth_type = config.get("auth_type", "none")
     if auth_type == "custom":
-        custom_auth_config = config.get("custom_auth_request")
-        if custom_auth_config:
+        # Parse custom auth request
+        custom_auth_request_config = config.get("custom_auth_request")
+        if custom_auth_request_config:
             # Handle both dict and string (JSON string) formats
-            if isinstance(custom_auth_config, str):
+            if isinstance(custom_auth_request_config, str):
                 custom_auth_request = parse_raw_as(
-                    CustomAuthRequestConfig, custom_auth_config
+                    CustomAuthRequestConfig, custom_auth_request_config
                 )
             else:
                 custom_auth_request = parse_obj_as(
-                    CustomAuthRequestConfig, custom_auth_config
+                    CustomAuthRequestConfig, custom_auth_request_config
                 )
         else:
             raise ValueError("customAuthRequest is required when authType is 'custom'")
+
+        # Parse custom auth response
+        custom_auth_response_config = config.get("custom_auth_response")
+        if custom_auth_response_config:
+            # Handle both dict and string (JSON string) formats
+            if isinstance(custom_auth_response_config, str):
+                custom_auth_response = parse_raw_as(
+                    CustomAuthResponseConfig, custom_auth_response_config
+                )
+            else:
+                custom_auth_response = parse_obj_as(
+                    CustomAuthResponseConfig, custom_auth_response_config
+                )
+        else:
+            raise ValueError("customAuthResponse is required when authType is 'custom'")
 
     return HttpServerClient(
         base_url=config["base_url"],
@@ -81,4 +98,5 @@ def init_client() -> HttpServerClient:
         max_concurrent_requests=int(config.get("max_concurrent_requests", 10)),
         custom_headers=custom_headers,
         custom_auth_request=custom_auth_request,
+        custom_auth_response=custom_auth_response,
     )
