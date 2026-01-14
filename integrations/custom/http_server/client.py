@@ -37,6 +37,7 @@ class HttpServerClient:
         custom_headers: Optional[Dict[str, str]] = None,
         custom_auth_request: Optional[CustomAuthRequestConfig] = None,
         custom_auth_response: Optional[CustomAuthResponseConfig] = None,
+        skip_setup: bool = False,
     ):
         self.base_url = base_url.rstrip("/")
         self.auth_type = auth_type
@@ -65,7 +66,11 @@ class HttpServerClient:
             custom_auth_request=custom_auth_request,
             custom_auth_response=custom_auth_response,
         )
-        self.auth_handler.setup()
+
+        # Only call setup() if not skipping (for backward compatibility)
+        # When skip_setup=True, authentication will be done via @ocean.on_start()
+        if not skip_setup:
+            self.auth_handler.setup()
 
         # Concurrency control
         self.semaphore = asyncio.Semaphore(max_concurrent_requests)
@@ -165,10 +170,15 @@ class HttpServerClient:
         if self.auth_type == "custom" and hasattr(
             self.auth_handler, "apply_auth_to_request"
         ):
+            logger.info(f"CustomAuth: Applying auth to {method} {url} request")
             merged_headers, params, request_body = (
                 await self.auth_handler.apply_auth_to_request(
                     merged_headers, params, body
                 )
+            )
+            logger.info(
+                f"CustomAuth: Auth applied. Request headers: {list(merged_headers.keys())}. "
+                f"Authorization header present: {'Authorization' in merged_headers}"
             )
 
         max_retries = 1  # Only retry once on 401

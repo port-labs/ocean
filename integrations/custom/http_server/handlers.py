@@ -15,6 +15,9 @@ from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseCon
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
+# Module-level lock for re-authentication (shared across all instances)
+_reauthenticate_lock = asyncio.Lock()
+
 
 # ============================================================================
 # Template Evaluation Utilities
@@ -168,30 +171,47 @@ class CustomAuth(AuthHandler):
         self.custom_auth_request = custom_auth_request
         self.custom_auth_response = custom_auth_response
         self.token: Optional[str] = None
-        self._lock = asyncio.Lock()  # Prevent concurrent re-auth
         self.base_url: str = config.get("base_url", "")
         self.auth_response: Optional[Dict[str, Any]] = None
         self.verify_ssl: bool = config.get("verify_ssl", True)
 
     def setup(self) -> None:
-        """Setup authentication - performs blocking authentication"""
+        """Setup authentication - deprecated, use authenticate_async() instead.
+
+        This method is kept for backward compatibility but should not be used
+        in new code. Authentication should be done via authenticate_async() in
+        @ocean.on_start() hook.
+        """
         if not self.custom_auth_request:
             logger.debug(
                 "CustomAuth: No custom_auth_request configured, skipping setup"
             )
             return
-        logger.info("CustomAuth: Starting initial authentication during setup")
+        logger.warning(
+            "CustomAuth: setup() is deprecated. Use authenticate_async() in @ocean.on_start() instead."
+        )
+        # For backward compatibility, run async authenticate in sync context
         try:
-            self.authenticate()
-            logger.info("CustomAuth: Initial authentication completed successfully")
-        except Exception as e:
-            logger.error(f"CustomAuth: Failed to authenticate during setup: {str(e)}")
-            raise
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is running, we can't use run_until_complete
+                # This is a fallback for old code
+                logger.warning(
+                    "CustomAuth: Event loop is running, authentication may fail. "
+                    "Please use authenticate_async() instead."
+                )
+            else:
+                loop.run_until_complete(self.authenticate_async())
+        except RuntimeError:
+            # No event loop - create one
+            asyncio.run(self.authenticate_async())
 
-    def authenticate(self) -> None:
-        """Make authentication request synchronously and store token (blocking)"""
+    async def authenticate_async(self) -> None:
+        """Make authentication request asynchronously and store token (non-blocking)"""
         if not self.custom_auth_request:
             raise ValueError("customAuthRequest configuration is required")
+
+        logger.info("CustomAuth: Starting authentication")
 
         # Build the auth URL
         endpoint = self.custom_auth_request.endpoint
@@ -219,37 +239,30 @@ class CustomAuth(AuthHandler):
         if "Content-Type" not in headers:
             if self.custom_auth_request.bodyForm:
                 headers["Content-Type"] = "application/x-www-form-urlencoded"
-                logger.debug(
-                    "CustomAuth: Set Content-Type to application/x-www-form-urlencoded"
-                )
             elif self.custom_auth_request.body:
                 headers["Content-Type"] = "application/json"
-                logger.debug("CustomAuth: Set Content-Type to application/json")
 
         # Prepare request data
         json_data = None
         content = None
         if self.custom_auth_request.body:
             json_data = self.custom_auth_request.body
-            logger.debug("CustomAuth: Using JSON body for authentication request")
         elif self.custom_auth_request.bodyForm:
             content = self.custom_auth_request.bodyForm
-            logger.debug(
-                "CustomAuth: Using form-encoded body for authentication request"
-            )
 
         # Prepare query parameters
         params = self.custom_auth_request.queryParams or {}
-        if params:
-            logger.debug(f"CustomAuth: Using query parameters: {list(params.keys())}")
 
-        # Make the authentication request using sync client (blocking)
+        # Make the authentication request using async client (non-blocking)
         method = self.custom_auth_request.method
         logger.info(
             f"CustomAuth: Making {method} request to {auth_url} for authentication"
         )
-        with httpx.Client(verify=self.verify_ssl, timeout=30.0) as sync_client:
-            response = sync_client.request(
+
+        async with httpx.AsyncClient(
+            verify=self.verify_ssl, timeout=30.0
+        ) as async_client:
+            response = await async_client.request(
                 method=method,
                 url=auth_url,
                 headers=headers,
@@ -264,18 +277,47 @@ class CustomAuth(AuthHandler):
 
             # Store response
             self.auth_response = response.json()
-            logger.info("CustomAuth: Stored authentication response")
+            logger.info(
+                f"CustomAuth: Authentication successful, stored authentication response. "
+                f"Response keys: {list(self.auth_response.keys()) if isinstance(self.auth_response, dict) else 'not a dict'}, "
+                f"Handler id: {id(self)}, Handler instance: {self}"
+            )
+            if isinstance(self.auth_response, dict):
+                # Log first few characters of values (for security, don't log full tokens)
+                sample_values = {
+                    k: (str(v)[:20] + "..." if len(str(v)) > 20 else str(v))
+                    for k, v in list(self.auth_response.items())[:5]
+                }
+                logger.debug(
+                    f"CustomAuth: Auth response sample values: {sample_values}"
+                )
 
     async def reauthenticate(self) -> None:
-        """Re-authenticate when token expires (401) - async wrapper for sync authenticate"""
-        async with self._lock:
+        """Re-authenticate when token expires (401) - uses module-level lock for thread safety.
+
+        If multiple requests get 401 simultaneously, only the first one will re-authenticate.
+        Others will wait for the lock and then skip re-auth if it was already completed.
+        """
+        # Store current auth_response before waiting for lock
+        auth_response_before = self.auth_response
+
+        # Use module-level lock to prevent concurrent re-auth across all instances
+        async with _reauthenticate_lock:
+            # Check if another coroutine already re-authenticated while we were waiting
+            if (
+                self.auth_response is not None
+                and self.auth_response != auth_response_before
+            ):
+                logger.info(
+                    "CustomAuth: Auth was already refreshed by another request while waiting for lock, "
+                    "skipping redundant re-authentication"
+                )
+                return
+
             logger.info("CustomAuth: Starting re-authentication due to 401 error")
             # Clear existing token before re-authenticating
             self.token = None
-            logger.debug("CustomAuth: Cleared existing token")
-            # Run sync authenticate in thread pool to avoid blocking
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, self.authenticate)
+            await self.authenticate_async()
             logger.info("CustomAuth: Re-authentication completed successfully")
 
     async def apply_auth_to_request(
@@ -292,14 +334,36 @@ class CustomAuth(AuthHandler):
         Returns:
             Tuple of (updated_headers, updated_query_params, updated_body)
         """
-        if not self.auth_response or not self.custom_auth_response:
+        if not self.auth_response:
+            logger.warning(
+                f"CustomAuth: No auth_response available, skipping auth application. "
+                f"Handler id: {id(self)}, auth_response: {self.auth_response}"
+            )
             return headers, query_params or {}, body
+
+        if not self.custom_auth_response:
+            logger.warning(
+                "CustomAuth: No custom_auth_response config, skipping auth application"
+            )
+            return headers, query_params or {}, body
+
+        logger.info(
+            f"CustomAuth: Applying auth to request. Auth response keys: {list(self.auth_response.keys()) if isinstance(self.auth_response, dict) else 'not a dict'}, "
+            f"Handler id: {id(self)}"
+        )
 
         # Evaluate templates in headers from customAuthResponse config
         updated_headers = headers.copy()
         if self.custom_auth_response.headers:
+            logger.info(
+                f"CustomAuth: Evaluating headers templates: {list(self.custom_auth_response.headers.keys())}"
+            )
             evaluated_headers = await _evaluate_templates_in_dict(
                 self.custom_auth_response.headers, self.auth_response
+            )
+            logger.info(
+                f"CustomAuth: Evaluated headers: {list(evaluated_headers.keys())}. "
+                f"Values: {[(k, str(v)[:50] + '...' if len(str(v)) > 50 else str(v)) for k, v in list(evaluated_headers.items())[:3]]}"
             )
             # Merge with existing headers (response config headers take precedence)
             updated_headers = {**updated_headers, **evaluated_headers}
@@ -307,6 +371,9 @@ class CustomAuth(AuthHandler):
         # Evaluate templates in query params from customAuthResponse config
         updated_query_params = query_params.copy() if query_params else {}
         if self.custom_auth_response.queryParams:
+            logger.debug(
+                f"CustomAuth: Evaluating queryParams templates: {list(self.custom_auth_response.queryParams.keys())}"
+            )
             evaluated_params = await _evaluate_templates_in_dict(
                 self.custom_auth_response.queryParams, self.auth_response
             )
@@ -316,11 +383,18 @@ class CustomAuth(AuthHandler):
         # Evaluate templates in body from customAuthResponse config
         updated_body = body.copy() if body else {}
         if self.custom_auth_response.body:
+            logger.debug(
+                f"CustomAuth: Evaluating body templates: {list(self.custom_auth_response.body.keys())}"
+            )
             evaluated_body = await _evaluate_templates_in_dict(
                 self.custom_auth_response.body, self.auth_response
             )
             # Merge with existing body (response config body takes precedence)
             updated_body = {**updated_body, **evaluated_body}
+
+        logger.info(
+            f"CustomAuth: Applied auth. Headers with auth: {list(updated_headers.keys())}"
+        )
 
         return (
             updated_headers,
