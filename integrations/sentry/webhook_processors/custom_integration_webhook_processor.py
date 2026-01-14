@@ -11,7 +11,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 
 from webhook_processors.base_webhook_processor import _SentryBaseWebhookProcessor
 from integration import ObjectKind
-from webhook_processors.event import DELETE_ACTION, EVENT_ACTIONS
+from webhook_processors.events import DELETE_ACTION, EVENT_ACTIONS
 
 
 class SentryCustomIntegrationWebhookProcessor(_SentryBaseWebhookProcessor):

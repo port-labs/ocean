@@ -10,8 +10,8 @@ from port_ocean.core.handlers.port_app_config.models import (
 from integration import ObjectKind
 from webhook_processors.custom_integration_webhook_processor import (
     SentryCustomIntegrationWebhookProcessor,
-    DELETE_ACTION,
 )
+from webhook_processors.events import DELETE_ACTION
 
 
 def _resource_config() -> ResourceConfig:

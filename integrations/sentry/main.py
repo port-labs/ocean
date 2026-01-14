@@ -9,24 +9,10 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from integration import TeamResourceConfig, ObjectKind
 from clients.sentry import SentryClient
+from clients.init_client import init_client
 from webhook_processors.issue_webhook_processor import SentryIssueWebhookProcessor
-from webhook_processors.custom_integration_webhook_processor import (
-    SentryCustomIntegrationWebhookProcessor,
-)
-from webhook_processors.issue_tag_webhook_processor import (
-    SentryIssueTagWebhookProcessor,
-)
 from webhook_processors.init_client import init_webhook_client
 from integration import SentryResourceConfig
-
-
-def init_client() -> SentryClient:
-    sentry_client = SentryClient(
-        ocean.integration_config["sentry_host"],
-        ocean.integration_config["sentry_token"],
-        ocean.integration_config["sentry_organization"],
-    )
-    return sentry_client
 
 
 async def enrich_team_with_members(

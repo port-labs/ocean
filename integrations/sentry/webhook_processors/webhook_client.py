@@ -4,6 +4,8 @@ from clients.exceptions import ResourceNotFoundError
 from loguru import logger
 import asyncio
 import httpx
+from webhook_processors.events import ALERT_RULE_CONDITIONS, ALERT_RULE_ACTIONS
+
 
 class SentryWebhookClient(SentryClient):
     """Handles Sentry Event Hooks operations."""
@@ -40,18 +42,6 @@ class SentryWebhookClient(SentryClient):
             await self._create_issue_alert_rule(
                 project_slug,
                 f"Port Issue Alert - {project_slug}",
-                [
-                    {
-                        "id": "sentry.rules.conditions.first_seen_event.FirstSeenEventCondition"
-                    },
-                    {
-                        "id": "sentry.rules.conditions.regression_event.RegressionEventCondition"
-                    },
-                    {
-                        "id": "sentry.rules.conditions.reappeared_event.ReappearedEventCondition"
-                    },
-                ],
-                [{"id": "sentry.rules.actions.notify_event.NotifyEventAction"}],
             )
             hook: dict[str, Any] = await self._create_project_hook(
                 project_slug,
@@ -110,8 +100,8 @@ class SentryWebhookClient(SentryClient):
         self,
         project_slug: str,
         rule_name: str,
-        conditions: list[dict[str, Any]],
-        actions: list[dict[str, Any]],
+        conditions: list[dict[str, Any]] = ALERT_RULE_CONDITIONS,
+        actions: list[dict[str, Any]] = ALERT_RULE_ACTIONS,
         frequency: int = 30,
         action_match: str = "any",
     ) -> None:

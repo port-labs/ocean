@@ -33,8 +33,12 @@ def _resource_config() -> ResourceConfig:
 @pytest.mark.asyncio
 class TestSentryIssueWebhookProcessor:
     async def test_should_process_event(self) -> None:
-        """Should always return True for issue events as per implementation."""
-        event = WebhookEvent(trace_id="t1", payload={}, headers={})
+        """Should return True for issue events  with the correct header value."""
+        event = WebhookEvent(
+            trace_id="t1",
+            payload={},
+            headers={"x-servicehook-signature": "test-signature"},
+        )
         processor = SentryIssueWebhookProcessor(event)
         result = await processor._should_process_event(event)
         assert result is True

@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-
+from typing import AsyncGenerator, Any
 from webhook_processors.webhook_client import SentryWebhookClient
 
 
@@ -163,7 +163,9 @@ class TestCreateIssueAlertRule:
             with patch.object(
                 sentry_webhook_client,
                 "_create_project_alert_rule",
-                side_effect=Exception("API Error"),
+                side_effect=httpx.HTTPStatusError(
+                    "API Error", request=MagicMock(), response=MagicMock()
+                ),
             ):
                 # Should not raise exception
                 await sentry_webhook_client._create_issue_alert_rule(
@@ -180,7 +182,9 @@ class TestEnsureServiceHooks:
         """Tests that _create_issue_alert_rule is called before _create_project_hook."""
 
         # Mock projects iterator
-        async def mock_paginated_projects():
+        async def mock_paginated_projects() -> (
+            AsyncGenerator[list[dict[str, Any]], None]
+        ):
             yield [{"slug": "test-project"}]
 
         with patch.object(
