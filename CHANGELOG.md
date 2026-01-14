@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.32.11 (2026-01-14)
+
+### Bug fixes
+
+- Handle webhook event not supported exception and log it as a warning
+
+
 ## 0.32.10 (2026-01-11)
 
 ### Bug fixes
