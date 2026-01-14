@@ -5,6 +5,8 @@ Provides authentication and pagination handlers using strategy pattern.
 """
 
 import httpx
+from loguru import logger
+from urllib.parse import urlparse, parse_qs
 
 from typing import Dict, Any, List, Callable, Awaitable
 from collections.abc import AsyncGenerator as AsyncGenType
@@ -303,12 +305,78 @@ class CursorPagination(PaginationHandler):
                 break
 
 
+class SkipTokenPagination(PaginationHandler):
+    """Skip token pagination with configurable response paths"""
+
+    async def fetch_all(
+        self,
+        url: str,
+        method: str,
+        params: Dict[str, Any],
+        headers: Dict[str, str],
+    ) -> AsyncGenType[List[Dict[str, Any]], None]:
+        skip_token_param = self.config.get("skip_token_param", "skiptoken")
+        limit_param = self.config.get("size_param", "limit")
+        next_link_path = self.config.get("next_link_path", "")
+        skip_token_path = self.config.get("skip_token_path", "")
+
+        skip_token = None
+
+        while True:
+            current_params = {**params, limit_param: self.page_size}
+
+            if skip_token:
+                current_params[skip_token_param] = skip_token
+
+            response = await self.make_request(url, method, current_params, headers)
+            response_data = response.json()
+
+            yield [response_data]
+
+            if isinstance(response_data, dict):
+                next_skip_token = None
+
+                if skip_token_path:
+                    next_skip_token = self.get_nested_value(
+                        response_data, skip_token_path
+                    )
+                elif next_link_path:
+                    next_link = response_data.get(next_link_path)
+                    if next_link is None:
+                        next_link = self.get_nested_value(response_data, next_link_path)
+                    if next_link:
+                        next_skip_token = self._extract_token_from_url(next_link)
+
+                if not next_skip_token:
+                    break
+
+                skip_token = next_skip_token
+            else:
+                break
+
+    def _extract_token_from_url(self, url: str) -> Any:
+        """Extract skip token from URL query parameters"""
+        try:
+            parsed_url = urlparse(url)
+            query_params = parse_qs(parsed_url.query)
+            return (
+                query_params.get("$skiptoken", [None])[0]
+                or query_params.get("skiptoken", [None])[0]
+                or query_params.get("skip_token", [None])[0]
+                or query_params.get("skipToken", [None])[0]
+            )
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Error parsing next link URL {url}: {e}")
+            return None
+
+
 # Registry of available pagination handlers
 PAGINATION_HANDLERS = {
     "none": NonePagination,
     "page": PagePagination,
     "offset": OffsetPagination,
     "cursor": CursorPagination,
+    "skip_token": SkipTokenPagination,
 }
 
 

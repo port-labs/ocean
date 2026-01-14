@@ -51,7 +51,7 @@ The integration will automatically sync data from your API to Port!
 
 - **Universal HTTP Connectivity** - Works with any REST API
 - **Multiple Authentication Methods** - Bearer token, Basic auth, API key, or none
-- **Flexible Pagination** - Offset/limit, page/size, cursor-based, or none
+- **Flexible Pagination** - Offset/limit, page/size, cursor-based, skip token, or none
 - **Dynamic Path Parameters** - Query APIs to discover parameter values for nested endpoints
 - **Endpoint-as-Kind** - Each endpoint tracked separately in Port's UI for better testing and debugging
 - **Smart Data Extraction** - Use JQ `data_path` to extract arrays from any response structure
@@ -105,7 +105,7 @@ OCEAN__INTEGRATION__CONFIG__AUTH_TYPE=none
 
 ```bash
 # Pagination method
-OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=offset  # offset, page, cursor, or none
+OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=offset  # offset, page, cursor, skip_token, or none
 
 # Page size (applies to all pagination types)
 OCEAN__INTEGRATION__CONFIG__PAGE_SIZE=100
@@ -114,7 +114,7 @@ OCEAN__INTEGRATION__CONFIG__PAGE_SIZE=100
 OCEAN__INTEGRATION__CONFIG__OFFSET_PARAM=offset    # Default: "offset"
 OCEAN__INTEGRATION__CONFIG__LIMIT_PARAM=limit      # Default: "limit"
 
-# Optional: Custom parameter names for page pagination  
+# Optional: Custom parameter names for page pagination
 OCEAN__INTEGRATION__CONFIG__PAGE_PARAM=page        # Default: "page"
 OCEAN__INTEGRATION__CONFIG__SIZE_PARAM=size        # Default: "size"
 OCEAN__INTEGRATION__CONFIG__START_PAGE=1           # Default: 1
@@ -122,6 +122,12 @@ OCEAN__INTEGRATION__CONFIG__START_PAGE=1           # Default: 1
 # Optional: Custom parameter names for cursor pagination
 OCEAN__INTEGRATION__CONFIG__CURSOR_PARAM=cursor    # Default: "cursor"
 OCEAN__INTEGRATION__CONFIG__LIMIT_PARAM=limit      # Default: "limit"
+
+# Optional: Custom parameter names for skip token pagination
+OCEAN__INTEGRATION__CONFIG__SKIP_TOKEN_PARAM=skiptoken  # Default: "skiptoken"
+OCEAN__INTEGRATION__CONFIG__NEXT_LINK_PATH=links.next  # Path to next link URL in response
+OCEAN__INTEGRATION__CONFIG__SKIP_TOKEN_PATH=pagination.nextToken  # Alternative: path to skip token field directly
+OCEAN__INTEGRATION__CONFIG__SIZE_PARAM=limit  # Query parameter for page size (e.g., "limit", "$top")
 ```
 
 ### Optional Configuration
@@ -302,7 +308,7 @@ GET /api/v1/users?offset=50&limit=50
 # ... continues until no more data
 ```
 
-### Page/Size Pagination  
+### Page/Size Pagination
 ```yaml
 # Integration config:
 OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=page
@@ -311,7 +317,7 @@ OCEAN__INTEGRATION__CONFIG__START_PAGE=1
 
 # Requests made:
 GET /api/v1/users?page=1&size=25
-GET /api/v1/users?page=2&size=25  
+GET /api/v1/users?page=2&size=25
 # ... continues until no more data
 ```
 
@@ -337,6 +343,72 @@ Expected response format:
   }
 }
 ```
+
+### Skip Token Pagination
+Skip token pagination extracts a token from the response and uses it to fetch the next page. The token can come from a URL in the response or directly from a response field.
+
+```yaml
+# Integration config:
+OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=skip_token
+OCEAN__INTEGRATION__CONFIG__PAGE_SIZE=100
+OCEAN__INTEGRATION__CONFIG__SKIP_TOKEN_PARAM=skiptoken
+OCEAN__INTEGRATION__CONFIG__NEXT_LINK_PATH=links.next
+OCEAN__INTEGRATION__CONFIG__SIZE_PARAM=limit
+
+# Requests made:
+GET /api/v1/users?limit=100
+GET /api/v1/users?limit=100&skiptoken=abc123
+# ... continues until no next link
+```
+
+**Token from Next Link URL:**
+```json
+{
+  "data": [...],
+  "links": {
+    "next": "https://api.example.com/v1/users?limit=100&skiptoken=abc123"
+  }
+}
+```
+
+**Token from Direct Field:**
+```yaml
+# Integration config:
+OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=skip_token
+OCEAN__INTEGRATION__CONFIG__SKIP_TOKEN_PATH=pagination.nextToken
+
+# Response format:
+{
+  "items": [...],
+  "pagination": {
+    "nextToken": "xyz789"
+  }
+}
+```
+
+**Microsoft Graph/Entra ID Example:**
+```yaml
+# Integration config:
+OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=skip_token
+OCEAN__INTEGRATION__CONFIG__SKIP_TOKEN_PARAM=$skiptoken
+OCEAN__INTEGRATION__CONFIG__NEXT_LINK_PATH=@odata.nextLink
+OCEAN__INTEGRATION__CONFIG__SIZE_PARAM=$top
+OCEAN__INTEGRATION__CONFIG__PAGE_SIZE=999
+
+# Response format:
+{
+  "value": [...],
+  "@odata.nextLink": "https://graph.microsoft.com/v1.0/users?$top=999&$skiptoken=X'4453707400000000000000000000'"
+}
+```
+
+**Configuration Options:**
+- `next_link_path`: Path to a URL field in the response. The skip token will be extracted from the URL's query parameters. Required if `skip_token_path` is not set.
+- `skip_token_path`: Path to a field containing the skip token directly (alternative to `next_link_path`). Required if `next_link_path` is not set.
+- `skip_token_param`: Query parameter name to use when sending the skip token in requests (default: `skiptoken`).
+- `size_param`: Optional query parameter name for page size (e.g., `$top`, `limit`).
+
+**Note:** You must configure either `next_link_path` or `skip_token_path` for skip token pagination to work.
 
 ### No Pagination
 ```yaml
@@ -455,7 +527,7 @@ resources:
 
 ### Custom Project Management Tool
 ```yaml
-# Integration config  
+# Integration config
 OCEAN__INTEGRATION__CONFIG__BASE_URL=https://projects.internal.com
 OCEAN__INTEGRATION__CONFIG__AUTH_TYPE=api_key
 OCEAN__INTEGRATION__CONFIG__API_KEY=proj-key-456
@@ -490,7 +562,7 @@ OCEAN__INTEGRATION__CONFIG__USERNAME=api_user
 OCEAN__INTEGRATION__CONFIG__PASSWORD=api_pass
 OCEAN__INTEGRATION__CONFIG__PAGINATION_TYPE=none
 
-# Resource mapping  
+# Resource mapping
 resources:
   - kind: api_resource
     selector:
@@ -558,7 +630,7 @@ poetry run python debug.py
 ### Adding New Features
 The integration follows standard Ocean patterns:
 - Authentication logic in `http_server/client.py`
-- Configuration models in `integration.py` 
+- Configuration models in `integration.py`
 - Resync handlers in `main.py`
 - Client factory in `initialize_client.py`
 
@@ -603,12 +675,6 @@ This will show:
 
 For issues or questions:
 1. Check the [Ocean Integration Documentation](https://ocean.getport.io/)
-2. Review API logs for detailed error information  
+2. Review API logs for detailed error information
 3. Test endpoints manually to verify API behavior
 4. Contact Port support with integration logs
-
-
-
-
-
-
