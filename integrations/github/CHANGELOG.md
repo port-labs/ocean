@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Standardized concurrency control on branch resync handler by applying repository-level task batching.
 - Improved async task orchestration on branch kind to prevent unbounded fan-out while preserving streaming behavior.
+- Added `branchNames` selector to explicitly target specific branches during resync, bypassing full branch pagination for faster, lower-API-cost runs on large repositories/branches.
+
+
+## 4.7.4-beta (2026-01-14)
+
+
+### Improvements
+
+- Added `databaseId` to team GraphQL fields.
+- Refactored the team members listing query to reuse the `TeamFields` fragment.
 
 
 ## 4.7.3-beta (2026-01-14)
