@@ -7,11 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.32.11 (2026-01-14)
+## 0.32.12 (2026-01-14)
 
 ### Bug fixes
 
 - Handle webhook event not supported exception and log it as a warning
+
+
+## 0.32.11 (2026-01-14)
+
+### Bug fixes
+
+- Added except clause to catch random errors
 
 
 ## 0.32.10 (2026-01-11)
