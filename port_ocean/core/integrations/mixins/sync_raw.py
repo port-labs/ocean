@@ -932,6 +932,43 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 silent,
             )
 
+    async def _handle_resync_abortion(
+        self,
+        creation_results: list[tuple[list[Entity], list[Exception]]],
+        app_config: Any,
+    ) -> None:
+        """Handle resync abortion by updating metrics for runtime, pending resources, and reconciliation.
+
+        Args:
+            creation_results: Results from entity creation that have been processed so far
+            app_config: The application configuration containing resource definitions
+        """
+        async with metric_resource_context(MetricResourceKind.RUNTIME):
+            ocean.metrics.sync_state = SyncState.ABORTED
+            await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RUNTIME)
+            await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RUNTIME])
+
+        for pending_index in range(len(creation_results), len(app_config.resources)):
+            pending_resource = app_config.resources[pending_index]
+            pending_kind_id = f"{pending_resource.kind}-{pending_index}"
+            async with metric_resource_context(pending_kind_id):
+                ocean.metrics.sync_state = SyncState.ABORTED
+                await ocean.metrics.send_metrics_to_webhook(kind=pending_kind_id)
+                await ocean.metrics.report_kind_sync_metrics(
+                    kind=pending_kind_id,
+                    blueprint=pending_resource.port.entity.mappings.blueprint,
+                )
+
+        async with metric_resource_context(MetricResourceKind.RECONCILIATION):
+            ocean.metrics.sync_state = SyncState.ABORTED
+            ocean.metrics.set_metric(
+                name=MetricType.SUCCESS_NAME,
+                labels=[MetricResourceKind.RECONCILIATION, MetricPhase.RESYNC],
+                value=0,
+            )
+            await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RECONCILIATION)
+            await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
+
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
         self,
@@ -1020,32 +1057,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.warning(
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
                 )
-
-                async with metric_resource_context(MetricResourceKind.RUNTIME):
-                    ocean.metrics.sync_state = SyncState.ABORTED
-                    await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RUNTIME)
-                    await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RUNTIME])
-
-                for pending_index in range(len(creation_results), len(app_config.resources)):
-                    pending_resource = app_config.resources[pending_index]
-                    pending_kind_id = f"{pending_resource.kind}-{pending_index}"
-                    async with metric_resource_context(pending_kind_id):
-                        ocean.metrics.sync_state = SyncState.ABORTED
-                        await ocean.metrics.send_metrics_to_webhook(kind=pending_kind_id)
-                        await ocean.metrics.report_kind_sync_metrics(
-                            kind=pending_kind_id,
-                            blueprint=pending_resource.port.entity.mappings.blueprint,
-                        )
-
-                async with metric_resource_context(MetricResourceKind.RECONCILIATION):
-                    ocean.metrics.sync_state = SyncState.ABORTED
-                    ocean.metrics.set_metric(
-                        name=MetricType.SUCCESS_NAME,
-                        labels=[MetricResourceKind.RECONCILIATION, MetricPhase.RESYNC],
-                        value=0,
-                    )
-                    await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RECONCILIATION)
-                    await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
+                await self._handle_resync_abortion(creation_results, app_config)
+                raise
+            except Exception as e:
+                logger.error(f"Error in resync: {e}")
+                await self._handle_resync_abortion(creation_results, app_config)
                 raise
             else:
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):
