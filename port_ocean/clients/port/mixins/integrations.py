@@ -77,28 +77,17 @@ class IntegrationClientMixin:
         self,
         should_raise: bool = True,
         should_log: bool = True,
-        has_provision_feature_flag: bool = False,
+        is_port_provisioning_enabled: bool = False,
     ) -> dict[str, Any]:
         response = await self._get_current_integration()
         handle_port_status_code(response, should_raise, should_log)
         integration = response.json().get("integration", {})
         if integration.get("config", None) or not integration:
             return integration
-        is_provision_enabled_for_integration = (
-            integration.get("installationAppType", None)
-            and (
-                await self.is_integration_provision_enabled(
-                    integration.get("installationAppType", ""),
-                    should_raise,
-                    should_log,
-                )
-            )
-            and has_provision_feature_flag
-        )
 
-        if is_provision_enabled_for_integration:
+        if is_port_provisioning_enabled:
             logger.info(
-                "integration type is enabled, polling until provisioning is complete"
+                "integration is still being provisioned, polling until provisioning is complete"
             )
             integration = (
                 await self._poll_integration_until_default_provisioning_is_complete()

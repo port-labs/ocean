@@ -6,7 +6,9 @@ from typing import Type
 import httpx
 from loguru import logger
 
+from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType
+from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.core.defaults.common import (
     Defaults,
     get_port_integration_defaults,
@@ -14,6 +16,7 @@ from port_ocean.core.defaults.common import (
 from port_ocean.core.defaults.initialization.base_setup import BaseSetup
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.core.models import Blueprint
+from port_ocean.core.models import CreatePortResourcesOrigin
 from port_ocean.core.utils.utils import gather_and_split_errors_from_results
 from port_ocean.exceptions.port_defaults import AbortDefaultCreationError
 
@@ -21,27 +24,29 @@ from port_ocean.exceptions.port_defaults import AbortDefaultCreationError
 class OceanOriginSetup(BaseSetup):
     """Setup that creates resources including blueprints, actions, scorecards, and pages."""
 
-    async def initialize(self, config_class: Type[PortAppConfig]) -> None:
+    def __init__(
+        self,
+        port_client: PortClient,
+        integration_config: IntegrationConfiguration,
+        config_class: Type[PortAppConfig],
+    ):
+        super().__init__(port_client, integration_config, config_class)
+        self._defaults: Defaults = get_port_integration_defaults(
+            config_class, integration_config.resources_path
+        )
+
+    @property
+    def _port_resources_origin(self) -> CreatePortResourcesOrigin:
+        return CreatePortResourcesOrigin.Ocean
+
+    async def initialize(self) -> None:
         """Initialize integration with resources created by Ocean."""
         logger.info("Starting Ocean origin setup - creating resources from Ocean")
 
-        defaults = get_port_integration_defaults(
-            config_class, self.integration_config.resources_path
-        )
-
-        default_config = (
-            defaults.port_app_config
-            if defaults
-            and defaults.port_app_config
-            and self.integration_config.initialize_port_resources
-            else PortAppConfig(resources=[])
-        )
-
         await self._initialize_required_integration_settings(
-            default_mapping=default_config,
+            self._defaults.port_app_config
         )
-
-        if not defaults or not self.integration_config.initialize_port_resources:
+        if not self._defaults or not self.integration_config.initialize_port_resources:
             logger.info(
                 "No defaults found or resources initialization disabled. Skipping resource creation..."
             )
@@ -49,7 +54,7 @@ class OceanOriginSetup(BaseSetup):
 
         try:
             logger.info("Found default resources, starting creation process")
-            await self._create_resources(defaults)
+            await self._create_resources(self._defaults)
         except AbortDefaultCreationError as e:
             logger.warning(
                 f"Failed to create resources. Rolling back blueprints : {e.blueprints_to_rollback}"
@@ -64,7 +69,7 @@ class OceanOriginSetup(BaseSetup):
                     for identifier in e.blueprints_to_rollback
                 )
             )
-            raise ExceptionGroup(str(e), e.errors)
+            raise ExceptionGroup[Exception](str(e), e.errors)
 
     async def _create_resources(self, defaults: Defaults) -> None:
         """Create blueprints, actions, scorecards, and pages."""
@@ -82,7 +87,7 @@ class OceanOriginSetup(BaseSetup):
             lambda item: isinstance(item, Blueprint),
         )
 
-        mapped_blueprints_exist = await self._mapped_blueprints_exist(defaults)
+        mapped_blueprints_exist = await self._mapped_blueprints_exist()
 
         if blueprints_results or mapped_blueprints_exist:
             logger.info(
@@ -134,19 +139,14 @@ class OceanOriginSetup(BaseSetup):
             raise AbortDefaultCreationError(created_blueprints_identifiers, [err])
 
         try:
-            created_actions, actions_errors = (
-                await gather_and_split_errors_from_results(
-                    (
-                        self.port_client.create_action(action, should_log=False)
-                        for action in defaults.actions
-                    )
+            _, actions_errors = await gather_and_split_errors_from_results(
+                (
+                    self.port_client.create_action(action, should_log=False)
+                    for action in defaults.actions
                 )
             )
 
-            (
-                created_scorecards,
-                scorecards_errors,
-            ) = await gather_and_split_errors_from_results(
+            _, scorecards_errors = await gather_and_split_errors_from_results(
                 (
                     self.port_client.create_scorecard(
                         blueprint_scorecards["blueprint"], action, should_log=False
@@ -156,7 +156,7 @@ class OceanOriginSetup(BaseSetup):
                 )
             )
 
-            created_pages, pages_errors = await gather_and_split_errors_from_results(
+            _, pages_errors = await gather_and_split_errors_from_results(
                 (
                     self.port_client.create_page(page, should_log=False)
                     for page in defaults.pages
@@ -174,12 +174,11 @@ class OceanOriginSetup(BaseSetup):
         except Exception as err:
             logger.error(f"Failed to create resources: {err}. continuing...")
 
-    async def _mapped_blueprints_exist(self, defaults: Defaults) -> bool:
+    async def _mapped_blueprints_exist(self) -> bool:
         """Check if blueprints mapped in the integration already exist."""
         integration = await self.port_client.get_current_integration(
             should_log=False,
             should_raise=False,
-            has_provision_feature_flag=self.has_provision_feature_flag,
         )
         integration_config = integration.get("config", {})
         resources = integration_config.get("resources", [])

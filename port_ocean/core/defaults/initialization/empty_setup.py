@@ -6,19 +6,21 @@ from loguru import logger
 
 from port_ocean.core.defaults.initialization.base_setup import BaseSetup
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
+from port_ocean.core.models import CreatePortResourcesOrigin
 
 
 class EmptySetup(BaseSetup):
     """Setup that creates only integration mapping without creating any blueprints or resources."""
 
+    @property
+    def _port_resources_origin(self) -> CreatePortResourcesOrigin:
+        return CreatePortResourcesOrigin.Empty
+
     async def initialize(self, config_class: Type[PortAppConfig]) -> None:
         """Initialize integration with empty mapping only."""
         logger.info("Starting empty setup - creating integration mapping only")
 
-        # Create empty config with no resources
         empty_config = PortAppConfig(resources=[])
-
-        # Initialize integration settings with empty mapping
         await self._initialize_required_integration_settings(
             default_mapping=empty_config,
         )

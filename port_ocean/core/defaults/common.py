@@ -28,8 +28,8 @@ class Defaults(BaseModel):
     actions: list[dict[str, Any]] = []
     scorecards: list[Preset] = []
     pages: list[dict[str, Any]] = []
-    port_app_config: Optional[PortAppConfig] = Field(
-        default=None, alias="port-app-config"
+    port_app_config: PortAppConfig = Field(
+        default=PortAppConfig(resources=[]), alias="port-app-config"
     )
 
     class Config:
@@ -45,38 +45,6 @@ async def is_integration_exists(port_client: PortClient) -> bool:
             raise e
 
     return False
-
-
-def deconstruct_blueprints_to_creation_steps(
-    raw_blueprints: list[dict[str, Any]]
-) -> tuple[list[dict[str, Any]], ...]:
-    """
-    Deconstructing the blueprint into stages so the api wont fail to create a blueprint if there is a conflict
-    example: Preventing the failure of creating a blueprint with a relation to another blueprint
-    """
-    (
-        bare_blueprint,
-        with_relations,
-        full_blueprint,
-    ) = ([], [], [])
-
-    for blueprint in raw_blueprints.copy():
-        full_blueprint.append(blueprint.copy())
-
-        blueprint.pop("calculationProperties", {})
-        blueprint.pop("mirrorProperties", {})
-        with_relations.append(blueprint.copy())
-
-        blueprint.pop("teamInheritance", {})
-        blueprint.pop("ownership", {})
-        blueprint.pop("relations", {})
-        bare_blueprint.append(blueprint)
-
-    return (
-        bare_blueprint,
-        with_relations,
-        full_blueprint,
-    )
 
 
 def is_valid_dir(path: Path) -> bool:
