@@ -198,16 +198,18 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         organization = run.payload.integrationActionExecutionProperties.get("org")
         repo = run.payload.integrationActionExecutionProperties.get("repo")
         workflow = run.payload.integrationActionExecutionProperties.get("workflow")
-        inputs = run.payload.integrationActionExecutionProperties.get(
-            "workflowInputs", {}
-        )
 
         if not (organization and repo and workflow):
             raise InvalidActionParametersException(
                 "organization, repo and workflow are required"
             )
 
-        ref = inputs.get("ref") or await self._get_default_ref(organization, repo)
+        inputs: dict[str, Any] = run.payload.integrationActionExecutionProperties.get(
+            "workflowInputs", {}
+        )
+        ref = inputs.pop("ref", None)
+        if not ref:
+            ref = await self._get_default_ref(organization, repo)
         try:
             isoDate = datetime.now(timezone.utc).isoformat()
             await self.rest_client.make_request(
