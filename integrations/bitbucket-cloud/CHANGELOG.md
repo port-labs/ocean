@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.2 (2026-01-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+## 0.4.1 (2026-01-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
+## 0.4.0 (2025-12-29)
+
+
+### Features
+
+- Added search filtering for `repository` kind using query param `repo_query`
+- Added filtering for `repository` kind based on the authenticated user's role using query param `user_role`
+- Added filtering for the `pull-request` kind by supplying a list of `states` to filter for each repository
+
+
 ## 0.3.20 (2025-12-25)
 
 

@@ -10,7 +10,12 @@ from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookSubscription
-from azure_devops.webhooks.events import RepositoryEvents, PullRequestEvents, PushEvents
+from azure_devops.webhooks.events import (
+    RepositoryEvents,
+    PullRequestEvents,
+    PushEvents,
+    WorkItemEvents,
+)
 
 from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
@@ -61,6 +66,12 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
     ),
     WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH),
     WebhookSubscription(publisherId="tfs", eventType=RepositoryEvents.REPO_CREATED),
+    WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_CREATED),
+    WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_UPDATED),
+    WebhookSubscription(
+        publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_COMMENTED
+    ),
+    WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_DELETED),
 ]
 
 
@@ -740,7 +751,7 @@ class AzureDevopsClient(HTTPBaseClient):
             if not batch_ids:
                 continue
             logger.debug(
-                f"Processing batch {i//page_size + 1}/{number_of_batches} with {len(batch_ids)} work items for project {project_id}"
+                f"Processing batch {i // page_size + 1}/{number_of_batches} with {len(batch_ids)} work items for project {project_id}"
             )
             work_items_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/workitems"
             params = {
@@ -768,6 +779,27 @@ class AzureDevopsClient(HTTPBaseClient):
             work_item["__projectId"] = project["id"]
             work_item["__project"] = project
         return work_items
+
+    async def get_work_item(
+        self, project_id: str, work_item_id: int, expand: str = "All"
+    ) -> Optional[dict[str, Any]]:
+        """
+        Fetches a single work item by ID from Azure DevOps.
+
+        :param project_id: The project ID containing the work item.
+        :param work_item_id: The work item ID to fetch.
+        :param expand: Expand options for work items. Allowed values are 'None', 'Fields', 'Relations', 'Links' and 'All'. Default value is 'All'.
+        :return: The work item data or None if not found.
+        """
+        work_item_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/workitems/{work_item_id}"
+        params = {
+            "api-version": API_PARAMS["api-version"],
+            "$expand": expand,
+        }
+        response = await self.send_request("GET", work_item_url, params=params)
+        if not response:
+            return None
+        return response.json()
 
     async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any] | None:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
@@ -820,13 +852,31 @@ class AzureDevopsClient(HTTPBaseClient):
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
         async for teams_in_project in self._get_paginated_by_top_and_skip(teams_url):
             for team in teams_in_project:
-                get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
-                response = await self.send_request("GET", get_boards_url)
-                if not response:
-                    continue
-                board_data = response.json().get("value", [])
-                logger.info(f"Found {len(board_data)} boards for project {project_id}")
-                yield await self._enrich_boards(board_data, project_id, team["id"])
+                try:
+                    get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
+                    response = await self.send_request("GET", get_boards_url)
+                    if not response:
+                        continue
+
+                    board_data = response.json().get("value", [])
+                    if not board_data:
+                        continue
+
+                    logger.info(
+                        f"Found {len(board_data)} boards for project {project_id}"
+                    )
+                    yield await self._enrich_boards(board_data, project_id, team["id"])
+
+                except HTTPStatusError as e:
+                    # Azure Devops API throws 500 errors when you try to fetch boards for teams that
+                    # are not in a sprint iteration. We should skip those.
+                    if e.response.status_code == 500:
+                        logger.warning(
+                            f"Skipping board fetch for team {team['id']} in project {project_id} due to a server error (HTTP 500). "
+                            "This can occur if the team is not assigned to an iteration."
+                        )
+                        continue
+                    raise
 
     @cache_iterator_result()
     async def get_boards_in_organization(

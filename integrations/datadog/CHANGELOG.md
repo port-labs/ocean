@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.3.70 (2026-01-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+## 0.3.69 (2026-01-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
+## 0.3.68 (2026-01-05)
+
+
+### Improvements
+
+- Fixed an issue in the default `team` and `user` mappings where an incorrect created_at filter caused data ingestion to fail.
+
+
 ## 0.3.67 (2025-12-24)
 
 

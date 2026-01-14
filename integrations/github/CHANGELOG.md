@@ -7,10 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.1 (2026-01-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+## 5.0.0 (2026-01-14)
+
+
+### Improvements
+
+- mark integration version GA
+
+
+## 4.7.4-beta (2026-01-14)
+
+
+### Improvements
+
+- Added `databaseId` to team GraphQL fields.
+- Refactored the team members listing query to reuse the `TeamFields` fragment.
+
+
+## 4.7.3-beta (2026-01-14)
+
+
+### Improvements
+
+- Added embedded installation docs to spec.yaml for supported installation methods
+
+
+## 4.7.2-beta (2026-01-14)
+
+
+### Improvements
+
+- Allow using branch ref from inputs upon dispatch workflow action trigger
+
+
+## 4.7.1-beta (2026-01-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
+## 4.7.0-beta (2026-01-05)
+
+
+### Features
+
+- Added support for creating webhooks for personal accounts by subscribing at the repository level for owned repositories.
+
+
+## 4.6.0-beta (2026-01-05)
+
+
+### Features
+
+- Added support for repo-managed Port app config for the GitHub Ocean integration, loading mapping from `.github-private/port-app-config.yml` and triggering a resync on config changes.
+
+
 ## 4.5.6-beta (2025-12-30)
 
+
 ### Bug Fixes
+
 - Fixed branch resync failures when branch names contain special characters by properly URL-encoding branch names before inserting them into API endpoint URLs.
+
 
 ## 4.5.5-beta (2025-12-24)
 

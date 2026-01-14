@@ -33,7 +33,7 @@ class ReleaseWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         release_id = release["id"]
         repo_name = repo["name"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Processing release event: {action} for release {release_id} in {repo_name} from {organization}"
