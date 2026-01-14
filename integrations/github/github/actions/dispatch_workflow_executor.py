@@ -207,7 +207,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 "organization, repo and workflow are required"
             )
 
-        ref = await self._get_default_ref(organization, repo)
+        ref = inputs.get("ref") or await self._get_default_ref(organization, repo)
         try:
             isoDate = datetime.now(timezone.utc).isoformat()
             await self.rest_client.make_request(
