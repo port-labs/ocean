@@ -76,12 +76,13 @@ class HttpServerClient:
         method: str = "GET",
         query_params: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch data with automatic rate limiting and concurrency control"""
 
         async def _fetch() -> AsyncGenerator[List[Dict[str, Any]], None]:
             async for batch in self._fetch_with_pagination(
-                endpoint, method, query_params, headers
+                endpoint, method, query_params, headers, body
             ):
                 yield batch
 
@@ -94,6 +95,7 @@ class HttpServerClient:
         method: str,
         query_params: Optional[Dict[str, Any]],
         headers: Optional[Dict[str, str]],
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch data with pagination handling using handler pattern"""
 
@@ -126,7 +128,9 @@ class HttpServerClient:
             get_nested_value_fn=self._get_nested_value,
         )
 
-        async for batch in handler.fetch_all(url, method, params, request_headers):
+        async for batch in handler.fetch_all(
+            url, method, params, request_headers, body
+        ):
             yield batch
 
     def _get_nested_value(self, data: Dict[str, Any], path: str) -> Any:
@@ -146,6 +150,7 @@ class HttpServerClient:
         method: str,
         params: Dict[str, Any],
         headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
     ) -> httpx.Response:
         """Make HTTP request using Ocean's built-in client with retry and rate limiting.
         Automatically re-authenticates on 401 errors for custom auth."""
@@ -155,12 +160,15 @@ class HttpServerClient:
             **headers,
         }
 
-        # Apply custom auth token if available (evaluates templates in headers/queryParams)
+        # Apply custom auth token if available (evaluates templates in headers/queryParams/body)
+        request_body = body
         if self.auth_type == "custom" and hasattr(
             self.auth_handler, "apply_auth_to_request"
         ):
-            merged_headers, params = await self.auth_handler.apply_auth_to_request(
-                merged_headers, params
+            merged_headers, params, request_body = (
+                await self.auth_handler.apply_auth_to_request(
+                    merged_headers, params, body
+                )
             )
 
         max_retries = 1  # Only retry once on 401
@@ -168,12 +176,22 @@ class HttpServerClient:
 
         while retry_count <= max_retries:
             try:
-                response = await self.client.request(
-                    method=method,
-                    url=url,
-                    params=params,
-                    headers=merged_headers,
-                )
+                # Build request - include body if present
+                if request_body:
+                    response = await self.client.request(
+                        method=method,
+                        url=url,
+                        params=params,
+                        headers=merged_headers,
+                        json=request_body,
+                    )
+                else:
+                    response = await self.client.request(
+                        method=method,
+                        url=url,
+                        params=params,
+                        headers=merged_headers,
+                    )
 
                 # Check for 401 BEFORE raise_for_status() to intercept before RetryTransport retries
                 if (
@@ -189,9 +207,9 @@ class HttpServerClient:
                         await self.auth_handler.reauthenticate()
                         # Re-apply auth token after re-authentication (evaluate templates again)
                         if hasattr(self.auth_handler, "apply_auth_to_request"):
-                            merged_headers, params = (
+                            merged_headers, params, request_body = (
                                 await self.auth_handler.apply_auth_to_request(
-                                    merged_headers, params
+                                    merged_headers, params, body
                                 )
                             )
                         retry_count += 1

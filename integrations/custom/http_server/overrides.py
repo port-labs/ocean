@@ -132,6 +132,10 @@ class CustomAuthResponseConfig(BaseModel):
         alias="queryParams",
         description="Query parameters to apply to subsequent API requests. Use template syntax {{.jq_path}} to extract values from auth response (e.g., 'api_key': '{{.access_token}}')",
     )
+    body: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Request body to merge into subsequent API requests. Use template syntax {{.jq_path}} to extract values from auth response. Merged with request body if present (e.g., {'api_key': '{{.accessToken}}'})",
+    )
 
     class Config:
         allow_population_by_field_name = True

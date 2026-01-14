@@ -279,18 +279,21 @@ class CustomAuth(AuthHandler):
             logger.info("CustomAuth: Re-authentication completed successfully")
 
     async def apply_auth_to_request(
-        self, headers: Dict[str, str], query_params: Optional[Dict[str, Any]] = None
-    ) -> tuple[Dict[str, str], Dict[str, Any]]:
-        """Apply authentication values to request headers and query params using templates.
+        self,
+        headers: Dict[str, str],
+        query_params: Optional[Dict[str, Any]] = None,
+        body: Optional[Dict[str, Any]] = None,
+    ) -> tuple[Dict[str, str], Dict[str, Any], Optional[Dict[str, Any]]]:
+        """Apply authentication values to request headers, query params, and body using templates.
 
-        Evaluates templates like {{.access_token}} in headers and queryParams from
+        Evaluates templates like {{.access_token}} in headers, queryParams, and body from
         customAuthResponse config using values from the authentication response.
 
         Returns:
-            Tuple of (updated_headers, updated_query_params)
+            Tuple of (updated_headers, updated_query_params, updated_body)
         """
         if not self.auth_response or not self.custom_auth_response:
-            return headers, query_params or {}
+            return headers, query_params or {}, body
 
         # Evaluate templates in headers from customAuthResponse config
         updated_headers = headers.copy()
@@ -310,7 +313,20 @@ class CustomAuth(AuthHandler):
             # Merge with existing query params (response config params take precedence)
             updated_query_params = {**updated_query_params, **evaluated_params}
 
-        return updated_headers, updated_query_params
+        # Evaluate templates in body from customAuthResponse config
+        updated_body = body.copy() if body else {}
+        if self.custom_auth_response.body:
+            evaluated_body = await _evaluate_templates_in_dict(
+                self.custom_auth_response.body, self.auth_response
+            )
+            # Merge with existing body (response config body takes precedence)
+            updated_body = {**updated_body, **evaluated_body}
+
+        return (
+            updated_headers,
+            updated_query_params,
+            updated_body if updated_body else None,
+        )
 
 
 # Registry of available auth handlers
@@ -350,7 +366,8 @@ class PaginationHandler:
         config: Dict[str, Any],
         extract_items_fn: Callable[[Any], List[Dict[str, Any]]],
         make_request_fn: Callable[
-            [str, str, Dict[str, Any], Dict[str, str]], Awaitable[httpx.Response]
+            [str, str, Dict[str, Any], Dict[str, str], Optional[Dict[str, Any]]],
+            Awaitable[httpx.Response],
         ],
         get_nested_value_fn: Callable[[Dict[str, Any], str], Any],
     ) -> None:
@@ -367,6 +384,7 @@ class PaginationHandler:
         method: str,
         params: Dict[str, Any],
         headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
         """Fetch all pages - override in subclasses"""
         raise NotImplementedError
@@ -382,8 +400,9 @@ class NonePagination(PaginationHandler):
         method: str,
         params: Dict[str, Any],
         headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
-        response = await self.make_request(url, method, params, headers)
+        response = await self.make_request(url, method, params, headers, body)
         response_data = response.json()
         # Yield raw response as single-item batch for Ocean's data_path extraction
         yield [response_data]
@@ -398,6 +417,7 @@ class PagePagination(PaginationHandler):
         method: str,
         params: Dict[str, Any],
         headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
         page_param = self.config.get("pagination_param", "page")
         size_param = self.config.get("size_param", "size")
@@ -413,7 +433,9 @@ class PagePagination(PaginationHandler):
                 size_param: self.page_size,
             }
 
-            response = await self.make_request(url, method, current_params, headers)
+            response = await self.make_request(
+                url, method, current_params, headers, body
+            )
             response_data = response.json()
 
             # Yield raw response as single-item batch
@@ -451,6 +473,7 @@ class OffsetPagination(PaginationHandler):
         method: str,
         params: Dict[str, Any],
         headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
         offset_param = self.config.get("pagination_param", "offset")
         limit_param = self.config.get("size_param", "limit")
@@ -465,7 +488,9 @@ class OffsetPagination(PaginationHandler):
                 limit_param: self.page_size,
             }
 
-            response = await self.make_request(url, method, current_params, headers)
+            response = await self.make_request(
+                url, method, current_params, headers, body
+            )
             response_data = response.json()
 
             # Yield raw response as single-item batch
@@ -501,6 +526,7 @@ class CursorPagination(PaginationHandler):
         method: str,
         params: Dict[str, Any],
         headers: Dict[str, str],
+        body: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenType[List[Dict[str, Any]], None]:
         cursor_param = self.config.get("pagination_param", "cursor")
         limit_param = self.config.get("size_param", "limit")
@@ -515,7 +541,9 @@ class CursorPagination(PaginationHandler):
             if cursor:
                 current_params[cursor_param] = cursor
 
-            response = await self.make_request(url, method, current_params, headers)
+            response = await self.make_request(
+                url, method, current_params, headers, body
+            )
             response_data = response.json()
 
             # Yield raw response as single-item batch
@@ -574,7 +602,8 @@ def get_pagination_handler(
     config: Dict[str, Any],
     extract_items_fn: Callable[[Any], List[Dict[str, Any]]],
     make_request_fn: Callable[
-        [str, str, Dict[str, Any], Dict[str, str]], Awaitable[httpx.Response]
+        [str, str, Dict[str, Any], Dict[str, str], Optional[Dict[str, Any]]],
+        Awaitable[httpx.Response],
     ],
     get_nested_value_fn: Callable[[Dict[str, Any], str], Any],
 ) -> PaginationHandler:

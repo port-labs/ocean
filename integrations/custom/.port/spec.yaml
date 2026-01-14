@@ -169,7 +169,7 @@ configurations:
   - name: customAuthResponse
     required: false
     type: object
-    description: "Custom authentication response usage configuration. Required when authType is 'custom'. Defines how to use auth response values in subsequent requests using template syntax {{.jq_path}}. Example: {\"headers\": {\"Authorization\": \"Bearer {{.access_token}}\", \"X-TTL\": \"{{.expires_in}}\"}, \"queryParams\": {\"api_key\": \"{{.access_token}}\"}}"
+    description: "Custom authentication response usage configuration. Required when authType is 'custom'. Defines how to use auth response values in subsequent requests using template syntax {{.jq_path}}. Example: {\"headers\": {\"Authorization\": \"Bearer {{.access_token}}\"}, \"queryParams\": {\"api_key\": \"{{.access_token}}\"}, \"body\": {\"api_key\": \"{{.accessToken}}\"}}"
     dependencies:
       - on: authType
         when:

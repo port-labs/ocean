@@ -32,10 +32,11 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     logger.info(f"Resolved {len(endpoints)} endpoints to call for kind: {kind}")
 
-    # Extract method, query_params, headers from selector
+    # Extract method, query_params, headers, body from selector
     method = getattr(selector, "method", "GET")
     query_params = getattr(selector, "query_params", None) or {}
     headers = getattr(selector, "headers", None) or {}
+    body = getattr(selector, "body", None)
 
     # Call each resolved endpoint
     for endpoint, path_params in endpoints:
@@ -50,6 +51,7 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 method=method,
                 query_params=query_params,
                 headers=headers,
+                body=body,
             ):
                 logger.info(f"Received {len(batch)} records from {endpoint}")
 
