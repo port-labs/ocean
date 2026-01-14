@@ -502,6 +502,7 @@ class GitLabClient:
                         "email": member.get("email"),
                         "username": member["username"],
                         "name": member["name"],
+                        "access_level": member["access_level"],
                         "id": member["id"],
                     }
                 )

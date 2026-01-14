@@ -49,7 +49,7 @@ class CollaboratorTeamWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         action = payload["action"]
         team_slug = payload["team"]["slug"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Handling team event: {action} for team {team_slug} of organization: {organization}"
