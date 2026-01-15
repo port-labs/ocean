@@ -16,6 +16,9 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Format response when logging error
 
+### Improvements
+
+- Add export of system and request metrics
 
 ## 0.32.11 (2026-01-14)
 
