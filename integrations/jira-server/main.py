@@ -15,8 +15,6 @@ from jira_server.webhook_processors import (
 
 @ocean.on_start()
 async def on_start() -> None:
-    logger.info("Starting Port Ocean Jira Server integration")
-
     if ocean.event_listener_type == "ONCE":
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
