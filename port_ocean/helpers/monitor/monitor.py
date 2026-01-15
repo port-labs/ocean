@@ -19,7 +19,6 @@ from typing import Any, Optional
 import psutil
 from loguru import logger
 
-from port_ocean.helpers.monitor.cgroup_reader import CgroupReader
 from port_ocean.helpers.monitor.utils import measure_event_loop_latency
 
 from .models import ProcessNode, SystemSnapshot, ResourceUsageStats
@@ -43,7 +42,6 @@ class PerformanceMonitor:
         self._running = False
         self._task: Optional[asyncio.Task[None]] = None
         self._process = psutil.Process()
-        self._cgroup = CgroupReader()
         self._start_time = time.time()
 
         # Track known PIDs for CPU baseline (first cpu_percent() call returns 0)
@@ -163,17 +161,9 @@ class PerformanceMonitor:
             total_cpu = self._process.cpu_percent()
             total_rss = self._process.memory_info().rss
 
-        # Use container metrics if available (more accurate)
-        if self._cgroup.is_container:
-            proc_memory = self._cgroup.memory_usage() or total_rss
-            cpu_percent = self._cgroup.cpu_percent()
-        else:
-            proc_memory = total_rss
-            cpu_percent = total_cpu
-
         return SystemSnapshot(
-            process_cpu_percent=cpu_percent,
-            process_memory_rss=proc_memory,
+            process_cpu_percent=total_cpu,
+            process_memory_rss=total_rss,
             event_loop_latency_ms=latency,
         )
 
