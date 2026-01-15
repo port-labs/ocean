@@ -11,7 +11,9 @@ from integration import TeamResourceConfig, ObjectKind
 from clients.sentry import SentryClient
 from clients.init_client import init_client
 from webhook_processors.issue_webhook_processor import SentryIssueWebhookProcessor
-from webhook_processors.issue_tag_webhook_processor import SentryIssueTagWebhookProcessor
+from webhook_processors.issue_tag_webhook_processor import (
+    SentryIssueTagWebhookProcessor,
+)
 from webhook_processors.init_client import init_webhook_client
 from integration import SentryResourceConfig
 
