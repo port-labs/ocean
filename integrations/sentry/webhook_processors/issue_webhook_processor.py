@@ -1,5 +1,5 @@
 from loguru import logger
-from typing import Any
+from typing import Any, cast
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -9,8 +9,8 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 
 from webhook_processors.base_webhook_processor import _SentryBaseWebhookProcessor
-from integration import ObjectKind
-from webhook_processors.events import DELETE_ACTION
+from integration import ObjectKind, IssueResourceConfig
+from webhook_processors.events import ARCHIVED_ISSUE_ACTION
 
 
 class SentryIssueWebhookProcessor(_SentryBaseWebhookProcessor):
@@ -30,8 +30,9 @@ class SentryIssueWebhookProcessor(_SentryBaseWebhookProcessor):
         updated_results: list[dict[str, Any]] = []
         deleted_results: list[dict[str, Any]] = []
 
-        if action == DELETE_ACTION:
-            deleted_results.append({"id": issue["id"]})
+        selector = cast(IssueResourceConfig, resource_config).selector
+        if action == ARCHIVED_ISSUE_ACTION and not selector.include_archived:
+            deleted_results.append(issue)
         else:
             updated_results.append(issue)
 

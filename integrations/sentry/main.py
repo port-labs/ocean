@@ -123,7 +123,7 @@ async def on_start() -> None:
         return
 
     client = init_webhook_client()
-    await client.ensure_service_hooks(base_url)
+    await client.ensure_sentry_apps(base_url)
 
 
 # Webhook processor registration

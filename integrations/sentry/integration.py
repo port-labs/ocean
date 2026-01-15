@@ -37,9 +37,17 @@ class TeamSelector(Selector):
     )
 
 
+class IssueSelector(SentrySelector):
+    include_archived: bool = Field(
+        alias="includeArchived",
+        default=True,
+        description="Whether to include the archived issues, defaults to true",
+    )
+
+
 class SentryResourceConfig(ResourceConfig):
     selector: SentrySelector
-    kind: Literal["project", "issue", "project-tag", "issue-tag"]
+    kind: Literal["project", "project-tag"]
 
 
 class TeamResourceConfig(ResourceConfig):
@@ -47,10 +55,15 @@ class TeamResourceConfig(ResourceConfig):
     selector: TeamSelector
 
 
+class IssueResourceConfig(ResourceConfig):
+    kind: Literal["issue", "issue-tag"]
+    selector: IssueSelector
+
+
 class SentryPortAppConfig(PortAppConfig):
-    resources: list[SentryResourceConfig | TeamResourceConfig | ResourceConfig] = Field(
-        default_factory=list
-    )
+    resources: list[
+        SentryResourceConfig | TeamResourceConfig | IssueResourceConfig | ResourceConfig
+    ] = Field(default_factory=list)
 
 
 class SentryIntegration(BaseIntegration):

@@ -12,10 +12,10 @@ from port_ocean.core.handlers.port_app_config.models import (
     EntityMapping,
     MappingsConfig,
 )
-from integration import ObjectKind, SentryResourceConfig, SentrySelector
+from integration import ObjectKind, IssueResourceConfig, IssueSelector
 
 
-def _resource_config() -> SentryResourceConfig:
+def _resource_config() -> IssueResourceConfig:
     """Create a minimal ResourceConfig for testing."""
     port = PortResourceConfig(
         entity=MappingsConfig(
@@ -27,8 +27,10 @@ def _resource_config() -> SentryResourceConfig:
             )
         )
     )
-    return SentryResourceConfig(
-        kind="issue-tag", selector=SentrySelector(query="true"), port=port
+    return IssueResourceConfig(
+        kind="issue-tag",
+        selector=IssueSelector(query="true"),
+        port=port,
     )
 
 
@@ -149,7 +151,8 @@ class TestSentryIssueTagWebhookProcessor:
         processor = SentryIssueTagWebhookProcessor(event)
 
         payload = {
-            "data": {"issue": {"id": "67890"}, "project": {"slug": "another-project"}}
+            "action": "created",
+            "data": {"issue": {"id": "67890"}, "project": {"slug": "another-project"}},
         }
 
         mock_client = AsyncMock()
@@ -169,3 +172,35 @@ class TestSentryIssueTagWebhookProcessor:
 
         assert len(result.updated_raw_results) == 4
         assert result.deleted_raw_results == []
+
+    async def test_handle_sentry_event_delete(self) -> None:
+        """Test handling when issue is deleted."""
+        event = WebhookEvent(
+            trace_id="t8", payload={}, headers={"sentry-hook-resource": "issue"}
+        )
+        processor = SentryIssueTagWebhookProcessor(event)
+
+        payload = {
+            "action": "ignored",
+            "data": {"issue": {"id": "67890"}, "project": {"slug": "another-project"}},
+        }
+
+        mock_client = AsyncMock()
+        mock_tags = [
+            {"key": "browser", "value": "Chrome"},
+            {"key": "os", "value": "Windows"},
+            {"key": "device", "value": "Desktop"},
+            {"key": "release", "value": "v1.2.3"},
+        ]
+        mock_client.get_issues_tags_from_issues.return_value = mock_tags
+
+        with patch(
+            "webhook_processors.issue_tag_webhook_processor.init_webhook_client",
+            return_value=mock_client,
+        ):
+            resource_config = _resource_config()
+            resource_config.selector.include_archived = False
+            result = await processor.handle_event(payload, resource_config)
+
+        assert len(result.updated_raw_results) == 0
+        assert len(result.deleted_raw_results) == 4

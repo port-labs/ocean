@@ -5,16 +5,14 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
 )
 from port_ocean.core.handlers.port_app_config.models import (
-    ResourceConfig,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
-    Selector,
 )
-from integration import ObjectKind
+from integration import ObjectKind, IssueSelector, IssueResourceConfig
 
 
-def _resource_config() -> ResourceConfig:
+def _resource_config() -> IssueResourceConfig:
     """Create a minimal ResourceConfig for testing."""
     port = PortResourceConfig(
         entity=MappingsConfig(
@@ -26,7 +24,11 @@ def _resource_config() -> ResourceConfig:
             )
         )
     )
-    return ResourceConfig(kind="issue", selector=Selector(query="true"), port=port)
+    return IssueResourceConfig(
+        kind="issue",
+        selector=IssueSelector(query="true"),
+        port=port,
+    )
 
 
 @pytest.mark.asyncio
@@ -149,3 +151,57 @@ class TestSentryIssueWebhookProcessor:
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0]["id"] == "67890"
         assert result.deleted_raw_results == []
+
+    async def test_handle_sentry_event_with_archived_issue_if_selector_includes_archived(
+        self,
+    ) -> None:
+        """Test handling of Sentry service hook events with archived issue if selector includes archived."""
+        event = WebhookEvent(
+            trace_id="t9",
+            payload={},
+            headers={
+                "sentry-hook-signature": "test-signature",
+                "sentry-hook-resource": "issue",
+            },
+        )
+        processor = SentryIssueWebhookProcessor(event)
+
+        payload = {
+            "action": "ignored",
+            "data": {"issue": {"id": "12345"}},
+            "project": {"slug": "test-project"},
+        }
+
+        resource_config = _resource_config()
+        resource_config.selector.include_archived = True
+        result = await processor.handle_event(payload, resource_config)
+
+        assert len(result.updated_raw_results) == 1
+        assert len(result.deleted_raw_results) == 0
+
+    async def test_handle_sentry_event_with_archived_issue_if_selector_excludes_archived(
+        self,
+    ) -> None:
+        """Test handling of Sentry service hook events with archived issue if selector excludes archived."""
+        event = WebhookEvent(
+            trace_id="t10",
+            payload={},
+            headers={
+                "sentry-hook-signature": "test-signature",
+                "sentry-hook-resource": "issue",
+            },
+        )
+        processor = SentryIssueWebhookProcessor(event)
+
+        payload = {
+            "action": "ignored",
+            "data": {"issue": {"id": "12345"}},
+            "project": {"slug": "test-project"},
+        }
+
+        resource_config = _resource_config()
+        resource_config.selector.include_archived = False
+        result = await processor.handle_event(payload, resource_config)
+
+        assert len(result.updated_raw_results) == 0
+        assert len(result.deleted_raw_results) == 1
