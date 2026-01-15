@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Add condition to only paginate when we're inside Pagerduty limit # AI! improve this
+- Improved pagination handling to avoid PagerDuty's API resource limit, preventing potential errors.
 
 
 ## 0.4.31 (2026-01-14)
