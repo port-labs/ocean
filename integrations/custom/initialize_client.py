@@ -131,11 +131,11 @@ async def get_client() -> HttpServerClient:
 
     # Wait for authentication to complete if it's in progress
     if _auth_in_progress:
-        logger.info("Authentication in progress, waiting for completion...")
+        logger.debug("Authentication in progress, waiting for completion...")
         await _auth_complete.wait()
         if _shared_client is None:
             raise RuntimeError("Authentication completed but client is None")
-        logger.info("Authentication completed, returning client")
+        logger.debug("Authentication completed, returning client")
         return _shared_client
 
     # If client doesn't exist, initialize and authenticate
@@ -145,14 +145,14 @@ async def get_client() -> HttpServerClient:
             return _shared_client
 
         if _auth_in_progress:
-            logger.info("Authentication started by another coroutine, waiting...")
+            logger.debug("Authentication started by another coroutine, waiting...")
             await _auth_complete.wait()
             if _shared_client is None:
                 raise RuntimeError("Authentication completed but client is None")
             return _shared_client
 
         # Initialize and authenticate (sets _auth_in_progress internally)
-        logger.info("Starting client initialization and authentication...")
+        logger.debug("Starting client initialization and authentication...")
         try:
             # This will set _auth_in_progress = True and complete authentication
             await initialize_and_authenticate()
@@ -173,7 +173,7 @@ async def get_client() -> HttpServerClient:
                     "Authentication completed but auth_response is None in handler. "
                     "This indicates authentication did not complete properly."
                 )
-            logger.info(
+            logger.debug(
                 "Client initialization and authentication completed successfully"
             )
             return _shared_client
@@ -205,12 +205,12 @@ async def initialize_and_authenticate() -> HttpServerClient:
     _auth_in_progress = True
 
     try:
-        logger.info("Initializing shared HTTP client")
+        logger.debug("Initializing shared HTTP client")
         _shared_client = init_client()
 
         # Authenticate if using custom auth
         if _shared_client.auth_type == "custom":
-            logger.info("Performing initial authentication for custom auth")
+            logger.debug("Performing initial authentication for custom auth")
             if hasattr(_shared_client.auth_handler, "authenticate_async"):
                 await _shared_client.auth_handler.authenticate_async()
             else:
@@ -218,7 +218,7 @@ async def initialize_and_authenticate() -> HttpServerClient:
                     "Custom auth handler does not support async authentication"
                 )
 
-        logger.info("Shared HTTP client initialized and authenticated")
+        logger.debug("Shared HTTP client initialized and authenticated")
         _auth_complete.set()
         return _shared_client
     except Exception as e:

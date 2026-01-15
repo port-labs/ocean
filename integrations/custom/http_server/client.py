@@ -170,15 +170,10 @@ class HttpServerClient:
         if self.auth_type == "custom" and hasattr(
             self.auth_handler, "apply_auth_to_request"
         ):
-            logger.info(f"CustomAuth: Applying auth to {method} {url} request")
             merged_headers, params, request_body = (
                 await self.auth_handler.apply_auth_to_request(
                     merged_headers, params, body
                 )
-            )
-            logger.info(
-                f"CustomAuth: Auth applied. Request headers: {list(merged_headers.keys())}. "
-                f"Authorization header present: {'Authorization' in merged_headers}"
             )
 
         max_retries = 1  # Only retry once on 401

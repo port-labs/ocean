@@ -255,7 +255,7 @@ class CustomAuth(AuthHandler):
 
         # Make the authentication request using async client (non-blocking)
         method = self.custom_auth_request.method
-        logger.info(
+        logger.debug(
             f"CustomAuth: Making {method} request to {auth_url} for authentication"
         )
 
@@ -277,11 +277,7 @@ class CustomAuth(AuthHandler):
 
             # Store response
             self.auth_response = response.json()
-            logger.info(
-                f"CustomAuth: Authentication successful, stored authentication response. "
-                f"Response keys: {list(self.auth_response.keys()) if isinstance(self.auth_response, dict) else 'not a dict'}, "
-                f"Handler id: {id(self)}, Handler instance: {self}"
-            )
+            logger.info("CustomAuth: Authentication successful")
             if isinstance(self.auth_response, dict):
                 # Log first few characters of values (for security, don't log full tokens)
                 sample_values = {
@@ -308,9 +304,8 @@ class CustomAuth(AuthHandler):
                 self.auth_response is not None
                 and self.auth_response != auth_response_before
             ):
-                logger.info(
-                    "CustomAuth: Auth was already refreshed by another request while waiting for lock, "
-                    "skipping redundant re-authentication"
+                logger.debug(
+                    "CustomAuth: Auth was already refreshed by another request, skipping redundant re-authentication"
                 )
                 return
 
@@ -336,8 +331,7 @@ class CustomAuth(AuthHandler):
         """
         if not self.auth_response:
             logger.warning(
-                f"CustomAuth: No auth_response available, skipping auth application. "
-                f"Handler id: {id(self)}, auth_response: {self.auth_response}"
+                "CustomAuth: No auth_response available, skipping auth application"
             )
             return headers, query_params or {}, body
 
@@ -347,23 +341,11 @@ class CustomAuth(AuthHandler):
             )
             return headers, query_params or {}, body
 
-        logger.info(
-            f"CustomAuth: Applying auth to request. Auth response keys: {list(self.auth_response.keys()) if isinstance(self.auth_response, dict) else 'not a dict'}, "
-            f"Handler id: {id(self)}"
-        )
-
         # Evaluate templates in headers from customAuthResponse config
         updated_headers = headers.copy()
         if self.custom_auth_response.headers:
-            logger.info(
-                f"CustomAuth: Evaluating headers templates: {list(self.custom_auth_response.headers.keys())}"
-            )
             evaluated_headers = await _evaluate_templates_in_dict(
                 self.custom_auth_response.headers, self.auth_response
-            )
-            logger.info(
-                f"CustomAuth: Evaluated headers: {list(evaluated_headers.keys())}. "
-                f"Values: {[(k, str(v)[:50] + '...' if len(str(v)) > 50 else str(v)) for k, v in list(evaluated_headers.items())[:3]]}"
             )
             # Merge with existing headers (response config headers take precedence)
             updated_headers = {**updated_headers, **evaluated_headers}
@@ -391,10 +373,6 @@ class CustomAuth(AuthHandler):
             )
             # Merge with existing body (response config body takes precedence)
             updated_body = {**updated_body, **evaluated_body}
-
-        logger.info(
-            f"CustomAuth: Applied auth. Headers with auth: {list(updated_headers.keys())}"
-        )
 
         return (
             updated_headers,
