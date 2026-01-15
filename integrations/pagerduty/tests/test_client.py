@@ -99,7 +99,7 @@ class TestPagerDutyClient:
         from clients.pagerduty import MAX_PAGERDUTY_RESOURCES, PAGE_SIZE
 
         num_pages = MAX_PAGERDUTY_RESOURCES // PAGE_SIZE
-        mock_responses = []
+        mock_responses: list[Any] = []
 
         for _ in range(num_pages):
             mock_responses.append(
