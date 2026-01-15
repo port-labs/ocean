@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.32 (2026-01-15)
+
+
+### Improvements
+
+- Add condition to only paginate when we're inside Pagerduty limit # AI! improve this
+
+
 ## 0.4.31 (2026-01-14)
 
 
