@@ -254,3 +254,124 @@ class TestGraphQLUserExporter:
                     "__node_key": "edges",
                 },
             )
+
+    async def test_preload_saml_identities_for_organizations(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        """Test that SAML identities are pre-loaded for multiple orgs with controlled concurrency."""
+        org1_identities = [
+            {
+                "node": {
+                    "user": {"login": "user1"},
+                    "samlIdentity": {"nameId": "user1@org1.com"},
+                }
+            }
+        ]
+        org2_identities = [
+            {
+                "node": {
+                    "user": {"login": "user2"},
+                    "samlIdentity": {"nameId": "user2@org2.com"},
+                }
+            }
+        ]
+
+        call_count = 0
+
+        async def mock_paginated_request(
+            query: str, variables: dict[str, Any]
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            nonlocal call_count
+            call_count += 1
+            org = variables.get("organization")
+            if org == "org1":
+                yield org1_identities
+            elif org == "org2":
+                yield org2_identities
+            else:
+                yield []
+
+        with patch.object(
+            graphql_client,
+            "send_paginated_request",
+            side_effect=mock_paginated_request,
+        ):
+            exporter = GraphQLUserExporter(graphql_client)
+
+            # Pre-load SAML for both orgs
+            await exporter.preload_saml_identities_for_organizations(["org1", "org2"])
+
+            # Verify cache is populated
+            assert "org1" in exporter._saml_identity_cache
+            assert "org2" in exporter._saml_identity_cache
+            assert exporter._saml_identity_cache["org1"]["user1"] == "user1@org1.com"
+            assert exporter._saml_identity_cache["org2"]["user2"] == "user2@org2.com"
+
+            # Verify both orgs were loaded (2 calls)
+            assert call_count == 2
+
+    async def test_preload_saml_skips_already_cached_orgs(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        """Test that pre-loading skips organizations already in cache."""
+        call_count = 0
+
+        async def mock_paginated_request(
+            query: str, variables: dict[str, Any]
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            nonlocal call_count
+            call_count += 1
+            yield []
+
+        with patch.object(
+            graphql_client,
+            "send_paginated_request",
+            side_effect=mock_paginated_request,
+        ):
+            exporter = GraphQLUserExporter(graphql_client)
+
+            # Pre-populate cache for org1
+            exporter._saml_identity_cache["org1"] = {"existing_user": "existing@email.com"}
+
+            # Pre-load for both orgs
+            await exporter.preload_saml_identities_for_organizations(["org1", "org2"])
+
+            # Only org2 should be loaded
+            assert call_count == 1
+            assert exporter._saml_identity_cache["org1"]["existing_user"] == "existing@email.com"
+            assert "org2" in exporter._saml_identity_cache
+
+    async def test_load_saml_identities_handles_rate_limit_with_retry(
+        self, graphql_client: GithubGraphQLClient
+    ) -> None:
+        """Test that rate limit errors trigger retry with backoff."""
+        call_count = 0
+
+        async def mock_paginated_request_with_rate_limit(
+            query: str, variables: dict[str, Any]
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise Exception("rate limit exceeded")
+            yield [
+                {
+                    "node": {
+                        "user": {"login": "user1"},
+                        "samlIdentity": {"nameId": "user1@email.com"},
+                    }
+                }
+            ]
+
+        with patch.object(
+            graphql_client,
+            "send_paginated_request",
+            side_effect=mock_paginated_request_with_rate_limit,
+        ):
+            exporter = GraphQLUserExporter(graphql_client)
+            await exporter._load_saml_identities("test-org")
+
+            # Should have retried and succeeded
+            assert call_count == 2
+            assert "test-org" in exporter._saml_identity_cache
+            assert exporter._saml_identity_cache["test-org"]["user1"] == "user1@email.com"
