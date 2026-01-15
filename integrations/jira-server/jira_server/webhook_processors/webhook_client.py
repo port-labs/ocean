@@ -14,13 +14,12 @@ class JiraWebhookClient(JiraServerClient):
     Client for interacting with Jira Server webhooks.
     """
 
-    def __init__(self, *, secret: str | None = None, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         """
         Initialize the JiraWebhookClient.
         """
         super().__init__(**kwargs)
-        self.secret = secret
-        self.webhook_api_url = f"{self.api_url.rstrip("/")}/rest/webhooks/1.0"
+        self.webhook_api_url = f"{self.server_url.rstrip("/")}/rest/webhooks/1.0"
 
     async def _webhook_exist(self, webhook_url: str) -> bool:
         """

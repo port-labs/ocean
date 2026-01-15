@@ -6,17 +6,17 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
-    AbstractWebhookProcessor,
-)
 from kinds import Kinds
 from jira_server.webhook_processors.events import (
     JiraProjectEvents,
     JiraDeletedProjectEvent,
 )
+from jira_server.webhook_processors.processors._base_webhook_processor import (
+    _BaseJiraWebhookProcessor,
+)
 
 
-class ProjectWebhookProcessor(AbstractWebhookProcessor):
+class ProjectWebhookProcessor(_BaseJiraWebhookProcessor):
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kinds.PROJECT]
