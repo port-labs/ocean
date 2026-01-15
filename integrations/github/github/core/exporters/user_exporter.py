@@ -1,7 +1,7 @@
-import asyncio
 from typing import Any
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from port_ocean.utils.cache import cache_coroutine_result
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import SingleUserOptions, ListUserOptions
@@ -12,15 +12,8 @@ from github.helpers.gql_queries import (
     FETCH_GITHUB_USER_GQL,
 )
 
-SAML_LOAD_MAX_RETRIES = 3
-SAML_LOAD_MAX_CONCURRENT = 3
-
 
 class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
-    def __init__(self, client: GithubGraphQLClient) -> None:
-        super().__init__(client)
-        self._saml_identity_cache: dict[str, dict[str, str]] = {}
-
     async def get_resource[
         ExporterOptionT: SingleUserOptions
     ](self, options: ExporterOptionT) -> RAW_ITEM:
@@ -78,10 +71,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
     ) -> None:
         remaining_users = set(users_no_email.keys())
 
-        if organization not in self._saml_identity_cache:
-            await self._load_saml_identities(organization)
-
-        saml_users = self._saml_identity_cache.get(organization, {})
+        saml_users = await self._get_saml_identities(organization)
 
         for (idx, login), user in users_no_email.items():
             if login in saml_users:
@@ -93,51 +83,12 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
                 "Successfully retrieved and updated email addresses for all identified users from external identity provider."
             )
 
-    async def preload_saml_identities_for_organizations(
-        self,
-        organizations: list[str],
-    ) -> None:
-        """Pre-load SAML identities for all organizations before user fetching.
+    @cache_coroutine_result()
+    async def _get_saml_identities(self, organization: str) -> dict[str, str]:
+        """Load and cache SAML identities for an organization.
 
-        This prevents timeouts during user batch processing by loading all SAML
-        identities upfront with controlled concurrency and rate limit handling.
+        Uses Ocean's built-in caching to prevent redundant API calls across batches.
         """
-        if not organizations:
-            return
-
-        semaphore = asyncio.Semaphore(SAML_LOAD_MAX_CONCURRENT)
-
-        async def load_with_limit(org: str) -> None:
-            async with semaphore:
-                if org not in self._saml_identity_cache:
-                    await self._load_saml_identities(org)
-
-        logger.info(
-            f"Pre-loading SAML identities for {len(organizations)} organizations "
-            f"(max concurrent: {SAML_LOAD_MAX_CONCURRENT})"
-        )
-
-        results = await asyncio.gather(
-            *[load_with_limit(org) for org in organizations],
-            return_exceptions=True,
-        )
-
-        # Log any failures
-        for org, result in zip(organizations, results):
-            if isinstance(result, Exception):
-                logger.warning(
-                    f"Failed to pre-load SAML identities for '{org}': {result}"
-                )
-
-        cached_count = len(self._saml_identity_cache)
-        total_identities = sum(len(v) for v in self._saml_identity_cache.values())
-        logger.info(
-            f"SAML pre-load complete: {cached_count} organizations, "
-            f"{total_identities} total identities cached"
-        )
-
-    async def _load_saml_identities(self, organization: str) -> None:
-        """Load SAML identities for an organization with retry and backoff."""
         variables = {
             "organization": organization,
             "first": 100,
@@ -146,67 +97,22 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         }
 
         saml_users: dict[str, str] = {}
-        retry_count = 0
-        page_count = 0
 
-        while retry_count <= SAML_LOAD_MAX_RETRIES:
-            try:
-                async for identity_batch in self.client.send_paginated_request(
-                    LIST_EXTERNAL_IDENTITIES_GQL,
-                    variables,
-                ):
-                    page_count += 1
-                    for user in identity_batch:
-                        if user["node"].get("user"):
-                            login = user["node"]["user"]["login"]
-                            name_id = user["node"]["samlIdentity"]["nameId"]
-                            saml_users[login] = name_id
+        try:
+            async for identity_batch in self.client.send_paginated_request(
+                LIST_EXTERNAL_IDENTITIES_GQL,
+                variables,
+            ):
+                for user in identity_batch:
+                    if user["node"].get("user"):
+                        login = user["node"]["user"]["login"]
+                        name_id = user["node"]["samlIdentity"]["nameId"]
+                        saml_users[login] = name_id
 
-                    # Log progress for large organizations
-                    if page_count % 10 == 0:
-                        logger.debug(
-                            f"Loading SAML identities for '{organization}': "
-                            f"{len(saml_users)} identities fetched ({page_count} pages)"
-                        )
+            logger.info(
+                f"Cached {len(saml_users)} SAML identities for organization '{organization}'"
+            )
+        except TypeError:
+            logger.info(f"SAML not enabled for organization '{organization}'")
 
-                self._saml_identity_cache[organization] = saml_users
-                logger.info(
-                    f"Cached {len(saml_users)} SAML identities for organization "
-                    f"'{organization}' ({page_count} pages)"
-                )
-                return
-
-            except TypeError:
-                logger.info(f"SAML not enabled for organization '{organization}'")
-                self._saml_identity_cache[organization] = {}
-                return
-
-            except Exception as e:
-                retry_count += 1
-                error_msg = str(e).lower()
-
-                # Check if it's a rate limit or timeout error
-                is_rate_limit = "rate" in error_msg or "limit" in error_msg
-                is_timeout = "timeout" in error_msg or "timed out" in error_msg
-
-                if retry_count <= SAML_LOAD_MAX_RETRIES and (is_rate_limit or is_timeout):
-                    wait_time = 2 ** retry_count  # 2s, 4s, 8s
-                    logger.warning(
-                        f"{'Rate limited' if is_rate_limit else 'Timeout'} loading SAML "
-                        f"for '{organization}', retry {retry_count}/{SAML_LOAD_MAX_RETRIES} "
-                        f"in {wait_time}s"
-                    )
-                    await asyncio.sleep(wait_time)
-                else:
-                    logger.error(
-                        f"Failed to load SAML identities for '{organization}' "
-                        f"after {retry_count} attempts: {e}"
-                    )
-                    self._saml_identity_cache[organization] = {}
-                    return
-
-        # Exhausted retries
-        logger.error(
-            f"Exhausted retries loading SAML for '{organization}', proceeding without SAML data"
-        )
-        self._saml_identity_cache[organization] = {}
+        return saml_users
