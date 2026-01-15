@@ -18,6 +18,8 @@ USER_KEY = "users"
 MAX_CONCURRENT_REQUESTS = 10
 PAGE_SIZE = 100
 OAUTH_TOKEN_PREFIX = "pd"
+# Pagerduty classic pagination can only retrieve 10k resources. learn more: https://developer.pagerduty.com/docs/pagination
+MAX_PAGERDUTY_RESOURCES = 10_000
 
 
 class PagerDutyClient(OAuthClient):
@@ -94,6 +96,15 @@ class PagerDutyClient(OAuthClient):
                 if has_more_data:
                     offset += data["limit"]
             except httpx.HTTPStatusError as e:
+                # AI! add a test case for this check
+                if (
+                    e.response.status_code == 400
+                    and (offset + PAGE_SIZE) >= MAX_PAGERDUTY_RESOURCES
+                ):
+                    logger.warning(
+                        f"Reached max resource limit of {MAX_PAGERDUTY_RESOURCES} for {resource}"
+                    )
+                    break
                 logger.error(
                     f"Got {e.response.status_code} status code while fetching paginated data: {str(e)}"
                 )
@@ -243,7 +254,6 @@ class PagerDutyClient(OAuthClient):
     async def get_incident_analytics_by_services(
         self, service_ids: list[str]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-
         logger.info(f"Fetching analytics for services: {service_ids} for period")
 
         request_data = {
