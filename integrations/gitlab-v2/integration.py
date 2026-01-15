@@ -1,4 +1,4 @@
-from typing import Literal, Any, Type, List
+from typing import Literal, Any, Type, List, Optional
 from pydantic import BaseModel, Field, validator
 
 from port_ocean.context.ocean import PortOceanContext
@@ -23,11 +23,24 @@ FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
 
 
+class GroupSelector(Selector):
+    include_only_active_groups: Optional[bool] = Field(
+        default=None,
+        alias="includeOnlyActiveGroups",
+        description="Filter groups by active status",
+    )
+
+
 class ProjectSelector(Selector):
     include_languages: bool = Field(
         alias="includeLanguages",
         default=False,
         description="Whether to include the languages of the project, defaults to false",
+    )
+    include_only_active_projects: Optional[bool] = Field(
+        default=None,
+        alias="includeOnlyActiveProjects",
+        description="Filter projects by active status",
     )
 
 
@@ -36,7 +49,12 @@ class ProjectResourceConfig(ResourceConfig):
     selector: ProjectSelector
 
 
-class GitlabMemberSelector(Selector):
+class GroupResourceConfig(ResourceConfig):
+    kind: Literal["group"]
+    selector: GroupSelector
+
+
+class GitlabMemberSelector(GroupSelector):
     include_bot_members: bool = Field(
         alias="includeBotMembers",
         default=False,
@@ -74,7 +92,7 @@ class FilesSelector(BaseModel):
     )
 
 
-class GitLabFilesSelector(Selector):
+class GitLabFilesSelector(GroupSelector):
     files: FilesSelector
 
 
@@ -108,7 +126,7 @@ class FolderPattern(BaseModel):
     )
 
 
-class GitlabFolderSelector(Selector):
+class GitlabFolderSelector(ProjectSelector):
     folders: list[FolderPattern] = Field(
         default_factory=list,
         alias="folders",
@@ -116,7 +134,7 @@ class GitlabFolderSelector(Selector):
     )
 
 
-class GitlabMergeRequestSelector(Selector):
+class GitlabMergeRequestSelector(GroupSelector):
     states: List[Literal["opened", "closed", "merged"]] = Field(
         alias="states",
         description="Specify the state of the merge request to match. Allowed values: opened, closed, merged",
@@ -139,9 +157,61 @@ class GitlabMergeRequestResourceConfig(ResourceConfig):
     kind: Literal["merge-request"]
 
 
+class TagResourceConfig(ResourceConfig):
+    kind: Literal["tag"]
+    selector: ProjectSelector
+
+
+class ReleaseResourceConfig(ResourceConfig):
+    kind: Literal["release"]
+    selector: ProjectSelector
+
+
 class GitLabFoldersResourceConfig(ResourceConfig):
     selector: GitlabFolderSelector
     kind: Literal["folder"]
+
+
+class IssueSelector(GroupSelector):
+    issue_type: Optional[Literal["issue", "incident", "test_case", "task"]] = Field(
+        default=None,
+        alias="issueType",
+        description="Filter issues by type",
+    )
+    labels: Optional[str] = Field(
+        default=None,
+        alias="labels",
+        description="Filter issues by labels",
+    )
+    non_archived: bool = Field(
+        default=True,
+        alias="nonArchived",
+        description="Return issues from non archived projects. Default value is true",
+    )
+    state: Optional[Literal["opened", "closed"]] = Field(
+        default=None,
+        alias="state",
+        description="Filter issues by state",
+    )
+    updated_after: Optional[float] = Field(
+        default=None,
+        alias="updatedAfter",
+        description="Filter issues updated on or after the given time in days",
+    )
+
+    @property
+    def updated_after_datetime(self) -> str:
+        """Convert the created_after days to a timezone-aware datetime object in ISO 8601 format"""
+        if not self.updated_after:
+            return datetime.now(timezone.utc).isoformat()
+        return (
+            datetime.now(timezone.utc) - timedelta(days=self.updated_after)
+        ).isoformat()
+
+
+class GitlabIssueResourceConfig(ResourceConfig):
+    selector: IssueSelector
+    kind: Literal["issue"]
 
 
 class GitlabVisibilityConfig(BaseModel):
@@ -173,6 +243,16 @@ class GitlabVisibilityConfig(BaseModel):
         return value
 
 
+class PipelineResourceConfig(ResourceConfig):
+    kind: Literal["pipeline"]
+    selector: ProjectSelector
+
+
+class JobResourceConfig(ResourceConfig):
+    kind: Literal["job"]
+    selector: ProjectSelector
+
+
 class GitlabPortAppConfig(PortAppConfig):
     visibility: GitlabVisibilityConfig = Field(
         default_factory=GitlabVisibilityConfig,
@@ -181,11 +261,17 @@ class GitlabPortAppConfig(PortAppConfig):
     )
     resources: list[
         ProjectResourceConfig
+        | GroupResourceConfig
+        | GitlabIssueResourceConfig
         | GitlabGroupWithMembersResourceConfig
         | GitlabMemberResourceConfig
         | GitLabFoldersResourceConfig
         | GitLabFilesResourceConfig
         | GitlabMergeRequestResourceConfig
+        | TagResourceConfig
+        | ReleaseResourceConfig
+        | PipelineResourceConfig
+        | JobResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

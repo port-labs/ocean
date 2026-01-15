@@ -13,12 +13,35 @@ from integration import (
     OktaUserConfig,
 )
 from okta.utils import ObjectKind
+from okta.webhook_processors.user_webhook_processor import (
+    OktaUserWebhookProcessor,
+)
+from okta.webhook_processors.group_webhook_processor import (
+    OktaGroupWebhookProcessor,
+)
+from okta.webhook_processors.webhook_client import OktaWebhookClient
 
 
 @ocean.on_start()
 async def on_start() -> None:
     """Initialize the Okta integration"""
     logger.info("Starting Port Ocean Okta integration")
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
+    base_url = ocean.app.base_url
+    if not base_url:
+        return
+
+    # Create/ensure Okta Event Hook exists
+    client = OktaClientFactory.get_client()
+    webhook_client = OktaWebhookClient(
+        okta_domain=client.okta_domain,
+        api_token=client.api_token,
+        max_retries=client.max_retries,
+    )
+    await webhook_client.ensure_event_hook(base_url)
 
 
 @ocean.on_resync(ObjectKind.USER)
@@ -49,3 +72,8 @@ async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for groups in group_exporter.get_paginated_resources({}):
         yield groups
+
+
+# Webhook processors registration
+ocean.add_webhook_processor("/webhook", OktaUserWebhookProcessor)
+ocean.add_webhook_processor("/webhook", OktaGroupWebhookProcessor)

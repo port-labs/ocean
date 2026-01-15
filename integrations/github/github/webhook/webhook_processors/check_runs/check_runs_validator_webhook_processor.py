@@ -7,6 +7,8 @@ from github.webhook.webhook_processors.check_runs.file_validation import (
     ResourceConfigToPatternMapping,
     FileValidationService,
 )
+from github.core.exporters.organization_exporter import RestOrganizationExporter
+from github.core.exporters.repository_exporter import RestRepositoryExporter
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -14,7 +16,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from github.core.exporters.file_exporter.utils import (
     FileObject,
-    group_file_patterns_by_repositories_in_selector,
+    FilePatternMappingBuilder,
 )
 from github.core.exporters.file_exporter.core import RestFileExporter
 from integration import GithubPortAppConfig
@@ -46,28 +48,30 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
         repo_name = payload["repository"]["name"]
         base_sha = pull_request["base"]["sha"]
         head_sha = pull_request["head"]["sha"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         if action not in ["opened", "synchronize", "reopened", "edited"]:
             logger.info(
-                f"Skipping handling of file validation for pull request event: {action} for {repo_name}/{pr_number}"
+                f"Skipping handling of file validation for pull request event: {action} for {repo_name}/{pr_number} of organization: {organization}"
             )
             return self._NoWebhookEventResults
 
         logger.info(
-            f"Handling file validation for pull request of type: {action} for {repo_name}/{pr_number}"
+            f"Handling file validation for pull request of type: {action} for {repo_name}/{pr_number} of organization: {organization}"
         )
 
         port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-        validation_mappings = get_file_validation_mappings(port_app_config, repo_name)
+        validation_mappings = get_file_validation_mappings(port_app_config)
         repository_type = port_app_config.repository_type
 
         if not validation_mappings:
             logger.info(
-                f"No validation mappings found for repository {repo_name}, skipping validation"
+                f"No validation mappings found for repository {repo_name}, skipping validation of organization: {organization}"
             )
             return self._NoWebhookEventResults
 
         await self._handle_file_validation(
+            organization,
             repo_name,
             base_sha,
             head_sha,
@@ -80,6 +84,7 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
 
     async def _handle_file_validation(
         self,
+        organization: str,
         repo_name: str,
         base_sha: str,
         head_sha: str,
@@ -88,30 +93,38 @@ class CheckRunValidatorWebhookProcessor(PullRequestWebhookProcessor):
         validation_mappings: List[ResourceConfigToPatternMapping],
     ) -> None:
         logger.info(
-            f"Fetching commit diff for repository {repo_name} from {base_sha} to {head_sha}"
+            f"Fetching commit diff for repository {repo_name} of organization: {organization} from {base_sha} to {head_sha}"
         )
 
         rest_client = create_github_client()
         file_exporter = RestFileExporter(rest_client)
-        diff_data = await file_exporter.fetch_commit_diff(repo_name, base_sha, head_sha)
+        diff_data = await file_exporter.fetch_commit_diff(
+            organization, repo_name, base_sha, head_sha
+        )
         changed_files = diff_data["files"]
 
         if not changed_files:
-            logger.debug("No changed files found, skipping validation")
+            logger.debug(
+                f"No changed files found, skipping validation of organization: {organization}"
+            )
             return
 
         logger.info(
-            f"Validation needed for {len(validation_mappings)} patterns, creating validation service"
+            f"Validation needed for {len(validation_mappings)} patterns, creating validation service of organization: {organization}"
         )
 
-        validation_service = FileValidationService()
+        validation_service = FileValidationService(organization)
 
         for validation_mapping in validation_mappings:
             files_pattern = validation_mapping.patterns
 
-            repo_path_map = await group_file_patterns_by_repositories_in_selector(
-                files_pattern, file_exporter, repository_type
+            pattern_builder = FilePatternMappingBuilder(
+                org_exporter=RestOrganizationExporter(rest_client),
+                repo_exporter=RestRepositoryExporter(rest_client),
+                repo_type=repository_type,
             )
+
+            repo_path_map = await pattern_builder.build(files_pattern)
 
             async for file_results in file_exporter.get_paginated_resources(
                 repo_path_map

@@ -22,7 +22,10 @@ class TeamResourceConfig(ResourceConfig):
 
 
 class JiraIssueSelector(Selector):
-    jql: str | None = None
+    jql: str = Field(
+        default="(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)",
+        description="JQL query to filter issues. Defaults to fetching all issues across all projects.",
+    )
     fields: str | None = Field(
         description="Additional fields to be included in the API response",
         default="*all",

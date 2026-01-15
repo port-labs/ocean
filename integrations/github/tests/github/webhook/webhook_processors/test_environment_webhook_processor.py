@@ -7,7 +7,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from github.core.options import SingleEnvironmentOptions
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
@@ -16,13 +15,14 @@ from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.environment_webhook_processor import (
     EnvironmentWebhookProcessor,
 )
+from integration import GithubRepoSearchConfig, RepoSearchSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+    return GithubRepoSearchConfig(
         kind=ObjectKind.ENVIRONMENT,
-        selector=Selector(query="true"),
+        selector=RepoSearchSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -45,7 +45,6 @@ def environment_webhook_processor(
 
 @pytest.mark.asyncio
 class TestEnvironmentWebhookProcessor:
-
     async def test_get_matching_kinds(
         self, environment_webhook_processor: EnvironmentWebhookProcessor
     ) -> None:
@@ -73,6 +72,7 @@ class TestEnvironmentWebhookProcessor:
                 "production_environment": True,
             },
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         expected_data = {
@@ -98,7 +98,9 @@ class TestEnvironmentWebhookProcessor:
 
         # Verify exporter was called with correct options
         mock_exporter.get_resource.assert_called_once_with(
-            SingleEnvironmentOptions(repo_name="test-repo", name="production")
+            SingleEnvironmentOptions(
+                organization="test-org", repo_name="test-repo", name="production"
+            )
         )
 
         assert isinstance(result, WebhookEventRawResults)

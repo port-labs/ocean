@@ -4,7 +4,7 @@ import uuid
 from graphlib import CycleError
 import inspect
 import typing
-from typing import Callable, Awaitable, Any
+from typing import AsyncGenerator, Callable, Awaitable, Any
 import multiprocessing
 import httpx
 from loguru import logger
@@ -24,7 +24,7 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity, ProcessExecutionMode
+from port_ocean.core.models import Entity, IntegrationFeatureFlag, ProcessExecutionMode
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -117,13 +117,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.info(
                     f"Found async generator function for {resource_config.kind} name: {task.__qualname__}"
                 )
-                results.append(resync_generator_wrapper(task, resource_config.kind,resource_config.port.items_to_parse))
+                results.append(resync_generator_wrapper(task, resource_config.kind, resource_config.port.items_to_parse_name, resource_config.port.items_to_parse))
             else:
                 logger.info(
                     f"Found sync function for {resource_config.kind} name: {task.__qualname__}"
                 )
                 task = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
-                tasks.append(resync_function_wrapper(task, resource_config.kind))
+                tasks.append(resync_function_wrapper(task, resource_config.kind, resource_config.port.items_to_parse))
 
         logger.info(
             f"Found {len(tasks) + len(results)} resync tasks for {resource_config.kind}"
@@ -202,24 +202,19 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             return entities
 
         BATCH_SIZE = 50
-        entities_at_port_with_properties = []
 
-        # Process entities in batches
-        for start_index in range(0, len(entities), BATCH_SIZE):
-            entities_batch = entities[start_index : start_index + BATCH_SIZE]
-            batch_results = await self._fetch_entities_batch_from_port(
-                entities_batch, resource, user_agent_type
-            )
-            entities_at_port_with_properties.extend(batch_results)
+        async def async_generator_target_entities(_entities: list[Entity]) -> AsyncGenerator[list[Entity], None]:
+            # fetch entities from port in batches
+            logger.info(f"Fetching entities from port in batches of for diff calculation, using non paginated api",batch_size=BATCH_SIZE)
+            for start_index in range(0, len(_entities), BATCH_SIZE):
+                entities_batch = _entities[start_index : start_index + BATCH_SIZE]
+                batch_results = await self._fetch_entities_batch_from_port(
+                    entities_batch, resource, user_agent_type
+                )
+                yield batch_results
 
-        logger.info(
-            "Got entities from port with properties and relations",
-            port_entities=len(entities_at_port_with_properties),
-        )
 
-        if len(entities_at_port_with_properties) > 0:
-            return resolve_entities_diff(entities, entities_at_port_with_properties)
-        return entities
+        return await resolve_entities_diff(entities, async_generator_target_entities(entities))
 
     async def _fetch_entities_batch_from_port(
         self,
@@ -478,7 +473,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             bool: True if lakehouse data is enabled, False otherwise
         """
         flags = await ocean.port_client.get_organization_feature_flags()
-        if "LAKEHOUSE_ELIGIBLE" in flags and ocean.config.lakehouse_enabled:
+        if IntegrationFeatureFlag.LAKEHOUSE_ELIGIBLE in flags and ocean.config.lakehouse_enabled:
             return True
         return False
 
@@ -735,10 +730,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 self._register_in_batches(resource, user_agent_type)
             )
             event.on_abort(lambda: task.cancel())
-            kind_results: tuple[list[Entity], list[Exception]] = await task
 
-            if ocean.metrics.sync_state != SyncState.FAILED:
-                ocean.metrics.sync_state = SyncState.COMPLETED
+            try:
+                kind_results: tuple[list[Entity], list[Exception]] = await task
+                if ocean.metrics.sync_state != SyncState.FAILED:
+                    ocean.metrics.sync_state = SyncState.COMPLETED
+            except asyncio.CancelledError:
+                logger.warning(f"Resource {resource.kind} processing was aborted")
+                ocean.metrics.sync_state = SyncState.ABORTED
+                raise
 
             await ocean.metrics.send_metrics_to_webhook(kind=resource_kind_id)
             await ocean.metrics.report_kind_sync_metrics(
@@ -932,6 +932,43 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 silent,
             )
 
+    async def _handle_resync_abortion(
+        self,
+        creation_results: list[tuple[list[Entity], list[Exception]]],
+        app_config: Any,
+    ) -> None:
+        """Handle resync abortion by updating metrics for runtime, pending resources, and reconciliation.
+
+        Args:
+            creation_results: Results from entity creation that have been processed so far
+            app_config: The application configuration containing resource definitions
+        """
+        async with metric_resource_context(MetricResourceKind.RUNTIME):
+            ocean.metrics.sync_state = SyncState.ABORTED
+            await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RUNTIME)
+            await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RUNTIME])
+
+        for pending_index in range(len(creation_results), len(app_config.resources)):
+            pending_resource = app_config.resources[pending_index]
+            pending_kind_id = f"{pending_resource.kind}-{pending_index}"
+            async with metric_resource_context(pending_kind_id):
+                ocean.metrics.sync_state = SyncState.ABORTED
+                await ocean.metrics.send_metrics_to_webhook(kind=pending_kind_id)
+                await ocean.metrics.report_kind_sync_metrics(
+                    kind=pending_kind_id,
+                    blueprint=pending_resource.port.entity.mappings.blueprint,
+                )
+
+        async with metric_resource_context(MetricResourceKind.RECONCILIATION):
+            ocean.metrics.sync_state = SyncState.ABORTED
+            ocean.metrics.set_metric(
+                name=MetricType.SUCCESS_NAME,
+                labels=[MetricResourceKind.RECONCILIATION, MetricPhase.RESYNC],
+                value=0,
+            )
+            await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RECONCILIATION)
+            await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RECONCILIATION])
+
     @TimeMetric(MetricPhase.RESYNC)
     async def sync_raw_all(
         self,
@@ -1020,11 +1057,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.warning(
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
                 )
-
-                async with metric_resource_context(MetricResourceKind.RUNTIME):
-                    ocean.metrics.sync_state = SyncState.FAILED
-                    await ocean.metrics.send_metrics_to_webhook(kind=MetricResourceKind.RUNTIME)
-                    await ocean.metrics.report_sync_metrics(kinds=[MetricResourceKind.RUNTIME])
+                await self._handle_resync_abortion(creation_results, app_config)
+                raise
+            except Exception as e:
+                logger.error(f"Error in resync: {e}")
+                await self._handle_resync_abortion(creation_results, app_config)
                 raise
             else:
                 async with metric_resource_context(MetricResourceKind.RECONCILIATION):

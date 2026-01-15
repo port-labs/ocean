@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from pathlib import PosixPath
 import sys
 import threading
 import time
@@ -15,11 +16,35 @@ from port_ocean import Ocean
 from port_ocean.context.ocean import ocean
 
 
+def _serialize_posix_paths(
+    extra: dict[str, Any], max_depth: int = 100
+) -> dict[str, Any]:
+    if max_depth <= 0:
+        logger.warning("Max depth reached, skipping path removal")
+        return extra
+    for key, value in extra.items():
+        if isinstance(value, list):
+            value = [
+                (
+                    _serialize_posix_paths(item, max_depth - 1)
+                    if isinstance(item, dict)
+                    else item
+                )
+                for item in value
+            ]
+        elif isinstance(value, dict):
+            value = _serialize_posix_paths(value, max_depth - 1)
+        elif isinstance(value, PosixPath):
+            extra[key] = str(value)
+    return extra
+
+
 def _serialize_record(record: logging.LogRecord) -> dict[str, Any]:
     extra = {**deepcopy(record.__dict__["extra"])}
     if isinstance(extra.get("exc_info"), Exception):
         serialized_exception = "".join(format_exception(extra.get("exc_info")))
         extra["exc_info"] = serialized_exception
+    extra = _serialize_posix_paths(extra)
     return {
         "message": record.msg,
         "level": record.levelname,

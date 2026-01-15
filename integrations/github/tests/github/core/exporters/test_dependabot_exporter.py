@@ -114,18 +114,21 @@ class TestRestDependabotAlertExporter:
         ) as mock_request:
             mock_request.return_value = TEST_DEPENDABOT_ALERTS[0].copy()
             alert = await exporter.get_resource(
-                SingleDependabotAlertOptions(repo_name="test-repo", alert_number="1")
+                SingleDependabotAlertOptions(
+                    organization="test-org", repo_name="test-repo", alert_number="1"
+                )
             )
 
             # Verify the repo field was added
             expected_alert = {
                 **TEST_DEPENDABOT_ALERTS[0],
                 "__repository": "test-repo",
+                "__organization": "test-org",
             }
             assert alert == expected_alert
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts/1",
+                f"{rest_client.base_url}/repos/test-org/test-repo/dependabot/alerts/1",
             )
 
     async def test_get_paginated_resources(
@@ -148,16 +151,19 @@ class TestRestDependabotAlertExporter:
             alerts = []
             async for batch in exporter.get_paginated_resources(
                 ListDependabotAlertOptions(
-                    repo_name="test-repo", state=["open", "dismissed"]
+                    organization="test-org",
+                    repo_name="test-repo",
+                    state=["open", "dismissed"],
                 )
             ):
                 alerts.extend(batch)
 
             assert len(alerts) == 2
             assert all(alert["__repository"] == "test-repo" for alert in alerts)
+            assert all(alert["__organization"] == "test-org" for alert in alerts)
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts",
+                f"{rest_client.base_url}/repos/test-org/test-repo/dependabot/alerts",
                 {"state": "open,dismissed"},
             )
 
@@ -175,7 +181,7 @@ class TestRestDependabotAlertExporter:
         ) as mock_request:
             async with event_context("test_event"):
                 options = ListDependabotAlertOptions(
-                    repo_name="test-repo", state=["open"]
+                    organization="test-org", repo_name="test-repo", state=["open"]
                 )
                 exporter = RestDependabotAlertExporter(rest_client)
 
@@ -189,7 +195,7 @@ class TestRestDependabotAlertExporter:
                 assert alerts[0][0]["__repository"] == "test-repo"
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts",
+                    f"{rest_client.base_url}/repos/test-org/test-repo/dependabot/alerts",
                     {"state": "open"},
                 )
 
@@ -204,19 +210,22 @@ class TestRestDependabotAlertExporter:
         ) as mock_request:
             mock_request.return_value = TEST_DEPENDABOT_ALERTS[1].copy()
             alert = await exporter.get_resource(
-                SingleDependabotAlertOptions(repo_name="test-repo", alert_number="2")
+                SingleDependabotAlertOptions(
+                    organization="test-org", repo_name="test-repo", alert_number="2"
+                )
             )
 
             expected_alert = {
                 **TEST_DEPENDABOT_ALERTS[1],
                 "__repository": "test-repo",
+                "__organization": "test-org",
             }
             assert alert == expected_alert
             assert alert["state"] == "dismissed"
             assert alert["dismissed_reason"] == "no_bandwidth"
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/dependabot/alerts/2",
+                f"{rest_client.base_url}/repos/test-org/test-repo/dependabot/alerts/2",
             )
 
     async def test_handle_request_with_dependabot_disabled_error(
@@ -243,10 +252,12 @@ class TestRestDependabotAlertExporter:
             side_effect=mock_error,
         ):
             result = await exporter.get_resource(
-                SingleDependabotAlertOptions(repo_name="test-repo", alert_number="1")
+                SingleDependabotAlertOptions(
+                    organization="test-org", repo_name="test-repo", alert_number="1"
+                )
             )
 
-            assert result == {"__repository": "test-repo"}
+            assert result == {"__repository": "test-repo", "__organization": "test-org"}
 
     async def test_handle_request_paginated_with_dependabot_disabled_error(
         self, rest_client: GithubRestClient
@@ -273,7 +284,9 @@ class TestRestDependabotAlertExporter:
             # Collect all results from the generator
             results = []
             async for batch in exporter.get_paginated_resources(
-                ListDependabotAlertOptions(repo_name="test-repo", state=["open"])
+                ListDependabotAlertOptions(
+                    organization="test-org", repo_name="test-repo", state=["open"]
+                )
             ):
                 results.extend(batch)
 

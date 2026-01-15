@@ -487,7 +487,9 @@ class DatadogClient:
                 result.update(
                     {
                         SERVICE_KEY: service_id,
-                        QUERY_ID_KEY: f"{query}/{service_tag}:{service_id}/{env_tag}:{env_to_fetch}",
+                        QUERY_ID_KEY: (
+                            f"{query}/{service_tag}:{service_id}/{env_tag}:{env_to_fetch}"
+                        ),
                         QUERY_KEY: query,
                         ENV_KEY: env_to_fetch,
                     }
@@ -566,7 +568,7 @@ class DatadogClient:
 
     async def _webhook_exists(self, webhook_url: str) -> bool:
         try:
-            webhook = await self._send_api_request(url=webhook_url, method="GET")
+            webhook = await self._send_api_request(url=webhook_url)
             return bool(webhook)
 
         except httpx.HTTPStatusError as err:
@@ -641,6 +643,7 @@ class DatadogClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get service dependencies from Datadog, chunked into pages.
+
         Each yielded page is a list of service dependency dicts, e.g.,
         [{ "name": "service_a", "calls": [...] }, ...]
         Docs: https://docs.datadoghq.com/api/latest/service-dependencies/#get-all-apm-service-dependencies
@@ -666,3 +669,24 @@ class DatadogClient:
 
         for i in range(0, len(items), MAX_PAGE_SIZE):
             yield items[i : i + MAX_PAGE_SIZE]
+
+    async def get_single_service_dependency(
+        self, env: str, start_time: float, service_id: str
+    ) -> dict[str, Any] | None:
+        end_time = int(time.time())
+
+        start_time = time.time() - (FETCH_WINDOW_TIME_IN_SECONDS * start_time)
+
+        url = f"{self.api_url}/api/v1/service_dependencies/{service_id}"
+        result: dict[str, Any] = await self._send_api_request(
+            url,
+            params={"env": env, "start": int(start_time), "end": end_time},
+        )
+
+        if not result:
+            logger.warning(
+                f"No service dependencies found for service {service_id} in environment {env}"
+            )
+            return None
+
+        return result

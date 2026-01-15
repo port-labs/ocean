@@ -1,83 +1,72 @@
 import asyncio
-from asyncio import Task
-from dataclasses import dataclass, field
-
+from asyncio.tasks import Task
 from functools import lru_cache
-from typing import Any, Optional
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
+import re
+from typing import Any, cast
+
 import jq  # type: ignore
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.entity_processor.base import BaseEntityProcessor
+from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
+    JQEntityProcessorSync,
+)
+from port_ocean.core.handlers.entity_processor.models import MappedEntity
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import (
     RAW_ITEM,
-    EntitySelectorDiff,
     CalculationResult,
+    EntitySelectorDiff,
 )
 from port_ocean.core.utils.utils import (
     gather_and_split_errors_from_results,
-    zip_and_sum,
 )
 from port_ocean.exceptions.core import EntityProcessorException
-from port_ocean.utils.queue_utils import process_in_queue
 
 
-class ExampleStates:
-    __succeed: list[dict[str, Any]]
-    __errors: list[dict[str, Any]]
-    __max_size: int
-
-    def __init__(self, max_size: int = 0) -> None:
-        """
-        Store two sequences:
-          - succeed: items that succeeded
-          - errors:  items that failed
-        """
-        self.__succeed = []
-        self.__errors = []
-        self.__max_size = max_size
-
-    def add_example(self, succeed: bool, item: dict[str, Any]) -> None:
-        if succeed:
-            self.__succeed.append(item)
-        else:
-            self.__errors.append(item)
-
-    def __len__(self) -> int:
-        """
-        Total number of items (successes + errors).
-        """
-        return len(self.__succeed) + len(self.__errors)
-
-    def get_examples(self, number: int = 0) -> list[dict[str, Any]]:
-        """
-        Return a list of up to number items, taking successes first,
-        """
-        if number <= 0:
-            number = self.__max_size
-        # how many from succeed?
-        s_count = min(number, len(self.__succeed))
-        result = list(self.__succeed[:s_count])
-        # how many more from errors?
-        e_count = number - s_count
-        if e_count > 0:
-            result.extend(self.__errors[:e_count])
-        return result
+# Set globals for multiprocessing of batch data. When a process forks, it inherits these globals by reference.
+# We will take advantage of COW to avoid pickling the data.
+_MULTIPROCESS_JQ_BATCH_DATA: list[dict[str, Any]] | None = None
+_MULTIPROCESS_JQ_BATCH_MAPPINGS: dict[str, Any] | None = None
+_MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY: str | None = None
+_MULTIPROCESS_JQ_BATCH_PARSE_ALL: bool | None = None
 
 
-@dataclass
-class MappedEntity:
-    """Represents the entity after applying the mapping
+def _calculate_entity(
+    index: int,
+) -> tuple[list[MappedEntity], list[Exception]]:
+    # Access data directly from globals to avoid pickling.
+    global _MULTIPROCESS_JQ_BATCH_DATA, _MULTIPROCESS_JQ_BATCH_MAPPINGS, _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY, _MULTIPROCESS_JQ_BATCH_PARSE_ALL
+    if None in [
+        _MULTIPROCESS_JQ_BATCH_DATA,
+        _MULTIPROCESS_JQ_BATCH_MAPPINGS,
+        _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY,
+        _MULTIPROCESS_JQ_BATCH_PARSE_ALL,
+    ]:
+        return [], [Exception("Missing data for index: {index}")]
+    batch_data = cast(list[dict[str, Any]], _MULTIPROCESS_JQ_BATCH_DATA)
+    data = batch_data[index]
+    raw_entity_mappings = cast(dict[str, Any], _MULTIPROCESS_JQ_BATCH_MAPPINGS)
+    selector_query = cast(str, _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY)
+    parse_all = cast(bool, _MULTIPROCESS_JQ_BATCH_PARSE_ALL)
 
-    This class holds the mapping entity along with the selector boolean value and optionally the raw data.
-    """
-
-    entity: dict[str, Any] = field(default_factory=dict)
-    did_entity_pass_selector: bool = False
-    raw_data: Optional[dict[str, Any]] = None
-    misconfigurations: dict[str, str] = field(default_factory=dict)
+    try:
+        entity = JQEntityProcessorSync._get_mapped_entity(
+            data,
+            raw_entity_mappings,
+            selector_query,
+            parse_all,
+        )
+        return [entity], []
+    except Exception as e:
+        if isinstance(e, BaseException) and not isinstance(e, Exception):
+            raise e
+        elif isinstance(e, Exception):
+            return [], [e]
 
 
 class JQEntityProcessor(BaseEntityProcessor):
@@ -88,66 +77,24 @@ class JQEntityProcessor(BaseEntityProcessor):
     searching for data in dictionaries, and transforming data based on object mappings.
     """
 
-    @lru_cache
-    def _compile(self, pattern: str) -> Any:
-        if not ocean.config.allow_environment_variables_jq_access:
-            pattern = "def env: {}; {} as $ENV | " + pattern
-        return jq.compile(pattern)
-
-    @staticmethod
-    def _stop_iterator_handler(func: Any) -> Any:
-        """
-        Wrap the function to handle StopIteration exceptions.
-        Prevents StopIteration from stopping the thread and skipping further queue processing.
-        """
-
-        def inner() -> Any:
-            try:
-                return func()
-            except StopIteration:
-                return None
-
-        return inner
-
-    @staticmethod
-    def _notify_mapping_issues(
-        entity_misconfigurations: dict[str, str],
-        missing_required_fields: bool,
-        entity_mapping_fault_counter: int,
-    ) -> None:
-
-        if len(entity_misconfigurations) > 0:
-            logger.info(
-                f"Unable to find valid data for: {entity_misconfigurations} (null, missing, or misconfigured)"
-            )
-        if missing_required_fields:
-            logger.info(
-                f"{entity_mapping_fault_counter} transformations of batch failed due to empty, null or missing values"
-            )
-
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
-            loop = asyncio.get_event_loop()
             compiled_pattern = self._compile(pattern)
             func = compiled_pattern.input_value(data)
-            return await loop.run_in_executor(
-                None, self._stop_iterator_handler(func.first)
-            )
+            return func.first()
         except Exception as exc:
-            logger.debug(
+            logger.error(
                 f"Search failed for pattern '{pattern}' in data: {data}, Error: {exc}"
             )
             return None
 
-    async def _search_as_bool(self, data: dict[str, Any], pattern: str) -> bool:
-        loop = asyncio.get_event_loop()
+    async def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
 
         compiled_pattern = self._compile(pattern)
+
         func = compiled_pattern.input_value(data)
 
-        value = await loop.run_in_executor(
-            None, self._stop_iterator_handler(func.first)
-        )
+        value = func.first()
         if isinstance(value, bool):
             return value
         raise EntityProcessorException(
@@ -224,39 +171,21 @@ class JQEntityProcessor(BaseEntityProcessor):
                 data, raw_entity_mappings, misconfigurations
             )
             return MappedEntity(
-                mapped_entity,
+                entity=mapped_entity,
                 did_entity_pass_selector=should_run,
-                raw_data=data,
                 misconfigurations=misconfigurations,
             )
 
-        return MappedEntity(
-            {},
-            did_entity_pass_selector=False,
-            raw_data=data,
-            misconfigurations={},
-        )
+        return MappedEntity()
 
     async def _calculate_entity(
         self,
         data: dict[str, Any],
         raw_entity_mappings: dict[str, Any],
-        items_to_parse: str | None,
-        items_to_parse_name: str,
         selector_query: str,
         parse_all: bool = False,
     ) -> tuple[list[MappedEntity], list[Exception]]:
         raw_data = [data.copy()]
-        if not ocean.config.yield_items_to_parse:
-            if items_to_parse:
-                items = await self._search(data, items_to_parse)
-                if not isinstance(items, list):
-                    logger.warning(
-                        f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items)}."
-                        f" Skipping..."
-                    )
-                    return [], []
-                raw_data = [{items_to_parse_name: item, **data} for item in items]
 
         entities, errors = await gather_and_split_errors_from_results(
             [
@@ -276,6 +205,63 @@ class JQEntityProcessor(BaseEntityProcessor):
         return entities, errors
 
     @staticmethod
+    def _format_filter(filter: str) -> str:
+        """
+        Convert single quotes to double quotes in JQ expressions.
+        Only replaces single quotes that are opening or closing string delimiters,
+        not single quotes that are part of string content.
+        """
+        # Escape single quotes only if they are opening or closing a string
+        # Pattern matches:
+        # - Single quote at start of string or after whitespace (opening quote)
+        # - Single quote before whitespace or end of string (closing quote)
+        # Uses negative lookahead/lookbehind to avoid replacing quotes inside strings
+        # \1 and \2 will be empty for the alternative that didn't match, so \1"\2 works for both cases
+        # This matches the TypeScript pattern: /(^|\s)'(?!\s|")|(?<!\s|")'(\s|$)/g
+        formatted_filter = re.sub(
+            r'(^|\s)\'(?!\s|")|(?<!\s|")\'(\s|$)', r'\1"\2', filter
+        )
+        return formatted_filter
+
+    @lru_cache
+    def _compile(self, pattern: str) -> Any:
+        pattern = self._format_filter(pattern)
+        if not ocean.config.allow_environment_variables_jq_access:
+            pattern = "def env: {}; {} as $ENV | " + pattern
+        compiled_pattern = jq.compile(pattern)
+        return compiled_pattern
+
+    @staticmethod
+    def _stop_iterator_handler(func: Any) -> Any:
+        """
+        Wrap the function to handle StopIteration exceptions.
+        Prevents StopIteration from stopping the thread and skipping further queue processing.
+        """
+
+        def inner() -> Any:
+            try:
+                return func()
+            except StopIteration:
+                return None
+
+        return inner
+
+    @staticmethod
+    def _notify_mapping_issues(
+        entity_misconfigurations: dict[str, str],
+        missing_required_fields: bool,
+        entity_mapping_fault_counter: int,
+    ) -> None:
+        if len(entity_misconfigurations) > 0:
+            logger.error(
+                f"Unable to find valid data for: {entity_misconfigurations} (null, missing, or misconfigured)"
+            )
+        if missing_required_fields:
+            logger.error(
+                f"{entity_mapping_fault_counter} transformations of batch failed due to empty, null or missing values"
+            )
+
+    @staticmethod
     async def _send_examples(data: list[dict[str, Any]], kind: str) -> None:
         try:
             if data:
@@ -288,6 +274,189 @@ class JQEntityProcessor(BaseEntityProcessor):
                 exc_info=True,
             )
 
+    async def separate_compileable_and_uncompileable_patterns_and_warmup_cache(
+        self, raw_entity_mappings: dict[str, Any], selector_queries: list[str] = []
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        uncompileable_patterns: dict[str, Any] = {}
+        compileable_patterns: dict[str, Any] = {}
+        for key, value in raw_entity_mappings.items():
+
+            if isinstance(value, dict):
+                compileable_patterns[key], uncompileable_patterns[key] = (
+                    await self.separate_compileable_and_uncompileable_patterns_and_warmup_cache(
+                        value
+                    )
+                )
+            else:
+                try:
+                    self._compile(value)
+                    compileable_patterns[key] = value
+                except Exception:
+                    uncompileable_patterns[key] = value
+
+        for selector_query in selector_queries:
+            try:
+                self._compile(selector_query)
+            except Exception:
+                pass
+        return compileable_patterns, uncompileable_patterns
+
+    async def parse_items_sync(
+        self,
+        compileable_patterns: dict[str, Any],
+        raw_results: list[RAW_ITEM],
+        selector_query: str,
+        parse_all: bool = False,
+    ) -> tuple[list[tuple[list[MappedEntity], list[Exception]]], list[Exception]]:
+
+        global _MULTIPROCESS_JQ_BATCH_DATA, _MULTIPROCESS_JQ_BATCH_MAPPINGS, _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY, _MULTIPROCESS_JQ_BATCH_PARSE_ALL
+
+        _MULTIPROCESS_JQ_BATCH_DATA = raw_results
+        _MULTIPROCESS_JQ_BATCH_MAPPINGS = compileable_patterns
+        _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY = selector_query
+        _MULTIPROCESS_JQ_BATCH_PARSE_ALL = parse_all
+        # Fork a new process to calculate the entities.
+        # Use indexes to acess data to have the lowest pickling overhead.
+        loop = asyncio.get_running_loop()
+        with ProcessPoolExecutor(
+            max_workers=ocean.config.process_in_queue_max_workers,
+            mp_context=multiprocessing.get_context("fork"),
+        ) as pool:
+            results = await gather_and_split_errors_from_results(
+                [
+                    asyncio.wait_for(
+                        loop.run_in_executor(pool, _calculate_entity, index),
+                        timeout=ocean.config.process_in_queue_timeout,
+                    )
+                    for index in range(len(raw_results))
+                ]
+            )
+        # Clear globals to avoid memory leaks.
+        _MULTIPROCESS_JQ_BATCH_DATA = None
+        _MULTIPROCESS_JQ_BATCH_MAPPINGS = None
+        _MULTIPROCESS_JQ_BATCH_SELECTOR_QUERY = None
+        _MULTIPROCESS_JQ_BATCH_PARSE_ALL = None
+        return results
+
+    async def parse_items_async(
+        self,
+        uncompiled_patterns: dict[str, Any],
+        raw_results: list[RAW_ITEM],
+        selector_query: str,
+        parse_all: bool = False,
+    ) -> tuple[list[tuple[list[MappedEntity], list[Exception]]], list[Exception]]:
+
+        if len(uncompiled_patterns.keys()) == 0:
+            return [], []
+        results = await gather_and_split_errors_from_results(
+            [
+                self._calculate_entity(
+                    raw, uncompiled_patterns, selector_query, parse_all
+                )
+                for raw in raw_results
+            ]
+        )
+        return results
+
+    def _deep_merge(
+        self, dict1: dict[str, Any], dict2: dict[str, Any]
+    ) -> dict[str, Any]:
+        for key, value in dict2.items():
+            # If both values are dictionaries, merge them recursively
+            if key in dict1:
+                if isinstance(dict1[key], dict) and isinstance(value, dict):
+                    dict1[key] = self._deep_merge(dict1[key], value)
+            else:
+                # only add new values
+                dict1[key] = value
+        return dict1
+
+    def merge_results(
+        self,
+        jq_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ],
+        async_results: tuple[
+            list[tuple[list[MappedEntity], list[Exception]]], list[Exception]
+        ],
+        raw_results: list[RAW_ITEM],
+    ) -> tuple[list[MappedEntity], list[Exception]]:
+        errors: list[Exception] = []
+        calculated_entities_results: list[MappedEntity] = []
+
+        actual_jq_results, jq_errors = jq_results
+        actual_async_results, async_errors = async_results
+
+        original_result_size = len(raw_results)
+        jq_results_size = len(actual_jq_results)
+        async_results_size = len(actual_async_results)
+        # checkout gather and split, there are some execptions we want raise
+        if len(jq_errors) > 0 or len(async_errors) > 0:
+            raise ExceptionGroup("Error processing tasks", jq_errors + async_errors)
+        # if didnt run since no uncompiled patterns found
+        if async_results_size == 0:
+            for result in actual_jq_results:
+                entities, jq_errors = result
+                calculated_entities_results.extend(entities)
+                errors.extend(jq_errors)
+            return calculated_entities_results, errors
+
+        errors.extend(async_errors)
+
+        # Since we use gather on the same data, we can assume of we
+        for index in range(original_result_size):
+            if jq_results_size != async_results_size:
+                logger.warning(
+                    f"jq results size {jq_results_size} does not match async results size {async_results_size}"
+                )
+
+            if index > jq_results_size or index > async_results_size:
+                logger.error(
+                    f"Index {index} is out of bounds for jq_results or async_results"
+                )
+                break
+
+            jq_result, jq_error = actual_jq_results[index]
+            async_result, async_error = actual_async_results[index]
+
+            if jq_error:
+                errors.extend(jq_error)
+            if async_error:
+                errors.extend(async_error)
+
+            if len(jq_result) > 0 and len(async_result) > 0:
+                jq_mapped_entity = jq_result[0]
+                async_mapped_entity = async_result[0]
+
+                did_entity_pass_selector = (
+                    jq_mapped_entity.did_entity_pass_selector
+                    and async_mapped_entity.did_entity_pass_selector
+                )
+
+                new_entity = self._deep_merge(
+                    jq_mapped_entity.entity, async_mapped_entity.entity
+                )
+                misconfigurations = self._deep_merge(
+                    jq_mapped_entity.misconfigurations,
+                    async_mapped_entity.misconfigurations,
+                )
+                calculated_entities_results.append(
+                    MappedEntity(
+                        entity=new_entity,
+                        did_entity_pass_selector=did_entity_pass_selector,
+                        misconfigurations=misconfigurations,
+                    )
+                )
+                continue
+            if len(jq_result) > 0 and len(async_result) == 0:
+                calculated_entities_results.append(jq_result[0])
+                continue
+            if len(jq_result) == 0 and len(async_result) > 0:
+                calculated_entities_results.append(async_result[0])
+                continue
+
+        return calculated_entities_results, errors
+
     async def _parse_items(
         self,
         mapping: ResourceConfig,
@@ -295,20 +464,32 @@ class JQEntityProcessor(BaseEntityProcessor):
         parse_all: bool = False,
         send_raw_data_examples_amount: int = 0,
     ) -> CalculationResult:
+        # Send raw data examples FIRST (before transformation)
+        # This ensures users can see the raw data even if transformation fails
+        if send_raw_data_examples_amount > 0 and raw_results:
+            examples_to_send = [
+                item.copy() for item in raw_results[:send_raw_data_examples_amount]
+            ]
+            await self._send_examples(examples_to_send, mapping.kind)
+
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
         )
         logger.info(f"Parsing {len(raw_results)} raw results into entities")
-        calculated_entities_results, errors = zip_and_sum(
-            await process_in_queue(
-                raw_results,
-                self._calculate_entity,
-                raw_entity_mappings,
-                mapping.port.items_to_parse,
-                mapping.port.items_to_parse_name,
-                mapping.selector.query,
-                parse_all,
+        # Set globals to avoid pickling.
+        compileable_patterns, uncompileable_patterns = (
+            await self.separate_compileable_and_uncompileable_patterns_and_warmup_cache(
+                raw_entity_mappings, [mapping.selector.query]
             )
+        )
+        sync_results = await self.parse_items_sync(
+            compileable_patterns, raw_results, mapping.selector.query, parse_all
+        )
+        async_results = await self.parse_items_async(
+            uncompileable_patterns, raw_results, mapping.selector.query, parse_all
+        )
+        calculated_entities_results, errors = self.merge_results(
+            sync_results, async_results, raw_results
         )
         logger.debug(
             f"Finished parsing raw results into entities with {len(errors)} errors. errors: {errors}"
@@ -316,21 +497,13 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         passed_entities = []
         failed_entities = []
-        examples_to_send = ExampleStates(send_raw_data_examples_amount)
         entity_misconfigurations: dict[str, str] = {}
         missing_required_fields: bool = False
         entity_mapping_fault_counter: int = 0
+
         for result in calculated_entities_results:
             if len(result.misconfigurations) > 0:
                 entity_misconfigurations |= result.misconfigurations
-
-            if (
-                len(examples_to_send) < send_raw_data_examples_amount
-                and result.raw_data is not None
-            ):
-                examples_to_send.add_example(
-                    result.did_entity_pass_selector, result.raw_data
-                )
 
             if result.entity.get("identifier") and result.entity.get("blueprint"):
                 parsed_entity = Entity.parse_obj(result.entity)
@@ -342,13 +515,13 @@ class JQEntityProcessor(BaseEntityProcessor):
                 missing_required_fields = True
                 entity_mapping_fault_counter += 1
 
+        del calculated_entities_results
+
         self._notify_mapping_issues(
             entity_misconfigurations,
             missing_required_fields,
             entity_mapping_fault_counter,
         )
-
-        await self._send_examples(examples_to_send.get_examples(), mapping.kind)
 
         return CalculationResult(
             EntitySelectorDiff(passed=passed_entities, failed=failed_entities),

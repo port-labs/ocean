@@ -9,7 +9,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
@@ -20,13 +19,14 @@ from github.webhook.webhook_processors.workflow_webhook_processor import (
 )
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.core.options import SingleWorkflowOptions
+from integration import GithubRepoSearchConfig, RepoSearchSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+    return GithubRepoSearchConfig(
         kind=ObjectKind.WORKFLOW,
-        selector=Selector(query="true"),
+        selector=RepoSearchSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -190,6 +190,7 @@ class TestWorkflowWebhookProcessor:
             "after": "sha2",
             "commits": [{}],
             "ref": "refs/heads/main",
+            "organization": {"login": "test-org"},
         }
 
         mock_rest_client = MagicMock()
@@ -238,6 +239,7 @@ class TestWorkflowWebhookProcessor:
                 assert mock_exporter.get_resource.call_count == expected_updated_count
                 for i, workflow_file in enumerate(mock_extracted_updated_workflows):
                     expected_options = SingleWorkflowOptions(
+                        organization="test-org",
                         repo_name="test-repo",
                         workflow_id=workflow_webhook_processor._extract_file_name(
                             workflow_file["filename"]

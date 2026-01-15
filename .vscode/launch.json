@@ -205,6 +205,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/azure-resource-graph",
+      "envFile": "${workspaceFolder}/integrations/azure-resource-graph/.env",
+      "justMyCode": true,
+      "name": "Run Azure Resource Graph integration",
+      "program": "${workspaceFolder}/integrations/azure-resource-graph/debug.py",
+      "python": "${workspaceFolder}/integrations/azure-resource-graph/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/jira-server",
       "envFile": "${workspaceFolder}/integrations/jira-server/.env",
       "justMyCode": true,
@@ -290,5 +301,82 @@
       "request": "launch",
       "type": "debugpy"
     },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/github",
+      "envFile": "${workspaceFolder}/integrations/github/.env",
+      "justMyCode": true,
+      "name": "Run Github integration",
+      "program": "${workspaceFolder}/integrations/github/debug.py",
+      "python": "${workspaceFolder}/integrations/github/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/jenkins",
+      "envFile": "${workspaceFolder}/integrations/jenkins/.env",
+      "justMyCode": true,
+      "name": "Run jenkins integration",
+      "program": "${workspaceFolder}/integrations/jenkins/debug.py",
+      "python": "${workspaceFolder}/integrations/jenkins/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/wiz",
+      "envFile": "${workspaceFolder}/integrations/wiz/.env",
+      "justMyCode": true,
+      "name": "Run wiz integration",
+      "program": "${workspaceFolder}/integrations/wiz/debug.py",
+      "python": "${workspaceFolder}/integrations/wiz/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/custom",
+      "envFile": "${workspaceFolder}/integrations/custom/examples/config-no-auth.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - No Auth",
+      "program": "${workspaceFolder}/integrations/custom/debug.py",
+      "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/custom",
+      "envFile": "${workspaceFolder}/integrations/custom/examples/config-bearer-token.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - Bearer Token",
+      "program": "${workspaceFolder}/integrations/custom/debug.py",
+      "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/custom",
+      "envFile": "${workspaceFolder}/integrations/custom/examples/config-basic-auth.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - Basic Auth",
+      "program": "${workspaceFolder}/integrations/custom/debug.py",
+      "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/custom",
+      "envFile": "${workspaceFolder}/integrations/custom/examples/config-api-key.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - API Key",
+      "program": "${workspaceFolder}/integrations/custom/debug.py",
+      "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    }
   ]
 }

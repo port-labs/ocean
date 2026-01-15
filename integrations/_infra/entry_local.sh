@@ -23,4 +23,9 @@ source .venv-docker/bin/activate
 python -m pip install -e ../../
 
 python -m pip install debugpy
-python -m debugpy --listen 0.0.0.0:5678 --wait-for-client debug.py
+
+if [ "$OCEAN__PROCESS_EXECUTION_MODE" == "single_process" ]; then
+  unset PROMETHEUS_MULTIPROC_DIR;
+fi
+# python -m debugpy --listen 0.0.0.0:5678 --wait-for-client debug.py
+make run

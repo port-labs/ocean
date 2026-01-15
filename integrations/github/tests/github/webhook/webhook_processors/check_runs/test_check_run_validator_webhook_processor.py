@@ -77,11 +77,13 @@ def file_resource_config() -> GithubFileResourceConfig:
             query="true",
             files=[
                 GithubFilePattern(
+                    organization="test-org",
                     path="*.yaml",
                     repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
                     validationCheck=True,
                 ),
                 GithubFilePattern(
+                    organization="test-org",
                     path="*.json",
                     repos=[RepositoryBranchMapping(name="test-repo", branch="main")],
                     validationCheck=False,
@@ -123,6 +125,7 @@ def mock_payload() -> dict[str, Any]:
             "base": {"sha": "base-sha-123"},
             "head": {"sha": "head-sha-456"},
         },
+        "organization": {"login": "test-org"},
     }
 
 
@@ -169,13 +172,27 @@ class TestCheckRunValidatorWebhookProcessor:
                 return_value=[validation_mapping],
             ),
             patch(
+                "github.core.exporters.organization_exporter.RestOrganizationExporter.get_paginated_resources",
+                new=lambda *args, **kwargs: MockAsyncGenerator(
+                    [[{"login": "test-org", "type": "Organization"}]]
+                ),
+            ),
+            patch(
                 "github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor.create_github_client",
-                return_value=MagicMock(),
+                return_value=(lambda: None)(),
             ),
             patch(
                 "github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor.RestFileExporter",
             ) as mock_file_exporter_class,
         ):
+            # Configure create_github_client to return a client with async send_api_request
+            client_mock = MagicMock()
+            client_mock.send_api_request = AsyncMock(return_value={"login": "test-org"})
+            patcher = patch(
+                "github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor.create_github_client",
+                return_value=client_mock,
+            )
+            patcher.start()
             # Create mock file exporter
             mock_file_exporter = AsyncMock()
             mock_file_exporter.fetch_commit_diff.return_value = {"files": []}
@@ -216,8 +233,14 @@ class TestCheckRunValidatorWebhookProcessor:
                 return_value=[validation_mapping],
             ),
             patch(
+                "github.core.exporters.organization_exporter.RestOrganizationExporter.get_paginated_resources",
+                new=lambda *args, **kwargs: MockAsyncGenerator(
+                    [[{"login": "test-org", "type": "Organization"}]]
+                ),
+            ),
+            patch(
                 "github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor.create_github_client",
-                return_value=MagicMock(),
+                return_value=(lambda: None)(),
             ),
             patch(
                 "github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor.RestFileExporter",
@@ -226,6 +249,14 @@ class TestCheckRunValidatorWebhookProcessor:
                 "github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor.FileValidationService",
             ) as mock_validation_service_class,
         ):
+            # Configure create_github_client to return a client with async send_api_request
+            client_mock = MagicMock()
+            client_mock.send_api_request = AsyncMock(return_value={"login": "test-org"})
+            patcher = patch(
+                "github.webhook.webhook_processors.check_runs.check_runs_validator_webhook_processor.create_github_client",
+                return_value=client_mock,
+            )
+            patcher.start()
             # Create mock file exporter
             mock_file_exporter = AsyncMock()
             mock_file_exporter.fetch_commit_diff.return_value = {
@@ -249,7 +280,7 @@ class TestCheckRunValidatorWebhookProcessor:
 
                 # Verify that the file exporter methods were called
                 mock_file_exporter.fetch_commit_diff.assert_called_once_with(
-                    "test-repo", "base-sha-123", "head-sha-456"
+                    "test-org", "test-repo", "base-sha-123", "head-sha-456"
                 )
 
                 # Verify that validation service was created and called
@@ -274,6 +305,7 @@ class TestCheckRunValidatorWebhookProcessor:
                     "base": {"sha": "base-sha-123"},
                     "head": {"sha": "head-sha-456"},
                 },
+                "organization": {"login": "test-org"},
             }
 
             async with event_context("test_event") as event:

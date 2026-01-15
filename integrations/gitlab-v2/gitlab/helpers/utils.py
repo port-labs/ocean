@@ -1,8 +1,11 @@
+from copy import deepcopy
 from enum import StrEnum
 from loguru import logger
 from typing import Any, Union
 import json
-import yaml
+
+# import strictyaml as syaml
+from yaml import safe_load, YAMLError
 
 
 class ObjectKind(StrEnum):
@@ -16,6 +19,8 @@ class ObjectKind(StrEnum):
     PIPELINE = "pipeline"
     JOB = "job"
     FOLDER = "folder"
+    TAG = "tag"
+    RELEASE = "release"
 
 
 def parse_file_content(
@@ -40,24 +45,27 @@ def parse_file_content(
         )
         return content
 
-    # 1) Try JSON
     try:
         return json.loads(content)
     except json.JSONDecodeError:
-        pass  # Proceed to try YAML
+        pass
 
     # 2) Try YAML
     logger.debug(f"Attempting to parse file '{file_path}' in '{context}' as YAML.")
     try:
-        documents = list(yaml.load_all(content, Loader=yaml.SafeLoader))
-        if not documents:
-            logger.debug(
-                f"No valid YAML documents found in file '{file_path}' (context='{context}')."
-                " Returning raw content."
-            )
-            return content
-        return documents[0] if len(documents) == 1 else documents
-    except yaml.YAMLError:
+        parts = [x for x in content.split("\n---\n") if x.strip() != ""]
+        documents = []
+        for part in parts:
+            # prevent oom
+            data = deepcopy(safe_load(part))
+            if isinstance(data, list):
+                documents.extend(data)
+            else:
+                documents.append(data)
+
+        return documents
+
+    except YAMLError:
         logger.debug(
             f"Failed to parse file '{file_path}' in '{context}' as JSON or YAML. "
             "Returning raw content."

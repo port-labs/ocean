@@ -77,6 +77,52 @@ class TestGitLabClient:
             assert results[0]["__languages"] == mock_languages
             mock_get_languages.assert_called_once_with("test/test-project")
 
+    async def test_get_projects_with_project_query_config(
+        self, client: GitLabClient
+    ) -> None:
+        """Test project fetching and enrichment with languages and labels via REST."""
+        # Arrange
+        mock_projects = [
+            {
+                "id": "1",
+                "name": "Test Project",
+                "path_with_namespace": "test/test-project",
+            }
+        ]
+        mock_languages = {"Python": 50.0, "JavaScript": 30.0}
+
+        with (
+            patch.object(client.rest, "get_paginated_resource") as mock_get_resource,
+            patch.object(
+                client.rest,
+                "get_project_languages",
+                AsyncMock(return_value=mock_languages),
+            ) as mock_get_languages,
+        ):
+
+            # Mock get_resource to yield projects
+            mock_get_resource.return_value = async_mock_generator([mock_projects])
+
+            # Act
+            results = []
+            params = {"some": "param", "search": "test"}
+            async for batch in client.get_projects(
+                params=params,
+                max_concurrent=1,
+                include_languages=True,
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 1  # One project in the batch
+            assert results[0]["name"] == "Test Project"
+            assert results[0]["__languages"] == mock_languages
+            mock_get_resource.assert_called_once_with(
+                "projects",
+                params={"all_available": True, "some": "param", "search": "test"},
+            )
+            mock_get_languages.assert_called_once_with("test/test-project")
+
     async def test_get_groups(self, client: GitLabClient) -> None:
         """Test group fetching with default config behavior (use_min_access_level=True, min_access_level=30)"""
 
@@ -102,6 +148,39 @@ class TestGitLabClient:
                 params={
                     "min_access_level": 30,
                     "all_available": True,
+                },
+            )
+
+    async def test_get_groups_with_group_query_config(
+        self, client: GitLabClient
+    ) -> None:
+        """Test group fetching with group query config"""
+
+        # Arrange
+        mock_groups: list[dict[str, Any]] = [{"id": 1, "name": "Test Group"}]
+
+        # Use a context manager for patching
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([mock_groups]),
+        ) as mock_get_resource:
+            # Act - Test default config behavior (like main.py would call)
+            results: list[dict[str, Any]] = []
+            async for batch in client.get_groups(
+                params={"min_access_level": 30, "search": "test"}
+            ):
+                results.extend(batch)
+
+            # Assert
+            assert len(results) == 1
+            assert results[0]["name"] == "Test Group"
+            mock_get_resource.assert_called_once_with(
+                "groups",
+                params={
+                    "min_access_level": 30,
+                    "all_available": True,
+                    "search": "test",
                 },
             )
 
@@ -363,8 +442,9 @@ class TestGitLabClient:
                 "username": "user1",
                 "name": "User One",
                 "email": "user1@example.com",
+                "access_level": 10,
             },
-            {"id": 2, "username": "user2", "name": "User Two"},
+            {"id": 2, "username": "user2", "name": "User Two", "access_level": 10},
         ]
 
         with patch.object(
@@ -635,10 +715,12 @@ class TestGitLabClient:
             "content": mock_file_content,
             "path": "config.yaml",
         }
-        expected_parsed_content = {
-            "key": "value",
-            "ref": mock_referenced_content,
-        }
+        expected_parsed_content = [
+            {
+                "key": "value",
+                "ref": mock_referenced_content,
+            }
+        ]
 
         with (
             patch.object(
@@ -797,3 +879,133 @@ class TestGitLabClient:
             mock_get_projects.assert_called_once_with(
                 "projects", params={"all_available": True, "min_access_level": 50}
             )
+
+    async def test_get_tags(self, client: GitLabClient) -> None:
+        """Test fetching tags for projects with enrichment"""
+        mock_projects = [
+            {"id": 1, "name": "Test Project", "path_with_namespace": "test/project"},
+        ]
+        mock_tags = [
+            {
+                "name": "v1.0.0",
+                "message": "Release v1.0.0",
+                "__project": {"path_with_namespace": "test/project"},
+            },
+            {
+                "name": "v1.1.0",
+                "message": "Release v1.1.0",
+                "__project": {"path_with_namespace": "test/project"},
+            },
+        ]
+
+        with patch.object(
+            client,
+            "get_projects_resource_with_enrichment",
+            return_value=async_mock_generator([mock_tags]),
+        ) as mock_get_resource_enrichment:
+            results = []
+            async for batch in client.get_tags(mock_projects, max_concurrent=5):
+                results.extend(batch)
+
+            assert len(results) == 2
+            assert results[0]["name"] == "v1.0.0"
+            assert results[1]["name"] == "v1.1.0"
+            assert results[0]["__project"]["path_with_namespace"] == "test/project"
+            assert results[1]["__project"]["path_with_namespace"] == "test/project"
+            mock_get_resource_enrichment.assert_called_once_with(
+                mock_projects, "repository/tags", 5
+            )
+
+    async def test_get_releases(self, client: GitLabClient) -> None:
+        """Test fetching releases for projects with enrichment"""
+        mock_projects = [
+            {"id": 1, "name": "Test Project", "path_with_namespace": "test/project"},
+        ]
+        mock_releases = [
+            {
+                "name": "v1.0.0",
+                "tag_name": "v1.0.0",
+                "description": "First release",
+                "__project": {"path_with_namespace": "test/project"},
+            },
+            {
+                "name": "v2.0.0",
+                "tag_name": "v2.0.0",
+                "description": "Second release",
+                "__project": {"path_with_namespace": "test/project"},
+            },
+        ]
+
+        with patch.object(
+            client,
+            "get_projects_resource_with_enrichment",
+            return_value=async_mock_generator([mock_releases]),
+        ) as mock_get_resource_enrichment:
+            results = []
+            async for batch in client.get_releases(mock_projects, max_concurrent=5):
+                results.extend(batch)
+
+            assert len(results) == 2
+            assert results == mock_releases
+            mock_get_resource_enrichment.assert_called_once_with(
+                mock_projects, "releases", 5
+            )
+
+    async def test_get_projects_resource_with_enrichment(
+        self, client: GitLabClient
+    ) -> None:
+        """Test fetching project resources with project information enrichment"""
+        mock_projects = [
+            {"id": 1, "path_with_namespace": "test/project1"},
+            {"id": 2, "path_with_namespace": "test/project2"},
+        ]
+        mock_resource_p1 = [{"id": 101, "name": "Resource 1"}]
+        mock_resource_p2 = [{"id": 102, "name": "Resource 2"}]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_project_resource",
+            side_effect=[
+                async_mock_generator([mock_resource_p1]),
+                async_mock_generator([mock_resource_p2]),
+            ],
+        ) as mock_get_paginated:
+            results = []
+            async for batch in client.get_projects_resource_with_enrichment(
+                mock_projects, "issues", max_concurrent=2
+            ):
+                results.extend(batch)
+
+            assert len(results) == 2
+            assert results[0]["id"] == 101
+            assert results[0]["__project"]["path_with_namespace"] == "test/project1"
+            assert results[1]["id"] == 102
+            assert results[1]["__project"]["path_with_namespace"] == "test/project2"
+            assert mock_get_paginated.call_count == 2
+
+    async def test_get_parent_groups(self, client: GitLabClient) -> None:
+        """Test that get_parent_groups returns only top-level groups"""
+        # Arrange
+        page1_groups = [
+            {"id": 1, "name": "Child", "parent_id": 3},  # Parent in page 2
+            {"id": 2, "name": "Orphan", "parent_id": 999},  # Missing parent
+        ]
+        page2_groups = [
+            {"id": 3, "name": "Parent", "parent_id": None},  # True top-level
+            {"id": 4, "name": "Child of Parent", "parent_id": 3},  # Child of parent
+        ]
+
+        with patch.object(
+            client.rest,
+            "get_paginated_resource",
+            return_value=async_mock_generator([page1_groups, page2_groups]),
+        ):
+            # Act
+            results = []
+            async for batch in client.get_parent_groups():
+                results.extend(batch)
+
+            # Assert - only top-level groups returned
+            assert len(results) == 2
+            result_ids = {group["id"] for group in results}
+            assert result_ids == {2, 3}  # Orphan and Parent, not children

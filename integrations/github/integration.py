@@ -1,4 +1,6 @@
+from datetime import datetime, timedelta, timezone
 from fastapi import Request
+from loguru import logger
 from pydantic import BaseModel, Field
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -7,6 +9,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
+from port_ocean.exceptions.api import EmptyPortAppConfigError
 from port_ocean.core.handlers.queue import GroupQueue
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
@@ -22,20 +25,30 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
 from port_ocean.core.handlers.webhook.processor_manager import (
     LiveEventsProcessorManager,
 )
-from github.entity_processors.file_entity_processor import FileEntityProcessor
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from typing import Any, Dict, List, Optional, Type, Literal
-from loguru import logger
 from port_ocean.utils.signal import signal_handler
+from typing import Any, Dict, List, Optional, Type, Literal
+
+from github.entity_processors.file_entity_processor import FileEntityProcessor
+from github.helpers.models import RepoSearchParams
 from github.helpers.utils import ObjectKind
 from github.webhook.live_event_group_selector import get_primary_id
+from github.helpers.port_app_config import (
+    is_repo_managed_mapping,
+    load_org_port_app_config,
+)
 
 FILE_PROPERTY_PREFIX = "file://"
 
 
-class GithubRepositorySelector(Selector):
-    include: Optional[List[Literal["collaborators", "teams"]]] = Field(
+class RepoSearchSelector(Selector):
+    repo_search: Optional[RepoSearchParams] = Field(default=None, alias="repoSearch")
+
+
+class GithubRepositorySelector(RepoSearchSelector):
+    include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
         default_factory=list,
+        max_items=3,
         description="Specify the relationships to include in the repository",
     )
 
@@ -56,12 +69,29 @@ class RepositoryBranchMapping(BaseModel):
 
 
 class FolderSelector(BaseModel):
+    organization: Optional[str] = Field(default=None)
     path: str = Field(default="*")
-    repos: list[RepositoryBranchMapping]
+    repos: Optional[list[RepositoryBranchMapping]] = Field(
+        description="Specify the repositories and branches to fetch files from",
+        default=None,
+    )
 
 
 class GithubFolderSelector(Selector):
     folders: list[FolderSelector]
+
+
+class GithubUserSelector(Selector):
+    include_bots: bool = Field(
+        default=True,
+        alias="includeBots",
+        description="Include bots in the list of users",
+    )
+
+
+class GithubUserConfig(ResourceConfig):
+    selector: GithubUserSelector
+    kind: Literal[ObjectKind.USER]
 
 
 class GithubFolderResourceConfig(ResourceConfig):
@@ -69,7 +99,7 @@ class GithubFolderResourceConfig(ResourceConfig):
     kind: Literal[ObjectKind.FOLDER]
 
 
-class GithubPullRequestSelector(Selector):
+class GithubPullRequestSelector(RepoSearchSelector):
     states: list[Literal["open", "closed"]] = Field(
         default=["open"],
         description="Filter by pull request state (e.g., open, closed)",
@@ -85,8 +115,17 @@ class GithubPullRequestSelector(Selector):
         default=60,
         ge=1,
         le=90,
-        description="Only fetch pull requests created within the last N days (1-90 days)",
+        description="Only fetch pull requests updated within the last N days (1-90 days)",
     )
+    api: Literal["rest", "graphql"] = Field(
+        default="rest",
+        description="Select the API to use for fetching pull requests",
+    )
+
+    @property
+    def updated_after(self) -> datetime:
+        """Convert the since days to a timezone-aware datetime object."""
+        return datetime.now(timezone.utc) - timedelta(days=self.since)
 
 
 class GithubPullRequestConfig(ResourceConfig):
@@ -94,11 +133,20 @@ class GithubPullRequestConfig(ResourceConfig):
     kind: Literal["pull-request"]
 
 
-class GithubIssueSelector(Selector):
+class GithubIssueSelector(RepoSearchSelector):
     state: Literal["open", "closed", "all"] = Field(
         default="open",
         description="Filter by issue state (open, closed, all)",
     )
+    labels: Optional[list[str]] = Field(
+        default=None,
+        description="Filter issues by labels. Issues must have ALL of the specified labels. Example: ['bug', 'enhancement']",
+    )
+
+    @property
+    def labels_str(self) -> Optional[str]:
+        """Convert labels list to comma-separated string for GitHub API."""
+        return ",".join(self.labels) if self.labels else None
 
 
 class GithubIssueConfig(ResourceConfig):
@@ -115,11 +163,43 @@ class GithubTeamConfig(ResourceConfig):
     kind: Literal[ObjectKind.TEAM]
 
 
-class GithubDependabotAlertSelector(Selector):
+class GithubDependabotAlertSelector(RepoSearchSelector):
     states: list[Literal["auto_dismissed", "dismissed", "fixed", "open"]] = Field(
         default=["open"],
         description="Filter alerts by state (auto_dismissed, dismissed, fixed, open)",
     )
+    severity: Optional[list[Literal["low", "medium", "high", "critical"]]] = Field(
+        default=None,
+        description="Filter alerts by severities. A comma-separated list of severities. If specified, only alerts with these severities will be returned. Example: ['low', 'medium']",
+    )
+    ecosystems: Optional[
+        list[
+            Literal[
+                "composer",
+                "go",
+                "maven",
+                "npm",
+                "nuget",
+                "pip",
+                "pub",
+                "rubygems",
+                "rust",
+            ]
+        ]
+    ] = Field(
+        default=None,
+        description="Filter alerts by ecosystems. Only alerts for these ecosystems will be returned. Example: ['npm', 'pip']",
+    )
+
+    @property
+    def severity_str(self) -> Optional[str]:
+        """Convert severity list to comma-separated string for GitHub API."""
+        return ",".join(self.severity) if self.severity else None
+
+    @property
+    def ecosystems_str(self) -> Optional[str]:
+        """Convert ecosystems list to comma-separated string for GitHub API."""
+        return ",".join(self.ecosystems) if self.ecosystems else None
 
 
 class GithubDependabotAlertConfig(ResourceConfig):
@@ -127,10 +207,16 @@ class GithubDependabotAlertConfig(ResourceConfig):
     kind: Literal["dependabot-alert"]
 
 
-class GithubCodeScanningAlertSelector(Selector):
+class GithubCodeScanningAlertSelector(RepoSearchSelector):
     state: Literal["open", "closed", "dismissed", "fixed"] = Field(
         default="open",
         description="Filter alerts by state (open, closed, dismissed, fixed)",
+    )
+    severity: Optional[
+        Literal["critical", "high", "medium", "low", "warning", "note", "error"]
+    ] = Field(
+        default=None,
+        description="Filter alerts by severity level. If specified, only code scanning alerts with this severity will be returned.",
     )
 
 
@@ -139,7 +225,23 @@ class GithubCodeScanningAlertConfig(ResourceConfig):
     kind: Literal["code-scanning-alerts"]
 
 
-class GithubSecretScanningAlertSelector(Selector):
+class GithubDeploymentSelector(RepoSearchSelector):
+    task: Optional[str] = Field(
+        default=None,
+        description="Filter deployments by task name (e.g., deploy or deploy:migrations)",
+    )
+    environment: Optional[str] = Field(
+        default=None,
+        description="Filter deployments by environment name (e.g., staging or production)",
+    )
+
+
+class GithubDeploymentConfig(ResourceConfig):
+    selector: GithubDeploymentSelector
+    kind: Literal["deployment"]
+
+
+class GithubSecretScanningAlertSelector(RepoSearchSelector):
     state: Literal["open", "resolved", "all"] = Field(
         default="open",
         description="Filter alerts by state (open, resolved, all)",
@@ -157,6 +259,7 @@ class GithubSecretScanningAlertConfig(ResourceConfig):
 
 
 class GithubFilePattern(BaseModel):
+    organization: Optional[str] = Field(default=None)
     path: str = Field(
         alias="path",
         description="Specify the path to match files from",
@@ -187,7 +290,7 @@ class GithubFileResourceConfig(ResourceConfig):
     selector: GithubFileSelector
 
 
-class GithubBranchSelector(Selector):
+class GithubBranchSelector(RepoSearchSelector):
     detailed: bool = Field(
         default=False, description="Include extra details about the branch"
     )
@@ -203,7 +306,24 @@ class GithubBranchConfig(ResourceConfig):
     selector: GithubBranchSelector
 
 
+class GithubRepoSearchConfig(ResourceConfig):
+    selector: RepoSearchSelector
+
+
 class GithubPortAppConfig(PortAppConfig):
+    organizations: List[str] = Field(
+        default_factory=list,
+        description=(
+            "List of GitHub organization names (optional - if not provided, "
+            "will sync all organizations the personal access token user is a "
+            "member of) for Classic PAT authentication."
+        ),
+    )
+    include_authenticated_user: bool = Field(
+        default=False,
+        alias="includeAuthenticatedUser",
+        description="Include the authenticated user's personal account",
+    )
     repository_type: str = Field(alias="repositoryType", default="all")
     resources: list[
         GithubRepositoryConfig
@@ -211,13 +331,16 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubIssueConfig
         | GithubDependabotAlertConfig
         | GithubCodeScanningAlertConfig
+        | GithubDeploymentConfig
         | GithubFolderResourceConfig
         | GithubTeamConfig
         | GithubFileResourceConfig
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
+        | GithubUserConfig
+        | GithubRepoSearchConfig
         | ResourceConfig
-    ]
+    ] = Field(default_factory=list)
 
 
 class GitManipulationHandler(JQEntityProcessor):
@@ -297,12 +420,51 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
             if event_workers_count > 1
             else GithubLiveEventsProcessorManager
         )
-        self.context.app.webhook_manager = ProcessManager(
+        processor_manager = ProcessManager(
             self.context.app.integration_router,
             signal_handler,
             self.context.config.max_event_processing_seconds,
             self.context.config.max_wait_seconds_before_shutdown,
         )
+        self.context.app.webhook_manager = processor_manager
+        self.context.app.execution_manager._webhook_manager = processor_manager
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GithubPortAppConfig
+
+        async def _get_port_app_config(self) -> dict[str, Any]:
+            """
+            Retrieve the Port app config for the GitHub Ocean integration.
+
+            - If `config.repoManagedMapping` is true, ignore the API mapping
+              and load the Port app config from a GitHub organization config
+              repository (global mapping).
+            - Otherwise, if `config` is non-empty, use it as-is (standard mapping).
+            - If `config` is empty and no repo source is specified, treat it as an
+              invalid/empty mapping.
+            """
+            logger.info("Fetching GitHub Port app config")
+
+            integration = await self.context.port_client.get_current_integration()
+            raw_config = integration.get("config") or {}
+
+            if is_repo_managed_mapping(integration):
+                integration_cfg = self.context.integration_config
+                github_org = integration_cfg.get("github_organization")
+                if not github_org:
+                    logger.error(
+                        "mapping is managed by the repository but github_organization is missing "
+                        "from the integration configuration."
+                    )
+                    raise EmptyPortAppConfigError()
+                return await load_org_port_app_config(github_org)
+
+            if raw_config:
+                logger.debug("Using Port integration config from API")
+                return raw_config
+
+            logger.error(
+                "Integration Port app config is empty and no repoManagedMapping "
+                "flag was specified"
+            )
+            raise EmptyPortAppConfigError()

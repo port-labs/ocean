@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -30,19 +30,29 @@ class Kind(StrEnum):
     USER = "user"
     FOLDER = "folder"
     ITERATION = "iteration"
+    BRANCH = "branch"
 
 
-PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [
-    {"searchCriteria.status": "active"},
-    {
-        "searchCriteria.status": "abandoned",
-        "searchCriteria.minTime": datetime.now() - timedelta(days=7),
-    },
-    {
-        "searchCriteria.status": "completed",
-        "searchCriteria.minTime": datetime.now() - timedelta(days=7),
-    },
-]
+ACTIVE_PULL_REQUEST_SEARCH_CRITERIA: dict[str, Any] = {
+    "searchCriteria.status": "active"
+}
+
+
+def create_closed_pull_request_search_criteria(
+    min_time_datetime: datetime,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "searchCriteria.status": "abandoned",
+            "searchCriteria.queryTimeRangeType": "closed",
+            "searchCriteria.minTime": min_time_datetime,
+        },
+        {
+            "searchCriteria.status": "completed",
+            "searchCriteria.queryTimeRangeType": "closed",
+            "searchCriteria.minTime": min_time_datetime,
+        },
+    ]
 
 
 def extract_branch_name_from_ref(ref: str) -> str:
@@ -56,7 +66,7 @@ class RepositoryBranchMapping(BaseModel):
 
 class FolderPattern(BaseModel):
     path: str = Field(
-        default="",
+        ...,
         alias="path",
         description="""Specify the repositories and folders to include under this relative path.
         Supports glob pattern (*) for matching within a path segment:
@@ -78,9 +88,9 @@ class FolderPattern(BaseModel):
 class AzureDevopsFolderSelector(Selector):
     """Selector for Azure DevOps folder scanning configuration"""
 
-    project_name: str = Field(
-        ...,
-        description="Name of the Azure DevOps project that contains the repositories to be scanned",
+    project_name: str | None = Field(
+        default=None,
+        description="Name of the Azure DevOps project that contains the repositories to be scanned. If not provided, scans all projects.",
     )
     folders: list[FolderPattern] = Field(
         default_factory=list,

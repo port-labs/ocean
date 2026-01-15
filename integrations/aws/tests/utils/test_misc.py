@@ -61,6 +61,32 @@ def test_resource_not_found_exception_no_response_attribute() -> None:
     assert not is_resource_not_found_exception(e)
 
 
+def test_resource_not_found_general_service_exception_does_not_exist() -> None:
+    """Test that 'does not exist' message wrapped in GeneralServiceException is detected"""
+    e = MockException(
+        response={
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "The requested resource does not exist",
+            }
+        }
+    )
+    assert is_resource_not_found_exception(e)
+
+
+def test_access_denied_wrapped_in_general_service_exception() -> None:
+    """Test that AccessDenied wrapped in GeneralServiceException is detected"""
+    e = MockException(
+        response={
+            "Error": {
+                "Code": "GeneralServiceException",
+                "Message": "Access Denied for this operation",
+            }
+        }
+    )
+    assert is_access_denied_exception(e)
+
+
 class TestGetMatchingKindsAndBlueprintsFromConfig(unittest.TestCase):
 
     def test_get_matching_kinds_and_blueprints(self) -> None:

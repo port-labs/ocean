@@ -51,13 +51,19 @@ class TestRestDeploymentExporter:
         ) as mock_request:
             mock_request.return_value = mock_response.json()
             deployment = await exporter.get_resource(
-                SingleDeploymentOptions(repo_name="test-repo", id="123")
+                SingleDeploymentOptions(
+                    organization="test-org", repo_name="test-repo", id="123"
+                )
             )
 
-            assert deployment == {**TEST_DEPLOYMENTS[0], "__repository": "test-repo"}
+            assert deployment == {
+                **TEST_DEPLOYMENTS[0],
+                "__repository": "test-repo",
+                "__organization": "test-org",
+            }
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/deployments/123"
+                f"{rest_client.base_url}/repos/test-org/test-repo/deployments/123"
             )
 
     async def test_get_paginated_resources(
@@ -73,7 +79,9 @@ class TestRestDeploymentExporter:
             rest_client, "send_paginated_request", side_effect=mock_paginated_request
         ) as mock_request:
             async with event_context("test_event"):
-                options = ListDeploymentsOptions(repo_name="test-repo")
+                options = ListDeploymentsOptions(
+                    organization="test-org", repo_name="test-repo"
+                )
                 exporter = RestDeploymentExporter(rest_client)
 
                 deployments: list[list[dict[str, Any]]] = [
@@ -89,8 +97,12 @@ class TestRestDeploymentExporter:
                     deployment["__repository"] == "test-repo"
                     for deployment in deployments[0]
                 )
+                assert all(
+                    deployment["__organization"] == "test-org"
+                    for deployment in deployments[0]
+                )
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/deployments",
+                    f"{rest_client.base_url}/repos/test-org/test-repo/deployments",
                     {},
                 )

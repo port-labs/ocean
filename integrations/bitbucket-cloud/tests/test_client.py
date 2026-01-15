@@ -2,10 +2,12 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 from httpx import AsyncClient, HTTPStatusError
 from port_ocean.context.event import event_context
-from typing import Any, AsyncIterator, Generator
-from bitbucket_cloud.client import BitbucketClient
+from typing import Any, AsyncIterator, Generator, AsyncGenerator
+from bitbucket_cloud.client import BitbucketClient, PULL_REQUEST_PAGE_SIZE
 from bitbucket_cloud.helpers.token_manager import TokenManager
 from bitbucket_cloud.helpers.exceptions import MissingIntegrationCredentialException
+from bitbucket_cloud.webhook_processors.options import PullRequestSelectorOptions
+from bitbucket_cloud.utils import build_pull_request_params
 
 
 @pytest.fixture
@@ -81,7 +83,7 @@ async def test_client_init_no_auth() -> None:
         with pytest.raises(MissingIntegrationCredentialException) as exc_info:
             BitbucketClient.create_from_ocean_config()
         assert (
-            "Either workspace token or both username and app password must be provided"
+            "Either workspace token, both username and app password, or both user_email and user_scoped_token must be provided"
             in str(exc_info.value)
         )
 
@@ -256,7 +258,7 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
     """Test getting pull requests."""
     mock_data = {"values": [{"id": 1, "title": "Test PR"}]}
 
-    async with event_context("test_event"):
+    async with event_context("test_get_pull_requests"):
         with patch.object(
             mock_client, "_fetch_paginated_api_with_rate_limiter"
         ) as mock_paginated:
@@ -265,11 +267,14 @@ async def test_get_pull_requests(mock_client: BitbucketClient) -> None:
                 yield mock_data["values"]
 
             mock_paginated.return_value = mock_generator()
-            async for prs in mock_client.get_pull_requests("test-repo"):
+            options = PullRequestSelectorOptions(pull_request_query='state="OPEN"')
+            async for prs in mock_client.get_pull_requests(
+                "test-repo", params=build_pull_request_params(options)
+            ):
                 assert prs == mock_data["values"]
             mock_paginated.assert_called_once_with(
                 f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
-                params={"state": "OPEN", "pagelen": 50},
+                params={"pagelen": 50, "q": 'state="OPEN"'},
             )
 
 
@@ -470,10 +475,59 @@ async def test_client_init_with_invalid_workspace_tokens() -> None:
     # Test with empty string (should hit the general auth error, not token validation)
     with pytest.raises(
         MissingIntegrationCredentialException,
-        match="Either workspace token or both username and app password must be provided",
+        match="Either workspace token, both username and app password, or both user_email and user_scoped_token must be provided",
     ):
         BitbucketClient(
             workspace="test-workspace",
             host="https://api.bitbucket.org/2.0",
             workspace_token="",
         )
+
+
+@pytest.mark.asyncio
+async def test_get_pull_requests_multiple_states(mock_client: BitbucketClient) -> None:
+    """Test getting pull requests with multiple states (including the single-state edge case)."""
+    mock_data = {"values": [{"id": 1, "title": "Test PR"}]}
+
+    async with event_context("test_event"):
+        with patch.object(
+            mock_client,
+            "_fetch_paginated_api_with_rate_limiter",
+            autospec=True,
+        ) as mock_paginated:
+
+            async def mock_generator() -> AsyncGenerator[list[dict[str, Any]], None]:
+                yield mock_data["values"]
+
+            mock_paginated.return_value = mock_generator()
+
+            options_single = PullRequestSelectorOptions(
+                pull_request_query='state="OPEN"'
+            )
+            async for prs in mock_client.get_pull_requests(
+                "test-repo", params=build_pull_request_params(options_single)
+            ):
+                assert prs == mock_data["values"]
+
+            options_multi = PullRequestSelectorOptions(
+                pull_request_query='state="OPEN" OR state="MERGED"'
+            )
+            async for prs in mock_client.get_pull_requests(
+                "test-repo", params=build_pull_request_params(options_multi)
+            ):
+                assert prs == mock_data["values"]
+
+            mock_paginated.assert_any_call(
+                f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
+                params={"pagelen": PULL_REQUEST_PAGE_SIZE, "q": 'state="OPEN"'},
+            )
+
+            mock_paginated.assert_any_call(
+                f"{mock_client.base_url}/repositories/{mock_client.workspace}/test-repo/pullrequests",
+                params={
+                    "pagelen": PULL_REQUEST_PAGE_SIZE,
+                    "q": 'state="OPEN" OR state="MERGED"',
+                },
+            )
+
+            assert mock_paginated.call_count == 2

@@ -33,10 +33,16 @@ class ReleaseWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         release_id = release["id"]
         repo_name = repo["name"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
-            f"Processing release event: {action} for release {release_id} in {repo_name}"
+            f"Processing release event: {action} for release {release_id} in {repo_name} from {organization}"
         )
+
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         if action in RELEASE_DELETE_EVENTS:
             return WebhookEventRawResults(
@@ -47,7 +53,9 @@ class ReleaseWebhookProcessor(BaseRepositoryWebhookProcessor):
         exporter = RestReleaseExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
-            SingleReleaseOptions(repo_name=repo_name, release_id=release_id)
+            SingleReleaseOptions(
+                organization=organization, repo_name=repo_name, release_id=release_id
+            )
         )
 
         return WebhookEventRawResults(

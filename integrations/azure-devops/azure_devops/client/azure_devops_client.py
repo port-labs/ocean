@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import json
+from collections import defaultdict
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError, ReadTimeout
 from loguru import logger
@@ -9,9 +10,14 @@ from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
 from azure_devops.webhooks.webhook_event import WebhookSubscription
-from azure_devops.webhooks.events import RepositoryEvents, PullRequestEvents, PushEvents
+from azure_devops.webhooks.events import (
+    RepositoryEvents,
+    PullRequestEvents,
+    PushEvents,
+    WorkItemEvents,
+)
 
-from azure_devops.client.base_client import HTTPBaseClient
+from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
 from azure_devops.misc import FolderPattern, RepositoryBranchMapping
 from azure_devops.client.base_client import PAGE_SIZE
 
@@ -60,6 +66,12 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
     ),
     WebhookSubscription(publisherId="tfs", eventType=PushEvents.PUSH),
     WebhookSubscription(publisherId="tfs", eventType=RepositoryEvents.REPO_CREATED),
+    WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_CREATED),
+    WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_UPDATED),
+    WebhookSubscription(
+        publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_COMMENTED
+    ),
+    WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_DELETED),
 ]
 
 
@@ -84,6 +96,15 @@ class AzureDevopsClient(HTTPBaseClient):
             ocean.integration_config["webhook_auth_username"],
         )
         event.attributes["azure_devops_client"] = azure_devops_client
+        return azure_devops_client
+
+    @classmethod
+    def create_from_ocean_config_no_cache(cls) -> "AzureDevopsClient":
+        azure_devops_client = cls(
+            ocean.integration_config["organization_url"].strip("/"),
+            ocean.integration_config["personal_access_token"],
+            ocean.integration_config["webhook_auth_username"],
+        )
         return azure_devops_client
 
     @classmethod
@@ -221,8 +242,80 @@ class AzureDevopsClient(HTTPBaseClient):
                         if self._repository_is_healthy(repo)
                     ]
 
+    async def generate_branches(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate branches for all repositories in all projects.
+
+        API: GET {org}/{project}/_apis/git/repositories/{repoId}/refs?filter=heads/
+        https://learn.microsoft.com/en-us/rest/api/azure/devops/git/refs/list?view=azure-devops-rest-7.1
+        """
+        async for repositories in self.generate_repositories(
+            include_disabled_repositories=False
+        ):
+            semaphore = asyncio.BoundedSemaphore(
+                MAX_CONCURRENT_REPOS_FOR_FILE_PROCESSING
+            )
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(
+                        self._get_branches_for_repository,
+                        repository,
+                    ),
+                )
+                for repository in repositories
+            ]
+            async for branches in stream_async_iterators_tasks(*tasks):
+                yield branches
+
+    async def _get_branches_for_repository(
+        self, repository: dict[str, Any]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get branches for a single repository."""
+        project_id = repository["project"]["id"]
+        repository_id = repository["id"]
+        repository_name = repository["name"]
+
+        branches_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/git/repositories/{repository_id}/refs"
+        params = {
+            "filter": "heads/",
+        }
+
+        try:
+            async for refs in self._get_paginated_by_top_and_continuation_token(
+                branches_url, additional_params=params
+            ):
+                enriched_branches = []
+                for ref in refs:
+                    ref_name = ref["name"]
+                    if ref_name.startswith("refs/heads/"):
+                        branch_name = ref_name.replace("refs/heads/", "")
+
+                        enriched_branch = {
+                            "name": branch_name,
+                            "refName": ref_name,
+                            "objectId": ref["objectId"],
+                            "__repository": repository,
+                        }
+                        enriched_branches.append(enriched_branch)
+
+                if enriched_branches:
+                    logger.info(
+                        f"Found {len(enriched_branches)} branches for repository {repository_name}"
+                    )
+                    yield enriched_branches
+
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch branches for repository {repository_name} in project {project_id}: {str(e)}"
+            )
+
     async def generate_pull_requests(
-        self, search_filters: Optional[dict[str, Any]] = None
+        self,
+        search_filters: Optional[dict[str, Any]] = None,
+        max_results: Optional[int] = None,
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for repositories in self.generate_repositories(
             include_disabled_repositories=False
@@ -235,6 +328,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         self._get_paginated_by_top_and_skip,
                         f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests",
                         search_filters,
+                        max_results=max_results,
                     ),
                 )
                 for repository in repositories
@@ -538,12 +632,14 @@ class AzureDevopsClient(HTTPBaseClient):
                     yield deployments
 
     async def generate_pipeline_deployments(
-        self, project_id: str, environment_id: int
+        self, environment_id: int, project: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        deployments_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/distributedtask/environments/{environment_id}/environmentdeploymentrecords"
+        deployments_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/distributedtask/environments/{environment_id}/environmentdeploymentrecords"
         async for deployments in self._get_paginated_by_top_and_continuation_token(
             deployments_url
         ):
+            for deployment in deployments:
+                deployment["__project"] = project
             yield deployments
 
     async def generate_repository_policies(
@@ -655,7 +751,7 @@ class AzureDevopsClient(HTTPBaseClient):
             if not batch_ids:
                 continue
             logger.debug(
-                f"Processing batch {i//page_size + 1}/{number_of_batches} with {len(batch_ids)} work items for project {project_id}"
+                f"Processing batch {i // page_size + 1}/{number_of_batches} with {len(batch_ids)} work items for project {project_id}"
             )
             work_items_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/workitems"
             params = {
@@ -683,6 +779,27 @@ class AzureDevopsClient(HTTPBaseClient):
             work_item["__projectId"] = project["id"]
             work_item["__project"] = project
         return work_items
+
+    async def get_work_item(
+        self, project_id: str, work_item_id: int, expand: str = "All"
+    ) -> Optional[dict[str, Any]]:
+        """
+        Fetches a single work item by ID from Azure DevOps.
+
+        :param project_id: The project ID containing the work item.
+        :param work_item_id: The work item ID to fetch.
+        :param expand: Expand options for work items. Allowed values are 'None', 'Fields', 'Relations', 'Links' and 'All'. Default value is 'All'.
+        :return: The work item data or None if not found.
+        """
+        work_item_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/workitems/{work_item_id}"
+        params = {
+            "api-version": API_PARAMS["api-version"],
+            "$expand": expand,
+        }
+        response = await self.send_request("GET", work_item_url, params=params)
+        if not response:
+            return None
+        return response.json()
 
     async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any] | None:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
@@ -735,13 +852,31 @@ class AzureDevopsClient(HTTPBaseClient):
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
         async for teams_in_project in self._get_paginated_by_top_and_skip(teams_url):
             for team in teams_in_project:
-                get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
-                response = await self.send_request("GET", get_boards_url)
-                if not response:
-                    continue
-                board_data = response.json().get("value", [])
-                logger.info(f"Found {len(board_data)} boards for project {project_id}")
-                yield await self._enrich_boards(board_data, project_id, team["id"])
+                try:
+                    get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
+                    response = await self.send_request("GET", get_boards_url)
+                    if not response:
+                        continue
+
+                    board_data = response.json().get("value", [])
+                    if not board_data:
+                        continue
+
+                    logger.info(
+                        f"Found {len(board_data)} boards for project {project_id}"
+                    )
+                    yield await self._enrich_boards(board_data, project_id, team["id"])
+
+                except HTTPStatusError as e:
+                    # Azure Devops API throws 500 errors when you try to fetch boards for teams that
+                    # are not in a sprint iteration. We should skip those.
+                    if e.response.status_code == 500:
+                        logger.warning(
+                            f"Skipping board fetch for team {team['id']} in project {project_id} due to a server error (HTTP 500). "
+                            "This can occur if the team is not assigned to an iteration."
+                        )
+                        continue
+                    raise
 
     @cache_iterator_result()
     async def get_boards_in_organization(
@@ -928,18 +1063,21 @@ class AzureDevopsClient(HTTPBaseClient):
 
             for base_path, group in grouped.items():
                 recursion = sorted({d.recursion for d in group}, key=get_priority)[-1]
-                descriptor = [
-                    PathDescriptor(
-                        base_path=base_path,
-                        recursion=recursion,
-                        pattern=group[0].pattern,
-                    )
-                ]
-                raw_files = await self._get_files_by_descriptors(
-                    repository, descriptor, branch
+
+                # Fetch files once for the base path with the highest recursion level
+                descriptor = PathDescriptor(
+                    base_path=base_path,
+                    recursion=recursion,
+                    pattern=group[0].pattern,
                 )
-                matched = filter_files_by_glob(raw_files, descriptor[0])
-                files += matched
+                raw_files = await self._get_files_by_descriptors(
+                    repository, [descriptor], branch
+                )
+
+                # Match files against all patterns in the group
+                for pattern_desc in group:
+                    matched = filter_files_by_glob(raw_files, pattern_desc)
+                    files += matched
 
         logger.info(f"Found {len(files)} files in repository {repository['name']}")
 
@@ -987,51 +1125,74 @@ class AzureDevopsClient(HTTPBaseClient):
                 {
                     "path": d.base_path,
                     "recursionLevel": d.recursion,
-                    "versionDescriptor": {"version": branch, "versionType": "branch"},
+                    "version": branch,
+                    "versionType": "branch",
                 }
                 for d in descriptors
-            ],
-            "includeContentMetadata": True,
-            "latestProcessedChange": True,
+            ]
         }
 
-        try:
-            response = await self.send_request(
-                "POST",
-                items_batch_url,
-                params=API_PARAMS,
-                data=json.dumps(request_data),
-                headers={"Content-Type": "application/json"},
-            )
-            if not response or response.status_code >= 400:
-                logger.warning(f"Failed to fetch items from {items_batch_url}")
-                return []
-
-            batch_results = response.json()
-            return [
-                file for sublist in batch_results.get("value", []) for file in sublist
-            ]
-
-        except ReadTimeout:
-            logger.error(
-                f"Request timeout while fetching items for {repository['name']}"
-            )
-            return []
-        except HTTPStatusError as e:
-            logger.error(e.response.status_code)
-            logger.error(e.response.text)
-            if e.response.status_code == 400:
-                logger.warning(
-                    f"None of the paths {', '.join([d.pattern for d in descriptors])} were found in repository {repository['name']}"
+        timeout_retries = 0
+        while timeout_retries <= MAX_TIMEMOUT_RETRIES:
+            try:
+                response = await self.send_request(
+                    "POST",
+                    items_batch_url,
+                    params=API_PARAMS,
+                    data=json.dumps(request_data),
+                    headers={"Content-Type": "application/json"},
+                    timeout=30,
                 )
-                return []
-            else:
+                if not response or response.status_code >= 400:
+                    logger.warning(f"Failed to fetch items from {items_batch_url}")
+                    return []
+
+                batch_results = response.json()
+                return [
+                    file
+                    for sublist in batch_results.get("value", [])
+                    for file in sublist
+                ]
+
+            except ReadTimeout:
+                timeout_retries += 1
+                if timeout_retries <= MAX_TIMEMOUT_RETRIES:
+                    logger.warning(
+                        f"Request timeout while fetching items for repository {repository['name']} "
+                        f"(attempt {timeout_retries}/{MAX_TIMEMOUT_RETRIES + 1}). Retrying..."
+                    )
+                    await asyncio.sleep(2 ** (timeout_retries - 1))
+                    continue
+                else:
+                    logger.error(
+                        f"Request timeout while fetching items for repository {repository['name']} "
+                        f"after {MAX_TIMEMOUT_RETRIES + 1} attempts. Skipping repository update to prevent "
+                        f"false deletions. This should be reported as a bug for further investigation."
+                    )
+                    raise TimeoutError(
+                        f"Persistent timeout fetching files for repository {repository['name']}. "
+                        f"Skipping update to prevent false entity deletions."
+                    )
+
+            except HTTPStatusError as e:
+                logger.error(e.response.status_code)
+                logger.error(e.response.text)
+                if e.response.status_code == 400:
+                    logger.warning(
+                        f"None of the paths {', '.join([d.pattern for d in descriptors])} were found in repository {repository['name']}"
+                    )
+                    return []
+                else:
+                    raise
+            except Exception as e:
+                logger.error(
+                    f"Unexpected error processing files in {repository['name']}: {e}"
+                )
                 raise
-        except Exception as e:
-            logger.error(
-                f"Unexpected error processing files in {repository['name']}: {e}"
-            )
-            raise
+
+        raise RuntimeError(
+            f"Failed to fetch files for repository {repository['name']} after all retry attempts"
+        )
 
     async def download_single_file(
         self, file: dict[str, Any], repository: dict[str, Any], branch: str
@@ -1251,10 +1412,10 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         repo: dict[str, Any],
         folder_pattern: FolderPattern,
-        repo_mapping: RepositoryBranchMapping,
+        repo_mapping: RepositoryBranchMapping | None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        branch = repo_mapping.branch
-        if branch is None and "defaultBranch" in repo:
+        branch = repo_mapping.branch if repo_mapping else None
+        if not branch and "defaultBranch" in repo:
             branch = repo["defaultBranch"].replace("refs/heads/", "")
 
         async for found_folders in self.get_repository_folders(
@@ -1274,7 +1435,7 @@ class AzureDevopsClient(HTTPBaseClient):
         self,
         repo: dict[str, Any],
         repo_pattern_map: dict[
-            str, list[tuple[FolderPattern, RepositoryBranchMapping]]
+            str, list[tuple[FolderPattern, RepositoryBranchMapping | None]]
         ],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         repo_name = repo["name"]
@@ -1302,42 +1463,68 @@ class AzureDevopsClient(HTTPBaseClient):
             return None
         return response.json()
 
+    async def _get_repositories_for_project(
+        self, project_name: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get repositories for a specific project."""
+        project = await self.get_single_project(project_name)
+        if not project:
+            logger.warning(f"Project {project_name} not found")
+            return
+
+        repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
+        repos_response = await self.send_request("GET", repos_url)
+        if repos_response:
+            yield repos_response.json()["value"]
+
     async def process_folder_patterns(
         self,
         folder_patterns: list[FolderPattern],
-        project_name: str,
+        project_name: str | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Process folder patterns and yield matching folders with optimized performance.
 
         Args:
             folder_patterns: List of folder patterns to process
-            project_name: The project name
+            project_name: The project name (optional). If None, syncs from all projects.
         """
         # Create a mapping of repository names to their patterns
         repo_pattern_map: dict[
-            str, list[tuple[FolderPattern, RepositoryBranchMapping]]
-        ] = {}
+            str, list[tuple[FolderPattern, RepositoryBranchMapping | None]]
+        ] = defaultdict(list)
+        global_patterns: list[FolderPattern] = []
+
         for pattern in folder_patterns:
-            for repo_mapping in pattern.repos:
-                if repo_mapping.name not in repo_pattern_map:
-                    repo_pattern_map[repo_mapping.name] = []
-                repo_pattern_map[repo_mapping.name].append((pattern, repo_mapping))
+            if not pattern.repos:
+                global_patterns.append(pattern)
+            else:
+                for repo_mapping in pattern.repos:
+                    repo_pattern_map[repo_mapping.name].append((pattern, repo_mapping))
 
-        # Process only the specified repositories
         tasks = []
-        for repo_name, patterns in repo_pattern_map.items():
-            repo = await self.get_repository_by_name(project_name, repo_name)
-            if not repo:
-                logger.warning(
-                    f"Repository {repo_name} in project {project_name} not found, skipping"
-                )
-                continue
+        repositories = (
+            self._get_repositories_for_project(project_name)
+            if project_name
+            else self.generate_repositories()
+        )
 
-            tasks.append(
-                self._process_repository_folder_patterns(
-                    repo, dict([(repo_name, patterns)])
-                )
-            )
+        async for repo_batch in repositories:
+            for repo in repo_batch:
+                # Check if repo has specific patterns
+                if repo["name"] in repo_pattern_map:
+                    tasks.append(
+                        self._process_repository_folder_patterns(
+                            repo, {repo["name"]: repo_pattern_map[repo["name"]]}
+                        )
+                    )
+                # Apply global patterns to all repos
+                elif global_patterns:
+                    tasks.append(
+                        self._process_repository_folder_patterns(
+                            repo,
+                            {repo["name"]: [(gp, None) for gp in global_patterns]},
+                        )
+                    )
 
         async for result in stream_async_iterators_tasks(*tasks):
             yield result

@@ -123,18 +123,21 @@ class TestRestCodeScanningAlertExporter:
         ) as mock_request:
             mock_request.return_value = TEST_CODE_SCANNING_ALERTS[0].copy()
             alert = await exporter.get_resource(
-                SingleCodeScanningAlertOptions(repo_name="test-repo", alert_number="42")
+                SingleCodeScanningAlertOptions(
+                    organization="test-org", repo_name="test-repo", alert_number="42"
+                )
             )
 
             # Verify the __repository field was added
             expected_alert = {
                 **TEST_CODE_SCANNING_ALERTS[0],
                 "__repository": "test-repo",
+                "__organization": "test-org",
             }
             assert alert == expected_alert
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts/42",
+                f"{rest_client.base_url}/repos/test-org/test-repo/code-scanning/alerts/42",
             )
 
     async def test_get_paginated_resources(
@@ -157,15 +160,18 @@ class TestRestCodeScanningAlertExporter:
 
             alerts = []
             async for batch in exporter.get_paginated_resources(
-                ListCodeScanningAlertOptions(repo_name="test-repo", state="open")
+                ListCodeScanningAlertOptions(
+                    organization="test-org", repo_name="test-repo", state="open"
+                )
             ):
                 alerts.extend(batch)
 
             assert len(alerts) == 2
             assert all(alert["__repository"] == "test-repo" for alert in alerts)
+            assert all(alert["__organization"] == "test-org" for alert in alerts)
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts",
+                f"{rest_client.base_url}/repos/test-org/test-repo/code-scanning/alerts",
                 {"state": "open"},
             )
 
@@ -183,7 +189,7 @@ class TestRestCodeScanningAlertExporter:
         ) as mock_request:
             async with event_context("test_event"):
                 options = ListCodeScanningAlertOptions(
-                    repo_name="test-repo", state="open"
+                    organization="test-org", repo_name="test-repo", state="open"
                 )
                 exporter = RestCodeScanningAlertExporter(rest_client)
 
@@ -197,7 +203,7 @@ class TestRestCodeScanningAlertExporter:
                 assert alerts[0][0]["__repository"] == "test-repo"
 
                 mock_request.assert_called_once_with(
-                    f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts",
+                    f"{rest_client.base_url}/repos/test-org/test-repo/code-scanning/alerts",
                     {"state": "open"},
                 )
 
@@ -211,19 +217,22 @@ class TestRestCodeScanningAlertExporter:
         ) as mock_request:
             mock_request.return_value = TEST_CODE_SCANNING_ALERTS[1].copy()
             alert = await exporter.get_resource(
-                SingleCodeScanningAlertOptions(repo_name="test-repo", alert_number="43")
+                SingleCodeScanningAlertOptions(
+                    organization="test-org", repo_name="test-repo", alert_number="43"
+                )
             )
 
             expected_alert = {
                 **TEST_CODE_SCANNING_ALERTS[1],
                 "__repository": "test-repo",
+                "__organization": "test-org",
             }
             assert alert == expected_alert
             assert alert["state"] == "dismissed"
             assert alert["dismissed_reason"] == "used_in_tests"
 
             mock_request.assert_called_once_with(
-                f"{rest_client.base_url}/repos/{rest_client.organization}/test-repo/code-scanning/alerts/43",
+                f"{rest_client.base_url}/repos/test-org/test-repo/code-scanning/alerts/43",
             )
 
     async def test_handle_request_with_advanced_security_disabled_error(
@@ -249,9 +258,11 @@ class TestRestCodeScanningAlertExporter:
             side_effect=mock_error,
         ):
             result = await exporter.get_resource(
-                SingleCodeScanningAlertOptions(repo_name="test-repo", alert_number="43")
+                SingleCodeScanningAlertOptions(
+                    organization="test-org", repo_name="test-repo", alert_number="43"
+                )
             )
-            assert result == {"__repository": "test-repo"}
+            assert result == {"__repository": "test-repo", "__organization": "test-org"}
 
     async def test_handle_request_paginated_with_advanced_security_disabled_error(
         self, rest_client: GithubRestClient
@@ -278,7 +289,9 @@ class TestRestCodeScanningAlertExporter:
             # Collect all results from the generator
             results = []
             async for batch in exporter.get_paginated_resources(
-                ListCodeScanningAlertOptions(repo_name="test-repo", state="open"),
+                ListCodeScanningAlertOptions(
+                    organization="test-org", repo_name="test-repo", state="open"
+                ),
             ):
                 results.extend(batch)
 

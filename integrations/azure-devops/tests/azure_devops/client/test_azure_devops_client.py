@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from httpx import Request, Response
+from httpx import Request, Response, HTTPStatusError
 from port_ocean.context.event import EventContext, event_context
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -88,6 +88,57 @@ EXPECTED_REPOSITORIES = [
         "project": {
             "state": "wellFormed",
         },
+    },
+]
+
+EXPECTED_BRANCHES_RAW = [
+    {
+        "name": "refs/heads/main",
+        "objectId": "abc123def456",
+    },
+    {
+        "name": "refs/heads/develop",
+        "objectId": "def456ghi789",
+    },
+    {
+        "name": "refs/heads/feature/new-feature",
+        "objectId": "ghi789jkl012",
+    },
+]
+
+EXPECTED_BRANCHES = [
+    {
+        "name": "main",
+        "refName": "refs/heads/main",
+        "objectId": "abc123def456",
+        "__repository": {
+            "id": "repo1",
+            "name": "Repository One",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        "__project": {"id": "proj1", "name": "Project One"},
+    },
+    {
+        "name": "develop",
+        "refName": "refs/heads/develop",
+        "objectId": "def456ghi789",
+        "__repository": {
+            "id": "repo1",
+            "name": "Repository One",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        "__project": {"id": "proj1", "name": "Project One"},
+    },
+    {
+        "name": "feature/new-feature",
+        "refName": "refs/heads/feature/new-feature",
+        "objectId": "ghi789jkl012",
+        "__repository": {
+            "id": "repo1",
+            "name": "Repository One",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        "__project": {"id": "proj1", "name": "Project One"},
     },
 ]
 
@@ -823,7 +874,10 @@ async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
         ]
 
     async def mock_get_paginated_by_top_and_skip(
-        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+        url: str,
+        additional_params: Optional[Dict[str, Any]] = None,
+        max_results: Optional[int] = None,
+        **kwargs: Any,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         if "pullrequests" in url:
             yield EXPECTED_PULL_REQUESTS
@@ -1504,6 +1558,67 @@ async def test_get_columns() -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_boards_skips_team_on_500_error(
+    mock_azure_client: AzureDevopsClient,
+) -> None:
+    """
+    Tests that the _get_boards method skips a team if the Azure DevOps API returns a 500 error,
+    which can happen for teams not in a sprint iteration.
+    """
+    project_id = "project123"
+    teams = [
+        {"id": "team1", "name": "Team With Boards"},
+        {"id": "team2", "name": "Team Without Boards (500 error)"},
+    ]
+    boards_for_team1 = [{"id": "board1", "name": "Board 1"}]
+
+    async def mock_paginated_teams(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield teams
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "team1" in url and "boards" in url:
+            return Response(status_code=200, json={"value": boards_for_team1})
+        if "team2" in url and "boards" in url:
+            raise HTTPStatusError(
+                "Internal Server Error",
+                request=Request("GET", url),
+                response=Response(status_code=500),
+            )
+        return None
+
+    async def mock_enrich_boards(
+        boards: list[dict[str, Any]], project_id: str, team_id: str
+    ) -> list[dict[str, Any]]:
+        # Simple passthrough enrichment for test
+        for board in boards:
+            board["__enriched"] = True
+        return boards
+
+    with (
+        patch.object(
+            mock_azure_client,
+            "_get_paginated_by_top_and_skip",
+            side_effect=mock_paginated_teams,
+        ),
+        patch.object(mock_azure_client, "send_request", side_effect=mock_send_request),
+        patch.object(
+            mock_azure_client, "_enrich_boards", side_effect=mock_enrich_boards
+        ),
+    ):
+        all_boards = []
+        async for boards_batch in mock_azure_client._get_boards(project_id):
+            all_boards.extend(boards_batch)
+
+        assert len(all_boards) == 1
+        assert all_boards[0]["id"] == "board1"
+        assert all_boards[0]["__enriched"] is True
+
+
+@pytest.mark.asyncio
 async def test_get_boards_in_organization(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
@@ -2005,11 +2120,41 @@ async def test_process_folder_patterns(
             "project": {"name": project_name, "id": "project-123"},
         }
 
+    async def mock_get_repositories_for_project(
+        project_name: str,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        repos_data = [
+            {
+                "name": "repo1",
+                "id": "repo1-id",
+                "project": {"name": project_name, "id": "project-123"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "name": "repo2",
+                "id": "repo2-id",
+                "project": {"name": project_name, "id": "project-123"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "name": "repo3",
+                "id": "repo3-id",
+                "project": {"name": project_name, "id": "project-123"},
+                "defaultBranch": "refs/heads/develop",
+            },
+        ]
+        yield repos_data
+
     with (
         patch.object(
             mock_azure_client,
             "generate_repositories",
             side_effect=mock_generate_repositories,
+        ),
+        patch.object(
+            mock_azure_client,
+            "_get_repositories_for_project",
+            side_effect=mock_get_repositories_for_project,
         ),
         patch.object(
             mock_azure_client,
@@ -2482,20 +2627,23 @@ async def test_generate_files_with_multiple_glob_patterns_different_recursion() 
     async for batch in client.generate_files(paths):
         results.extend(batch)
 
-    # The actual behavior shows that only 3 files are returned:
+    # With multiple patterns sharing the same base path, all patterns should be processed:
     # - src/main.js (matches src/*.js)
+    # - src/components/Button.ts (matches src/**/*.ts)
+    # - src/utils/helper.ts (matches src/**/*.ts)
     # - docs/README.md (matches docs/**/*.md)
     # - docs/api/reference.md (matches docs/**/*.md)
     #
-    # The TypeScript files and other JavaScript files are not being matched
-    # This suggests the glob filtering might not be working as expected
-    assert len(results) == 3
+    # Note: src/components/Button.js does NOT match any pattern (src/*.js only matches one level)
+    assert len(results) == 5
 
     # Check what we actually got
     paths_returned = [r["file"]["path"] for r in results]
 
     # Check that we got the expected files
     assert "src/main.js" in paths_returned
+    assert "src/components/Button.ts" in paths_returned
+    assert "src/utils/helper.ts" in paths_returned
     assert "docs/README.md" in paths_returned
     assert "docs/api/reference.md" in paths_returned
 
@@ -2939,7 +3087,9 @@ async def test_generate_pipeline_deployments() -> None:
     ):
         # ACT
         deployments: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            1, {"id": "proj1", "name": "Project One"}
+        ):
             deployments.extend(deployment_batch)
 
         # ASSERT
@@ -2957,7 +3107,9 @@ async def test_generate_pipeline_deployments_will_skip_404() -> None:
 
     with patch.object(client._client, "request", side_effect=mock_make_request):
         deployments: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            1, {"id": "proj1", "name": "Project One"}
+        ):
             deployments.extend(deployment_batch)
 
         assert not deployments
@@ -2991,12 +3143,16 @@ async def test_generate_pipeline_deployments_with_multiple_environments() -> Non
     ):
         # Test environment 1
         deployments_env1: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            1, {"id": "proj1", "name": "Project One"}
+        ):
             deployments_env1.extend(deployment_batch)
 
         # Test environment 2
         deployments_env2: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 2):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            2, {"id": "proj1", "name": "Project One"}
+        ):
             deployments_env2.extend(deployment_batch)
 
         # ASSERT
@@ -3663,3 +3819,50 @@ async def test_iterations_for_project() -> None:
         assert sprint["__project"]["name"] == "Project One"
         assert sprint["__team"]["name"] == "Team One"
         assert sprint["attributes"]["timeFrame"] == "current"
+
+
+@pytest.mark.asyncio
+async def test_generate_branches(mock_event_context: MagicMock) -> None:
+    """Test that generate_branches correctly fetches and enriches branches."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    # MOCK
+    async def mock_generate_repositories(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [
+            {
+                "id": "repo1",
+                "name": "Repository One",
+                "project": {"id": "proj1", "name": "Project One"},
+            }
+        ]
+
+    async def mock_get_branches_for_repository(
+        repository: Dict[str, Any]
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield EXPECTED_BRANCHES
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_repositories", side_effect=mock_generate_repositories
+        ):
+            with patch.object(
+                client,
+                "_get_branches_for_repository",
+                side_effect=mock_get_branches_for_repository,
+            ):
+                # ACT
+                branches: List[Dict[str, Any]] = []
+                async for branch_batch in client.generate_branches():
+                    branches.extend(branch_batch)
+
+                # ASSERT
+                assert len(branches) == 3
+                assert branches[0]["name"] == "main"
+                assert branches[0]["refName"] == "refs/heads/main"
+                assert branches[0]["objectId"] == "abc123def456"
+                assert branches[0]["__repository"]["name"] == "Repository One"
+                assert branches[0]["__project"]["name"] == "Project One"

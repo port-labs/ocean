@@ -1,0 +1,288 @@
+## 0.2.43-beta (2026-01-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+## 0.2.42-beta (2026-01-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
+## 0.2.41-beta (2025-12-24)
+
+### Improvements
+
+- Enabled saas for the custom integration
+
+## 0.2.40-beta (2025-12-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.32.9
+
+
+## 0.2.39-beta (2025-12-23)
+
+
+### Improvements
+
+- Convert custom integration to saas false
+
+
+## 0.2.38-beta (2025-12-23)
+
+
+### Improvements
+
+- Added advanced configuration section to the custom integration
+
+
+## 0.2.37-beta (2025-12-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.8
+
+
+## 0.2.36-beta (2025-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.7
+
+
+## 0.2.35-beta (2025-12-18)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.5
+
+
+## 0.2.34-beta (2025-12-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.4
+
+
+## 0.2.33-beta (2025-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.3
+
+
+## 0.2.32-beta (2025-12-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.2
+
+
+## 0.2.31-beta (2025-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.1
+
+
+## 0.2.30-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.0
+
+
+## 0.2.29-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.7
+
+
+## 0.2.28-beta (2025-12-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.6
+
+
+## 0.2.27-beta (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.4
+
+
+## 0.2.26-beta (2025-12-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.3
+
+
+## 0.2.25-beta (2025-12-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.2
+
+
+## 0.2.24-beta (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.1
+
+
+## 0.2.23-beta (2025-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.31.0
+
+
+## 0.2.22-beta (2025-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.7
+
+
+## 0.2.21-beta (2025-12-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.6
+
+
+## 0.2.20-beta (2025-11-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.5
+
+
+## 0.2.19-beta (2025-11-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.4
+
+
+## 0.2.18-beta (2025-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.3
+
+
+## 0.2.17-beta (2025-11-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.2
+
+
+## 0.2.16-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.1
+
+
+## 0.2.15-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.30.0
+
+
+## 0.2.14-beta (2025-11-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.10
+
+
+## 0.2.13-beta (2025-11-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.9
+
+
+## 0.2.12-beta (2025-11-19)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.29.8
+
+
+# Changelog
+
+All notable changes to the Custom integration will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.2.11-beta] - 2025-01-27
+
+### Bug Fixes
+- Fixed timeout configuration to use Ocean's core `client_timeout` capability directly - removed duplicate timeout parameter to fully leverage Ocean's core functionality
+- Fixed SSL verification (`verify_ssl`) configuration not being properly applied to HTTP requests
+- Fixed data path auto-detection logic to correctly handle explicit `data_path` configurations vs auto-detection scenarios
+
+## [0.2.2] - 2025-04-11
+### Improvements
+Fixed docs shown in generic http integration
+
+
+## [0.2.1] - 2025-03-11
+### Improvements
+Added docs to other installation methods in custom integration other than helm
+
+
+## [0.1.0] - 2024-01-01
+
+### Added
+- Initial release of HTTP Server integration
+- Support for multiple authentication methods (Bearer token, Basic auth, API key, none)
+- Support for multiple pagination patterns (offset/limit, page/size, cursor-based, none)
+- Configurable HTTP client with timeout and SSL verification settings
+- Standard Ocean resource mapping with JQ transformations
+- Automatic data extraction from common response formats
+- Comprehensive error handling and logging
+- Complete documentation and examples

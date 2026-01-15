@@ -1,7 +1,6 @@
 import base64
 from typing import Any, AsyncIterator, Optional
 from urllib.parse import quote
-
 from loguru import logger
 
 from gitlab.clients.base_client import HTTPBaseClient
@@ -81,7 +80,6 @@ class RestClient(HTTPBaseClient):
         response = await self.send_api_request("GET", path, params=params)
         if not response:
             return None
-
         return base64.b64decode(response["content"]).decode("utf-8")
 
     async def _make_paginated_request(

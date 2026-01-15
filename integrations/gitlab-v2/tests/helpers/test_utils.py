@@ -1,4 +1,6 @@
-from gitlab.helpers.utils import enrich_resources_with_project
+from gitlab.helpers.utils import (
+    enrich_resources_with_project,
+)
 
 
 class TestUtils:

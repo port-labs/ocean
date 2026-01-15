@@ -43,6 +43,7 @@ class TestOktaUserExporter:
 
         # Assign async generator function to mock attribute
         object.__setattr__(mock_client, "send_paginated_request", mock_get_users)
+
         cast(Any, mock_client).send_api_request = AsyncMock(side_effect=[mock_groups])
 
         options: ListUserOptions = {"include_groups": True, "fields": "id,profile"}
