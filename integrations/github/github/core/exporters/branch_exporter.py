@@ -12,6 +12,7 @@ from github.helpers.utils import (
     enrich_with_organization,
 )
 
+BATCH_CONCURRENCY_LIMIT = 10
 
 class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
@@ -82,7 +83,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched batch of {len(branches)} branches from repository {repo_name} from {organization}"
             )
 
-            batch_concurrency_limit = asyncio.Semaphore(10)
+            batch_concurrency_limit = asyncio.Semaphore(BATCH_CONCURRENCY_LIMIT)
 
             tasks = [
                 self._run_branch_hydration(
