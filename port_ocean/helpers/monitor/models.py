@@ -1,24 +1,43 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
+
+
+@dataclass
+class CPUStats:
+    cpu_max: float = 0.0
+    cpu_median: float = 0.0
+    cpu_avg: float = 0.0
+
+
+@dataclass
+class MemoryStats:
+    memory_max: int = 0
+    memory_median: int = 0
+    memory_avg: int = 0
+
+
+@dataclass
+class LatencyStats:
+    latency_max: float = 0.0
+    latency_median: float = 0.0
+    latency_avg: float = 0.0
+
+
+@dataclass
+class ResponseSizeStats:
+    response_size_total: int = 0
+    response_size_avg: float = 0.0
+    response_size_median: float = 0.0
 
 
 @dataclass
 class ResourceUsageStats:
     """Statistics for resource usage metrics (CPU, memory, latency, request size)."""
 
-    cpu_max: float = 0.0
-    cpu_median: float = 0.0
-    cpu_avg: float = 0.0
-    memory_max: int = 0
-    memory_median: int = 0
-    memory_avg: int = 0
-    latency_max: float = 0.0
-    latency_median: float = 0.0
-    latency_avg: float = 0.0
-    response_size_total: int = 0
-    response_size_avg: float = 0.0
-    response_size_median: float = 0.0
-    request_count: int = 0  # Number of HTTP responses made
+    cpu: CPUStats = field(default_factory=CPUStats)
+    memory: MemoryStats = field(default_factory=MemoryStats)
+    latency: LatencyStats = field(default_factory=LatencyStats)
+    response_size: ResponseSizeStats = field(default_factory=ResponseSizeStats)
     sample_count: int = 0
 
 

@@ -400,7 +400,6 @@ class Metrics:
         metrics = self.generate_metrics(metric_name, kind, blueprint)
         if not metrics:
             return None
-
         try:
             for metric in metrics:
                 await self.port_client.put_integration_sync_metrics(metric)

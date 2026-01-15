@@ -21,7 +21,15 @@ from loguru import logger
 
 from port_ocean.helpers.monitor.utils import measure_event_loop_latency
 
-from .models import ProcessNode, SystemSnapshot, ResourceUsageStats
+from .models import (
+    ProcessNode,
+    SystemSnapshot,
+    ResourceUsageStats,
+    CPUStats,
+    MemoryStats,
+    LatencyStats,
+    ResponseSizeStats,
+)
 
 
 class PerformanceMonitor:
@@ -269,38 +277,43 @@ class PerformanceMonitor:
             logger.debug(f"[Monitor] No samples collected for kind: {kind}")
             return ResourceUsageStats()
 
-        # Calculate response size statistics
-        response_size_total = sum(response_sizes) if response_sizes else 0
-        response_size_avg = statistics.mean(response_sizes) if response_sizes else 0.0
-        response_size_median = (
-            statistics.median(response_sizes) if response_sizes else 0.0
-        )
-
         stats = ResourceUsageStats(
-            cpu_max=max(cpu_samples),
-            cpu_median=statistics.median(cpu_samples),
-            cpu_avg=statistics.mean(cpu_samples),
-            memory_max=max(memory_samples),
-            memory_median=int(statistics.median(memory_samples)),
-            memory_avg=int(statistics.mean(memory_samples)),
-            latency_max=max(latency_samples),
-            latency_median=statistics.median(latency_samples),
-            latency_avg=statistics.mean(latency_samples),
-            response_size_total=response_size_total,
-            response_size_avg=response_size_avg,
-            response_size_median=response_size_median,
-            request_count=len(response_sizes),
+            cpu=CPUStats(
+                cpu_max=max(cpu_samples),
+                cpu_median=statistics.median(cpu_samples),
+                cpu_avg=statistics.mean(cpu_samples),
+            ),
+            memory=MemoryStats(
+                memory_max=max(memory_samples),
+                memory_median=int(statistics.median(memory_samples)),
+                memory_avg=int(statistics.mean(memory_samples)),
+            ),
+            latency=LatencyStats(
+                latency_max=max(latency_samples),
+                latency_median=statistics.median(latency_samples),
+                latency_avg=statistics.mean(latency_samples),
+            ),
+            response_size=ResponseSizeStats(
+                response_size_total=sum(response_sizes) if response_sizes else 0,
+                response_size_avg=(
+                    statistics.mean(response_sizes) if response_sizes else 0.0
+                ),
+                response_size_median=(
+                    statistics.median(response_sizes) if response_sizes else 0.0
+                ),
+            ),
             sample_count=len(cpu_samples),
         )
 
         logger.debug(
-            f"[Monitor] Stats for {kind}: CPU(max={stats.cpu_max:.1f}%, "
-            f"med={stats.cpu_median:.1f}%, avg={stats.cpu_avg:.1f}%), "
-            f"Mem(max={stats.memory_max / 1024**2:.1f}MB), "
-            f"Latency(max={stats.latency_max:.2f}ms), "
-            f"RequestSize(total={stats.response_size_total / 1024**2:.2f}MB, "
-            f"avg={stats.response_size_avg / 1024:.1f}KB, med={stats.response_size_median / 1024:.1f}KB, "
-            f"count={stats.request_count}), samples={stats.sample_count}"
+            f"[Monitor] Stats for {kind}: CPU(max={stats.cpu.cpu_max:.1f}%, "
+            f"med={stats.cpu.cpu_median:.1f}%, avg={stats.cpu.cpu_avg:.1f}%), "
+            f"Mem(max={stats.memory.memory_max / 1024**2:.1f}MB), "
+            f"Latency(max={stats.latency.latency_max:.2f}ms), "
+            f"ResponseSize(total={stats.response_size.response_size_total / 1024**2:.2f}MB, "
+            f"avg={stats.response_size.response_size_avg / 1024:.1f}KB, "
+            f"med={stats.response_size.response_size_median / 1024:.1f}KB), "
+            f"samples={stats.sample_count}"
         )
 
         return stats

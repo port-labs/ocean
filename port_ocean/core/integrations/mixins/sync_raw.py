@@ -20,6 +20,8 @@ from port_ocean.core.integrations.mixins.utils import (
     ProcessWrapper,
     clear_http_client_context,
     is_resource_supported,
+    start_kind_tracking,
+    stop_kind_tracking,
     unsupported_kind_response,
     resync_generator_wrapper,
     resync_function_wrapper,
@@ -725,8 +727,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             ocean.metrics.sync_state = SyncState.SYNCING
 
             # Start monitoring resource usage for this kind
-            monitor = get_monitor()
-            monitor.start_kind_tracking(resource_kind_id)
+            start_kind_tracking(resource_kind_id)
 
             await ocean.metrics.report_kind_sync_metrics(
                 kind=resource_kind_id, blueprint=resource.port.entity.mappings.blueprint
@@ -748,64 +749,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 raise
             finally:
                 # Stop tracking and report resource usage metrics
-                monitor.stop_kind_tracking(resource_kind_id)
-                stats = monitor.get_kind_stats(resource_kind_id)
-                if stats.sample_count > 0:
-                    # Report CPU metrics
-                    ocean.metrics.set_metric(
-                        MetricType.CPU_MAX_NAME, [resource_kind_id], stats.cpu_max
-                    )
-                    ocean.metrics.set_metric(
-                        MetricType.CPU_MEDIAN_NAME, [resource_kind_id], stats.cpu_median
-                    )
-                    ocean.metrics.set_metric(
-                        MetricType.CPU_AVG_NAME, [resource_kind_id], stats.cpu_avg
-                    )
-                    # Report memory metrics
-                    ocean.metrics.set_metric(
-                        MetricType.MEMORY_MAX_NAME, [resource_kind_id], stats.memory_max
-                    )
-                    ocean.metrics.set_metric(
-                        MetricType.MEMORY_MEDIAN_NAME,
-                        [resource_kind_id],
-                        stats.memory_median,
-                    )
-                    ocean.metrics.set_metric(
-                        MetricType.MEMORY_AVG_NAME, [resource_kind_id], stats.memory_avg
-                    )
-                    # Report latency metrics
-                    ocean.metrics.set_metric(
-                        MetricType.LATENCY_MAX_NAME,
-                        [resource_kind_id],
-                        stats.latency_max,
-                    )
-                    ocean.metrics.set_metric(
-                        MetricType.LATENCY_MEDIAN_NAME,
-                        [resource_kind_id],
-                        stats.latency_median,
-                    )
-                    ocean.metrics.set_metric(
-                        MetricType.LATENCY_AVG_NAME,
-                        [resource_kind_id],
-                        stats.latency_avg,
-                    )
-                # Report request size metrics (always report, even if no requests)
-                ocean.metrics.set_metric(
-                    MetricType.RESPONSE_SIZE_TOTAL_NAME,
-                    [resource_kind_id],
-                    stats.response_size_total,
-                )
-                ocean.metrics.set_metric(
-                    MetricType.RESPONSE_SIZE_AVG_NAME,
-                    [resource_kind_id],
-                    stats.response_size_avg,
-                )
-                ocean.metrics.set_metric(
-                    MetricType.RESPONSE_SIZE_MEDIAN_NAME,
-                    [resource_kind_id],
-                    stats.response_size_median,
-                )
-                monitor.cleanup_kind_tracking(resource_kind_id)
+                stop_kind_tracking(resource_kind_id)
 
             await ocean.metrics.send_metrics_to_webhook(kind=resource_kind_id)
             await ocean.metrics.report_kind_sync_metrics(

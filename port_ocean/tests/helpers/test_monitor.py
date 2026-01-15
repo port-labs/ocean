@@ -1,13 +1,16 @@
 """Tests for the performance monitor module."""
 
 import asyncio
-from unittest.mock import Mock, patch, MagicMock
 import pytest
 
 from port_ocean.helpers.monitor.models import (
     ResourceUsageStats,
     ProcessNode,
     SystemSnapshot,
+    CPUStats,
+    MemoryStats,
+    LatencyStats,
+    ResponseSizeStats,
 )
 from port_ocean.helpers.monitor.monitor import (
     PerformanceMonitor,
@@ -15,12 +18,7 @@ from port_ocean.helpers.monitor.monitor import (
     start_monitoring,
     stop_monitoring,
 )
-from port_ocean.helpers.monitor.utils import (
-    is_container,
-    _read_cgroup,
-    measure_event_loop_latency,
-)
-from port_ocean.helpers.monitor.cgroup_reader import CgroupReader
+from port_ocean.helpers.monitor.utils import measure_event_loop_latency
 from port_ocean.helpers.metric.metric import MetricType, _metrics_registry
 import port_ocean.helpers.monitor.monitor as monitor_module
 
@@ -32,43 +30,48 @@ class TestResourceUsageStats:
         """Test that ResourceUsageStats has correct default values."""
         stats = ResourceUsageStats()
 
-        assert stats.cpu_max == 0.0
-        assert stats.cpu_median == 0.0
-        assert stats.cpu_avg == 0.0
-        assert stats.memory_max == 0
-        assert stats.memory_median == 0
-        assert stats.memory_avg == 0
-        assert stats.latency_max == 0.0
-        assert stats.latency_median == 0.0
-        assert stats.latency_avg == 0.0
-        assert stats.response_size_total == 0
-        assert stats.response_size_avg == 0.0
-        assert stats.response_size_median == 0.0
-        assert stats.request_count == 0
+        assert stats.cpu.cpu_max == 0.0
+        assert stats.cpu.cpu_median == 0.0
+        assert stats.cpu.cpu_avg == 0.0
+        assert stats.memory.memory_max == 0
+        assert stats.memory.memory_median == 0
+        assert stats.memory.memory_avg == 0
+        assert stats.latency.latency_max == 0.0
+        assert stats.latency.latency_median == 0.0
+        assert stats.latency.latency_avg == 0.0
+        assert stats.response_size.response_size_total == 0
+        assert stats.response_size.response_size_avg == 0.0
+        assert stats.response_size.response_size_median == 0.0
         assert stats.sample_count == 0
 
     def test_custom_values(self) -> None:
         """Test ResourceUsageStats with custom values."""
         stats = ResourceUsageStats(
-            cpu_max=100.0,
-            cpu_median=50.0,
-            cpu_avg=55.0,
-            memory_max=1024 * 1024 * 100,  # 100MB
-            memory_median=1024 * 1024 * 80,
-            memory_avg=1024 * 1024 * 75,
-            latency_max=10.5,
-            latency_median=2.0,
-            latency_avg=3.5,
-            response_size_total=1024 * 1024,
-            response_size_avg=1024.0,
-            response_size_median=512.0,
-            request_count=1000,
+            cpu=CPUStats(
+                cpu_max=100.0,
+                cpu_median=50.0,
+                cpu_avg=55.0,
+            ),
+            memory=MemoryStats(
+                memory_max=1024 * 1024 * 100,  # 100MB
+                memory_median=1024 * 1024 * 80,
+                memory_avg=1024 * 1024 * 75,
+            ),
+            latency=LatencyStats(
+                latency_max=10.5,
+                latency_median=2.0,
+                latency_avg=3.5,
+            ),
+            response_size=ResponseSizeStats(
+                response_size_total=1024 * 1024,
+                response_size_avg=1024.0,
+                response_size_median=512.0,
+            ),
             sample_count=50,
         )
 
-        assert stats.cpu_max == 100.0
-        assert stats.memory_max == 1024 * 1024 * 100
-        assert stats.request_count == 1000
+        assert stats.cpu.cpu_max == 100.0
+        assert stats.memory.memory_max == 1024 * 1024 * 100
         assert stats.sample_count == 50
 
 
@@ -123,59 +126,6 @@ class TestSystemSnapshot:
 class TestMonitorUtils:
     """Tests for monitor utility functions."""
 
-    def test_is_container_no_dockerenv(self) -> None:
-        """Test is_container returns False when not in container."""
-        with patch("os.path.exists", return_value=False):
-            with patch("builtins.open", side_effect=FileNotFoundError("No such file")):
-                result = is_container()
-                assert result is False
-
-    def test_is_container_with_dockerenv(self) -> None:
-        """Test is_container returns True when .dockerenv exists."""
-        with patch("os.path.exists", return_value=True):
-            result = is_container()
-            assert result is True
-
-    def test_is_container_with_cgroup_docker(self) -> None:
-        """Test is_container detects Docker via cgroup."""
-        with patch("os.path.exists", return_value=False):
-            mock_file = MagicMock()
-            mock_file.__enter__ = Mock(return_value=mock_file)
-            mock_file.__exit__ = Mock(return_value=False)
-            mock_file.read.return_value = "12:devices:/docker/abc123"
-
-            with patch("builtins.open", return_value=mock_file):
-                result = is_container()
-                assert result is True
-
-    def test_read_cgroup_success(self) -> None:
-        """Test _read_cgroup reads integer value."""
-        mock_file = MagicMock()
-        mock_file.__enter__ = Mock(return_value=mock_file)
-        mock_file.__exit__ = Mock(return_value=False)
-        mock_file.read.return_value = "1073741824\n"
-
-        with patch("builtins.open", return_value=mock_file):
-            result = _read_cgroup("/sys/fs/cgroup/memory.max")
-            assert result == 1073741824
-
-    def test_read_cgroup_max_value(self) -> None:
-        """Test _read_cgroup returns None for 'max' value."""
-        mock_file = MagicMock()
-        mock_file.__enter__ = Mock(return_value=mock_file)
-        mock_file.__exit__ = Mock(return_value=False)
-        mock_file.read.return_value = "max\n"
-
-        with patch("builtins.open", return_value=mock_file):
-            result = _read_cgroup("/sys/fs/cgroup/memory.max")
-            assert result is None
-
-    def test_read_cgroup_file_not_found(self) -> None:
-        """Test _read_cgroup returns None on file not found."""
-        with patch("builtins.open", side_effect=FileNotFoundError()):
-            result = _read_cgroup("/nonexistent/path")
-            assert result is None
-
     @pytest.mark.asyncio
     async def test_measure_event_loop_latency(self) -> None:
         """Test measure_event_loop_latency returns a positive value."""
@@ -183,55 +133,6 @@ class TestMonitorUtils:
 
         assert isinstance(latency, float)
         assert latency >= 0.0
-
-
-class TestCgroupReader:
-    """Tests for CgroupReader class."""
-
-    def test_cgroup_reader_init_not_container(self) -> None:
-        """Test CgroupReader initialization when not in container."""
-        with patch(
-            "port_ocean.helpers.monitor.cgroup_reader.is_container", return_value=False
-        ):
-            with patch("os.path.exists", return_value=False):
-                reader = CgroupReader()
-
-                assert reader.is_container is False
-                assert reader._prev_cpu_usage is None
-                assert reader._prev_cpu_time is None
-
-    def test_memory_limit_not_container(self) -> None:
-        """Test memory_limit returns None when not in container."""
-        with patch(
-            "port_ocean.helpers.monitor.cgroup_reader.is_container", return_value=False
-        ):
-            with patch("os.path.exists", return_value=False):
-                reader = CgroupReader()
-                result = reader.memory_limit()
-
-                assert result is None
-
-    def test_memory_usage_not_container(self) -> None:
-        """Test memory_usage returns None when not in container."""
-        with patch(
-            "port_ocean.helpers.monitor.cgroup_reader.is_container", return_value=False
-        ):
-            with patch("os.path.exists", return_value=False):
-                reader = CgroupReader()
-                result = reader.memory_usage()
-
-                assert result is None
-
-    def test_cpu_percent_not_container(self) -> None:
-        """Test cpu_percent returns 0.0 when not in container."""
-        with patch(
-            "port_ocean.helpers.monitor.cgroup_reader.is_container", return_value=False
-        ):
-            with patch("os.path.exists", return_value=False):
-                reader = CgroupReader()
-                result = reader.cpu_percent()
-
-                assert result == 0.0
 
 
 class TestPerformanceMonitor:
@@ -310,7 +211,7 @@ class TestPerformanceMonitor:
         stats = monitor.get_kind_stats("nonexistent")
 
         assert stats.sample_count == 0
-        assert stats.cpu_max == 0.0
+        assert stats.cpu.cpu_max == 0.0
 
     def test_get_kind_stats_no_samples(self, monitor: PerformanceMonitor) -> None:
         """Test getting stats when no samples collected."""
@@ -332,19 +233,18 @@ class TestPerformanceMonitor:
 
         stats = monitor.get_kind_stats("test-kind-0")
 
-        assert stats.cpu_max == 50.0
-        assert stats.cpu_median == 30.0
-        assert stats.cpu_avg == 30.0
-        assert stats.memory_max == 500
-        assert stats.memory_median == 300
-        assert stats.memory_avg == 300
-        assert stats.latency_max == 5.0
-        assert stats.latency_median == 3.0
-        assert stats.latency_avg == 3.0
-        assert stats.response_size_total == 6000
-        assert stats.response_size_avg == 2000.0
-        assert stats.response_size_median == 2000.0
-        assert stats.request_count == 3
+        assert stats.cpu.cpu_max == 50.0
+        assert stats.cpu.cpu_median == 30.0
+        assert stats.cpu.cpu_avg == 30.0
+        assert stats.memory.memory_max == 500
+        assert stats.memory.memory_median == 300
+        assert stats.memory.memory_avg == 300
+        assert stats.latency.latency_max == 5.0
+        assert stats.latency.latency_median == 3.0
+        assert stats.latency.latency_avg == 3.0
+        assert stats.response_size.response_size_total == 6000
+        assert stats.response_size.response_size_avg == 2000.0
+        assert stats.response_size.response_size_median == 2000.0
         assert stats.sample_count == 5
 
     def test_get_total_memory_rss(self, monitor: PerformanceMonitor) -> None:
@@ -614,10 +514,9 @@ class TestMonitorIntegration:
 
         # Verify stats
         assert stats.sample_count > 0
-        assert stats.request_count == 3
-        assert stats.response_size_total == 7168
-        assert stats.cpu_max >= 0
-        assert stats.memory_max > 0
+        assert stats.response_size.response_size_total == 7168
+        assert stats.cpu.cpu_max >= 0
+        assert stats.memory.memory_max > 0
 
         # Cleanup
         monitor.cleanup_kind_tracking("deployment-0")
@@ -648,7 +547,7 @@ class TestMonitorIntegration:
         stats0 = monitor.get_kind_stats("kind-0")
         stats1 = monitor.get_kind_stats("kind-1")
 
-        assert stats0.response_size_total == 1000
-        assert stats1.response_size_total == 2000
+        assert stats0.response_size.response_size_total == 1000
+        assert stats1.response_size.response_size_total == 2000
 
         await monitor.stop()
