@@ -96,7 +96,6 @@ class PagerDutyClient(OAuthClient):
                 if has_more_data:
                     offset += data["limit"]
             except httpx.HTTPStatusError as e:
-                # AI! add a test case for this check
                 if (
                     e.response.status_code == 400
                     and (offset + PAGE_SIZE) >= MAX_PAGERDUTY_RESOURCES

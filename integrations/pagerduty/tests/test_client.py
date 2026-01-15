@@ -93,6 +93,40 @@ class TestPagerDutyClient:
             assert collected_data == TEST_DATA["users"]
 
     @pytest.mark.asyncio
+    async def test_paginate_request_to_pager_duty_max_limit(
+        self, client: PagerDutyClient
+    ) -> None:
+        from clients.pagerduty import MAX_PAGERDUTY_RESOURCES, PAGE_SIZE
+
+        num_pages = MAX_PAGERDUTY_RESOURCES // PAGE_SIZE
+        mock_responses = []
+
+        for _ in range(num_pages):
+            mock_responses.append(
+                MagicMock(
+                    json=lambda: {
+                        "users": [{"id": "some_id"}],
+                        "more": True,
+                        "limit": PAGE_SIZE,
+                    }
+                )
+            )
+
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        error = httpx.HTTPStatusError(
+            "Bad Request", request=MagicMock(), response=mock_response
+        )
+        mock_responses.append(error)
+
+        with patch.object(client.http_client, "request", side_effect=mock_responses):
+            collected_data: list[dict[str, Any]] = []
+            async for page in client.paginate_request_to_pager_duty("users"):
+                collected_data.extend(page)
+
+            assert len(collected_data) == num_pages
+
+    @pytest.mark.asyncio
     async def test_get_single_resource(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         mock_response.json.return_value = {"user": TEST_DATA["users"][0]}
