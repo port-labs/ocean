@@ -77,7 +77,6 @@ class PagerDutyClient(OAuthClient):
         offset = 0
         has_more_data = True
 
-        # AI! I check the limit in the while loop condition instead, update the test case to match
         while has_more_data and (offset + PAGE_SIZE) < MAX_PAGERDUTY_RESOURCES:
             logger.debug(
                 f"Fetching data for {resource} with offset: {offset} limit: {PAGE_SIZE} and params: {params}"

@@ -98,7 +98,7 @@ class TestPagerDutyClient:
     ) -> None:
         from clients.pagerduty import MAX_PAGERDUTY_RESOURCES, PAGE_SIZE
 
-        num_pages = MAX_PAGERDUTY_RESOURCES // PAGE_SIZE
+        num_pages = MAX_PAGERDUTY_RESOURCES // PAGE_SIZE - 1
         mock_responses: list[Any] = []
 
         for _ in range(num_pages):
@@ -111,13 +111,6 @@ class TestPagerDutyClient:
                     }
                 )
             )
-
-        mock_response = MagicMock()
-        mock_response.status_code = 400
-        error = httpx.HTTPStatusError(
-            "Bad Request", request=MagicMock(), response=mock_response
-        )
-        mock_responses.append(error)
 
         with patch.object(client.http_client, "request", side_effect=mock_responses):
             collected_data: list[dict[str, Any]] = []
