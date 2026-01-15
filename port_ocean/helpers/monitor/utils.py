@@ -34,7 +34,7 @@ async def measure_event_loop_latency() -> float:
     Schedules a callback and measures how long it takes to execute.
     High latency indicates blocking operations in the event loop.
     """
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     start = loop.time()
 
     # Yield control and measure how long until we get it back
