@@ -77,7 +77,6 @@ class PagerDutyClient(OAuthClient):
         offset = 0
         has_more_data = True
 
-        # AI! I updated this to only check for offset to prevent off by one error that would have made this fetch 9900 resources rather than the maximum 10000. Now I've added a check to the error handler to handle overflow error, update test case to match this implementation
         while has_more_data and offset < MAX_PAGERDUTY_RESOURCES:
             logger.debug(
                 f"Fetching data for {resource} with offset: {offset} limit: {PAGE_SIZE} and params: {params}"
