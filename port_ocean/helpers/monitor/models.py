@@ -15,10 +15,10 @@ class ResourceUsageStats:
     latency_max: float = 0.0
     latency_median: float = 0.0
     latency_avg: float = 0.0
-    request_size_total: int = 0
-    request_size_avg: float = 0.0
-    request_size_median: float = 0.0
-    request_count: int = 0  # Number of HTTP requests made
+    response_size_total: int = 0
+    response_size_avg: float = 0.0
+    response_size_median: float = 0.0
+    request_count: int = 0  # Number of HTTP responses made
     sample_count: int = 0
 
 

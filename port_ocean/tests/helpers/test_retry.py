@@ -678,7 +678,7 @@ class TestMonitorIntegrationInRetry:
         transport._log_response_size(mock_request, mock_response)
 
         mock_get_monitor.assert_called_once()
-        mock_monitor.record_request_size.assert_called_once_with(1024)
+        mock_monitor.record_response_size.assert_called_once_with(1024)
 
     @patch("port_ocean.helpers.retry.get_monitor")
     @patch("port_ocean.helpers.retry.cast")
@@ -708,7 +708,7 @@ class TestMonitorIntegrationInRetry:
 
         transport._log_response_size(mock_request, mock_response)
 
-        mock_monitor.record_request_size.assert_not_called()
+        mock_monitor.record_response_size.assert_not_called()
         # Should log debug message about no active tracking
         mock_logger.debug.assert_called()
 

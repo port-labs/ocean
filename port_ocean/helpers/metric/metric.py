@@ -62,10 +62,9 @@ class MetricType:
     LATENCY_MEDIAN_NAME = "event_loop_latency_median_ms"
     LATENCY_AVG_NAME = "event_loop_latency_avg_ms"
 
-    # HTTP request size metrics
-    REQUEST_SIZE_TOTAL_NAME = "request_size_total_bytes"
-    REQUEST_SIZE_AVG_NAME = "request_size_avg_bytes"
-    REQUEST_SIZE_MEDIAN_NAME = "request_size_median_bytes"
+    RESPONSE_SIZE_TOTAL_NAME = "response_size_total_bytes"
+    RESPONSE_SIZE_AVG_NAME = "response_size_avg_bytes"
+    RESPONSE_SIZE_MEDIAN_NAME = "response_size_median_bytes"
 
 
 class SyncState:
@@ -153,18 +152,18 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
         ["kind"],
     ),
     # HTTP request size metrics
-    MetricType.REQUEST_SIZE_TOTAL_NAME: (
-        MetricType.REQUEST_SIZE_TOTAL_NAME,
+    MetricType.RESPONSE_SIZE_TOTAL_NAME: (
+        MetricType.RESPONSE_SIZE_TOTAL_NAME,
         "Total size of HTTP responses received during kind processing",
         ["kind"],
     ),
-    MetricType.REQUEST_SIZE_AVG_NAME: (
-        MetricType.REQUEST_SIZE_AVG_NAME,
+    MetricType.RESPONSE_SIZE_AVG_NAME: (
+        MetricType.RESPONSE_SIZE_AVG_NAME,
         "Average size of HTTP responses received during kind processing",
         ["kind"],
     ),
-    MetricType.REQUEST_SIZE_MEDIAN_NAME: (
-        MetricType.REQUEST_SIZE_MEDIAN_NAME,
+    MetricType.RESPONSE_SIZE_MEDIAN_NAME: (
+        MetricType.RESPONSE_SIZE_MEDIAN_NAME,
         "Median size of HTTP responses received during kind processing",
         ["kind"],
     ),

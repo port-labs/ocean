@@ -202,7 +202,7 @@ class PerformanceMonitor:
             "cpu_samples": [],
             "memory_samples": [],
             "latency_samples": [],
-            "request_sizes": [],  # Individual request sizes for avg/median calculation
+            "response_sizes": [],
         }
         self._current_tracking_kind = kind
         logger.info(f"[Monitor] Started tracking kind: {kind} (monitor_id={id(self)})")
@@ -222,7 +222,7 @@ class PerformanceMonitor:
         """Get the currently tracked kind, if any."""
         return self._current_tracking_kind
 
-    def record_request_size(self, size_bytes: int) -> None:
+    def record_response_size(self, size_bytes: int) -> None:
         """Record the size of an HTTP response for the current tracking kind.
 
         Args:
@@ -233,14 +233,14 @@ class PerformanceMonitor:
             and self._current_tracking_kind in self._kind_tracking
         ):
             logger.info(
-                f"[Monitor] Recorded request size: {size_bytes} bytes for kind: {self._current_tracking_kind} (monitor_id={id(self)})"
+                f"[Monitor] Recorded response size: {size_bytes} bytes for kind: {self._current_tracking_kind} (monitor_id={id(self)})"
             )
-            self._kind_tracking[self._current_tracking_kind]["request_sizes"].append(
+            self._kind_tracking[self._current_tracking_kind]["response_sizes"].append(
                 size_bytes
             )
         else:
             logger.info(
-                f"[Monitor] Cannot record request size: {size_bytes} bytes - current_kind={self._current_tracking_kind}, tracking_kinds={list(self._kind_tracking.keys())} (monitor_id={id(self)})"
+                f"[Monitor] Cannot record response size: {size_bytes} bytes - current_kind={self._current_tracking_kind}, tracking_kinds={list(self._kind_tracking.keys())} (monitor_id={id(self)})"
             )
 
     def get_kind_stats(self, kind: str) -> ResourceUsageStats:
@@ -263,16 +263,18 @@ class PerformanceMonitor:
         cpu_samples = tracking["cpu_samples"]
         memory_samples = tracking["memory_samples"]
         latency_samples = tracking["latency_samples"]
-        request_sizes = tracking.get("request_sizes", [])
+        response_sizes = tracking.get("response_sizes", [])
 
         if not cpu_samples:
             logger.debug(f"[Monitor] No samples collected for kind: {kind}")
             return ResourceUsageStats()
 
-        # Calculate request size statistics
-        request_size_total = sum(request_sizes) if request_sizes else 0
-        request_size_avg = statistics.mean(request_sizes) if request_sizes else 0.0
-        request_size_median = statistics.median(request_sizes) if request_sizes else 0.0
+        # Calculate response size statistics
+        response_size_total = sum(response_sizes) if response_sizes else 0
+        response_size_avg = statistics.mean(response_sizes) if response_sizes else 0.0
+        response_size_median = (
+            statistics.median(response_sizes) if response_sizes else 0.0
+        )
 
         stats = ResourceUsageStats(
             cpu_max=max(cpu_samples),
@@ -284,10 +286,10 @@ class PerformanceMonitor:
             latency_max=max(latency_samples),
             latency_median=statistics.median(latency_samples),
             latency_avg=statistics.mean(latency_samples),
-            request_size_total=request_size_total,
-            request_size_avg=request_size_avg,
-            request_size_median=request_size_median,
-            request_count=len(request_sizes),
+            response_size_total=response_size_total,
+            response_size_avg=response_size_avg,
+            response_size_median=response_size_median,
+            request_count=len(response_sizes),
             sample_count=len(cpu_samples),
         )
 
@@ -296,8 +298,8 @@ class PerformanceMonitor:
             f"med={stats.cpu_median:.1f}%, avg={stats.cpu_avg:.1f}%), "
             f"Mem(max={stats.memory_max / 1024**2:.1f}MB), "
             f"Latency(max={stats.latency_max:.2f}ms), "
-            f"RequestSize(total={stats.request_size_total / 1024**2:.2f}MB, "
-            f"avg={stats.request_size_avg / 1024:.1f}KB, med={stats.request_size_median / 1024:.1f}KB, "
+            f"RequestSize(total={stats.response_size_total / 1024**2:.2f}MB, "
+            f"avg={stats.response_size_avg / 1024:.1f}KB, med={stats.response_size_median / 1024:.1f}KB, "
             f"count={stats.request_count}), samples={stats.sample_count}"
         )
 

@@ -41,9 +41,9 @@ class TestResourceUsageStats:
         assert stats.latency_max == 0.0
         assert stats.latency_median == 0.0
         assert stats.latency_avg == 0.0
-        assert stats.request_size_total == 0
-        assert stats.request_size_avg == 0.0
-        assert stats.request_size_median == 0.0
+        assert stats.response_size_total == 0
+        assert stats.response_size_avg == 0.0
+        assert stats.response_size_median == 0.0
         assert stats.request_count == 0
         assert stats.sample_count == 0
 
@@ -59,9 +59,9 @@ class TestResourceUsageStats:
             latency_max=10.5,
             latency_median=2.0,
             latency_avg=3.5,
-            request_size_total=1024 * 1024,
-            request_size_avg=1024.0,
-            request_size_median=512.0,
+            response_size_total=1024 * 1024,
+            response_size_avg=1024.0,
+            response_size_median=512.0,
             request_count=1000,
             sample_count=50,
         )
@@ -261,7 +261,7 @@ class TestPerformanceMonitor:
         assert tracking["cpu_samples"] == []
         assert tracking["memory_samples"] == []
         assert tracking["latency_samples"] == []
-        assert tracking["request_sizes"] == []
+        assert tracking["response_sizes"] == []
 
     def test_stop_kind_tracking(self, monitor: PerformanceMonitor) -> None:
         """Test stopping kind tracking."""
@@ -282,21 +282,21 @@ class TestPerformanceMonitor:
         monitor.stop_kind_tracking("test-kind")
         assert monitor.current_tracking_kind is None
 
-    def test_record_request_size(self, monitor: PerformanceMonitor) -> None:
+    def test_record_response_size(self, monitor: PerformanceMonitor) -> None:
         """Test recording request size."""
         monitor.start_kind_tracking("test-kind-0")
-        monitor.record_request_size(1024)
-        monitor.record_request_size(2048)
+        monitor.record_response_size(1024)
+        monitor.record_response_size(2048)
 
         tracking = monitor._kind_tracking["test-kind-0"]
-        assert tracking["request_sizes"] == [1024, 2048]
+        assert tracking["response_sizes"] == [1024, 2048]
 
-    def test_record_request_size_no_active_kind(
+    def test_record_response_size_no_active_kind(
         self, monitor: PerformanceMonitor
     ) -> None:
         """Test recording request size with no active tracking."""
         # Should not raise, just log
-        monitor.record_request_size(1024)
+        monitor.record_response_size(1024)
 
     def test_cleanup_kind_tracking(self, monitor: PerformanceMonitor) -> None:
         """Test cleaning up tracking data."""
@@ -328,7 +328,7 @@ class TestPerformanceMonitor:
         tracking["cpu_samples"] = [10.0, 20.0, 30.0, 40.0, 50.0]
         tracking["memory_samples"] = [100, 200, 300, 400, 500]
         tracking["latency_samples"] = [1.0, 2.0, 3.0, 4.0, 5.0]
-        tracking["request_sizes"] = [1000, 2000, 3000]
+        tracking["response_sizes"] = [1000, 2000, 3000]
 
         stats = monitor.get_kind_stats("test-kind-0")
 
@@ -341,9 +341,9 @@ class TestPerformanceMonitor:
         assert stats.latency_max == 5.0
         assert stats.latency_median == 3.0
         assert stats.latency_avg == 3.0
-        assert stats.request_size_total == 6000
-        assert stats.request_size_avg == 2000.0
-        assert stats.request_size_median == 2000.0
+        assert stats.response_size_total == 6000
+        assert stats.response_size_avg == 2000.0
+        assert stats.response_size_median == 2000.0
         assert stats.request_count == 3
         assert stats.sample_count == 5
 
@@ -542,15 +542,15 @@ class TestMetricTypeConstants:
         assert MetricType.LATENCY_MEDIAN_NAME == "event_loop_latency_median_ms"
         assert MetricType.LATENCY_AVG_NAME == "event_loop_latency_avg_ms"
 
-    def test_request_size_metric_types_exist(self) -> None:
-        """Test that request size metric type constants are defined."""
-        assert hasattr(MetricType, "REQUEST_SIZE_TOTAL_NAME")
-        assert hasattr(MetricType, "REQUEST_SIZE_AVG_NAME")
-        assert hasattr(MetricType, "REQUEST_SIZE_MEDIAN_NAME")
+    def test_response_size_metric_types_exist(self) -> None:
+        """Test that response size metric type constants are defined."""
+        assert hasattr(MetricType, "RESPONSE_SIZE_TOTAL_NAME")
+        assert hasattr(MetricType, "RESPONSE_SIZE_AVG_NAME")
+        assert hasattr(MetricType, "RESPONSE_SIZE_MEDIAN_NAME")
 
-        assert MetricType.REQUEST_SIZE_TOTAL_NAME == "request_size_total_bytes"
-        assert MetricType.REQUEST_SIZE_AVG_NAME == "request_size_avg_bytes"
-        assert MetricType.REQUEST_SIZE_MEDIAN_NAME == "request_size_median_bytes"
+        assert MetricType.RESPONSE_SIZE_TOTAL_NAME == "response_size_total_bytes"
+        assert MetricType.RESPONSE_SIZE_AVG_NAME == "response_size_avg_bytes"
+        assert MetricType.RESPONSE_SIZE_MEDIAN_NAME == "response_size_median_bytes"
 
     def test_cpu_metrics_registered(self) -> None:
         """Test that CPU metrics are registered in the metrics registry."""
@@ -577,11 +577,11 @@ class TestMetricTypeConstants:
         assert MetricType.LATENCY_MEDIAN_NAME in _metrics_registry
         assert MetricType.LATENCY_AVG_NAME in _metrics_registry
 
-    def test_request_size_metrics_registered(self) -> None:
-        """Test that request size metrics are registered in the metrics registry."""
-        assert MetricType.REQUEST_SIZE_TOTAL_NAME in _metrics_registry
-        assert MetricType.REQUEST_SIZE_AVG_NAME in _metrics_registry
-        assert MetricType.REQUEST_SIZE_MEDIAN_NAME in _metrics_registry
+    def test_response_size_metrics_registered(self) -> None:
+        """Test that response size metrics are registered in the metrics registry."""
+        assert MetricType.RESPONSE_SIZE_TOTAL_NAME in _metrics_registry
+        assert MetricType.RESPONSE_SIZE_AVG_NAME in _metrics_registry
+        assert MetricType.RESPONSE_SIZE_MEDIAN_NAME in _metrics_registry
 
 
 class TestMonitorIntegration:
@@ -599,9 +599,9 @@ class TestMonitorIntegration:
         monitor.start_kind_tracking("deployment-0")
 
         # Record some request sizes
-        monitor.record_request_size(1024)
-        monitor.record_request_size(2048)
-        monitor.record_request_size(4096)
+        monitor.record_response_size(1024)
+        monitor.record_response_size(2048)
+        monitor.record_response_size(4096)
 
         # Let some samples be collected
         await asyncio.sleep(0.25)
@@ -615,7 +615,7 @@ class TestMonitorIntegration:
         # Verify stats
         assert stats.sample_count > 0
         assert stats.request_count == 3
-        assert stats.request_size_total == 7168
+        assert stats.response_size_total == 7168
         assert stats.cpu_max >= 0
         assert stats.memory_max > 0
 
@@ -634,13 +634,13 @@ class TestMonitorIntegration:
 
         # Track first kind
         monitor.start_kind_tracking("kind-0")
-        monitor.record_request_size(1000)
+        monitor.record_response_size(1000)
         await asyncio.sleep(0.15)
         monitor.stop_kind_tracking("kind-0")
 
         # Track second kind
         monitor.start_kind_tracking("kind-1")
-        monitor.record_request_size(2000)
+        monitor.record_response_size(2000)
         await asyncio.sleep(0.15)
         monitor.stop_kind_tracking("kind-1")
 
@@ -648,7 +648,7 @@ class TestMonitorIntegration:
         stats0 = monitor.get_kind_stats("kind-0")
         stats1 = monitor.get_kind_stats("kind-1")
 
-        assert stats0.request_size_total == 1000
-        assert stats1.request_size_total == 2000
+        assert stats0.response_size_total == 1000
+        assert stats1.response_size_total == 2000
 
         await monitor.stop()

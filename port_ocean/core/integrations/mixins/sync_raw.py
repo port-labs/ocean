@@ -791,19 +791,19 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     )
                 # Report request size metrics (always report, even if no requests)
                 ocean.metrics.set_metric(
-                    MetricType.REQUEST_SIZE_TOTAL_NAME,
+                    MetricType.RESPONSE_SIZE_TOTAL_NAME,
                     [resource_kind_id],
-                    stats.request_size_total,
+                    stats.response_size_total,
                 )
                 ocean.metrics.set_metric(
-                    MetricType.REQUEST_SIZE_AVG_NAME,
+                    MetricType.RESPONSE_SIZE_AVG_NAME,
                     [resource_kind_id],
-                    stats.request_size_avg,
+                    stats.response_size_avg,
                 )
                 ocean.metrics.set_metric(
-                    MetricType.REQUEST_SIZE_MEDIAN_NAME,
+                    MetricType.RESPONSE_SIZE_MEDIAN_NAME,
                     [resource_kind_id],
-                    stats.request_size_median,
+                    stats.response_size_median,
                 )
                 monitor.cleanup_kind_tracking(resource_kind_id)
 

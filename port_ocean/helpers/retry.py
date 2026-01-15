@@ -377,7 +377,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         try:
             monitor = get_monitor()
             if monitor.current_tracking_kind:
-                monitor.record_request_size(content_length)
+                monitor.record_response_size(content_length)
             else:
                 cast(logging.Logger, self._logger).debug(
                     f"No active tracking kind for request size: {content_length} bytes"
