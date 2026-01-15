@@ -19,7 +19,7 @@ from typing import Any, Optional
 import psutil
 from loguru import logger
 
-from port_ocean.helpers.monitor.cgrouop_reader import CgroupReader
+from port_ocean.helpers.monitor.cgroup_reader import CgroupReader
 from port_ocean.helpers.monitor.utils import measure_event_loop_latency
 
 from .models import ProcessNode, SystemSnapshot, ResourceUsageStats

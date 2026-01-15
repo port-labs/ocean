@@ -20,7 +20,7 @@ from port_ocean.helpers.monitor.utils import (
     _read_cgroup,
     measure_event_loop_latency,
 )
-from port_ocean.helpers.monitor.cgrouop_reader import CgroupReader
+from port_ocean.helpers.monitor.cgroup_reader import CgroupReader
 from port_ocean.helpers.metric.metric import MetricType, _metrics_registry
 import port_ocean.helpers.monitor.monitor as monitor_module
 
@@ -191,7 +191,7 @@ class TestCgroupReader:
     def test_cgroup_reader_init_not_container(self) -> None:
         """Test CgroupReader initialization when not in container."""
         with patch(
-            "port_ocean.helpers.monitor.cgrouop_reader.is_container", return_value=False
+            "port_ocean.helpers.monitor.cgroup_reader.is_container", return_value=False
         ):
             with patch("os.path.exists", return_value=False):
                 reader = CgroupReader()
@@ -203,7 +203,7 @@ class TestCgroupReader:
     def test_memory_limit_not_container(self) -> None:
         """Test memory_limit returns None when not in container."""
         with patch(
-            "port_ocean.helpers.monitor.cgrouop_reader.is_container", return_value=False
+            "port_ocean.helpers.monitor.cgroup_reader.is_container", return_value=False
         ):
             with patch("os.path.exists", return_value=False):
                 reader = CgroupReader()
@@ -214,7 +214,7 @@ class TestCgroupReader:
     def test_memory_usage_not_container(self) -> None:
         """Test memory_usage returns None when not in container."""
         with patch(
-            "port_ocean.helpers.monitor.cgrouop_reader.is_container", return_value=False
+            "port_ocean.helpers.monitor.cgroup_reader.is_container", return_value=False
         ):
             with patch("os.path.exists", return_value=False):
                 reader = CgroupReader()
@@ -225,7 +225,7 @@ class TestCgroupReader:
     def test_cpu_percent_not_container(self) -> None:
         """Test cpu_percent returns 0.0 when not in container."""
         with patch(
-            "port_ocean.helpers.monitor.cgrouop_reader.is_container", return_value=False
+            "port_ocean.helpers.monitor.cgroup_reader.is_container", return_value=False
         ):
             with patch("os.path.exists", return_value=False):
                 reader = CgroupReader()
