@@ -77,7 +77,8 @@ class PagerDutyClient(OAuthClient):
         offset = 0
         has_more_data = True
 
-        while has_more_data and (offset + PAGE_SIZE) < MAX_PAGERDUTY_RESOURCES:
+        # AI! I updated this to only check for offset to prevent off by one error that would have made this fetch 9900 resources rather than the maximum 10000. Now I've added a check to the error handler to handle overflow error, update test case to match this implementation
+        while has_more_data and offset < MAX_PAGERDUTY_RESOURCES:
             logger.debug(
                 f"Fetching data for {resource} with offset: {offset} limit: {PAGE_SIZE} and params: {params}"
             )
@@ -96,6 +97,14 @@ class PagerDutyClient(OAuthClient):
                 if has_more_data:
                     offset += data["limit"]
             except httpx.HTTPStatusError as e:
+                if (
+                    e.response.status_code == 400
+                    and (offset + PAGE_SIZE) >= MAX_PAGERDUTY_RESOURCES
+                ):
+                    logger.warning(
+                        f"Reached max pagerduty limit of {MAX_PAGERDUTY_RESOURCES} for {resource}"
+                    )
+                    break
                 logger.error(
                     f"Got {e.response.status_code} status code while fetching paginated data: {str(e)}"
                 )
