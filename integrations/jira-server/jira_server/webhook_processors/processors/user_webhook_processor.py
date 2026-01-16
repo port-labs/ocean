@@ -41,7 +41,7 @@ class UserWebhookProcessor(_BaseJiraWebhookProcessor):
             deleted_raw_results.append(user)
         else:
             client = init_webhook_client()
-            user_info = await client.get_single_user(user["key"])
+            user_info = await client.get_single_user(user["name"])
             if user_info:
                 updated_raw_results.append(user_info)
             else:
