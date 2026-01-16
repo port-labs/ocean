@@ -8,6 +8,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 <!-- towncrier release notes start -->
 ## 0.32.12 (2026-01-15)
 
+### Bug fixes
+
+- Revert Add export of system and request metrics
+
+## 0.32.12 (2026-01-15)
+
 ### Vulnerabilities
 
 - Fix urllib3 vulnerability
