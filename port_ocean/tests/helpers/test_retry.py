@@ -369,15 +369,18 @@ class TestResponseSizeLogging:
 
         assert transport._get_content_length(mock_response) == 2048
 
-    def test_get_content_length_no_header(self) -> None:
-        """Test _get_content_length returns None when no content-length header."""
+    @patch("port_ocean.helpers.retry.ocean")
+    def test_get_content_length_no_header(self, mock_ocean: Mock) -> None:
+        """Test _get_content_length returns 0 when no content-length header and streaming enabled."""
+        mock_ocean.config.streaming.enabled = True
         mock_transport = Mock()
         transport = RetryTransport(wrapped_transport=mock_transport)
 
         mock_response = Mock()
         mock_response.headers = {}
+        mock_response.num_bytes_downloaded = 0
 
-        assert transport._get_content_length(mock_response) is None
+        assert transport._get_content_length(mock_response) == 0
 
     def test_get_content_length_invalid_value(self) -> None:
         """Test _get_content_length handles invalid header values."""
@@ -415,9 +418,13 @@ class TestResponseSizeLogging:
             "Response for GET https://api.example.com/data - Size: 1024 bytes"
         )
 
+    @patch("port_ocean.helpers.retry.ocean")
     @patch("port_ocean.helpers.retry.cast")
-    def test_log_response_size_without_content_length(self, mock_cast: Mock) -> None:
+    def test_log_response_size_without_content_length(
+        self, mock_cast: Mock, mock_ocean: Mock
+    ) -> None:
         """Test _log_response_size does nothing when no Content-Length header."""
+        mock_ocean.config.streaming.enabled = True
         mock_transport = Mock()
         mock_logger = Mock()
         mock_cast.return_value = mock_logger
@@ -432,6 +439,7 @@ class TestResponseSizeLogging:
 
         mock_response = Mock()
         mock_response.headers = {}
+        mock_response.num_bytes_downloaded = 0
 
         transport._log_response_size(mock_request, mock_response)
 
@@ -467,11 +475,13 @@ class TestResponseSizeLoggingIntegration:
         retry_module._RETRY_CONFIG_CALLBACK = None
         retry_module._ON_RETRY_CALLBACK = None
 
+    @patch("port_ocean.helpers.retry.ocean")
     @patch("port_ocean.helpers.retry.cast")
     def test_log_response_size_preserves_json_consumption(
-        self, mock_cast: Mock
+        self, mock_cast: Mock, mock_ocean: Mock
     ) -> None:
         """When no Content-Length, no logging/reading occurs; response usable."""
+        mock_ocean.config.streaming.enabled = True
         mock_transport = Mock()
         mock_logger = Mock()
         mock_cast.return_value = mock_logger
@@ -483,6 +493,7 @@ class TestResponseSizeLoggingIntegration:
 
         mock_response = Mock()
         mock_response.headers = {}
+        mock_response.num_bytes_downloaded = 0
         mock_response.json.return_value = {"message": "test", "data": [1, 2, 3]}
 
         transport._log_response_size(mock_request, mock_response)
@@ -524,11 +535,13 @@ class TestResponseSizeLoggingIntegration:
         # Verify that read was NOT called since we had Content-Length
         mock_response.read.assert_not_called()
 
+    @patch("port_ocean.helpers.retry.ocean")
     @patch("port_ocean.helpers.retry.cast")
     def test_log_response_size_preserves_text_consumption(
-        self, mock_cast: Mock
+        self, mock_cast: Mock, mock_ocean: Mock
     ) -> None:
         """When no Content-Length, no logging/reading; response.text still accessible."""
+        mock_ocean.config.streaming.enabled = True
         mock_transport = Mock()
         mock_logger = Mock()
         mock_cast.return_value = mock_logger
@@ -540,6 +553,7 @@ class TestResponseSizeLoggingIntegration:
 
         mock_response = Mock()
         mock_response.headers = {}
+        mock_response.num_bytes_downloaded = 0
         mock_response.text = "Hello, World! This is a test response."
 
         transport._log_response_size(mock_request, mock_response)
@@ -547,3 +561,216 @@ class TestResponseSizeLoggingIntegration:
         mock_logger.info.assert_not_called()
         assert mock_response.text == "Hello, World! This is a test response."
         mock_response.read.assert_not_called()
+
+
+class TestGetContentLength:
+    """Tests for the _get_content_length method."""
+
+    def test_get_content_length_from_header(self) -> None:
+        """Test getting content length from Content-Length header."""
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport)
+
+        mock_response = Mock()
+        mock_response.headers = {"Content-Length": "2048"}
+
+        result = transport._get_content_length(mock_response)
+        assert result == 2048
+
+    def test_get_content_length_lowercase_header(self) -> None:
+        """Test getting content length from lowercase content-length header."""
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport)
+
+        mock_response = Mock()
+        mock_response.headers = {"content-length": "4096"}
+
+        result = transport._get_content_length(mock_response)
+        assert result == 4096
+
+    @patch("port_ocean.helpers.retry.ocean")
+    def test_get_content_length_from_read_when_no_header(
+        self, mock_ocean: Mock
+    ) -> None:
+        """Test getting content length by reading response when no header and streaming disabled."""
+        mock_ocean.config.streaming.enabled = False
+
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport)
+
+        mock_response = Mock()
+        mock_response.headers = {}
+        mock_response.read.return_value = b"test response body"
+
+        result = transport._get_content_length(mock_response)
+        assert result == 18  # len("test response body")
+        mock_response.read.assert_called_once()
+
+    @patch("port_ocean.helpers.retry.ocean")
+    def test_get_content_length_from_num_bytes_downloaded(
+        self, mock_ocean: Mock
+    ) -> None:
+        """Test getting content length from num_bytes_downloaded when streaming enabled."""
+        mock_ocean.config.streaming.enabled = True
+
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport)
+
+        mock_response = Mock()
+        mock_response.headers = {}
+        mock_response.num_bytes_downloaded = 8192
+
+        result = transport._get_content_length(mock_response)
+        assert result == 8192
+
+    @patch("port_ocean.helpers.retry.ocean")
+    def test_get_content_length_returns_zero_when_nothing_available(
+        self, mock_ocean: Mock
+    ) -> None:
+        """Test getting content length returns 0 when no data available."""
+        mock_ocean.config.streaming.enabled = True
+
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport)
+
+        mock_response = Mock()
+        mock_response.headers = {}
+        mock_response.num_bytes_downloaded = 0
+
+        result = transport._get_content_length(mock_response)
+        assert result == 0
+
+
+class TestMonitorIntegrationInRetry:
+    """Tests for monitor integration in RetryTransport."""
+
+    def setup_method(self) -> None:
+        """Reset global callback state before each test."""
+        retry_module._RETRY_CONFIG_CALLBACK = None
+        retry_module._ON_RETRY_CALLBACK = None
+
+    @patch("port_ocean.helpers.retry.get_monitor")
+    @patch("port_ocean.helpers.retry.cast")
+    def test_log_response_size_records_to_monitor(
+        self, mock_cast: Mock, mock_get_monitor: Mock
+    ) -> None:
+        """Test that _log_response_size records size to monitor when tracking is active."""
+        mock_logger = Mock()
+        mock_cast.return_value = mock_logger
+
+        mock_monitor = Mock()
+        mock_monitor.current_tracking_kind = "test-kind-0"
+        mock_get_monitor.return_value = mock_monitor
+
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport, logger=mock_logger)
+
+        mock_request = Mock()
+        mock_request.method = "GET"
+        mock_url = Mock()
+        mock_url.host = "api.example.com"
+        mock_url.configure_mock(__str__=lambda self: "https://api.example.com/data")
+        mock_request.url = mock_url
+
+        mock_response = Mock()
+        mock_response.headers = {"Content-Length": "1024"}
+
+        transport._log_response_size(mock_request, mock_response)
+
+        mock_get_monitor.assert_called_once()
+        mock_monitor.record_response_size.assert_called_once_with(1024)
+
+    @patch("port_ocean.helpers.retry.get_monitor")
+    @patch("port_ocean.helpers.retry.cast")
+    def test_log_response_size_logs_debug_when_no_tracking(
+        self, mock_cast: Mock, mock_get_monitor: Mock
+    ) -> None:
+        """Test that _log_response_size logs debug when no tracking is active."""
+        mock_logger = Mock()
+        mock_cast.return_value = mock_logger
+
+        mock_monitor = Mock()
+        mock_monitor.current_tracking_kind = None
+        mock_get_monitor.return_value = mock_monitor
+
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport, logger=mock_logger)
+
+        mock_request = Mock()
+        mock_request.method = "GET"
+        mock_url = Mock()
+        mock_url.host = "api.example.com"
+        mock_url.configure_mock(__str__=lambda self: "https://api.example.com/data")
+        mock_request.url = mock_url
+
+        mock_response = Mock()
+        mock_response.headers = {"Content-Length": "1024"}
+
+        transport._log_response_size(mock_request, mock_response)
+
+        mock_monitor.record_response_size.assert_not_called()
+        # Should log debug message about no active tracking
+        mock_logger.debug.assert_called()
+
+    @patch("port_ocean.helpers.retry.get_monitor")
+    @patch("port_ocean.helpers.retry.cast")
+    def test_log_response_size_handles_monitor_exception(
+        self, mock_cast: Mock, mock_get_monitor: Mock
+    ) -> None:
+        """Test that _log_response_size handles monitor exceptions gracefully."""
+        mock_logger = Mock()
+        mock_cast.return_value = mock_logger
+
+        mock_get_monitor.side_effect = Exception("Monitor error")
+
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport, logger=mock_logger)
+
+        mock_request = Mock()
+        mock_request.method = "GET"
+        mock_url = Mock()
+        mock_url.host = "api.example.com"
+        mock_url.configure_mock(__str__=lambda self: "https://api.example.com/data")
+        mock_request.url = mock_url
+
+        mock_response = Mock()
+        mock_response.headers = {"Content-Length": "1024"}
+
+        # Should not raise exception
+        transport._log_response_size(mock_request, mock_response)
+
+        # Should log debug about error
+        mock_logger.debug.assert_called()
+
+    @patch("port_ocean.helpers.retry.get_monitor")
+    @patch("port_ocean.helpers.retry.cast")
+    def test_log_response_size_skips_zero_content_length(
+        self, mock_cast: Mock, mock_get_monitor: Mock
+    ) -> None:
+        """Test that _log_response_size skips recording when content length is 0."""
+        mock_logger = Mock()
+        mock_cast.return_value = mock_logger
+
+        mock_monitor = Mock()
+        mock_monitor.current_tracking_kind = "test-kind-0"
+        mock_get_monitor.return_value = mock_monitor
+
+        mock_transport = Mock()
+        transport = RetryTransport(wrapped_transport=mock_transport, logger=mock_logger)
+
+        mock_request = Mock()
+        mock_request.method = "GET"
+        mock_url = Mock()
+        mock_url.host = "api.example.com"
+        mock_request.url = mock_url
+
+        mock_response = Mock()
+        mock_response.headers = {}  # No Content-Length
+        mock_response.num_bytes_downloaded = 0
+
+        with patch("port_ocean.helpers.retry.ocean") as mock_ocean:
+            mock_ocean.config.streaming.enabled = True
+            transport._log_response_size(mock_request, mock_response)
+
+        # Should not call monitor when content length is 0
+        mock_get_monitor.assert_not_called()
