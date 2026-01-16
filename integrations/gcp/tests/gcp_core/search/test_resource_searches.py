@@ -1,6 +1,7 @@
 from typing import Any, Generator
 from unittest.mock import AsyncMock, patch, MagicMock
 import pytest
+import sys
 from port_ocean.context.event import event_context
 import port_ocean.context.ocean as ocean_module
 from port_ocean.context.ocean import initialize_port_ocean_context, PortOceanContext
@@ -33,6 +34,22 @@ def mock_ocean_context() -> Generator[None, None, None]:
 
     # Reset the context after each test to allow subsequent tests to initialize it
     ocean_module._port_ocean = PortOceanContext(None)
+
+
+@pytest.fixture(autouse=True)
+def clean_module_cache() -> Generator[None, None, None]:
+    """Remove resource_searches from module cache to ensure fresh imports and clean patching."""
+    # Remove the module before test if it exists
+    module_name = "gcp_core.search.resource_searches"
+    cached_module = sys.modules.pop(module_name, None)
+
+    yield
+
+    # Restore or remove after test
+    if cached_module is not None:
+        sys.modules[module_name] = cached_module
+    else:
+        sys.modules.pop(module_name, None)
 
 
 @pytest.fixture
