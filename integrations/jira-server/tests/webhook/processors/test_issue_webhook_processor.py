@@ -91,8 +91,15 @@ class TestIssueWebhookProcessor:
             },
         }
         resource_config = AsyncMock()
-
-        results = await issue_webhook_processor.handle_event(payload, resource_config)
+        mock_client = AsyncMock()
+        mock_client.get_single_issue.return_value = payload["issue"]
+        with patch(
+            "jira_server.webhook_processors.processors.issue_webhook_processor.init_webhook_client",
+            return_value=mock_client,
+        ):
+            results = await issue_webhook_processor.handle_event(
+                payload, resource_config
+            )
 
         assert len(results.updated_raw_results) == 1
         assert results.updated_raw_results[0]["key"] == "TEST-1"
