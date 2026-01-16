@@ -1,5 +1,4 @@
 from loguru import logger
-from typing import Any
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -11,6 +10,7 @@ from jira_server.webhook_processors.events import JiraIssueEvents, JiraDeletedIs
 from jira_server.webhook_processors.processors._base_webhook_processor import (
     _BaseJiraWebhookProcessor,
 )
+from jira_server.webhook_processors.initialize_client import init_webhook_client
 
 
 class IssueWebhookProcessor(_BaseJiraWebhookProcessor):
@@ -34,14 +34,17 @@ class IssueWebhookProcessor(_BaseJiraWebhookProcessor):
             f"Processing issue webhook event: {event_type} for issue {issue.get('key')}"
         )
 
-        updated_raw_results: list[dict[str, Any]] = []
-        deleted_raw_results: list[dict[str, Any]] = []
-        if event_type == JiraDeletedIssueEvent:
-            deleted_raw_results.append(issue)
-        else:
-            updated_raw_results.append(issue)
-
-        return WebhookEventRawResults(
-            updated_raw_results=updated_raw_results,
-            deleted_raw_results=deleted_raw_results,
+        results = WebhookEventRawResults(
+            updated_raw_results=[],
+            deleted_raw_results=[],
         )
+
+        if event_type == JiraDeletedIssueEvent:
+            results.deleted_raw_results.append(issue)
+        else:
+            client = init_webhook_client()
+            issue_info = await client.get_single_issue(issue["key"])
+            if issue_info:
+                results.updated_raw_results.append(issue_info)
+
+        return results

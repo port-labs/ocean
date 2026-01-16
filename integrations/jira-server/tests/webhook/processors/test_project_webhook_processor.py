@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
@@ -16,7 +16,21 @@ def webhook_event() -> WebhookEvent:
     return WebhookEvent(
         payload={
             "webhookEvent": "project_created",
-            "project": {"key": "TEST", "name": "Test Project"},
+            "project": {
+                "expand": "description,lead,createdAt,createdBy,lastUpdatedAt,lastUpdatedBy,url,projectKeys",
+                "self": "http://localhost:8080/rest/api/2/project/10001",
+                "id": "10001",
+                "key": "TEST",
+                "name": "test-name",
+                "avatarUrls": {
+                    "48x48": "http://localhost:8080/secure/projectavatar?avatarId=10324",
+                    "24x24": "http://localhost:8080/secure/projectavatar?size=small&avatarId=10324",
+                    "16x16": "http://localhost:8080/secure/projectavatar?size=xsmall&avatarId=10324",
+                    "32x32": "http://localhost:8080/secure/projectavatar?size=medium&avatarId=10324",
+                },
+                "projectTypeKey": "software",
+                "archived": False,
+            },
         },
         headers={},
         trace_id="test-trace-id",
@@ -73,11 +87,32 @@ class TestProjectWebhookProcessor:
     ) -> None:
         payload = {
             "webhookEvent": "project_created",
-            "project": {"key": "TEST", "name": "Test Project"},
+            "project": {
+                "expand": "description,lead,createdAt,createdBy,lastUpdatedAt,lastUpdatedBy,url,projectKeys",
+                "self": "http://localhost:8080/rest/api/2/project/10001",
+                "id": "10001",
+                "key": "TEST",
+                "name": "test-name",
+                "avatarUrls": {
+                    "48x48": "http://localhost:8080/secure/projectavatar?avatarId=10324",
+                    "24x24": "http://localhost:8080/secure/projectavatar?size=small&avatarId=10324",
+                    "16x16": "http://localhost:8080/secure/projectavatar?size=xsmall&avatarId=10324",
+                    "32x32": "http://localhost:8080/secure/projectavatar?size=medium&avatarId=10324",
+                },
+                "projectTypeKey": "software",
+                "archived": False,
+            },
         }
         resource_config = AsyncMock()
-
-        results = await project_webhook_processor.handle_event(payload, resource_config)
+        mock_client = AsyncMock()
+        mock_client.get_single_project.return_value = payload["project"]
+        with patch(
+            "jira_server.webhook_processors.processors.project_webhook_processor.init_webhook_client",
+            return_value=mock_client,
+        ):
+            results = await project_webhook_processor.handle_event(
+                payload, resource_config
+            )
 
         assert len(results.updated_raw_results) == 1
         assert results.updated_raw_results[0]["key"] == "TEST"
@@ -91,8 +126,15 @@ class TestProjectWebhookProcessor:
             "project": {"key": "TEST"},
         }
         resource_config = AsyncMock()
-
-        results = await project_webhook_processor.handle_event(payload, resource_config)
+        mock_client = AsyncMock()
+        mock_client.get_single_project.return_value = payload["project"]
+        with patch(
+            "jira_server.webhook_processors.processors.project_webhook_processor.init_webhook_client",
+            return_value=mock_client,
+        ):
+            results = await project_webhook_processor.handle_event(
+                payload, resource_config
+            )
 
         assert len(results.updated_raw_results) == 0
         assert len(results.deleted_raw_results) == 1

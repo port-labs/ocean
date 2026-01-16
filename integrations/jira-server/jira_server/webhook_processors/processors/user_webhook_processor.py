@@ -1,5 +1,4 @@
 from loguru import logger
-from typing import Any
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -35,19 +34,17 @@ class UserWebhookProcessor(_BaseJiraWebhookProcessor):
             f"Processing user webhook event: {event_type} for user {user['name']}"
         )
 
-        updated_raw_results: list[dict[str, Any]] = []
-        deleted_raw_results: list[dict[str, Any]] = []
+        results = WebhookEventRawResults(
+            updated_raw_results=[],
+            deleted_raw_results=[],
+        )
+
         if event_type == JiraDeletedUserEvent:
-            deleted_raw_results.append(user)
+            results.deleted_raw_results.append(user)
         else:
             client = init_webhook_client()
             user_info = await client.get_single_user(user["name"])
             if user_info:
-                updated_raw_results.append(user_info)
-            else:
-                logger.error(f"User {user['name']} not found in Jira")
+                results.updated_raw_results.append(user_info)
 
-        return WebhookEventRawResults(
-            updated_raw_results=updated_raw_results,
-            deleted_raw_results=deleted_raw_results,
-        )
+        return results

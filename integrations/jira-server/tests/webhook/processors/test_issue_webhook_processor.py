@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
@@ -77,7 +77,18 @@ class TestIssueWebhookProcessor:
     ) -> None:
         payload = {
             "webhookEvent": "jira:issue_created",
-            "issue": {"key": "TEST-1", "fields": {}},
+            "issue": {
+                "id": "99291",
+                "self": "https://jira.atlassian.com/rest/api/2/issue/99291",
+                "key": "TEST-1",
+                "fields": {
+                    "summary": "I feel the need for speed",
+                    "created": "2009-12-16T23:46:10.612-0600",
+                    "description": "Make the issue nav load 10x faster",
+                    "labels": ["UI", "dialogue", "move"],
+                    "priority": "Minor",
+                },
+            },
         }
         resource_config = AsyncMock()
 
@@ -92,11 +103,31 @@ class TestIssueWebhookProcessor:
     ) -> None:
         payload = {
             "webhookEvent": JiraDeletedIssueEvent,
-            "issue": {"key": "TEST-1"},
+            "issue": {
+                "id": "99291",
+                "self": "https://jira.atlassian.com/rest/api/2/issue/99291",
+                "key": "TEST-1",
+                "fields": {
+                    "summary": "I feel the need for speed",
+                    "created": "2009-12-16T23:46:10.612-0600",
+                    "description": "Make the issue nav load 10x faster",
+                    "labels": ["UI", "dialogue", "move"],
+                    "priority": "Minor",
+                },
+            },
         }
         resource_config = AsyncMock()
 
-        results = await issue_webhook_processor.handle_event(payload, resource_config)
+        mock_client = AsyncMock()
+        mock_client.get_single_issue.return_value = payload["issue"]
+
+        with patch(
+            "jira_server.webhook_processors.processors.issue_webhook_processor.init_webhook_client",
+            return_value=mock_client,
+        ):
+            results = await issue_webhook_processor.handle_event(
+                payload, resource_config
+            )
 
         assert len(results.updated_raw_results) == 0
         assert len(results.deleted_raw_results) == 1

@@ -75,15 +75,23 @@ class TestUserWebhookProcessor:
     ) -> None:
         payload = {
             "webhookEvent": "user_created",
-            "user": {"key": "test-user", "name": "Test User"},
+            "user": {
+                "self": "https://jira.atlassian.com/rest/api/2/user?username=brollins",
+                "name": "brollins",
+                "key": "brollins",
+                "emailAddress": "bryansemail at atlassian dot com",
+                "avatarUrls": {
+                    "16x16": "https://jira.atlassian.com/secure/useravatar?size=small&avatarId=10605",
+                    "48x48": "https://jira.atlassian.com/secure/useravatar?avatarId=10605",
+                },
+                "displayName": "Bryan Rollins [Atlassian]",
+                "active": "true",
+            },
         }
         resource_config = AsyncMock()
 
         mock_client = AsyncMock()
-        mock_client.get_single_user.return_value = {
-            "key": "test-user",
-            "displayName": "Test User With Details",
-        }
+        mock_client.get_single_user.return_value = payload["user"]
 
         with patch(
             "jira_server.webhook_processors.processors.user_webhook_processor.init_webhook_client",
@@ -94,16 +102,29 @@ class TestUserWebhookProcessor:
             )
 
         assert len(results.updated_raw_results) == 1
-        assert results.updated_raw_results[0]["displayName"] == "Test User With Details"
+        assert (
+            results.updated_raw_results[0]["displayName"] == "Bryan Rollins [Atlassian]"
+        )
         assert len(results.deleted_raw_results) == 0
-        mock_client.get_single_user.assert_called_once_with("test-user")
+        mock_client.get_single_user.assert_called_once_with("brollins")
 
     async def test_handle_event_user_not_found(
         self, user_webhook_processor: UserWebhookProcessor
     ) -> None:
         payload = {
             "webhookEvent": "user_created",
-            "user": {"key": "test-user", "name": "Test User"},
+            "user": {
+                "self": "https://jira.atlassian.com/rest/api/2/user?username=brollins",
+                "name": "brollins",
+                "key": "brollins",
+                "emailAddress": "bryansemail at atlassian dot com",
+                "avatarUrls": {
+                    "16x16": "https://jira.atlassian.com/secure/useravatar?size=small&avatarId=10605",
+                    "48x48": "https://jira.atlassian.com/secure/useravatar?avatarId=10605",
+                },
+                "displayName": "Bryan Rollins [Atlassian]",
+                "active": "true",
+            },
         }
         resource_config = AsyncMock()
 
@@ -120,19 +141,37 @@ class TestUserWebhookProcessor:
 
         assert len(results.updated_raw_results) == 0
         assert len(results.deleted_raw_results) == 0
-        mock_client.get_single_user.assert_called_once_with("test-user")
+        mock_client.get_single_user.assert_called_once_with("brollins")
 
     async def test_handle_event_user_deleted(
         self, user_webhook_processor: UserWebhookProcessor
     ) -> None:
         payload = {
             "webhookEvent": JiraDeletedUserEvent,
-            "user": {"key": "test-user", "name": "Test User"},
+            "user": {
+                "self": "https://jira.atlassian.com/rest/api/2/user?username=brollins",
+                "name": "brollins",
+                "key": "brollins",
+                "emailAddress": "bryansemail at atlassian dot com",
+                "avatarUrls": {
+                    "16x16": "https://jira.atlassian.com/secure/useravatar?size=small&avatarId=10605",
+                    "48x48": "https://jira.atlassian.com/secure/useravatar?avatarId=10605",
+                },
+                "displayName": "Bryan Rollins [Atlassian]",
+                "active": "true",
+            },
         }
         resource_config = AsyncMock()
-
-        results = await user_webhook_processor.handle_event(payload, resource_config)
+        mock_client = AsyncMock()
+        mock_client.get_single_user.return_value = payload["user"]
+        with patch(
+            "jira_server.webhook_processors.processors.user_webhook_processor.init_webhook_client",
+            return_value=mock_client,
+        ):
+            results = await user_webhook_processor.handle_event(
+                payload, resource_config
+            )
 
         assert len(results.updated_raw_results) == 0
         assert len(results.deleted_raw_results) == 1
-        assert results.deleted_raw_results[0]["key"] == "test-user"
+        assert results.deleted_raw_results[0]["key"] == "brollins"
