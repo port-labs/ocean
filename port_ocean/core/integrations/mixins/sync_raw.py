@@ -20,8 +20,6 @@ from port_ocean.core.integrations.mixins.utils import (
     ProcessWrapper,
     clear_http_client_context,
     is_resource_supported,
-    start_kind_tracking,
-    stop_kind_tracking,
     unsupported_kind_response,
     resync_generator_wrapper,
     resync_function_wrapper,
@@ -51,7 +49,6 @@ from port_ocean.helpers.metric.metric import (
     MetricPhase,
 )
 from port_ocean.helpers.metric.utils import TimeMetric, TimeMetricWithResourceKind
-from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.utils.ipc import FileIPC
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
@@ -725,14 +722,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         async with resource_context(resource, index):
             resource_kind_id = f"{resource.kind}-{index}"
             ocean.metrics.sync_state = SyncState.SYNCING
-
-            # Start monitoring resource usage for this kind
-            start_kind_tracking(resource_kind_id)
-
             await ocean.metrics.report_kind_sync_metrics(
                 kind=resource_kind_id, blueprint=resource.port.entity.mappings.blueprint
             )
-
 
             task = asyncio.create_task(
                 self._register_in_batches(resource, user_agent_type)
@@ -747,9 +739,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 logger.warning(f"Resource {resource.kind} processing was aborted")
                 ocean.metrics.sync_state = SyncState.ABORTED
                 raise
-            finally:
-                # Stop tracking and report resource usage metrics
-                stop_kind_tracking(resource_kind_id)
 
             await ocean.metrics.send_metrics_to_webhook(kind=resource_kind_id)
             await ocean.metrics.report_kind_sync_metrics(
@@ -1064,7 +1053,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     creation_results.append(
                         await self.process_resource(resource, index, user_agent_type)
                     )
-
             except asyncio.CancelledError as e:
                 logger.warning(
                     "Resync aborted successfully, skipping delete phase. This leads to an incomplete state"
