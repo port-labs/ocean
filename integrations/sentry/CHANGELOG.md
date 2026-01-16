@@ -7,13 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.51 (2026-01-18)
+
+
+### Improvements
+
+- Add live events support for `issue` and `issue-tag` kinds
+
+
+## 0.2.50 (2026-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.13
+
+
 ## 0.2.49 (2026-01-15)
 
 
 ### Improvements
 
-
-- Add live events support for `issue` and `issue-tag` kinds
+- Bumped ocean version to ^0.32.12
 
 
 ## 0.2.48 (2026-01-14)
