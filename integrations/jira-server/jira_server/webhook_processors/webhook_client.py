@@ -19,16 +19,16 @@ class JiraWebhookClient(JiraServerClient):
         Initialize the JiraWebhookClient.
         """
         super().__init__(**kwargs)
-        self.webhook_api_url = f"{self.server_url.rstrip("/")}/rest/webhooks/1.0"
+        self.webhook_api_url = (
+            f"{self.server_url.rstrip("/")}/rest/jira-webhook/1.0/webhooks"
+        )
 
     async def _webhook_exist(self, webhook_url: str) -> bool:
         """
         Check if a webhook with the specified URL already exists.
         """
         try:
-            webhooks = await self._send_api_request(
-                "GET", f"{self.webhook_api_url}/webhook"
-            )
+            webhooks = await self._send_api_request("GET", self.webhook_api_url)
 
             for webhook in webhooks:
                 if webhook.get("url") == webhook_url:
@@ -59,12 +59,11 @@ class JiraWebhookClient(JiraServerClient):
             "events": JiraIssueEvents + JiraProjectEvents + JiraUserEvents,
             "configuration": {"EXCLUDE_BODY": "false"},
             "active": "true",
-            "excludeBody": False,  # for backward compatibility with 9.x
         }
 
         try:
             await self._send_api_request(
-                "POST", f"{self.webhook_api_url}/webhook", json=webhook_config
+                "POST", self.webhook_api_url, json=webhook_config
             )
             logger.info(f"Successfully created webhook with URL: {webhook_url}")
         except HTTPStatusError as e:

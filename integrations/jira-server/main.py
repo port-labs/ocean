@@ -5,7 +5,8 @@ from jira_server.overrides import JiraIssueConfig, JiraProjectConfig
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from kinds import Kinds
-from initialize_client import create_jira_server_client, init_webhook_client
+from initialize_client import create_jira_server_client
+from jira_server.webhook_processors.initialize_client import init_webhook_client
 from jira_server.webhook_processors import (
     IssueWebhookProcessor,
     ProjectWebhookProcessor,

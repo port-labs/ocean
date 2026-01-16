@@ -9,7 +9,7 @@ def mock_ocean_context() -> None | MagicMock:
     """Fixture to initialize the PortOcean context."""
     mock_app = MagicMock()
     mock_app.integration_config = {
-        "jira_host": "https://jira.example.com",
+        "jira_server_host": "https://jira.example.com",
         "server_url": "https://jira.example.com",
         "username": "test-user",
         "password": "test-password",

@@ -11,7 +11,7 @@ from jira_server.webhook_processors.events import JiraUserEvents, JiraDeletedUse
 from jira_server.webhook_processors.processors._base_webhook_processor import (
     _BaseJiraWebhookProcessor,
 )
-from initialize_client import init_webhook_client
+from jira_server.webhook_processors.initialize_client import init_webhook_client
 
 
 class UserWebhookProcessor(_BaseJiraWebhookProcessor):
