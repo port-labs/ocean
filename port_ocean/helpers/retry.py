@@ -18,6 +18,8 @@ from typing import (
 import httpx
 from dateutil.parser import isoparse
 import logging
+from port_ocean.helpers.monitor.monitor import get_monitor
+from port_ocean.context.ocean import ocean
 
 MAX_BACKOFF_WAIT_IN_SECONDS = 60
 _ON_RETRY_CALLBACK: Callable[[httpx.Request], httpx.Request] | None = None
@@ -342,13 +344,25 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             and not request.url.host.endswith("127.0.0.1")
         )
 
-    def _get_content_length(self, response: httpx.Response) -> int | None:
+    def _get_content_length(self, response: httpx.Response) -> int:
+        """Get the size of the response body."""
         content_length = response.headers.get("Content-Length") or response.headers.get(
             "content-length"
         )
         if content_length:
             return int(content_length)
-        return None
+
+        if not ocean.config.streaming.enabled:
+            length = len(response.read())
+            return length
+
+        if (
+            hasattr(response, "num_bytes_downloaded")
+            and response.num_bytes_downloaded > 0
+        ):
+            return response.num_bytes_downloaded
+
+        return 0
 
     def _log_response_size(
         self, request: httpx.Request, response: httpx.Response
@@ -357,8 +371,21 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             return
 
         content_length = self._get_content_length(response)
-        if content_length is None:
+        if content_length == 0:
             return
+
+        try:
+            monitor = get_monitor()
+            if monitor.current_tracking_kind:
+                monitor.record_response_size(content_length)
+            else:
+                cast(logging.Logger, self._logger).debug(
+                    f"No active tracking kind for request size: {content_length} bytes"
+                )
+        except Exception as e:
+            cast(logging.Logger, self._logger).debug(
+                f"Error recording request size: {e}"
+            )
 
         cast(logging.Logger, self._logger).info(
             f"Response for {request.method} {request.url} - Size: {content_length} bytes"
