@@ -14,6 +14,7 @@ from github.helpers.utils import (
 
 BATCH_CONCURRENCY_LIMIT = 10
 
+
 class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def fetch_branch(
