@@ -96,7 +96,6 @@ class PagerDutyClient(OAuthClient):
                 if has_more_data:
                     offset += data["limit"]
 
-                # AI! I updated the code to check limit at the end of while loop instead, this prevents new requests from being made if it will result in errors, update the test case to match this behaviour
                 if (offset + PAGE_SIZE) > MAX_PAGERDUTY_RESOURCES:
                     logger.warning(
                         f"Reached max pagerduty limit of {MAX_PAGERDUTY_RESOURCES} for {resource}"
