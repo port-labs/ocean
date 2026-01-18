@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.32.13 (2026-01-15)
+
+### Bug fixes
+
+- Revert Add export of system and request metrics
+
 ## 0.32.12 (2026-01-15)
 
 ### Vulnerabilities
@@ -15,6 +21,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug fixes
 
 - Format response when logging error
+- Prevent Lakehouse from breaking the regular integration behavior on error from port
 
 ### Improvements
 
