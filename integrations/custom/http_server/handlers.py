@@ -7,6 +7,7 @@ Provides authentication and pagination handlers using strategy pattern.
 import asyncio
 import httpx
 import re
+import json
 
 from typing import Dict, Any, List, Callable, Awaitable, Optional
 from collections.abc import AsyncGenerator as AsyncGenType
@@ -175,6 +176,13 @@ class CustomAuth(AuthHandler):
         self.auth_response: Optional[Dict[str, Any]] = None
         self.verify_ssl: bool = config.get("verify_ssl", True)
 
+        # Cache for evaluated templates to avoid re-evaluating on every request
+        # Cache is invalidated when auth_response changes
+        self._cached_auth_response_hash: Optional[str] = None
+        self._cached_evaluated_headers: Optional[Dict[str, str]] = None
+        self._cached_evaluated_query_params: Optional[Dict[str, Any]] = None
+        self._cached_evaluated_body: Optional[Dict[str, Any]] = None
+
     def setup(self) -> None:
         """Setup authentication - deprecated, use authenticate_async() instead.
 
@@ -277,6 +285,8 @@ class CustomAuth(AuthHandler):
 
             # Store response
             self.auth_response = response.json()
+            # Invalidate cache when auth_response changes
+            self._invalidate_cache()
             logger.info("CustomAuth: Authentication successful")
             if isinstance(self.auth_response, dict):
                 # Log first few characters of values (for security, don't log full tokens)
@@ -312,8 +322,89 @@ class CustomAuth(AuthHandler):
             logger.info("CustomAuth: Starting re-authentication due to 401 error")
             # Clear existing token before re-authenticating
             self.token = None
+            # Cache will be invalidated in authenticate_async() when auth_response is updated
             await self.authenticate_async()
             logger.info("CustomAuth: Re-authentication completed successfully")
+
+    def _get_auth_response_hash(self) -> Optional[str]:
+        """Generate a hash of the current auth_response for cache invalidation.
+
+        Uses JSON serialization with sorted keys to ensure consistent hashing.
+        Returns None if auth_response is None.
+        """
+        if not self.auth_response:
+            return None
+        try:
+            # Sort keys to ensure consistent hashing regardless of dict order
+            return json.dumps(self.auth_response, sort_keys=True)
+        except (TypeError, ValueError) as e:
+            # If serialization fails (e.g., non-serializable types), return None to force re-evaluation
+            logger.warning(f"CustomAuth: Failed to hash auth_response for cache: {e}")
+            return None
+
+    def _invalidate_cache(self) -> None:
+        """Invalidate the template evaluation cache when auth_response changes."""
+        self._cached_auth_response_hash = None
+        self._cached_evaluated_headers = None
+        self._cached_evaluated_query_params = None
+        self._cached_evaluated_body = None
+
+    async def _get_evaluated_templates(self) -> tuple[Dict[str, str], Dict[str, Any], Dict[str, Any]]:
+        """Get evaluated templates from customAuthResponse config, using cache if available.
+
+        Returns:
+            Tuple of (evaluated_headers, evaluated_query_params, evaluated_body)
+        """
+        if not self.auth_response or not self.custom_auth_response:
+            return {}, {}, {}
+
+        # Check if cache is valid
+        current_hash = self._get_auth_response_hash()
+        if (
+            current_hash is not None
+            and self._cached_auth_response_hash == current_hash
+            and self._cached_evaluated_headers is not None
+            and self._cached_evaluated_query_params is not None
+            and self._cached_evaluated_body is not None
+        ):
+            logger.debug("CustomAuth: Using cached evaluated templates")
+            return (
+                self._cached_evaluated_headers,
+                self._cached_evaluated_query_params,
+                self._cached_evaluated_body,
+            )
+
+        # Cache miss or invalid - evaluate templates
+        logger.debug("CustomAuth: Evaluating templates (cache miss or invalid)")
+
+        # Evaluate headers
+        evaluated_headers = {}
+        if self.custom_auth_response.headers:
+            evaluated_headers = await _evaluate_templates_in_dict(
+                self.custom_auth_response.headers, self.auth_response
+            )
+
+        # Evaluate query params
+        evaluated_query_params = {}
+        if self.custom_auth_response.queryParams:
+            evaluated_query_params = await _evaluate_templates_in_dict(
+                self.custom_auth_response.queryParams, self.auth_response
+            )
+
+        # Evaluate body
+        evaluated_body = {}
+        if self.custom_auth_response.body:
+            evaluated_body = await _evaluate_templates_in_dict(
+                self.custom_auth_response.body, self.auth_response
+            )
+
+        # Update cache
+        self._cached_auth_response_hash = current_hash
+        self._cached_evaluated_headers = evaluated_headers
+        self._cached_evaluated_query_params = evaluated_query_params
+        self._cached_evaluated_body = evaluated_body
+
+        return evaluated_headers, evaluated_query_params, evaluated_body
 
     async def apply_auth_to_request(
         self,
@@ -325,6 +416,7 @@ class CustomAuth(AuthHandler):
 
         Evaluates templates like {{.access_token}} in headers, queryParams, and body from
         customAuthResponse config using values from the authentication response.
+        Uses caching to avoid re-evaluating templates on every request when auth_response hasn't changed.
 
         Returns:
             Tuple of (updated_headers, updated_query_params, updated_body)
@@ -341,43 +433,23 @@ class CustomAuth(AuthHandler):
             )
             return headers, query_params or {}, body
 
-        # Evaluate templates in headers from customAuthResponse config
-        updated_headers = headers.copy()
-        if self.custom_auth_response.headers:
-            evaluated_headers = await _evaluate_templates_in_dict(
-                self.custom_auth_response.headers, self.auth_response
-            )
-            # Merge with existing headers (response config headers take precedence)
-            updated_headers = {**updated_headers, **evaluated_headers}
+        # Get evaluated templates (from cache if available)
+        evaluated_headers, evaluated_query_params, evaluated_body = (
+            await self._get_evaluated_templates()
+        )
 
-        # Evaluate templates in query params from customAuthResponse config
-        updated_query_params = query_params.copy() if query_params else {}
-        if self.custom_auth_response.queryParams:
-            logger.debug(
-                f"CustomAuth: Evaluating queryParams templates: {list(self.custom_auth_response.queryParams.keys())}"
-            )
-            evaluated_params = await _evaluate_templates_in_dict(
-                self.custom_auth_response.queryParams, self.auth_response
-            )
-            # Merge with existing query params (response config params take precedence)
-            updated_query_params = {**updated_query_params, **evaluated_params}
+        # Merge evaluated templates with incoming request parameters
+        # Response config values take precedence over incoming values
+        updated_headers = {**headers, **evaluated_headers}
+        updated_query_params = {**(query_params or {}), **evaluated_query_params}
 
-        # Evaluate templates in body from customAuthResponse config
-        updated_body = body.copy() if body else {}
-        if self.custom_auth_response.body:
-            logger.debug(
-                f"CustomAuth: Evaluating body templates: {list(self.custom_auth_response.body.keys())}"
-            )
-            evaluated_body = await _evaluate_templates_in_dict(
-                self.custom_auth_response.body, self.auth_response
-            )
-            # Merge with existing body (response config body takes precedence)
-            updated_body = {**updated_body, **evaluated_body}
+        # Merge body - start with incoming body, then merge evaluated body
+        updated_body = {**(body or {}), **evaluated_body} if (body or evaluated_body) else None
 
         return (
             updated_headers,
             updated_query_params,
-            updated_body if updated_body else None,
+            updated_body,
         )
 
 
