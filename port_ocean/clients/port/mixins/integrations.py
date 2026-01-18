@@ -306,5 +306,5 @@ class IntegrationClientMixin:
                 "extractionTimestamp": int(datetime.now().timestamp() * 1000),
             },
         )
-        handle_port_status_code(response, should_log=False)
+        handle_port_status_code(response, should_raise=False, should_log=True)
         logger.debug("Finished POST raw data request")
