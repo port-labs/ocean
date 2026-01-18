@@ -1,55 +1,13 @@
-from typing import cast
+from typing import cast, List
 
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from auth.abstract_authenticator import AbstractServiceNowAuthenticator
-from auth.basic_authenticator import BasicAuthenticator
-from auth.oauth_authenticator import OAuthClientCredentialsAuthenticator
-from client import ServicenowClient
-from exceptions import MissingCredentialsError
+from initialize_client import initialize_client
+from webhook_processors.initialize_client import initialize_webhook_client
 from integration import ServiceNowResourceConfig
-
-
-def create_authenticator() -> AbstractServiceNowAuthenticator:
-    """Create the appropriate authenticator based on configuration."""
-    config = ocean.integration_config
-
-    client_id = config.get("servicenow_client_id")
-    client_secret = config.get("servicenow_client_secret")
-    username = config.get("servicenow_username")
-    password = config.get("servicenow_password")
-
-    if client_id and client_secret:
-        logger.info("Using OAuth Client Credentials authentication for ServiceNow")
-        return OAuthClientCredentialsAuthenticator(
-            servicenow_url=config["servicenow_url"],
-            client_id=client_id,
-            client_secret=client_secret,
-        )
-
-    if username and password:
-        logger.info("Using Basic authentication for ServiceNow")
-        return BasicAuthenticator(
-            username=username,
-            password=password,
-        )
-
-    raise MissingCredentialsError(
-        "No valid ServiceNow credentials provided. "
-        "Please provide either OAuth credentials (client_id and client_secret) "
-        "or Basic auth credentials (username and password)."
-    )
-
-
-def initialize_client() -> ServicenowClient:
-    authenticator = create_authenticator()
-    return ServicenowClient(
-        servicenow_url=ocean.integration_config["servicenow_url"],
-        authenticator=authenticator,
-    )
 
 
 @ocean.on_resync()
@@ -72,3 +30,24 @@ async def on_start() -> None:
     print("Starting Servicenow integration")
     servicenow_client = initialize_client()
     await servicenow_client.sanity_check()
+
+
+@ocean.on_resync_start()
+async def configure_webhooks() -> None:
+    """Configure webhooks for the integration"""
+
+    if not ocean.app.config.event_listener.should_process_webhooks:
+        logger.info(
+            "Skipping webhook creation as it's not supported for this event listener"
+        )
+        return
+
+    base_url = ocean.app.base_url
+    if not base_url:
+        return
+
+    kinds: List[str] = [
+        resource.kind for index, resource in enumerate(event.port_app_config.resources)
+    ]
+    webhook_client = initialize_webhook_client()
+    await webhook_client.create_webhook(base_url, kinds)
