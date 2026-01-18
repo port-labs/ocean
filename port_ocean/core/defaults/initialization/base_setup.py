@@ -1,6 +1,7 @@
 """Base initialization setup class."""
 
 from abc import ABC, abstractmethod
+from typing import Any, Type
 
 import httpx
 from loguru import logger
@@ -18,9 +19,11 @@ class BaseSetup(ABC):
         self,
         port_client: PortClient,
         integration_config: IntegrationConfiguration,
+        config_class: Type[PortAppConfig],
     ):
         self.port_client = port_client
         self.integration_config = integration_config
+        self.config_class = config_class
 
     @property
     def _is_port_provisioning_enabled(self) -> bool:
@@ -34,32 +37,15 @@ class BaseSetup(ABC):
     async def _setup(self) -> None:
         pass
 
-    async def _initialize_required_integration_settings(
-        self,
-        default_mapping: PortAppConfig | None = None,
-    ) -> None:
-        """Initialize integration settings at Port."""
-        try:
-            integration = await self.port_client.get_current_integration(
-                should_log=False,
-                should_raise=False,
-                is_port_provisioning_enabled=self._is_port_provisioning_enabled,
-            )
-            if not integration:
-                logger.info(
-                    "Integration does not exist, Creating new integration with default mapping"
-                )
-                integration = await self.port_client.create_integration(
-                    self.integration_config.integration.type,
-                    self.integration_config.event_listener.get_changelog_destination_details(),
-                    port_app_config=default_mapping,
-                    actions_processing_enabled=self.integration_config.actions_processor.enabled,
-                    port_resources_origin=self._port_resources_origin,
-                )
-        except httpx.HTTPStatusError as err:
-            logger.error(f"Failed to apply default mapping: {err.response.text}.")
-            raise err
+    @abstractmethod
+    def _default_mapping(self) -> PortAppConfig:
+        pass
 
+    async def _verify_integration_configuration(
+        self,
+        integration: dict[str, Any],
+    ) -> None:
+        """Verify integration configuration and update if necessary."""
         logger.info("Checking for diff in integration configuration")
         changelog_destination = (
             self.integration_config.event_listener.get_changelog_destination_details()
@@ -78,19 +64,40 @@ class BaseSetup(ABC):
                 actions_processing_enabled=self.integration_config.actions_processor.enabled,
             )
 
+    async def _upsert_integration(self) -> None:
+        try:
+            integration = await self.port_client.get_current_integration(
+                should_log=False,
+                should_raise=False,
+            )
+            if not integration:
+                logger.info(
+                    "Integration does not exist, Creating new integration with default mapping"
+                )
+                integration = await self.port_client.create_integration(
+                    self.integration_config.integration.type,
+                    self.integration_config.event_listener.get_changelog_destination_details(),
+                    port_app_config=self._default_mapping,
+                    actions_processing_enabled=self.integration_config.actions_processor.enabled,
+                    port_resources_origin=self._port_resources_origin,
+                )
+
+            return integration
+        except httpx.HTTPStatusError as err:
+            logger.error(f"Failed to verify integration state: {err.response.text}.")
+            raise err
+
     async def setup(self) -> None:
         """Execute initialization for this setup strategy."""
-        logger.info("Initializing integration at port")
-        integration = await self.port_client.get_current_integration(
-            should_log=False,
-            should_raise=False,
-            is_port_provisioning_enabled=self._is_port_provisioning_enabled,
-        )
 
-        if not self.integration_config.initialize_port_resources or (
-            integration and integration.get("config", None)
-        ):
-            logger.info("Resources initialization disabled, skipping resource creation")
+        logger.info("Initializing integration at port")
+        integration = await self._upsert_integration()
+        await self._verify_integration_configuration(integration)
+
+        if integration.get("config", None):
+            logger.info(
+                "Integration configuration is already set, skipping resource creation"
+            )
             return
 
-        await self._initialize_required_integration_settings()
+        await self._setup()

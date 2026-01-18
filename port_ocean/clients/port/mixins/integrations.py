@@ -77,22 +77,10 @@ class IntegrationClientMixin:
         self,
         should_raise: bool = True,
         should_log: bool = True,
-        is_port_provisioning_enabled: bool = False,
     ) -> dict[str, Any]:
         response = await self._get_current_integration()
         handle_port_status_code(response, should_raise, should_log)
-        integration = response.json().get("integration", {})
-        if integration.get("config", None) or not integration:
-            return integration
-
-        if is_port_provisioning_enabled:
-            logger.info(
-                "integration is still being provisioned, polling until provisioning is complete"
-            )
-            integration = (
-                await self._poll_integration_until_default_provisioning_is_complete()
-            )
-        return integration
+        return response.json().get("integration", {})
 
     async def get_log_attributes(self) -> LogAttributes:
         if self._log_attributes is None:

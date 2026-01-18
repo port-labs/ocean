@@ -39,17 +39,15 @@ class OceanOriginSetup(BaseSetup):
     def _port_resources_origin(self) -> CreatePortResourcesOrigin:
         return CreatePortResourcesOrigin.Ocean
 
-    async def initialize(self) -> None:
-        """Initialize integration with resources created by Ocean."""
-        logger.info("Starting Ocean origin setup - creating resources from Ocean")
+    @property
+    def _default_mapping(self) -> PortAppConfig:
+        return self._defaults.port_app_config
 
-        await self._initialize_required_integration_settings(
-            self._defaults.port_app_config
-        )
-        if not self._defaults or not self.integration_config.initialize_port_resources:
-            logger.info(
-                "No defaults found or resources initialization disabled. Skipping resource creation..."
-            )
+    async def _setup(self) -> None:
+        """Initialize integration with resources created by Ocean."""
+
+        if not self.integration_config.initialize_port_resources:
+            logger.info("Resources initialization disabled, skipping resource creation")
             return
 
         try:
