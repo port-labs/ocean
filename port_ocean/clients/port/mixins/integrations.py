@@ -157,7 +157,7 @@ class IntegrationClientMixin:
         handle_port_status_code(response)
         if create_port_resources_origin_in_port:
             result = (
-                await self._poll_integration_until_default_provisioning_is_complete()
+                await self.poll_integration_until_default_provisioning_is_complete()
             )
             return result["integration"]
         return response.json()["integration"]
