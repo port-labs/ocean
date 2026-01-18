@@ -1,5 +1,3 @@
-"""Base initialization setup class."""
-
 from abc import ABC, abstractmethod
 from typing import Any, Type
 
@@ -79,7 +77,6 @@ class BaseSetup(ABC):
                     self.integration_config.event_listener.get_changelog_destination_details(),
                     port_app_config=self._default_mapping,
                     actions_processing_enabled=self.integration_config.actions_processor.enabled,
-                    port_resources_origin=self._port_resources_origin,
                 )
 
             return integration

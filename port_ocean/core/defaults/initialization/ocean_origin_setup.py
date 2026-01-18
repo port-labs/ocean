@@ -1,5 +1,3 @@
-"""Ocean origin setup - creates resources with blueprints, actions, scorecards, and pages."""
-
 import asyncio
 from typing import Type
 

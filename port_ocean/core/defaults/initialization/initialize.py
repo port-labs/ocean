@@ -31,12 +31,13 @@ async def _initialize_defaults(
     )
 
     setup_cls = InitializationFactory.create_setup(
-        integration_config,
-        is_integration_provision_enabled,
-        has_provision_feature_flag,
+        integration_config=integration_config,
+        config_class=config_class,
+        is_provision_enabled=is_integration_provision_enabled
+        and has_provision_feature_flag,
     )
 
-    await setup_cls.setup(config_class)
+    await setup_cls.setup()
 
 
 def initialize_defaults(

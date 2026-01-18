@@ -1,5 +1,3 @@
-"""Port origin setup - creates resources with defaults provisioned by Port."""
-
 from port_ocean.core.defaults.initialization.base_setup import BaseSetup
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.core.models import CreatePortResourcesOrigin
@@ -17,7 +15,7 @@ class PortOriginSetup(BaseSetup):
         return CreatePortResourcesOrigin.Port
 
     @property
-    async def _default_mapping(self) -> PortAppConfig:
+    def _default_mapping(self) -> PortAppConfig:
         return {}
 
     async def _setup(self) -> None:

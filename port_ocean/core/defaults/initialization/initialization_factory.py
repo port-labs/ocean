@@ -26,8 +26,7 @@ class InitializationFactory:
     def create_setup(
         integration_config: IntegrationConfiguration,
         config_class: Type[PortAppConfig],
-        is_integration_provision_enabled: bool,
-        has_provision_feature_flag: bool,
+        is_provision_enabled: bool,
     ) -> BaseSetup:
         """Create appropriate setup based on configuration and feature flags.
 
@@ -40,9 +39,7 @@ class InitializationFactory:
             Appropriate BaseSetup instance
         """
         origin = InitializationFactory._determine_origin(
-            integration_config,
-            is_integration_provision_enabled,
-            has_provision_feature_flag,
+            integration_config, is_provision_enabled
         )
 
         return InitializationFactory._SETUP_CLASSES[origin](
@@ -54,25 +51,18 @@ class InitializationFactory:
     @staticmethod
     def _determine_origin(
         integration_config: IntegrationConfiguration,
-        is_integration_provision_enabled: bool,
-        has_provision_feature_flag: bool,
+        is_provision_enabled: bool,
     ) -> CreatePortResourcesOrigin:
         """Determine resource origin based on configuration and feature flags.
 
         Args:
             integration_config: Integration configuration
-            is_integration_provision_enabled: Whether provision is enabled
-            has_provision_feature_flag: Whether organization has provision feature flag
+            is_provision_enabled: Whether provision is enabled
 
         Returns:
             The determined CreatePortResourcesOrigin
         """
-        origin = integration_config.create_port_resources_origin
-        is_provision_available = (
-            is_integration_provision_enabled and has_provision_feature_flag
-        )
-
-        match origin:
+        match integration_config.create_port_resources_origin:
             case CreatePortResourcesOrigin.Empty:
                 logger.info("Creating empty setup")
                 return CreatePortResourcesOrigin.Empty
@@ -80,7 +70,7 @@ class InitializationFactory:
                 logger.info("Creating Ocean origin setup")
                 return CreatePortResourcesOrigin.Ocean
             case CreatePortResourcesOrigin.Port | None:
-                if is_provision_available:
+                if is_provision_enabled:
                     logger.info("Creating Port origin setup for provisioned defaults")
                     return CreatePortResourcesOrigin.Port
                 logger.warning("Provision is not supported, falling back to Ocean")
