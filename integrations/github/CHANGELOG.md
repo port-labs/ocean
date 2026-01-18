@@ -6,6 +6,78 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 5.0.5 (2026-01-18)
+
+
+### Improvements
+
+- Removed limitation on number of PRs and number of days back for fetching pull requests.
+
+
+## 5.0.4 (2026-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.13
+
+
+## 5.0.3 (2026-01-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.12
+
+
+## 5.0.2 (2026-01-14)
+
+
+### Improvements
+
+- Changed integration's data source card's title in catalog
+
+
+## 5.0.1 (2026-01-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+## 5.0.0 (2026-01-14)
+
+
+### Improvements
+
+- mark integration version GA
+
+
+## 4.7.4-beta (2026-01-14)
+
+
+### Improvements
+
+- Added `databaseId` to team GraphQL fields.
+- Refactored the team members listing query to reuse the `TeamFields` fragment.
+
+
+## 4.7.3-beta (2026-01-14)
+
+
+### Improvements
+
+- Added embedded installation docs to spec.yaml for supported installation methods
+
+
+## 4.7.2-beta (2026-01-14)
+
+
+### Improvements
+
+- Allow using branch ref from inputs upon dispatch workflow action trigger
+
 
 ## 4.7.1-beta (2026-01-11)
 

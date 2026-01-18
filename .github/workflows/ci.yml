@@ -5,7 +5,7 @@ on:
 
 env:
   # Maximum allowed image size increase (percentage)
-  SIZE_INCREASE_THRESHOLD: ${{ vars.SIZE_INCREASE_THRESHOLD }}
+  SIZE_INCREASE_THRESHOLD: ${{ vars.SIZE_INCREASE_THRESHOLD || '7' }}
 
 jobs:
   prepare-matrix:
