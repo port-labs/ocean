@@ -94,10 +94,4 @@ class BaseSetup(ABC):
         integration = await self._upsert_integration()
         await self._verify_integration_configuration(integration)
 
-        if integration.get("config", None):
-            logger.info(
-                "Integration configuration is already set, skipping resource creation"
-            )
-            return
-
         await self._setup()

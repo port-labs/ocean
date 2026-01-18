@@ -94,7 +94,7 @@ class IntegrationClientMixin:
             self._metrics_attributes = response["metricAttributes"]
         return self._metrics_attributes
 
-    async def _poll_integration_until_default_provisioning_is_complete(
+    async def poll_integration_until_default_provisioning_is_complete(
         self,
     ) -> Dict[str, Any]:
         attempts = 0

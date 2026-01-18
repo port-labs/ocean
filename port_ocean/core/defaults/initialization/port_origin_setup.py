@@ -23,4 +23,4 @@ class PortOriginSetup(BaseSetup):
     async def _setup(self) -> None:
         """Initialize integration with resources provisioned by Port."""
 
-        pass
+        await self.port_client.poll_integration_until_default_provisioning_is_complete()
