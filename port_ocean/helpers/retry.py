@@ -259,7 +259,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             else:
                 response = await transport.handle_async_request(request)
 
-            self._log_response_size(request, response)
+            await self._log_response_size_async(request, response)
 
             return response
         except Exception as e:
@@ -344,6 +344,26 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             and not request.url.host.endswith("127.0.0.1")
         )
 
+    async def _get_content_length_async(self, response: httpx.Response) -> int:
+        """Get the size of the response body."""
+        content_length = response.headers.get("Content-Length") or response.headers.get(
+            "content-length"
+        )
+        if content_length:
+            return int(content_length)
+
+        if not ocean.config.streaming.enabled:
+            length = len(await response.aread())
+            return length
+
+        if (
+            hasattr(response, "num_bytes_downloaded")
+            and response.num_bytes_downloaded > 0
+        ):
+            return response.num_bytes_downloaded
+
+        return 0
+
     def _get_content_length(self, response: httpx.Response) -> int:
         """Get the size of the response body."""
         content_length = response.headers.get("Content-Length") or response.headers.get(
@@ -363,6 +383,33 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             return response.num_bytes_downloaded
 
         return 0
+
+    async def _log_response_size_async(
+        self, request: httpx.Request, response: httpx.Response
+    ) -> None:
+        if not self._should_log_response_size(request):
+            return
+
+        content_length = await self._get_content_length_async(response)
+        if content_length == 0:
+            return
+
+        try:
+            monitor = get_monitor()
+            if monitor.current_tracking_kind:
+                monitor.record_response_size(content_length)
+            else:
+                cast(logging.Logger, self._logger).debug(
+                    f"No active tracking kind for request size: {content_length} bytes"
+                )
+        except Exception as e:
+            cast(logging.Logger, self._logger).debug(
+                f"Error recording request size: {e}"
+            )
+
+        cast(logging.Logger, self._logger).info(
+            f"Response for {request.method} {request.url} - Size: {content_length} bytes"
+        )
 
     def _log_response_size(
         self, request: httpx.Request, response: httpx.Response
