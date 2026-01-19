@@ -108,14 +108,12 @@ class GithubPullRequestSelector(RepoSearchSelector):
         alias="maxResults",
         default=100,
         ge=1,
-        le=300,
         description="Limit the number of pull requests returned",
     )
     since: int = Field(
         default=60,
         ge=1,
-        le=90,
-        description="Only fetch pull requests updated within the last N days (1-90 days)",
+        description="Only fetch pull requests updated within the last N days",
     )
     api: Literal["rest", "graphql"] = Field(
         default="rest",
@@ -298,6 +296,11 @@ class GithubBranchSelector(RepoSearchSelector):
         default=False,
         alias="protectionRules",
         description="Include protection rules for the branch",
+    )
+    branch_names: List[str] = Field(
+        default_factory=list,
+        alias="branchNames",
+        description="List of branch names to fetch. If provided, the branch names will be fetched explicitly and not using pagination.",
     )
 
 

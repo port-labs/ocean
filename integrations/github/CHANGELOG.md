@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.6 (2026-01-18)
+
+
+### Improvements
+
+- Standardized concurrency control on branch resync handler by applying repository-level task batching.
+- Improved async task orchestration on branch kind to prevent unbounded fan-out while preserving streaming behavior.
+- Added `branchNames` selector to explicitly target specific branches during resync, bypassing full branch pagination for faster, lower-API-cost runs on large repositories/branches.
+
+
+## 5.0.5 (2026-01-18)
+
+
+### Improvements
+
+- Removed limitation on number of PRs and number of days back for fetching pull requests.
+
+
+## 5.0.4 (2026-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.13
+
+
+## 5.0.3 (2026-01-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.12
+
+
 ## 5.0.2 (2026-01-14)
 
 
