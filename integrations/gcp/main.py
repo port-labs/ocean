@@ -8,7 +8,7 @@ from asyncio import BoundedSemaphore
 from fastapi import Request, Response
 from loguru import logger
 
-from gcp_core.helpers.ratelimiter.base import PersistentAsyncLimiter
+from gcp_core.helpers.ratelimiter.fixed_window import FixedWindowLimiter
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -41,7 +41,7 @@ from gcp_core.utils import (
     get_initial_quota_for_project_via_rest,
 )
 
-PROJECT_V3_GET_REQUESTS_RATE_LIMITER: PersistentAsyncLimiter
+PROJECT_V3_GET_REQUESTS_RATE_LIMITER: FixedWindowLimiter
 PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE: BoundedSemaphore
 BACKGROUND_TASK_THRESHOLD: float
 
@@ -106,8 +106,8 @@ async def setup_real_time_request_controllers() -> None:
     global BACKGROUND_TASK_THRESHOLD
     if not ocean.event_listener_type == "ONCE":
         effective_quota = await get_initial_quota_for_project_via_rest()
-        PROJECT_V3_GET_REQUESTS_RATE_LIMITER = PersistentAsyncLimiter.get_limiter(
-            max_rate=effective_quota
+        PROJECT_V3_GET_REQUESTS_RATE_LIMITER = FixedWindowLimiter(
+            max_rate=effective_quota, time_period=60.0
         )
         PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE = asyncio.BoundedSemaphore(
             effective_quota
@@ -159,7 +159,7 @@ async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind in iter(AssetTypesWithSpecialHandling):
+    if kind in AssetTypesWithSpecialHandling:
         logger.debug("Kind already has a specific handling, skipping")
         return
     asset_rate_limiter, asset_semaphore = await resolve_request_controllers(kind)

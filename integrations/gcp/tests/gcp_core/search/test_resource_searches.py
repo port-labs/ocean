@@ -117,9 +117,11 @@ async def test_get_single_subscription(
         "enable_message_ordering": False,
         "filter": "",
         "labels": {},
+        "message_transforms": [],
         "name": "subscription_name",
         "retain_acked_messages": False,
         "state": 0,
+        "tags": {},
         "topic": "",
     }
 
@@ -195,9 +197,11 @@ async def test_feed_to_resource(
         },
         "kms_key_name": "",
         "labels": {},
+        "message_transforms": [],
         "name": "topic_name",
         "satisfies_pzs": False,
         "state": 0,
+        "tags": {},
     }
 
     # Act within event context
@@ -264,9 +268,11 @@ async def test_preserve_case_style_combined(
         "enableMessageOrdering": False,
         "filter": "",
         "labels": {},
+        "messageTransforms": [],
         "name": "subscription_name",
         "retainAckedMessages": False,
         "state": 0,
+        "tags": {},
         "topic": "projects/project_name/topics/topic_name",
     }
 
@@ -296,9 +302,11 @@ async def test_preserve_case_style_combined(
         "enable_message_ordering": False,
         "filter": "",
         "labels": {},
+        "message_transforms": [],
         "name": "subscription_name",
         "retain_acked_messages": False,
         "state": 0,
+        "tags": {},
         "topic": "projects/project_name/topics/topic_name",
     }
 
