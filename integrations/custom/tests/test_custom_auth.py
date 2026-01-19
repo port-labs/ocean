@@ -21,7 +21,6 @@ from http_server.exceptions import (
     TemplateVariableNotFoundError,
     CustomAuthRequestError,
     CustomAuthResponseError,
-    CustomAuthConfigError,
 )
 from http_server.client import HttpServerClient
 
@@ -562,7 +561,6 @@ class TestReauthentication:
     ) -> None:
         """Test that reauthenticate skips if auth was already refreshed"""
         custom_auth.auth_response = {"access_token": "old-token"}
-        auth_response_before = custom_auth.auth_response.copy()
 
         # Simulate another coroutine refreshing auth while waiting for lock
         async def acquire_lock_and_refresh() -> None:
