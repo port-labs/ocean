@@ -266,15 +266,15 @@ class CustomAuth(AuthHandler):
         If multiple requests get 401 simultaneously, only the first one will re-authenticate.
         Others will wait for the lock and then skip re-auth if it was already completed.
 
-        The check `auth_response != auth_response_before` is necessary because:
-        - Multiple coroutines may detect 401 and enter the lock queue simultaneously
-        - While waiting for the lock, another coroutine may have already re-authenticated
-        - By comparing auth_response before and after acquiring the lock, we detect if
-          re-authentication already happened and skip redundant work
         """
         auth_response_before = self.auth_response
 
         async with self._reauth_lock_manager.lock:
+            # The check `auth_response != auth_response_before` is necessary because:
+            # - Multiple coroutines may detect 401 and enter the lock queue simultaneously
+            # - While waiting for the lock, another coroutine may have already re-authenticated
+            # - By comparing auth_response before and after acquiring the lock, we detect if
+            #   re-authentication already happened and skip redundant work
             if (
                 self.auth_response is not None
                 and self.auth_response != auth_response_before
