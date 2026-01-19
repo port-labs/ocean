@@ -1,4 +1,4 @@
-from typing import cast, List
+from typing import cast
 
 from loguru import logger
 from port_ocean.context.event import event
@@ -7,7 +7,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from initialize_client import initialize_client
 from webhook_processors.initialize_client import initialize_webhook_client
-from integration import ServiceNowResourceConfig
+from integration import ServiceNowResourceConfig, ObjectKind
 
 
 @ocean.on_resync()
@@ -27,14 +27,11 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_start()
 async def on_start() -> None:
+    """Initialize the integration and configure webhooks"""
+
     print("Starting Servicenow integration")
     servicenow_client = initialize_client()
     await servicenow_client.sanity_check()
-
-
-@ocean.on_resync_start()
-async def configure_webhooks() -> None:
-    """Configure webhooks for the integration"""
 
     if not ocean.app.config.event_listener.should_process_webhooks:
         logger.info(
@@ -46,8 +43,6 @@ async def configure_webhooks() -> None:
     if not base_url:
         return
 
-    kinds: List[str] = [
-        resource.kind for index, resource in enumerate(event.port_app_config.resources)
-    ]
     webhook_client = initialize_webhook_client()
+    kinds = [str(kind) for kind in ObjectKind]
     await webhook_client.create_webhook(base_url, kinds)
