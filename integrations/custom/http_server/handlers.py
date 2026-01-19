@@ -405,15 +405,6 @@ class CustomAuth(AuthHandler):
                 logger.debug(
                     "CustomAuth: No expiration interval configured - tokens will only be refreshed on 401 errors"
                 )
-            if isinstance(self.auth_response, dict):
-                # Log first few characters of values (for security, don't log full tokens)
-                sample_values = {
-                    k: (str(v)[:20] + "..." if len(str(v)) > 20 else str(v))
-                    for k, v in list(self.auth_response.items())[:5]
-                }
-                logger.debug(
-                    f"CustomAuth: Auth response sample values: {sample_values}"
-                )
 
     async def reauthenticate(self) -> None:
         """Re-authenticate when token expires (401) - uses module-level lock for thread safety.

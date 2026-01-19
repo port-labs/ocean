@@ -172,7 +172,7 @@ class HttpServerClient:
         ):
             merged_headers, params, request_body = (
                 await self.auth_handler.apply_auth_to_request(
-                    merged_headers, params, body
+                    merged_headers, params, request_body
                 )
             )
 
