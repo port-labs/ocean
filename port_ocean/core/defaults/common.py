@@ -29,7 +29,7 @@ class Defaults(BaseModel):
     scorecards: list[Preset] = []
     pages: list[dict[str, Any]] = []
     port_app_config: PortAppConfig = Field(
-        default=PortAppConfig(resources=[]), alias="port-app-config"
+        default_factory=lambda: PortAppConfig(resources=[]), alias="port-app-config"
     )
 
     class Config:

@@ -32,8 +32,8 @@ class InitializationFactory:
 
         Args:
             integration_config: Integration configuration
-            is_integration_provision_enabled: Whether provision is enabled for this integration
-            has_provision_feature_flag: Whether organization has provision feature flag
+            config_class: The Port app config class
+            is_provision_enabled: Whether Port provisioning is enabled for this integration
 
         Returns:
             Appropriate BaseSetup instance

@@ -342,7 +342,7 @@ async def test_empty_setup(
     mock_integration_config.create_port_resources_origin = (
         CreatePortResourcesOrigin.Empty
     )
-    mock_port_client.get_current_integration.return_value = {}  # type: ignore[attr-defined]# type: ignore[attr-defined]
+    mock_port_client.get_current_integration.return_value = {}  # type: ignore[attr-defined]
 
     await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
 
