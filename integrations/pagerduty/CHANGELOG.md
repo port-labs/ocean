@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.34 (2026-01-19)
+
+
+### Improvements
+
+- Improved pagination handling to avoid PagerDuty's API resource limit, preventing potential errors.
+
+
 ## 0.4.33 (2026-01-16)
 
 
