@@ -16,7 +16,7 @@ from port_ocean.core.models import CreatePortResourcesOrigin
 class InitializationFactory:
     """Factory for creating appropriate initialization strategy."""
 
-    _SETUP_CLASSES = {
+    _SETUP_CLASSES: dict[CreatePortResourcesOrigin, Type[BaseSetup]] = {
         CreatePortResourcesOrigin.Empty: EmptySetup,
         CreatePortResourcesOrigin.Port: PortOriginSetup,
         CreatePortResourcesOrigin.Ocean: OceanOriginSetup,
