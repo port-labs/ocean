@@ -14,7 +14,7 @@ from pydantic import parse_raw_as, parse_obj_as
 
 from http_server.client import HttpServerClient
 from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
-from http_server.handlers import _validate_templates_in_dict
+from http_server.helpers.template_utils import validate_templates_in_dict
 from http_server.exceptions import (
     CustomAuthConfigError,
     CustomAuthRequestError,
@@ -108,18 +108,16 @@ def init_client() -> HttpServerClient:
                 "customAuthResponse is required when authType is 'custom'"
             )
 
-        # Validate template syntax BEFORE authentication (fail fast)
-        # This catches configuration errors before making any HTTP requests
         if custom_auth_response:
             try:
                 if custom_auth_response.headers:
-                    _validate_templates_in_dict(custom_auth_response.headers, "headers")
+                    validate_templates_in_dict(custom_auth_response.headers, "headers")
                 if custom_auth_response.queryParams:
-                    _validate_templates_in_dict(
+                    validate_templates_in_dict(
                         custom_auth_response.queryParams, "queryParams"
                     )
                 if custom_auth_response.body:
-                    _validate_templates_in_dict(custom_auth_response.body, "body")
+                    validate_templates_in_dict(custom_auth_response.body, "body")
             except TemplateSyntaxError as e:
                 raise TemplateSyntaxError(
                     f"Invalid template syntax in customAuthResponse: {str(e)}. "

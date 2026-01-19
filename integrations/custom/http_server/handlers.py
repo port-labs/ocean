@@ -6,7 +6,6 @@ Provides authentication and pagination handlers using strategy pattern.
 
 import asyncio
 import httpx
-import re
 import json
 import time
 
@@ -14,192 +13,12 @@ from typing import Dict, Any, List, Callable, Awaitable, Optional
 from collections.abc import AsyncGenerator as AsyncGenType
 
 from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
-from http_server.exceptions import (
-    TemplateSyntaxError,
-    TemplateEvaluationError,
-    TemplateVariableNotFoundError,
-    CustomAuthRequestError,
-)
+from http_server.exceptions import CustomAuthRequestError
+from http_server.helpers.template_utils import evaluate_templates_in_dict
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
-# Module-level lock for re-authentication (shared across all instances)
 _reauthenticate_lock = asyncio.Lock()
-
-
-# ============================================================================
-# Template Evaluation Utilities
-# ============================================================================
-
-
-def _validate_template_syntax(template: str, context: str = "") -> None:
-    """Validate template syntax before evaluation.
-
-    Checks that all {{...}} patterns follow the correct {{.path}} format.
-    This can be called before authentication to fail fast on invalid templates.
-
-    Args:
-        template: The template string to validate
-        context: Optional context string for error messages (e.g., "headers.Authorization")
-
-    Raises:
-        TemplateSyntaxError: If template contains invalid syntax
-    """
-    if not isinstance(template, str):
-        return  # Non-string values don't need template validation
-
-    # Pattern for valid templates: {{.path}}
-    valid_pattern = r"\{\{\.([^}]+)\}\}"
-    # Pattern for any {{...}} that might be invalid
-    any_template_pattern = r"\{\{[^}]*\}\}"
-
-    # Find all template-like patterns
-    all_matches = list(re.finditer(any_template_pattern, template))
-    valid_matches = list(re.finditer(valid_pattern, template))
-
-    # If there are template patterns but they don't all match the valid format
-    if all_matches and len(all_matches) != len(valid_matches):
-        invalid_templates = [
-            match.group(0)
-            for match in all_matches
-            if match.group(0) not in [vm.group(0) for vm in valid_matches]
-        ]
-        context_msg = f" in {context}" if context else ""
-        raise TemplateSyntaxError(
-            f"Invalid template syntax{context_msg}: {', '.join(invalid_templates)}. "
-            f"Templates must use the format {{{{.path}}}} (e.g., {{{{.access_token}}}}). "
-            f"Found invalid templates: {invalid_templates}"
-        )
-
-
-def _validate_templates_in_dict(data: Dict[str, Any], prefix: str = "") -> None:
-    """Recursively validate template syntax in a dictionary.
-
-    Args:
-        data: Dictionary to validate
-        prefix: Prefix for context in error messages (e.g., "headers")
-
-    Raises:
-        TemplateSyntaxError: If any template has invalid syntax
-    """
-    for key, value in data.items():
-        context = f"{prefix}.{key}" if prefix else key
-        if isinstance(value, str):
-            _validate_template_syntax(value, context)
-        elif isinstance(value, dict):
-            _validate_templates_in_dict(value, context)
-        elif isinstance(value, list):
-            for i, item in enumerate(value):
-                if isinstance(item, str):
-                    _validate_template_syntax(item, f"{context}[{i}]")
-
-
-async def _evaluate_template(template: str, auth_response: Dict[str, Any]) -> str:
-    """Evaluate template string by replacing {{.jq_path}} with values from auth_response.
-
-    Example:
-        template = "Bearer {{.access_token}}"
-        auth_response = {"access_token": "abc123", "expires_in": 3600}
-        Returns: "Bearer abc123"
-
-    Raises:
-        TemplateVariableNotFoundError: If template variable is not found in auth response
-        TemplateEvaluationError: If template evaluation fails
-    """
-    if not auth_response:
-        raise TemplateEvaluationError(
-            "Cannot evaluate template: auth_response is empty. "
-            "Authentication may have failed or returned empty response."
-        )
-
-    # Find all {{...}} patterns
-    pattern = r"\{\{\.([^}]+)\}\}"
-    matches = list(re.finditer(pattern, template))
-
-    if not matches:
-        return template
-
-    # Extract all JQ paths and evaluate them concurrently
-    jq_paths = [match.group(1) for match in matches]
-
-    async def extract_value(jq_path: str) -> str:
-        try:
-            # Prepend dot to JQ path if not already present (JQ requires .field for object access)
-            jq_expression = jq_path if jq_path.startswith(".") else f".{jq_path}"
-            # Use Ocean's JQ processor to extract value (async)
-            value = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
-                auth_response, jq_expression
-            )
-            if value is None:
-                available_keys = (
-                    list(auth_response.keys())
-                    if isinstance(auth_response, dict)
-                    else "none"
-                )
-                raise TemplateVariableNotFoundError(
-                    f"Template variable '{{.{jq_path}}}' not found in auth response. "
-                    f"Available keys: {available_keys}"
-                )
-            return str(value)
-        except (TemplateVariableNotFoundError, TemplateEvaluationError):
-            # Re-raise our custom exceptions as-is
-            raise
-        except Exception as e:
-            raise TemplateEvaluationError(
-                f"Error evaluating template '{{.{jq_path}}}': {str(e)}"
-            ) from e
-
-    # Evaluate all JQ paths concurrently
-    try:
-        replacements = await asyncio.gather(*[extract_value(path) for path in jq_paths])
-    except (TemplateVariableNotFoundError, TemplateEvaluationError):
-        # Re-raise our custom exceptions as-is
-        raise
-    except Exception as e:
-        # Wrap unexpected errors
-        raise TemplateEvaluationError(
-            f"Unexpected error during template evaluation: {str(e)}"
-        ) from e
-
-    # Replace matches in reverse order to preserve indices
-    result = template
-    for match, replacement in zip(reversed(matches), reversed(replacements)):
-        result = result[: match.start()] + replacement + result[match.end() :]
-
-    return result
-
-
-async def _evaluate_templates_in_dict(
-    data: Dict[str, Any], auth_response: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Recursively evaluate templates in a dictionary (headers, queryParams, etc.)"""
-    if not auth_response:
-        return data
-
-    result: Dict[str, Any] = {}
-    for key, value in data.items():
-        if isinstance(value, str):
-            result[key] = await _evaluate_template(value, auth_response)
-        elif isinstance(value, dict):
-            result[key] = await _evaluate_templates_in_dict(value, auth_response)
-        elif isinstance(value, list):
-            evaluated_items = []
-            for item in value:
-                if isinstance(item, str):
-                    evaluated_items.append(
-                        await _evaluate_template(item, auth_response)
-                    )
-                else:
-                    evaluated_items.append(item)
-            result[key] = evaluated_items
-        else:
-            result[key] = value
-    return result
-
-
-# ============================================================================
-# Authentication Handlers
-# ============================================================================
 
 
 class AuthHandler:
@@ -322,14 +141,11 @@ class CustomAuth(AuthHandler):
 
         logger.info("CustomAuth: Starting authentication")
 
-        # Build the auth URL
         endpoint = self.custom_auth_request.endpoint
         if endpoint.startswith(("http://", "https://")):
-            # Full URL provided
             auth_url = endpoint
             logger.debug(f"CustomAuth: Using full URL for authentication: {auth_url}")
         else:
-            # Relative path - use base_url
             base_url = self.base_url.rstrip("/")
             endpoint_path = endpoint.lstrip("/")
             auth_url = f"{base_url}/{endpoint_path}"
@@ -337,21 +153,18 @@ class CustomAuth(AuthHandler):
                 f"CustomAuth: Built auth URL from base_url and endpoint: {auth_url}"
             )
 
-        # Prepare headers
         headers = (
             self.custom_auth_request.headers.copy()
             if self.custom_auth_request.headers
             else {}
         )
 
-        # Set Content-Type based on body type if not explicitly set
         if "Content-Type" not in headers:
             if self.custom_auth_request.bodyForm:
                 headers["Content-Type"] = "application/x-www-form-urlencoded"
             elif self.custom_auth_request.body:
                 headers["Content-Type"] = "application/json"
 
-        # Prepare request data
         json_data = None
         content = None
         if self.custom_auth_request.body:
@@ -359,10 +172,7 @@ class CustomAuth(AuthHandler):
         elif self.custom_auth_request.bodyForm:
             content = self.custom_auth_request.bodyForm
 
-        # Prepare query parameters
         params = self.custom_auth_request.queryParams or {}
-
-        # Make the authentication request using async client (non-blocking)
         method = self.custom_auth_request.method
         logger.debug(
             f"CustomAuth: Making {method} request to {auth_url} for authentication"
@@ -384,12 +194,9 @@ class CustomAuth(AuthHandler):
             )
             response.raise_for_status()
 
-            # Store response
             self.auth_response = response.json()
-            # Invalidate cache when auth_response changes
             self._invalidate_cache()
 
-            # Track authentication timestamp and calculate expiration interval
             self._auth_timestamp = time.time()
             self._reauthenticate_interval = (
                 await self._calculate_reauthenticate_interval()
@@ -412,12 +219,9 @@ class CustomAuth(AuthHandler):
         If multiple requests get 401 simultaneously, only the first one will re-authenticate.
         Others will wait for the lock and then skip re-auth if it was already completed.
         """
-        # Store current auth_response before waiting for lock
         auth_response_before = self.auth_response
 
-        # Use module-level lock to prevent concurrent re-auth across all instances
         async with _reauthenticate_lock:
-            # Check if another coroutine already re-authenticated while we were waiting
             if (
                 self.auth_response is not None
                 and self.auth_response != auth_response_before
@@ -428,9 +232,7 @@ class CustomAuth(AuthHandler):
                 return
 
             logger.info("CustomAuth: Starting re-authentication due to 401 error")
-            # Clear existing token before re-authenticating
             self.token = None
-            # Cache will be invalidated in authenticate_async() when auth_response is updated
             await self.authenticate_async()
             logger.info("CustomAuth: Re-authentication completed successfully")
 
@@ -443,10 +245,8 @@ class CustomAuth(AuthHandler):
         if not self.auth_response:
             return None
         try:
-            # Sort keys to ensure consistent hashing regardless of dict order
             return json.dumps(self.auth_response, sort_keys=True)
         except (TypeError, ValueError) as e:
-            # If serialization fails (e.g., non-serializable types), return None to force re-evaluation
             logger.warning(f"CustomAuth: Failed to hash auth_response for cache: {e}")
             return None
 
@@ -469,7 +269,6 @@ class CustomAuth(AuthHandler):
         ):
             return self.custom_auth_request.reauthenticate_interval_seconds
 
-        # No expiration interval configured
         logger.debug(
             "CustomAuth: No reauthenticate_interval configured. "
             "Token expiration checking will be disabled."
@@ -483,19 +282,14 @@ class CustomAuth(AuthHandler):
             True if authentication is expired or about to expire (within buffer), False otherwise.
             Returns False if no expiration interval is configured (expiration checking disabled).
         """
-        # If no authentication yet, consider it "expired" to trigger initial auth
         if self._auth_timestamp is None or self.auth_response is None:
             return True
 
-        # If no expiration interval configured, don't check expiration proactively
-        # (will still handle 401 errors reactively)
         if self._reauthenticate_interval is None:
             return False
 
         elapsed_time = time.time() - self._auth_timestamp
         time_until_expiration = self._reauthenticate_interval - elapsed_time
-
-        # Consider expired if within buffer seconds of expiration
         is_expired = time_until_expiration <= self._reauthenticate_buffer_seconds
 
         if is_expired:
@@ -518,7 +312,6 @@ class CustomAuth(AuthHandler):
         if not self.auth_response or not self.custom_auth_response:
             return {}, {}, {}
 
-        # Check if cache is valid
         current_hash = self._get_auth_response_hash()
         if (
             current_hash is not None
@@ -534,31 +327,26 @@ class CustomAuth(AuthHandler):
                 self._cached_evaluated_body,
             )
 
-        # Cache miss or invalid - evaluate templates
         logger.debug("CustomAuth: Evaluating templates (cache miss or invalid)")
 
-        # Evaluate headers
         evaluated_headers = {}
         if self.custom_auth_response.headers:
-            evaluated_headers = await _evaluate_templates_in_dict(
+            evaluated_headers = await evaluate_templates_in_dict(
                 self.custom_auth_response.headers, self.auth_response
             )
 
-        # Evaluate query params
         evaluated_query_params = {}
         if self.custom_auth_response.queryParams:
-            evaluated_query_params = await _evaluate_templates_in_dict(
+            evaluated_query_params = await evaluate_templates_in_dict(
                 self.custom_auth_response.queryParams, self.auth_response
             )
 
-        # Evaluate body
         evaluated_body = {}
         if self.custom_auth_response.body:
-            evaluated_body = await _evaluate_templates_in_dict(
+            evaluated_body = await evaluate_templates_in_dict(
                 self.custom_auth_response.body, self.auth_response
             )
 
-        # Update cache
         self._cached_auth_response_hash = current_hash
         self._cached_evaluated_headers = evaluated_headers
         self._cached_evaluated_query_params = evaluated_query_params
@@ -582,14 +370,11 @@ class CustomAuth(AuthHandler):
         Returns:
             Tuple of (updated_headers, updated_query_params, updated_body)
         """
-        # Check if authentication is expired and re-authenticate proactively
         if self._is_auth_expired():
             logger.info(
                 "CustomAuth: Token expired or expiring soon, proactively re-authenticating"
             )
-            # Use module-level lock to prevent concurrent re-auth
             async with _reauthenticate_lock:
-                # Double-check after acquiring lock (another coroutine might have refreshed)
                 if self._is_auth_expired():
                     await self.authenticate_async()
                 else:
@@ -609,17 +394,12 @@ class CustomAuth(AuthHandler):
             )
             return headers, query_params or {}, body
 
-        # Get evaluated templates (from cache if available)
         evaluated_headers, evaluated_query_params, evaluated_body = (
             await self._get_evaluated_templates()
         )
 
-        # Merge evaluated templates with incoming request parameters
-        # Response config values take precedence over incoming values
         updated_headers = {**headers, **evaluated_headers}
         updated_query_params = {**(query_params or {}), **evaluated_query_params}
-
-        # Merge body - start with incoming body, then merge evaluated body
         updated_body = (
             {**(body or {}), **evaluated_body} if (body or evaluated_body) else None
         )
