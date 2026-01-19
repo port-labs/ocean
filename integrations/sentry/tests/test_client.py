@@ -615,7 +615,7 @@ class TestGetIssuesTagsFromIssues:
 
         # Mock _get_issue_tags_iterator to return tags
         async def mock_get_issue_tags_iterator(
-            tag: str | None, issue: dict[str, Any]
+            issue: dict[str, Any], tag: str | None
         ) -> Any:
             yield [{**issue, "__tags": [{"key": "env", "value": "prod"}]}]
 
@@ -644,7 +644,7 @@ class TestGetProjectsTagsFromProjects:
 
         # Mock _get_project_tags_iterator to return tags
         async def mock_get_project_tags_iterator(
-            tag: str | None, project: dict[str, Any]
+            project: dict[str, Any], tag: str | None
         ) -> Any:
             yield [{**project, "__tags": {"key": "env", "value": "prod"}}]
 
