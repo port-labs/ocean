@@ -9,11 +9,9 @@ from port_ocean.clients.port.types import UserAgentType
 from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.defaults.common import Defaults
-from port_ocean.core.defaults.initialization.empty_setup import EmptySetup
 from port_ocean.core.defaults.initialization.initialize import _initialize_defaults
-from port_ocean.core.defaults.initialization.ocean_origin_setup import OceanOriginSetup
-from port_ocean.core.defaults.initialization.port_origin_setup import PortOriginSetup
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
+from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.models import Blueprint, CreatePortResourcesOrigin
 from port_ocean.ocean import Ocean
 
@@ -61,14 +59,12 @@ def mock_defaults() -> Defaults:
     )
 
 
-def _mock_integration_config(
-    create_port_resources_origin: CreatePortResourcesOrigin | None = None,
-    initialize_port_resources: bool = True,
-) -> IntegrationConfiguration:
+@pytest.fixture
+def mock_integration_config() -> IntegrationConfiguration:
     """Create a mock IntegrationConfiguration."""
     config = MagicMock(spec=IntegrationConfiguration)
-    config.initialize_port_resources = initialize_port_resources
-    config.create_port_resources_origin = create_port_resources_origin
+    config.initialize_port_resources = True
+    config.create_port_resources_origin = None
     config.resources_path = ".port/resources"
     config.integration = MagicMock()
     config.integration.type = "test-integration"
@@ -98,10 +94,14 @@ def mock_port_client() -> PortClient:
 
 
 @pytest.fixture
-def mock_ocean(mock_port_client: PortClient) -> Ocean:
+def mock_ocean(
+    mock_integration_config: IntegrationConfiguration, mock_port_client: PortClient
+) -> Ocean:
     ocean_mock = MagicMock(spec=Ocean)
     ocean_mock.config = MagicMock()
     ocean_mock.port_client = mock_port_client
+    ocean_mock.integration = MagicMock(spec=BaseIntegration)
+    ocean_mock.integration.config = mock_integration_config
     ocean_mock.integration_router = APIRouter()
     ocean_mock.fast_api_app = FastAPI()
     return ocean_mock
@@ -133,6 +133,7 @@ def mock_port_app_config_class() -> type[PortAppConfig]:
 async def test_ocean_origin_setup_all_mapped_blueprints_exist(
     mock_port_client: PortClient,
     mock_defaults: Defaults,
+    mock_integration_config: IntegrationConfiguration,
     mock_port_app_config_class: type[PortAppConfig],
 ) -> None:
     """
@@ -146,6 +147,10 @@ async def test_ocean_origin_setup_all_mapped_blueprints_exist(
        - These SHOULD exist (return Blueprint) so mapped_blueprints_exist = True
     3. Since mapped_blueprints_exist is True, we skip creation
     """
+    mock_integration_config.initialize_port_resources = True
+    mock_integration_config.create_port_resources_origin = (
+        CreatePortResourcesOrigin.Ocean
+    )
     mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
         "config": {
             "resources": [
@@ -203,9 +208,7 @@ async def test_ocean_origin_setup_all_mapped_blueprints_exist(
         "port_ocean.core.defaults.initialization.ocean_origin_setup.get_port_integration_defaults",
         return_value=mock_defaults,
     ):
-        await _initialize_defaults(
-            mock_port_app_config_class, _mock_integration_config()
-        )
+        await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
 
     # Assert: Should not create any blueprints, actions, scorecards, or pages
     mock_port_client.create_blueprint.assert_not_called()  # type: ignore[attr-defined]
@@ -234,6 +237,10 @@ async def test_ocean_origin_setup_no_mapped_blueprints_exist(
        - These should NOT exist (raise exception) so mapped_blueprints_exist = False
     3. Since both are False/empty, we create all resources
     """
+    mock_integration_config.initialize_port_resources = True
+    mock_integration_config.create_port_resources_origin = (
+        CreatePortResourcesOrigin.Ocean
+    )
     mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
         "config": {
             "resources": [
@@ -280,9 +287,7 @@ async def test_ocean_origin_setup_no_mapped_blueprints_exist(
         "port_ocean.core.defaults.initialization.ocean_origin_setup.get_port_integration_defaults",
         return_value=mock_defaults,
     ):
-        await _initialize_defaults(
-            mock_port_app_config_class, _mock_integration_config()
-        )
+        await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
 
     # Assert
     assert mock_port_client.create_blueprint.call_count == 2  # type: ignore[attr-defined]
@@ -306,12 +311,7 @@ async def test_ocean_origin_setup_resources_initialization_disabled(
         "port_ocean.core.defaults.initialization.ocean_origin_setup.get_port_integration_defaults",
         return_value=mock_defaults,
     ):
-        setup = OceanOriginSetup(
-            port_client=mock_port_client,
-            integration_config=mock_integration_config,
-            config_class=mock_port_app_config_class,
-        )
-        await setup._setup()
+        await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
 
     # Assert: Should not create any resources
     mock_port_client.create_blueprint.assert_not_called()  # type: ignore[attr-defined]
@@ -333,24 +333,14 @@ async def test_empty_setup(
     )
     mock_port_client.get_current_integration.return_value = {}  # type: ignore[attr-defined]
 
-    setup = EmptySetup(
-        port_client=mock_port_client,
-        integration_config=mock_integration_config,
-        config_class=mock_port_app_config_class,
+    await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    assert mock_integration_config.integration.config.port_app_config == PortAppConfig(
+        resources=[]
     )
-
-    await setup._setup()
-
-    # Assert: Should not create any resources
-    mock_port_client.create_blueprint.assert_not_called()  # type: ignore[attr-defined]
-    mock_port_client.patch_blueprint.assert_not_called()  # type: ignore[attr-defined]
-    mock_port_client.create_action.assert_not_called()  # type: ignore[attr-defined]
-    mock_port_client.create_scorecard.assert_not_called()  # type: ignore[attr-defined]
-    mock_port_client.create_page.assert_not_called()  # type: ignore[attr-defined]
-
-    # Assert: Should have empty mapping
-    assert setup._default_mapping == PortAppConfig(resources=[])
-    assert setup._port_resources_origin == CreatePortResourcesOrigin.Empty
+    assert mock_integration_config.integration.config.create_port_resources_origin == (
+        CreatePortResourcesOrigin.Empty
+    )
 
 
 @pytest.mark.asyncio
@@ -375,24 +365,7 @@ async def test_port_origin_setup(
         "integration": {"config": {"resources": []}}
     }
 
-    setup = PortOriginSetup(
-        port_client=mock_port_client,
-        integration_config=mock_integration_config,
-        config_class=mock_port_app_config_class,
-    )
-
-    await setup._setup()
+    await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
 
     # Assert: Should poll for provisioning
     mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_called_once()  # type: ignore[attr-defined]
-
-    # Assert: Should not create resources directly
-    mock_port_client.create_blueprint.assert_not_called()  # type: ignore[attr-defined]
-    mock_port_client.patch_blueprint.assert_not_called()  # type: ignore[attr-defined]
-    mock_port_client.create_action.assert_not_called()  # type: ignore[attr-defined]
-    mock_port_client.create_scorecard.assert_not_called()  # type: ignore[attr-defined]
-    mock_port_client.create_page.assert_not_called()  # type: ignore[attr-defined]
-
-    # Assert: Should have correct origin
-    assert setup._port_resources_origin == CreatePortResourcesOrigin.Port
-    assert setup._is_port_provisioning_enabled is True
