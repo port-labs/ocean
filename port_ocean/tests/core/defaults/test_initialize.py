@@ -249,9 +249,6 @@ async def test_ocean_origin_setup_no_mapped_blueprints_exist(
     mock_integration_config.create_port_resources_origin = (
         CreatePortResourcesOrigin.Ocean
     )
-    # Mock provision checks (not relevant for explicit Ocean origin)
-    mock_port_client.is_integration_provision_enabled.return_value = False  # type: ignore[attr-defined]
-    mock_port_client.get_organization_feature_flags.return_value = []  # type: ignore[attr-defined]
     mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
         "config": {
             "resources": [
@@ -527,10 +524,483 @@ async def test_none_origin_with_integration_support_disabled(
     ):
         await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
 
-    # Assert: Should use Ocean origin setup (create resources)
-    mock_port_client.is_integration_provision_enabled.assert_called_once_with(  # type: ignore[attr-defined]
-        "test-integration"
+    # Assert: Should use Ocean origin setup (create resources, not integration)
+    mock_port_client.create_integration.assert_not_called()  # type: ignore[attr-defined]
+    mock_port_client.create_blueprint.assert_called()  # type: ignore[attr-defined]
+    mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_not_called()  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_empty_setup_integration_not_exists(
+    mock_port_client: PortClient,
+    mock_integration_config: IntegrationConfiguration,
+    mock_port_app_config_class: type[PortAppConfig],
+) -> None:
+    """Test EmptySetup when integration doesn't exist - should create it with empty mapping."""
+    mock_integration_config.create_port_resources_origin = (
+        CreatePortResourcesOrigin.Empty
     )
-    mock_port_client.get_organization_feature_flags.assert_called_once()  # type: ignore[attr-defined]
+    mock_port_client.get_current_integration.return_value = {}  # type: ignore[attr-defined]
+    mock_port_client.create_integration.return_value = {  # type: ignore[attr-defined]
+        "identifier": "test-integration",
+        "config": {"resources": []},
+    }
+
+    await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    # Assert: Should create integration with empty port_app_config
+    mock_port_client.create_integration.assert_called_once()  # type: ignore[attr-defined]
+    call_args = mock_port_client.create_integration.call_args  # type: ignore[attr-defined]
+    assert call_args.kwargs["port_app_config"] == PortAppConfig(resources=[])
+    assert call_args.kwargs["create_port_resources_origin_in_port"] is False
+
+
+@pytest.mark.asyncio
+async def test_empty_setup_integration_exists(
+    mock_port_client: PortClient,
+    mock_integration_config: IntegrationConfiguration,
+    mock_port_app_config_class: type[PortAppConfig],
+) -> None:
+    """Test EmptySetup when integration exists - should continue without creating."""
+    mock_integration_config.create_port_resources_origin = (
+        CreatePortResourcesOrigin.Empty
+    )
+    # Make sure all fields match to avoid patch_integration call
+    mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
+        "identifier": "test-integration",
+        "config": {"resources": []},
+        "installationAppType": "test-integration",
+        "version": "1.0.0",
+        "actionsProcessingEnabled": False,
+        "changelogDestination": {},
+    }
+
+    await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    # Assert: Should not create integration, just verify configuration
+    mock_port_client.create_integration.assert_not_called()  # type: ignore[attr-defined]
+    # patch_integration may be called if config differs, which is expected behavior
+
+
+@pytest.mark.asyncio
+async def test_ocean_setup_integration_not_exists(
+    mock_port_client: PortClient,
+    mock_defaults: Defaults,
+    mock_integration_config: IntegrationConfiguration,
+    mock_port_app_config_class: type[PortAppConfig],
+) -> None:
+    """Test OceanOriginSetup when integration doesn't exist - should create it and create resources."""
+    mock_integration_config.create_port_resources_origin = (
+        CreatePortResourcesOrigin.Ocean
+    )
+    mock_integration_config.initialize_port_resources = True
+    mock_port_client.is_integration_provision_enabled.return_value = False  # type: ignore[attr-defined]
+    mock_port_client.get_organization_feature_flags.return_value = []  # type: ignore[attr-defined]
+    # First call returns empty (integration doesn't exist), subsequent calls return created integration
+    call_count = 0
+
+    async def get_current_integration_side_effect(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return {}  # Integration doesn't exist
+        # After creation, return integration with resources containing mapped blueprint that doesn't exist
+        return {
+            "identifier": "test-integration",
+            "config": {
+                "resources": [
+                    {
+                        "port": {
+                            "entity": {
+                                "mappings": {
+                                    "blueprint": "nonexistent-blueprint",
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+        }
+
+    mock_port_client.get_current_integration.side_effect = get_current_integration_side_effect  # type: ignore[attr-defined]
+    mock_port_client.create_integration.return_value = {  # type: ignore[attr-defined]
+        "identifier": "test-integration",
+        "config": {},
+    }
+
+    # Mock get_blueprint to always raise exception (blueprints don't exist)
+    async def get_blueprint_side_effect(
+        identifier: str, should_log: bool = True
+    ) -> Blueprint:
+        raise Exception(f"Blueprint {identifier} not found")
+
+    mock_port_client.get_blueprint.side_effect = get_blueprint_side_effect  # type: ignore[attr-defined]
+
+    # Mock create_blueprint to return created blueprint
+    async def create_blueprint_side_effect(
+        blueprint: dict[str, Any], user_agent_type: UserAgentType | None = None
+    ) -> dict[str, Any]:
+        return {"identifier": blueprint["identifier"], **blueprint}
+
+    mock_port_client.create_blueprint.side_effect = create_blueprint_side_effect  # type: ignore[attr-defined]
+
+    with patch(
+        "port_ocean.core.defaults.initialization.ocean_origin_setup.get_port_integration_defaults",
+        return_value=mock_defaults,
+    ):
+        await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    # Assert: Should create integration and then create resources
+    mock_port_client.create_integration.assert_called_once()  # type: ignore[attr-defined]
+    mock_port_client.create_blueprint.assert_called()  # type: ignore[attr-defined]
+    mock_port_client.create_action.assert_called()  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_ocean_setup_integration_exists(
+    mock_port_client: PortClient,
+    mock_defaults: Defaults,
+    mock_integration_config: IntegrationConfiguration,
+    mock_port_app_config_class: type[PortAppConfig],
+) -> None:
+    """Test OceanOriginSetup when integration exists - should continue and create resources if needed."""
+    mock_integration_config.create_port_resources_origin = (
+        CreatePortResourcesOrigin.Ocean
+    )
+    mock_integration_config.initialize_port_resources = True
+    mock_port_client.is_integration_provision_enabled.return_value = False  # type: ignore[attr-defined]
+    mock_port_client.get_organization_feature_flags.return_value = []  # type: ignore[attr-defined]
+    mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
+        "identifier": "test-integration",
+        "config": {
+            "resources": [
+                {
+                    "port": {
+                        "entity": {
+                            "mappings": {
+                                "blueprint": "blueprint1",
+                            }
+                        }
+                    }
+                },
+            ]
+        },
+        "installationAppType": "test-integration",
+        "version": "1.0.0",
+        "actionsProcessingEnabled": False,
+    }
+
+    # Mock get_blueprint to always raise exception (blueprints don't exist)
+    async def get_blueprint_side_effect(
+        identifier: str, should_log: bool = True
+    ) -> Blueprint:
+        raise Exception(f"Blueprint {identifier} not found")
+
+    mock_port_client.get_blueprint.side_effect = get_blueprint_side_effect  # type: ignore[attr-defined]
+
+    # Mock create_blueprint to return created blueprint
+    async def create_blueprint_side_effect(
+        blueprint: dict[str, Any], user_agent_type: UserAgentType | None = None
+    ) -> dict[str, Any]:
+        return {"identifier": blueprint["identifier"], **blueprint}
+
+    mock_port_client.create_blueprint.side_effect = create_blueprint_side_effect  # type: ignore[attr-defined]
+
+    with patch(
+        "port_ocean.core.defaults.initialization.ocean_origin_setup.get_port_integration_defaults",
+        return_value=mock_defaults,
+    ):
+        await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    # Assert: Should not create integration, but should create resources
+    mock_port_client.create_integration.assert_not_called()  # type: ignore[attr-defined]
+    mock_port_client.create_blueprint.assert_called()  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_port_setup_integration_not_exists(
+    mock_port_client: PortClient,
+    mock_integration_config: IntegrationConfiguration,
+    mock_port_app_config_class: type[PortAppConfig],
+) -> None:
+    """Test PortOriginSetup when integration doesn't exist - should create it and wait for provisioning."""
+    mock_integration_config.create_port_resources_origin = (
+        CreatePortResourcesOrigin.Port
+    )
+    mock_port_client.get_current_integration.return_value = {}  # type: ignore[attr-defined]
+    mock_port_client.create_integration.return_value = {  # type: ignore[attr-defined]
+        "identifier": "test-integration",
+        "config": {},
+    }
+    mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
+        "integration": {
+            "config": {"resources": [{"port": {"entity": {"mappings": {}}}}]}
+        }
+    }
+
+    await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    # Assert: Should create integration with Port provisioning and wait for provisioning
+    mock_port_client.create_integration.assert_called_once()  # type: ignore[attr-defined]
+    call_args = mock_port_client.create_integration.call_args  # type: ignore[attr-defined]
+    assert call_args.kwargs["create_port_resources_origin_in_port"] is True
+    mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_called_once()  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_port_setup_integration_exists_config_falsy(
+    mock_port_client: PortClient,
+    mock_integration_config: IntegrationConfiguration,
+    mock_port_app_config_class: type[PortAppConfig],
+) -> None:
+    """Test PortOriginSetup when integration exists but config is falsy - should wait for provisioning."""
+    mock_integration_config.create_port_resources_origin = (
+        CreatePortResourcesOrigin.Port
+    )
+    mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
+        "identifier": "test-integration",
+        "config": {},  # Falsy config
+        "installationAppType": "test-integration",
+        "version": "1.0.0",
+        "actionsProcessingEnabled": False,
+    }
+    mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
+        "integration": {
+            "config": {"resources": [{"port": {"entity": {"mappings": {}}}}]}
+        }
+    }
+
+    await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    # Assert: Should not create integration, but should wait for provisioning
+    mock_port_client.create_integration.assert_not_called()  # type: ignore[attr-defined]
+    mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_called_once()  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_port_setup_integration_exists_config_not_empty(
+    mock_port_client: PortClient,
+    mock_integration_config: IntegrationConfiguration,
+    mock_port_app_config_class: type[PortAppConfig],
+) -> None:
+    """Test PortOriginSetup when integration exists and config is not empty - should continue (poll returns immediately)."""
+    mock_integration_config.create_port_resources_origin = (
+        CreatePortResourcesOrigin.Port
+    )
+    mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
+        "identifier": "test-integration",
+        "config": {"resources": [{"port": {"entity": {"mappings": {}}}}]},  # Not empty
+        "installationAppType": "test-integration",
+        "version": "1.0.0",
+        "actionsProcessingEnabled": False,
+    }
+    # Poll should return immediately when config is not empty
+    mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
+        "integration": {
+            "config": {"resources": [{"port": {"entity": {"mappings": {}}}}]}
+        }
+    }
+
+    await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    # Assert: Should not create integration, poll should be called but return immediately
+    mock_port_client.create_integration.assert_not_called()  # type: ignore[attr-defined]
+    mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_called_once()  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_none_origin_provision_enabled_integration_not_exists(
+    mock_port_client: PortClient,
+    mock_integration_config: IntegrationConfiguration,
+    mock_port_app_config_class: type[PortAppConfig],
+) -> None:
+    """Test None origin with provision enabled when integration doesn't exist - should use Port and create it."""
+    mock_integration_config.create_port_resources_origin = None
+
+    mock_port_client.get_current_integration.return_value = {}  # type: ignore[attr-defined]
+    mock_port_client.create_integration.return_value = {  # type: ignore[attr-defined]
+        "identifier": "test-integration",
+        "config": {},
+    }
+    mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
+        "integration": {
+            "config": {"resources": [{"port": {"entity": {"mappings": {}}}}]}
+        }
+    }
+
+    await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    # Assert: Should use Port origin setup (create integration and wait for provisioning)
+    mock_port_client.create_integration.assert_called_once()  # type: ignore[attr-defined]
+    call_args = mock_port_client.create_integration.call_args  # type: ignore[attr-defined]
+    assert call_args.kwargs["create_port_resources_origin_in_port"] is True
+    mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_called_once()  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_none_origin_provision_enabled_integration_exists(
+    mock_port_client: PortClient,
+    mock_integration_config: IntegrationConfiguration,
+    mock_port_app_config_class: type[PortAppConfig],
+) -> None:
+    """Test None origin with provision enabled when integration exists - should use Port and continue."""
+    mock_integration_config.create_port_resources_origin = None
+
+    mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
+        "identifier": "test-integration",
+        "config": {"resources": [{"port": {"entity": {"mappings": {}}}}]},
+        "installationAppType": "test-integration",
+        "version": "1.0.0",
+        "actionsProcessingEnabled": False,
+    }
+    mock_port_client.poll_integration_until_default_provisioning_is_complete.return_value = {  # type: ignore[attr-defined]
+        "integration": {
+            "config": {"resources": [{"port": {"entity": {"mappings": {}}}}]}
+        }
+    }
+
+    await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    # Assert: Should use Port origin setup (poll for provisioning)
+    mock_port_client.create_integration.assert_not_called()  # type: ignore[attr-defined]
+    mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_called_once()  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_none_origin_provision_disabled_integration_not_exists(
+    mock_port_client: PortClient,
+    mock_defaults: Defaults,
+    mock_integration_config: IntegrationConfiguration,
+    mock_port_app_config_class: type[PortAppConfig],
+) -> None:
+    """Test None origin with provision disabled when integration doesn't exist - should use Ocean and create it."""
+    mock_integration_config.create_port_resources_origin = None
+    mock_integration_config.initialize_port_resources = True
+
+    # Mock provision disabled
+    mock_port_client.is_integration_provision_enabled.return_value = False  # type: ignore[attr-defined]
+    mock_port_client.get_organization_feature_flags.return_value = []  # type: ignore[attr-defined]
+
+    # First call returns empty (integration doesn't exist), subsequent calls return created integration
+    call_count = 0
+
+    async def get_current_integration_side_effect(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return {}  # Integration doesn't exist
+        # After creation, return integration with resources containing mapped blueprint that doesn't exist
+        return {
+            "identifier": "test-integration",
+            "config": {
+                "resources": [
+                    {
+                        "port": {
+                            "entity": {
+                                "mappings": {
+                                    "blueprint": "nonexistent-blueprint",
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+        }
+
+    mock_port_client.get_current_integration.side_effect = get_current_integration_side_effect  # type: ignore[attr-defined]
+    mock_port_client.create_integration.return_value = {  # type: ignore[attr-defined]
+        "identifier": "test-integration",
+        "config": {},
+    }
+
+    # Mock get_blueprint to always raise exception (blueprints don't exist)
+    async def get_blueprint_side_effect(
+        identifier: str, should_log: bool = True
+    ) -> Blueprint:
+        raise Exception(f"Blueprint {identifier} not found")
+
+    mock_port_client.get_blueprint.side_effect = get_blueprint_side_effect  # type: ignore[attr-defined]
+
+    # Mock create_blueprint to return created blueprint
+    async def create_blueprint_side_effect(
+        blueprint: dict[str, Any], user_agent_type: UserAgentType | None = None
+    ) -> dict[str, Any]:
+        return {"identifier": blueprint["identifier"], **blueprint}
+
+    mock_port_client.create_blueprint.side_effect = create_blueprint_side_effect  # type: ignore[attr-defined]
+
+    with patch(
+        "port_ocean.core.defaults.initialization.ocean_origin_setup.get_port_integration_defaults",
+        return_value=mock_defaults,
+    ):
+        await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    # Assert: Should use Ocean origin setup (create integration and resources)
+    mock_port_client.create_integration.assert_called_once()  # type: ignore[attr-defined]
+    call_args = mock_port_client.create_integration.call_args  # type: ignore[attr-defined]
+    assert call_args.kwargs["create_port_resources_origin_in_port"] is False
+    mock_port_client.create_blueprint.assert_called()  # type: ignore[attr-defined]
+    mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_not_called()  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_none_origin_provision_disabled_integration_exists(
+    mock_port_client: PortClient,
+    mock_defaults: Defaults,
+    mock_integration_config: IntegrationConfiguration,
+    mock_port_app_config_class: type[PortAppConfig],
+) -> None:
+    """Test None origin with provision disabled when integration exists - should use Ocean and continue."""
+    mock_integration_config.create_port_resources_origin = None
+    mock_integration_config.initialize_port_resources = True
+
+    # Mock provision disabled
+    mock_port_client.is_integration_provision_enabled.return_value = False  # type: ignore[attr-defined]
+    mock_port_client.get_organization_feature_flags.return_value = []  # type: ignore[attr-defined]
+
+    mock_port_client.get_current_integration.return_value = {  # type: ignore[attr-defined]
+        "identifier": "test-integration",
+        "config": {
+            "resources": [
+                {
+                    "port": {
+                        "entity": {
+                            "mappings": {
+                                "blueprint": "blueprint1",
+                            }
+                        }
+                    }
+                },
+            ]
+        },
+        "installationAppType": "test-integration",
+        "version": "1.0.0",
+        "actionsProcessingEnabled": False,
+    }
+
+    # Mock get_blueprint to always raise exception (blueprints don't exist)
+    async def get_blueprint_side_effect(
+        identifier: str, should_log: bool = True
+    ) -> Blueprint:
+        raise Exception(f"Blueprint {identifier} not found")
+
+    mock_port_client.get_blueprint.side_effect = get_blueprint_side_effect  # type: ignore[attr-defined]
+
+    # Mock create_blueprint to return created blueprint
+    async def create_blueprint_side_effect(
+        blueprint: dict[str, Any], user_agent_type: UserAgentType | None = None
+    ) -> dict[str, Any]:
+        return {"identifier": blueprint["identifier"], **blueprint}
+
+    mock_port_client.create_blueprint.side_effect = create_blueprint_side_effect  # type: ignore[attr-defined]
+
+    with patch(
+        "port_ocean.core.defaults.initialization.ocean_origin_setup.get_port_integration_defaults",
+        return_value=mock_defaults,
+    ):
+        await _initialize_defaults(mock_port_app_config_class, mock_integration_config)
+
+    # Assert: Should use Ocean origin setup (create resources, not integration)
+    mock_port_client.create_integration.assert_not_called()  # type: ignore[attr-defined]
     mock_port_client.create_blueprint.assert_called()  # type: ignore[attr-defined]
     mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_not_called()  # type: ignore[attr-defined]
