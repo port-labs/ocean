@@ -19,7 +19,8 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 
-from http_server.handlers import get_auth_handler, get_pagination_handler
+from http_server.auth import get_auth_handler
+from http_server.handlers import get_pagination_handler
 from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
 
 
