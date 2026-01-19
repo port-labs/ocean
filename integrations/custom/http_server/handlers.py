@@ -14,6 +14,12 @@ from typing import Dict, Any, List, Callable, Awaitable, Optional
 from collections.abc import AsyncGenerator as AsyncGenType
 
 from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
+from http_server.exceptions import (
+    TemplateSyntaxError,
+    TemplateEvaluationError,
+    TemplateVariableNotFoundError,
+    CustomAuthRequestError,
+)
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
@@ -26,6 +32,68 @@ _reauthenticate_lock = asyncio.Lock()
 # ============================================================================
 
 
+def _validate_template_syntax(template: str, context: str = "") -> None:
+    """Validate template syntax before evaluation.
+
+    Checks that all {{...}} patterns follow the correct {{.path}} format.
+    This can be called before authentication to fail fast on invalid templates.
+
+    Args:
+        template: The template string to validate
+        context: Optional context string for error messages (e.g., "headers.Authorization")
+
+    Raises:
+        TemplateSyntaxError: If template contains invalid syntax
+    """
+    if not isinstance(template, str):
+        return  # Non-string values don't need template validation
+
+    # Pattern for valid templates: {{.path}}
+    valid_pattern = r"\{\{\.([^}]+)\}\}"
+    # Pattern for any {{...}} that might be invalid
+    any_template_pattern = r"\{\{[^}]*\}\}"
+
+    # Find all template-like patterns
+    all_matches = list(re.finditer(any_template_pattern, template))
+    valid_matches = list(re.finditer(valid_pattern, template))
+
+    # If there are template patterns but they don't all match the valid format
+    if all_matches and len(all_matches) != len(valid_matches):
+        invalid_templates = [
+            match.group(0)
+            for match in all_matches
+            if match.group(0) not in [vm.group(0) for vm in valid_matches]
+        ]
+        context_msg = f" in {context}" if context else ""
+        raise TemplateSyntaxError(
+            f"Invalid template syntax{context_msg}: {', '.join(invalid_templates)}. "
+            f"Templates must use the format {{.path}} (e.g., {{.access_token}}). "
+            f"Found invalid templates: {invalid_templates}"
+        )
+
+
+def _validate_templates_in_dict(data: Dict[str, Any], prefix: str = "") -> None:
+    """Recursively validate template syntax in a dictionary.
+
+    Args:
+        data: Dictionary to validate
+        prefix: Prefix for context in error messages (e.g., "headers")
+
+    Raises:
+        TemplateSyntaxError: If any template has invalid syntax
+    """
+    for key, value in data.items():
+        context = f"{prefix}.{key}" if prefix else key
+        if isinstance(value, str):
+            _validate_template_syntax(value, context)
+        elif isinstance(value, dict):
+            _validate_templates_in_dict(value, context)
+        elif isinstance(value, list):
+            for i, item in enumerate(value):
+                if isinstance(item, str):
+                    _validate_template_syntax(item, f"{context}[{i}]")
+
+
 async def _evaluate_template(template: str, auth_response: Dict[str, Any]) -> str:
     """Evaluate template string by replacing {{.jq_path}} with values from auth_response.
 
@@ -33,9 +101,16 @@ async def _evaluate_template(template: str, auth_response: Dict[str, Any]) -> st
         template = "Bearer {{.access_token}}"
         auth_response = {"access_token": "abc123", "expires_in": 3600}
         Returns: "Bearer abc123"
+
+    Raises:
+        TemplateVariableNotFoundError: If template variable is not found in auth response
+        TemplateEvaluationError: If template evaluation fails
     """
     if not auth_response:
-        return template
+        raise TemplateEvaluationError(
+            "Cannot evaluate template: auth_response is empty. "
+            "Authentication may have failed or returned empty response."
+        )
 
     # Find all {{...}} patterns
     pattern = r"\{\{\.([^}]+)\}\}"
@@ -56,19 +131,35 @@ async def _evaluate_template(template: str, auth_response: Dict[str, Any]) -> st
                 auth_response, jq_expression
             )
             if value is None:
-                logger.warning(
-                    f"CustomAuth: Template variable '{{.{jq_path}}}' not found in auth response"
+                available_keys = (
+                    list(auth_response.keys())
+                    if isinstance(auth_response, dict)
+                    else "none"
                 )
-                return f"{{{{.{jq_path}}}}}"  # Return original template if not found
+                raise TemplateVariableNotFoundError(
+                    f"Template variable '{{.{jq_path}}}' not found in auth response. "
+                    f"Available keys: {available_keys}"
+                )
             return str(value)
+        except (TemplateVariableNotFoundError, TemplateEvaluationError):
+            # Re-raise our custom exceptions as-is
+            raise
         except Exception as e:
-            logger.error(
-                f"CustomAuth: Error evaluating template '{{.{jq_path}}}': {str(e)}"
-            )
-            return f"{{{{.{jq_path}}}}}"  # Return original template on error
+            raise TemplateEvaluationError(
+                f"Error evaluating template '{{.{jq_path}}}': {str(e)}"
+            ) from e
 
     # Evaluate all JQ paths concurrently
-    replacements = await asyncio.gather(*[extract_value(path) for path in jq_paths])
+    try:
+        replacements = await asyncio.gather(*[extract_value(path) for path in jq_paths])
+    except (TemplateVariableNotFoundError, TemplateEvaluationError):
+        # Re-raise our custom exceptions as-is
+        raise
+    except Exception as e:
+        # Wrap unexpected errors
+        raise TemplateEvaluationError(
+            f"Unexpected error during template evaluation: {str(e)}"
+        ) from e
 
     # Replace matches in reverse order to preserve indices
     result = template
@@ -227,7 +318,7 @@ class CustomAuth(AuthHandler):
     async def authenticate_async(self) -> None:
         """Make authentication request asynchronously and store token (non-blocking)"""
         if not self.custom_auth_request:
-            raise ValueError("customAuthRequest configuration is required")
+            raise CustomAuthRequestError("customAuthRequest configuration is required")
 
         logger.info("CustomAuth: Starting authentication")
 

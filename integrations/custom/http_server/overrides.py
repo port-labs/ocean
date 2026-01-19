@@ -6,6 +6,10 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
+from http_server.exceptions import (
+    CustomAuthRequestError,
+    CustomAuthResponseError,
+)
 
 
 class ApiPathParameter(BaseModel):
@@ -107,7 +111,7 @@ class CustomAuthRequestConfig(BaseModel):
         body = values.get("body")
         body_form = values.get("bodyForm")
         if body and body_form:
-            raise ValueError(
+            raise CustomAuthRequestError(
                 "Cannot specify both 'body' and 'bodyForm' in customAuthRequest"
             )
         return values
@@ -118,7 +122,9 @@ class CustomAuthRequestConfig(BaseModel):
         method = values.get("method", "POST").upper()
         allowed_methods = {"GET", "POST", "PUT", "PATCH", "DELETE"}
         if method not in allowed_methods:
-            raise ValueError(f"Method must be one of {allowed_methods}, got: {method}")
+            raise CustomAuthRequestError(
+                f"Method must be one of {allowed_methods}, got: {method}"
+            )
         values["method"] = method
         return values
 
@@ -142,6 +148,22 @@ class CustomAuthResponseConfig(BaseModel):
         default=None,
         description="Request body to merge into subsequent API requests. Use template syntax {{.jq_path}} to extract values from auth response. Merged with request body if present (e.g., {'api_key': '{{.accessToken}}'})",
     )
+
+    @root_validator
+    def validate_at_least_one_field(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Ensure at least one of headers, queryParams, or body is provided"""
+        headers = values.get("headers")
+        query_params = values.get("queryParams")
+        body = values.get("body")
+
+        if not headers and not query_params and not body:
+            raise CustomAuthResponseError(
+                "At least one of 'headers', 'queryParams', or 'body' must be provided "
+                "in customAuthResponse when authType is 'custom'. "
+                "The customAuthResponse config defines how to use the authentication response "
+                "in subsequent API requests."
+            )
+        return values
 
     class Config:
         allow_population_by_field_name = True

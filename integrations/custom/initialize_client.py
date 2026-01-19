@@ -14,6 +14,13 @@ from pydantic import parse_raw_as, parse_obj_as
 
 from http_server.client import HttpServerClient
 from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
+from http_server.handlers import _validate_templates_in_dict
+from http_server.exceptions import (
+    CustomAuthConfigError,
+    CustomAuthRequestError,
+    CustomAuthResponseError,
+    TemplateSyntaxError,
+)
 from port_ocean.context.ocean import ocean
 
 # Module-level shared client singleton
@@ -52,7 +59,7 @@ def _parse_custom_headers(headers_config: Optional[str]) -> Dict[str, str]:
 
         return resolved_headers
     except Exception as e:
-        raise ValueError(f"Invalid custom_headers JSON: {e}")
+        raise CustomAuthConfigError(f"Invalid custom_headers JSON: {e}")
 
 
 def init_client() -> HttpServerClient:
@@ -80,9 +87,11 @@ def init_client() -> HttpServerClient:
                     CustomAuthRequestConfig, custom_auth_request_config
                 )
         else:
-            raise ValueError("customAuthRequest is required when authType is 'custom'")
+            raise CustomAuthRequestError(
+                "customAuthRequest is required when authType is 'custom'"
+            )
 
-        # Parse custom auth response
+        # Parse custom auth response (this will validate that at least one field is provided)
         custom_auth_response_config = config.get("custom_auth_response")
         if custom_auth_response_config:
             # Handle both dict and string (JSON string) formats
@@ -95,7 +104,27 @@ def init_client() -> HttpServerClient:
                     CustomAuthResponseConfig, custom_auth_response_config
                 )
         else:
-            raise ValueError("customAuthResponse is required when authType is 'custom'")
+            raise CustomAuthResponseError(
+                "customAuthResponse is required when authType is 'custom'"
+            )
+
+        # Validate template syntax BEFORE authentication (fail fast)
+        # This catches configuration errors before making any HTTP requests
+        if custom_auth_response:
+            try:
+                if custom_auth_response.headers:
+                    _validate_templates_in_dict(custom_auth_response.headers, "headers")
+                if custom_auth_response.queryParams:
+                    _validate_templates_in_dict(
+                        custom_auth_response.queryParams, "queryParams"
+                    )
+                if custom_auth_response.body:
+                    _validate_templates_in_dict(custom_auth_response.body, "body")
+            except TemplateSyntaxError as e:
+                raise TemplateSyntaxError(
+                    f"Invalid template syntax in customAuthResponse: {str(e)}. "
+                    "Please fix template syntax before authentication."
+                ) from e
 
     return HttpServerClient(
         base_url=config["base_url"],
