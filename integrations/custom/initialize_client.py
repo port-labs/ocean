@@ -10,6 +10,7 @@ import re
 import asyncio
 from typing import Dict, Any, Optional
 
+from loguru import logger
 from pydantic import parse_raw_as, parse_obj_as
 
 from http_server.client import HttpServerClient
@@ -23,11 +24,109 @@ from http_server.exceptions import (
 )
 from port_ocean.context.ocean import ocean
 
-# Module-level shared client singleton
-_shared_client: Optional[HttpServerClient] = None
-_auth_complete = asyncio.Event()
-_auth_in_progress = False
-_auth_lock = asyncio.Lock()
+
+class ClientManager:
+    """Manages the shared HTTP client singleton with thread-safe initialization and authentication."""
+
+    def __init__(self) -> None:
+        self._client: Optional[HttpServerClient] = None
+        self._auth_complete = asyncio.Event()
+        self._auth_in_progress = False
+        self._auth_lock = asyncio.Lock()
+
+    async def get_client(self, init_fn) -> HttpServerClient:
+        """Get the shared client instance, ensuring authentication is complete.
+
+        Args:
+            init_fn: Function to initialize the client if needed
+
+        Returns:
+            HttpServerClient: The initialized and authenticated client
+
+        Raises:
+            RuntimeError: If client initialization fails
+        """
+        if self._client is not None and self._auth_complete.is_set():
+            logger.debug("Client already initialized and authenticated")
+            return self._client
+
+        if self._auth_in_progress:
+            logger.debug("Authentication in progress, waiting for completion...")
+            await self._auth_complete.wait()
+            if self._client is None:
+                raise RuntimeError("Authentication completed but client is None")
+            logger.debug("Authentication completed, returning client")
+            return self._client
+
+        async with self._auth_lock:
+            if self._client is not None and self._auth_complete.is_set():
+                return self._client
+
+            if self._auth_in_progress:
+                logger.debug("Authentication started by another coroutine, waiting...")
+                await self._auth_complete.wait()
+                if self._client is None:
+                    raise RuntimeError("Authentication completed but client is None")
+                return self._client
+
+            logger.debug("Starting client initialization and authentication...")
+            try:
+                await self._initialize_and_authenticate(init_fn)
+                if not self._auth_complete.is_set():
+                    logger.warning("Auth complete event not set, waiting...")
+                    await self._auth_complete.wait()
+                if self._client is None:
+                    raise RuntimeError("Client initialization returned None")
+                if (
+                    self._client.auth_type == "custom"
+                    and hasattr(self._client.auth_handler, "auth_response")
+                    and self._client.auth_handler.auth_response is None
+                ):
+                    raise RuntimeError(
+                        "Authentication completed but auth_response is None in handler. "
+                        "This indicates authentication did not complete properly."
+                    )
+                logger.debug(
+                    "Client initialization and authentication completed successfully"
+                )
+                return self._client
+            except Exception as e:
+                self._auth_in_progress = False
+                self._auth_complete.clear()
+                logger.error(f"Failed to initialize client: {e}")
+                raise RuntimeError(f"Failed to initialize client: {e}") from e
+
+    async def _initialize_and_authenticate(self, init_fn) -> None:
+        """Initialize shared client and authenticate if using custom auth."""
+        if self._client is not None and self._auth_complete.is_set():
+            return
+
+        self._auth_in_progress = True
+
+        try:
+            logger.debug("Initializing shared HTTP client")
+            self._client = init_fn()
+
+            if self._client.auth_type == "custom":
+                logger.debug("Performing initial authentication for custom auth")
+                if hasattr(self._client.auth_handler, "authenticate_async"):
+                    await self._client.auth_handler.authenticate_async()
+                else:
+                    logger.warning(
+                        "Custom auth handler does not support async authentication"
+                    )
+
+            logger.debug("Shared HTTP client initialized and authenticated")
+            self._auth_complete.set()
+        except Exception as e:
+            self._auth_in_progress = False
+            self._auth_complete.clear()
+            logger.error(f"Failed to initialize and authenticate client: {e}")
+            raise
+
+
+# Global client manager instance
+_client_manager = ClientManager()
 
 
 def _resolve_env_vars(value: str) -> str:
@@ -144,71 +243,13 @@ async def get_client() -> HttpServerClient:
     This function will wait for authentication to complete if it's in progress,
     or trigger authentication if it hasn't started yet.
 
+    Returns:
+        HttpServerClient: The initialized and authenticated client
+
     Raises:
         RuntimeError: If client initialization fails
     """
-    global _shared_client, _auth_complete, _auth_in_progress, _auth_lock
-
-    from loguru import logger
-
-    # If client exists and auth is complete, return immediately
-    if _shared_client is not None and _auth_complete.is_set():
-        logger.debug("Client already initialized and authenticated")
-        return _shared_client
-
-    # Wait for authentication to complete if it's in progress
-    if _auth_in_progress:
-        logger.debug("Authentication in progress, waiting for completion...")
-        await _auth_complete.wait()
-        if _shared_client is None:
-            raise RuntimeError("Authentication completed but client is None")
-        logger.debug("Authentication completed, returning client")
-        return _shared_client
-
-    # If client doesn't exist, initialize and authenticate
-    async with _auth_lock:
-        # Double-check after acquiring lock (another coroutine might have initialized it)
-        if _shared_client is not None and _auth_complete.is_set():
-            return _shared_client
-
-        if _auth_in_progress:
-            logger.debug("Authentication started by another coroutine, waiting...")
-            await _auth_complete.wait()
-            if _shared_client is None:
-                raise RuntimeError("Authentication completed but client is None")
-            return _shared_client
-
-        # Initialize and authenticate (sets _auth_in_progress internally)
-        logger.debug("Starting client initialization and authentication...")
-        try:
-            # This will set _auth_in_progress = True and complete authentication
-            await initialize_and_authenticate()
-            # Double-check auth is complete (should already be set by initialize_and_authenticate)
-            if not _auth_complete.is_set():
-                logger.warning("Auth complete event not set, waiting...")
-                await _auth_complete.wait()
-            # At this point, _shared_client should be set by initialize_and_authenticate
-            if _shared_client is None:
-                raise RuntimeError("Client initialization returned None")
-            # Verify auth handler has auth_response for custom auth
-            if (
-                _shared_client.auth_type == "custom"
-                and hasattr(_shared_client.auth_handler, "auth_response")
-                and _shared_client.auth_handler.auth_response is None
-            ):
-                raise RuntimeError(
-                    "Authentication completed but auth_response is None in handler. "
-                    "This indicates authentication did not complete properly."
-                )
-            logger.debug(
-                "Client initialization and authentication completed successfully"
-            )
-            return _shared_client
-        except Exception as e:
-            _auth_in_progress = False
-            _auth_complete.clear()
-            logger.error(f"Failed to initialize client: {e}")
-            raise RuntimeError(f"Failed to initialize client: {e}") from e
+    return await _client_manager.get_client(init_client)
 
 
 async def initialize_and_authenticate() -> HttpServerClient:
@@ -221,35 +262,4 @@ async def initialize_and_authenticate() -> HttpServerClient:
     Returns:
         HttpServerClient: The initialized and authenticated client
     """
-    global _shared_client, _auth_in_progress, _auth_complete
-
-    if _shared_client is not None and _auth_complete.is_set():
-        return _shared_client
-
-    from loguru import logger
-
-    # Set flag immediately to prevent race conditions
-    _auth_in_progress = True
-
-    try:
-        logger.debug("Initializing shared HTTP client")
-        _shared_client = init_client()
-
-        # Authenticate if using custom auth
-        if _shared_client.auth_type == "custom":
-            logger.debug("Performing initial authentication for custom auth")
-            if hasattr(_shared_client.auth_handler, "authenticate_async"):
-                await _shared_client.auth_handler.authenticate_async()
-            else:
-                logger.warning(
-                    "Custom auth handler does not support async authentication"
-                )
-
-        logger.debug("Shared HTTP client initialized and authenticated")
-        _auth_complete.set()
-        return _shared_client
-    except Exception as e:
-        _auth_in_progress = False
-        _auth_complete.clear()
-        logger.error(f"Failed to initialize and authenticate client: {e}")
-        raise
+    return await _client_manager.get_client(init_client)
