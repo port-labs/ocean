@@ -49,22 +49,30 @@ class HTTPBaseClient(OAuthClient):
     ) -> dict[str, Any]:
         """
         Ensure the Authorization header is set correctly when OAuth is enabled.
+        Falls back to PAT if OAuth token is not available (e.g., at app startup).
         """
         headers = headers or {}
         if self.is_oauth_enabled():
-            access_token = self.external_access_token
-            headers["Authorization"] = f"Bearer {access_token}"
+            try:
+                access_token = self.external_access_token
+                headers["Authorization"] = f"Bearer {access_token}"
+            except ValueError:
+                pass
         return headers
 
     def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
         """
         Refresh Authorization header on retries when OAuth is enabled.
+        Falls back to PAT if OAuth token is not available (e.g., at app startup).
         """
         if not self.is_oauth_enabled():
             return request
 
-        access_token = self.external_access_token
-        request.headers["Authorization"] = f"Bearer {access_token}"
+        try:
+            access_token = self.external_access_token
+            request.headers["Authorization"] = f"Bearer {access_token}"
+        except ValueError:
+            pass
         return request
 
     async def send_request(
@@ -79,6 +87,8 @@ class HTTPBaseClient(OAuthClient):
         if self.is_oauth_enabled():
             self._client.auth = None
             headers = self._ensure_oauth_headers(headers)
+            if not headers.get("Authorization"):
+                self._client.auth = BasicAuth("", self._personal_access_token)
         else:
             self._client.auth = BasicAuth("", self._personal_access_token)
 

@@ -14,8 +14,8 @@ configurations:
     type: url
     sensitive: true
   - name: personalAccessToken
-    description: A personal access token (PAT) with read permissions for the resources you want to sync. To create a PAT, see the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops">Azure DevOps documentation</a>.
-    required: true
+    description: A personal access token (PAT) with read permissions for the resources you want to sync. To create a PAT, see the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops">Azure DevOps documentation</a>. This is required when using PAT authentication. When using OAuth2, this field is automatically populated from the OAuth token.
+    required: false
     type: string
     sensitive: true
   - name: isProjectsLimited
@@ -43,10 +43,18 @@ saas:
   enabled: true
   liveEvents:
     enabled: true
+  oauthConfiguration:
+    requiredSecrets:
+      - name: personalAccessToken
+        value: '.oauthData.accessToken'
+        description: '"OAuth2 access token for Azure DevOps integration"'
+    valuesOverride:
+      integrationSpec:
+        organizationUrl: '.oauthData.organizationUrl'
 installationDocs:
   saas:
     - name: SaasOAuth2
-      enabled: false
+      enabled: true
     - name: Saas
       enabled: false
   githubWorkflow:
