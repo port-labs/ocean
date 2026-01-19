@@ -237,3 +237,54 @@ class TestGithubAuthenticator:
             )
 
             assert installation_id == mock_installation_id
+
+    async def test_client_returns_same_instance(
+        self, github_auth: GitHubAppAuthenticator
+    ) -> None:
+        """Test that the client property returns the same cached instance on multiple accesses."""
+        with patch(
+            "github.clients.auth.abstract_authenticator.ocean"
+        ) as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+
+            # Access client multiple times
+            client_first = github_auth.client
+            client_second = github_auth.client
+            client_third = github_auth.client
+
+            # All should be the exact same instance
+            assert client_first is client_second
+            assert client_second is client_third
+            assert client_first is client_third
+
+    async def test_different_authenticators_have_different_clients(self) -> None:
+        """Test that different authenticator instances have their own cached clients."""
+        auth1 = GitHubAppAuthenticator(
+            organization="org1",
+            github_host="https://api.github.com",
+            app_id="app1",
+            installation_id="111",
+            private_key="key1",
+        )
+        auth2 = GitHubAppAuthenticator(
+            organization="org2",
+            github_host="https://api.github.com",
+            app_id="app2",
+            installation_id="222",
+            private_key="key2",
+        )
+
+        with patch(
+            "github.clients.auth.abstract_authenticator.ocean"
+        ) as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+
+            client1 = auth1.client
+            client2 = auth2.client
+
+            # Different authenticators should have different client instances
+            assert client1 is not client2
+
+            # But each should still return the same instance on repeated access
+            assert auth1.client is client1
+            assert auth2.client is client2

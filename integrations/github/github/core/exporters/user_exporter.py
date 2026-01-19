@@ -97,6 +97,9 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         }
 
         saml_users: dict[str, str] = {}
+        batch_count = 0
+
+        logger.info(f"Starting SAML identity fetch for organization '{organization}'")
 
         try:
             async for identity_batch in self.client.send_paginated_request(
@@ -110,9 +113,16 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
                         saml_users[login] = name_id
 
             logger.info(
-                f"Cached {len(saml_users)} SAML identities for organization '{organization}'"
+                f"SAML fetch complete for '{organization}': "
+                f"{len(saml_users)} identities in {batch_count} batches"
             )
         except TypeError:
             logger.info(f"SAML not enabled for organization '{organization}'")
+        except Exception as e:
+            logger.error(
+                f"SAML fetch failed for '{organization}' after {batch_count} batches "
+                f"({len(saml_users)} identities collected). Error: {type(e).__name__}: {e}"
+            )
+            raise
 
         return saml_users

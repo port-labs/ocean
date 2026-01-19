@@ -51,17 +51,18 @@ class AbstractGitHubAuthenticator(ABC):
 
     @property
     def client(self) -> httpx.AsyncClient:
-        retry_config = RetryConfig(
-            retry_after_headers=[
-                "Retry-After",
-                "X-RateLimit-Reset",
-            ]
-        )
-
-        return OceanAsyncClient(
-            retry_config=retry_config,
-            timeout=ocean.config.client_timeout,
-        )
+        if not hasattr(self, "_http_client") or self._http_client is None:
+            retry_config = RetryConfig(
+                retry_after_headers=[
+                    "Retry-After",
+                    "X-RateLimit-Reset",
+                ]
+            )
+            self._http_client = OceanAsyncClient(
+                retry_config=retry_config,
+                timeout=ocean.config.client_timeout,
+            )
+        return self._http_client
 
     @cache_coroutine_result()
     async def is_personal_org(self, github_host: str, organization: str) -> bool:
