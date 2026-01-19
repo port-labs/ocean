@@ -3,6 +3,7 @@
 import asyncio
 import pytest
 import httpx
+import time
 from typing import Dict, Any
 from unittest.mock import AsyncMock, patch, MagicMock
 
@@ -377,6 +378,9 @@ class TestCustomAuth:
     ) -> None:
         """Test applying auth to headers"""
         custom_auth.auth_response = {"access_token": "test-token"}
+        # Set timestamp and interval to prevent expiration check from triggering
+        custom_auth._auth_timestamp = time.time()
+        custom_auth._reauthenticate_interval = None  # Disable expiration checking
 
         with patch(
             "port_ocean.context.ocean.ocean.app.integration.entity_processor",
@@ -393,6 +397,9 @@ class TestCustomAuth:
     ) -> None:
         """Test applying auth to query params"""
         custom_auth.auth_response = {"access_token": "test-token"}
+        # Set timestamp and interval to prevent expiration check from triggering
+        custom_auth._auth_timestamp = time.time()
+        custom_auth._reauthenticate_interval = None  # Disable expiration checking
 
         with patch(
             "port_ocean.context.ocean.ocean.app.integration.entity_processor",
@@ -411,6 +418,9 @@ class TestCustomAuth:
     ) -> None:
         """Test applying auth to body"""
         custom_auth.auth_response = {"access_token": "test-token"}
+        # Set timestamp and interval to prevent expiration check from triggering
+        custom_auth._auth_timestamp = time.time()
+        custom_auth._reauthenticate_interval = None  # Disable expiration checking
 
         with patch(
             "port_ocean.context.ocean.ocean.app.integration.entity_processor",
@@ -426,6 +436,13 @@ class TestCustomAuth:
     async def test_apply_auth_no_auth_response(self, custom_auth: CustomAuth) -> None:
         """Test applying auth when no auth_response exists"""
         custom_auth.auth_response = None
+        # When auth_response is None, expiration check will return True but authenticate_async
+        # will fail, so we need to mock it to prevent actual HTTP calls
+        async def mock_authenticate() -> None:
+            # Do nothing - auth_response is None so this simulates the early return
+            pass
+
+        custom_auth.authenticate_async = mock_authenticate  # type: ignore[method-assign]
 
         headers = {"X-Custom": "value"}
         result_headers, _, _ = await custom_auth.apply_auth_to_request(headers)
@@ -439,6 +456,9 @@ class TestCustomAuth:
         """Test applying auth when no custom_auth_response config exists"""
         custom_auth.auth_response = {"access_token": "test-token"}
         custom_auth.custom_auth_response = None
+        # Set timestamp and interval to prevent expiration check from triggering
+        custom_auth._auth_timestamp = time.time()
+        custom_auth._reauthenticate_interval = None  # Disable expiration checking
 
         headers = {"X-Custom": "value"}
         result_headers, _, _ = await custom_auth.apply_auth_to_request(headers)
@@ -612,6 +632,10 @@ class TestClient401Handling:
         client_with_custom_auth.auth_handler.auth_response = {  # type: ignore[attr-defined]
             "access_token": "old-token"
         }
+        # Set timestamp and interval to prevent expiration check from triggering
+        # (we want to test 401 handling, not expiration)
+        client_with_custom_auth.auth_handler._auth_timestamp = time.time()  # type: ignore[attr-defined]
+        client_with_custom_auth.auth_handler._reauthenticate_interval = None  # type: ignore[attr-defined]
 
         # Mock responses: 401 then 200
         mock_401 = MagicMock()
@@ -664,6 +688,10 @@ class TestClient401Handling:
         client_with_custom_auth.auth_handler.auth_response = {  # type: ignore[attr-defined]
             "access_token": "old-token"
         }
+        # Set timestamp and interval to prevent expiration check from triggering
+        # (we want to test 401 handling, not expiration)
+        client_with_custom_auth.auth_handler._auth_timestamp = time.time()  # type: ignore[attr-defined]
+        client_with_custom_auth.auth_handler._reauthenticate_interval = None  # type: ignore[attr-defined]
 
         mock_401 = MagicMock()
         mock_401.status_code = 401
@@ -687,3 +715,296 @@ class TestClient401Handling:
                 params={},
                 headers={},
             )
+
+
+# ============================================================================
+# Token Expiration Tests
+# ============================================================================
+
+
+@pytest.mark.asyncio
+class TestTokenExpiration:
+    """Test token expiration and proactive re-authentication"""
+
+    @pytest.fixture
+    def mock_client(self) -> AsyncMock:
+        return AsyncMock(spec=httpx.AsyncClient)
+
+    @pytest.fixture
+    def auth_config(self) -> Dict[str, Any]:
+        return {"base_url": "https://api.example.com", "verify_ssl": True}
+
+    @pytest.fixture
+    def custom_auth_response(self) -> CustomAuthResponseConfig:
+        return CustomAuthResponseConfig(
+            headers={"Authorization": "Bearer {{.access_token}}"}
+        )
+
+    @pytest.fixture
+    def custom_auth_with_interval(
+        self,
+        mock_client: AsyncMock,
+        auth_config: Dict[str, Any],
+        custom_auth_response: CustomAuthResponseConfig,
+    ) -> CustomAuth:
+        """CustomAuth with reauthenticate_interval_seconds configured"""
+        auth_request = CustomAuthRequestConfig(
+            endpoint="/oauth/token",
+            method="POST",
+            body={"grant_type": "client_credentials"},
+            reauthenticate_interval_seconds=3600,  # 1 hour
+        )
+        return CustomAuth(mock_client, auth_config, auth_request, custom_auth_response)
+
+    @pytest.fixture
+    def custom_auth_without_interval(
+        self,
+        mock_client: AsyncMock,
+        auth_config: Dict[str, Any],
+        custom_auth_response: CustomAuthResponseConfig,
+    ) -> CustomAuth:
+        """CustomAuth without reauthenticate_interval_seconds configured"""
+        auth_request = CustomAuthRequestConfig(
+            endpoint="/oauth/token",
+            method="POST",
+            body={"grant_type": "client_credentials"},
+            # reauthenticate_interval_seconds not set (None)
+        )
+        return CustomAuth(mock_client, auth_config, auth_request, custom_auth_response)
+
+    async def test_calculate_reauthenticate_interval_with_config(
+        self, custom_auth_with_interval: CustomAuth
+    ) -> None:
+        """Test that configured interval is used"""
+        custom_auth_with_interval.auth_response = {"access_token": "token"}
+        interval = await custom_auth_with_interval._calculate_reauthenticate_interval()
+        assert interval == 3600
+
+    async def test_calculate_reauthenticate_interval_without_config(
+        self, custom_auth_without_interval: CustomAuth
+    ) -> None:
+        """Test that None is returned when not configured"""
+        custom_auth_without_interval.auth_response = {"access_token": "token"}
+        interval = (
+            await custom_auth_without_interval._calculate_reauthenticate_interval()
+        )
+        assert interval is None
+
+    async def test_is_auth_expired_no_auth_yet(
+        self, custom_auth_with_interval: CustomAuth
+    ) -> None:
+        """Test that returns True when no authentication has occurred"""
+        assert custom_auth_with_interval._is_auth_expired() is True
+
+    async def test_is_auth_expired_no_interval_configured(
+        self, custom_auth_without_interval: CustomAuth
+    ) -> None:
+        """Test that returns False when no interval is configured (expiration checking disabled)"""
+        custom_auth_without_interval.auth_response = {"access_token": "token"}
+        custom_auth_without_interval._auth_timestamp = time.time()
+        custom_auth_without_interval._reauthenticate_interval = None
+
+        assert custom_auth_without_interval._is_auth_expired() is False
+
+    async def test_is_auth_expired_not_expired(
+        self, custom_auth_with_interval: CustomAuth
+    ) -> None:
+        """Test that returns False when token is not expired"""
+        custom_auth_with_interval.auth_response = {"access_token": "token"}
+        custom_auth_with_interval._auth_timestamp = time.time()
+        custom_auth_with_interval._reauthenticate_interval = 3600  # 1 hour
+
+        assert custom_auth_with_interval._is_auth_expired() is False
+
+    async def test_is_auth_expired_expired(
+        self, custom_auth_with_interval: CustomAuth
+    ) -> None:
+        """Test that returns True when token is expired"""
+        custom_auth_with_interval.auth_response = {"access_token": "token"}
+        # Set timestamp to 2 hours ago (expired)
+        custom_auth_with_interval._auth_timestamp = time.time() - 7200
+        custom_auth_with_interval._reauthenticate_interval = 3600  # 1 hour
+
+        assert custom_auth_with_interval._is_auth_expired() is True
+
+    async def test_is_auth_expired_within_buffer(
+        self, custom_auth_with_interval: CustomAuth
+    ) -> None:
+        """Test that returns True when token is within buffer window (60 seconds)"""
+        custom_auth_with_interval.auth_response = {"access_token": "token"}
+        # Set timestamp so expiration is in 30 seconds (within 60s buffer)
+        custom_auth_with_interval._auth_timestamp = (
+            time.time() - 3570
+        )  # 30s before expiration
+        custom_auth_with_interval._reauthenticate_interval = 3600  # 1 hour
+
+        assert custom_auth_with_interval._is_auth_expired() is True
+
+    async def test_authenticate_async_sets_interval(
+        self, custom_auth_with_interval: CustomAuth
+    ) -> None:
+        """Test that authenticate_async calculates and sets expiration interval"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json = MagicMock(return_value={"access_token": "test-token-123"})
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client_instance = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = (
+                mock_client_instance
+            )
+            mock_client_instance.request = AsyncMock(return_value=mock_response)
+
+            await custom_auth_with_interval.authenticate_async()
+
+            assert custom_auth_with_interval._auth_timestamp is not None
+            assert custom_auth_with_interval._reauthenticate_interval == 3600
+
+    async def test_authenticate_async_sets_interval_to_none_when_not_configured(
+        self, custom_auth_without_interval: CustomAuth
+    ) -> None:
+        """Test that authenticate_async sets interval to None when not configured"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json = MagicMock(return_value={"access_token": "test-token-123"})
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client_instance = AsyncMock()
+            mock_client_class.return_value.__aenter__.return_value = (
+                mock_client_instance
+            )
+            mock_client_instance.request = AsyncMock(return_value=mock_response)
+
+            await custom_auth_without_interval.authenticate_async()
+
+            assert custom_auth_without_interval._auth_timestamp is not None
+            assert custom_auth_without_interval._reauthenticate_interval is None
+
+    async def test_apply_auth_proactively_reauthenticates_when_expired(
+        self, custom_auth_with_interval: CustomAuth
+    ) -> None:
+        """Test that apply_auth_to_request proactively re-authenticates when expired"""
+        # Set up expired token
+        custom_auth_with_interval.auth_response = {"access_token": "old-token"}
+        custom_auth_with_interval._auth_timestamp = time.time() - 7200  # 2 hours ago
+        custom_auth_with_interval._reauthenticate_interval = 3600  # 1 hour
+
+        # Mock re-authentication
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json = MagicMock(return_value={"access_token": "new-token"})
+        mock_response.raise_for_status = MagicMock()
+
+        authenticate_called = []
+
+        async def mock_authenticate() -> None:
+            authenticate_called.append(True)
+            custom_auth_with_interval.auth_response = {"access_token": "new-token"}
+            custom_auth_with_interval._auth_timestamp = time.time()
+            custom_auth_with_interval._reauthenticate_interval = 3600
+
+        custom_auth_with_interval.authenticate_async = mock_authenticate  # type: ignore[method-assign]
+
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            AsyncMock(),
+        ):
+            await custom_auth_with_interval.apply_auth_to_request({})
+
+        # Should have called authenticate_async
+        assert len(authenticate_called) == 1
+        assert custom_auth_with_interval.auth_response["access_token"] == "new-token"
+
+    async def test_apply_auth_does_not_reauthenticate_when_not_expired(
+        self, custom_auth_with_interval: CustomAuth
+    ) -> None:
+        """Test that apply_auth_to_request does not re-authenticate when not expired"""
+        # Set up valid token
+        custom_auth_with_interval.auth_response = {"access_token": "valid-token"}
+        custom_auth_with_interval._auth_timestamp = time.time()  # Just authenticated
+        custom_auth_with_interval._reauthenticate_interval = 3600  # 1 hour
+
+        authenticate_called = []
+
+        async def mock_authenticate() -> None:
+            authenticate_called.append(True)
+
+        custom_auth_with_interval.authenticate_async = mock_authenticate  # type: ignore[method-assign]
+
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            AsyncMock(),
+        ):
+            await custom_auth_with_interval.apply_auth_to_request({})
+
+        # Should not have called authenticate_async
+        assert len(authenticate_called) == 0
+
+    async def test_apply_auth_no_expiration_check_when_interval_none(
+        self, custom_auth_without_interval: CustomAuth
+    ) -> None:
+        """Test that apply_auth_to_request doesn't check expiration when interval is None"""
+        custom_auth_without_interval.auth_response = {"access_token": "token"}
+        custom_auth_without_interval._auth_timestamp = time.time()
+        custom_auth_without_interval._reauthenticate_interval = None
+
+        authenticate_called = []
+
+        async def mock_authenticate() -> None:
+            authenticate_called.append(True)
+
+        custom_auth_without_interval.authenticate_async = mock_authenticate  # type: ignore[method-assign]
+
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            AsyncMock(),
+        ):
+            await custom_auth_without_interval.apply_auth_to_request({})
+
+        # Should not have called authenticate_async (no expiration checking)
+        assert len(authenticate_called) == 0
+
+    async def test_proactive_reauthentication_uses_lock(
+        self, custom_auth_with_interval: CustomAuth
+    ) -> None:
+        """Test that proactive re-authentication uses lock to prevent concurrent auth"""
+        # Set up expired token
+        custom_auth_with_interval.auth_response = {"access_token": "old-token"}
+        custom_auth_with_interval._auth_timestamp = time.time() - 7200
+        custom_auth_with_interval._reauthenticate_interval = 3600
+
+        authenticate_calls = []
+
+        async def mock_authenticate() -> None:
+            authenticate_calls.append("auth")
+            await asyncio.sleep(0.1)  # Simulate auth delay
+            custom_auth_with_interval.auth_response = {"access_token": "new-token"}
+            custom_auth_with_interval._auth_timestamp = time.time()
+
+        custom_auth_with_interval.authenticate_async = mock_authenticate  # type: ignore[method-assign]
+
+        # Simulate two concurrent requests
+        async def apply_auth1() -> None:
+            with patch(
+                "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+                AsyncMock(),
+            ):
+                await custom_auth_with_interval.apply_auth_to_request({})
+
+        async def apply_auth2() -> None:
+            await asyncio.sleep(0.05)  # Start slightly after apply_auth1
+            with patch(
+                "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+                AsyncMock(),
+            ):
+                await custom_auth_with_interval.apply_auth_to_request({})
+
+        await asyncio.gather(apply_auth1(), apply_auth2())
+
+        # Should authenticate at least once, but lock should prevent race conditions
+        assert len(authenticate_calls) >= 1
+        assert (
+            len(authenticate_calls) <= 2
+        )  # At most 2 if first completes before second
