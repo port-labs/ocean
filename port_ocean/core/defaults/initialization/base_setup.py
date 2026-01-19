@@ -32,13 +32,14 @@ class BaseSetup(ABC):
     def _port_resources_origin(self) -> CreatePortResourcesOrigin:
         pass
 
+    @property
+    @abstractmethod
+    def _default_mapping(self) -> PortAppConfig | None:
+        pass
+
     @abstractmethod
     async def _setup(self) -> None:
         pass
-
-    @property
-    def _default_mapping(self) -> PortAppConfig | None:
-        return None
 
     async def _verify_integration_configuration(
         self,
