@@ -8,7 +8,7 @@ from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 from urllib.parse import urlparse, urlunparse
 
-PAGE_SIZE = 25
+PAGE_SIZE = 100
 
 
 class GithubGraphQLClient(AbstractGithubClient):

@@ -37,8 +37,9 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
     async def get_paginated_resources[
         ExporterOptionT: ListUserOptions
     ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        organization = options["organization"]
         variables = {
-            "organization": options["organization"],
+            "organization": organization,
             "__path": "organization.membersWithRole",
         }
         include_bots = options.get("include_bots")
@@ -59,7 +60,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
                     f"Attempting to fetch their emails from an external identity provider."
                 )
                 await self._fetch_external_identities(
-                    options["organization"], users, users_with_no_email
+                    organization, users, users_with_no_email
                 )
             yield users
 
