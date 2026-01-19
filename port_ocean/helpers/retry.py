@@ -337,12 +337,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             )
 
     def _should_log_response_size(self, request: httpx.Request) -> bool:
-        return (
-            self._logger is not None
-            and not request.url.host.endswith("port.io")
-            and not request.url.host.endswith("localhost")
-            and not request.url.host.endswith("127.0.0.1")
-        )
+        return self._logger is not None and not request.url.host.endswith("port.io")
 
     async def _get_content_length_async(self, response: httpx.Response) -> int:
         """Get the size of the response body."""
@@ -407,7 +402,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 f"Error recording request size: {e}"
             )
 
-        cast(logging.Logger, self._logger).info(
+        cast(logging.Logger, self._logger).debug(
             f"Response for {request.method} {request.url} - Size: {content_length} bytes"
         )
 
