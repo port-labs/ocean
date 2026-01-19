@@ -8,6 +8,7 @@ import asyncio
 import httpx
 import re
 import json
+import time
 
 from typing import Dict, Any, List, Callable, Awaitable, Optional
 from collections.abc import AsyncGenerator as AsyncGenType
@@ -183,6 +184,15 @@ class CustomAuth(AuthHandler):
         self._cached_evaluated_query_params: Optional[Dict[str, Any]] = None
         self._cached_evaluated_body: Optional[Dict[str, Any]] = None
 
+        # Token expiration tracking
+        self._auth_timestamp: Optional[float] = None  # When authentication happened
+        self._reauthenticate_interval: Optional[int] = (
+            None  # How long until re-auth needed (seconds)
+        )
+        self._reauthenticate_buffer_seconds: int = (
+            60  # Buffer to refresh before expiration
+        )
+
     def setup(self) -> None:
         """Setup authentication - deprecated, use authenticate_async() instead.
 
@@ -287,7 +297,23 @@ class CustomAuth(AuthHandler):
             self.auth_response = response.json()
             # Invalidate cache when auth_response changes
             self._invalidate_cache()
+
+            # Track authentication timestamp and calculate expiration interval
+            self._auth_timestamp = time.time()
+            self._reauthenticate_interval = (
+                await self._calculate_reauthenticate_interval()
+            )
+
             logger.info("CustomAuth: Authentication successful")
+            if self._reauthenticate_interval:
+                logger.debug(
+                    f"CustomAuth: Token will expire in {self._reauthenticate_interval} seconds "
+                    f"(will refresh {self._reauthenticate_buffer_seconds} seconds before expiration)"
+                )
+            else:
+                logger.debug(
+                    "CustomAuth: No expiration interval configured - tokens will only be refreshed on 401 errors"
+                )
             if isinstance(self.auth_response, dict):
                 # Log first few characters of values (for security, don't log full tokens)
                 sample_values = {
@@ -349,7 +375,59 @@ class CustomAuth(AuthHandler):
         self._cached_evaluated_query_params = None
         self._cached_evaluated_body = None
 
-    async def _get_evaluated_templates(self) -> tuple[Dict[str, str], Dict[str, Any], Dict[str, Any]]:
+    async def _calculate_reauthenticate_interval(self) -> Optional[int]:
+        """Calculate how long until re-authentication is needed.
+
+        Returns:
+            Interval in seconds if reauthenticate_interval_seconds is configured, None otherwise
+        """
+        if (
+            self.custom_auth_request
+            and self.custom_auth_request.reauthenticate_interval_seconds is not None
+        ):
+            return self.custom_auth_request.reauthenticate_interval_seconds
+
+        # No expiration interval configured
+        logger.debug(
+            "CustomAuth: No reauthenticate_interval configured. "
+            "Token expiration checking will be disabled."
+        )
+        return None
+
+    def _is_auth_expired(self) -> bool:
+        """Check if authentication has expired and needs to be refreshed.
+
+        Returns:
+            True if authentication is expired or about to expire (within buffer), False otherwise.
+            Returns False if no expiration interval is configured (expiration checking disabled).
+        """
+        # If no authentication yet, consider it "expired" to trigger initial auth
+        if self._auth_timestamp is None or self.auth_response is None:
+            return True
+
+        # If no expiration interval configured, don't check expiration proactively
+        # (will still handle 401 errors reactively)
+        if self._reauthenticate_interval is None:
+            return False
+
+        elapsed_time = time.time() - self._auth_timestamp
+        time_until_expiration = self._reauthenticate_interval - elapsed_time
+
+        # Consider expired if within buffer seconds of expiration
+        is_expired = time_until_expiration <= self._reauthenticate_buffer_seconds
+
+        if is_expired:
+            logger.debug(
+                f"CustomAuth: Authentication expired or expiring soon. "
+                f"Elapsed: {elapsed_time:.1f}s, Interval: {self._reauthenticate_interval}s, "
+                f"Time until expiration: {time_until_expiration:.1f}s"
+            )
+
+        return is_expired
+
+    async def _get_evaluated_templates(
+        self,
+    ) -> tuple[Dict[str, str], Dict[str, Any], Dict[str, Any]]:
         """Get evaluated templates from customAuthResponse config, using cache if available.
 
         Returns:
@@ -417,10 +495,26 @@ class CustomAuth(AuthHandler):
         Evaluates templates like {{.access_token}} in headers, queryParams, and body from
         customAuthResponse config using values from the authentication response.
         Uses caching to avoid re-evaluating templates on every request when auth_response hasn't changed.
+        Proactively re-authenticates if token is expired or about to expire.
 
         Returns:
             Tuple of (updated_headers, updated_query_params, updated_body)
         """
+        # Check if authentication is expired and re-authenticate proactively
+        if self._is_auth_expired():
+            logger.info(
+                "CustomAuth: Token expired or expiring soon, proactively re-authenticating"
+            )
+            # Use module-level lock to prevent concurrent re-auth
+            async with _reauthenticate_lock:
+                # Double-check after acquiring lock (another coroutine might have refreshed)
+                if self._is_auth_expired():
+                    await self.authenticate_async()
+                else:
+                    logger.debug(
+                        "CustomAuth: Token was refreshed by another request while waiting for lock"
+                    )
+
         if not self.auth_response:
             logger.warning(
                 "CustomAuth: No auth_response available, skipping auth application"
@@ -444,7 +538,9 @@ class CustomAuth(AuthHandler):
         updated_query_params = {**(query_params or {}), **evaluated_query_params}
 
         # Merge body - start with incoming body, then merge evaluated body
-        updated_body = {**(body or {}), **evaluated_body} if (body or evaluated_body) else None
+        updated_body = (
+            {**(body or {}), **evaluated_body} if (body or evaluated_body) else None
+        )
 
         return (
             updated_headers,

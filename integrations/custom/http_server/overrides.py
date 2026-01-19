@@ -94,6 +94,12 @@ class CustomAuthRequestConfig(BaseModel):
         alias="queryParams",
         description="Query parameters to send with authentication request",
     )
+    reauthenticate_interval_seconds: Optional[int] = Field(
+        default=None,
+        alias="reauthenticateIntervalSeconds",
+        description="How long (in seconds) each authentication is valid before re-authenticating. If not provided, expiration checking is disabled and tokens will only be refreshed on 401 errors. A 60-second buffer is applied to refresh proactively before expiration.",
+        ge=1,
+    )
 
     @root_validator
     def validate_body_exclusivity(cls, values: Dict[str, Any]) -> Dict[str, Any]:
