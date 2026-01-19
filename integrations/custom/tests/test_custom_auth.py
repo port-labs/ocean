@@ -11,8 +11,18 @@ from http_server.handlers import (
     CustomAuth,
     _evaluate_template,
     _evaluate_templates_in_dict,
+    _validate_template_syntax,
+    _validate_templates_in_dict,
 )
 from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
+from http_server.exceptions import (
+    TemplateSyntaxError,
+    TemplateEvaluationError,
+    TemplateVariableNotFoundError,
+    CustomAuthRequestError,
+    CustomAuthResponseError,
+    CustomAuthConfigError,
+)
 from http_server.client import HttpServerClient
 
 
@@ -108,23 +118,26 @@ class TestTemplateEvaluation:
             # Template without dot should remain unchanged since it doesn't match the regex
             assert result == "Token: {{access_token}}"
 
-    async def test_evaluate_template_missing_field(
+    async def test_evaluate_template_missing_field_raises_exception(
         self, mock_auth_response: Dict[str, Any], mock_entity_processor: MagicMock
     ) -> None:
-        """Test missing field returns original template"""
+        """Test missing field raises TemplateVariableNotFoundError"""
         with patch(
             "port_ocean.context.ocean.ocean.app.integration.entity_processor",
             mock_entity_processor,
         ):
             template = "Bearer {{.missing_field}}"
-            result = await _evaluate_template(template, mock_auth_response)
-            assert result == "Bearer {{.missing_field}}"
+            with pytest.raises(TemplateVariableNotFoundError) as exc_info:
+                await _evaluate_template(template, mock_auth_response)
+            assert "missing_field" in str(exc_info.value)
+            assert "Available keys" in str(exc_info.value)
 
-    async def test_evaluate_template_no_auth_response(self) -> None:
-        """Test with empty auth response"""
+    async def test_evaluate_template_no_auth_response_raises_exception(self) -> None:
+        """Test with empty auth response raises TemplateEvaluationError"""
         template = "Bearer {{.access_token}}"
-        result = await _evaluate_template(template, None)  # type: ignore[arg-type]
-        assert result == template
+        with pytest.raises(TemplateEvaluationError) as exc_info:
+            await _evaluate_template(template, None)  # type: ignore[arg-type]
+        assert "auth_response is empty" in str(exc_info.value)
 
     async def test_evaluate_templates_in_dict_headers(
         self, mock_auth_response: Dict[str, Any], mock_entity_processor: MagicMock
@@ -1008,3 +1021,311 @@ class TestTokenExpiration:
         assert (
             len(authenticate_calls) <= 2
         )  # At most 2 if first completes before second
+
+
+# ============================================================================
+# Template Syntax Validation Tests
+# ============================================================================
+
+
+class TestTemplateSyntaxValidation:
+    """Test template syntax validation functions"""
+
+    def test_validate_template_syntax_valid(self) -> None:
+        """Test that valid template syntax passes validation"""
+        _validate_template_syntax("Bearer {{.access_token}}")
+        _validate_template_syntax("Token: {{.token}} expires in {{.expires_in}}")
+        _validate_template_syntax("{{.nested.value}}")
+
+    def test_validate_template_syntax_invalid_missing_dot(self) -> None:
+        """Test that invalid template syntax (missing dot) raises TemplateSyntaxError"""
+        with pytest.raises(TemplateSyntaxError) as exc_info:
+            _validate_template_syntax("Bearer {{access_token}}")
+        assert "Invalid template syntax" in str(exc_info.value)
+        assert "{{access_token}}" in str(exc_info.value)
+
+    def test_validate_template_syntax_invalid_wrong_format(self) -> None:
+        """Test that invalid template format raises TemplateSyntaxError"""
+        with pytest.raises(TemplateSyntaxError) as exc_info:
+            _validate_template_syntax("Bearer {{access_token}}")
+        assert "Templates must use the format {{.path}}" in str(exc_info.value)
+
+    def test_validate_template_syntax_with_context(self) -> None:
+        """Test that context is included in error message"""
+        with pytest.raises(TemplateSyntaxError) as exc_info:
+            _validate_template_syntax("Bearer {{token}}", context="headers.Authorization")
+        assert "headers.Authorization" in str(exc_info.value)
+
+    def test_validate_template_syntax_no_templates(self) -> None:
+        """Test that strings without templates pass validation"""
+        _validate_template_syntax("Bearer token")
+        _validate_template_syntax("No templates here")
+
+    def test_validate_template_syntax_non_string(self) -> None:
+        """Test that non-string values pass validation (no-op)"""
+        _validate_template_syntax(123)  # type: ignore[arg-type]
+        _validate_template_syntax(None)  # type: ignore[arg-type]
+        _validate_template_syntax({"key": "value"})  # type: ignore[arg-type]
+
+    def test_validate_templates_in_dict_valid(self) -> None:
+        """Test that valid templates in dict pass validation"""
+        data = {
+            "Authorization": "Bearer {{.access_token}}",
+            "X-TTL": "{{.expires_in}}",
+        }
+        _validate_templates_in_dict(data)
+
+    def test_validate_templates_in_dict_invalid(self) -> None:
+        """Test that invalid templates in dict raise TemplateSyntaxError"""
+        data = {
+            "Authorization": "Bearer {{access_token}}",  # Missing dot
+            "X-TTL": "{{.expires_in}}",  # Valid
+        }
+        with pytest.raises(TemplateSyntaxError) as exc_info:
+            _validate_templates_in_dict(data, prefix="headers")
+        assert "headers.Authorization" in str(exc_info.value)
+
+    def test_validate_templates_in_dict_nested(self) -> None:
+        """Test validation of nested dictionaries"""
+        data = {
+            "auth": {
+                "token": "{{.access_token}}",
+                "invalid": "{{token}}",  # Invalid
+            }
+        }
+        with pytest.raises(TemplateSyntaxError) as exc_info:
+            _validate_templates_in_dict(data)
+        assert "auth.invalid" in str(exc_info.value)
+
+    def test_validate_templates_in_dict_list(self) -> None:
+        """Test validation of templates in lists"""
+        data = {
+            "tokens": ["{{.access_token}}", "{{token}}"]  # Second is invalid
+        }
+        with pytest.raises(TemplateSyntaxError) as exc_info:
+            _validate_templates_in_dict(data)
+        assert "tokens[1]" in str(exc_info.value)
+
+    def test_validate_templates_in_dict_mixed_types(self) -> None:
+        """Test validation with mixed types (strings, dicts, lists, non-strings)"""
+        data = {
+            "valid": "{{.token}}",
+            "nested": {"key": "{{.value}}"},
+            "list": ["{{.item}}"],
+            "number": 123,  # Should be ignored
+            "none": None,  # Should be ignored
+        }
+        _validate_templates_in_dict(data)  # Should pass
+
+
+# ============================================================================
+# Config Validation Tests
+# ============================================================================
+
+
+class TestCustomAuthResponseConfigValidation:
+    """Test CustomAuthResponseConfig validation"""
+
+    def test_valid_config_with_headers(self) -> None:
+        """Test that config with headers is valid"""
+        config = CustomAuthResponseConfig(headers={"Authorization": "Bearer {{.token}}"})
+        assert config.headers == {"Authorization": "Bearer {{.token}}"}
+
+    def test_valid_config_with_query_params(self) -> None:
+        """Test that config with queryParams is valid"""
+        config = CustomAuthResponseConfig(queryParams={"api_key": "{{.token}}"})
+        assert config.queryParams == {"api_key": "{{.token}}"}
+
+    def test_valid_config_with_body(self) -> None:
+        """Test that config with body is valid"""
+        config = CustomAuthResponseConfig(body={"token": "{{.token}}"})
+        assert config.body == {"token": "{{.token}}"}
+
+    def test_valid_config_with_multiple_fields(self) -> None:
+        """Test that config with multiple fields is valid"""
+        config = CustomAuthResponseConfig(
+            headers={"Authorization": "Bearer {{.token}}"},
+            queryParams={"api_key": "{{.token}}"},
+        )
+        assert config.headers is not None
+        assert config.queryParams is not None
+
+    def test_invalid_config_empty(self) -> None:
+        """Test that empty config raises CustomAuthResponseError"""
+        with pytest.raises(CustomAuthResponseError) as exc_info:
+            CustomAuthResponseConfig()
+        assert "At least one of 'headers', 'queryParams', or 'body' must be provided" in str(
+            exc_info.value
+        )
+
+    def test_invalid_config_all_none(self) -> None:
+        """Test that config with all fields None raises CustomAuthResponseError"""
+        with pytest.raises(CustomAuthResponseError) as exc_info:
+            CustomAuthResponseConfig(headers=None, queryParams=None, body=None)
+        assert "At least one of 'headers', 'queryParams', or 'body' must be provided" in str(
+            exc_info.value
+        )
+
+
+class TestCustomAuthRequestConfigValidation:
+    """Test CustomAuthRequestConfig validation"""
+
+    def test_valid_config(self) -> None:
+        """Test that valid config passes validation"""
+        config = CustomAuthRequestConfig(
+            endpoint="/oauth/token",
+            method="POST",
+            body={"grant_type": "client_credentials"},
+        )
+        assert config.endpoint == "/oauth/token"
+        assert config.method == "POST"
+
+    def test_invalid_method(self) -> None:
+        """Test that invalid HTTP method raises CustomAuthRequestError"""
+        with pytest.raises(CustomAuthRequestError) as exc_info:
+            CustomAuthRequestConfig(
+                endpoint="/oauth/token",
+                method="INVALID",
+            )
+        assert "Method must be one of" in str(exc_info.value)
+
+    def test_valid_methods(self) -> None:
+        """Test that all valid HTTP methods pass validation"""
+        valid_methods = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+        for method in valid_methods:
+            config = CustomAuthRequestConfig(endpoint="/oauth/token", method=method)
+            assert config.method == method
+
+    def test_method_case_insensitive(self) -> None:
+        """Test that method is converted to uppercase"""
+        config = CustomAuthRequestConfig(endpoint="/oauth/token", method="post")
+        assert config.method == "POST"
+
+    def test_body_and_bodyform_exclusive(self) -> None:
+        """Test that body and bodyForm cannot both be specified"""
+        with pytest.raises(CustomAuthRequestError) as exc_info:
+            CustomAuthRequestConfig(
+                endpoint="/oauth/token",
+                body={"grant_type": "client_credentials"},
+                bodyForm="grant_type=client_credentials",
+            )
+        assert "Cannot specify both 'body' and 'bodyForm'" in str(exc_info.value)
+
+    def test_body_or_bodyform_valid(self) -> None:
+        """Test that body OR bodyForm is valid"""
+        config1 = CustomAuthRequestConfig(
+            endpoint="/oauth/token", body={"grant_type": "client_credentials"}
+        )
+        assert config1.body == {"grant_type": "client_credentials"}
+
+        config2 = CustomAuthRequestConfig(
+            endpoint="/oauth/token", bodyForm="grant_type=client_credentials"
+        )
+        assert config2.bodyForm == "grant_type=client_credentials"
+
+
+# ============================================================================
+# Early Validation Tests (init_client)
+# ============================================================================
+
+
+class TestEarlyValidation:
+    """Test early validation in init_client before authentication"""
+
+    @pytest.fixture
+    def mock_ocean_config(self, monkeypatch) -> None:
+        """Mock ocean.integration_config"""
+        config = {
+            "base_url": "https://api.example.com",
+            "auth_type": "custom",
+            "custom_auth_request": {
+                "endpoint": "/oauth/token",
+                "method": "POST",
+                "body": {"grant_type": "client_credentials"},
+            },
+            "custom_auth_response": {
+                "headers": {"Authorization": "Bearer {{.access_token}}"},
+            },
+        }
+        from port_ocean.context.ocean import ocean
+
+        monkeypatch.setattr(ocean, "integration_config", config)
+
+    def test_init_client_validates_template_syntax_before_auth(
+        self, mock_ocean_config
+    ) -> None:
+        """Test that template syntax is validated before authentication"""
+        from initialize_client import init_client
+
+        # This should pass - valid template syntax
+        client = init_client()
+        assert client is not None
+
+    def test_init_client_fails_on_invalid_template_syntax(
+        self, mock_ocean_config, monkeypatch
+    ) -> None:
+        """Test that invalid template syntax fails before authentication"""
+        from port_ocean.context.ocean import ocean
+
+        config = ocean.integration_config.copy()
+        config["custom_auth_response"] = {
+            "headers": {"Authorization": "Bearer {{access_token}}"},  # Missing dot
+        }
+        monkeypatch.setattr(ocean, "integration_config", config)
+
+        from initialize_client import init_client
+
+        with pytest.raises(TemplateSyntaxError) as exc_info:
+            init_client()
+        assert "Invalid template syntax" in str(exc_info.value)
+        assert "headers.Authorization" in str(exc_info.value)
+
+    def test_init_client_fails_on_missing_custom_auth_request(
+        self, mock_ocean_config, monkeypatch
+    ) -> None:
+        """Test that missing customAuthRequest raises CustomAuthRequestError"""
+        from port_ocean.context.ocean import ocean
+
+        config = ocean.integration_config.copy()
+        del config["custom_auth_request"]
+        monkeypatch.setattr(ocean, "integration_config", config)
+
+        from initialize_client import init_client
+
+        with pytest.raises(CustomAuthRequestError) as exc_info:
+            init_client()
+        assert "customAuthRequest is required" in str(exc_info.value)
+
+    def test_init_client_fails_on_missing_custom_auth_response(
+        self, mock_ocean_config, monkeypatch
+    ) -> None:
+        """Test that missing customAuthResponse raises CustomAuthResponseError"""
+        from port_ocean.context.ocean import ocean
+
+        config = ocean.integration_config.copy()
+        del config["custom_auth_response"]
+        monkeypatch.setattr(ocean, "integration_config", config)
+
+        from initialize_client import init_client
+
+        with pytest.raises(CustomAuthResponseError) as exc_info:
+            init_client()
+        assert "customAuthResponse is required" in str(exc_info.value)
+
+    def test_init_client_validates_empty_custom_auth_response(
+        self, mock_ocean_config, monkeypatch
+    ) -> None:
+        """Test that empty customAuthResponse raises CustomAuthResponseError"""
+        from port_ocean.context.ocean import ocean
+
+        config = ocean.integration_config.copy()
+        config["custom_auth_response"] = {}  # Empty - should fail
+        monkeypatch.setattr(ocean, "integration_config", config)
+
+        from initialize_client import init_client
+
+        with pytest.raises(CustomAuthResponseError) as exc_info:
+            init_client()
+        assert "At least one of 'headers', 'queryParams', or 'body' must be provided" in str(
+            exc_info.value
+        )
