@@ -18,8 +18,12 @@ from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseCon
 from http_server.exceptions import CustomAuthRequestError
 from http_server.helpers.template_utils import evaluate_templates_in_dict
 
-# Module-level lock for re-authentication (shared across all instances)
-_reauthenticate_lock = asyncio.Lock()
+
+class ReauthLockManager:
+    """Manages re-authentication lock to prevent concurrent re-auth attempts."""
+
+    def __init__(self) -> None:
+        self.lock = asyncio.Lock()
 
 
 class TemplateCache:
@@ -73,15 +77,16 @@ class TemplateCache:
 class TokenExpirationTracker:
     """Tracks token expiration and determines when re-authentication is needed."""
 
-    def __init__(self, buffer_seconds: int = 60):
+    def __init__(
+        self, reauthenticate_interval: Optional[int] = None, buffer_seconds: int = 60
+    ):
         self._auth_timestamp: Optional[float] = None
-        self._reauthenticate_interval: Optional[int] = None
+        self._reauthenticate_interval = reauthenticate_interval
         self._buffer_seconds = buffer_seconds
 
-    def record_authentication(self, interval: Optional[int]) -> None:
-        """Record that authentication happened and set expiration interval."""
+    def record_authentication(self) -> None:
+        """Record that authentication happened."""
         self._auth_timestamp = time.time()
-        self._reauthenticate_interval = interval
 
     def is_expired(self, has_auth_response: bool) -> bool:
         """Check if authentication has expired and needs to be refreshed.
@@ -123,6 +128,9 @@ class CustomAuth(AuthHandler):
         config: Dict[str, Any],
         custom_auth_request: Optional[CustomAuthRequestConfig],
         custom_auth_response: Optional[CustomAuthResponseConfig],
+        cache: Optional[TemplateCache] = None,
+        expiration_tracker: Optional[TokenExpirationTracker] = None,
+        reauth_lock_manager: Optional[ReauthLockManager] = None,
     ):
         super().__init__(client, config)
         self.custom_auth_request = custom_auth_request
@@ -132,8 +140,21 @@ class CustomAuth(AuthHandler):
         self.auth_response: Optional[Dict[str, Any]] = None
         self.verify_ssl: bool = config.get("verify_ssl", True)
 
-        self._cache = TemplateCache()
-        self._expiration_tracker = TokenExpirationTracker()
+        self._cache = cache or TemplateCache()
+        self._reauth_lock_manager = reauth_lock_manager or ReauthLockManager()
+
+        # Initialize expiration tracker with interval from config if not provided
+        if expiration_tracker is None:
+            reauthenticate_interval = (
+                custom_auth_request.reauthenticate_interval_seconds
+                if custom_auth_request
+                else None
+            )
+            self._expiration_tracker = TokenExpirationTracker(
+                reauthenticate_interval=reauthenticate_interval
+            )
+        else:
+            self._expiration_tracker = expiration_tracker
 
     def setup(self) -> None:
         """Setup authentication - deprecated, use authenticate_async() instead.
@@ -225,8 +246,7 @@ class CustomAuth(AuthHandler):
             self.auth_response = response.json()
             self._cache.invalidate()
 
-            interval = await self._calculate_reauthenticate_interval()
-            self._expiration_tracker.record_authentication(interval)
+            self._expiration_tracker.record_authentication()
 
             logger.info("CustomAuth: Authentication successful")
             interval, buffer = self._expiration_tracker.get_expiration_info()
@@ -241,14 +261,20 @@ class CustomAuth(AuthHandler):
                 )
 
     async def reauthenticate(self) -> None:
-        """Re-authenticate when token expires (401) - uses module-level lock for thread safety.
+        """Re-authenticate when token expires (401) - uses lock manager for thread safety.
 
         If multiple requests get 401 simultaneously, only the first one will re-authenticate.
         Others will wait for the lock and then skip re-auth if it was already completed.
+
+        The check `auth_response != auth_response_before` is necessary because:
+        - Multiple coroutines may detect 401 and enter the lock queue simultaneously
+        - While waiting for the lock, another coroutine may have already re-authenticated
+        - By comparing auth_response before and after acquiring the lock, we detect if
+          re-authentication already happened and skip redundant work
         """
         auth_response_before = self.auth_response
 
-        async with _reauthenticate_lock:
+        async with self._reauth_lock_manager.lock:
             if (
                 self.auth_response is not None
                 and self.auth_response != auth_response_before
@@ -276,24 +302,6 @@ class CustomAuth(AuthHandler):
         except (TypeError, ValueError) as e:
             logger.warning(f"CustomAuth: Failed to hash auth_response for cache: {e}")
             return None
-
-    async def _calculate_reauthenticate_interval(self) -> Optional[int]:
-        """Calculate how long until re-authentication is needed.
-
-        Returns:
-            Interval in seconds if reauthenticate_interval_seconds is configured, None otherwise
-        """
-        if (
-            self.custom_auth_request
-            and self.custom_auth_request.reauthenticate_interval_seconds is not None
-        ):
-            return self.custom_auth_request.reauthenticate_interval_seconds
-
-        logger.debug(
-            "CustomAuth: No reauthenticate_interval configured. "
-            "Token expiration checking will be disabled."
-        )
-        return None
 
     async def _get_evaluated_templates(
         self,
@@ -357,7 +365,7 @@ class CustomAuth(AuthHandler):
             logger.info(
                 "CustomAuth: Token expired or expiring soon, proactively re-authenticating"
             )
-            async with _reauthenticate_lock:
+            async with self._reauth_lock_manager.lock:
                 if self._expiration_tracker.is_expired(self.auth_response is not None):
                     await self.authenticate_async()
                 else:
