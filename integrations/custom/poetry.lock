@@ -1275,13 +1275,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.32.11"
+version = "0.32.13"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.32.11-py3-none-any.whl", hash = "sha256:22973919bbe5618e809a330aeb050c518e8d247b56faf65b253a461ccf8284fa"},
-    {file = "port_ocean-0.32.11.tar.gz", hash = "sha256:8f218f073528fb07ebe409add50c1c75960199eb68fa94a2daf1711e504d8e99"},
+    {file = "port_ocean-0.32.13-py3-none-any.whl", hash = "sha256:654c01d71f23184d89faa98c825e4c302ffc377987282934ba6c4e1287df6811"},
+    {file = "port_ocean-0.32.13.tar.gz", hash = "sha256:7599ceaf6372269f205ef6433dd4437beefe25945404e76f6a5a3d9e6ca20637"},
 ]
 
 [package.dependencies]
@@ -1310,7 +1310,7 @@ pyyaml = ">=6.0,<7.0"
 rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli\""}
 six = ">=1.16.0,<2.0.0"
 tomli = ">=2.0.1,<3.0.0"
-urllib3 = ">=2.5.0,<3.0.0"
+urllib3 = ">=2.6.3,<3.0.0"
 uvicorn = ">=0.34.3,<0.35.0"
 werkzeug = ">=2.3.4,<4.0.0"
 
@@ -1925,13 +1925,13 @@ files = [
 
 [[package]]
 name = "urllib3"
-version = "2.6.1"
+version = "2.6.3"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "urllib3-2.6.1-py3-none-any.whl", hash = "sha256:e67d06fe947c36a7ca39f4994b08d73922d40e6cca949907be05efa6fd75110b"},
-    {file = "urllib3-2.6.1.tar.gz", hash = "sha256:5379eb6e1aba4088bae84f8242960017ec8d8e3decf30480b3a1abdaa9671a3f"},
+    {file = "urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4"},
+    {file = "urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed"},
 ]
 
 [package.extras]
@@ -2010,4 +2010,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "80a0b21da8dd59865345228c95502fa0d6a4a8e44cb9f581fcaf06dfc85d869a"
+content-hash = "f51578334e2213dd794b8578c94c76057208952039abd86a0f2824abb9b97388"
