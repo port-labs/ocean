@@ -23,6 +23,9 @@ from http_server.auth import get_auth_handler
 from http_server.handlers import get_pagination_handler
 from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
 
+# Constants
+MAX_401_RETRIES = 1
+
 
 class HttpServerClient:
     """HTTP client with configurable authentication and pagination using Ocean's built-in mechanisms"""
@@ -38,7 +41,6 @@ class HttpServerClient:
         custom_headers: Optional[Dict[str, str]] = None,
         custom_auth_request: Optional[CustomAuthRequestConfig] = None,
         custom_auth_response: Optional[CustomAuthResponseConfig] = None,
-        skip_setup: bool = False,
     ):
         self.base_url = base_url.rstrip("/")
         self.auth_type = auth_type
@@ -68,9 +70,8 @@ class HttpServerClient:
             custom_auth_response=custom_auth_response,
         )
 
-        # Only call setup() if not skipping (for backward compatibility)
-        # When skip_setup=True, authentication will be done via @ocean.on_start()
-        if not skip_setup:
+        # Note: Custom auth always requires async_setup, so we skip sync setup for it
+        if not self.auth_handler.is_async_setup:
             self.auth_handler.setup()
 
         # Concurrency control
@@ -177,10 +178,9 @@ class HttpServerClient:
                 )
             )
 
-        max_retries = 1  # Only retry once on 401
         retry_count = 0
 
-        while retry_count <= max_retries:
+        while retry_count <= MAX_401_RETRIES:
             try:
                 # Build request - include body if present
                 if request_body:
@@ -202,9 +202,8 @@ class HttpServerClient:
                 # Check for 401 BEFORE raise_for_status() to intercept before RetryTransport retries
                 if (
                     response.status_code == 401
-                    and retry_count < max_retries
+                    and retry_count < MAX_401_RETRIES
                     and self.auth_type == "custom"
-                    and hasattr(self.auth_handler, "reauthenticate")
                 ):
                     logger.info(
                         f"Received 401 Unauthorized for {method} {url}, attempting re-authentication"

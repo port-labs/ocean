@@ -119,6 +119,10 @@ class TokenExpirationTracker:
         return self._reauthenticate_interval, self._buffer_seconds
 
 
+# Constants
+DEFAULT_AUTH_TIMEOUT = 30.0
+
+
 class CustomAuth(AuthHandler):
     """Custom authentication with dynamic token retrieval"""
 
@@ -133,6 +137,7 @@ class CustomAuth(AuthHandler):
         reauth_lock_manager: Optional[ReauthLockManager] = None,
     ):
         super().__init__(client, config)
+        self._is_async_setup = True
         self.custom_auth_request = custom_auth_request
         self.custom_auth_response = custom_auth_response
         self.token: Optional[str] = None
@@ -157,10 +162,10 @@ class CustomAuth(AuthHandler):
             self._expiration_tracker = expiration_tracker
 
     def setup(self) -> None:
-        """Setup authentication - deprecated, use authenticate_async() instead.
+        """Setup authentication - deprecated, use async_setup() instead.
 
         This method is kept for backward compatibility but should not be used
-        in new code. Authentication should be done via authenticate_async() in
+        in new code. Authentication should be done via async_setup() in
         @ocean.on_start() hook.
         """
         if not self.custom_auth_request:
@@ -169,19 +174,23 @@ class CustomAuth(AuthHandler):
             )
             return
         logger.warning(
-            "CustomAuth: setup() is deprecated. Use authenticate_async() in @ocean.on_start() instead."
+            "CustomAuth: setup() is deprecated. Use async_setup() in @ocean.on_start() instead."
         )
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 logger.warning(
                     "CustomAuth: Event loop is running, authentication may fail. "
-                    "Please use authenticate_async() instead."
+                    "Please use async_setup() instead."
                 )
             else:
-                loop.run_until_complete(self.authenticate_async())
+                loop.run_until_complete(self.async_setup())
         except RuntimeError:
-            asyncio.run(self.authenticate_async())
+            asyncio.run(self.async_setup())
+
+    async def async_setup(self) -> None:
+        """Setup authentication asynchronously - alias for authenticate_async()"""
+        await self.authenticate_async()
 
     async def authenticate_async(self) -> None:
         """Make authentication request asynchronously and store token (non-blocking)"""
@@ -228,7 +237,7 @@ class CustomAuth(AuthHandler):
         )
 
         async with httpx.AsyncClient(
-            verify=self.verify_ssl, timeout=30.0
+            verify=self.verify_ssl, timeout=DEFAULT_AUTH_TIMEOUT
         ) as async_client:
             response = await async_client.request(
                 method=method,
@@ -265,7 +274,6 @@ class CustomAuth(AuthHandler):
 
         If multiple requests get 401 simultaneously, only the first one will re-authenticate.
         Others will wait for the lock and then skip re-auth if it was already completed.
-
         """
         auth_response_before = self.auth_response
 

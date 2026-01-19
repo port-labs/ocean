@@ -8,20 +8,17 @@ Supports shared client singleton for parallel-safe operation.
 import os
 import re
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Callable, Dict, Any, Optional
 
 from loguru import logger
-from pydantic import parse_raw_as, parse_obj_as
+from pydantic import parse_raw_as
 
 from http_server.client import HttpServerClient
-from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
-from http_server.helpers.template_utils import validate_templates_in_dict
-from http_server.exceptions import (
-    CustomAuthConfigError,
-    CustomAuthRequestError,
-    CustomAuthResponseError,
-    TemplateSyntaxError,
+from http_server.helpers.auth_validation import (
+    validate_custom_auth_request_config,
+    validate_custom_auth_response_config,
 )
+from http_server.exceptions import CustomAuthConfigError
 from port_ocean.context.ocean import ocean
 
 
@@ -34,7 +31,9 @@ class ClientManager:
         self._auth_in_progress = False
         self._auth_lock = asyncio.Lock()
 
-    async def get_client(self, init_fn) -> HttpServerClient:
+    async def get_client(
+        self, init_fn: Callable[[], HttpServerClient]
+    ) -> HttpServerClient:
         """Get the shared client instance, ensuring authentication is complete.
 
         Args:
@@ -96,7 +95,9 @@ class ClientManager:
                 logger.error(f"Failed to initialize client: {e}")
                 raise RuntimeError(f"Failed to initialize client: {e}") from e
 
-    async def _initialize_and_authenticate(self, init_fn) -> None:
+    async def _initialize_and_authenticate(
+        self, init_fn: Callable[[], HttpServerClient]
+    ) -> None:
         """Initialize shared client and authenticate if using custom auth."""
         if self._client is not None and self._auth_complete.is_set():
             return
@@ -107,14 +108,10 @@ class ClientManager:
             logger.debug("Initializing shared HTTP client")
             self._client = init_fn()
 
-            if self._client.auth_type == "custom":
-                logger.debug("Performing initial authentication for custom auth")
-                if hasattr(self._client.auth_handler, "authenticate_async"):
-                    await self._client.auth_handler.authenticate_async()
-                else:
-                    logger.warning(
-                        "Custom auth handler does not support async authentication"
-                    )
+            # Authenticate if handler requires async setup
+            if self._client.auth_handler.is_async_setup:
+                logger.debug("Performing initial authentication for async auth handler")
+                await self._client.auth_handler.async_setup()
 
             logger.debug("Shared HTTP client initialized and authenticated")
             self._auth_complete.set()
@@ -169,59 +166,17 @@ def init_client() -> HttpServerClient:
     custom_headers = _parse_custom_headers(config.get("custom_headers"))
 
     # Parse and validate custom auth request and response if auth_type is custom
-    custom_auth_request = None
-    custom_auth_response = None
     auth_type = config.get("auth_type", "none")
     if auth_type == "custom":
-        # Parse custom auth request
-        custom_auth_request_config = config.get("custom_auth_request")
-        if custom_auth_request_config:
-            # Handle both dict and string (JSON string) formats
-            if isinstance(custom_auth_request_config, str):
-                custom_auth_request = parse_raw_as(
-                    CustomAuthRequestConfig, custom_auth_request_config
-                )
-            else:
-                custom_auth_request = parse_obj_as(
-                    CustomAuthRequestConfig, custom_auth_request_config
-                )
-        else:
-            raise CustomAuthRequestError(
-                "customAuthRequest is required when authType is 'custom'"
-            )
-
-        # Parse custom auth response (this will validate that at least one field is provided)
-        custom_auth_response_config = config.get("custom_auth_response")
-        if custom_auth_response_config is not None:
-            # Handle both dict and string (JSON string) formats
-            if isinstance(custom_auth_response_config, str):
-                custom_auth_response = parse_raw_as(
-                    CustomAuthResponseConfig, custom_auth_response_config
-                )
-            else:
-                custom_auth_response = parse_obj_as(
-                    CustomAuthResponseConfig, custom_auth_response_config
-                )
-        else:
-            raise CustomAuthResponseError(
-                "customAuthResponse is required when authType is 'custom'"
-            )
-
-        if custom_auth_response:
-            try:
-                if custom_auth_response.headers:
-                    validate_templates_in_dict(custom_auth_response.headers, "headers")
-                if custom_auth_response.queryParams:
-                    validate_templates_in_dict(
-                        custom_auth_response.queryParams, "queryParams"
-                    )
-                if custom_auth_response.body:
-                    validate_templates_in_dict(custom_auth_response.body, "body")
-            except TemplateSyntaxError as e:
-                raise TemplateSyntaxError(
-                    f"Invalid template syntax in customAuthResponse: {str(e)}. "
-                    "Please fix template syntax before authentication."
-                ) from e
+        custom_auth_request = validate_custom_auth_request_config(
+            config.get("custom_auth_request")
+        )
+        custom_auth_response = validate_custom_auth_response_config(
+            config.get("custom_auth_response")
+        )
+    else:
+        custom_auth_request = None
+        custom_auth_response = None
 
     return HttpServerClient(
         base_url=config["base_url"],
@@ -233,7 +188,6 @@ def init_client() -> HttpServerClient:
         custom_headers=custom_headers,
         custom_auth_request=custom_auth_request,
         custom_auth_response=custom_auth_response,
-        skip_setup=True,  # Don't authenticate here - will be done in @ocean.on_start()
     )
 
 
