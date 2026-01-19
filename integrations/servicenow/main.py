@@ -7,6 +7,15 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from initialize_client import initialize_client
 from webhook_processors.initialize_client import initialize_webhook_client
+from webhook_processors.processors.incident_processor import IncidentWebhookProcessor
+from webhook_processors.processors.sc_catalog_processor import SCCatalogWebhookProcessor
+from webhook_processors.processors.user_group_processor import UserGroupWebhookProcessor
+from webhook_processors.processors.release_project_processor import (
+    ReleaseProjectWebhookProcessor,
+)
+from webhook_processors.processors.vulnerability_processor import (
+    VulnerabilityWebhookProcessor,
+)
 from integration import ServiceNowResourceConfig, ObjectKind
 
 
@@ -46,3 +55,10 @@ async def on_start() -> None:
     webhook_client = initialize_webhook_client()
     kinds = [str(kind) for kind in ObjectKind]
     await webhook_client.create_webhook(base_url, kinds)
+
+
+ocean.add_webhook_processor("/webhook", IncidentWebhookProcessor)
+ocean.add_webhook_processor("/webhook", SCCatalogWebhookProcessor)
+ocean.add_webhook_processor("/webhook", UserGroupWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ReleaseProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", VulnerabilityWebhookProcessor)

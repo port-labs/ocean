@@ -18,6 +18,7 @@ DEFAULT_FIELDS_PER_TABLE: dict[str, list[str]] = {
         "sys_created_on",
         "sys_updated_on",
         "sys_updated_by",
+        "sys_class_name",
     ],
     "sys_user_group": [
         "sys_id",
@@ -30,6 +31,7 @@ DEFAULT_FIELDS_PER_TABLE: dict[str, list[str]] = {
         "sys_created_on",
         "sys_updated_on",
         "sys_updated_by",
+        "sys_class_name",
     ],
     "sc_catalog": [
         "sys_id",
@@ -40,6 +42,7 @@ DEFAULT_FIELDS_PER_TABLE: dict[str, list[str]] = {
         "sys_created_on",
         "sys_updated_on",
         "sys_updated_by",
+        "sys_class_name",
     ],
     "sn_vul_vulnerable_item": [
         "sys_id",
@@ -59,6 +62,7 @@ DEFAULT_FIELDS_PER_TABLE: dict[str, list[str]] = {
         "sys_updated_on",
         "sys_updated_by",
         "active",
+        "sys_class_name",
     ],
     "release_project": [
         "sys_id",
@@ -82,5 +86,6 @@ DEFAULT_FIELDS_PER_TABLE: dict[str, list[str]] = {
         "sys_updated_on",
         "sys_updated_by",
         "active",
+        "sys_class_name",
     ],
 }

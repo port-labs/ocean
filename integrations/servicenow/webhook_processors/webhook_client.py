@@ -11,6 +11,34 @@ class ServicenowWebhookClient(ServicenowClient):
 
     REST_MESSAGE_NAME = "Ocean Port Outbound"
 
+    def _generate_business_rule_script(
+        self, fields: List[str], delete_event: bool = False
+    ) -> str:
+        payload_lines: List[str] = []
+
+        for field in fields:
+            safe_name = field.replace(".", "_")
+            source = "previous" if delete_event else "current"
+            payload_lines.append(f'    "{safe_name}": {source}.{field} + "",')
+
+        if payload_lines:
+            payload_lines[-1] = payload_lines[-1].rstrip(",")
+
+        script = f"""
+        (function executeRule(current, previous) {{
+            var rm = new sn_ws.RESTMessageV2('{self.REST_MESSAGE_NAME}', 'post');
+
+            var payload = {{
+        {chr(10).join(payload_lines)}
+            }};
+
+            rm.setRequestBody(JSON.stringify(payload));
+            rm.execute();
+        }})(current, previous);
+        """
+
+        return script.strip()
+
     async def _make_request(
         self,
         resource: str,
@@ -121,11 +149,11 @@ class ServicenowWebhookClient(ServicenowClient):
         fields: List[str],
         order: int = 1000,
     ) -> None:
-        rule_name = f"Ocean {table_name} to Port webhook"
+        rule_name = f"{table_name} to port"
 
         if await self._business_rule_exists(rule_name, table_name):
             logger.debug(
-                f'Business Rule "{rule_name}" already exists for {table_name}. Skipping.'
+                f'Business rule "{rule_name}" already exists for {table_name}. Skipping.'
             )
             return
 
@@ -133,49 +161,51 @@ class ServicenowWebhookClient(ServicenowClient):
             f"    {field.replace('.', '_')}: current.{field} + ''," for field in fields
         ]
 
-        script = f"""
-        (function executeRule(current, previous) {{
-            var rm = new sn_ws.RESTMessageV2('{rest_message_sys_id}', 'post');
-
-            var payload = {{
-                {chr(10).join(payload_lines)}
-                sys_class_name: current.sys_class_name + '',
-                sys_updated_on: current.sys_updated_on + '',
-                sys_updated_by: current.sys_updated_by + ''
-            }};
-
-            rm.setRequestBody(JSON.stringify(payload));
-            rm.execute();
-        }})(current, previous);
-        """
-
+        upsert_script = self._generate_business_rule_script(payload_lines)
         payload = {
             "name": rule_name,
             "sys_scope": "global",
-            "table": table_name,
-            "active": True,
+            "collection": table_name,
+            "active": "true",
             "when": "async",
-            "insert": True,
-            "update": True,
-            "delete": False,
-            "query": False,
-            "advanced": True,
+            "advanced": "true",
+            "action": ["insert", "update"],
             "order": order,
+            "priority": 100,
             "description": f"Forwards {table_name} create/update events to Port",
-            "script": script.strip(),
+            "script": upsert_script,
+        }
+
+        delete_script = self._generate_business_rule_script(
+            payload_lines, delete_event=True
+        )
+        delete_payload = {
+            **payload,
+            "name": f"{rule_name} (delete)",
+            "action": ["delete"],
+            "when": "after",
+            "description": f"Forwards {table_name} delete events to Port",
+            "script": delete_script,
         }
 
         url = f"{self.table_base_url}/sys_script"
         logger.debug(f"Creating BR → {rule_name}")
 
-        response = await self._make_request(url, method="POST", json_data=payload)
+        tasks = [
+            self._make_request(url, method="POST", json_data=payload),
+            self._make_request(url, method="POST", json_data=delete_payload),
+        ]
 
-        if response and "result" in response and "sys_id" in response["result"]:
-            logger.info(f"Business Rule created → {rule_name}")
-        else:
-            logger.error(
-                f"Failed to create BR {rule_name}", extra={"response": response}
-            )
+        responses = await asyncio.gather(*tasks)
+
+        for response in responses:
+            if response and "result" in response and "sys_id" in response["result"]:
+                logger.info(f"Business rule created → {rule_name}")
+            else:
+                logger.error(
+                    f"Failed to create business rule {rule_name}",
+                    extra={"response": response},
+                )
 
     async def create_webhook(self, webhook_base_url: str, tables: List[str]) -> None:
         """Set up webhooks for the specified tables"""
@@ -187,7 +217,7 @@ class ServicenowWebhookClient(ServicenowClient):
             return
 
         tasks = []
-        order = 1000
+        order = 200
 
         for table_name in tables:
             if table_name not in DEFAULT_FIELDS_PER_TABLE:
@@ -209,3 +239,12 @@ class ServicenowWebhookClient(ServicenowClient):
             logger.success(f"Webhook configuration completed for {len(tasks)} tables")
         else:
             logger.info("No valid tables to configure")
+
+    async def get_record_by_sys_id(
+        self, table_name: str, sys_id: str
+    ) -> Optional[dict[str, Any]]:
+        url = f"{self.table_base_url}/{table_name}/{sys_id}"
+        response = await self._make_request(url)
+        if response and (result := response.get("result", {})):
+            return result
+        return None
