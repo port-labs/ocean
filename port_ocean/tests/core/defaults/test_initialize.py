@@ -599,7 +599,9 @@ async def test_ocean_setup_integration_not_exists(
     # First call returns empty (integration doesn't exist), subsequent calls return created integration
     call_count = 0
 
-    async def get_current_integration_side_effect(*args, **kwargs):
+    async def get_current_integration_side_effect(
+        *args: Any, **kwargs: Any
+    ) -> dict[str, Any]:
         nonlocal call_count
         call_count += 1
         if call_count == 1:
@@ -884,7 +886,9 @@ async def test_none_origin_provision_disabled_integration_not_exists(
     # First call returns empty (integration doesn't exist), subsequent calls return created integration
     call_count = 0
 
-    async def get_current_integration_side_effect(*args, **kwargs):
+    async def get_current_integration_side_effect(
+        *args: Any, **kwargs: Any
+    ) -> dict[str, Any]:
         nonlocal call_count
         call_count += 1
         if call_count == 1:

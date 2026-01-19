@@ -27,6 +27,7 @@ class BaseSetup(ABC):
     def _is_port_provisioning_enabled(self) -> bool:
         return False
 
+    @property
     @abstractmethod
     def _port_resources_origin(self) -> CreatePortResourcesOrigin:
         pass
@@ -35,9 +36,9 @@ class BaseSetup(ABC):
     async def _setup(self) -> None:
         pass
 
-    @abstractmethod
-    def _default_mapping(self) -> PortAppConfig:
-        pass
+    @property
+    def _default_mapping(self) -> PortAppConfig | None:
+        return None
 
     async def _verify_integration_configuration(
         self,
@@ -62,7 +63,7 @@ class BaseSetup(ABC):
                 actions_processing_enabled=self.integration_config.actions_processor.enabled,
             )
 
-    async def _upsert_integration(self) -> None:
+    async def _upsert_integration(self) -> dict[str, Any] | None:
         try:
             integration = await self.port_client.get_current_integration(
                 should_log=False,
@@ -91,6 +92,7 @@ class BaseSetup(ABC):
 
         logger.info("Initializing integration at port")
         integration = await self._upsert_integration()
-        await self._verify_integration_configuration(integration)
+        if integration:
+            await self._verify_integration_configuration(integration)
 
         await self._setup()

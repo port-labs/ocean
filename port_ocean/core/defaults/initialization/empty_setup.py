@@ -11,7 +11,7 @@ class EmptySetup(BaseSetup):
         return CreatePortResourcesOrigin.Empty
 
     @property
-    def _default_mapping(self) -> PortAppConfig:
+    def _default_mapping(self) -> PortAppConfig | None:
         return PortAppConfig(resources=[])
 
     async def _setup(self) -> None:

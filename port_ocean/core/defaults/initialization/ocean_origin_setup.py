@@ -1,5 +1,5 @@
 import asyncio
-from typing import Type
+from typing import Type, Any
 
 import httpx
 from loguru import logger
@@ -29,16 +29,21 @@ class OceanOriginSetup(BaseSetup):
         config_class: Type[PortAppConfig],
     ):
         super().__init__(port_client, integration_config, config_class)
-        self._defaults: Defaults = get_port_integration_defaults(
+        defaults: Defaults | None = get_port_integration_defaults(
             config_class, integration_config.resources_path
         )
+
+        if defaults is None:
+            defaults = Defaults(port_app_config=PortAppConfig(resources=[]))
+
+        self._defaults: Defaults = defaults
 
     @property
     def _port_resources_origin(self) -> CreatePortResourcesOrigin:
         return CreatePortResourcesOrigin.Ocean
 
     @property
-    def _default_mapping(self) -> PortAppConfig:
+    def _default_mapping(self) -> PortAppConfig | None:
         return self._defaults.port_app_config
 
     async def _setup(self) -> None:
@@ -219,8 +224,8 @@ class OceanOriginSetup(BaseSetup):
 
     @staticmethod
     def _deconstruct_blueprints_to_creation_steps(
-        raw_blueprints: list[dict],
-    ) -> tuple[list[dict], ...]:
+        raw_blueprints: list[dict[str, Any]],
+    ) -> tuple[list[dict[str, Any]], ...]:
         """Deconstruct blueprints into creation stages to avoid conflicts."""
         bare_blueprint, with_relations, full_blueprint = [], [], []
 
