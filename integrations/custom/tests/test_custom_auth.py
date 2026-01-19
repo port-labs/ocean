@@ -3,14 +3,13 @@
 import asyncio
 import pytest
 import httpx
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from unittest.mock import AsyncMock, patch, MagicMock
 
 from http_server.handlers import (
     CustomAuth,
     _evaluate_template,
     _evaluate_templates_in_dict,
-    _reauthenticate_lock,
 )
 from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
 from http_server.client import HttpServerClient
