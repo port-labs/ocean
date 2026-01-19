@@ -8,6 +8,7 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
+from port_ocean.core.models import CreatePortResourcesOrigin
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 
@@ -127,7 +128,7 @@ class IntegrationClientMixin:
         _type: str,
         changelog_destination: dict[str, Any],
         port_app_config: Optional["PortAppConfig"] = None,
-        create_port_resources_origin_in_port: Optional[bool] = False,
+        create_port_resources_origin: CreatePortResourcesOrigin = CreatePortResourcesOrigin.Ocean,
         actions_processing_enabled: Optional[bool] = False,
     ) -> Dict[str, Any]:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
@@ -139,14 +140,15 @@ class IntegrationClientMixin:
             "changelogDestination": changelog_destination,
             "config": {},
             "actionsProcessingEnabled": actions_processing_enabled,
+            "createPortResourcesOrigin": create_port_resources_origin.value,
         }
 
         query_params = {}
 
-        if create_port_resources_origin_in_port:
+        if create_port_resources_origin == CreatePortResourcesOrigin.Port:
             query_params[CREATE_RESOURCES_PARAM_NAME] = CREATE_RESOURCES_PARAM_VALUE
 
-        if port_app_config and not create_port_resources_origin_in_port:
+        if port_app_config:
             json["config"] = port_app_config.to_request()
         response = await self.client.post(
             f"{self.auth.api_url}/integration",
@@ -155,7 +157,7 @@ class IntegrationClientMixin:
             params=query_params,
         )
         handle_port_status_code(response)
-        if create_port_resources_origin_in_port:
+        if create_port_resources_origin == CreatePortResourcesOrigin.Port:
             result = (
                 await self.poll_integration_until_default_provisioning_is_complete()
             )

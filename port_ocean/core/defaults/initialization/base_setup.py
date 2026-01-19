@@ -79,8 +79,7 @@ class BaseSetup(ABC):
                     self.integration_config.event_listener.get_changelog_destination_details(),
                     port_app_config=self._default_mapping,
                     actions_processing_enabled=self.integration_config.actions_processor.enabled,
-                    create_port_resources_origin_in_port=self._port_resources_origin
-                    == CreatePortResourcesOrigin.Port,
+                    create_port_resources_origin_in_port=self._port_resources_origin,
                 )
 
             return integration
