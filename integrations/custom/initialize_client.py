@@ -93,7 +93,7 @@ def init_client() -> HttpServerClient:
 
         # Parse custom auth response (this will validate that at least one field is provided)
         custom_auth_response_config = config.get("custom_auth_response")
-        if custom_auth_response_config:
+        if custom_auth_response_config is not None:
             # Handle both dict and string (JSON string) formats
             if isinstance(custom_auth_response_config, str):
                 custom_auth_response = parse_raw_as(

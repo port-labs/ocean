@@ -5,7 +5,7 @@ import pytest
 import httpx
 import time
 from typing import Dict, Any
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock, PropertyMock
 
 from http_server.handlers import (
     CustomAuth,
@@ -604,6 +604,24 @@ class TestClient401Handling:
     """Test 401 re-authentication in HttpServerClient"""
 
     @pytest.fixture
+    def mock_entity_processor(self) -> MagicMock:
+        """Mock Ocean's entity processor for JQ evaluation"""
+        mock_processor = AsyncMock()
+
+        async def mock_search(data: Dict[str, Any], jq_path: str) -> Any:
+            """Simple mock JQ processor"""
+            if jq_path == ".access_token":
+                return data.get("access_token")
+            elif jq_path == ".expires_in":
+                return data.get("expires_in")
+            elif jq_path == ".token_type":
+                return data.get("token_type")
+            return None
+
+        mock_processor._search = mock_search
+        return mock_processor
+
+    @pytest.fixture
     def client_with_custom_auth(self) -> HttpServerClient:
         auth_request = CustomAuthRequestConfig(
             endpoint="/auth",
@@ -636,7 +654,9 @@ class TestClient401Handling:
             return client
 
     async def test_401_triggers_reauthentication(
-        self, client_with_custom_auth: HttpServerClient
+        self,
+        client_with_custom_auth: HttpServerClient,
+        mock_entity_processor: MagicMock,
     ) -> None:
         """Test that 401 triggers re-authentication and retry"""
         # Set initial auth
@@ -676,12 +696,16 @@ class TestClient401Handling:
             side_effect=[mock_401, mock_200]
         )
 
-        response = await client_with_custom_auth._make_request(
-            url="https://api.example.com/data",
-            method="GET",
-            params={},
-            headers={},
-        )
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            mock_entity_processor,
+        ):
+            response = await client_with_custom_auth._make_request(
+                url="https://api.example.com/data",
+                method="GET",
+                params={},
+                headers={},
+            )
 
         assert response.status_code == 200
         # Verify re-authentication was called (auth_response updated)
@@ -693,7 +717,9 @@ class TestClient401Handling:
         assert client_with_custom_auth.client.request.call_count == 2
 
     async def test_401_reauthentication_failure(
-        self, client_with_custom_auth: HttpServerClient
+        self,
+        client_with_custom_auth: HttpServerClient,
+        mock_entity_processor: MagicMock,
     ) -> None:
         """Test that 401 with failed re-auth raises error"""
         # Type ignore needed because CustomAuth has auth_response attribute
@@ -720,13 +746,17 @@ class TestClient401Handling:
 
         client_with_custom_auth.client.request = AsyncMock(return_value=mock_401)  # type: ignore[method-assign]
 
-        with pytest.raises(httpx.HTTPStatusError):
-            await client_with_custom_auth._make_request(
-                url="https://api.example.com/data",
-                method="GET",
-                params={},
-                headers={},
-            )
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            mock_entity_processor,
+        ):
+            with pytest.raises(httpx.HTTPStatusError):
+                await client_with_custom_auth._make_request(
+                    url="https://api.example.com/data",
+                    method="GET",
+                    params={},
+                    headers={},
+                )
 
 
 # ============================================================================
@@ -1252,7 +1282,11 @@ class TestEarlyValidation:
         }
         from port_ocean.context.ocean import ocean
 
-        monkeypatch.setattr(ocean, "integration_config", config)
+        monkeypatch.setattr(
+            ocean.__class__,
+            "integration_config",
+            PropertyMock(return_value=config),
+        )
 
     def test_init_client_validates_template_syntax_before_auth(
         self, mock_ocean_config: None
@@ -1274,7 +1308,11 @@ class TestEarlyValidation:
         config["custom_auth_response"] = {
             "headers": {"Authorization": "Bearer {{access_token}}"},  # Missing dot
         }
-        monkeypatch.setattr(ocean, "integration_config", config)
+        monkeypatch.setattr(
+            ocean.__class__,
+            "integration_config",
+            PropertyMock(return_value=config),
+        )
 
         from initialize_client import init_client
 
@@ -1291,7 +1329,11 @@ class TestEarlyValidation:
 
         config = ocean.integration_config.copy()
         del config["custom_auth_request"]
-        monkeypatch.setattr(ocean, "integration_config", config)
+        monkeypatch.setattr(
+            ocean.__class__,
+            "integration_config",
+            PropertyMock(return_value=config),
+        )
 
         from initialize_client import init_client
 
@@ -1307,7 +1349,11 @@ class TestEarlyValidation:
 
         config = ocean.integration_config.copy()
         del config["custom_auth_response"]
-        monkeypatch.setattr(ocean, "integration_config", config)
+        monkeypatch.setattr(
+            ocean.__class__,
+            "integration_config",
+            PropertyMock(return_value=config),
+        )
 
         from initialize_client import init_client
 
@@ -1323,7 +1369,11 @@ class TestEarlyValidation:
 
         config = ocean.integration_config.copy()
         config["custom_auth_response"] = {}  # Empty - should fail
-        monkeypatch.setattr(ocean, "integration_config", config)
+        monkeypatch.setattr(
+            ocean.__class__,
+            "integration_config",
+            PropertyMock(return_value=config),
+        )
 
         from initialize_client import init_client
 

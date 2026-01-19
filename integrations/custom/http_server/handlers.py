@@ -67,7 +67,7 @@ def _validate_template_syntax(template: str, context: str = "") -> None:
         context_msg = f" in {context}" if context else ""
         raise TemplateSyntaxError(
             f"Invalid template syntax{context_msg}: {', '.join(invalid_templates)}. "
-            f"Templates must use the format {{.path}} (e.g., {{.access_token}}). "
+            f"Templates must use the format {{{{.path}}}} (e.g., {{{{.access_token}}}}). "
             f"Found invalid templates: {invalid_templates}"
         )
 
