@@ -1257,13 +1257,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.32.10"
+version = "0.32.13"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.32.10-py3-none-any.whl", hash = "sha256:6dd040f6a8cb864e15721bbe7bfaf49773049b65b0151c36d9c5075ded57907b"},
-    {file = "port_ocean-0.32.10.tar.gz", hash = "sha256:bc69b40342d029c8c2e881facb9119b4a61894566ef03a1268c628e9e5dd4712"},
+    {file = "port_ocean-0.32.13-py3-none-any.whl", hash = "sha256:654c01d71f23184d89faa98c825e4c302ffc377987282934ba6c4e1287df6811"},
+    {file = "port_ocean-0.32.13.tar.gz", hash = "sha256:7599ceaf6372269f205ef6433dd4437beefe25945404e76f6a5a3d9e6ca20637"},
 ]
 
 [package.dependencies]
@@ -1292,7 +1292,7 @@ pyyaml = ">=6.0,<7.0"
 rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli\""}
 six = ">=1.16.0,<2.0.0"
 tomli = ">=2.0.1,<3.0.0"
-urllib3 = ">=2.5.0,<3.0.0"
+urllib3 = ">=2.6.3,<3.0.0"
 uvicorn = ">=0.34.3,<0.35.0"
 werkzeug = ">=2.3.4,<4.0.0"
 
@@ -1904,13 +1904,13 @@ files = [
 
 [[package]]
 name = "urllib3"
-version = "2.6.1"
+version = "2.6.3"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "urllib3-2.6.1-py3-none-any.whl", hash = "sha256:e67d06fe947c36a7ca39f4994b08d73922d40e6cca949907be05efa6fd75110b"},
-    {file = "urllib3-2.6.1.tar.gz", hash = "sha256:5379eb6e1aba4088bae84f8242960017ec8d8e3decf30480b3a1abdaa9671a3f"},
+    {file = "urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4"},
+    {file = "urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed"},
 ]
 
 [package.extras]
@@ -1971,4 +1971,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "3a61d554d4112f1751ba9ba0774ff1c9430e5687cdaf3890a80ce765eaea175b"
+content-hash = "e5efa59e3545dbb60d79c366fb04715ff3f1270978c8e65474d5aba39578459e"
