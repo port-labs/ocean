@@ -16,6 +16,7 @@ class ServicenowClient:
         authenticator: AbstractServiceNowAuthenticator,
     ):
         self.servicenow_url = servicenow_url
+        self.table_base_url = f"{self.servicenow_url}/api/now/table"
         self.authenticator = authenticator
         self.http_client = http_async_client
 
@@ -44,7 +45,7 @@ class ServicenowClient:
         logger.info(
             f"Fetching Servicenow data for resource: {resource_kind} with request params: {params}"
         )
-        url = f"{self.servicenow_url}/api/now/table/{resource_kind}"
+        url = f"{self.table_base_url}/{resource_kind}"
 
         while url:
             try:
@@ -73,7 +74,7 @@ class ServicenowClient:
         await self._ensure_auth_headers()
         try:
             response = await self.http_client.get(
-                f"{self.servicenow_url}/api/now/table/sys_user?sysparm_limit=1"
+                f"{self.table_base_url}/sys_user?sysparm_limit=1"
             )
             response.raise_for_status()
             logger.info("Servicenow sanity check passed")
