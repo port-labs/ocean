@@ -70,6 +70,7 @@ ijson = "^3.4.0"
 aiofiles = "^24.1.0"
 cryptography = "^44.0.1"
 jmespath = "^1.0.1"
+psutil = "^7.2.1"
 
 [tool.poetry.extras]
 cli = ["click", "rich", "cookiecutter", "jinja2-time"]
@@ -92,10 +93,10 @@ types-toml = "^0.10.8.6"
 yamllint = "^1.32.0"
 pytest-timeout = "^2.3.1"
 cryptography = ">=43.0.1,<45.0.0"
-psutil = "^7.0.0"
 memray = "^1.17.2"
 faker = "^37.3.0"
 types-aiofiles = "^24.1.0.20250809"
+types-psutil = "^7.2.1.20251231"
 
 [tool.towncrier]
 directory = "changelog"

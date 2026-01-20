@@ -7,11 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.32.13 (2026-01-20)
+## 0.33.0 (2026-01-20)
 
 ### Improvements
 
 - Allowing Empty setup mode which make integraion be created without any resources
+
+
+## 0.32.14 (2026-01-20)
+
+### Bug fixes
+
+- Add export of system and request metrics
 
 
 ## 0.32.13 (2026-01-15)
@@ -19,6 +26,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug fixes
 
 - Revert Add export of system and request metrics
+
 
 ## 0.32.12 (2026-01-15)
 
@@ -31,12 +39,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Format response when logging error
 - Prevent Lakehouse from breaking the regular integration behavior on error from port
 
+### Improvements
+
+- Add export of system and request metrics
+
 
 ## 0.32.11 (2026-01-14)
 
 ### Bug fixes
 
 - Added except clause to catch random errors
+
 
 ## 0.32.10 (2026-01-11)
 
