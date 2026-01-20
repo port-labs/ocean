@@ -7,10 +7,8 @@ Supports shared client singleton for parallel-safe operation.
 
 import os
 import re
-import asyncio
-from typing import Callable, Dict, Any, Optional
+from typing import Dict, Any, Optional
 
-from loguru import logger
 from pydantic import parse_raw_as
 
 from http_server.client import HttpServerClient
@@ -22,108 +20,8 @@ from http_server.exceptions import CustomAuthConfigError
 from port_ocean.context.ocean import ocean
 
 
-class ClientManager:
-    """Manages the shared HTTP client singleton with thread-safe initialization and authentication."""
-
-    def __init__(self) -> None:
-        self._client: Optional[HttpServerClient] = None
-        self._auth_complete = asyncio.Event()
-        self._auth_in_progress = False
-        self._auth_lock = asyncio.Lock()
-
-    async def get_client(
-        self, init_fn: Callable[[], HttpServerClient]
-    ) -> HttpServerClient:
-        """Get the shared client instance, ensuring authentication is complete.
-
-        Args:
-            init_fn: Function to initialize the client if needed
-
-        Returns:
-            HttpServerClient: The initialized and authenticated client
-
-        Raises:
-            RuntimeError: If client initialization fails
-        """
-        if self._client is not None and self._auth_complete.is_set():
-            logger.debug("Client already initialized and authenticated")
-            return self._client
-
-        if self._auth_in_progress:
-            logger.debug("Authentication in progress, waiting for completion...")
-            await self._auth_complete.wait()
-            if self._client is None:
-                raise RuntimeError("Authentication completed but client is None")
-            logger.debug("Authentication completed, returning client")
-            return self._client
-
-        async with self._auth_lock:
-            if self._client is not None and self._auth_complete.is_set():
-                return self._client
-
-            if self._auth_in_progress:
-                logger.debug("Authentication started by another coroutine, waiting...")
-                await self._auth_complete.wait()
-                if self._client is None:
-                    raise RuntimeError("Authentication completed but client is None")
-                return self._client
-
-            logger.debug("Starting client initialization and authentication...")
-            try:
-                await self._initialize_and_authenticate(init_fn)
-                if not self._auth_complete.is_set():
-                    logger.warning("Auth complete event not set, waiting...")
-                    await self._auth_complete.wait()
-                if self._client is None:
-                    raise RuntimeError("Client initialization returned None")
-                if (
-                    self._client.auth_type == "custom"
-                    and hasattr(self._client.auth_handler, "auth_response")
-                    and self._client.auth_handler.auth_response is None
-                ):
-                    raise RuntimeError(
-                        "Authentication completed but auth_response is None in handler. "
-                        "This indicates authentication did not complete properly."
-                    )
-                logger.debug(
-                    "Client initialization and authentication completed successfully"
-                )
-                return self._client
-            except Exception as e:
-                self._auth_in_progress = False
-                self._auth_complete.clear()
-                logger.error(f"Failed to initialize client: {e}")
-                raise RuntimeError(f"Failed to initialize client: {e}") from e
-
-    async def _initialize_and_authenticate(
-        self, init_fn: Callable[[], HttpServerClient]
-    ) -> None:
-        """Initialize shared client and authenticate if using custom auth."""
-        if self._client is not None and self._auth_complete.is_set():
-            return
-
-        self._auth_in_progress = True
-
-        try:
-            logger.debug("Initializing shared HTTP client")
-            self._client = init_fn()
-
-            # Authenticate if handler requires async setup
-            if self._client.auth_handler.is_async_setup:
-                logger.debug("Performing initial authentication for async auth handler")
-                await self._client.auth_handler.async_setup()
-
-            logger.debug("Shared HTTP client initialized and authenticated")
-            self._auth_complete.set()
-        except Exception as e:
-            self._auth_in_progress = False
-            self._auth_complete.clear()
-            logger.error(f"Failed to initialize and authenticate client: {e}")
-            raise
-
-
-# Global client manager instance
-_client_manager = ClientManager()
+# Global client singleton
+_client: Optional[HttpServerClient] = None
 
 
 def _resolve_env_vars(value: str) -> str:
@@ -192,28 +90,14 @@ def init_client() -> HttpServerClient:
 
 
 async def get_client() -> HttpServerClient:
-    """Get the shared client instance, ensuring authentication is complete.
+    """Get the shared client instance.
 
-    This function will wait for authentication to complete if it's in progress,
-    or trigger authentication if it hasn't started yet.
-
-    Returns:
-        HttpServerClient: The initialized and authenticated client
-
-    Raises:
-        RuntimeError: If client initialization fails
-    """
-    return await _client_manager.get_client(init_client)
-
-
-async def initialize_and_authenticate() -> HttpServerClient:
-    """Initialize shared client and authenticate if using custom auth.
-
-    This should be called from @ocean.on_start() hook to ensure
-    authentication happens once before any resync operations.
-    Can also be called from get_client() if authentication hasn't started.
+    Authentication is handled automatically by httpx.Auth when requests are made.
 
     Returns:
-        HttpServerClient: The initialized and authenticated client
+        HttpServerClient: The initialized client
     """
-    return await _client_manager.get_client(init_client)
+    global _client
+    if _client is None:
+        _client = init_client()
+    return _client

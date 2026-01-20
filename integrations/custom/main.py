@@ -11,24 +11,15 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from initialize_client import get_client, initialize_and_authenticate
+from initialize_client import get_client
 from http_server.overrides import HttpServerResourceConfig
 from http_server.helpers.endpoint_resolver import resolve_dynamic_endpoints
-
-
-@ocean.on_start()
-async def on_start() -> None:
-    """Initialize shared client and authenticate before any resync operations"""
-    logger.info("Initializing HTTP server integration")
-    await initialize_and_authenticate()
-    logger.info("HTTP server integration ready")
 
 
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync resources from HTTP endpoints - kind is the endpoint path"""
     logger.info(f"Starting resync for kind (endpoint): {kind}")
-    # Ensure client is initialized and authenticated before proceeding
     http_client = await get_client()
     resource_config = cast(HttpServerResourceConfig, event.resource_config)
 
