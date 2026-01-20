@@ -149,7 +149,7 @@ class ServicenowWebhookClient(ServicenowClient):
         fields: List[str],
         order: int = 1000,
     ) -> None:
-        rule_name = f"{table_name} to port"
+        rule_name = f"Ocean Port: {table_name}"
 
         if await self._business_rule_exists(rule_name, table_name):
             logger.debug(
@@ -169,7 +169,10 @@ class ServicenowWebhookClient(ServicenowClient):
             "active": "true",
             "when": "async",
             "advanced": "true",
-            "action": ["insert", "update"],
+            "action_insert": "true",
+            "action_update": "true",
+            "action_delete": "false",
+            "action_query": "false",
             "order": order,
             "priority": 100,
             "description": f"Forwards {table_name} create/update events to Port",
@@ -182,7 +185,10 @@ class ServicenowWebhookClient(ServicenowClient):
         delete_payload = {
             **payload,
             "name": f"{rule_name} (delete)",
-            "action": ["delete"],
+            "action_insert": "false",
+            "action_update": "false",
+            "action_delete": "true",
+            "action_query": "false",
             "when": "after",
             "description": f"Forwards {table_name} delete events to Port",
             "script": delete_script,
