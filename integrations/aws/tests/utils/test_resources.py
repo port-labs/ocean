@@ -286,7 +286,6 @@ async def test_get_bucket_location_error(mock_session: AsyncMock) -> None:
 async def test_get_bucket_resource_success(mock_session: AsyncMock) -> None:
     """Test get_bucket_resource returns resource when successful."""
     bucket_name = "test-bucket"
-    region = "us-east-1"
     expected_resource = {
         "ResourceDescription": {
             "Properties": '{"BucketName": "test-bucket"}',
@@ -294,16 +293,10 @@ async def test_get_bucket_resource_success(mock_session: AsyncMock) -> None:
         }
     }
 
-    @asynccontextmanager
-    async def mock_cloudcontrol_client(
-        service_name: str, **kwargs: Any
-    ) -> AsyncGenerator[AsyncMock, None]:
-        mock_client = AsyncMock()
-        mock_client.get_resource.return_value = expected_resource
-        yield mock_client
+    mock_client = AsyncMock()
+    mock_client.get_resource.return_value = expected_resource
 
-    mock_session.client = mock_cloudcontrol_client
-    result = await get_bucket_resource(bucket_name, region, mock_session)
+    result = await get_bucket_resource(bucket_name, cloudcontrol_client=mock_client)
     assert result == expected_resource
 
 
@@ -311,22 +304,15 @@ async def test_get_bucket_resource_success(mock_session: AsyncMock) -> None:
 async def test_get_bucket_resource_not_found(mock_session: AsyncMock) -> None:
     """Test get_bucket_resource returns None on NotFound error."""
     bucket_name = "test-bucket"
-    region = "us-east-1"
 
-    @asynccontextmanager
-    async def mock_cloudcontrol_client(
-        service_name: str, **kwargs: Any
-    ) -> AsyncGenerator[AsyncMock, None]:
-        mock_client = AsyncMock()
-        error = ClientError(
-            {"Error": {"Code": "NotFound", "Message": "Bucket not found"}},
-            "GetResource",
-        )
-        mock_client.get_resource.side_effect = error
-        yield mock_client
+    mock_client = AsyncMock()
+    error = ClientError(
+        {"Error": {"Code": "NotFound", "Message": "Bucket not found"}},
+        "GetResource",
+    )
+    mock_client.get_resource.side_effect = error
 
-    mock_session.client = mock_cloudcontrol_client
-    result = await get_bucket_resource(bucket_name, region, mock_session)
+    result = await get_bucket_resource(bucket_name, cloudcontrol_client=mock_client)
     assert result is None
 
 
@@ -334,20 +320,13 @@ async def test_get_bucket_resource_not_found(mock_session: AsyncMock) -> None:
 async def test_get_bucket_resource_other_error(mock_session: AsyncMock) -> None:
     """Test get_bucket_resource returns None on non-NotFound error."""
     bucket_name = "test-bucket"
-    region = "us-east-1"
 
-    @asynccontextmanager
-    async def mock_cloudcontrol_client(
-        service_name: str, **kwargs: Any
-    ) -> AsyncGenerator[AsyncMock, None]:
-        mock_client = AsyncMock()
-        error = ClientError(
-            {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
-            "GetResource",
-        )
-        mock_client.get_resource.side_effect = error
-        yield mock_client
+    mock_client = AsyncMock()
+    error = ClientError(
+        {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
+        "GetResource",
+    )
+    mock_client.get_resource.side_effect = error
 
-    mock_session.client = mock_cloudcontrol_client
-    result = await get_bucket_resource(bucket_name, region, mock_session)
+    result = await get_bucket_resource(bucket_name, cloudcontrol_client=mock_client)
     assert result is None
