@@ -253,6 +253,144 @@ async def resync_sqs_queue(
                 raise e
 
 
+async def get_bucket_location(
+    bucket_name: str, session: aioboto3.Session
+) -> str | None:
+    async with session.client("s3") as s3:
+        try:
+            location = await s3.get_bucket_location(Bucket=bucket_name)
+            # AWS returns None for LocationConstraint when bucket is in us-east-1
+            location_constraint = location.get("LocationConstraint")
+            return location_constraint or "us-east-1"
+        except ClientError as e:
+            logger.error(f"Error retrieving location for {bucket_name}: {e}")
+            return None
+
+
+async def get_bucket_resource(
+    bucket_name: str, region: str, session: aioboto3.Session
+) -> dict[str, Any] | None:
+    try:
+        async with session.client("cloudcontrol", region_name=region) as cloudcontrol:
+            resource = await cloudcontrol.get_resource(
+                TypeName="AWS::S3::Bucket", Identifier=bucket_name
+            )
+            return resource
+    except ClientError as e:
+        if is_resource_not_found_exception(e):
+            logger.debug(
+                f"S3 bucket '{bucket_name}' not found in region '{region}':{e}"
+            )
+            return None
+        else:
+            logger.error(
+                f"Error retrieving S3 bucket '{bucket_name}' from region {region}: {e}"
+            )
+            return None
+
+
+async def resync_s3_bucket(
+    kind: str,
+    session: aioboto3.Session,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+
+    region = session.region_name
+    account_id = await _session_manager.find_account_id_by_session(session)
+
+    async with session.client(
+        "cloudcontrol",
+        config=Boto3Config(
+            retries={
+                "max_attempts": CloudControlThrottlingConfig.MAX_RETRY_ATTEMPTS.value,
+                "mode": CloudControlThrottlingConfig.RETRY_MODE.value,
+            },
+        ),
+    ) as cloudcontrol:
+        paginator = AsyncPaginator(
+            client=cloudcontrol,
+            method_name="list_resources",
+            list_param="ResourceDescriptions",
+        )
+        try:
+            async for resources_batch in paginator.paginate(TypeName=kind):
+                if not resources_batch:
+                    continue
+                logger.info(
+                    f"Received {len(resources_batch)} {kind} resources in region {region}"
+                )
+                total_resources = len(resources_batch)
+                processed_count = 0
+                for chunk in process_list_in_chunks(
+                    resources_batch, RESYNC_WITH_GET_RESOURCE_API_BATCH_SIZE
+                ):
+                    processed_chunk = []
+                    for bucket in chunk:
+                        bucket_name = bucket["Identifier"]
+                        logger.debug(f"Processing S3 bucket: {bucket_name}")
+
+                        resource = await get_bucket_resource(
+                            bucket_name, region, session
+                        )
+                        bucket_region = None
+
+                        if resource is None:
+                            logger.info(
+                                f"S3 bucket '{bucket_name}' not found in {region}, checking actual location..."
+                            )
+                            bucket_region = await get_bucket_location(
+                                bucket_name, session
+                            )
+                            if not bucket_region:
+                                logger.error(
+                                    f"S3 bucket '{bucket_name}' location could not be determined - bucket will be skipped"
+                                )
+                                continue
+
+                            logger.info(
+                                f"S3 bucket '{bucket_name}' located in {bucket_region}, retrying from bucket region"
+                            )
+                            resource = await get_bucket_resource(
+                                bucket_name, bucket_region, session
+                            )
+
+                        if resource:
+                            processed_chunk.append(
+                                fix_unserializable_date_properties(
+                                    {
+                                        "Identifier": bucket_name,
+                                        "Properties": json.loads(
+                                            resource.get("ResourceDescription", {}).get(
+                                                "Properties", "{}"
+                                            )
+                                        ),
+                                        CustomProperties.KIND.value: kind,
+                                        CustomProperties.ACCOUNT_ID.value: account_id,
+                                        CustomProperties.REGION.value: (
+                                            bucket_region if bucket_region else region
+                                        ),
+                                    }
+                                )
+                            )
+
+                    processed_count += len(chunk)
+                    logger.info(
+                        f"Processed {processed_count}/{total_resources} {kind} resources in batch from region {region} in account {account_id}"
+                    )
+                    if processed_chunk:
+                        yield processed_chunk
+            logger.info(
+                f"Finished processing all {kind} resources from region {region} in account {account_id}"
+            )
+
+        except cloudcontrol.exceptions.ClientError as e:
+            if is_access_denied_exception(e):
+                logger.warning(
+                    f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
+                )
+            else:
+                raise e
+
+
 async def fetch_group_resources(
     client: ResourceGroupsClientProtocol, group_name: str, region: str
 ) -> list[dict[str, Any]]:

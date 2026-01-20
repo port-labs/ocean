@@ -17,6 +17,7 @@ from utils.resources import (
     fix_unserializable_date_properties,
     resync_cloudcontrol,
     resync_sqs_queue,
+    resync_s3_bucket,
     resync_resource_group,
 )
 
@@ -35,6 +36,7 @@ from utils.misc import (
     get_matching_kinds_and_blueprints_from_config,
     CustomProperties,
     ResourceKindsWithSpecialHandling,
+    OPT_IN_REGIONS,
     is_access_denied_exception,
     is_server_error,
 )
@@ -45,6 +47,14 @@ from port_ocean.utils.async_iterators import (
 from aioboto3 import Session
 
 import functools
+
+
+def select_s3_region(allowed_regions: list[str]) -> str:
+    """Select the best region for S3 list_resources calls."""
+    for region in allowed_regions:
+        if region not in OPT_IN_REGIONS:
+            return region
+    return allowed_regions[0]
 
 
 CONCURRENT_RESYNC_ACCOUNTS = 10
@@ -364,6 +374,35 @@ async def resync_sqs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 resync_func=resync_sqs_queue,
             )
         )
+
+        if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
+            tasks.clear()
+
+    if tasks:
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.S3_BUCKET)
+async def resync_s3(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+    tasks = []
+    async for credentials in get_accounts():
+        allowed_regions = list(
+            filter(
+                aws_resource_config.selector.is_region_allowed,
+                credentials.enabled_regions,
+            )
+        )
+        if allowed_regions:
+            s3_region = select_s3_region(allowed_regions)
+            async for session in credentials.create_session_for_each_region(
+                [s3_region]
+            ):
+                tasks.append(resync_s3_bucket(kind, session))
+                break  # Only one session per account for S3
 
         if len(tasks) == CONCURRENT_RESYNC_ACCOUNTS:
             async for batch in stream_async_iterators_tasks(*tasks):
