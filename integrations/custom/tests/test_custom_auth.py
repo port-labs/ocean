@@ -460,7 +460,6 @@ class TestClient401Handling:
                 pagination_config={"pagination_type": "none"},
                 custom_auth_request=auth_request,
                 custom_auth_response=auth_response,
-                skip_setup=True,
             )
             # Replace the client with our mock
             client.client = mock_client
@@ -502,7 +501,9 @@ class TestClient401Handling:
             }
 
         # Type ignore needed because we're testing CustomAuth which has reauthenticate
-        client_with_custom_auth.auth_handler.reauthenticate = mock_reauthenticate  # type: ignore[attr-defined]
+        client_with_custom_auth.auth_handler.reauthenticate = AsyncMock(  # type: ignore[method-assign]
+            side_effect=mock_reauthenticate
+        )
 
         # Mock the client's request method
         client_with_custom_auth.client.request = AsyncMock(  # type: ignore[method-assign]
@@ -555,7 +556,9 @@ class TestClient401Handling:
             raise Exception("Re-authentication failed")
 
         # Type ignore needed because we're testing CustomAuth which has reauthenticate
-        client_with_custom_auth.auth_handler.reauthenticate = mock_reauthenticate  # type: ignore[attr-defined]
+        client_with_custom_auth.auth_handler.reauthenticate = AsyncMock(  # type: ignore[method-assign]
+            side_effect=mock_reauthenticate
+        )
 
         client_with_custom_auth.client.request = AsyncMock(return_value=mock_401)  # type: ignore[method-assign]
 

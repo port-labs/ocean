@@ -11,7 +11,6 @@ import time
 from typing import Dict, Any, Optional
 
 from loguru import logger
-from port_ocean.context.ocean import ocean
 
 from http_server.auth.base import AuthHandler
 from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig

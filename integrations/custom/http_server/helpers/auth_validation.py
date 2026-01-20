@@ -55,7 +55,13 @@ def validate_custom_auth_response_config(
         CustomAuthResponseError: If custom authentication response configuration is invalid or missing
     """
 
-    if custom_auth_response_config:
+    if custom_auth_response_config is None:
+        raise CustomAuthResponseError(
+            "customAuthResponse is required when authType is 'custom'"
+        )
+
+    # Parse the config (Pydantic will validate that at least one field is provided)
+    try:
         if isinstance(custom_auth_response_config, str):
             custom_auth_response = parse_raw_as(
                 CustomAuthResponseConfig, custom_auth_response_config
@@ -64,23 +70,27 @@ def validate_custom_auth_response_config(
             custom_auth_response = parse_obj_as(
                 CustomAuthResponseConfig, custom_auth_response_config
             )
-
-        try:
-            if custom_auth_response.headers:
-                validate_templates_in_dict(custom_auth_response.headers, "headers")
-            if custom_auth_response.queryParams:
-                validate_templates_in_dict(
-                    custom_auth_response.queryParams, "queryParams"
-                )
-            if custom_auth_response.body:
-                validate_templates_in_dict(custom_auth_response.body, "body")
-            return custom_auth_response
-        except TemplateSyntaxError as e:
-            raise TemplateSyntaxError(
-                f"Invalid template syntax in customAuthResponse: {str(e)}. "
-                "Please fix template syntax before authentication."
-            ) from e
-    else:
+    except CustomAuthResponseError:
+        # Re-raise CustomAuthResponseError as-is (from Pydantic validator)
+        raise
+    except Exception as e:
+        # Wrap other parsing errors
         raise CustomAuthResponseError(
-            "customAuthResponse is required when authType is 'custom'"
-        )
+            f"Invalid customAuthResponse configuration: {str(e)}"
+        ) from e
+
+    # Validate template syntax
+    try:
+        if custom_auth_response.headers:
+            validate_templates_in_dict(custom_auth_response.headers, "headers")
+        if custom_auth_response.queryParams:
+            validate_templates_in_dict(custom_auth_response.queryParams, "queryParams")
+        if custom_auth_response.body:
+            validate_templates_in_dict(custom_auth_response.body, "body")
+    except TemplateSyntaxError as e:
+        raise TemplateSyntaxError(
+            f"Invalid template syntax in customAuthResponse: {str(e)}. "
+            "Please fix template syntax before authentication."
+        ) from e
+
+    return custom_auth_response

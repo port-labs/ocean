@@ -9,8 +9,6 @@ from collections.abc import AsyncGenerator as AsyncGenType
 
 import httpx
 
-from http_server.auth import get_auth_handler
-
 
 # ============================================================================
 # Pagination Handlers
