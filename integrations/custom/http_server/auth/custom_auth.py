@@ -221,8 +221,14 @@ class CustomAuth(httpx.Auth):
                 f"CustomAuth: Authentication response status: {response.status_code}"
             )
             response.raise_for_status()
-
-            self.auth_response = response.json()
+            try:
+                self.auth_response = response.json()
+            except json.JSONDecodeError as e:
+                logger.error(
+                    f"CustomAuth: Failed to parse authentication response: {str(e)}",
+                    {"response": str(response.text)},
+                )
+                raise
             self._cache.invalidate()
             self._expiration_tracker.record_authentication()
 
