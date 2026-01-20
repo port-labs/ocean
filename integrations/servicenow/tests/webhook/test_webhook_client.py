@@ -3,50 +3,26 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 
 from webhook.webhook_client import ServicenowWebhookClient
+from webhook.processors.utils.outbound_message import (
+    REST_MESSAGE_NAME,
+    find_rest_message,
+    create_rest_message_parent,
+    create_rest_message_if_not_exists,
+)
+from webhook.processors.utils.business_rule import (
+    generate_business_rule_script,
+    build_upsert_rule_payload,
+    build_delete_rule_payload,
+    submit_business_rules,
+    business_rule_exists,
+    create_business_rule_if_not_exists,
+)
 from tests.conftest import SAMPLE_INCIDENT_DATA
 from typing import Dict, Any
 
 
 class TestServicenowWebhookClient:
     """Test suite for ServiceNow webhook client."""
-
-    def test_generate_business_rule_script_basic(
-        self, webhook_client: ServicenowWebhookClient
-    ) -> None:
-        """Test generating a business rule script with basic fields."""
-        fields = ["sys_id", "number", "state"]
-        script = webhook_client._generate_business_rule_script(fields)
-
-        assert "RESTMessageV2" in script
-        assert webhook_client.REST_MESSAGE_NAME in script
-        assert '"sys_id": current.sys_id + "",' in script
-        assert '"number": current.number + "",' in script
-        assert '"state": current.state + ""' in script
-
-    def test_generate_business_rule_script_with_dot_fields(
-        self, webhook_client: ServicenowWebhookClient
-    ) -> None:
-        """Test generating a business rule script with fields containing dots."""
-        fields = ["caller_id.name", "assignment_group.name"]
-        script = webhook_client._generate_business_rule_script(fields)
-
-        # Dots should be replaced with underscores in the payload key
-        assert '"caller_id_name": current.caller_id.name + "",' in script
-        assert '"assignment_group_name": current.assignment_group.name + ""' in script
-
-    def test_generate_business_rule_script_delete_event(
-        self, webhook_client: ServicenowWebhookClient
-    ) -> None:
-        """Test generating a business rule script for delete events."""
-        fields = ["sys_id", "number"]
-        script = webhook_client._generate_business_rule_script(
-            fields, delete_event=True
-        )
-
-        # Delete events should use 'previous' instead of 'current'
-        assert "previous.sys_id" in script
-        assert "previous.number" in script
-        assert "current." not in script
 
     @pytest.mark.asyncio
     async def test_make_request_success(
@@ -119,173 +95,16 @@ class TestServicenowWebhookClient:
                 assert result is None
 
     @pytest.mark.asyncio
-    async def test_find_rest_message_found(
-        self, webhook_client: ServicenowWebhookClient
-    ) -> None:
-        """Test finding an existing REST message."""
-        mock_response = {"result": [{"sys_id": "rest_msg_123"}]}
-
-        with patch.object(
-            webhook_client, "_make_request", AsyncMock(return_value=mock_response)
-        ):
-            result = await webhook_client._find_rest_message("Ocean Port Outbound")
-
-            assert result == "rest_msg_123"
-
-    @pytest.mark.asyncio
-    async def test_find_rest_message_not_found(
-        self, webhook_client: ServicenowWebhookClient
-    ) -> None:
-        """Test when REST message does not exist."""
-        mock_response: Dict[str, Any] = {"result": []}
-
-        with patch.object(
-            webhook_client, "_make_request", AsyncMock(return_value=mock_response)
-        ):
-            result = await webhook_client._find_rest_message("Nonexistent Message")
-
-            assert result is None
-
-    @pytest.mark.asyncio
-    async def test_create_or_get_rest_message_existing(
-        self, webhook_client: ServicenowWebhookClient
-    ) -> None:
-        """Test using an existing REST message."""
-        with patch.object(
-            webhook_client, "_find_rest_message", AsyncMock(return_value="existing_id")
-        ):
-            result = await webhook_client._create_or_get_rest_message(
-                "https://example.com/webhook"
-            )
-
-            assert result == "existing_id"
-
-    @pytest.mark.asyncio
-    async def test_create_or_get_rest_message_create_new(
-        self, webhook_client: ServicenowWebhookClient
-    ) -> None:
-        """Test creating a new REST message."""
-        parent_response = {"result": {"sys_id": "new_parent_id"}}
-        fn_response = {"result": {"sys_id": "new_fn_id"}}
-
-        with patch.object(
-            webhook_client, "_find_rest_message", AsyncMock(return_value=None)
-        ):
-            with patch.object(
-                webhook_client,
-                "_make_request",
-                AsyncMock(side_effect=[parent_response, fn_response]),
-            ):
-                result = await webhook_client._create_or_get_rest_message(
-                    "https://example.com/webhook"
-                )
-
-                assert result == "new_parent_id"
-
-    @pytest.mark.asyncio
-    async def test_create_or_get_rest_message_creation_failure(
-        self, webhook_client: ServicenowWebhookClient
-    ) -> None:
-        """Test handling REST message creation failure."""
-        with patch.object(
-            webhook_client, "_find_rest_message", AsyncMock(return_value=None)
-        ):
-            with patch.object(
-                webhook_client, "_make_request", AsyncMock(return_value=None)
-            ):
-                result = await webhook_client._create_or_get_rest_message(
-                    "https://example.com/webhook"
-                )
-
-                assert result is None
-
-    @pytest.mark.asyncio
-    async def test_business_rule_exists_true(
-        self, webhook_client: ServicenowWebhookClient
-    ) -> None:
-        """Test checking if a business rule exists."""
-        mock_response = {"result": [{"sys_id": "rule_123"}]}
-
-        with patch.object(
-            webhook_client, "_make_request", AsyncMock(return_value=mock_response)
-        ):
-            result = await webhook_client._business_rule_exists(
-                "incident to port", "incident"
-            )
-
-            assert result is True
-
-    @pytest.mark.asyncio
-    async def test_business_rule_exists_false(
-        self, webhook_client: ServicenowWebhookClient
-    ) -> None:
-        """Test checking when business rule does not exist."""
-        mock_response: Dict[str, Any] = {"result": []}
-
-        with patch.object(
-            webhook_client, "_make_request", AsyncMock(return_value=mock_response)
-        ):
-            result = await webhook_client._business_rule_exists(
-                "nonexistent rule", "incident"
-            )
-
-            assert result is False
-
-    @pytest.mark.asyncio
-    async def test_create_business_rule_if_not_exists_skips_existing(
-        self, webhook_client: ServicenowWebhookClient
-    ) -> None:
-        """Test that existing business rules are skipped."""
-        with patch.object(
-            webhook_client, "_business_rule_exists", AsyncMock(return_value=True)
-        ):
-            with patch.object(
-                webhook_client, "_make_request", AsyncMock()
-            ) as mock_request:
-                await webhook_client._create_business_rule_if_not_exists(
-                    rest_message_sys_id="rest_123",
-                    table_name="incident",
-                    fields=["sys_id", "number"],
-                )
-
-                # Should not create new rules if they already exist
-                mock_request.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_create_business_rule_if_not_exists_creates_rules(
-        self, webhook_client: ServicenowWebhookClient
-    ) -> None:
-        """Test creating new business rules."""
-        with patch.object(
-            webhook_client, "_business_rule_exists", AsyncMock(return_value=False)
-        ):
-            with patch.object(
-                webhook_client,
-                "_make_request",
-                AsyncMock(return_value={"result": {"sys_id": "rule_123"}}),
-            ) as mock_request:
-                await webhook_client._create_business_rule_if_not_exists(
-                    rest_message_sys_id="rest_123",
-                    table_name="incident",
-                    fields=["sys_id", "number"],
-                )
-
-                # Should create both upsert and delete rules
-                assert mock_request.call_count == 2
-
-    @pytest.mark.asyncio
     async def test_create_webhook_success(
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test successful webhook creation for valid tables."""
-        with patch.object(
-            webhook_client,
-            "_create_or_get_rest_message",
-            AsyncMock(return_value="rest_123"),
+        with patch(
+            "webhook.webhook_client.create_rest_message_if_not_exists",
+            AsyncMock(return_value=REST_MESSAGE_NAME),
         ):
-            with patch.object(
-                webhook_client,
-                "_create_business_rule_if_not_exists",
+            with patch(
+                "webhook.webhook_client.create_business_rule_if_not_exists",
                 AsyncMock(),
             ) as mock_create_rule:
                 await webhook_client.create_webhook(
@@ -300,14 +119,12 @@ class TestServicenowWebhookClient:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test that unknown tables are skipped."""
-        with patch.object(
-            webhook_client,
-            "_create_or_get_rest_message",
-            AsyncMock(return_value="rest_123"),
+        with patch(
+            "webhook.webhook_client.create_rest_message_if_not_exists",
+            AsyncMock(return_value=REST_MESSAGE_NAME),
         ):
-            with patch.object(
-                webhook_client,
-                "_create_business_rule_if_not_exists",
+            with patch(
+                "webhook.webhook_client.create_business_rule_if_not_exists",
                 AsyncMock(),
             ) as mock_create_rule:
                 await webhook_client.create_webhook(
@@ -322,12 +139,12 @@ class TestServicenowWebhookClient:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test handling when REST message creation fails."""
-        with patch.object(
-            webhook_client, "_create_or_get_rest_message", AsyncMock(return_value=None)
+        with patch(
+            "webhook.webhook_client.create_rest_message_if_not_exists",
+            AsyncMock(return_value=None),
         ):
-            with patch.object(
-                webhook_client,
-                "_create_business_rule_if_not_exists",
+            with patch(
+                "webhook.webhook_client.create_business_rule_if_not_exists",
                 AsyncMock(),
             ) as mock_create_rule:
                 await webhook_client.create_webhook("https://example.com", ["incident"])
@@ -378,3 +195,268 @@ class TestServicenowWebhookClient:
             result = await webhook_client.get_record_by_sys_id("incident", "empty_id")
 
             assert result is None
+
+
+class TestOutboundMessage:
+    """Test suite for outbound message utility functions."""
+
+    @pytest.mark.asyncio
+    async def test_find_rest_message_found(self) -> None:
+        """Test finding an existing REST message."""
+        mock_request = AsyncMock(return_value={"result": [{"sys_id": "rest_msg_123"}]})
+
+        result = await find_rest_message(
+            mock_request,
+            "https://test.service-now.com/api/now/table",
+            "Ocean Port Outbound",
+        )
+
+        assert result == "rest_msg_123"
+
+    @pytest.mark.asyncio
+    async def test_find_rest_message_not_found(self) -> None:
+        """Test when REST message does not exist."""
+        mock_request = AsyncMock(return_value={"result": []})
+
+        result = await find_rest_message(
+            mock_request,
+            "https://test.service-now.com/api/now/table",
+            "Nonexistent Message",
+        )
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_create_rest_message_parent_success(self) -> None:
+        """Test creating a REST message parent successfully."""
+        mock_request = AsyncMock(return_value={"result": {"sys_id": "new_parent_id"}})
+
+        result = await create_rest_message_parent(
+            mock_request,
+            "https://test.service-now.com/api/now/table",
+            "https://example.com/webhook",
+        )
+
+        assert result == "new_parent_id"
+
+    @pytest.mark.asyncio
+    async def test_create_rest_message_parent_failure(self) -> None:
+        """Test handling REST message parent creation failure."""
+        mock_request = AsyncMock(return_value=None)
+
+        result = await create_rest_message_parent(
+            mock_request,
+            "https://test.service-now.com/api/now/table",
+            "https://example.com/webhook",
+        )
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_create_rest_message_if_not_exists_existing(self) -> None:
+        """Test using an existing REST message."""
+        mock_request = AsyncMock(return_value={"result": [{"sys_id": "existing_id"}]})
+
+        result = await create_rest_message_if_not_exists(
+            mock_request,
+            "https://test.service-now.com/api/now/table",
+            "https://example.com/webhook",
+        )
+
+        # Should return existing sys_id (which is now REST_MESSAGE_NAME after recent changes)
+        assert result == "existing_id"
+
+    @pytest.mark.asyncio
+    async def test_create_rest_message_if_not_exists_create_new(self) -> None:
+        """Test creating a new REST message."""
+        # First call returns empty (no existing), second creates parent, third creates function
+        mock_request = AsyncMock(
+            side_effect=[
+                {"result": []},  # find_rest_message - not found
+                {"result": {"sys_id": "new_parent_id"}},  # create_rest_message_parent
+                {"result": {"sys_id": "new_fn_id"}},  # create_rest_message_function
+            ]
+        )
+
+        result = await create_rest_message_if_not_exists(
+            mock_request,
+            "https://test.service-now.com/api/now/table",
+            "https://example.com/webhook",
+        )
+
+        assert result == REST_MESSAGE_NAME
+
+    @pytest.mark.asyncio
+    async def test_create_rest_message_if_not_exists_creation_failure(self) -> None:
+        """Test handling REST message creation failure."""
+        mock_request = AsyncMock(
+            side_effect=[
+                {"result": []},  # find_rest_message - not found
+                None,  # create_rest_message_parent - failure
+            ]
+        )
+
+        result = await create_rest_message_if_not_exists(
+            mock_request,
+            "https://test.service-now.com/api/now/table",
+            "https://example.com/webhook",
+        )
+
+        assert result is None
+
+
+class TestBusinessRule:
+    """Test suite for business rule utility functions."""
+
+    def test_generate_business_rule_script_basic(self) -> None:
+        """Test generating a business rule script with basic fields."""
+        fields = ["sys_id", "number", "state"]
+        script = generate_business_rule_script(REST_MESSAGE_NAME, fields)
+
+        assert "RESTMessageV2" in script
+        assert REST_MESSAGE_NAME in script
+        assert '"sys_id": current.sys_id + "",' in script
+        assert '"number": current.number + "",' in script
+        assert '"state": current.state + ""' in script
+
+    def test_generate_business_rule_script_with_dot_fields(self) -> None:
+        """Test generating a business rule script with fields containing dots."""
+        fields = ["caller_id.name", "assignment_group.name"]
+        script = generate_business_rule_script(REST_MESSAGE_NAME, fields)
+
+        # Dots should be replaced with underscores in the payload key
+        assert '"caller_id_name": current.caller_id.name + "",' in script
+        assert '"assignment_group_name": current.assignment_group.name + ""' in script
+
+    def test_generate_business_rule_script_delete_event(self) -> None:
+        """Test generating a business rule script for delete events."""
+        fields = ["sys_id", "number"]
+        script = generate_business_rule_script(
+            REST_MESSAGE_NAME, fields, delete_event=True
+        )
+
+        # Delete events should use 'previous' instead of 'current'
+        assert "previous.sys_id" in script
+        assert "previous.number" in script
+        assert "current." not in script
+
+    def test_build_upsert_rule_payload(self) -> None:
+        """Test building upsert rule payload."""
+        payload = build_upsert_rule_payload(
+            "Ocean Port: incident",
+            "incident",
+            ["sys_id", "number"],
+            200,
+            REST_MESSAGE_NAME,
+        )
+
+        assert payload["name"] == "Ocean Port: incident"
+        assert payload["collection"] == "incident"
+        assert payload["action_insert"] == "true"
+        assert payload["action_update"] == "true"
+        assert payload["action_delete"] == "false"
+        assert payload["order"] == 200
+
+    def test_build_delete_rule_payload(self) -> None:
+        """Test building delete rule payload."""
+        payload = build_delete_rule_payload(
+            "Ocean Port: incident",
+            "incident",
+            ["sys_id", "number"],
+            200,
+            REST_MESSAGE_NAME,
+        )
+
+        assert payload["name"] == "Ocean Port: incident (delete)"
+        assert payload["collection"] == "incident"
+        assert payload["action_insert"] == "false"
+        assert payload["action_update"] == "false"
+        assert payload["action_delete"] == "true"
+        assert payload["when"] == "after"
+
+    @pytest.mark.asyncio
+    async def test_business_rule_exists_true(self) -> None:
+        """Test checking if a business rule exists."""
+        mock_request = AsyncMock(return_value={"result": [{"sys_id": "rule_123"}]})
+
+        result = await business_rule_exists(
+            mock_request,
+            "https://test.service-now.com/api/now/table",
+            "incident to port",
+            "incident",
+        )
+
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_business_rule_exists_false(self) -> None:
+        """Test checking when business rule does not exist."""
+        mock_request = AsyncMock(return_value={"result": []})
+
+        result = await business_rule_exists(
+            mock_request,
+            "https://test.service-now.com/api/now/table",
+            "nonexistent rule",
+            "incident",
+        )
+
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_submit_business_rules_success(self) -> None:
+        """Test submitting business rules successfully."""
+        mock_request = AsyncMock(return_value={"result": {"sys_id": "rule_123"}})
+
+        payloads = [
+            {"name": "test_rule", "collection": "incident"},
+            {"name": "test_rule (delete)", "collection": "incident"},
+        ]
+
+        # Should not raise
+        await submit_business_rules(
+            mock_request,
+            "https://test.service-now.com/api/now/table",
+            "test_rule",
+            payloads,
+        )
+
+        assert mock_request.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_create_business_rule_if_not_exists_skips_existing(self) -> None:
+        """Test that existing business rules are skipped."""
+        # First call checks if rule exists - returns True
+        mock_request = AsyncMock(return_value={"result": [{"sys_id": "existing_rule"}]})
+
+        await create_business_rule_if_not_exists(
+            mock_request,
+            "https://test.service-now.com/api/now/table",
+            REST_MESSAGE_NAME,
+            "incident",
+            ["sys_id", "number"],
+        )
+
+        # Should only make one call (to check existence)
+        assert mock_request.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_create_business_rule_if_not_exists_creates_rules(self) -> None:
+        """Test creating new business rules."""
+        mock_request = AsyncMock(
+            side_effect=[
+                {"result": []},  # business_rule_exists - not found
+                {"result": {"sys_id": "upsert_rule_id"}},  # submit upsert rule
+                {"result": {"sys_id": "delete_rule_id"}},  # submit delete rule
+            ]
+        )
+
+        await create_business_rule_if_not_exists(
+            mock_request,
+            "https://test.service-now.com/api/now/table",
+            REST_MESSAGE_NAME,
+            "incident",
+            ["sys_id", "number"],
+        )
+
+        # Should make 3 calls: 1 for check + 2 for rule creation
+        assert mock_request.call_count == 3
