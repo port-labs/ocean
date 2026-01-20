@@ -282,8 +282,8 @@ class TestCustomAuth:
                 request = httpx.Request("GET", "https://api.example.com/data")
                 auth_flow = custom_auth.async_auth_flow(request)
 
-                # Get first authenticated request
-                authenticated_request = await auth_flow.__anext__()
+                # Get first authenticated request (triggers initial auth if needed)
+                _ = await auth_flow.__anext__()
 
                 # Send 401 response - this should trigger re-auth
                 try:
@@ -388,7 +388,9 @@ class TestRequestOverride:
             overridden_request = await custom_auth._override_request(original_request)
 
             # Verify auth header was added
-            assert overridden_request.headers["Authorization"] == "Bearer test-token-123"
+            assert (
+                overridden_request.headers["Authorization"] == "Bearer test-token-123"
+            )
             # Verify custom header was added
             assert overridden_request.headers["X-Custom"] == "value"
             # Verify original header is preserved
@@ -874,7 +876,7 @@ class TestTokenExpiration:
             auth_flow = custom_auth_with_interval.async_auth_flow(request)
 
             # This should trigger proactive re-auth
-            authenticated_request = await auth_flow.__anext__()
+            _ = await auth_flow.__anext__()
 
             # Should have called authenticate
             assert len(authenticate_called) == 1

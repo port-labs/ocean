@@ -12,10 +12,6 @@ from typing import Dict, Any, Optional
 from pydantic import parse_raw_as
 
 from http_server.client import HttpServerClient
-from http_server.helpers.auth_validation import (
-    validate_custom_auth_request_config,
-    validate_custom_auth_response_config,
-)
 from http_server.exceptions import CustomAuthConfigError
 from port_ocean.context.ocean import ocean
 

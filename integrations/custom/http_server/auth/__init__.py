@@ -4,7 +4,7 @@ Authentication handlers for HTTP Server integration.
 Provides various authentication strategies using the handler pattern.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from typing_extensions import Type
 import httpx
 
@@ -16,7 +16,6 @@ from http_server.auth.simple import (
     NoAuth,
 )
 from http_server.auth.custom_auth import CustomAuth, CustomAuthHandler
-from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
 
 __all__ = [
     "AuthHandler",

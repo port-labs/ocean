@@ -167,7 +167,7 @@ class CustomAuth(httpx.Auth):
             raise CustomAuthRequestError("customAuthRequest configuration is required")
 
         logger.info("CustomAuth: Starting authentication")
-        logger.error(f"CustomAuth: running a new auth request")
+        logger.error("CustomAuth: running a new auth request")
 
         endpoint = self.custom_auth_request.endpoint
         if endpoint.startswith(("http://", "https://")):
