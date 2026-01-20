@@ -6,6 +6,26 @@ from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from kinds import Kinds
 from initialize_client import create_jira_server_client
+from jira_server.webhook_processors.initialize_client import init_webhook_client
+from jira_server.webhook_processors import (
+    IssueWebhookProcessor,
+    ProjectWebhookProcessor,
+    UserWebhookProcessor,
+)
+
+
+@ocean.on_start()
+async def on_start() -> None:
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
+    base_url = ocean.app.base_url
+    if not base_url:
+        return
+
+    webhook_client = init_webhook_client()
+    await webhook_client.create_webhook(base_url)
 
 
 @ocean.on_resync(Kinds.PROJECT)
@@ -46,3 +66,8 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for users in client.get_paginated_users():
         logger.info(f"Fetched {len(users)} users")
         yield users
+
+
+ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
+ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
