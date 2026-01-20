@@ -45,13 +45,15 @@ class TestPagerDutyRateLimiter:
         mock_sleep.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_enters_pause_when_remaining_le_1(self, mock_sleep: Mock) -> None:
+    async def test_enters_pause_when_remaining_le_threshold(
+        self, mock_sleep: Mock
+    ) -> None:
         limiter = PagerDutyRateLimiter(max_concurrent=3)
 
-        # Seed limiter with remaining == 1 and a short reset in the future
+        # Seed limiter with remaining == 15 (at threshold) and a short reset in the future
         reset_in = 5
         limiter.rate_limit_info = RateLimitInfo(
-            limit=1000, remaining=1, seconds_until_reset=reset_in
+            limit=960, remaining=15, seconds_until_reset=reset_in
         )
 
         mock_sleep.reset_mock()
@@ -61,6 +63,25 @@ class TestPagerDutyRateLimiter:
 
         assert mock_sleep.call_count >= 1
         assert any(args[0] >= reset_in for args, _ in mock_sleep.call_args_list)
+
+    @pytest.mark.asyncio
+    async def test_does_not_pause_when_remaining_above_threshold(
+        self, mock_sleep: Mock
+    ) -> None:
+        limiter = PagerDutyRateLimiter(max_concurrent=3)
+
+        # Seed limiter with remaining == 16 (above threshold of 15)
+        limiter.rate_limit_info = RateLimitInfo(
+            limit=960, remaining=16, seconds_until_reset=60
+        )
+
+        mock_sleep.reset_mock()
+        async with limiter:
+            # inside context - nothing to do
+            pass
+
+        # Should not sleep when remaining is above threshold
+        mock_sleep.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_concurrent_requests_respect_semaphore(

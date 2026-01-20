@@ -47,7 +47,7 @@ class PagerDutyRateLimiter:
         self._lock = asyncio.Lock()
 
         self.rate_limit_info: Optional[RateLimitInfo] = None
-        self._proactive_remaining_threshold = 1
+        self._proactive_remaining_threshold = 15
 
     async def __aenter__(self) -> "PagerDutyRateLimiter":
         await self._semaphore.acquire()

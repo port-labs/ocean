@@ -307,6 +307,7 @@ class PagerDutyClient(OAuthClient):
         )
 
         async with self._rate_limiter:
+            response: httpx.Response | None = None
             try:
                 response = await self.http_client.request(
                     method=method,
@@ -318,7 +319,9 @@ class PagerDutyClient(OAuthClient):
                 response.raise_for_status()
                 return response.json()
             except httpx.HTTPStatusError as e:
-                status_code = e.response.status_code
+                response = e.response
+                status_code = response.status_code
+
                 if status_code == 404:
                     logger.debug(
                         f"Resource not found at endpoint '{endpoint}' with params: {query_params}, method: {method}"
@@ -326,12 +329,12 @@ class PagerDutyClient(OAuthClient):
                     return {}
 
                 logger.error(
-                    f"HTTP error for endpoint '{endpoint}': Status code {status_code}, Method: {method}, Query params: {query_params}, Response text: {e.response.text}"
+                    f"HTTP error for endpoint '{endpoint}': Status code {status_code}, Method: {method}, Query params: {query_params}, Response text: {response.text}"
                 )
                 raise
 
             finally:
-                if "response" in locals():
+                if response:
                     self._rate_limiter.update_rate_limits(response.headers, endpoint)
 
     async def fetch_and_cache_users(self) -> None:
