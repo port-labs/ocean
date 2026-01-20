@@ -15,7 +15,7 @@ from http_server.auth.simple import (
     BasicAuth,
     NoAuth,
 )
-from http_server.auth.custom_auth import CustomAuth
+from http_server.auth.custom_auth import CustomAuth, CustomAuthHandler
 from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
 
 __all__ = [
@@ -47,6 +47,16 @@ def get_auth_handler(
 ) -> AuthHandler:
     """Get the appropriate authentication handler"""
     if auth_type == "custom":
-        return CustomAuth(client, config, custom_auth_request, custom_auth_response)
+        if not custom_auth_request:
+            raise ValueError(
+                "custom_auth_request is required for custom authentication"
+            )
+        if not custom_auth_response:
+            raise ValueError(
+                "custom_auth_response is required for custom authentication"
+            )
+        return CustomAuthHandler(
+            client, config, custom_auth_request, custom_auth_response
+        )
     handler_class = AUTH_HANDLERS.get(auth_type, NoAuth)
     return handler_class(client, config)

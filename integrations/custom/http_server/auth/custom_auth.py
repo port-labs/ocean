@@ -8,7 +8,7 @@ import asyncio
 import httpx
 import json
 import time
-from typing import Dict, Any, Optional
+from typing import AsyncGenerator, Dict, Any, Generator, Optional
 
 from loguru import logger
 
@@ -120,14 +120,14 @@ class TokenExpirationTracker:
 
 # Constants
 DEFAULT_AUTH_TIMEOUT = 30.0
+STATUS_CODES_TO_REAUTH = [401]
 
 
-class CustomAuth(AuthHandler):
+class CustomAuth(httpx.Auth):
     """Custom authentication with dynamic token retrieval"""
 
     def __init__(
         self,
-        client: httpx.AsyncClient,
         config: Dict[str, Any],
         custom_auth_request: Optional[CustomAuthRequestConfig],
         custom_auth_response: Optional[CustomAuthResponseConfig],
@@ -135,11 +135,8 @@ class CustomAuth(AuthHandler):
         expiration_tracker: Optional[TokenExpirationTracker] = None,
         reauth_lock_manager: Optional[ReauthLockManager] = None,
     ):
-        super().__init__(client, config)
-        self._is_async_setup = True
         self.custom_auth_request = custom_auth_request
         self.custom_auth_response = custom_auth_response
-        self.token: Optional[str] = None
         self.base_url: str = config.get("base_url", "")
         self.auth_response: Optional[Dict[str, Any]] = None
         self.verify_ssl: bool = config.get("verify_ssl", True)
@@ -160,43 +157,13 @@ class CustomAuth(AuthHandler):
         else:
             self._expiration_tracker = expiration_tracker
 
-    def setup(self) -> None:
-        """Setup authentication - deprecated, use async_setup() instead.
-
-        This method is kept for backward compatibility but should not be used
-        in new code. Authentication should be done via async_setup() in
-        @ocean.on_start() hook.
-        """
-        if not self.custom_auth_request:
-            logger.debug(
-                "CustomAuth: No custom_auth_request configured, skipping setup"
-            )
-            return
-        logger.warning(
-            "CustomAuth: setup() is deprecated. Use async_setup() in @ocean.on_start() instead."
-        )
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                logger.warning(
-                    "CustomAuth: Event loop is running, authentication may fail. "
-                    "Please use async_setup() instead."
-                )
-            else:
-                loop.run_until_complete(self.async_setup())
-        except RuntimeError:
-            asyncio.run(self.async_setup())
-
-    async def async_setup(self) -> None:
-        """Setup authentication asynchronously - alias for authenticate_async()"""
-        await self.authenticate_async()
-
-    async def authenticate_async(self) -> None:
+    async def _perform_auth_request(self) -> None:
         """Make authentication request asynchronously and store token (non-blocking)"""
         if not self.custom_auth_request:
             raise CustomAuthRequestError("customAuthRequest configuration is required")
 
         logger.info("CustomAuth: Starting authentication")
+        logger.error(f"CustomAuth: running a new auth request")
 
         endpoint = self.custom_auth_request.endpoint
         if endpoint.startswith(("http://", "https://")):
@@ -253,7 +220,6 @@ class CustomAuth(AuthHandler):
 
             self.auth_response = response.json()
             self._cache.invalidate()
-
             self._expiration_tracker.record_authentication()
 
             logger.info("CustomAuth: Authentication successful")
@@ -268,33 +234,71 @@ class CustomAuth(AuthHandler):
                     "CustomAuth: No expiration interval configured - tokens will only be refreshed on 401 errors"
                 )
 
-    async def reauthenticate(self) -> None:
-        """Re-authenticate when token expires (401) - uses lock manager for thread safety.
+    async def _ensure_authenticated(self) -> None:
+        """Checks expiration and handles locking for re-auth."""
+        if self._expiration_tracker.is_expired(self.auth_response is not None):
+            async with self._reauth_lock_manager.lock:
+                # Re-check after acquiring lock (double-checked locking pattern)
+                if self._expiration_tracker.is_expired(self.auth_response is not None):
+                    await self._perform_auth_request()
 
-        If multiple requests get 401 simultaneously, only the first one will re-authenticate.
-        Others will wait for the lock and then skip re-auth if it was already completed.
-        """
-        auth_response_before = self.auth_response
+    async def async_auth_flow(
+        self, request: httpx.Request
+    ) -> AsyncGenerator[httpx.Request, httpx.Response]:
+        # 1. Proactive Auth Check (Before sending the request)
+        await self._ensure_authenticated()
 
-        async with self._reauth_lock_manager.lock:
-            # The check `auth_response != auth_response_before` is necessary because:
-            # - Multiple coroutines may detect 401 and enter the lock queue simultaneously
-            # - While waiting for the lock, another coroutine may have already re-authenticated
-            # - By comparing auth_response before and after acquiring the lock, we detect if
-            #   re-authentication already happened and skip redundant work
-            if (
-                self.auth_response is not None
-                and self.auth_response != auth_response_before
-            ):
-                logger.debug(
-                    "CustomAuth: Auth was already refreshed by another request, skipping redundant re-authentication"
-                )
-                return
+        # 2. Apply templates to the current request
+        authenticated_request = await self._override_request(request)
 
-            logger.info("CustomAuth: Starting re-authentication due to 401 error")
-            self.token = None
-            await self.authenticate_async()
-            logger.info("CustomAuth: Re-authentication completed successfully")
+        # 3. Send the request
+        response = yield authenticated_request
+
+        # 4. Reactive Auth Check (On status codes that require re-authentication)
+        if response.status_code in STATUS_CODES_TO_REAUTH:
+            async with self._reauth_lock_manager.lock:
+                # Only re-auth if someone else hasn't already done it while we waited
+                await self._perform_auth_request()
+                authenticated_request = await self._override_request(request)
+                # Re-apply new tokens to the original request
+                yield authenticated_request
+
+    async def _override_request(self, request: httpx.Request) -> httpx.Request:
+        """Override the request with the evaluated templates."""
+        if self.auth_response:
+            eval_headers, eval_query, eval_body = await self._get_evaluated_templates()
+            request_clone = httpx.Request(
+                method=request.method,
+                url=request.url,
+                headers=request.headers,
+                params=request.url.params,
+                content=request.content,
+                extensions=request.extensions,
+            )
+
+            # Update Headers
+            if eval_headers:
+                for k, v in eval_headers.items():
+                    request_clone.headers[k] = v
+
+            if eval_query:
+                # Update Query Params
+                request_clone.url = request_clone.url.copy_merge_params(eval_query)
+
+            # Update Body (Note: httpx request bodies are bytes, requires re-encoding)
+            if eval_body:
+                body_bytes = request.read()
+                try:
+                    current_data = json.loads(body_bytes.decode("utf-8") or "{}")
+                except json.JSONDecodeError:
+                    current_data = {}
+
+                current_data.update(eval_body)
+                new_content = json.dumps(current_data).encode("utf-8")
+                request_clone._content = new_content
+                request_clone.stream = httpx.ByteStream(new_content)
+                request_clone.headers["Content-Length"] = str(len(new_content))
+        return request_clone
 
     def _get_auth_response_hash(self) -> Optional[str]:
         """Generate a hash of the current auth_response for cache invalidation.
@@ -352,58 +356,20 @@ class CustomAuth(AuthHandler):
 
         return evaluated_headers, evaluated_query_params, evaluated_body
 
-    async def apply_auth_to_request(
+
+class CustomAuthHandler(AuthHandler):
+    """Custom authentication handler"""
+
+    def __init__(
         self,
-        headers: Dict[str, str],
-        query_params: Optional[Dict[str, Any]] = None,
-        body: Optional[Dict[str, Any]] = None,
-    ) -> tuple[Dict[str, str], Dict[str, Any], Optional[Dict[str, Any]]]:
-        """Apply authentication values to request headers, query params, and body using templates.
+        client: httpx.AsyncClient,
+        config: Dict[str, Any],
+        custom_auth_request: CustomAuthRequestConfig,
+        custom_auth_response: CustomAuthResponseConfig,
+    ):
+        super().__init__(client, config)
+        self.custom_auth = CustomAuth(config, custom_auth_request, custom_auth_response)
 
-        Evaluates templates like {{.access_token}} in headers, queryParams, and body from
-        customAuthResponse config using values from the authentication response.
-        Uses caching to avoid re-evaluating templates on every request when auth_response hasn't changed.
-        Proactively re-authenticates if token is expired or about to expire.
-
-        Returns:
-            Tuple of (updated_headers, updated_query_params, updated_body)
-        """
-        if self._expiration_tracker.is_expired(self.auth_response is not None):
-            logger.info(
-                "CustomAuth: Token expired or expiring soon, proactively re-authenticating"
-            )
-            async with self._reauth_lock_manager.lock:
-                if self._expiration_tracker.is_expired(self.auth_response is not None):
-                    await self.authenticate_async()
-                else:
-                    logger.debug(
-                        "CustomAuth: Token was refreshed by another request while waiting for lock"
-                    )
-
-        if not self.auth_response:
-            logger.warning(
-                "CustomAuth: No auth_response available, skipping auth application"
-            )
-            return headers, query_params or {}, body
-
-        if not self.custom_auth_response:
-            logger.warning(
-                "CustomAuth: No custom_auth_response config, skipping auth application"
-            )
-            return headers, query_params or {}, body
-
-        evaluated_headers, evaluated_query_params, evaluated_body = (
-            await self._get_evaluated_templates()
-        )
-
-        updated_headers = {**headers, **evaluated_headers}
-        updated_query_params = {**(query_params or {}), **evaluated_query_params}
-        updated_body = (
-            {**(body or {}), **evaluated_body} if (body or evaluated_body) else None
-        )
-
-        return (
-            updated_headers,
-            updated_query_params,
-            updated_body,
-        )
+    def setup(self) -> None:
+        """Setup authentication"""
+        self.client.auth = self.custom_auth
