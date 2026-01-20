@@ -63,29 +63,14 @@ def init_client() -> HttpServerClient:
     # Parse custom headers from config
     custom_headers = _parse_custom_headers(config.get("custom_headers"))
 
-    # Parse and validate custom auth request and response if auth_type is custom
-    auth_type = config.get("auth_type", "none")
-    if auth_type == "custom":
-        custom_auth_request = validate_custom_auth_request_config(
-            config.get("custom_auth_request")
-        )
-        custom_auth_response = validate_custom_auth_response_config(
-            config.get("custom_auth_response")
-        )
-    else:
-        custom_auth_request = None
-        custom_auth_response = None
-
     return HttpServerClient(
         base_url=config["base_url"],
-        auth_type=auth_type,
+        auth_type=config.get("auth_type", "none"),
         auth_config=config,
         pagination_config=config,
         verify_ssl=config.get("verify_ssl", True),
         max_concurrent_requests=int(config.get("max_concurrent_requests", 10)),
         custom_headers=custom_headers,
-        custom_auth_request=custom_auth_request,
-        custom_auth_response=custom_auth_response,
     )
 
 

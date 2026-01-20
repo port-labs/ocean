@@ -8,7 +8,7 @@ import asyncio
 import httpx
 import json
 import time
-from typing import AsyncGenerator, Dict, Any, Generator, Optional
+from typing import AsyncGenerator, Dict, Any, Optional
 
 from loguru import logger
 
@@ -16,6 +16,10 @@ from http_server.auth.base import AuthHandler
 from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
 from http_server.exceptions import CustomAuthRequestError
 from http_server.helpers.template_utils import evaluate_templates_in_dict
+from http_server.helpers.auth_validation import (
+    validate_custom_auth_request_config,
+    validate_custom_auth_response_config,
+)
 
 
 class ReauthLockManager:
@@ -364,10 +368,14 @@ class CustomAuthHandler(AuthHandler):
         self,
         client: httpx.AsyncClient,
         config: Dict[str, Any],
-        custom_auth_request: CustomAuthRequestConfig,
-        custom_auth_response: CustomAuthResponseConfig,
     ):
         super().__init__(client, config)
+        custom_auth_request = validate_custom_auth_request_config(
+            config.get("custom_auth_request")
+        )
+        custom_auth_response = validate_custom_auth_response_config(
+            config.get("custom_auth_response")
+        )
         self.custom_auth = CustomAuth(config, custom_auth_request, custom_auth_response)
 
     def setup(self) -> None:
