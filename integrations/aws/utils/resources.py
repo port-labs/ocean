@@ -268,24 +268,20 @@ async def get_bucket_location(
 
 
 async def get_bucket_resource(
-    bucket_name: str, region: str, session: aioboto3.Session
+    bucket_name: str,
+    cloudcontrol_client: CloudControlClientProtocol,
 ) -> dict[str, Any] | None:
     try:
-        async with session.client("cloudcontrol", region_name=region) as cloudcontrol:
-            resource = await cloudcontrol.get_resource(
-                TypeName="AWS::S3::Bucket", Identifier=bucket_name
-            )
-            return resource
+        resource = await cloudcontrol_client.get_resource(
+            TypeName="AWS::S3::Bucket", Identifier=bucket_name
+        )
+        return resource
     except ClientError as e:
         if is_resource_not_found_exception(e):
-            logger.debug(
-                f"S3 bucket '{bucket_name}' not found in region '{region}':{e}"
-            )
+            logger.debug(f"S3 bucket '{bucket_name}' not found: {e}")
             return None
         else:
-            logger.error(
-                f"Error retrieving S3 bucket '{bucket_name}' from region {region}: {e}"
-            )
+            logger.error(f"Error retrieving S3 bucket '{bucket_name}': {e}")
             return None
 
 
@@ -329,7 +325,7 @@ async def resync_s3_bucket(
                         logger.debug(f"Processing S3 bucket: {bucket_name}")
 
                         resource = await get_bucket_resource(
-                            bucket_name, region, session
+                            bucket_name, cloudcontrol_client=cloudcontrol
                         )
                         bucket_region = None
 
@@ -349,9 +345,12 @@ async def resync_s3_bucket(
                             logger.info(
                                 f"S3 bucket '{bucket_name}' located in {bucket_region}, retrying from bucket region"
                             )
-                            resource = await get_bucket_resource(
-                                bucket_name, bucket_region, session
-                            )
+                            async with session.client(
+                                "cloudcontrol", region_name=bucket_region
+                            ) as bucket_cloudcontrol:
+                                resource = await get_bucket_resource(
+                                    bucket_name, cloudcontrol_client=bucket_cloudcontrol
+                                )
 
                         if resource:
                             processed_chunk.append(
