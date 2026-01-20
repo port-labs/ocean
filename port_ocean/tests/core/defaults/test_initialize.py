@@ -350,7 +350,10 @@ async def test_empty_setup(
     mock_port_client.create_integration.assert_called_once()  # type: ignore[attr-defined]
     call_args = mock_port_client.create_integration.call_args  # type: ignore[attr-defined]
     assert call_args.kwargs["port_app_config"] == PortAppConfig(resources=[])
-    assert call_args.kwargs["create_port_resources_origin_in_port"] is False
+    assert (
+        call_args.kwargs["create_port_resources_origin"]
+        == CreatePortResourcesOrigin.Empty
+    )
 
 
 @pytest.mark.asyncio
@@ -552,7 +555,10 @@ async def test_empty_setup_integration_not_exists(
     mock_port_client.create_integration.assert_called_once()  # type: ignore[attr-defined]
     call_args = mock_port_client.create_integration.call_args  # type: ignore[attr-defined]
     assert call_args.kwargs["port_app_config"] == PortAppConfig(resources=[])
-    assert call_args.kwargs["create_port_resources_origin_in_port"] is False
+    assert (
+        call_args.kwargs["create_port_resources_origin"]
+        == CreatePortResourcesOrigin.Empty
+    )
 
 
 @pytest.mark.asyncio
@@ -745,7 +751,10 @@ async def test_port_setup_integration_not_exists(
     # Assert: Should create integration with Port provisioning and wait for provisioning
     mock_port_client.create_integration.assert_called_once()  # type: ignore[attr-defined]
     call_args = mock_port_client.create_integration.call_args  # type: ignore[attr-defined]
-    assert call_args.kwargs["create_port_resources_origin_in_port"] is True
+    assert (
+        call_args.kwargs["create_port_resources_origin"]
+        == CreatePortResourcesOrigin.Port
+    )
     mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_called_once()  # type: ignore[attr-defined]
 
 
@@ -835,7 +844,10 @@ async def test_none_origin_provision_enabled_integration_not_exists(
     # Assert: Should use Port origin setup (create integration and wait for provisioning)
     mock_port_client.create_integration.assert_called_once()  # type: ignore[attr-defined]
     call_args = mock_port_client.create_integration.call_args  # type: ignore[attr-defined]
-    assert call_args.kwargs["create_port_resources_origin_in_port"] is True
+    assert (
+        call_args.kwargs["create_port_resources_origin"]
+        == CreatePortResourcesOrigin.Port
+    )
     mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_called_once()  # type: ignore[attr-defined]
 
 
@@ -942,7 +954,10 @@ async def test_none_origin_provision_disabled_integration_not_exists(
     # Assert: Should use Ocean origin setup (create integration and resources)
     mock_port_client.create_integration.assert_called_once()  # type: ignore[attr-defined]
     call_args = mock_port_client.create_integration.call_args  # type: ignore[attr-defined]
-    assert call_args.kwargs["create_port_resources_origin_in_port"] is False
+    assert (
+        call_args.kwargs["create_port_resources_origin"]
+        == CreatePortResourcesOrigin.Ocean
+    )
     mock_port_client.create_blueprint.assert_called()  # type: ignore[attr-defined]
     mock_port_client.poll_integration_until_default_provisioning_is_complete.assert_not_called()  # type: ignore[attr-defined]
 
