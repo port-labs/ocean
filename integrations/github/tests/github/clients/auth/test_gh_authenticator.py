@@ -43,7 +43,7 @@ class TestGithubAuthenticator:
             mock_get_install_token.assert_called_once()
 
     async def test_token_refreshed_on_expiry(
-            self, github_auth: GitHubAppAuthenticator
+        self, github_auth: GitHubAppAuthenticator
     ) -> None:
         """Test that a new token is fetched when the cached one expires."""
         mock_jwt_token = GitHubToken(token="mock-jwt-token", expires_at=None)
@@ -70,7 +70,7 @@ class TestGithubAuthenticator:
                     return_value=GitHubToken(
                         token=mock_new_token,
                         expires_at=(
-                                datetime.now(timezone.utc) + timedelta(minutes=11)
+                            datetime.now(timezone.utc) + timedelta(minutes=11)
                         ).isoformat(),
                     )
                 ),
@@ -87,7 +87,7 @@ class TestGithubAuthenticator:
             mock_get_install_token.assert_called_once()
 
     async def test_installation_id_provided_no_fetch_call(
-            self, github_auth: GitHubAppAuthenticator
+        self, github_auth: GitHubAppAuthenticator
     ) -> None:
         mock_jwt_token = GitHubToken(token="mock-jwt-token", expires_at=None)
         mock_install_token = GitHubToken(
@@ -167,7 +167,7 @@ class TestGithubAuthenticator:
             assert token == mock_install_token
 
     async def test_fetch_installation_id_for_organization(
-            self, github_auth: GitHubAppAuthenticator
+        self, github_auth: GitHubAppAuthenticator
     ) -> None:
         mock_jwt_token = "mock-jwt-token"
         mock_installation_id = "12345"
@@ -203,7 +203,7 @@ class TestGithubAuthenticator:
             assert installation_id == mock_installation_id
 
     async def test_fetch_installation_id_for_personal_org(
-            self, github_auth: GitHubAppAuthenticator
+        self, github_auth: GitHubAppAuthenticator
     ) -> None:
         mock_jwt_token = "mock-jwt-token"
         mock_installation_id = "67890"
@@ -239,12 +239,10 @@ class TestGithubAuthenticator:
             assert installation_id == mock_installation_id
 
     async def test_client_returns_same_instance(
-            self, github_auth: GitHubAppAuthenticator
+        self, github_auth: GitHubAppAuthenticator
     ) -> None:
         """Test that the client property returns the same cached instance on multiple accesses."""
-        with patch(
-                "github.clients.auth.abstract_authenticator.ocean"
-        ) as mock_ocean:
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
             mock_ocean.config.client_timeout = 60
 
             # Access client multiple times
@@ -274,9 +272,7 @@ class TestGithubAuthenticator:
             private_key="key2",
         )
 
-        with patch(
-                "github.clients.auth.abstract_authenticator.ocean"
-        ) as mock_ocean:
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
             mock_ocean.config.client_timeout = 60
 
             client1 = auth1.client
