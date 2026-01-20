@@ -1,7 +1,7 @@
 from client import ServicenowClient
 from loguru import logger
 from typing import Optional, Dict, Any, List
-from webhook_processors.events import DEFAULT_FIELDS_PER_TABLE
+from webhook.events import DEFAULT_FIELDS_PER_TABLE
 import httpx
 import asyncio
 

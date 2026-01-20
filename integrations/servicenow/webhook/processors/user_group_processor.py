@@ -1,5 +1,5 @@
 from typing import Any, List
-from webhook_processors.processors._base_processor import (
+from webhook.processors._base_processor import (
     _ServicenowAbstractWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -9,7 +9,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from integration import ObjectKind
-from webhook_processors.initialize_client import initialize_webhook_client
+from webhook.initialize_client import initialize_webhook_client
 
 
 class UserGroupWebhookProcessor(_ServicenowAbstractWebhookProcessor):
@@ -19,7 +19,8 @@ class UserGroupWebhookProcessor(_ServicenowAbstractWebhookProcessor):
         return [ObjectKind.SYS_USER_GROUP]
 
     def _should_process_event(self, event: WebhookEvent) -> bool:
-        return event.payload.get("sys_class_name") == ObjectKind.SYS_USER_GROUP
+        payload = event.payload
+        return "roles" in payload and "manager" in payload
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig

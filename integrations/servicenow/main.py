@@ -6,14 +6,14 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from initialize_client import initialize_client
-from webhook_processors.initialize_client import initialize_webhook_client
-from webhook_processors.processors.incident_processor import IncidentWebhookProcessor
-from webhook_processors.processors.sc_catalog_processor import SCCatalogWebhookProcessor
-from webhook_processors.processors.user_group_processor import UserGroupWebhookProcessor
-from webhook_processors.processors.release_project_processor import (
+from webhook.initialize_client import initialize_webhook_client
+from webhook.processors.incident_processor import IncidentWebhookProcessor
+from webhook.processors.sc_catalog_processor import SCCatalogWebhookProcessor
+from webhook.processors.user_group_processor import UserGroupWebhookProcessor
+from webhook.processors.release_project_processor import (
     ReleaseProjectWebhookProcessor,
 )
-from webhook_processors.processors.vulnerability_processor import (
+from webhook.processors.vulnerability_processor import (
     VulnerabilityWebhookProcessor,
 )
 from integration import ServiceNowResourceConfig, ObjectKind

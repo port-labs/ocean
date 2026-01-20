@@ -1,6 +1,6 @@
 from initialize_client import create_authenticator
 from port_ocean.context.ocean import ocean
-from webhook_processors.webhook_client import ServicenowWebhookClient
+from webhook.webhook_client import ServicenowWebhookClient
 
 
 def initialize_webhook_client() -> ServicenowWebhookClient:

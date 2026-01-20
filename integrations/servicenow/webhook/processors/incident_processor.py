@@ -1,5 +1,5 @@
 from typing import Any, List
-from webhook_processors.processors._base_processor import (
+from webhook.processors._base_processor import (
     _ServicenowAbstractWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -9,17 +9,17 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from integration import ObjectKind
-from webhook_processors.initialize_client import initialize_webhook_client
+from webhook.initialize_client import initialize_webhook_client
 
 
-class VulnerabilityWebhookProcessor(_ServicenowAbstractWebhookProcessor):
-    """Vulnerability webhook processor."""
+class IncidentWebhookProcessor(_ServicenowAbstractWebhookProcessor):
+    """Incident webhook processor."""
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.VULNERABILITY]
+        return [ObjectKind.INCIDENT]
 
     def _should_process_event(self, event: WebhookEvent) -> bool:
-        return event.payload.get("sys_class_name") == ObjectKind.VULNERABILITY
+        return event.payload.get("sys_class_name") == ObjectKind.INCIDENT
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -30,12 +30,10 @@ class VulnerabilityWebhookProcessor(_ServicenowAbstractWebhookProcessor):
         deleted_raw_results: List[dict[str, Any]] = []
 
         client = initialize_webhook_client()
-        vulnerability = await client.get_record_by_sys_id(
-            ObjectKind.VULNERABILITY, sys_id
-        )
+        incident = await client.get_record_by_sys_id(ObjectKind.INCIDENT, sys_id)
 
-        if vulnerability:
-            updated_raw_results.append(vulnerability)
+        if incident:
+            updated_raw_results.append(incident)
         else:
             deleted_raw_results.append(payload)
 

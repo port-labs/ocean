@@ -9,6 +9,8 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 from auth.basic_authenticator import BasicAuthenticator
 from auth.oauth_authenticator import OAuthClientCredentialsAuthenticator
 from client import ServicenowClient
+from webhook.webhook_client import ServicenowWebhookClient
+from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 
 INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
@@ -107,6 +109,7 @@ SAMPLE_VULNERABILITY_DATA = {
     "sys_id": "v1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
     "number": "VIT0010001",
     "state": "2",
+    "cmdb_ci": "test123",
     "priority": "2",
     "risk_score": "85",
     "first_found": "2024-01-15",
@@ -117,3 +120,50 @@ SAMPLE_VULNERABILITY_DATA = {
     "sys_updated_by": "security.user",
     "active": "true",
 }
+
+SAMPLE_RELEASE_PROJECT_DATA = {
+    "sys_id": "r1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+    "number": "REL0010001",
+    "name": "Test Release Project",
+    "state": "2",
+    "priority": "2",
+    "active": "true",
+    "sys_created_on": "2024-01-15 10:30:00",
+    "sys_created_by": "admin",
+}
+
+SAMPLE_SC_CATALOG_DATA = {
+    "sys_id": "c1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+    "title": "Test SC Catalog",
+    "active": "true",
+    "sys_created_on": "2024-01-15 10:30:00",
+    "sys_created_by": "admin",
+}
+
+SAMPLE_USER_GROUP_DATA = {
+    "sys_id": "g1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+    "name": "Test User Group",
+    "roles": "test123",
+    "manager": {
+        "sys_id": "test123",
+        "name": "test123",
+    },
+    "active": "true",
+    "sys_created_on": "2024-01-15 10:30:00",
+    "sys_created_by": "admin",
+}
+
+
+@pytest.fixture
+def webhook_client(basic_authenticator: BasicAuthenticator) -> ServicenowWebhookClient:
+    """Create a ServiceNow webhook client fixture with basic auth."""
+    return ServicenowWebhookClient(
+        servicenow_url=TEST_INTEGRATION_CONFIG["servicenow_url"],
+        authenticator=basic_authenticator,
+    )
+
+
+@pytest.fixture
+def mock_webhook_event() -> WebhookEvent:
+    """Create a mock WebhookEvent fixture."""
+    return WebhookEvent(trace_id="test-trace-id", payload={}, headers={})

@@ -1,5 +1,5 @@
 from typing import Any, List
-from webhook_processors.processors._base_processor import (
+from webhook.processors._base_processor import (
     _ServicenowAbstractWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -9,17 +9,17 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from integration import ObjectKind
-from webhook_processors.initialize_client import initialize_webhook_client
+from webhook.initialize_client import initialize_webhook_client
 
 
-class ReleaseProjectWebhookProcessor(_ServicenowAbstractWebhookProcessor):
-    """ReleaseProject webhook processor."""
+class SCCatalogWebhookProcessor(_ServicenowAbstractWebhookProcessor):
+    """SCCatalog webhook processor."""
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.RELEASE_PROJECT]
+        return [ObjectKind.SC_CATALOG]
 
     def _should_process_event(self, event: WebhookEvent) -> bool:
-        return event.payload.get("sys_class_name") == ObjectKind.RELEASE_PROJECT
+        return event.payload.get("sys_class_name") == ObjectKind.SC_CATALOG
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -30,12 +30,10 @@ class ReleaseProjectWebhookProcessor(_ServicenowAbstractWebhookProcessor):
         deleted_raw_results: List[dict[str, Any]] = []
 
         client = initialize_webhook_client()
-        release_project = await client.get_record_by_sys_id(
-            ObjectKind.RELEASE_PROJECT, sys_id
-        )
+        sc_catalog = await client.get_record_by_sys_id(ObjectKind.SC_CATALOG, sys_id)
 
-        if release_project:
-            updated_raw_results.append(release_project)
+        if sc_catalog:
+            updated_raw_results.append(sc_catalog)
         else:
             deleted_raw_results.append(payload)
 
