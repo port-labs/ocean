@@ -103,12 +103,13 @@ async def submit_business_rules(
     ]
     responses = await asyncio.gather(*tasks)
 
-    for response in responses:
+    for index, response in enumerate(responses):
+        prefix = "Upsert" if index == 0 else "Delete"
         if response and "result" in response and "sys_id" in response["result"]:
-            logger.info(f"Business rule created → {rule_name}")
+            logger.info(f"{prefix} business rule created → {rule_name}")
         else:
             logger.error(
-                f"Failed to create business rule {rule_name}",
+                f"Failed to create {prefix} business rule {rule_name}",
                 extra={"response": response},
             )
 

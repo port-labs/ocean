@@ -95,7 +95,7 @@ async def create_rest_message_if_not_exists(
     )
     if parent_sys_id:
         logger.debug(f"Using existing REST Message → sys_id: {parent_sys_id}")
-        return parent_sys_id
+        return REST_MESSAGE_NAME
 
     parent_sys_id = await create_rest_message_parent(
         make_request, table_base_url, webhook_url
