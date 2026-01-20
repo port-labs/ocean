@@ -12,8 +12,8 @@ from integration import ObjectKind
 from webhook.initialize_client import initialize_webhook_client
 
 
-class SCCatalogWebhookProcessor(_ServicenowAbstractWebhookProcessor):
-    """SCCatalog webhook processor."""
+class ServiceCatalogWebhookProcessor(_ServicenowAbstractWebhookProcessor):
+    """Service Catalog webhook processor."""
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.SC_CATALOG]

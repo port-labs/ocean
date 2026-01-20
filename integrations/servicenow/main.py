@@ -8,7 +8,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from initialize_client import initialize_client
 from webhook.initialize_client import initialize_webhook_client
 from webhook.processors.incident_processor import IncidentWebhookProcessor
-from webhook.processors.sc_catalog_processor import SCCatalogWebhookProcessor
+from webhook.processors.service_catalog_processor import ServiceCatalogWebhookProcessor
 from webhook.processors.user_group_processor import UserGroupWebhookProcessor
 from webhook.processors.release_project_processor import (
     ReleaseProjectWebhookProcessor,
@@ -58,7 +58,7 @@ async def on_start() -> None:
 
 
 ocean.add_webhook_processor("/webhook", IncidentWebhookProcessor)
-ocean.add_webhook_processor("/webhook", SCCatalogWebhookProcessor)
+ocean.add_webhook_processor("/webhook", ServiceCatalogWebhookProcessor)
 ocean.add_webhook_processor("/webhook", UserGroupWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ReleaseProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", VulnerabilityWebhookProcessor)

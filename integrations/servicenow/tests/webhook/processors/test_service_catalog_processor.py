@@ -12,8 +12,8 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 
-from webhook.processors.sc_catalog_processor import (
-    SCCatalogWebhookProcessor,
+from webhook.processors.service_catalog_processor import (
+    ServiceCatalogWebhookProcessor,
 )
 from integration import ObjectKind
 from tests.conftest import SAMPLE_SC_CATALOG_DATA
@@ -39,29 +39,29 @@ def resource_config() -> ResourceConfig:
 
 
 @pytest.fixture
-def sc_catalog_processor(
+def service_catalog_processor(
     mock_webhook_event: WebhookEvent,
-) -> SCCatalogWebhookProcessor:
+) -> ServiceCatalogWebhookProcessor:
     """Create a SC catalog webhook processor fixture."""
-    return SCCatalogWebhookProcessor(event=mock_webhook_event)
+    return ServiceCatalogWebhookProcessor(event=mock_webhook_event)
 
 
 @pytest.mark.asyncio
-class TestSCCatalogWebhookProcessor:
-    """Test suite for SCCatalogWebhookProcessor."""
+class TestServiceCatalogWebhookProcessor:
+    """Test suite for ServiceCatalogWebhookProcessor."""
 
     async def test_get_matching_kinds(
-        self, sc_catalog_processor: SCCatalogWebhookProcessor
+        self, service_catalog_processor: ServiceCatalogWebhookProcessor
     ) -> None:
         """Test that get_matching_kinds returns the correct kind."""
         mock_event = MagicMock(spec=WebhookEvent)
 
-        kinds = await sc_catalog_processor.get_matching_kinds(mock_event)
+        kinds = await service_catalog_processor.get_matching_kinds(mock_event)
 
         assert kinds == [ObjectKind.SC_CATALOG]
 
     async def test_should_process_event_valid(
-        self, sc_catalog_processor: SCCatalogWebhookProcessor
+        self, service_catalog_processor: ServiceCatalogWebhookProcessor
     ) -> None:
         """Test that _should_process_event returns True for correct class name."""
         mock_event = MagicMock(spec=WebhookEvent)
@@ -70,24 +70,24 @@ class TestSCCatalogWebhookProcessor:
             "sys_id": "test123",
         }
 
-        result = sc_catalog_processor._should_process_event(mock_event)
+        result = service_catalog_processor._should_process_event(mock_event)
 
         assert result is True
 
     async def test_should_process_event_invalid(
-        self, sc_catalog_processor: SCCatalogWebhookProcessor
+        self, service_catalog_processor: ServiceCatalogWebhookProcessor
     ) -> None:
         """Test that _should_process_event returns False for incorrect class name."""
         mock_event = MagicMock(spec=WebhookEvent)
         mock_event.payload = {"sys_class_name": "incident", "sys_id": "test123"}
 
-        result = sc_catalog_processor._should_process_event(mock_event)
+        result = service_catalog_processor._should_process_event(mock_event)
 
         assert result is False
 
     async def test_handle_event_found(
         self,
-        sc_catalog_processor: SCCatalogWebhookProcessor,
+        service_catalog_processor: ServiceCatalogWebhookProcessor,
         resource_config: ResourceConfig,
     ) -> None:
         """Test handling an event when the record is found."""
@@ -102,10 +102,12 @@ class TestSCCatalogWebhookProcessor:
         )
 
         with patch(
-            "webhook.processors.sc_catalog_processor.initialize_webhook_client",
+            "webhook.processors.service_catalog_processor.initialize_webhook_client",
             return_value=mock_client,
         ):
-            result = await sc_catalog_processor.handle_event(payload, resource_config)
+            result = await service_catalog_processor.handle_event(
+                payload, resource_config
+            )
 
             assert isinstance(result, WebhookEventRawResults)
             assert result.updated_raw_results == [SAMPLE_SC_CATALOG_DATA]
@@ -113,7 +115,7 @@ class TestSCCatalogWebhookProcessor:
 
     async def test_handle_event_deleted(
         self,
-        sc_catalog_processor: SCCatalogWebhookProcessor,
+        service_catalog_processor: ServiceCatalogWebhookProcessor,
         resource_config: ResourceConfig,
     ) -> None:
         """Test handling an event when the record is not found."""
@@ -126,10 +128,12 @@ class TestSCCatalogWebhookProcessor:
         mock_client.get_record_by_sys_id = AsyncMock(return_value=None)
 
         with patch(
-            "webhook.processors.sc_catalog_processor.initialize_webhook_client",
+            "webhook.processors.service_catalog_processor.initialize_webhook_client",
             return_value=mock_client,
         ):
-            result = await sc_catalog_processor.handle_event(payload, resource_config)
+            result = await service_catalog_processor.handle_event(
+                payload, resource_config
+            )
 
             assert isinstance(result, WebhookEventRawResults)
             assert result.updated_raw_results == []
