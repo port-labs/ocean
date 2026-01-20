@@ -1,6 +1,7 @@
 """Tests for custom authentication functionality"""
 
 import asyncio
+import json
 import pytest
 import httpx
 import time
@@ -335,6 +336,312 @@ class TestCustomAuth:
         # Should have authenticated at least once, but lock should prevent duplicates
         assert len(auth_calls) >= 1
         assert len(auth_calls) <= 2
+
+
+# ============================================================================
+# Request Override Tests
+# ============================================================================
+
+
+@pytest.mark.asyncio
+class TestRequestOverride:
+    """Test request overriding with templates"""
+
+    @pytest.fixture
+    def auth_config(self) -> Dict[str, Any]:
+        return {"base_url": "https://api.example.com", "verify_ssl": True}
+
+    @pytest.fixture
+    def custom_auth_request(self) -> CustomAuthRequestConfig:
+        return CustomAuthRequestConfig(
+            endpoint="/oauth/token",
+            method="POST",
+            body={"grant_type": "client_credentials"},
+        )
+
+    @pytest.fixture
+    def custom_auth(
+        self,
+        auth_config: Dict[str, Any],
+        custom_auth_request: CustomAuthRequestConfig,
+    ) -> CustomAuth:
+        # Create CustomAuth without custom_auth_response initially
+        return CustomAuth(auth_config, custom_auth_request, None)
+
+    async def test_override_request_headers(
+        self, custom_auth: CustomAuth, mock_entity_processor: MagicMock
+    ) -> None:
+        """Test that headers are correctly overridden"""
+        custom_auth.auth_response = {"access_token": "test-token-123"}
+        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+            headers={"Authorization": "Bearer {{.access_token}}", "X-Custom": "value"}
+        )
+
+        original_request = httpx.Request(
+            "GET", "https://api.example.com/data", headers={"X-Original": "original"}
+        )
+
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            mock_entity_processor,
+        ):
+            overridden_request = await custom_auth._override_request(original_request)
+
+            # Verify auth header was added
+            assert overridden_request.headers["Authorization"] == "Bearer test-token-123"
+            # Verify custom header was added
+            assert overridden_request.headers["X-Custom"] == "value"
+            # Verify original header is preserved
+            assert overridden_request.headers["X-Original"] == "original"
+            # Verify method and URL are preserved
+            assert overridden_request.method == "GET"
+            assert str(overridden_request.url) == "https://api.example.com/data"
+
+    async def test_override_request_query_params(
+        self, custom_auth: CustomAuth, mock_entity_processor: MagicMock
+    ) -> None:
+        """Test that query params are correctly overridden"""
+        custom_auth.auth_response = {"access_token": "test-token-456"}
+        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+            queryParams={"api_key": "{{.access_token}}", "version": "v2"}
+        )
+
+        original_request = httpx.Request(
+            "GET",
+            "https://api.example.com/data?page=1&limit=10",
+        )
+
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            mock_entity_processor,
+        ):
+            overridden_request = await custom_auth._override_request(original_request)
+
+            # Verify auth query param was added
+            assert "api_key=test-token-456" in str(overridden_request.url)
+            # Verify custom query param was added
+            assert "version=v2" in str(overridden_request.url)
+            # Verify original query params are preserved
+            assert "page=1" in str(overridden_request.url)
+            assert "limit=10" in str(overridden_request.url)
+
+    async def test_override_request_body_with_existing_json_body(
+        self, custom_auth: CustomAuth, mock_entity_processor: MagicMock
+    ) -> None:
+        """Test that body is correctly overridden when request has existing JSON body"""
+        custom_auth.auth_response = {"access_token": "test-token-789"}
+        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+            body={"token": "{{.access_token}}", "source": "api"}
+        )
+
+        # Create request with existing JSON body
+        original_body = {"user_id": "123", "action": "create"}
+        original_request = httpx.Request(
+            "POST",
+            "https://api.example.com/data",
+            json=original_body,
+        )
+
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            mock_entity_processor,
+        ):
+            overridden_request = await custom_auth._override_request(original_request)
+
+            # Read and parse the body
+            body_bytes = overridden_request.read()
+            body_data = json.loads(body_bytes.decode("utf-8"))
+
+            # Verify auth body fields were added
+            assert body_data["token"] == "test-token-789"
+            assert body_data["source"] == "api"
+            # Verify original body fields are preserved
+            assert body_data["user_id"] == "123"
+            assert body_data["action"] == "create"
+            # Verify Content-Length header was updated
+            assert "Content-Length" in overridden_request.headers
+            assert int(overridden_request.headers["Content-Length"]) == len(body_bytes)
+
+    async def test_override_request_body_with_empty_body(
+        self, custom_auth: CustomAuth, mock_entity_processor: MagicMock
+    ) -> None:
+        """Test that body is correctly added when request has no body"""
+        custom_auth.auth_response = {"access_token": "test-token-empty"}
+        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+            body={"token": "{{.access_token}}"}
+        )
+
+        # Create request without body
+        original_request = httpx.Request("POST", "https://api.example.com/data")
+
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            mock_entity_processor,
+        ):
+            overridden_request = await custom_auth._override_request(original_request)
+
+            # Read and parse the body
+            body_bytes = overridden_request.read()
+            body_data = json.loads(body_bytes.decode("utf-8"))
+
+            # Verify auth body field was added
+            assert body_data["token"] == "test-token-empty"
+            # Verify Content-Length header was set
+            assert "Content-Length" in overridden_request.headers
+            assert int(overridden_request.headers["Content-Length"]) == len(body_bytes)
+
+    async def test_override_request_body_with_non_json_body(
+        self, custom_auth: CustomAuth, mock_entity_processor: MagicMock
+    ) -> None:
+        """Test that body override handles non-JSON body gracefully"""
+        custom_auth.auth_response = {"access_token": "test-token-nonjson"}
+        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+            body={"token": "{{.access_token}}"}
+        )
+
+        # Create request with non-JSON body (plain text)
+        original_request = httpx.Request(
+            "POST",
+            "https://api.example.com/data",
+            content=b"plain text body",
+        )
+
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            mock_entity_processor,
+        ):
+            overridden_request = await custom_auth._override_request(original_request)
+
+            # Read and parse the body - should fall back to empty dict on JSON decode error
+            body_bytes = overridden_request.read()
+            body_data = json.loads(body_bytes.decode("utf-8"))
+
+            # Verify auth body field was added (original body ignored due to JSON decode error)
+            assert body_data["token"] == "test-token-nonjson"
+            # Verify Content-Length header was updated
+            assert "Content-Length" in overridden_request.headers
+
+    async def test_override_request_all_parameters_together(
+        self, custom_auth: CustomAuth, mock_entity_processor: MagicMock
+    ) -> None:
+        """Test that headers, query params, and body are all overridden together"""
+        custom_auth.auth_response = {"access_token": "test-token-complete"}
+        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+            headers={"Authorization": "Bearer {{.access_token}}"},
+            queryParams={"api_key": "{{.access_token}}"},
+            body={"token": "{{.access_token}}"},
+        )
+
+        original_request = httpx.Request(
+            "PUT",
+            "https://api.example.com/data?page=1",
+            headers={"X-Original": "header"},
+            json={"original": "data"},
+        )
+
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            mock_entity_processor,
+        ):
+            overridden_request = await custom_auth._override_request(original_request)
+
+            # Verify headers
+            assert (
+                overridden_request.headers["Authorization"]
+                == "Bearer test-token-complete"
+            )
+            assert overridden_request.headers["X-Original"] == "header"
+
+            # Verify query params
+            assert "api_key=test-token-complete" in str(overridden_request.url)
+            assert "page=1" in str(overridden_request.url)
+
+            # Verify body
+            body_bytes = overridden_request.read()
+            body_data = json.loads(body_bytes.decode("utf-8"))
+            assert body_data["token"] == "test-token-complete"
+            assert body_data["original"] == "data"
+
+    async def test_override_request_no_auth_response(
+        self, custom_auth: CustomAuth, mock_entity_processor: MagicMock
+    ) -> None:
+        """Test that request is returned unchanged when no auth_response exists"""
+        custom_auth.auth_response = None
+        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+            headers={"Authorization": "Bearer {{.access_token}}"}
+        )
+
+        original_request = httpx.Request(
+            "GET", "https://api.example.com/data", headers={"X-Original": "header"}
+        )
+
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            mock_entity_processor,
+        ):
+            overridden_request = await custom_auth._override_request(original_request)
+
+            # Request should be unchanged (cloned but no modifications)
+            assert overridden_request.method == original_request.method
+            assert str(overridden_request.url) == str(original_request.url)
+            assert overridden_request.headers["X-Original"] == "header"
+            # Auth header should NOT be added
+            assert "Authorization" not in overridden_request.headers
+
+    async def test_override_request_body_stream_is_set_correctly(
+        self, custom_auth: CustomAuth, mock_entity_processor: MagicMock
+    ) -> None:
+        """Test that body stream is correctly set after overriding"""
+        custom_auth.auth_response = {"access_token": "test-token-stream"}
+        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+            body={"token": "{{.access_token}}"}
+        )
+
+        original_request = httpx.Request(
+            "POST", "https://api.example.com/data", json={"data": "original"}
+        )
+
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            mock_entity_processor,
+        ):
+            overridden_request = await custom_auth._override_request(original_request)
+
+            # Verify stream is set
+            assert overridden_request.stream is not None
+            # Verify we can read from the stream multiple times
+            body_bytes_1 = overridden_request.read()
+            # Reset stream position (if needed) or verify content is consistent
+            overridden_request._content = json.dumps(
+                {"data": "original", "token": "test-token-stream"}
+            ).encode("utf-8")
+            body_bytes_2 = overridden_request.read()
+            assert body_bytes_1 == body_bytes_2
+
+    async def test_override_request_preserves_extensions(
+        self, custom_auth: CustomAuth, mock_entity_processor: MagicMock
+    ) -> None:
+        """Test that request extensions are preserved"""
+        custom_auth.auth_response = {"access_token": "test-token-ext"}
+        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+            headers={"Authorization": "Bearer {{.access_token}}"}
+        )
+
+        original_request = httpx.Request(
+            "GET",
+            "https://api.example.com/data",
+            extensions={"custom_extension": "value"},
+        )
+
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            mock_entity_processor,
+        ):
+            overridden_request = await custom_auth._override_request(original_request)
+
+            # Verify extensions are preserved
+            assert overridden_request.extensions == original_request.extensions
+            assert overridden_request.extensions["custom_extension"] == "value"
 
 
 # ============================================================================

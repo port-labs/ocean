@@ -269,16 +269,18 @@ class CustomAuth(httpx.Auth):
 
     async def _override_request(self, request: httpx.Request) -> httpx.Request:
         """Override the request with the evaluated templates."""
+        # Always clone the request to avoid modifying the original
+        request_clone = httpx.Request(
+            method=request.method,
+            url=request.url,
+            headers=request.headers,
+            params=request.url.params,
+            content=request.content,
+            extensions=request.extensions,
+        )
+
         if self.auth_response:
             eval_headers, eval_query, eval_body = await self._get_evaluated_templates()
-            request_clone = httpx.Request(
-                method=request.method,
-                url=request.url,
-                headers=request.headers,
-                params=request.url.params,
-                content=request.content,
-                extensions=request.extensions,
-            )
 
             # Update Headers
             if eval_headers:
@@ -302,6 +304,7 @@ class CustomAuth(httpx.Auth):
                 request_clone._content = new_content
                 request_clone.stream = httpx.ByteStream(new_content)
                 request_clone.headers["Content-Length"] = str(len(new_content))
+
         return request_clone
 
     def _get_auth_response_hash(self) -> Optional[str]:
