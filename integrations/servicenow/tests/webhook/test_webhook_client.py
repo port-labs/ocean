@@ -111,7 +111,6 @@ class TestServicenowWebhookClient:
                     "https://example.com", ["incident", "sys_user_group"]
                 )
 
-                # Should create rules for both valid tables
                 assert mock_create_rule.call_count == 2
 
     @pytest.mark.asyncio
@@ -131,7 +130,6 @@ class TestServicenowWebhookClient:
                     "https://example.com", ["incident", "unknown_table"]
                 )
 
-                # Should only create rules for known table (incident)
                 assert mock_create_rule.call_count == 1
 
     @pytest.mark.asyncio
@@ -149,7 +147,6 @@ class TestServicenowWebhookClient:
             ) as mock_create_rule:
                 await webhook_client.create_webhook("https://example.com", ["incident"])
 
-                # Should not create any rules if REST message fails
                 mock_create_rule.assert_not_called()
 
     @pytest.mark.asyncio
@@ -263,18 +260,16 @@ class TestOutboundMessage:
             "https://example.com/webhook",
         )
 
-        # Should return existing sys_id (which is now REST_MESSAGE_NAME after recent changes)
-        assert result == "existing_id"
+        assert result == REST_MESSAGE_NAME
 
     @pytest.mark.asyncio
     async def test_create_rest_message_if_not_exists_create_new(self) -> None:
         """Test creating a new REST message."""
-        # First call returns empty (no existing), second creates parent, third creates function
         mock_request = AsyncMock(
             side_effect=[
-                {"result": []},  # find_rest_message - not found
-                {"result": {"sys_id": "new_parent_id"}},  # create_rest_message_parent
-                {"result": {"sys_id": "new_fn_id"}},  # create_rest_message_function
+                {"result": []},
+                {"result": {"sys_id": "new_parent_id"}},
+                {"result": {"sys_id": "new_fn_id"}},
             ]
         )
 
@@ -291,8 +286,8 @@ class TestOutboundMessage:
         """Test handling REST message creation failure."""
         mock_request = AsyncMock(
             side_effect=[
-                {"result": []},  # find_rest_message - not found
-                None,  # create_rest_message_parent - failure
+                {"result": []},
+                None,
             ]
         )
 
@@ -324,7 +319,6 @@ class TestBusinessRule:
         fields = ["caller_id.name", "assignment_group.name"]
         script = generate_business_rule_script(REST_MESSAGE_NAME, fields)
 
-        # Dots should be replaced with underscores in the payload key
         assert '"caller_id_name": current.caller_id.name + "",' in script
         assert '"assignment_group_name": current.assignment_group.name + ""' in script
 
@@ -335,7 +329,6 @@ class TestBusinessRule:
             REST_MESSAGE_NAME, fields, delete_event=True
         )
 
-        # Delete events should use 'previous' instead of 'current'
         assert "previous.sys_id" in script
         assert "previous.number" in script
         assert "current." not in script
@@ -412,7 +405,6 @@ class TestBusinessRule:
             {"name": "test_rule (delete)", "collection": "incident"},
         ]
 
-        # Should not raise
         await submit_business_rules(
             mock_request,
             "https://test.service-now.com/api/now/table",
@@ -425,7 +417,6 @@ class TestBusinessRule:
     @pytest.mark.asyncio
     async def test_create_business_rule_if_not_exists_skips_existing(self) -> None:
         """Test that existing business rules are skipped."""
-        # First call checks if rule exists - returns True
         mock_request = AsyncMock(return_value={"result": [{"sys_id": "existing_rule"}]})
 
         await create_business_rule_if_not_exists(
@@ -436,7 +427,6 @@ class TestBusinessRule:
             ["sys_id", "number"],
         )
 
-        # Should only make one call (to check existence)
         assert mock_request.call_count == 1
 
     @pytest.mark.asyncio
@@ -444,9 +434,9 @@ class TestBusinessRule:
         """Test creating new business rules."""
         mock_request = AsyncMock(
             side_effect=[
-                {"result": []},  # business_rule_exists - not found
-                {"result": {"sys_id": "upsert_rule_id"}},  # submit upsert rule
-                {"result": {"sys_id": "delete_rule_id"}},  # submit delete rule
+                {"result": []},
+                {"result": {"sys_id": "upsert_rule_id"}},
+                {"result": {"sys_id": "delete_rule_id"}},
             ]
         )
 
@@ -458,5 +448,4 @@ class TestBusinessRule:
             ["sys_id", "number"],
         )
 
-        # Should make 3 calls: 1 for check + 2 for rule creation
         assert mock_request.call_count == 3
