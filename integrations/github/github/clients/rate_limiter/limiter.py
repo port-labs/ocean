@@ -22,21 +22,13 @@ class GitHubRateLimiter:
         await self._semaphore.acquire()
 
         async with self._block_lock:
-            if self.rate_limit_info:
-                logger.debug(
-                    f"{self.api_type} rate limit status: "
-                    f"{self.rate_limit_info.remaining}/{self.rate_limit_info.limit} remaining, "
-                    f"resets in {self.rate_limit_info.seconds_until_reset}s"
-                )
-                if self.rate_limit_info.remaining <= 1:
-                    delay = self.rate_limit_info.seconds_until_reset
-                    if delay > 0:
-                        logger.warning(
-                            f"⚠️ RATE LIMIT HIT: {self.api_type} requests paused for {delay:.1f}s "
-                            f"({self.rate_limit_info.remaining}/{self.rate_limit_info.limit} remaining)"
-                        )
-                        await asyncio.sleep(delay)
-                        logger.info(f"Rate limit pause complete for {self.api_type}, resuming requests")
+            if self.rate_limit_info and (self.rate_limit_info.remaining <= 1):
+                delay = self.rate_limit_info.seconds_until_reset
+                if delay > 0:
+                    logger.warning(
+                        f"{self.api_type} requests paused for {delay:.1f}s due to earlier rate limit"
+                    )
+                    await asyncio.sleep(delay)
         return self
 
     async def __aexit__(

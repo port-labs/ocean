@@ -41,6 +41,8 @@ class GitHubHeaders(BaseModel):
 
 
 class AbstractGitHubAuthenticator(ABC):
+    _http_client: Optional[httpx.AsyncClient] = None
+
     @abstractmethod
     async def get_token(self, **kwargs: Any) -> GitHubToken:
         pass

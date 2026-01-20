@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
-import time
 
 import httpx
 from httpx import Response
@@ -98,7 +97,6 @@ class AbstractGithubClient(ABC):
     ) -> Response:
         """Make a request to the GitHub API with GitHub rate limiting and error handling."""
 
-        request_start = time.time()
         async with self.rate_limiter:
             try:
                 response = await self.authenticator.client.request(
@@ -110,16 +108,11 @@ class AbstractGithubClient(ABC):
                 )
                 response.raise_for_status()
 
-                request_duration = time.time() - request_start
-                logger.debug(
-                    f"Successfully fetched {method} {resource} "
-                    f"in {request_duration:.2f}s"
-                )
+                logger.debug(f"Successfully fetched {method} {resource}")
                 return response
 
             except httpx.HTTPStatusError as e:
                 response = e.response
-                request_duration = time.time() - request_start
 
                 if not self.rate_limiter.is_rate_limit_response(response):
                     if self._should_ignore_error(
@@ -132,20 +125,10 @@ class AbstractGithubClient(ABC):
                     f"Method: {method}, Response: {response.text}"
                 )
 
-            except httpx.ReadTimeout as e:
-                request_duration = time.time() - request_start
-                logger.error(
-                    f"⚠️ READ TIMEOUT: {method} {resource} "
-                    f"after {request_duration:.2f}s - {str(e)}"
-                )
                 raise
 
             except httpx.HTTPError as e:
-                request_duration = time.time() - request_start
-                logger.error(
-                    f"HTTP error for endpoint '{resource}': {str(e)}, "
-                    f"Duration: {request_duration:.2f}s"
-                )
+                logger.error(f"HTTP error for endpoint '{resource}': {str(e)}")
                 raise
 
             finally:
