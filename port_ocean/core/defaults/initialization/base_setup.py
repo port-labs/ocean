@@ -64,7 +64,7 @@ class BaseSetup(ABC):
                 actions_processing_enabled=self.integration_config.actions_processor.enabled,
             )
 
-    async def _upsert_integration(self) -> dict[str, Any] | None:
+    async def _upsert_integration(self) -> dict[str, Any]:
         try:
             integration = await self.port_client.get_current_integration(
                 should_log=False,
@@ -92,7 +92,6 @@ class BaseSetup(ABC):
 
         logger.info("Initializing integration at port")
         integration = await self._upsert_integration()
-        if integration:
-            await self._verify_integration_configuration(integration)
+        await self._verify_integration_configuration(integration)
 
         await self._setup()
