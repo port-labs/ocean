@@ -1,0 +1,27 @@
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock
+from contextlib import suppress
+import pytest
+
+from port_ocean.context.ocean import initialize_port_ocean_context
+from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+
+
+@pytest.fixture(autouse=True)
+def mock_ocean_context() -> MagicMock:
+    mock_app = MagicMock()
+    # Match real structure expected by ocean.integration_config
+    mock_app.config.integration.config = {
+        "sentry_host": "https://sentry.io",
+        "sentry_token": "dummy-token",
+        "sentry_organization": "dummy-org",
+        "sentry_webhook_secret": "dummy-secret",
+    }
+    mock_app.integration_router = MagicMock()
+    mock_app.port_client = MagicMock()
+    with suppress(PortOceanContextAlreadyInitializedError):
+        mock_app.cache_provider = AsyncMock()
+        mock_app.cache_provider.get.return_value = None
+        initialize_port_ocean_context(mock_app)
+    return mock_app

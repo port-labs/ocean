@@ -328,6 +328,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/sentry",
+      "envFile": "${workspaceFolder}/integrations/sentry/.env",
+      "justMyCode": true,
+      "name": "Run sentry integration",
+      "program": "${workspaceFolder}/integrations/sentry/debug.py",
+      "python": "${workspaceFolder}/integrations/sentry/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/servicenow",
       "envFile": "${workspaceFolder}/integrations/servicenow/.env",
       "justMyCode": true,
