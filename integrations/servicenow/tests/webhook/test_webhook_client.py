@@ -170,9 +170,7 @@ class TestServicenowWebhookClient:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test retrieving a record that doesn't exist."""
-        with patch.object(
-            webhook_client, "make_request", AsyncMock(return_value=None)
-        ):
+        with patch.object(webhook_client, "make_request", AsyncMock(return_value=None)):
             result = await webhook_client.get_record_by_sys_id(
                 "incident", "nonexistent_id"
             )

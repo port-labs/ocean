@@ -4,22 +4,20 @@ from auth.oauth_authenticator import OAuthClientCredentialsAuthenticator
 from client import ServicenowClient
 from loguru import logger
 from exceptions import MissingCredentialsError
-from port_ocean.context.ocean import ocean
 
 
-def create_authenticator() -> AbstractServiceNowAuthenticator:
+def create_authenticator(
+    servicenow_url: str,
+    client_id: str | None = None,
+    client_secret: str | None = None,
+    username: str | None = None,
+    password: str | None = None,
+) -> AbstractServiceNowAuthenticator:
     """Create the appropriate authenticator based on configuration."""
-    config = ocean.integration_config
-
-    client_id = config.get("servicenow_client_id")
-    client_secret = config.get("servicenow_client_secret")
-    username = config.get("servicenow_username")
-    password = config.get("servicenow_password")
-
     if client_id and client_secret:
         logger.info("Using OAuth Client Credentials authentication for ServiceNow")
         return OAuthClientCredentialsAuthenticator(
-            servicenow_url=config["servicenow_url"],
+            servicenow_url=servicenow_url,
             client_id=client_id,
             client_secret=client_secret,
         )
@@ -38,9 +36,17 @@ def create_authenticator() -> AbstractServiceNowAuthenticator:
     )
 
 
-def initialize_client() -> ServicenowClient:
-    authenticator = create_authenticator()
+def initialize_client(
+    servicenow_url: str,
+    client_id: str | None = None,
+    client_secret: str | None = None,
+    username: str | None = None,
+    password: str | None = None,
+) -> ServicenowClient:
+    authenticator = create_authenticator(
+        servicenow_url, client_id, client_secret, username, password
+    )
     return ServicenowClient(
-        servicenow_url=ocean.integration_config["servicenow_url"],
+        servicenow_url=servicenow_url,
         authenticator=authenticator,
     )

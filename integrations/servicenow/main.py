@@ -22,7 +22,13 @@ from integration import ServiceNowResourceConfig, ObjectKind
 @ocean.on_resync()
 async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Servicenow resource: {kind}")
-    servicenow_client = initialize_client()
+    servicenow_client = initialize_client(
+        servicenow_url=ocean.integration_config["servicenow_url"],
+        client_id=ocean.integration_config.get("servicenow_client_id"),
+        client_secret=ocean.integration_config.get("servicenow_client_secret"),
+        username=ocean.integration_config.get("servicenow_username"),
+        password=ocean.integration_config.get("servicenow_password"),
+    )
     api_query_params = {}
     selector = cast(ServiceNowResourceConfig, event.resource_config).selector
     if selector.api_query_params:
@@ -39,7 +45,13 @@ async def on_start() -> None:
     """Initialize the integration and configure webhooks"""
 
     print("Starting Servicenow integration")
-    servicenow_client = initialize_client()
+    servicenow_client = initialize_client(
+        servicenow_url=ocean.integration_config["servicenow_url"],
+        client_id=ocean.integration_config.get("servicenow_client_id"),
+        client_secret=ocean.integration_config.get("servicenow_client_secret"),
+        username=ocean.integration_config.get("servicenow_username"),
+        password=ocean.integration_config.get("servicenow_password"),
+    )
     await servicenow_client.sanity_check()
 
     if not ocean.app.config.event_listener.should_process_webhooks:
