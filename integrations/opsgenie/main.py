@@ -163,6 +163,51 @@ async def on_schedule_oncall_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield schedule_oncall
 
 
+
+@ocean.on_resync(ObjectKind.ALERT_POLICY)
+async def on_alert_policy_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    opsgenie_client = init_client()
+    all_policies = []
+    async for teams_batch in opsgenie_client.get_paginated_resources(
+        resource_type=ObjectKind.TEAM
+    ):
+        logger.info(f"Received batch with {len(teams_batch)} teams")
+        for team in teams_batch:
+            team_id = team["id"]
+            async for policy_batch in opsgenie_client.get_paginated_resources(
+                resource_type=ObjectKind.ALERT_POLICY,
+                query_params={"teamId": team_id}
+            ):
+                all_policies.extend(policy_batch)
+
+
+    logger.info(
+        f"Received {len(all_policies)} alert policies"
+    )
+    yield all_policies
+
+@ocean.on_resync(ObjectKind.NOTIFICATION_POLICY)
+async def on_notification_policy_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    opsgenie_client = init_client()
+
+    all_policies = []
+    async for teams_batch in opsgenie_client.get_paginated_resources(
+        resource_type=ObjectKind.TEAM
+    ):
+        logger.info(f"Received batch with {len(teams_batch)} teams")
+        for team in teams_batch:
+            team_id = team["id"]
+            async for policy_batch in opsgenie_client.get_paginated_resources(
+                resource_type=ObjectKind.NOTIFICATION_POLICY,
+                query_params={"teamId": team_id}
+            ):
+                all_policies.extend(policy_batch)
+
+    logger.info(
+        f"Received {len(all_policies)} notification policies"
+    )
+    yield all_policies
+
 @ocean.router.post("/webhook")
 async def on_alert_webhook_handler(data: dict[str, Any]) -> None:
     opsgenie_client = init_client()
