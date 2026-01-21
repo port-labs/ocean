@@ -66,16 +66,16 @@ class AzureResourceGraphClient(AzureRestClient):
             )
 
             if response.get("resultTruncated") == "true":
-                logger.warning(
-                    f"Result truncated for {next_url}"
-                )
+                logger.warning(f"Result truncated for {next_url}")
 
             if original_record_count == 0:
-                original_record_count = response.get("totalRecords",0)
+                original_record_count = response.get("totalRecords", 0)
 
             if original_record_count != response.get("totalRecords"):
                 logger.warning(
-                    f"Total records mismatch for {next_url}",original_record_count=original_record_count,new_record_count=response.get("totalRecords")
+                    f"Total records mismatch for {next_url}",
+                    original_record_count=original_record_count,
+                    new_record_count=response.get("totalRecords"),
                 )
 
             skipToken = response.get("$skipToken")
