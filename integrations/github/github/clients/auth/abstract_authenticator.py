@@ -1,6 +1,7 @@
 from typing import Any, Dict, Optional
 from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
+from github.clients.auth.retry_transport import GitHubRetryTransport
 from pydantic import BaseModel, PrivateAttr, Field
 from dateutil.parser import parse
 
@@ -55,10 +56,12 @@ class AbstractGitHubAuthenticator(ABC):
             retry_after_headers=[
                 "Retry-After",
                 "X-RateLimit-Reset",
-            ]
+            ],
+            max_backoff_wait=1800,
         )
 
         return OceanAsyncClient(
+            GitHubRetryTransport,
             retry_config=retry_config,
             timeout=ocean.config.client_timeout,
         )
