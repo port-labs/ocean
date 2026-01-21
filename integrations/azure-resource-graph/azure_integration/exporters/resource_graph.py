@@ -12,7 +12,7 @@ from azure_integration.helpers.http import format_query
 from azure_integration.clients.base import AzureRequest
 
 
-_SUBCRIPTION_BATCH_SIZE = 100
+_SUBCRIPTION_BATCH_SIZE = 1
 _MAX_CONCURRENT_REQUESTS = 10
 
 
