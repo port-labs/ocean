@@ -52,7 +52,8 @@ class AzureResourceGraphClient(AzureRestClient):
             "api-version": request.api_version,
         }
         original_record_count = 0
-       // These Azure API requests requires ordering (even if undocumented in the official Azure docs). In any case of inconsistent data, consider checking the query itself regardless of the integration
+        # These Azure API requests requires ordering (even if undocumented in the official Azure docs).
+        # In any case of inconsistent data, consider checking the query itself regardless of the integration
         while True:
             response = await self.make_request(
                 AzureRequest(
