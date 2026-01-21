@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, Dict
 
 import httpx
 from loguru import logger
@@ -24,6 +24,46 @@ class ServicenowClient:
         """Update HTTP client headers with current authentication."""
         headers = await self.authenticator.get_headers()
         self.http_client.headers.update(headers)
+
+    async def make_request(
+        self,
+        resource: str,
+        params: Optional[Dict[str, Any]] = None,
+        method: str = "GET",
+        json_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        await self._ensure_auth_headers()
+        try:
+            response = await self.http_client.request(
+                url=resource,
+                params=params,
+                method=method,
+                json=json_data,
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+            )
+        except httpx.HTTPError as e:
+            logger.error(
+                f"HTTP error occurred while fetching Servicenow data: {str(e)}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Unexpected error occurred while fetching Servicenow data: {str(e)}"
+            )
+        return None
+
+    async def get_record_by_sys_id(
+        self, table_name: str, sys_id: str
+    ) -> Optional[dict[str, Any]]:
+        url = f"{self.table_base_url}/{table_name}/{sys_id}"
+        response = await self.make_request(url)
+        if response and (result := response.get("result", {})):
+            return result
+        return None
 
     async def get_paginated_resource(
         self, resource_kind: str, api_query_params: Optional[dict[str, Any]] = None

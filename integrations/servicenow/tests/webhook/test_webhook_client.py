@@ -41,7 +41,7 @@ class TestServicenowWebhookClient:
                 "get_headers",
                 return_value={"Authorization": "Basic test"},
             ):
-                result = await webhook_client._make_request(
+                result = await webhook_client.make_request(
                     "https://test-url.com/api/test"
                 )
 
@@ -67,7 +67,7 @@ class TestServicenowWebhookClient:
                 "get_headers",
                 return_value={"Authorization": "Basic test"},
             ):
-                result = await webhook_client._make_request(
+                result = await webhook_client.make_request(
                     "https://test-url.com/api/test"
                 )
 
@@ -88,7 +88,7 @@ class TestServicenowWebhookClient:
                 "get_headers",
                 return_value={"Authorization": "Basic test"},
             ):
-                result = await webhook_client._make_request(
+                result = await webhook_client.make_request(
                     "https://test-url.com/api/test"
                 )
 
@@ -157,7 +157,7 @@ class TestServicenowWebhookClient:
         mock_response = {"result": SAMPLE_INCIDENT_DATA}
 
         with patch.object(
-            webhook_client, "_make_request", AsyncMock(return_value=mock_response)
+            webhook_client, "make_request", AsyncMock(return_value=mock_response)
         ):
             result = await webhook_client.get_record_by_sys_id(
                 "incident", SAMPLE_INCIDENT_DATA["sys_id"]
@@ -171,7 +171,7 @@ class TestServicenowWebhookClient:
     ) -> None:
         """Test retrieving a record that doesn't exist."""
         with patch.object(
-            webhook_client, "_make_request", AsyncMock(return_value=None)
+            webhook_client, "make_request", AsyncMock(return_value=None)
         ):
             result = await webhook_client.get_record_by_sys_id(
                 "incident", "nonexistent_id"
@@ -187,7 +187,7 @@ class TestServicenowWebhookClient:
         mock_response: Dict[str, Any] = {"result": {}}
 
         with patch.object(
-            webhook_client, "_make_request", AsyncMock(return_value=mock_response)
+            webhook_client, "make_request", AsyncMock(return_value=mock_response)
         ):
             result = await webhook_client.get_record_by_sys_id("incident", "empty_id")
 
