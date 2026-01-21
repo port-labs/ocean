@@ -1,0 +1,20 @@
+{
+  "identifier": "sailpoint_identity",
+  "title": "SailPoint Identity",
+  "icon": "User",
+  "schema": {
+    "properties": {
+      "email": {"type": "string"},
+      "status": {"type": "string", "enum": ["ACTIVE", "INACTIVE", "UNREGISTERED", "LOCKED"]},
+      "createdAt": {"type": "string", "format": "date-time"},
+      "updatedAt": {"type": "string", "format": "date-time"},
+      "identityProfileId": {"type": "string"}
+    },
+    "required": ["email", "status"]
+  },
+  "relations": {
+    "accounts": {"title": "Accounts", "target": "sailpoint_account", "many": true},
+    "entitlements": {"title": "Entitlements", "target": "sailpoint_entitlement", "many": true},
+    "roles": {"title": "Roles", "target": "sailpoint_role", "many": true}
+  }
+}
