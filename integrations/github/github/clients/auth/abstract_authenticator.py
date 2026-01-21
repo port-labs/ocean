@@ -53,7 +53,7 @@ class AbstractGitHubAuthenticator(ABC):
 
     @property
     def client(self) -> httpx.AsyncClient:
-        if not hasattr(self, "_http_client") or self._http_client is None:
+        if self._http_client is None:
             retry_config = RetryConfig(
                 retry_after_headers=[
                     "Retry-After",
