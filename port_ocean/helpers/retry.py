@@ -394,7 +394,16 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             Sleep time in seconds if parsing succeeds, None if the header value cannot be parsed
         """
         if header_value.isdigit():
-            return float(header_value)
+            value = int(header_value)
+            now = int(datetime.now().timestamp())
+
+            # Heuristic: large values could be UNIX timestamps
+            # Anything far bigger than "reasonable sleep" should be treated as epoch.
+            if value > 10_000:  # ~2.7 hours, safe threshold
+                sleep = value - now
+                return float(sleep) if sleep > 0 else 0.0
+
+            return float(value)
 
         try:
             # Try to parse as ISO date (common for rate limit headers like X-RateLimit-Reset)
@@ -418,7 +427,8 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         error: Exception | None = None
         while True:
             if attempts_made > 0:
-                sleep_time = self._calculate_sleep(attempts_made, {})
+                response_headers = response.headers if response else {}
+                sleep_time = self._calculate_sleep(attempts_made, response_headers)
                 self._log_before_retry(request, sleep_time, response, error)
                 await asyncio.sleep(sleep_time)
 
@@ -469,7 +479,8 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
 
         while True:
             if attempts_made > 0:
-                sleep_time = self._calculate_sleep(attempts_made, {})
+                response_headers = response.headers if response else {}
+                sleep_time = self._calculate_sleep(attempts_made, response_headers)
                 self._log_before_retry(request, sleep_time, response, error)
                 time.sleep(sleep_time)
 
