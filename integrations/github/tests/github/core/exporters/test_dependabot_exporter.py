@@ -257,7 +257,7 @@ class TestRestDependabotAlertExporter:
                 )
             )
 
-            assert result == {"__repository": "test-repo", "__organization": "test-org"}
+            assert result == {}
 
     async def test_handle_request_paginated_with_dependabot_disabled_error(
         self, rest_client: GithubRestClient

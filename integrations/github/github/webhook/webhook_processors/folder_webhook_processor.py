@@ -140,6 +140,8 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
             organization=organization, name=repository["name"]
         )
         repository = await repo_exporter.get_resource(repo_options)
+        if not repository:
+            return []
 
         for pattern in folder_selector:
             if not self._has_matched_repo(pattern, repository, branch):

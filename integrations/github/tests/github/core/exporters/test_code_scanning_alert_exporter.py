@@ -262,7 +262,7 @@ class TestRestCodeScanningAlertExporter:
                     organization="test-org", repo_name="test-repo", alert_number="43"
                 )
             )
-            assert result == {"__repository": "test-repo", "__organization": "test-org"}
+            assert result == {}
 
     async def test_handle_request_paginated_with_advanced_security_disabled_error(
         self, rest_client: GithubRestClient
