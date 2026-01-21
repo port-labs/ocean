@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import AsyncMock, Mock, patch
 from http import HTTPStatus
 import httpx
-import asyncio
 
 from port_ocean.helpers.retry import (
     RetryConfig,
@@ -304,7 +303,9 @@ class TestRetryTransport:
         send_method = Mock(side_effect=[response1, response2])
         request = Mock()
 
-        with patch.object(transport, "_calculate_sleep", return_value=0.0) as calc_sleep:
+        with patch.object(
+            transport, "_calculate_sleep", return_value=0.0
+        ) as calc_sleep:
             with patch("port_ocean.helpers.retry.time.sleep") as sleep:
                 transport._retry_operation(request, send_method)
 
@@ -341,9 +342,12 @@ class TestRetryTransport:
 
         request = httpx.Request("GET", "https://example.com")
 
-        with patch.object(transport, "_calculate_sleep", return_value=0.0) as calc_sleep:
+        with patch.object(
+            transport, "_calculate_sleep", return_value=0.0
+        ) as calc_sleep:
             with patch(
-                "port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock(return_value=None)
+                "port_ocean.helpers.retry.asyncio.sleep",
+                new=AsyncMock(return_value=None),
             ):
                 await transport._retry_operation_async(request, send_method_iter)
 
