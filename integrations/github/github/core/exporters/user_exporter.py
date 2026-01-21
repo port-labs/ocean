@@ -119,11 +119,4 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
             )
         except TypeError:
             logger.info(f"SAML not enabled for organization '{organization}'")
-        except Exception as e:
-            logger.error(
-                f"SAML fetch failed for '{organization}' after {batch_count} batches "
-                f"({len(saml_users)} identities collected). Error: {type(e).__name__}: {e}"
-            )
-            raise
-
         return saml_users
