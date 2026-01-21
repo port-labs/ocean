@@ -12,7 +12,6 @@ from github.clients.rate_limiter.utils import (
 class GitHubRateLimiter:
     def __init__(self, config: GitHubRateLimiterConfig) -> None:
         self.api_type = config.api_type
-        self._max_concurrent = config.max_concurrent
         self._semaphore = asyncio.Semaphore(config.max_concurrent)
         self.rate_limit_info: Optional[RateLimitInfo] = None
 
@@ -23,15 +22,11 @@ class GitHubRateLimiter:
         await self._semaphore.acquire()
 
         async with self._block_lock:
-            # Account for concurrent in-flight requests when checking rate limit.
-            # If remaining requests <= max_concurrent, we might exceed the limit
-            # with concurrent requests that passed this check simultaneously.
-            if self.rate_limit_info and (self.rate_limit_info.remaining <= self._max_concurrent):
+            if self.rate_limit_info and (self.rate_limit_info.remaining <= 1):
                 delay = self.rate_limit_info.seconds_until_reset
                 if delay > 0:
                     logger.warning(
-                        f"{self.api_type} requests paused for {delay:.1f}s due to rate limit "
-                        f"(remaining: {self.rate_limit_info.remaining}, concurrent: {self._max_concurrent})"
+                        f"{self.api_type} requests paused for {delay:.1f}s due to earlier rate limit"
                     )
                     await asyncio.sleep(delay)
         return self

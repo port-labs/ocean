@@ -6,6 +6,7 @@ import httpx
 from httpx import Response
 
 from loguru import logger
+
 from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.limiter import GitHubRateLimiter
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo

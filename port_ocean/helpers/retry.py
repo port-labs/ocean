@@ -485,11 +485,9 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         attempts_made = 0
         response: httpx.Response | None = None
         error: Exception | None = None
-        # Store headers from previous response for retry timing calculation
-        previous_response_headers: Mapping[str, str] = {}
         while True:
             if attempts_made > 0:
-                sleep_time = self._calculate_sleep(attempts_made, previous_response_headers)
+                sleep_time = self._calculate_sleep(attempts_made, {})
                 self._log_before_retry(request, sleep_time, response, error)
                 await asyncio.sleep(sleep_time)
 
@@ -502,8 +500,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                     await self._should_retry_async(response)
                 ):
                     return response
-                # Store headers before closing response for next retry iteration
-                previous_response_headers = dict(response.headers)
                 await response.aclose()
             except httpx.ConnectTimeout as e:
                 error = e
@@ -539,12 +535,10 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         attempts_made = 0
         response: httpx.Response | None = None
         error: Exception | None = None
-        # Store headers from previous response for retry timing calculation
-        previous_response_headers: Mapping[str, str] = {}
 
         while True:
             if attempts_made > 0:
-                sleep_time = self._calculate_sleep(attempts_made, previous_response_headers)
+                sleep_time = self._calculate_sleep(attempts_made, {})
                 self._log_before_retry(request, sleep_time, response, error)
                 time.sleep(sleep_time)
 
@@ -555,8 +549,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 response.request = request
                 if remaining_attempts < 1 or not self._should_retry(response):
                     return response
-                # Store headers before closing response for next retry iteration
-                previous_response_headers = dict(response.headers)
                 response.close()
             except httpx.ConnectTimeout as e:
                 error = e

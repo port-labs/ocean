@@ -13,8 +13,6 @@ from github.helpers.utils import (
 )
 
 BATCH_CONCURRENCY_LIMIT = 10
-# Yield results in smaller chunks to reduce memory usage
-YIELD_BATCH_SIZE = 25
 
 
 class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
@@ -88,27 +86,20 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
             batch_concurrency_limit = asyncio.Semaphore(BATCH_CONCURRENCY_LIMIT)
 
-            # Process branches in smaller chunks to reduce memory usage
-            # Instead of gathering all at once, yield results incrementally
-            for i in range(0, len(branches), YIELD_BATCH_SIZE):
-                chunk = branches[i : i + YIELD_BATCH_SIZE]
-                tasks = [
-                    self._run_branch_hydration(
-                        repo,
-                        organization,
-                        branch,
-                        is_explicit or detailed,
-                        protection_rules,
-                        batch_concurrency_limit,
-                    )
-                    for branch in chunk
-                ]
+            tasks = [
+                self._run_branch_hydration(
+                    repo,
+                    organization,
+                    branch,
+                    is_explicit or detailed,
+                    protection_rules,
+                    batch_concurrency_limit,
+                )
+                for branch in branches
+            ]
 
-                hydrated = await asyncio.gather(*tasks)
-                # Filter out empty results (failed fetches)
-                valid_results = [r for r in hydrated if r]
-                if valid_results:
-                    yield valid_results
+            hydrated = await asyncio.gather(*tasks)
+            yield hydrated
 
     async def _run_branch_hydration(
         self,
