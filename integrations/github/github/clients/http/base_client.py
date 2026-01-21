@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional
 
@@ -5,7 +6,6 @@ import httpx
 from httpx import Response
 
 from loguru import logger
-
 from github.helpers.utils import IgnoredError
 from github.clients.rate_limiter.limiter import GitHubRateLimiter
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
         AbstractGitHubAuthenticator,
     )
 
+MAX_RATE_LIMIT_RETRIES = 3
 
 class AbstractGithubClient(ABC):
     def __init__(
@@ -38,9 +39,10 @@ class AbstractGithubClient(ABC):
             message="Unauthorized access to endpoint — authentication required or token invalid",
             type="UNAUTHORIZED",
         ),
-        # Note: While GitHub documentation mentions 403 as a rate limit code,
-        # in practice 403s are tied to permissions rather than rate limiting.
-        # Therefore we ignore 403s rather than retrying them as we do for rate limit errors.
+        # Note: GitHub returns 403 for both permission errors AND rate limit errors.
+        # Rate limit 403s are handled separately in make_request() with retry logic
+        # (detected via is_rate_limit_response() which checks x-ratelimit-remaining header).
+        # Permission 403s (non-rate-limit) are ignored here to continue processing.
         IgnoredError(
             status=403,
             message="Forbidden access to endpoint — insufficient permissions",
@@ -95,45 +97,71 @@ class AbstractGithubClient(ABC):
         ignore_default_errors: bool = True,
         authenticator_headers_params: Optional[Dict[str, Any]] = None,
     ) -> Response:
-        """Make a request to the GitHub API with GitHub rate limiting and error handling."""
+        """Make a request to the GitHub API with GitHub rate limiting and error handling.
 
-        async with self.rate_limiter:
-            try:
-                response = await self.authenticator.client.request(
-                    method=method,
-                    url=resource,
-                    params=params,
-                    json=json_data,
-                    headers=await self.headers(**(authenticator_headers_params or {})),
-                )
-                response.raise_for_status()
+        Includes retry logic specifically for rate limit 403 errors (not permission 403s).
+        """
+        last_exception: Optional[httpx.HTTPStatusError] = None
 
-                logger.debug(f"Successfully fetched {method} {resource}")
-                return response
+        for attempt in range(MAX_RATE_LIMIT_RETRIES + 1):
+            async with self.rate_limiter:
+                try:
+                    response = await self.authenticator.client.request(
+                        method=method,
+                        url=resource,
+                        params=params,
+                        json=json_data,
+                        headers=await self.headers(**(authenticator_headers_params or {})),
+                    )
+                    response.raise_for_status()
 
-            except httpx.HTTPStatusError as e:
-                response = e.response
+                    logger.debug(f"Successfully fetched {method} {resource}")
+                    return response
 
-                if not self.rate_limiter.is_rate_limit_response(response):
+                except httpx.HTTPStatusError as e:
+                    response = e.response
+                    last_exception = e
+
+                    # Always update rate limits from response headers
+                    self.rate_limiter.update_rate_limits(response.headers, resource)
+
+                    # Check if this is a rate limit 403 (not a permission 403)
+                    if self.rate_limiter.is_rate_limit_response(response):
+                        if attempt < MAX_RATE_LIMIT_RETRIES:
+                            delay = self.rate_limiter.rate_limit_info.seconds_until_reset if self.rate_limiter.rate_limit_info else 60
+                            logger.warning(
+                                f"Rate limit exceeded for '{resource}'. "
+                                f"Waiting {delay}s before retry (attempt {attempt + 1}/{MAX_RATE_LIMIT_RETRIES})"
+                            )
+                            await asyncio.sleep(delay)
+                            continue
+                        else:
+                            logger.error(
+                                f"Rate limit exceeded for '{resource}' after {MAX_RATE_LIMIT_RETRIES} retries. "
+                                f"Status {response.status_code}, Response: {response.text}"
+                            )
+                            raise
+
+                    # For non-rate-limit errors (including permission 403s), check if we should ignore
                     if self._should_ignore_error(
                         e, resource, method, ignored_errors, ignore_default_errors
                     ):
                         return Response(200, content=b"{}")
 
-                logger.error(
-                    f"GitHub API error for endpoint '{resource}': Status {response.status_code}, "
-                    f"Method: {method}, Response: {response.text}"
-                )
+                    logger.error(
+                        f"GitHub API error for endpoint '{resource}': Status {response.status_code}, "
+                        f"Method: {method}, Response: {response.text}"
+                    )
+                    raise
 
-                raise
+                except httpx.HTTPError as e:
+                    logger.error(f"HTTP error for endpoint '{resource}': {str(e)}")
+                    raise
 
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP error for endpoint '{resource}': {str(e)}")
-                raise
-
-            finally:
-                if "response" in locals():
-                    self.rate_limiter.update_rate_limits(response.headers, resource)
+        # Should not reach here, but just in case
+        if last_exception:
+            raise last_exception
+        raise httpx.HTTPError(f"Failed to make request to {resource} after {MAX_RATE_LIMIT_RETRIES} retries")
 
     async def send_api_request(
         self,
