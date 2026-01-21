@@ -25,6 +25,12 @@ class RestTagExporter(AbstractGithubExporter[GithubRestClient]):
 
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/git/refs/tags/{tag_name}"
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No tag found with name: {tag_name} in repository: {repo_name} from {organization}"
+            )
+            return {}
+
         logger.info(
             f"Fetched tag: {tag_name} for repo: {repo_name} from {organization}"
         )

@@ -22,6 +22,11 @@ class RestDependabotAlertExporter(AbstractGithubExporter[GithubRestClient]):
 
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/dependabot/alerts/{alert_number}"
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No Dependabot alert found with number: {alert_number} in repository: {repo_name} from {organization}"
+            )
+            return {}
 
         logger.info(
             f"Fetched Dependabot alert with number: {alert_number} for repo: {repo_name} from {organization}"

@@ -18,6 +18,12 @@ class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
         endpoint = f"{self.client.base_url}/repos/{organization}/{options['repo_name']}/actions/workflows/{options['workflow_id']}"
 
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No workflow found with id: {options['workflow_id']} in repository: {options['repo_name']} from {organization}"
+            )
+            return {}
+
         workflow = enrich_with_organization(
             enrich_with_repository(response, options["repo_name"]), organization
         )

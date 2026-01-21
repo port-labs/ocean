@@ -21,6 +21,11 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
 
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/issues/{issue_number}"
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No issue found with number: {issue_number} in repository: {repo_name} from {organization}"
+            )
+            return {}
 
         logger.info(
             f"Fetched issue {issue_number} from {repo_name} from {organization}"

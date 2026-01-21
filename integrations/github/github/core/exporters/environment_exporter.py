@@ -22,6 +22,11 @@ class RestEnvironmentExporter(AbstractGithubExporter[GithubRestClient]):
 
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/environments/{name}"
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No environment found with identifier: {name} in repository: {repo_name} from {organization}"
+            )
+            return {}
 
         logger.info(
             f"Fetched environment with identifier {name} from repository {repo_name} from {organization}"

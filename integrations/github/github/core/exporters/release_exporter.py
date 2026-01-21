@@ -22,6 +22,11 @@ class RestReleaseExporter(AbstractGithubExporter[GithubRestClient]):
 
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/releases/{release_id}"
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No release found with id: {release_id} in repository: {repo_name} from {organization}"
+            )
+            return {}
 
         logger.info(
             f"Fetched release with id: {release_id} for repo: {repo_name} from {organization}"

@@ -22,6 +22,11 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
 
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/deployments/{deployment_id}"
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No deployment found with identifier: {deployment_id} in repository: {repo_name} from {organization}"
+            )
+            return {}
 
         logger.info(
             f"Fetched deployment with identifier {deployment_id} from repository {repo_name} from {organization}"
