@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.1-beta (2026-01-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.14
+
+
+## 0.2.0-beta (2026-01-15)
+
+
+### Features
+
+- Added support for live events for `user`, `project` and `issue` kinds
+
+
+## 0.1.110-beta (2026-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.13
+
+
+## 0.1.109-beta (2026-01-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.12
+
+
+## 0.1.108-beta (2026-01-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+## 0.1.107-beta (2026-01-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
 ## 0.1.106-beta (2025-12-24)
 
 
@@ -220,8 +268,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Prefer Jira users list endpoint with cursor pagination when available, with automatic fallback to legacy `/user/search`. 
-- Adds cursor pagination helper and updates tests to cover list-first and fallback flows. 
+- Prefer Jira users list endpoint with cursor pagination when available, with automatic fallback to legacy `/user/search`.
+- Adds cursor pagination helper and updates tests to cover list-first and fallback flows.
 - Aligns with Atlassian guidance to move away from broad `/search` usage for scalable user retrieval.
 
 
