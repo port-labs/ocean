@@ -14,6 +14,7 @@ from checkmarx_one.exporter_factory import (
     create_scan_result_exporter,
     create_dast_scan_environment_exporter,
     create_dast_scan_exporter,
+    create_application_exporter,
 )
 from checkmarx_one.core.options import (
     ListDastScanOptions,
@@ -23,6 +24,7 @@ from checkmarx_one.core.options import (
     ListApiSecOptions,
     ListKicsOptions,
     ListScanResultOptions,
+    ListApplicationOptions,
 )
 from integration import (
     CheckmarxOneDastScanResultResourcesConfig,
@@ -59,6 +61,21 @@ from fetcher import fetch_dast_scan_results_for_environment
 
 # Webhook endpoint constant
 WEBHOOK_ENDPOINT = "/webhook"
+
+
+@ocean.on_resync(ObjectKind.APPLICATION)
+async def on_application_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Resync applications from Checkmarx One."""
+    logger.info(f"Starting resync for kind: {kind}")
+
+    application_exporter = create_application_exporter()
+    options = ListApplicationOptions()
+
+    async for applications_batch in application_exporter.get_paginated_resources(
+        options
+    ):
+        logger.debug(f"Received batch with {len(applications_batch)} applications")
+        yield applications_batch
 
 
 @ocean.on_resync(ObjectKind.PROJECT)

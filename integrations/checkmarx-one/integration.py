@@ -264,6 +264,17 @@ class CheckmarxOneDastScanResultResourcesConfig(ResourceConfig):
     selector: CheckmarxOneDastScanResultSelector
 
 
+class CheckmarxOneApplicationSelector(Selector):
+    """Selector for filtering applications."""
+
+    pass
+
+
+class CheckmarxOneApplicationResourcesConfig(ResourceConfig):
+    kind: Literal["application"]
+    selector: CheckmarxOneApplicationSelector
+
+
 class CheckmarxOnePortAppConfig(PortAppConfig):
     resources: list[
         CheckmarxOneScanResourcesConfig
@@ -273,6 +284,7 @@ class CheckmarxOnePortAppConfig(PortAppConfig):
         | CheckmarxOneScanResultResourcesConfig
         | CheckmarxOneDastScanResourcesConfig
         | CheckmarxOneDastScanResultResourcesConfig
+        | CheckmarxOneApplicationResourcesConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

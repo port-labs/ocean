@@ -144,3 +144,15 @@ class ListDastScanResultOptions(TypedDict):
             ]
         ]
     ]
+
+
+class ListApplicationOptions(TypedDict):
+    """Options for listing applications."""
+
+    pass
+
+
+class SingleApplicationOptions(TypedDict):
+    """Options for fetching a single application."""
+
+    application_id: Required[str]
