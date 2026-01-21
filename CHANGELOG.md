@@ -7,12 +7,38 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.32.12 (2026-01-14)
+## 0.32.15 (2026-01-21)
 
 ### Bug fixes
 
 - Handle webhook event not supported exception and log it as a warning
 
+## 0.32.14 (2026-01-20)
+
+### Bug fixes
+
+- Add export of system and request metrics
+
+## 0.32.13 (2026-01-15)
+
+### Bug fixes
+
+- Revert Add export of system and request metrics
+
+## 0.32.12 (2026-01-15)
+
+### Vulnerabilities
+
+- Fix urllib3 vulnerability
+
+### Bug fixes
+
+- Format response when logging error
+- Prevent Lakehouse from breaking the regular integration behavior on error from port
+
+### Improvements
+
+- Add export of system and request metrics
 
 ## 0.32.11 (2026-01-14)
 
