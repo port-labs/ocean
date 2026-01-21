@@ -12,7 +12,7 @@ from azure_integration.helpers.http import format_query
 from azure_integration.clients.base import AzureRequest
 
 
-_SUBCRIPTION_BATCH_SIZE = 1
+_SUBCRIPTION_BATCH_SIZE = 1 // Due to a bug in the Azure API, when working in multiple batches and Azure contains a lot of resources per subscription, the results become inconsistent. Do not change this value without validating the exact use-case of the customers using this integration
 _MAX_CONCURRENT_REQUESTS = 10
 
 
