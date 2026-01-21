@@ -338,7 +338,7 @@ class TestRetryTransport:
         responses = iter([response1, response2])
 
         async def send_method_iter(req: httpx.Request) -> httpx.Response:
-            return next(responses)  # type: ignore[return-value]
+            return next(responses)
 
         request = httpx.Request("GET", "https://example.com")
 
