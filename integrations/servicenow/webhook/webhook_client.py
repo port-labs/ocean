@@ -30,11 +30,17 @@ class ServicenowWebhookClient(ServicenowClient):
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP {e.response.status_code}: {e.response.text}")
+            logger.error(
+                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+            )
         except httpx.HTTPError as e:
-            logger.error(f"HTTP error: {str(e)}")
+            logger.error(
+                f"HTTP error occurred while fetching Servicenow data: {str(e)}"
+            )
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
+            logger.error(
+                f"Unexpected error occurred while fetching Servicenow data: {str(e)}"
+            )
         return None
 
     async def create_webhook(self, webhook_base_url: str, tables: List[str]) -> None:

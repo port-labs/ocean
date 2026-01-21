@@ -58,7 +58,7 @@ class TestUserGroupWebhookProcessor:
 
         kinds = await user_group_processor.get_matching_kinds(mock_event)
 
-        assert kinds == [ObjectKind.SYS_USER_GROUP]
+        assert kinds == [ObjectKind.USER_GROUP]
 
     async def test_should_process_event_valid(
         self, user_group_processor: UserGroupWebhookProcessor

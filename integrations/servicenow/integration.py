@@ -13,8 +13,8 @@ from enum import StrEnum
 
 class ObjectKind(StrEnum):
     INCIDENT = "incident"
-    SYS_USER_GROUP = "sys_user_group"
-    SC_CATALOG = "sc_catalog"
+    USER_GROUP = "sys_user_group"
+    SERVICE_CATALOG = "sc_catalog"
     VULNERABILITY = "sn_vul_vulnerable_item"
     RELEASE_PROJECT = "release_project"
 

@@ -67,7 +67,7 @@ class ServicenowClient:
                 )
                 raise
             except httpx.HTTPError as e:
-                logger.error(f"HTTP occurred while fetching Servicenow data: {e}")
+                logger.error(f"HTTP error occurred while fetching Servicenow data: {e}")
                 raise
 
     async def sanity_check(self) -> None:

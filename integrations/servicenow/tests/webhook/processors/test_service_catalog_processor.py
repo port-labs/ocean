@@ -58,7 +58,7 @@ class TestServiceCatalogWebhookProcessor:
 
         kinds = await service_catalog_processor.get_matching_kinds(mock_event)
 
-        assert kinds == [ObjectKind.SC_CATALOG]
+        assert kinds == [ObjectKind.SERVICE_CATALOG]
 
     async def test_should_process_event_valid(
         self, service_catalog_processor: ServiceCatalogWebhookProcessor
@@ -66,7 +66,7 @@ class TestServiceCatalogWebhookProcessor:
         """Test that _should_process_event returns True for correct class name."""
         mock_event = MagicMock(spec=WebhookEvent)
         mock_event.payload = {
-            "sys_class_name": ObjectKind.SC_CATALOG,
+            "sys_class_name": ObjectKind.SERVICE_CATALOG,
             "sys_id": "test123",
         }
 
@@ -93,7 +93,7 @@ class TestServiceCatalogWebhookProcessor:
         """Test handling an event when the record is found."""
         payload = {
             "sys_id": SAMPLE_SC_CATALOG_DATA["sys_id"],
-            "sys_class_name": ObjectKind.SC_CATALOG,
+            "sys_class_name": ObjectKind.SERVICE_CATALOG,
         }
 
         mock_client = MagicMock()
@@ -121,7 +121,7 @@ class TestServiceCatalogWebhookProcessor:
         """Test handling an event when the record is not found."""
         payload = {
             "sys_id": "deleted_id",
-            "sys_class_name": ObjectKind.SC_CATALOG,
+            "sys_class_name": ObjectKind.SERVICE_CATALOG,
         }
 
         mock_client = MagicMock()

@@ -16,10 +16,10 @@ class ServiceCatalogWebhookProcessor(_ServicenowAbstractWebhookProcessor):
     """Service Catalog webhook processor."""
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.SC_CATALOG]
+        return [ObjectKind.SERVICE_CATALOG]
 
     def _should_process_event(self, event: WebhookEvent) -> bool:
-        return event.payload.get("sys_class_name") == ObjectKind.SC_CATALOG
+        return event.payload.get("sys_class_name") == ObjectKind.SERVICE_CATALOG
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -30,7 +30,9 @@ class ServiceCatalogWebhookProcessor(_ServicenowAbstractWebhookProcessor):
         deleted_raw_results: List[dict[str, Any]] = []
 
         client = initialize_webhook_client()
-        sc_catalog = await client.get_record_by_sys_id(ObjectKind.SC_CATALOG, sys_id)
+        sc_catalog = await client.get_record_by_sys_id(
+            ObjectKind.SERVICE_CATALOG, sys_id
+        )
 
         if sc_catalog:
             updated_raw_results.append(sc_catalog)

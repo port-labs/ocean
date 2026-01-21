@@ -16,7 +16,7 @@ class UserGroupWebhookProcessor(_ServicenowAbstractWebhookProcessor):
     """UserGroup webhook processor."""
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
-        return [ObjectKind.SYS_USER_GROUP]
+        return [ObjectKind.USER_GROUP]
 
     def _should_process_event(self, event: WebhookEvent) -> bool:
         payload = event.payload
@@ -31,9 +31,7 @@ class UserGroupWebhookProcessor(_ServicenowAbstractWebhookProcessor):
         deleted_raw_results: List[dict[str, Any]] = []
 
         client = initialize_webhook_client()
-        user_group = await client.get_record_by_sys_id(
-            ObjectKind.SYS_USER_GROUP, sys_id
-        )
+        user_group = await client.get_record_by_sys_id(ObjectKind.USER_GROUP, sys_id)
 
         if user_group:
             updated_raw_results.append(user_group)
