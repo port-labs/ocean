@@ -197,3 +197,16 @@ def issue_matches_labels(
     issue_label_names = {label["name"].lower() for label in issue_labels}
 
     return required_set.issubset(issue_label_names)
+
+
+def has_exhausted_rate_limit_headers(headers: Any) -> bool:
+    """
+    Return True when GitHub's rate limit headers indicate an exhausted quota.
+
+    Accepts any headers-like mapping (e.g. `httpx.Headers`, `dict[str, str]`).
+    """
+
+    return (
+        headers.get("x-ratelimit-remaining") == "0"
+        and headers.get("x-ratelimit-reset") is not None
+    )
