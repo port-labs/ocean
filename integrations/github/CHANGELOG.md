@@ -13,7 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Fix SAML identity provider timeout for large organizations
-
 - Added prevention of multi client created for multiple requests
 
 ## 5.0.8 (2026-01-21)
