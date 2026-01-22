@@ -16,6 +16,7 @@ import httpx
 
 GITHUB_RETRY_MAX_BACKOFF = 1800
 
+
 class GitHubToken(BaseModel):
     token: str
     expires_at: Optional[str] = None
