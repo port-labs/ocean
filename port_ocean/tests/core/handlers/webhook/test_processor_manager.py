@@ -372,16 +372,18 @@ async def test_extractMatchingProcessors_noMatch(
     test_path = "/test"
     processor_manager.register_processor(test_path, MockProcessorFalse)
 
-    with pytest.raises(
-        WebhookEventNotSupportedError, match="No matching processors found"
-    ):
-        async with event_context(
-            EventType.HTTP_REQUEST, trigger_type="request"
-        ) as event:
-            event.port_app_config = mock_port_app_config
+    captured_exception = None
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
+        event.port_app_config = mock_port_app_config
+        try:
             await processor_manager._extract_matching_processors(
                 webhook_event, test_path
             )
+        except WebhookEventNotSupportedError as e:
+            captured_exception = e
+
+    assert captured_exception is not None
+    assert "No matching processors found" in str(captured_exception)
 
 
 @pytest.mark.asyncio
@@ -443,16 +445,18 @@ async def test_extractMatchingProcessors_noProcessorsRegistered(
     # Manually add the path to _processors_classes to simulate a path with no processors
     processor_manager._processors_classes[test_path] = []
 
-    with pytest.raises(
-        WebhookEventNotSupportedError, match="No matching processors found"
-    ):
-        async with event_context(
-            EventType.HTTP_REQUEST, trigger_type="request"
-        ) as event:
-            event.port_app_config = mock_port_app_config
+    captured_exception = None
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="request") as event:
+        event.port_app_config = mock_port_app_config
+        try:
             await processor_manager._extract_matching_processors(
                 webhook_event, test_path
             )
+        except WebhookEventNotSupportedError as e:
+            captured_exception = e
+
+    assert captured_exception is not None
+    assert "No matching processors found" in str(captured_exception)
 
 
 @pytest.mark.asyncio
