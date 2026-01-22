@@ -86,8 +86,8 @@ class TestServicenowWebhookClient:
     ) -> None:
         """Test successful webhook creation for valid tables."""
         with patch(
-            "webhook.webhook_client.ServicenowWebhookClient._create_rest_message_parent",
-            AsyncMock(return_value="rest_msg_123"),
+            "webhook.webhook_client.ServicenowWebhookClient._create_rest_message_if_not_exists",
+            AsyncMock(return_value=True),
         ):
             with patch(
                 "webhook.webhook_client.ServicenowWebhookClient._create_business_rule_if_not_exists",
@@ -105,8 +105,8 @@ class TestServicenowWebhookClient:
     ) -> None:
         """Test that unknown tables are skipped."""
         with patch(
-            "webhook.webhook_client.ServicenowWebhookClient._create_rest_message_parent",
-            AsyncMock(return_value="rest_msg_123"),
+            "webhook.webhook_client.ServicenowWebhookClient._create_rest_message_if_not_exists",
+            AsyncMock(return_value=True),
         ):
             with patch(
                 "webhook.webhook_client.ServicenowWebhookClient._create_business_rule_if_not_exists",
@@ -124,8 +124,8 @@ class TestServicenowWebhookClient:
     ) -> None:
         """Test handling when REST message creation fails."""
         with patch(
-            "webhook.webhook_client.ServicenowWebhookClient._create_rest_message_parent",
-            AsyncMock(return_value=None),
+            "webhook.webhook_client.ServicenowWebhookClient._create_rest_message_if_not_exists",
+            AsyncMock(return_value=False),
         ):
             with patch(
                 "webhook.webhook_client.ServicenowWebhookClient._create_business_rule_if_not_exists",
