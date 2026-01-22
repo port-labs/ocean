@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.0.8 (2026-01-21)
+## 5.0.8 (2026-01-22)
 
 
 ### Bug Fixes
 
 - Retried GitHub rate-limit `403` responses when rate-limit headers indicate an exhausted quota, and increased backoff window to better align with reset timings.
+
+
+## 5.0.8 (2026-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.15
 
 
 ## 5.0.7 (2026-01-20)
