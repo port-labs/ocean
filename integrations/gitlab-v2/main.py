@@ -404,7 +404,3 @@ ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", TagWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ReleaseWebhookProcessor)
-
-
-"""
-"""
