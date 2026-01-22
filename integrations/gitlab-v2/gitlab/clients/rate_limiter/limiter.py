@@ -35,7 +35,6 @@ class GitLabRateLimiter:
 
     async def __aenter__(self) -> "GitLabRateLimiter":
         """Acquire semaphore and check if we should proactively pause."""
-        logger.info(f"Rate limiter: acquiring semaphore (max_concurrent={self._max_concurrent})")
         await self._semaphore.acquire()
 
         async with self._block_lock:
@@ -104,7 +103,7 @@ class GitLabRateLimiter:
                 reset_time=int(rate_headers.ratelimit_reset),
             )
 
-            logger.info(
+            logger.debug(
                 f"GitLab rate limit: {self.rate_limit_info.remaining}/{self.rate_limit_info.limit} "
                 f"remaining ({self.rate_limit_info.utilization_percentage:.1f}% used), "
                 f"resets in {self.rate_limit_info.seconds_until_reset}s"
