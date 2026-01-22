@@ -7,11 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.33.0 (2026-01-20)
+## 0.33.0 (2026-01-22)
 
 ### Improvements
 
 - Allowing Empty setup mode which make integraion be created without any resources
+
+
+## 0.32.15 (2026-01-21)
+
+### Bug fixes
+
+- Handle webhook event not supported exception and log it as a warning
 
 
 ## 0.32.14 (2026-01-20)
