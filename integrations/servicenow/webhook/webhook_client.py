@@ -110,7 +110,7 @@ class ServicenowWebhookClient(ServicenowClient):
 
         for index, response in enumerate(responses):
             prefix = "Upsert" if index == 0 else "Delete"
-            if response and "result" in response and "sys_id" in response["result"]:
+            if response and response.json().get("result", {}):
                 logger.info(f"{prefix} business rule created → {rule_name}")
             else:
                 logger.error(
@@ -129,7 +129,7 @@ class ServicenowWebhookClient(ServicenowClient):
             "sysparm_limit": "1",
         }
         response = await self.make_request(url, params=params)
-        return bool(response and response.get("result"))
+        return bool(response and response.json().get("result", {}))
 
     async def _create_business_rule_if_not_exists(
         self,
@@ -167,7 +167,7 @@ class ServicenowWebhookClient(ServicenowClient):
         }
 
         response = await self.make_request(url, params=params)
-        if response and (result := response.get("result", [])):
+        if result := response.json().get("result", []):
             return result[0]["sys_id"]
         return None
 
@@ -189,17 +189,14 @@ class ServicenowWebhookClient(ServicenowClient):
         parent_response = await self.make_request(
             parent_url, method="POST", json_data=parent_payload
         )
-        if (
-            not parent_response
-            or "result" not in parent_response
-            or "sys_id" not in parent_response["result"]
-        ):
+        result = parent_response.json().get("result", {})
+        if not (result and "sys_id" in result):
             logger.error(
                 "Failed to create REST Message", extra={"response": parent_response}
             )
             return None
 
-        parent_sys_id = parent_response["result"]["sys_id"]
+        parent_sys_id = result["sys_id"]
         logger.debug(f"REST Message created → sys_id: {parent_sys_id}")
         return parent_sys_id
 
@@ -223,11 +220,8 @@ class ServicenowWebhookClient(ServicenowClient):
             fn_url, method="POST", json_data=function_payload
         )
 
-        if (
-            not fn_response
-            or "result" not in fn_response
-            or "sys_id" not in fn_response["result"]
-        ):
+        result = fn_response.json().get("result", {})
+        if not (result and "sys_id" in result):
             logger.warning(
                 "Failed to create POST method - continuing anyway",
                 extra={"response": fn_response},

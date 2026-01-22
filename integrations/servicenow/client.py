@@ -27,42 +27,47 @@ class ServicenowClient:
 
     async def make_request(
         self,
-        resource: str,
+        url: str,
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
         json_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> httpx.Response:
         await self._ensure_auth_headers()
         try:
             response = await self.http_client.request(
-                url=resource,
+                url=url,
                 params=params,
                 method=method,
                 json=json_data,
             )
             response.raise_for_status()
-            return response.json()
+            return response
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
+            raise
         except httpx.HTTPError as e:
             logger.error(
                 f"HTTP error occurred while fetching Servicenow data: {str(e)}"
             )
-        except Exception as e:
-            logger.error(
-                f"Unexpected error occurred while fetching Servicenow data: {str(e)}"
-            )
-        return None
+            raise
 
     async def get_record_by_sys_id(
         self, table_name: str, sys_id: str
     ) -> Optional[dict[str, Any]]:
         url = f"{self.table_base_url}/{table_name}/{sys_id}"
-        response = await self.make_request(url)
-        if response and (result := response.get("result", {})):
-            return result
+        try:
+            response = await self.make_request(url)
+            if result := response.json().get("result", {}):
+                return result
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.error(
+                    f"HTTP error occurred while fetching record {sys_id} from table {table_name}: {str(e)}"
+                )
+                return None
+            raise
         return None
 
     async def get_paginated_resource(
@@ -88,32 +93,18 @@ class ServicenowClient:
         url = f"{self.table_base_url}/{resource_kind}"
 
         while url:
-            try:
-                response = await self.http_client.get(
-                    url=url,
-                    params=params,
-                )
-                response.raise_for_status()
-                records = response.json().get("result", [])
+            response = await self.make_request(url, params=params)
+            records = response.json().get("result", [])
 
-                yield records
+            yield records
 
-                url = self.extract_next_link(response.headers.get("Link", ""))
-                params = None
-
-            except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
-                )
-                raise
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP error occurred while fetching Servicenow data: {e}")
-                raise
+            url = self.extract_next_link(response.headers.get("Link", ""))
+            params = None
 
     async def sanity_check(self) -> None:
         await self._ensure_auth_headers()
         try:
-            response = await self.http_client.get(
+            response = await self.make_request(
                 f"{self.table_base_url}/sys_user?sysparm_limit=1"
             )
             response.raise_for_status()

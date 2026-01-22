@@ -4,7 +4,6 @@ import httpx
 
 from webhook.webhook_client import ServicenowWebhookClient, REST_MESSAGE_NAME
 from tests.conftest import SAMPLE_INCIDENT_DATA
-from typing import Dict, Any
 
 
 class TestServicenowWebhookClient:
@@ -31,7 +30,7 @@ class TestServicenowWebhookClient:
                     "https://test-url.com/api/test"
                 )
 
-                assert result == {"result": {"sys_id": "test123"}}
+                assert result.json() == {"result": {"sys_id": "test123"}}
 
     @pytest.mark.asyncio
     async def test_make_request_http_status_error(
@@ -53,11 +52,8 @@ class TestServicenowWebhookClient:
                 "get_headers",
                 return_value={"Authorization": "Basic test"},
             ):
-                result = await webhook_client.make_request(
-                    "https://test-url.com/api/test"
-                )
-
-                assert result is None
+                with pytest.raises(httpx.HTTPStatusError):
+                    await webhook_client.make_request("https://test-url.com/api/test")
 
     @pytest.mark.asyncio
     async def test_make_request_http_error(
@@ -74,11 +70,8 @@ class TestServicenowWebhookClient:
                 "get_headers",
                 return_value={"Authorization": "Basic test"},
             ):
-                result = await webhook_client.make_request(
-                    "https://test-url.com/api/test"
-                )
-
-                assert result is None
+                with pytest.raises(httpx.HTTPError):
+                    await webhook_client.make_request("https://test-url.com/api/test")
 
     @pytest.mark.asyncio
     async def test_create_webhook_success(
@@ -140,7 +133,10 @@ class TestServicenowWebhookClient:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test retrieving a record by sys_id when it exists."""
-        mock_response = {"result": SAMPLE_INCIDENT_DATA}
+        mock_response = httpx.Response(
+            status_code=200,
+            json={"result": SAMPLE_INCIDENT_DATA},
+        )
 
         with patch.object(
             webhook_client, "make_request", AsyncMock(return_value=mock_response)
@@ -156,7 +152,11 @@ class TestServicenowWebhookClient:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test retrieving a record that doesn't exist."""
-        with patch.object(webhook_client, "make_request", AsyncMock(return_value=None)):
+        with patch.object(
+            webhook_client,
+            "make_request",
+            AsyncMock(return_value=httpx.Response(status_code=404, json={})),
+        ):
             result = await webhook_client.get_record_by_sys_id(
                 "incident", "nonexistent_id"
             )
@@ -168,7 +168,10 @@ class TestServicenowWebhookClient:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test retrieving a record with empty result."""
-        mock_response: Dict[str, Any] = {"result": {}}
+        mock_response = httpx.Response(
+            status_code=200,
+            json={"result": {}},
+        )
 
         with patch.object(
             webhook_client, "make_request", AsyncMock(return_value=mock_response)
@@ -186,7 +189,11 @@ class TestOutboundMessage:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test finding an existing REST message."""
-        mock_request = AsyncMock(return_value={"result": [{"sys_id": "rest_msg_123"}]})
+        mock_request = AsyncMock(
+            return_value=httpx.Response(
+                status_code=200, json={"result": [{"sys_id": "rest_msg_123"}]}
+            )
+        )
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._find_rest_message()
@@ -198,7 +205,9 @@ class TestOutboundMessage:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test when REST message does not exist."""
-        mock_request = AsyncMock(return_value={"result": []})
+        mock_request = AsyncMock(
+            return_value=httpx.Response(status_code=200, json={"result": []})
+        )
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._find_rest_message("Nonexistent Message")
@@ -210,7 +219,11 @@ class TestOutboundMessage:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test creating a REST message parent successfully."""
-        mock_request = AsyncMock(return_value={"result": {"sys_id": "new_parent_id"}})
+        mock_request = AsyncMock(
+            return_value=httpx.Response(
+                status_code=200, json={"result": {"sys_id": "new_parent_id"}}
+            )
+        )
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._create_rest_message_parent(
@@ -224,7 +237,9 @@ class TestOutboundMessage:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test handling REST message parent creation failure."""
-        mock_request = AsyncMock(return_value=None)
+        mock_request = AsyncMock(
+            return_value=httpx.Response(status_code=200, json={"result": None})
+        )
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._create_rest_message_parent(
@@ -238,7 +253,11 @@ class TestOutboundMessage:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test using an existing REST message."""
-        mock_request = AsyncMock(return_value={"result": [{"sys_id": "existing_id"}]})
+        mock_request = AsyncMock(
+            return_value=httpx.Response(
+                status_code=200, json={"result": [{"sys_id": "existing_id"}]}
+            )
+        )
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._create_rest_message_if_not_exists(
@@ -255,9 +274,13 @@ class TestOutboundMessage:
         """Test creating a new REST message."""
         mock_request = AsyncMock(
             side_effect=[
-                {"result": []},
-                {"result": {"sys_id": "new_parent_id"}},
-                {"result": {"sys_id": "new_fn_id"}},
+                httpx.Response(status_code=200, json={"result": []}),
+                httpx.Response(
+                    status_code=200, json={"result": {"sys_id": "new_parent_id"}}
+                ),
+                httpx.Response(
+                    status_code=200, json={"result": {"sys_id": "new_fn_id"}}
+                ),
             ]
         )
 
@@ -276,8 +299,8 @@ class TestOutboundMessage:
         """Test handling REST message creation failure."""
         mock_request = AsyncMock(
             side_effect=[
-                {"result": []},
-                None,
+                httpx.Response(status_code=200, json={"result": []}),
+                httpx.Response(status_code=200, json={"result": None}),
             ]
         )
 
@@ -369,7 +392,11 @@ class TestBusinessRule:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test checking if a business rule exists."""
-        mock_request = AsyncMock(return_value={"result": [{"sys_id": "rule_123"}]})
+        mock_request = AsyncMock(
+            return_value=httpx.Response(
+                status_code=200, json={"result": [{"sys_id": "rule_123"}]}
+            )
+        )
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._business_rule_exists(
@@ -384,7 +411,9 @@ class TestBusinessRule:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test checking when business rule does not exist."""
-        mock_request = AsyncMock(return_value={"result": []})
+        mock_request = AsyncMock(
+            return_value=httpx.Response(status_code=200, json={"result": []})
+        )
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._business_rule_exists(
@@ -399,7 +428,11 @@ class TestBusinessRule:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test submitting business rules successfully."""
-        mock_request = AsyncMock(return_value={"result": {"sys_id": "rule_123"}})
+        mock_request = AsyncMock(
+            return_value=httpx.Response(
+                status_code=200, json={"result": {"sys_id": "rule_123"}}
+            )
+        )
 
         payloads = [
             {"name": "test_rule", "collection": "incident"},
@@ -419,7 +452,11 @@ class TestBusinessRule:
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
         """Test that existing business rules are skipped."""
-        mock_request = AsyncMock(return_value={"result": [{"sys_id": "existing_rule"}]})
+        mock_request = AsyncMock(
+            return_value=httpx.Response(
+                status_code=200, json={"result": [{"sys_id": "existing_rule"}]}
+            )
+        )
 
         with patch.object(webhook_client, "make_request", mock_request):
             await webhook_client._create_business_rule_if_not_exists(
@@ -436,9 +473,13 @@ class TestBusinessRule:
         """Test creating new business rules."""
         mock_request = AsyncMock(
             side_effect=[
-                {"result": []},
-                {"result": {"sys_id": "upsert_rule_id"}},
-                {"result": {"sys_id": "delete_rule_id"}},
+                httpx.Response(status_code=200, json={"result": []}),
+                httpx.Response(
+                    status_code=200, json={"result": {"sys_id": "upsert_rule_id"}}
+                ),
+                httpx.Response(
+                    status_code=200, json={"result": {"sys_id": "delete_rule_id"}}
+                ),
             ]
         )
 
