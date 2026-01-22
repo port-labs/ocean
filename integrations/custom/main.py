@@ -19,7 +19,7 @@ from http_server.helpers.endpoint_resolver import resolve_dynamic_endpoints
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync resources from HTTP endpoints - kind is the endpoint path"""
-    logger.info(f"Starting resync for kind (endpoint): {kind} test")
+    logger.info(f"Starting resync for kind (endpoint): {kind}")
     http_client = init_client()
     resource_config = cast(HttpServerResourceConfig, event.resource_config)
 
