@@ -39,7 +39,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         repository = payload["repository"]
         branch = payload.get("ref", "").replace("refs/heads/", "")
         ref = payload["after"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Processing push event for repository {repository['name']} of organization: {organization} on branch {branch} at ref {ref}"
@@ -113,7 +113,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         event_payload: EventPayload,
     ) -> list[dict[str, Any]]:
         client = create_github_client()
-        organization = event_payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(event_payload)["login"]
 
         commit_diff = await fetch_commit_diff(
             client,

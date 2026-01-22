@@ -39,7 +39,7 @@ class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         alert_number = alert["number"]
         repo_name = repo["name"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Processing Dependabot alert event: {action} for alert {alert_number} in {repo_name} from {organization}"

@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "bitbucket-cloud"
-version = "0.4.0"
+version = "0.4.6"
 description = "This integration ingest data from bitbucket"
 authors = ["Adebayo Iyanuoluwa <ioluwadunsinadebayo@gmail.com>", "Michael Armah <mikeyarmah@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.32.9", extras = ["cli"]}
+port_ocean = {version = "^0.32.15", extras = ["cli"]}
 wcmatch = "^10.1"
 
 [tool.poetry.group.dev.dependencies]

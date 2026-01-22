@@ -7,6 +7,121 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.8 (2026-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.15
+
+
+## 5.0.7 (2026-01-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.14
+
+
+## 5.0.6 (2026-01-18)
+
+
+### Improvements
+
+- Standardized concurrency control on branch resync handler by applying repository-level task batching.
+- Improved async task orchestration on branch kind to prevent unbounded fan-out while preserving streaming behavior.
+- Added `branchNames` selector to explicitly target specific branches during resync, bypassing full branch pagination for faster, lower-API-cost runs on large repositories/branches.
+
+
+## 5.0.5 (2026-01-18)
+
+
+### Improvements
+
+- Removed limitation on number of PRs and number of days back for fetching pull requests.
+
+
+## 5.0.4 (2026-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.13
+
+
+## 5.0.3 (2026-01-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.12
+
+
+## 5.0.2 (2026-01-14)
+
+
+### Improvements
+
+- Changed integration's data source card's title in catalog
+
+
+## 5.0.1 (2026-01-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+## 5.0.0 (2026-01-14)
+
+
+### Improvements
+
+- mark integration version GA
+
+
+## 4.7.4-beta (2026-01-14)
+
+
+### Improvements
+
+- Added `databaseId` to team GraphQL fields.
+- Refactored the team members listing query to reuse the `TeamFields` fragment.
+
+
+## 4.7.3-beta (2026-01-14)
+
+
+### Improvements
+
+- Added embedded installation docs to spec.yaml for supported installation methods
+
+
+## 4.7.2-beta (2026-01-14)
+
+
+### Improvements
+
+- Allow using branch ref from inputs upon dispatch workflow action trigger
+
+
+## 4.7.1-beta (2026-01-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
+## 4.7.0-beta (2026-01-05)
+
+
+### Features
+
+- Added support for creating webhooks for personal accounts by subscribing at the repository level for owned repositories.
+
+
 ## 4.6.0-beta (2026-01-05)
 
 

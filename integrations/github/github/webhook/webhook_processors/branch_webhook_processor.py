@@ -44,13 +44,22 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         branch_name = ref.replace("refs/heads/", "")
         repo_name = repo["name"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Processing branch event: {self._event_type} for branch {branch_name} in {repo_name} from {organization}"
         )
 
         if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        selector = cast(GithubBranchConfig, resource_config).selector
+        if selector.branch_names and branch_name not in selector.branch_names:
+            logger.debug(
+                f"Skipping branch event for branch '{branch_name}' because it is not in selector.branch_names"
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
@@ -63,7 +72,6 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         rest_client = create_github_client()
         exporter = RestBranchExporter(rest_client)
-        selector = cast(GithubBranchConfig, resource_config).selector
 
         data_to_upsert = await exporter.get_resource(
             SingleBranchOptions(

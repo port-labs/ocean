@@ -38,7 +38,7 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
         issue = payload["issue"]
         repo_name = payload["repository"]["name"]
         issue_number = payload["issue"]["number"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
         config = cast(GithubIssueConfig, resource_config)
 
         logger.info(
