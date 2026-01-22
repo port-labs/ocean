@@ -59,8 +59,10 @@ class ServicenowClient:
         url = f"{self.table_base_url}/{table_name}/{sys_id}"
         try:
             response = await self.make_request(url)
-            if result := response.json().get("result", {}):
-                return result
+            result = response.json().get("result")
+            if not result:
+                return None
+            return result
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 logger.error(
@@ -68,7 +70,6 @@ class ServicenowClient:
                 )
                 return None
             raise
-        return None
 
     async def get_paginated_resource(
         self, resource_kind: str, api_query_params: Optional[dict[str, Any]] = None

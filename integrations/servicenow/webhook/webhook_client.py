@@ -5,7 +5,7 @@ import asyncio
 
 from webhook.events import DEFAULT_FIELDS_PER_TABLE
 
-REST_MESSAGE_NAME = "Ocean Port Outbound"
+REST_MESSAGE_NAME = "Ocean Port Webhook"
 
 
 class ServicenowWebhookClient(ServicenowClient):
@@ -197,14 +197,14 @@ class ServicenowWebhookClient(ServicenowClient):
             return None
 
         parent_sys_id = result["sys_id"]
-        logger.debug(f"REST Message created → sys_id: {parent_sys_id}")
+        logger.info(f"REST Message created → sys_id: {parent_sys_id}")
         return parent_sys_id
 
     async def _create_rest_message_function(
         self,
         parent_sys_id: str,
         webhook_url: str,
-    ) -> None:
+    ) -> bool:
         """Create the POST function for an Outbound REST Message."""
         function_payload = {
             "rest_message": parent_sys_id,
@@ -221,11 +221,15 @@ class ServicenowWebhookClient(ServicenowClient):
         )
 
         result = fn_response.json().get("result", {})
-        if not (result and "sys_id" in result):
-            logger.warning(
-                "Failed to create POST method - continuing anyway",
+        if result and "sys_id" in result:
+            logger.info(f"REST Message function created → sys_id: {result['sys_id']}")
+            return True
+        else:
+            logger.error(
+                f"Failed to create 'post' HTTP Method for '{REST_MESSAGE_NAME}' REST Message. Aborting setup...",
                 extra={"response": fn_response},
             )
+            return False
 
     async def _create_rest_message_if_not_exists(
         self,
@@ -241,8 +245,10 @@ class ServicenowWebhookClient(ServicenowClient):
         if not parent_sys_id:
             return False
 
-        await self._create_rest_message_function(parent_sys_id, webhook_url)
-        return True
+        fn_success = await self._create_rest_message_function(
+            parent_sys_id, webhook_url
+        )
+        return fn_success
 
     async def create_webhook(self, webhook_base_url: str, tables: List[str]) -> None:
         """Set up webhooks for the specified tables"""
