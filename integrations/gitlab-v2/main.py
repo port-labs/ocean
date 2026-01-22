@@ -8,7 +8,7 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 import asyncio
-from gitlab.clients.client_factory import create_gitlab_client
+from gitlab.clients.client_factory import create_gitlab_client, get_max_concurrent_requests
 from gitlab.clients.utils import build_group_params, build_project_params
 from gitlab.helpers.utils import ObjectKind, enrich_resources_with_project
 from integration import (
@@ -70,7 +70,6 @@ from gitlab.clients.options import IssueOptions
 
 
 RESYNC_GROUP_MEMBERS_BATCH_SIZE = 10
-DEFAULT_MAX_CONCURRENT = 10
 
 
 @ocean.on_start()
@@ -98,7 +97,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=build_project_params(
             include_only_active_projects=include_only_active_projects
         ),
-        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        max_concurrent=get_max_concurrent_requests(),
         include_languages=include_languages,
     ):
         logger.info(f"Received project batch with {len(projects_batch)} projects")
@@ -158,7 +157,7 @@ async def on_resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=build_project_params(
             include_only_active_projects=include_only_active_projects
         ),
-        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        max_concurrent=get_max_concurrent_requests(),
         include_languages=False,
     ):
         logger.info(f"Processing batch of {len(projects_batch)} projects for pipelines")
@@ -192,7 +191,7 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=build_project_params(
             include_only_active_projects=include_only_active_projects
         ),
-        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        max_concurrent=get_max_concurrent_requests(),
         include_languages=False,
     ):
         logger.info(f"Processing batch of {len(projects_batch)} projects for jobs")
@@ -237,13 +236,13 @@ async def on_resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=build_project_params(
             include_only_active_projects=include_only_active_projects
         ),
-        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        max_concurrent=get_max_concurrent_requests(),
         include_languages=False,
     ):
         logger.info(f"Processing batch of {len(projects_batch)} projects for tags")
 
         async for tags_batch in client.get_tags(
-            projects_batch, max_concurrent=DEFAULT_MAX_CONCURRENT
+            projects_batch, max_concurrent=get_max_concurrent_requests()
         ):
             yield tags_batch
 
@@ -258,13 +257,13 @@ async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=build_project_params(
             include_only_active_projects=include_only_active_projects
         ),
-        max_concurrent=DEFAULT_MAX_CONCURRENT,
+        max_concurrent=get_max_concurrent_requests(),
         include_languages=False,
     ):
         logger.info(f"Processing batch of {len(projects_batch)} projects for releases")
 
         async for releases_batch in client.get_releases(
-            projects_batch, max_concurrent=DEFAULT_MAX_CONCURRENT
+            projects_batch, max_concurrent=get_max_concurrent_requests()
         ):
             yield releases_batch
 
@@ -368,7 +367,7 @@ async def on_resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 params=build_project_params(
                     include_only_active_projects=include_only_active_projects
                 ),
-                max_concurrent=DEFAULT_MAX_CONCURRENT,
+                max_concurrent=get_max_concurrent_requests(),
                 include_languages=False,
             ):
                 for project in projects_batch:
@@ -405,3 +404,7 @@ ocean.add_webhook_processor("/hook/{group_id}", FolderPushWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", TagWebhookProcessor)
 ocean.add_webhook_processor("/hook/{group_id}", ReleaseWebhookProcessor)
+
+
+"""
+"""

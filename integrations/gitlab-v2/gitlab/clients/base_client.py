@@ -5,14 +5,22 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 
 from gitlab.clients.auth_client import AuthClient
+from gitlab.clients.rate_limiter.registry import GitLabRateLimiterRegistry
+from gitlab.clients.rate_limiter.utils import GitLabRateLimiterConfig
 
 
 class HTTPBaseClient:
-    def __init__(self, base_url: str, token: str, endpoint: str):
+    def __init__(
+        self, base_url: str, token: str, endpoint: str, max_concurrent: int = 10
+    ):
         self.token = token
         self._client = http_async_client
         self.base_url = f"{base_url}/{endpoint.strip('/')}"
         self._auth_client = AuthClient(self.token)
+
+        # Initialize rate limiter with configured concurrency
+        config = GitLabRateLimiterConfig(max_concurrent=max_concurrent)
+        self._rate_limiter = GitLabRateLimiterRegistry.get_limiter(base_url, config)
 
     @property
     def _headers(self) -> dict[str, str]:
@@ -40,15 +48,18 @@ class HTTPBaseClient:
         logger.debug(f"Sending {method} request to {url}")
 
         try:
-            response = await self._client.request(
-                method=method,
-                url=url,
-                headers=self._headers,
-                params=params,
-                json=data,
-            )
-            response.raise_for_status()
-            return response.json()
+            async with self._rate_limiter:
+                response = await self._client.request(
+                    method=method,
+                    url=url,
+                    headers=self._headers,
+                    params=params,
+                    json=data,
+                )
+                # Update rate limit tracking from response headers
+                self._rate_limiter.update_rate_limits(response.headers)
+                response.raise_for_status()
+                return response.json()
 
         except httpx.HTTPStatusError as e:
             result = await self._handle_status_code_error(

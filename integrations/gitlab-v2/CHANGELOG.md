@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.25 (2026-01-22)
+
+
+### Features
+
+- Added configurable rate limiting with `maxConcurrentRequests` configuration option to control API request concurrency
+- Implemented `GitLabRateLimiter` with semaphore-based concurrency control and proactive rate limit tracking
+- Added support for GitLab rate limit response headers (`RateLimit-Remaining`, `RateLimit-Reset`, `RateLimit-Limit`)
+
+
 ## 0.5.24 (2026-01-22)
 
 

@@ -23,8 +23,12 @@ class GitLabClient:
         "all_available": True,  # Fetch all resources accessible to the user
     }
 
-    def __init__(self, base_url: str, token: str) -> None:
-        self.rest = RestClient(base_url, token, endpoint="api/v4")
+    def __init__(
+        self, base_url: str, token: str, max_concurrent: int = 10
+    ) -> None:
+        self.rest = RestClient(
+            base_url, token, endpoint="api/v4", max_concurrent=max_concurrent
+        )
 
     async def get_tag(self, project_id: int, tag_name: str) -> dict[str, Any]:
         return await self.rest.send_api_request(
