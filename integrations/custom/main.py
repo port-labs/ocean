@@ -25,20 +25,15 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     selector = resource_config.selector
 
-    # The kind IS the endpoint path (e.g., "/api/v1/users")
-    # Check if endpoint has path parameters that need resolution
-    # Returns list of tuples: (endpoint_url, {param_name: param_value})
-    endpoints = await resolve_dynamic_endpoints(selector, kind)
-
-    logger.info(f"Resolved {len(endpoints)} endpoints to call for kind: {kind}")
-
     # Extract method, query_params, headers from selector
     method = getattr(selector, "method", "GET")
     query_params = getattr(selector, "query_params", None) or {}
     headers = getattr(selector, "headers", None) or {}
 
-    # Call each resolved endpoint
-    for endpoint, path_params in endpoints:
+    # The kind IS the endpoint path (e.g., "/api/v1/users")
+    # Check if endpoint has path parameters that need resolution
+    # Yields tuples: (endpoint_url, {param_name: param_value}) as they're discovered
+    async for endpoint, path_params in resolve_dynamic_endpoints(selector, kind):
         logger.info(f"Fetching data from: {method} {endpoint}")
 
         # Extract data_path per endpoint, defaulting to '.' if not specified or None

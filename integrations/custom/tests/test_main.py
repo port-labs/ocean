@@ -1,11 +1,16 @@
 """Tests for main resync function"""
 
 from types import SimpleNamespace
-from typing import Any, AsyncIterator, cast
+from typing import Any, AsyncGenerator, AsyncIterator, Dict, cast
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
 from http_server.overrides import HttpServerResourceConfig, HttpServerSelector
+
+
+async def mock_resolve_single_endpoint() -> AsyncGenerator[tuple[str, Dict[str, str]], None]:
+    """Helper mock generator that yields a single endpoint"""
+    yield ("/api/v1/users", {})
 
 
 class TestListResponseHandling:
@@ -38,11 +43,12 @@ class TestListResponseHandling:
 
             with (
                 patch("main.init_client", return_value=mock_client),
-                patch("main.resolve_dynamic_endpoints") as mock_resolve,
+                patch(
+                    "main.resolve_dynamic_endpoints",
+                    return_value=mock_resolve_single_endpoint(),
+                ),
                 patch("main.ocean") as mock_ocean,
             ):
-                mock_resolve.return_value = [("/api/v1/users", {})]
-
                 direct_list_response = [
                     {"id": 1, "name": "Alice"},
                     {"id": 2, "name": "Bob"},
@@ -96,11 +102,12 @@ class TestListResponseHandling:
 
             with (
                 patch("main.init_client", return_value=mock_client),
-                patch("main.resolve_dynamic_endpoints") as mock_resolve,
+                patch(
+                    "main.resolve_dynamic_endpoints",
+                    return_value=mock_resolve_single_endpoint(),
+                ),
                 patch("main.logger") as mock_logger,
             ):
-                mock_resolve.return_value = [("/api/v1/users", {})]
-
                 object_response = {"data": [{"id": 1, "name": "Alice"}]}
 
                 async def mock_fetch_paginated_data(*args: Any, **kwargs: Any) -> Any:
@@ -148,11 +155,12 @@ class TestListResponseHandling:
 
             with (
                 patch("main.init_client", return_value=mock_client),
-                patch("main.resolve_dynamic_endpoints") as mock_resolve,
+                patch(
+                    "main.resolve_dynamic_endpoints",
+                    return_value=mock_resolve_single_endpoint(),
+                ),
                 patch("main.ocean") as mock_ocean,
             ):
-                mock_resolve.return_value = [("/api/v1/users", {})]
-
                 object_response = {"data": {"users": [{"id": 1, "name": "Alice"}]}}
 
                 async def mock_fetch_paginated_data(*args: Any, **kwargs: Any) -> Any:

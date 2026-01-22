@@ -5,7 +5,7 @@ Handles dynamic endpoint resolution for path parameters.
 """
 
 import re
-from typing import List, Dict, Any
+from typing import AsyncGenerator, List, Dict, Any
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -53,26 +53,27 @@ def generate_resolved_endpoints(
     Returns:
         List of tuples: (resolved_url, {param_name: param_value})
     """
-    resolved_endpoints = []
-    for value in param_values:
-        resolved_endpoint = endpoint_template.replace(f"{{{param_name}}}", str(value))
-        resolved_endpoints.append((resolved_endpoint, {param_name: str(value)}))
-    return resolved_endpoints
+    return [
+        (endpoint_template.replace(f"{{{param_name}}}", str(v)), {param_name: str(v)})
+        for v in param_values
+    ]
 
 
-async def query_api_for_parameters(param_config: ApiPathParameter) -> List[str]:
+async def query_api_for_parameters(
+    param_config: ApiPathParameter,
+) -> AsyncGenerator[str, None]:
     """Query an API to get values for a path parameter
 
     Args:
         param_config: Configuration for fetching parameter values
 
-    Returns:
-        List of parameter values extracted from API response
+    Yields:
+        Parameter values extracted from API response as they're discovered
     """
     http_client = init_client()
     logger.info(f"Querying API for parameter values from {param_config.endpoint}")
 
-    all_values = []
+    jq_search = ocean.app.integration.entity_processor._search  # type: ignore[attr-defined]
 
     try:
         async for batch in http_client.fetch_paginated_data(
@@ -81,78 +82,48 @@ async def query_api_for_parameters(param_config: ApiPathParameter) -> List[str]:
             query_params=param_config.query_params,
             headers=param_config.headers,
         ):
-            # Process each raw response in the batch
             for response_item in batch:
-                # If data_path is specified, extract the array first
-                items_to_process = []
+                # Extract items using data_path if specified, otherwise use response directly
                 if param_config.data_path:
                     try:
-                        extracted_data = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
-                            response_item, param_config.data_path
-                        )
-                        if isinstance(extracted_data, list):
-                            items_to_process = extracted_data
-                        elif extracted_data is not None:
-                            items_to_process = [extracted_data]
+                        extracted = await jq_search(response_item, param_config.data_path)
+                        items = extracted if isinstance(extracted, list) else [extracted] if extracted else []
                     except Exception as e:
-                        logger.error(
-                            f"Error extracting data with path '{param_config.data_path}': {e}"
-                        )
+                        logger.error(f"Error extracting data with path '{param_config.data_path}': {e}")
                         continue
                 else:
-                    # No data_path, process the response directly
-                    items_to_process = [response_item]
+                    items = [response_item]
 
-                # Extract field values from each item
-                for item in items_to_process:
+                for item in items:
                     try:
-                        # Use Ocean's built-in JQ processor
-                        extracted_value = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
-                            item, param_config.field
-                        )
-                        if extracted_value is not None:
-                            # Apply optional filter
-                            if param_config.filter:
-                                filter_result = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
-                                    item, param_config.filter
-                                )
-                                if filter_result is True:
-                                    all_values.append(str(extracted_value))
-                            else:
-                                all_values.append(str(extracted_value))
+                        if (value := await jq_search(item, param_config.field)) is None:
+                            continue
+                        # Apply optional filter - yield if no filter or filter passes
+                        if not param_config.filter or await jq_search(item, param_config.filter) is True:
+                            yield str(value)
                     except Exception as e:
                         logger.warning(f"Error extracting value from item: {e}")
-                        continue
-
-        logger.info(
-            f"Collected {len(all_values)} parameter values from {param_config.endpoint}"
-        )
-        return all_values
 
     except Exception as e:
-        logger.error(
-            f"Error querying API for parameter values from {param_config.endpoint}: {str(e)}"
-        )
-
-    return []
+        logger.error(f"Error querying API for parameter values from {param_config.endpoint}: {e}")
 
 
 async def resolve_dynamic_endpoints(
     selector: HttpServerSelector, kind: str
-) -> List[tuple[str, Dict[str, str]]]:
+) -> AsyncGenerator[tuple[str, Dict[str, str]], None]:
     """Resolve dynamic endpoints with path parameter values
 
     Args:
         selector: The resource selector configuration
         kind: The endpoint path (e.g., "/api/v1/users" or "/api/v1/teams/{team_id}")
 
-    Returns:
-        List of tuples: (resolved_url, {param_name: param_value})
-        For static endpoints, returns [(kind, {})]
+    Yields:
+        Tuples of (resolved_url, {param_name: param_value})
+        For static endpoints, yields (kind, {})
     """
     if not kind:
         logger.error("Kind (endpoint) is empty")
-        return []
+        return
 
     # Get path_parameters from selector if they exist
     path_parameters = getattr(selector, "path_parameters", None) or {}
@@ -161,14 +132,16 @@ async def resolve_dynamic_endpoints(
     param_names = extract_path_parameters(kind)
 
     if not param_names:
-        # No path parameters - return static endpoint with empty params
-        return [(kind, {})]
+        # No path parameters - yield static endpoint with empty params
+        yield (kind, {})
+        return
 
     # Validate that all parameters are configured
     missing_params = validate_endpoint_parameters(param_names, path_parameters)
     if missing_params:
         logger.error(f"Missing configuration for path parameters: {missing_params}")
-        return [(kind, {})]
+        yield (kind, {})
+        return
 
     # For now, handle single parameter (can extend for multiple later)
     if len(param_names) > 1:
@@ -180,17 +153,14 @@ async def resolve_dynamic_endpoints(
     param_name = param_names[0]
     param_config = path_parameters[param_name]
 
-    # Query API for parameter values
-    parameter_values = await query_api_for_parameters(param_config)
+    # Track if any values were yielded
+    has_values = False
 
-    if not parameter_values:
+    # Query API for parameter values and yield endpoints as they're discovered
+    async for value in query_api_for_parameters(param_config):
+        has_values = True
+        resolved_endpoint = kind.replace(f"{{{param_name}}}", str(value))
+        yield (resolved_endpoint, {param_name: str(value)})
+
+    if not has_values:
         logger.error(f"No valid values found for path parameter '{param_name}'")
-        return []
-
-    # Generate resolved endpoints with parameter values
-    resolved_endpoints = generate_resolved_endpoints(kind, param_name, parameter_values)
-
-    logger.info(
-        f"Resolved {len(resolved_endpoints)} endpoints from parameter '{param_name}'"
-    )
-    return resolved_endpoints

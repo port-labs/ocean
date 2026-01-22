@@ -162,8 +162,8 @@ class TestQueryApiForParameters:
             headers={},
         )
 
-        # Execute
-        result = await query_api_for_parameters(param_config)
+        # Execute - collect yielded values from async generator
+        result = [v async for v in query_api_for_parameters(param_config)]
 
         # Assert
         assert result == ["team-1", "team-2"]
@@ -210,8 +210,8 @@ class TestQueryApiForParameters:
             headers={},
         )
 
-        # Execute
-        result = await query_api_for_parameters(param_config)
+        # Execute - collect yielded values from async generator
+        result = [v async for v in query_api_for_parameters(param_config)]
 
         # Assert - only active teams
         assert result == ["team-1", "team-3"]
@@ -242,8 +242,8 @@ class TestQueryApiForParameters:
             headers={},
         )
 
-        # Execute
-        result = await query_api_for_parameters(param_config)
+        # Execute - collect yielded values from async generator
+        result = [v async for v in query_api_for_parameters(param_config)]
 
         # Assert
         assert result == []
@@ -258,7 +258,8 @@ class TestResolveDynamicEndpoints:
         selector = HttpServerSelector(query="true")
         kind = "/api/v1/users"
 
-        result = await resolve_dynamic_endpoints(selector, kind)
+        # Collect yielded values from async generator
+        result = [ep async for ep in resolve_dynamic_endpoints(selector, kind)]
 
         assert result == [("/api/v1/users", {})]
 
@@ -267,7 +268,8 @@ class TestResolveDynamicEndpoints:
         selector = HttpServerSelector(query="true")
         kind = ""
 
-        result = await resolve_dynamic_endpoints(selector, kind)
+        # Collect yielded values from async generator
+        result = [ep async for ep in resolve_dynamic_endpoints(selector, kind)]
 
         assert result == []
 
@@ -276,16 +278,24 @@ class TestResolveDynamicEndpoints:
         selector = HttpServerSelector(query="true")
         kind = "/api/v1/teams/{team_id}/members"
 
-        result = await resolve_dynamic_endpoints(selector, kind)
+        # Collect yielded values from async generator
+        result = [ep async for ep in resolve_dynamic_endpoints(selector, kind)]
 
         # Returns the template as-is when config is missing
         assert result == [("/api/v1/teams/{team_id}/members", {})]
 
     @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
-    async def test_resolve_with_single_parameter(self, mock_query: AsyncMock) -> None:
+    async def test_resolve_with_single_parameter(self, mock_query: MagicMock) -> None:
         """Test resolving endpoint with a single path parameter"""
-        # Setup mock query response
-        mock_query.return_value = ["team-1", "team-2"]
+
+        # Setup mock query as async generator
+        async def mock_query_gen(
+            param_config: ApiPathParameter,
+        ) -> AsyncGenerator[str, None]:
+            for value in ["team-1", "team-2"]:
+                yield value
+
+        mock_query.side_effect = mock_query_gen
 
         # Create selector with path parameters
         param_config = ApiPathParameter(
@@ -301,8 +311,8 @@ class TestResolveDynamicEndpoints:
         )
         kind = "/api/v1/teams/{team_id}/members"
 
-        # Execute
-        result = await resolve_dynamic_endpoints(selector, kind)
+        # Execute - collect yielded values from async generator
+        result = [ep async for ep in resolve_dynamic_endpoints(selector, kind)]
 
         # Assert
         assert result == [
@@ -312,10 +322,17 @@ class TestResolveDynamicEndpoints:
         mock_query.assert_called_once_with(param_config)
 
     @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
-    async def test_resolve_with_no_values_found(self, mock_query: AsyncMock) -> None:
+    async def test_resolve_with_no_values_found(self, mock_query: MagicMock) -> None:
         """Test resolving when API returns no parameter values"""
-        # Setup mock query to return empty list
-        mock_query.return_value = []
+
+        # Setup mock query as async generator that yields nothing
+        async def mock_query_gen(
+            param_config: ApiPathParameter,
+        ) -> AsyncGenerator[str, None]:
+            return
+            yield  # Make this a generator
+
+        mock_query.side_effect = mock_query_gen
 
         # Create selector with path parameters
         param_config = ApiPathParameter(
@@ -331,19 +348,25 @@ class TestResolveDynamicEndpoints:
         )
         kind = "/api/v1/teams/{team_id}/members"
 
-        # Execute
-        result = await resolve_dynamic_endpoints(selector, kind)
+        # Execute - collect yielded values from async generator
+        result = [ep async for ep in resolve_dynamic_endpoints(selector, kind)]
 
         # Assert - returns empty list when no values found
         assert result == []
 
     @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
     async def test_resolve_with_multiple_parameters_warns(
-        self, mock_query: AsyncMock
+        self, mock_query: MagicMock
     ) -> None:
         """Test resolving endpoint with multiple parameters (currently only handles first)"""
-        # Setup mock query response
-        mock_query.return_value = ["org-1"]
+
+        # Setup mock query as async generator
+        async def mock_query_gen(
+            param_config: ApiPathParameter,
+        ) -> AsyncGenerator[str, None]:
+            yield "org-1"
+
+        mock_query.side_effect = mock_query_gen
 
         # Create selector with multiple path parameters
         org_param = ApiPathParameter(
@@ -367,8 +390,8 @@ class TestResolveDynamicEndpoints:
         )
         kind = "/api/v1/orgs/{org_id}/teams/{team_id}/members"
 
-        # Execute
-        result = await resolve_dynamic_endpoints(selector, kind)
+        # Execute - collect yielded values from async generator
+        result = [ep async for ep in resolve_dynamic_endpoints(selector, kind)]
 
         # Assert - only first parameter is resolved (current limitation)
         assert result == [
