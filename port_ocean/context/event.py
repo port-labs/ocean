@@ -20,6 +20,7 @@ from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.context.resource import resource
 from port_ocean.exceptions.api import EmptyPortAppConfigError
+from port_ocean.exceptions.webhook_processor import WebhookEventNotSupportedError
 from port_ocean.exceptions.context import (
     EventContextNotFoundError,
     ResourceContextNotFoundError,
@@ -183,6 +184,9 @@ async def event_context(
                 f"Skipping resync due to empty mapping: {str(e)}", exc_info=True
             )
             raise
+        except WebhookEventNotSupportedError as e:
+            success = False
+            logger.warning(f"Webhook event not supported: {str(e)}", exc_info=True)
         except BaseException as e:
             success = False
             if isinstance(e, KeyboardInterrupt):
