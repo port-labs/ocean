@@ -45,6 +45,8 @@ class GitHubHeaders(BaseModel):
 
 
 class AbstractGitHubAuthenticator(ABC):
+    _http_client: Optional[httpx.AsyncClient] = None
+
     @abstractmethod
     async def get_token(self, **kwargs: Any) -> GitHubToken:
         pass
@@ -55,19 +57,20 @@ class AbstractGitHubAuthenticator(ABC):
 
     @property
     def client(self) -> httpx.AsyncClient:
-        retry_config = RetryConfig(
-            retry_after_headers=[
-                "Retry-After",
-                "X-RateLimit-Reset",
-            ],
-            max_backoff_wait=GITHUB_RETRY_MAX_BACKOFF,
-        )
-
-        return OceanAsyncClient(
-            GitHubRetryTransport,
-            retry_config=retry_config,
-            timeout=ocean.config.client_timeout,
-        )
+        if self._http_client is None:
+            retry_config = RetryConfig(
+                retry_after_headers=[
+                    "Retry-After",
+                    "X-RateLimit-Reset",
+                ],
+                max_backoff_wait=GITHUB_RETRY_MAX_BACKOFF,
+            )
+            self._http_client = OceanAsyncClient(
+                GitHubRetryTransport,
+                retry_config=retry_config,
+                timeout=ocean.config.client_timeout,
+            )
+        return self._http_client
 
     @cache_coroutine_result()
     async def is_personal_org(self, github_host: str, organization: str) -> bool:
