@@ -14,6 +14,8 @@ from loguru import logger
 import httpx
 
 
+GITHUB_RETRY_MAX_BACKOFF = 1800
+
 class GitHubToken(BaseModel):
     token: str
     expires_at: Optional[str] = None
@@ -57,7 +59,7 @@ class AbstractGitHubAuthenticator(ABC):
                 "Retry-After",
                 "X-RateLimit-Reset",
             ],
-            max_backoff_wait=1800,
+            max_backoff_wait=GITHUB_RETRY_MAX_BACKOFF,
         )
 
         return OceanAsyncClient(
