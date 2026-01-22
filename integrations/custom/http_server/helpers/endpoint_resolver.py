@@ -86,10 +86,18 @@ async def query_api_for_parameters(
                 # Extract items using data_path if specified, otherwise use response directly
                 if param_config.data_path:
                     try:
-                        extracted = await jq_search(response_item, param_config.data_path)
-                        items = extracted if isinstance(extracted, list) else [extracted] if extracted else []
+                        extracted = await jq_search(
+                            response_item, param_config.data_path
+                        )
+                        items = (
+                            extracted
+                            if isinstance(extracted, list)
+                            else [extracted] if extracted else []
+                        )
                     except Exception as e:
-                        logger.error(f"Error extracting data with path '{param_config.data_path}': {e}")
+                        logger.error(
+                            f"Error extracting data with path '{param_config.data_path}': {e}"
+                        )
                         continue
                 else:
                     items = [response_item]
@@ -99,13 +107,18 @@ async def query_api_for_parameters(
                         if (value := await jq_search(item, param_config.field)) is None:
                             continue
                         # Apply optional filter - yield if no filter or filter passes
-                        if not param_config.filter or await jq_search(item, param_config.filter) is True:
+                        if (
+                            not param_config.filter
+                            or await jq_search(item, param_config.filter) is True
+                        ):
                             yield str(value)
                     except Exception as e:
                         logger.warning(f"Error extracting value from item: {e}")
 
     except Exception as e:
-        logger.error(f"Error querying API for parameter values from {param_config.endpoint}: {e}")
+        logger.error(
+            f"Error querying API for parameter values from {param_config.endpoint}: {e}"
+        )
 
 
 async def resolve_dynamic_endpoints(
