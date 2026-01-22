@@ -12,6 +12,8 @@ jobs:
   check-version-changelog:
     name: Check Version & Changelog Updates
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
