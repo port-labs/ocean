@@ -4,7 +4,7 @@ from port_ocean.context.ocean import ocean
 
 from gitlab.clients.gitlab_client import GitLabClient
 
-DEFAULT_MAX_CONCURRENT_REQUESTS = 10
+DEFAULT_MAX_CONCURRENT_REQUESTS = 100
 
 _gitlab_client: Optional[GitLabClient] = None
 
