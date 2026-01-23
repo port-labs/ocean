@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Optional
 from github.helpers.utils import (
     enrich_with_repository,
     parse_github_options,
@@ -15,7 +15,7 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
 
     async def get_resource[
         ExporterOptionsT: SingleIssueOptions
-    ](self, options: ExporterOptionsT,) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT,) -> Optional[RAW_ITEM]:
         repo_name, organization, params = parse_github_options(dict(options))
         issue_number = params["issue_number"]
 
@@ -25,7 +25,7 @@ class RestIssueExporter(AbstractGithubExporter[AbstractGithubClient]):
             logger.warning(
                 f"No issue found with number: {issue_number} in repository: {repo_name} from {organization}"
             )
-            return {}
+            return None
 
         logger.info(
             f"Fetched issue {issue_number} from {repo_name} from {organization}"

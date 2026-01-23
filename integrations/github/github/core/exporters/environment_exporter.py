@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, cast, Optional
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import (
@@ -14,7 +14,7 @@ from github.core.options import ListEnvironmentsOptions, SingleEnvironmentOption
 class RestEnvironmentExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[
         ExporterOptionsT: SingleEnvironmentOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         """Get a single environment for a repository."""
 
         repo_name, organization, params = parse_github_options(dict(options))
@@ -26,7 +26,7 @@ class RestEnvironmentExporter(AbstractGithubExporter[GithubRestClient]):
             logger.warning(
                 f"No environment found with identifier: {name} in repository: {repo_name} from {organization}"
             )
-            return {}
+            return None
 
         logger.info(
             f"Fetched environment with identifier {name} from repository {repo_name} from {organization}"

@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, Dict, List, Any, Tuple, cast
+from typing import AsyncGenerator, Dict, List, Any, Optional, Tuple, cast
 from urllib.parse import quote
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client
@@ -39,7 +39,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_resource[
         ExporterOptionsT: FileContentOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         """
         Fetch the content of a file from a repository using the Contents API.
         """
@@ -58,7 +58,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.warning(
                 f"File {file_path} not found in {repo_name}@{branch} from {organization}"
             )
-            return {}
+            return None
 
         response_size = response["size"]
         content = None

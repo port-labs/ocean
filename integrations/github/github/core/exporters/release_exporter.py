@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Optional
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
@@ -15,7 +15,7 @@ class RestReleaseExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_resource[
         ExporterOptionsT: SingleReleaseOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
 
         repo_name, organization, params = parse_github_options(dict(options))
         release_id = params["release_id"]
@@ -26,7 +26,7 @@ class RestReleaseExporter(AbstractGithubExporter[GithubRestClient]):
             logger.warning(
                 f"No release found with id: {release_id} in repository: {repo_name} from {organization}"
             )
-            return {}
+            return None
 
         logger.info(
             f"Fetched release with id: {release_id} for repo: {repo_name} from {organization}"

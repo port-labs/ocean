@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Optional
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import (
     enrich_with_repository,
@@ -18,7 +18,7 @@ class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_resource[
         ExporterOptionsT: SingleSecretScanningAlertOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
 
         repo_name, organization, params = parse_github_options(dict(options))
         alert_number = params.pop("alert_number")
@@ -29,7 +29,7 @@ class RestSecretScanningAlertExporter(AbstractGithubExporter[GithubRestClient]):
             logger.warning(
                 f"No secret scanning alert found with number: {alert_number} in repository: {repo_name} from {organization}"
             )
-            return {}
+            return None
 
         logger.info(
             f"Fetched secret scanning alert with number: {alert_number} for repo: {repo_name} from {organization}"
