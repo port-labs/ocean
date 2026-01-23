@@ -95,15 +95,14 @@ async def test_webhook_handle_push_artifact():
     """Test handling of PUSH_ARTIFACT webhook event."""
     webhook_handler = HarborWebhookHandler()
 
-    event_data = {"repository": {"namespace": "library", "name": "nginx"}}
+    event_data = {
+        "repository": {"namespace": "library", "name": "nginx"},
+        "resources": [{"digest": "sha256:abc123", "tag": "latest"}],
+    }
 
     with patch.object(webhook_handler, "_get_harbor_client") as mock_get_client:
         mock_client = AsyncMock()
-
-        async def mock_get_artifacts(*args, **kwargs):
-            yield {"digest": "sha256:abc123", "tags": [{"name": "latest"}]}
-
-        mock_client.get_artifacts = mock_get_artifacts
+        mock_client.get_artifact.return_value = {"digest": "sha256:abc123", "tags": [{"name": "latest"}]}
         mock_get_client.return_value = mock_client
 
         with patch.object(webhook_handler, "_upsert_artifact") as mock_upsert:
@@ -156,19 +155,18 @@ async def test_webhook_handle_scanning_completed():
     """Test handling of SCANNING_COMPLETED webhook event."""
     webhook_handler = HarborWebhookHandler()
 
-    event_data = {"repository": {"namespace": "library", "name": "nginx"}}
+    event_data = {
+        "repository": {"namespace": "library", "name": "nginx"},
+        "resources": [{"digest": "sha256:abc123", "tag": "latest"}],
+    }
 
     with patch.object(webhook_handler, "_get_harbor_client") as mock_get_client:
         mock_client = AsyncMock()
-
-        async def mock_get_artifacts(*args, **kwargs):
-            yield {
-                "digest": "sha256:abc123",
-                "tags": [{"name": "latest"}],
-                "scan_overview": {"test": {"scan_status": "Success", "severity": "High"}},
-            }
-
-        mock_client.get_artifacts = mock_get_artifacts
+        mock_client.get_artifact.return_value = {
+            "digest": "sha256:abc123",
+            "tags": [{"name": "latest"}],
+            "scan_overview": {"test": {"scan_status": "Success", "severity": "High"}},
+        }
         mock_get_client.return_value = mock_client
 
         with patch.object(webhook_handler, "_upsert_artifact", new_callable=AsyncMock) as mock_upsert:

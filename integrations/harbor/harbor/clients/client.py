@@ -195,6 +195,30 @@ class HarborClient:
         async for artifact in self._paginated_request(endpoint, params):
             yield artifact
 
+    async def get_artifact(
+        self,
+        project_name: str,
+        repository_name: str,
+        reference: str,
+        with_scan_overview: bool = True,
+        with_tag: bool = True,
+        with_label: bool = True,
+    ) -> Optional[ArtifactDict]:
+        """Fetch a single artifact by digest or tag reference."""
+        endpoint = f"projects/{project_name}/repositories/{repository_name}/artifacts/{reference}"
+        params: dict[str, Any] = {
+            "with_scan_overview": str(with_scan_overview).lower(),
+            "with_tag": str(with_tag).lower(),
+            "with_label": str(with_label).lower(),
+        }
+
+        try:
+            result = await self._send_api_request(endpoint, query_params=params)
+            return result if isinstance(result, dict) else None
+        except Exception as e:
+            logger.error(f"Failed to fetch artifact {reference}: {e}")
+            return None
+
     async def get_all_repositories(
         self,
         project_filter: Optional[ProjectFilter] = None,

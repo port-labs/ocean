@@ -38,23 +38,33 @@ class HarborWebhookHandler:
         repository_data = event_data.get("repository", {})
         project_name = repository_data.get("namespace")
         repo_name = repository_data.get("name")
+        resources = event_data.get("resources", [])
 
         if not project_name or not repo_name:
             self.logger.warning("Missing project or repository name in event")
             return
 
+        if not resources:
+            self.logger.warning("No resources in PUSH_ARTIFACT event")
+            return
+
         harbor_client = self._get_harbor_client()
 
-        try:
-            async for artifact in harbor_client.get_artifacts(
-                project_name, repo_name, with_scan_overview=True, with_tag=True, with_label=True
-            ):
-                await self._upsert_artifact(project_name, repo_name, artifact)
+        for resource in resources:
+            digest = resource.get("digest")
+            if not digest:
+                continue
 
-            self.logger.info(f"Successfully processed PUSH_ARTIFACT for {project_name}/{repo_name}")
+            try:
+                artifact = await harbor_client.get_artifact(
+                    project_name, repo_name, digest, with_scan_overview=True, with_tag=True, with_label=True
+                )
+                if artifact:
+                    await self._upsert_artifact(project_name, repo_name, artifact)
+                    self.logger.info(f"Processed PUSH_ARTIFACT for {project_name}/{repo_name}@{digest[:12]}")
 
-        except Exception as e:
-            self.logger.error(f"Failed to handle PUSH_ARTIFACT: {e}")
+            except Exception as e:
+                self.logger.error(f"Failed to handle PUSH_ARTIFACT for {digest[:12]}: {e}")
 
     async def _handle_delete_artifact(self, event_data: dict[str, Any]) -> None:
         resources = event_data.get("resources", [])
@@ -77,23 +87,33 @@ class HarborWebhookHandler:
         repository_data = event_data.get("repository", {})
         project_name = repository_data.get("namespace")
         repo_name = repository_data.get("name")
+        resources = event_data.get("resources", [])
 
         if not project_name or not repo_name:
             self.logger.warning("Missing project or repository name in scanning event")
             return
 
+        if not resources:
+            self.logger.warning("No resources in SCANNING_COMPLETED event")
+            return
+
         harbor_client = self._get_harbor_client()
 
-        try:
-            async for artifact in harbor_client.get_artifacts(
-                project_name, repo_name, with_scan_overview=True, with_tag=True, with_label=True
-            ):
-                await self._upsert_artifact(project_name, repo_name, artifact)
+        for resource in resources:
+            digest = resource.get("digest")
+            if not digest:
+                continue
 
-            self.logger.info(f"Successfully updated scan results for {project_name}/{repo_name}")
+            try:
+                artifact = await harbor_client.get_artifact(
+                    project_name, repo_name, digest, with_scan_overview=True, with_tag=True, with_label=True
+                )
+                if artifact:
+                    await self._upsert_artifact(project_name, repo_name, artifact)
+                    self.logger.info(f"Updated scan results for {project_name}/{repo_name}@{digest[:12]}")
 
-        except Exception as e:
-            self.logger.error(f"Failed to handle SCANNING_COMPLETED: {e}")
+            except Exception as e:
+                self.logger.error(f"Failed to update scan results for {digest[:12]}: {e}")
 
     async def _handle_scanning_failed(self, event_data: dict[str, Any]) -> None:
         repository_data = event_data.get("repository", {})
@@ -103,18 +123,29 @@ class HarborWebhookHandler:
         self.logger.warning(f"Scanning failed for {project_name}/{repo_name}")
 
     async def _upsert_artifact(self, project_name: str, repo_name: str, artifact: dict[str, Any]) -> None:
-        scan_overview = artifact.get("scan_overview", {})
-        scan_data: dict[str, Any] = next(iter(scan_overview.values()), {}) if scan_overview else {}
-        summary = scan_data.get("summary", {}).get("summary", {})
+        digest = artifact.get("digest")
+        if not digest or not isinstance(digest, str):
+            self.logger.warning("Artifact missing valid digest, skipping")
+            return
 
-        tags = [tag["name"] for tag in artifact.get("tags", [])]
-        labels = [label["name"] for label in artifact.get("labels", [])]
+        scan_overview = artifact.get("scan_overview") or {}
+        scan_data: dict[str, Any] = next(iter(scan_overview.values()), {}) if scan_overview else {}
+        summary_data = scan_data.get("summary") or {}
+        summary = summary_data.get("summary") or {}
+
+        # Safely extract tag names
+        raw_tags = artifact.get("tags") or []
+        tags = [tag.get("name") for tag in raw_tags if isinstance(tag, dict) and tag.get("name")]
+
+        # Safely extract label names
+        raw_labels = artifact.get("labels") or []
+        labels = [label.get("name") for label in raw_labels if isinstance(label, dict) and label.get("name")]
 
         entity = {
-            "identifier": f"{project_name}-{repo_name}-{artifact['digest'][:12]}".replace("/", "-"),
+            "identifier": f"{project_name}-{repo_name}-{digest[:12]}".replace("/", "-"),
             "title": f"{project_name}/{repo_name}:{tags[0] if tags else 'untagged'}",
             "properties": {
-                "digest": artifact["digest"],
+                "digest": digest,
                 "size": artifact.get("size", 0),
                 "pushTime": artifact.get("push_time"),
                 "pullTime": artifact.get("pull_time"),

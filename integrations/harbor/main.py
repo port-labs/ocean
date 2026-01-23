@@ -6,20 +6,12 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from harbor.clients import HarborClient, ProjectFilter, RepositoryFilter, ArtifactFilter
 from harbor.webhooks.webhook_handler import HarborWebhookHandler
 from harbor.helpers.util import get_first_tag_name, extract_scan_data
-
-
-def _init_harbor_client() -> HarborClient:
-    return HarborClient(
-        harbor_host=ocean.integration_config["harbor_host"],
-        harbor_username=ocean.integration_config["harbor_username"],
-        harbor_password=ocean.integration_config["harbor_password"],
-        verify_ssl=ocean.integration_config.get("verify_ssl", True),
-    )
+from harbor.initializer import init_harbor_client
 
 
 @ocean.on_resync("project")
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    harbor_client = _init_harbor_client()
+    harbor_client = init_harbor_client()
 
     project_filter = ocean.integration_config.get("project_filter") or {}
     public = project_filter.get("visibility")
@@ -153,6 +145,12 @@ async def handle_webhook_request(request: Request) -> dict[str, Any]:
     data = await request.json()
 
     webhook_secret = ocean.integration_config.get("webhook_secret")
+    if not webhook_secret:
+        logger.warning(
+            "Webhook secret not configured - accepting unauthenticated requests. "
+            "Set 'webhook_secret' in config to enable signature verification."
+        )
+
     handler = HarborWebhookHandler(webhook_secret)
 
     signature = request.headers.get("Authorization", "")
@@ -169,5 +167,5 @@ async def handle_webhook_request(request: Request) -> dict[str, Any]:
         await handler.handle_webhook_event(event_type, event_data)
         return {"ok": True}
     except Exception as e:
-        logger.error(f"Webhook processing failed: {e}")
-        return {"ok": False, "error": str(e)}
+        logger.error(f"Webhook processing failed: {e}", exc_info=True)
+        return {"ok": False, "error": "Internal processing error"}
