@@ -11,14 +11,12 @@ from gitlab.clients.rate_limiter.utils import GitLabRateLimiterConfig
 
 class HTTPBaseClient:
     def __init__(
-        self, base_url: str, token: str, endpoint: str, max_concurrent: int = 10
+        self, base_url: str, token: str, endpoint: str, max_concurrent: int = 100
     ):
         self.token = token
         self._client = http_async_client
         self.base_url = f"{base_url}/{endpoint.strip('/')}"
         self._auth_client = AuthClient(self.token)
-
-        # Initialize rate limiter with configured concurrency
         config = GitLabRateLimiterConfig(max_concurrent=max_concurrent)
         self._rate_limiter = GitLabRateLimiterRegistry.get_limiter(base_url, config)
 
