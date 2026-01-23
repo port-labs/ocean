@@ -6,7 +6,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from harbor.clients import HarborClient, ProjectFilter, RepositoryFilter, ArtifactFilter
 from harbor.webhooks.webhook_handler import HarborWebhookHandler
 from harbor.helpers.util import get_first_tag_name, extract_scan_data
-from harbor.initializer import init_harbor_client
+from harbor.initializer import  init_harbor_client
 
 
 @ocean.on_resync("project")
@@ -38,7 +38,7 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync("user")
 async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    harbor_client = _init_harbor_client()
+    harbor_client = init_harbor_client()
 
     logger.info("Starting user resync")
     count = 0
@@ -57,7 +57,7 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync("repository")
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    harbor_client = _init_harbor_client()
+    harbor_client = init_harbor_client()
 
     project_filter_config = ocean.integration_config.get("project_filter") or {}
     repository_filter_config = ocean.integration_config.get("repository_filter") or {}
@@ -86,7 +86,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync("artifact")
 async def resync_artifacts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    harbor_client = _init_harbor_client()
+    harbor_client = init_harbor_client()
 
     project_filter_config = ocean.integration_config.get("project_filter") or {}
     artifact_filter_config = ocean.integration_config.get("artifact_filter") or {}

@@ -1,3 +1,7 @@
+from port_ocean.context.ocean import ocean
+from harbor.clients import HarborClient
+
+
 def init_harbor_client() -> HarborClient:
     return HarborClient(
         harbor_host=ocean.integration_config["harbor_host"],
