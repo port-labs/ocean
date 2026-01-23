@@ -24,7 +24,7 @@ configurations:
     description: The host of the Gitlab instance. If not specified, the default will be https://gitlab.com.
   - name: maxConcurrentRequests
     required: false
-    type: number
+    type: integer
     default: 100
     description: Maximum concurrent API requests to GitLab. Lower this value if you have an internal rate limiter or proxy that throttles requests before they reach GitLab.
 saas:

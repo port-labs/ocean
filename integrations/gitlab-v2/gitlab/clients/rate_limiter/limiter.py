@@ -17,7 +17,7 @@ class GitLabRateLimiter:
     Rate limiter for GitLab API requests.
 
     Provides:
-    - Semaphore-based concurrency control
+    - BoundedSemaphore-based concurrency control
     - Proactive pausing when rate limit is low
     - Response header tracking for rate limit state
 
@@ -28,7 +28,7 @@ class GitLabRateLimiter:
     """
 
     def __init__(self, config: GitLabRateLimiterConfig) -> None:
-        self._semaphore = asyncio.Semaphore(config.max_concurrent)
+        self._semaphore = asyncio.BoundedSemaphore(config.max_concurrent)
         self._max_concurrent = config.max_concurrent
         self.rate_limit_info: Optional[RateLimitInfo] = None
         self._block_lock = asyncio.Lock()
