@@ -186,7 +186,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 400:
-                logger.debug(
+                logger.error(
                     f"Advanced Security not enabled for repository {repository['name']} in project {project_id}"
                 )
             raise
