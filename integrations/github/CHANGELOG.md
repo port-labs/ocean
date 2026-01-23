@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.12 (2026-01-23)
+
+
+### Bug Fixes
+
+- Fixed empty responses not being properly handled in GitHub exporters for webhooks by returning None instead of empty objects, with updated type hints to Optional[RAW_ITEM]
+
+
 ## 5.0.11 (2026-01-22)
 
 
