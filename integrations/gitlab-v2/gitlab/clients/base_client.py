@@ -54,7 +54,6 @@ class HTTPBaseClient:
                     params=params,
                     json=data,
                 )
-                # Update rate limit tracking from response headers
                 self._rate_limiter.update_rate_limits(response.headers)
                 response.raise_for_status()
                 return response.json()
