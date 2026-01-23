@@ -8,7 +8,10 @@ from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
 )
 import asyncio
-from gitlab.clients.client_factory import create_gitlab_client, get_max_concurrent_requests
+from gitlab.clients.client_factory import (
+    create_gitlab_client,
+    get_max_concurrent_requests,
+)
 from gitlab.clients.utils import build_group_params, build_project_params
 from gitlab.helpers.utils import ObjectKind, enrich_resources_with_project
 from integration import (

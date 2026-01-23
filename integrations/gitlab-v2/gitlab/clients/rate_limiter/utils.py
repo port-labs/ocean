@@ -48,7 +48,9 @@ class RateLimiterRequiredHeaders(BaseModel):
     """
 
     ratelimit_limit: Optional[str] = Field(default=None, alias="ratelimit-limit")
-    ratelimit_remaining: Optional[str] = Field(default=None, alias="ratelimit-remaining")
+    ratelimit_remaining: Optional[str] = Field(
+        default=None, alias="ratelimit-remaining"
+    )
     ratelimit_reset: Optional[str] = Field(default=None, alias="ratelimit-reset")
 
     class Config:

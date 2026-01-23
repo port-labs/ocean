@@ -41,6 +41,4 @@ def create_gitlab_client() -> GitLabClient:
 def get_max_concurrent_requests() -> int:
     """Get the configured max concurrent requests value."""
     integration_config: dict[str, Any] = ocean.integration_config
-    return _parse_max_concurrent(
-        integration_config.get("max_concurrent_requests")
-    )
+    return _parse_max_concurrent(integration_config.get("max_concurrent_requests"))
