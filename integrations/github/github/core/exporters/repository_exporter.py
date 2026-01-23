@@ -24,9 +24,9 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         "sbom": "_enrich_repository_with_sbom",
     }
 
-    async def get_resource[
-        ExporterOptionsT: SingleRepositoryOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    async def get_resource[ExporterOptionsT: SingleRepositoryOptions](
+        self, options: ExporterOptionsT
+    ) -> RAW_ITEM:
         name = options["name"]
         organization = options["organization"]
         included_relationships = options.get("included_relationships")
@@ -44,13 +44,12 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             response, cast(list[str], included_relationships), organization
         )
 
-    @cache_iterator_result()
-    async def get_paginated_resources[
-        ExporterOptionsT: ListRepositoryOptions
-    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[ExporterOptionsT: ListRepositoryOptions](
+        self, options: ExporterOptionsT
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
         organization = options["organization"]
-        included_relationships = options.get("included_relationships")
+        included_relationships = options.pop("included_relationships")
 
         async for repos in self._fetch_repositories(options):
             if not included_relationships:
@@ -67,6 +66,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 )
                 yield batch
 
+    @cache_iterator_result()
     async def _fetch_repositories(
         self, options: ListRepositoryOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
