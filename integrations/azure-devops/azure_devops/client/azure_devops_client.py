@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import json
+import httpx
 from collections import defaultdict
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError, ReadTimeout
@@ -45,6 +46,7 @@ if TYPE_CHECKING:
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
+ADVANCED_SECURITY_API_PARAMS = {"api-version": "7.2-preview.1"}
 API_PARAMS = {"api-version": "7.1"}
 WEBHOOK_URL_SUFFIX = "/integration/webhook"
 # Maximum number of work item IDs allowed in a single API request
@@ -84,6 +86,7 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> None:
         super().__init__(personal_access_token)
         self._organization_base_url = organization_url
+        self._advsec_base_url = f"{organization_url.replace('dev.', 'advsec.dev.')}"
         self.webhook_auth_username = webhook_auth_username
 
     @classmethod
@@ -153,6 +156,48 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 projects = [project for project in projects_batch if project]
             yield projects
+
+    async def generate_security_alerts(
+        self,
+        repository: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate security alerts from GitHub Advanced Security (GHAS) in Azure DevOps.
+        This method fetches alerts for all repositories across all projects using the Advanced Security API.
+        It supports filtering via criteria (e.g., {'criteria.alertType': 'code,secret', 'criteria.states': 'active'}).
+        read more -> https://learn.microsoft.com/en-us/rest/api/azure/devops/advancedsecurity/alerts/list?view=azure-devops-rest-7.2
+
+        Yields batches of enriched alerts with __repository context.
+        """
+        try:
+            project_id = repository["project"]["id"]
+            repository_id = repository["id"]
+            security_alerts_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts"
+            params = {
+                **ADVANCED_SECURITY_API_PARAMS,
+            }
+            async for (
+                security_alerts
+            ) in self._get_paginated_by_top_and_continuation_token(
+                security_alerts_url, additional_params=params
+            ):
+                yield self._enrich_security_alerts_with_repository(
+                    repository, security_alerts
+                )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 400:
+                logger.debug(
+                    f"Advanced Security not enabled for repository {repository['name']} in project {project_id}"
+                )
+            raise
+
+    def _enrich_security_alerts_with_repository(
+        self, repository: dict[str, Any], security_alerts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        for security_alert in security_alerts:
+            security_alert["__repository"] = repository
+            security_alert["__project"] = repository["project"]
+        return security_alerts
 
     @cache_iterator_result()
     async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:

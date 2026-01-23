@@ -325,6 +325,19 @@ async def resync_iterations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield iterations
 
 
+@ocean.on_resync(Kind.SECURITY_ALERT)
+async def resync_security_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+
+    async for repositories in azure_devops_client.generate_repositories():
+        for repository in repositories:
+            async for security_alerts in azure_devops_client.generate_security_alerts(
+                repository
+            ):
+                logger.info(f"Resyncing {len(security_alerts)} security alerts")
+                yield security_alerts
+
+
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FileWebhookProcessor)

@@ -20,17 +20,27 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 
 
-class AzureDevopsProjectResourceConfig(ResourceConfig):
-    class AzureDevopsSelector(Selector):
-        query: str
-        default_team: bool = Field(
-            default=False,
-            description="If set to true, it ingests default team for each project to Port. This causes latency while syncing the entities to Port.  Default value is false. ",
-            alias="defaultTeam",
-        )
+class AzureDevopsSelector(Selector):
+    query: str
+    default_team: bool = Field(
+        default=False,
+        description="If set to true, it ingests default team for each project to Port. This causes latency while syncing the entities to Port.  Default value is false. ",
+        alias="defaultTeam",
+    )
 
+
+class AzureDevopsProjectResourceConfig(ResourceConfig):
     kind: Literal["project"]
     selector: AzureDevopsSelector
+
+
+class AzureDevopsSecurityAlertSelector(Selector):
+    pass
+
+
+class AzureDevopsSecurityAlertResourceConfig(ResourceConfig):
+    kind: Literal["security-alert"]
+    selector: AzureDevopsSecurityAlertSelector
 
 
 class AzureDevopsWorkItemResourceConfig(ResourceConfig):
@@ -212,6 +222,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsPipelineResourceConfig
         | AzureDevopsTestRunResourceConfig
         | AzureDevopsPullRequestResourceConfig
+        | AzureDevopsSecurityAlertResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
