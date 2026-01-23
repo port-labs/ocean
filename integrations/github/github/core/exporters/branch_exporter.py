@@ -99,7 +99,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             ]
 
             hydrated = await asyncio.gather(*tasks)
-            yield hydrated
+            yield [branch for branch in hydrated if branch is not None]
 
     async def _run_branch_hydration(
         self,

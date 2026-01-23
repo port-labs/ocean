@@ -173,6 +173,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 )
             )
 
+            if not file_data:
+                logger.warning(f"File {file_path} not found from {organization}")
+                continue
+
             decoded_content = file_data.pop("content", None)
             if decoded_content is None:
                 logger.warning(f"File {file_path} has no content from {organization}")

@@ -9,7 +9,9 @@ class AbstractGithubExporter[T: AbstractGithubClient](ABC):
         self.client = client
 
     @abstractmethod
-    async def get_resource[AnyOption: Any](self, options: AnyOption) -> Optional[RAW_ITEM]: ...
+    async def get_resource[
+        AnyOption: Any
+    ](self, options: AnyOption) -> Optional[RAW_ITEM]: ...
 
     @abstractmethod
     def get_paginated_resources[
