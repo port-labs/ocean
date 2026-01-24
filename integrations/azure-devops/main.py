@@ -337,7 +337,7 @@ async def resync_advanced_security_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_T
     ).selector
     params: dict[str, Any] = {}
     if selector.criteria:
-        params.update(selector.criteria.as_params)
+        params = selector.criteria.as_params
 
     async for repositories in azure_devops_client.generate_repositories():
         for repository in repositories:
