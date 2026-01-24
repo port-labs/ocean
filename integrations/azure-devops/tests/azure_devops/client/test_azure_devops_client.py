@@ -1360,7 +1360,7 @@ async def test_generate_security_alerts() -> None:
     ):
         # ACT
         alerts: List[Dict[str, Any]] = []
-        async for alert_batch in client.generate_security_alerts(repository):
+        async for alert_batch in client.generate_advanced_security_alerts(repository):
             alerts.extend(alert_batch)
 
         # ASSERT

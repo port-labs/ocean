@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union, Any
 from datetime import datetime, timedelta, timezone
 
 from pydantic import Field, BaseModel
@@ -34,13 +34,50 @@ class AzureDevopsProjectResourceConfig(ResourceConfig):
     selector: AzureDevopsSelector
 
 
-class AzureDevopsSecurityAlertSelector(Selector):
-    pass
+class AdvancedSecurityFilter(BaseModel):
+    states: Optional[List[Literal["active", "dismissed", "fixed", "autodismissed"]]] = (
+        Field(
+            alias="states",
+            default=None,
+            description="List of states to filter alerts by. If not provided, all states will be fetched.",
+        )
+    )
+    severity: Optional[
+        List[Literal["low", "medium", "high", "critical", "note", "warning", "error"]]
+    ] = Field(
+        alias="severity",
+        default=None,
+        description="List of severity levels to filter alerts by. If not provided, all severity levels will be fetched.",
+    )
+    alert_type: Optional[Literal["dependency", "code", "secret"]] = Field(
+        default=None,
+        alias="alertType",
+        description="Type of alerts to filter by. If not provided, all alerts will be fetched.",
+    )
+
+    @property
+    def as_params(self) -> dict[str, Any]:
+        params: dict[str, Any] = {"criteria": {}}
+        if self.states:
+            params["criteria"]["states"] = ",".join(self.states)
+        if self.severity:
+            params["criteria"]["severity"] = ",".join(self.severity)
+        if self.alert_type:
+            params["criteria"]["alertType"] = self.alert_type
+        return params
 
 
-class AzureDevopsSecurityAlertResourceConfig(ResourceConfig):
-    kind: Literal["security-alert"]
-    selector: AzureDevopsSecurityAlertSelector
+class AzureDevopsAdvancedSecuritySelector(Selector):
+    query: str
+    criteria: Optional[AdvancedSecurityFilter] = Field(
+        default=None,
+        description="Filter criteria for alerts. If not provided, all alerts will be fetched.",
+    )
+
+
+class AzureDevopsAdvancedSecurityResourceConfig(ResourceConfig):
+    kind: Literal["advanced-security-alert"]
+    selector: AzureDevopsAdvancedSecuritySelector
 
 
 class AzureDevopsWorkItemResourceConfig(ResourceConfig):
@@ -222,7 +259,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsPipelineResourceConfig
         | AzureDevopsTestRunResourceConfig
         | AzureDevopsPullRequestResourceConfig
-        | AzureDevopsSecurityAlertResourceConfig
+        | AzureDevopsAdvancedSecurityResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 
