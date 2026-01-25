@@ -35,7 +35,7 @@ class AzureDevopsProjectResourceConfig(ResourceConfig):
 
 
 class AdvancedSecurityFilter(BaseModel):
-    states: Optional[List[Literal["active", "dismissed", "fixed", "autodismissed"]]] = (
+    states: Optional[List[Literal["active", "dismissed", "fixed", "autoDismissed"]]] = (
         Field(
             alias="states",
             default=None,
