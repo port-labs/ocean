@@ -63,7 +63,7 @@ class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         ):
             return WebhookEventRawResults(
                 updated_raw_results=[],
-                deleted_raw_results=[{"id": alert_id}],
+                deleted_raw_results=[],
             )
 
         project_id = payload["resourceContainers"]["project"]["id"]
