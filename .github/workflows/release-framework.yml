@@ -11,7 +11,7 @@ env:
   PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
 jobs:
   tag-main:
-    name: Tag main branch
+    name: Tag main branch and create release
     permissions:
       contents: write
 
@@ -52,22 +52,15 @@ jobs:
           git tag -a "v${CURRENT_TAG}" -m "${LATEST_COMMIT_MESSAGE}"
           # Explicitly push the tag (not a branch)
           git push origin refs/tags/v${CURRENT_TAG}
-  create-release:
-    name: Create release
-    needs: tag-main
-    if: needs.tag-main.outputs.current_tag != needs.tag-main.outputs.prev_tag
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
       - name: Create GitHub Release
+        if: steps.get_current_version.outputs.current_tag != steps.get_previous_version.outputs.prev_tag
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ needs.tag-main.outputs.current_tag }}
-          name: Ocean Framework ${{ needs.tag-main.outputs.current_tag }}
+          tag_name: v${{ steps.get_current_version.outputs.current_tag }}
+          name: Ocean Framework ${{ steps.get_current_version.outputs.current_tag }}
           generate_release_notes: true
           draft: false
-          prerelease: ${{ contains(needs.tag-main.outputs.current_tag, '-') }}
+          prerelease: ${{ contains(steps.get_current_version.outputs.current_tag, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
