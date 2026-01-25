@@ -137,8 +137,8 @@ async def test_advanced_security_handle_event(
     result_skipped = await advanced_security_processor.handle_event(
         payload, mock_resource_config
     )
-    assert len(result_skipped.deleted_raw_results) == 1
-    assert result_skipped.deleted_raw_results[0]["id"] == "alert-123"
+    assert len(result_skipped.deleted_raw_results) == 0
+    assert len(result_skipped.updated_raw_results) == 0
 
     # Test not found project
     mock_client.get_single_project.return_value = None
