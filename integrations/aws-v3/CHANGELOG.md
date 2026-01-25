@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.1.25-beta (2026-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.16
+
+
+## 2.1.24-beta (2026-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.15
+
+
+## 2.1.23-beta (2026-01-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.14
+
+
+## 2.1.22-beta (2026-01-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.13
+
+
+## 2.1.21-beta (2026-01-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.12
+
+
+## 2.1.20-beta (2026-01-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
+## 2.1.19-beta (2026-01-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.10
+
+
+## 2.1.18-beta (2026-01-06)
+
+
+### Improvements
+
+- Moved AWS account strategy initialization to `@ocean.on_resync_start()` hook via `initialize_aws_account_sessions()` function
+- Added `@ocean.on_resync_complete()` hook to clear AWS account sessions via `clear_aws_account_sessions()` function, ensuring complete memory cleanup after each resync
+- Standardized error handling: healthcheck methods now raise `AWSSessionError` instead of returning `False` for consistent error propagation
+
+
 ## 2.1.17-beta (2025-12-24)
 
 

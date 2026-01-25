@@ -62,6 +62,7 @@ resources:
             createdAt: .metadata.creationTimestamp
             labels: .metadata.labels
             annotations: .metadata.annotations
+            sources: .spec.sources
           relations:
             project: .spec.project
             namespace: .metadata.namespace
