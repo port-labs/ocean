@@ -69,4 +69,5 @@ def has_exhausted_rate_limit_headers(headers: Any) -> bool:
     """
     remaining = headers.get("ratelimit-remaining")
     reset = headers.get("ratelimit-reset")
-    return remaining in ["0", 0] and reset is not None
+    remaining = int(remaining) if remaining else 0
+    return remaining == 0 and reset is not None
