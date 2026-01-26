@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.64 (2026-01-26)
+
+
+### Bug Fixes
+
+- Handle JQL 400 errors gracefully when queries reference projects the token cannot access, preventing entire sync failures
+
+
 ## 0.5.63 (2026-01-26)
 
 

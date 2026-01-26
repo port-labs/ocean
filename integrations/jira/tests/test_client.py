@@ -1,6 +1,7 @@
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from httpx import BasicAuth, Request, Response
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -500,3 +501,100 @@ def test_jira_issue_selector_default_jql() -> None:
     assert (
         selector.fields == "*all"
     ), f"Expected default fields to be '*all', but got '{selector.fields}'"
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_issues_handles_400_permission_error(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test that get_paginated_issues handles 400 errors gracefully for permission issues.
+
+    When a JQL query references a project the token doesn't have access to,
+    Jira returns a 400 error. The integration should log a warning and continue
+    rather than failing the entire sync.
+    """
+    error_response = Response(
+        400,
+        request=Request("GET", "http://example.com"),
+        json={
+            "errorMessages": [
+                "The value 'RESTRICTED_PROJECT' does not exist for the field 'project'."
+            ],
+            "errors": {},
+        },
+    )
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = httpx.HTTPStatusError(
+            "Bad Request", request=error_response.request, response=error_response
+        )
+
+        issues: list[dict[str, Any]] = []
+        async for issue_batch in mock_jira_client.get_paginated_issues(
+            params={"jql": "project in (ALLOWED, RESTRICTED_PROJECT)"}
+        ):
+            issues.extend(issue_batch)
+
+        # Should return empty list without raising an exception
+        assert issues == []
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_issues_handles_400_with_text_error(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test that get_paginated_issues handles 400 errors with non-JSON response."""
+    error_response = Response(
+        400,
+        request=Request("GET", "http://example.com"),
+        content=b"Bad Request: Invalid JQL",
+    )
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = httpx.HTTPStatusError(
+            "Bad Request", request=error_response.request, response=error_response
+        )
+
+        issues: list[dict[str, Any]] = []
+        async for issue_batch in mock_jira_client.get_paginated_issues(
+            params={"jql": "invalid jql query"}
+        ):
+            issues.extend(issue_batch)
+
+        # Should return empty list without raising an exception
+        assert issues == []
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_issues_raises_on_non_400_errors(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test that get_paginated_issues still raises for non-400 HTTP errors."""
+    error_response = Response(
+        500,
+        request=Request("GET", "http://example.com"),
+        json={"errorMessages": ["Internal Server Error"]},
+    )
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = httpx.HTTPStatusError(
+            "Internal Server Error",
+            request=error_response.request,
+            response=error_response,
+        )
+
+        with pytest.raises(httpx.HTTPStatusError):
+            async for _ in mock_jira_client.get_paginated_issues(
+                params={"jql": "project = TEST"}
+            ):
+                pass
+
+
+"""`                                                                    
+"""

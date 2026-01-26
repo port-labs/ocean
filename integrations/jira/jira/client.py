@@ -299,13 +299,31 @@ class JiraClient(OAuthClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
         params = params or {}
-        logger.info(f"Using JQL filter: {params['jql']}")
+        jql = params.get("jql", "")
+        logger.info(f"Using JQL filter: {jql}")
         url = f"{self.api_url}/search/jql"
 
-        async for issues in self._get_paginated_data_using_next_page_token(
-            url, "issues", initial_params=params
-        ):
-            yield issues
+        try:
+            async for issues in self._get_paginated_data_using_next_page_token(
+                url, "issues", initial_params=params
+            ):
+                yield issues
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 400:
+                try:
+                    error_body = e.response.json()
+                    error_messages = error_body.get("errorMessages", [])
+                except Exception:
+                    error_messages = [e.response.text]
+
+                logger.warning(
+                    f"JQL query failed with 400 Bad Request. This may indicate "
+                    f"permission issues with projects referenced in the JQL query. "
+                    f"Error: {error_messages}. JQL: {jql}. "
+                    f"Skipping issue sync for this selector."
+                )
+                return
+            raise
 
     async def get_single_user(self, account_id: str) -> dict[str, Any]:
         return await self._send_api_request(
