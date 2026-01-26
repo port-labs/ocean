@@ -332,9 +332,7 @@ class PagerDutyClient(OAuthClient):
 
             finally:
                 if "response" in locals():
-                    self._rate_limiter.update_rate_limits(
-                        locals()["response"].headers, endpoint
-                    )
+                    self._rate_limiter.update_rate_limits(response.headers, endpoint)
 
     async def fetch_and_cache_users(self) -> None:
         async for users in self.paginate_request_to_pager_duty(resource=USER_KEY):
