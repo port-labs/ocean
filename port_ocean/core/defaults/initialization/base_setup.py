@@ -21,8 +21,8 @@ class BaseSetup(ABC):
         self.integration_config = integration_config
         self.config_class = config_class
 
-    @abstractmethod
     @property
+    @abstractmethod
     def _default_mapping(self) -> PortAppConfig | None:
         pass
 
