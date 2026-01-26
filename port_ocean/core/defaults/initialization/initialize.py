@@ -30,7 +30,7 @@ async def _initialize_defaults(
         await ocean.port_client.get_organization_feature_flags()
     )
 
-    setup_cls = InitializationFactory.create_setup(
+    setup_cls = await InitializationFactory.create_setup(
         integration_config=integration_config,
         config_class=config_class,
         is_provision_enabled=is_integration_provision_enabled
