@@ -49,9 +49,12 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
         organization = options["organization"]
-        included_relationships = options.pop("included_relationships", None)
+        options_dict = dict(options)
+        included_relationships = options_dict.pop("included_relationships", None)
 
-        async for repos in self._fetch_repositories(options):
+        async for repos in self._fetch_repositories(
+            cast(ListRepositoryOptions, options_dict)
+        ):
             if not included_relationships:
                 yield repos
             else:
