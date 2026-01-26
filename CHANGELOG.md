@@ -6,18 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-## 0.32.17 (2026-01-25)
 
-### Bug fixes
-
-- Fixed Bug: for kindIdentifier with index > 10 like  "name-12", kindIndex was 2 instead of 12 because only the last character was used. Parse the segment after the final "-" as the index (e.g. "name-12" → 12, "project-0" → 0).
-
-## 0.32.17 (2026-01-26)
+## 0.32.18 (2026-01-26)
 
 ### Improvements
 
 - Added an optional environment variable to allow adding prefix to the routes registered by for webhooks and metrics 
 
+
+## 0.32.17 (2026-01-25)
+
+### Bug fixes
+
+- Fixed Bug: for kindIdentifier with index > 10 like  "name-12", kindIndex was 2 instead of 12 because only the last character was used. Parse the segment after the final "-" as the index (e.g. "name-12" → 12, "project-0" → 0).
 
 ## 0.32.16 (2026-01-21)
 
