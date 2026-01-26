@@ -458,6 +458,8 @@ class Metrics:
                 if kind and kind_key != kind:
                     continue
 
+                kind_parts = kind_key.split("-")
+                index_part = kind_parts[-1] if len(kind_parts) > 1 else ""
                 event = {
                     "integrationType": self.integration_configuration.type,
                     "integrationIdentifier": self.integration_configuration.identifier,
@@ -465,11 +467,9 @@ class Metrics:
                     "oceanVersion": self.ocean_version,
                     "kindIdentifier": kind_key,
                     "kind": (
-                        "-".join(kind_key.split("-")[:-1])
-                        if "-" in kind_key
-                        else kind_key
+                        "-".join(kind_parts[:-1]) if len(kind_parts) > 1 else kind_key
                     ),
-                    "kindIndex": int(kind_key[-1]) if kind_key[-1].isdigit() else 0,
+                    "kindIndex": int(index_part) if index_part.isdigit() else 0,
                     "eventId": self.event_id,
                     "syncState": self.sync_state,
                     "blueprint": blueprint if blueprint else "",
