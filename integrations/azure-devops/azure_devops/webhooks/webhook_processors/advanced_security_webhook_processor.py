@@ -51,6 +51,9 @@ class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         client = AzureDevopsClient.create_from_ocean_config()
         raw_security_alert = payload["resource"]
         alert_id = raw_security_alert["alertId"]
+        project_id = payload["resourceContainers"]["project"]["id"]
+        repository_url = raw_security_alert["repositoryUrl"]
+        repository_id = unquote(repository_url.split("/")[-1])
 
         selector = cast(
             AzureDevopsAdvancedSecurityResourceConfig, resource_config
@@ -65,10 +68,6 @@ class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 updated_raw_results=[],
                 deleted_raw_results=[],
             )
-
-        project_id = payload["resourceContainers"]["project"]["id"]
-        repository_url = raw_security_alert["repositoryUrl"]
-        repository_id = unquote(repository_url.split("/")[-1])
 
         security_alert = await client.get_single_advanced_security_alert(
             project_id, repository_id, alert_id
