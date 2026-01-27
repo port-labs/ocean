@@ -34,6 +34,7 @@ from integration import (
     CheckmarxOneScanResultResourcesConfig,
     CheckmarxOneApiSecResourcesConfig,
     CheckmarxOneDastScanResourcesConfig,
+    CheckmarxOneApplicationResourcesConfig,
 )
 from checkmarx_one.utils import ObjectKind, ScanResultObjectKind
 from checkmarx_one.webhook.webhook_processors.scan_webhook_processor import (
@@ -57,6 +58,9 @@ from checkmarx_one.webhook.webhook_processors.sast_scan_result_webhook_processor
 from checkmarx_one.webhook.webhook_processors.project_webhook_processor import (
     ProjectWebhookProcessor,
 )
+from checkmarx_one.webhook.webhook_processors.application_webhook_processor import (
+    ApplicationWebhookProcessor,
+)
 from fetcher import fetch_dast_scan_results_for_environment
 
 # Webhook endpoint constant
@@ -69,7 +73,14 @@ async def on_application_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     application_exporter = create_application_exporter()
-    options = ListApplicationOptions()
+    selector = cast(
+        CheckmarxOneApplicationResourcesConfig, event.resource_config
+    ).selector
+    options = ListApplicationOptions(
+        name=selector.name,
+        tag_keys=selector.tag_keys,
+        tag_values=selector.tag_values,
+    )
 
     async for applications_batch in application_exporter.get_paginated_resources(
         options
@@ -325,3 +336,4 @@ ocean.add_webhook_processor(WEBHOOK_ENDPOINT, ContainersScanResultWebhookProcess
 ocean.add_webhook_processor(WEBHOOK_ENDPOINT, KicsScanResultWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_ENDPOINT, SastScanResultWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_ENDPOINT, ProjectWebhookProcessor)
+ocean.add_webhook_processor(WEBHOOK_ENDPOINT, ApplicationWebhookProcessor)

@@ -1,3 +1,4 @@
+from typing import Any
 from loguru import logger
 
 from port_ocean.core.ocean_types import RAW_ITEM, ASYNC_GENERATOR_RESYNC_TYPE
@@ -25,28 +26,13 @@ class CheckmarxApplicationExporter(AbstractCheckmarxExporter):
         Yields:
             Batches of applications
         """
+        params: dict[str, Any] = {}
+        if options.get("tag_keys"):
+            params["tag-keys"] = options["tag_keys"]
+        if options.get("tag_values"):
+            params["tag-values"] = options["tag_values"]
         async for applications in self.client.send_paginated_request(
-            "/applications", "applications"
+            "/applications", "applications", params=params
         ):
             logger.info(f"Fetched batch of {len(applications)} applications")
             yield applications
-
-    async def get_application_projects(
-        self, application_id: str
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """
-        Get projects belonging to a specific application.
-
-        Args:
-            application_id: The ID of the application
-
-        Yields:
-            Batches of projects belonging to the application
-        """
-        async for projects in self.client.send_paginated_request(
-            f"/applications/{application_id}/projects", "projects"
-        ):
-            logger.info(
-                f"Fetched batch of {len(projects)} projects for application {application_id}"
-            )
-            yield projects

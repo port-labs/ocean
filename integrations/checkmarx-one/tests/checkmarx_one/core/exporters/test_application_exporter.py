@@ -145,26 +145,3 @@ class TestCheckmarxApplicationExporter:
             await application_exporter.get_resource(
                 SingleApplicationOptions(application_id="app-123")
             )
-
-    @pytest.mark.asyncio
-    async def test_get_application_projects_success(
-        self,
-        application_exporter: CheckmarxApplicationExporter,
-        mock_client: AsyncMock,
-        sample_projects_batch: List[dict[str, Any]],
-    ) -> None:
-        """Test getting projects for an application."""
-
-        async def mock_paginated_resources(
-            endpoint: str, object_key: str
-        ) -> AsyncIterator[List[dict[str, Any]]]:
-            yield sample_projects_batch
-
-        mock_client.send_paginated_request = mock_paginated_resources
-
-        results = []
-        async for batch in application_exporter.get_application_projects("app-123"):
-            results.append(batch)
-
-        assert len(results) == 1
-        assert results[0] == sample_projects_batch

@@ -267,7 +267,21 @@ class CheckmarxOneDastScanResultResourcesConfig(ResourceConfig):
 class CheckmarxOneApplicationSelector(Selector):
     """Selector for filtering applications."""
 
-    pass
+    name: Optional[str] = Field(
+        default=None,
+        alias="name",
+        description="Filter applications by name. Returns a partial match",
+    )
+    tag_keys: Optional[List[str]] = Field(
+        default=None,
+        alias="tagKeys",
+        description="Filter applications by tag keys",
+    )
+    tag_values: Optional[List[str]] = Field(
+        default=None,
+        alias="tagValues",
+        description="Filter applications by tag values",
+    )
 
 
 class CheckmarxOneApplicationResourcesConfig(ResourceConfig):

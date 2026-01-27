@@ -149,7 +149,9 @@ class ListDastScanResultOptions(TypedDict):
 class ListApplicationOptions(TypedDict):
     """Options for listing applications."""
 
-    pass
+    name: NotRequired[Optional[str]]
+    tag_keys: NotRequired[Optional[List[str]]]
+    tag_values: NotRequired[Optional[List[str]]]
 
 
 class SingleApplicationOptions(TypedDict):
