@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for live events for `incidents`, `release projects`, `vulnerabilities`, `user groups` and `service catalog`
 
 
+## 0.2.70 (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.0
+
+
 ## 0.2.69 (2026-01-26)
 
 
