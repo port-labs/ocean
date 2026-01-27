@@ -12,7 +12,10 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.models import (
     ActionRun,
+    WorkflowNodeRun,
     RunStatus,
+    WorkflowNodeRunStatus,
+    WorkflowNodeRunResult,
 )
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     WebhookProcessorType,
@@ -67,29 +70,70 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
         Handle a workflow run completion webhook event.
         """
         workflow_run = payload["workflow_run"]
-
         external_id = build_external_id(workflow_run)
-        action_run: ActionRun | None = await ocean.port_client.get_run_by_external_id(
-            external_id
-        )
 
-        if (
-            action_run
-            and action_run.status == RunStatus.IN_PROGRESS
-            and action_run.payload.integrationActionExecutionProperties.get(
-                "reportWorkflowStatus", False
-            )
-        ):
-            status = (
-                RunStatus.SUCCESS
-                if workflow_run["conclusion"] in ["success", "skipped", "neutral"]
-                else RunStatus.FAILURE
-            )
-            logger.info(
-                f"Updating action run {action_run.id} status to {status}",
-                action_run_id=action_run.id,
-                status=status,
-            )
-            await ocean.port_client.patch_run(action_run.id, {"status": status})
+        action_run = await ocean.port_client.get_run_by_external_id(external_id)
+        if action_run and action_run.status == RunStatus.IN_PROGRESS:
+            await self._update_action_run(action_run, workflow_run)
+            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+
+        wf_node_run = await ocean.port_client.get_wf_node_run_by_external_id(external_id)
+        if wf_node_run and wf_node_run.status == WorkflowNodeRunStatus.IN_PROGRESS:
+            await self._update_wf_node_run(wf_node_run, workflow_run)
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
+
+    async def _update_action_run(
+        self, run: ActionRun, workflow_run: dict
+    ) -> None:
+        if not run.payload.integrationActionExecutionProperties.get(
+            "reportWorkflowStatus", False
+        ):
+            return
+
+        status = (
+            RunStatus.SUCCESS
+            if workflow_run["conclusion"] in ["success", "skipped", "neutral"]
+            else RunStatus.FAILURE
+        )
+
+        logger.info(
+            f"Updating action run {run.id} status to {status}",
+            action_run_id=run.id,
+            status=status,
+        )
+
+        await ocean.port_client.patch_run(run.id, {"status": status})
+
+    async def _update_wf_node_run(
+        self, run: WorkflowNodeRun, workflow_run: dict
+    ) -> None:
+        if not run.payload.integrationActionExecutionProperties.get(
+            "reportWorkflowStatus", False
+        ):
+            return
+
+        result = (
+            WorkflowNodeRunResult.SUCCESS
+            if workflow_run["conclusion"] in ["success", "skipped", "neutral"]
+            else WorkflowNodeRunResult.FAILED
+        )
+
+        logger.info(
+            f"Updating wf_node run {run.id} with result {result}",
+            wf_node_run_id=run.id,
+            result=result,
+        )
+
+        await ocean.port_client.patch_wf_node_run(
+            run.id,
+            {
+                "status": WorkflowNodeRunStatus.COMPLETED,
+                "result": result,
+                "logs": [{
+                    "logLevel": "INFO" if result == WorkflowNodeRunResult.SUCCESS else "ERROR",
+                    "message": f"Workflow completed: {workflow_run['conclusion']}",
+                    "tags": ["workflow_completion"]
+                }]
+            }
+        )

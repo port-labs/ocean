@@ -27,7 +27,9 @@ from github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_pr
 from port_ocean.context.ocean import ocean
 
 from port_ocean.core.models import (
-    ActionRun,
+    WorkflowNodeRun,
+    BaseRun,
+    WorkflowNodeRunStatus,
 )
 from github.actions.abstract_github_executor import (
     AbstractGithubExecutor,
@@ -108,7 +110,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     WEBHOOK_PATH = DISPATCH_WEBHOOK_PATH
     _default_ref_cache: dict[str, str] = {}
 
-    async def _get_partition_key(self, run: ActionRun) -> str | None:
+    async def _get_partition_key(self, run: BaseRun) -> str | None:
         """
         Get the workflow name as the partition key.
         """
@@ -190,7 +192,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         )
         return workflow_runs[0]
 
-    async def execute(self, run: ActionRun) -> None:
+    async def execute(self, run: BaseRun) -> None:
         """
         Execute a workflow dispatch action by triggering a GitHub Actions workflow.
         """
@@ -226,9 +228,24 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 organization, repo, ref, isoDate
             )
             external_id = build_external_id(workflow_run)
-            await ocean.port_client.patch_run(
-                run.id, {"link": workflow_run["html_url"], "externalRunId": external_id}
-            )
+
+            if isinstance(run, WorkflowNodeRun):
+                await ocean.port_client.patch_wf_node_run(
+                    run.id,
+                    {
+                        "status": WorkflowNodeRunStatus.IN_PROGRESS,
+                        "output": {
+                            "workflowRunUrl": workflow_run["html_url"],
+                            "externalRunId": external_id,
+                            "workflowRunId": workflow_run["id"],
+                        },
+                    },
+                )
+            else:
+                await ocean.port_client.patch_run(
+                    run.id,
+                    {"link": workflow_run["html_url"], "externalRunId": external_id},
+                )
         except Exception as e:
             error_message = str(e)
             if isinstance(e, httpx.HTTPStatusError):
