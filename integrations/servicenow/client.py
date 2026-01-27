@@ -63,7 +63,7 @@ class ServicenowClient:
         response = await self.make_request(url)
         if not response:
             return None
-        result = response.json().get("result")
+        result = response.json()["result"]
         if not result:
             return None
         return result
@@ -94,7 +94,7 @@ class ServicenowClient:
             response = await self.make_request(url, params=params)
             if not response:
                 break
-            records = response.json().get("result", [])
+            records = response.json()["result"]
 
             yield records
 
@@ -111,7 +111,7 @@ class ServicenowClient:
                 raise httpx.HTTPError("Servicenow sanity check failed")
             logger.info("Servicenow sanity check passed")
             logger.info(
-                f"Retrieved sample Servicenow user with first name: {response.json().get('result', [])[0].get('first_name')}"
+                f"Retrieved sample Servicenow user with first name: {response.json()['result'][0].get('first_name')}"
             )
         except httpx.HTTPStatusError as e:
             logger.error(
