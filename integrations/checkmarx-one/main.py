@@ -58,9 +58,6 @@ from checkmarx_one.webhook.webhook_processors.sast_scan_result_webhook_processor
 from checkmarx_one.webhook.webhook_processors.project_webhook_processor import (
     ProjectWebhookProcessor,
 )
-from checkmarx_one.webhook.webhook_processors.application_webhook_processor import (
-    ApplicationWebhookProcessor,
-)
 from fetcher import fetch_dast_scan_results_for_environment
 
 # Webhook endpoint constant
@@ -336,4 +333,3 @@ ocean.add_webhook_processor(WEBHOOK_ENDPOINT, ContainersScanResultWebhookProcess
 ocean.add_webhook_processor(WEBHOOK_ENDPOINT, KicsScanResultWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_ENDPOINT, SastScanResultWebhookProcessor)
 ocean.add_webhook_processor(WEBHOOK_ENDPOINT, ProjectWebhookProcessor)
-ocean.add_webhook_processor(WEBHOOK_ENDPOINT, ApplicationWebhookProcessor)

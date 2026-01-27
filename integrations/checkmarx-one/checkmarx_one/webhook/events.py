@@ -8,5 +8,3 @@ class CheckmarxEventType(StrEnum):
     SCAN_COMPLETED = "scan_completed_successfully"
     SCAN_FAILED = "scan_failed"
     SCAN_PARTIAL = "scan_partial"
-
-    APPLICATION_CREATED = "application_created"
