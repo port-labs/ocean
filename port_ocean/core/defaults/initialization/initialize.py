@@ -107,6 +107,7 @@ async def _initialize_defaults(
         )
     )
 
+    logger.info(f"Creating setup instance for origin: {origin}")
     setup_instance = await InitializationFactory.create_setup(
         origin=origin,
         integration_config=integration_config,
