@@ -103,7 +103,6 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     initialize_port_resources: bool = True
     scheduled_resync_interval: int | None = None
     client_timeout: int = 60
-    # Determines if Port should generate resources such as blueprints and pages instead of ocean
     create_port_resources_origin: CreatePortResourcesOrigin | None = None
     send_raw_data_examples: bool = True
     oauth_access_token_file_path: str | None = None
@@ -191,20 +190,6 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         )
 
         return values
-
-    @validator("create_port_resources_origin")
-    def validate_create_port_resources_origin(
-        cls, create_port_resources_origin: CreatePortResourcesOrigin | None
-    ) -> CreatePortResourcesOrigin | None:
-        spec = get_spec_file()
-        if spec and spec.get("create_port_resources_origin", None):
-            spec_create_port_resources_origin = spec.get("create_port_resources_origin")
-            if spec_create_port_resources_origin in [
-                CreatePortResourcesOrigin.Port,
-                CreatePortResourcesOrigin.Ocean,
-            ]:
-                return CreatePortResourcesOrigin(spec_create_port_resources_origin)
-        return create_port_resources_origin
 
     @validator("runtime")
     def validate_runtime(cls, runtime: Runtime) -> Runtime:
