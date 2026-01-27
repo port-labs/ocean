@@ -14,9 +14,11 @@ from azure_devops.client.azure_devops_client import (
     AzureDevopsClient,
     ADVANCED_SECURITY_PUBLISHER_ID,
 )
-from urllib.parse import unquote
 from typing import cast
-from integration import AzureDevopsAdvancedSecurityResourceConfig
+from integration import (
+    AzureDevopsAdvancedSecurityResourceConfig,
+    AdvancedSecurityFilter,
+)
 
 
 class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
@@ -30,9 +32,11 @@ class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         project_id = payload.get("resourceContainers", {}).get("project", {}).get("id")
         return (
             project_id is not None
-            and "repositoryUrl" in payload["resource"]
+            and "repositoryId" in payload["resource"]
             and "alertId" in payload["resource"]
             and "state" in payload["resource"]
+            and "severity" in payload["resource"]
+            and "alertType" in payload["resource"]
         )
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
@@ -51,18 +55,23 @@ class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         raw_security_alert = payload["resource"]
         alert_id = raw_security_alert["alertId"]
         project_id = payload["resourceContainers"]["project"]["id"]
-        repository_url = raw_security_alert["repositoryUrl"]
-        repository_id = unquote(repository_url.split("/")[-1])
+        repository_id = raw_security_alert["repositoryId"]
 
         selector = cast(
             AzureDevopsAdvancedSecurityResourceConfig, resource_config
         ).selector
         alert_state = raw_security_alert["state"]
-        if (
-            selector.criteria
-            and selector.criteria.states
-            and alert_state not in selector.criteria.states
+        alert_severity = raw_security_alert["severity"]
+        alert_type = raw_security_alert["alertType"]
+
+        if selector.criteria and not (
+            self._check_state_criteria(selector.criteria, alert_state)
+            and self._check_severity_criteria(selector.criteria, alert_severity)
+            and self._check_alert_type_criteria(selector.criteria, alert_type)
         ):
+            logger.info(
+                f"Advanced security alert {alert_id} filtered out by selector criteria. Skipping..."
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[],
@@ -86,3 +95,24 @@ class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             updated_raw_results=[enriched_security_alert],
             deleted_raw_results=[],
         )
+
+    def _check_state_criteria(
+        self, criteria: AdvancedSecurityFilter, alert_state: str
+    ) -> bool:
+        if not criteria.states:
+            return True
+        return alert_state in criteria.states
+
+    def _check_severity_criteria(
+        self, criteria: AdvancedSecurityFilter, alert_severity: str
+    ) -> bool:
+        if not criteria.severities:
+            return True
+        return alert_severity in criteria.severities
+
+    def _check_alert_type_criteria(
+        self, criteria: AdvancedSecurityFilter, alert_type: str
+    ) -> bool:
+        if not criteria.alert_type:
+            return True
+        return alert_type == criteria.alert_type

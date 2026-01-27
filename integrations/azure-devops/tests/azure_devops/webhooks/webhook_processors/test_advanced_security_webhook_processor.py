@@ -4,6 +4,7 @@ from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
 from azure_devops.webhooks.webhook_processors.advanced_security_webhook_processor import (
     AdvancedSecurityWebhookProcessor,
 )
+from typing import Any
 from azure_devops.misc import Kind
 from azure_devops.client.azure_devops_client import ADVANCED_SECURITY_PUBLISHER_ID
 from integration import AzureDevopsAdvancedSecurityResourceConfig
@@ -45,14 +46,16 @@ async def test_advanced_security_validate_payload(
         "publisherId": ADVANCED_SECURITY_PUBLISHER_ID,
         "resourceContainers": {"project": {"id": "proj-123"}},
         "resource": {
-            "repositoryUrl": "http://repo/url",
+            "repositoryId": "repo-123",
             "alertId": "alert-123",
             "state": "Active",
+            "severity": "Medium",
+            "alertType": "secret",
         },
     }
     assert await advanced_security_processor.validate_payload(valid_payload) is True
 
-    missing_fields_payload = {"resource": {}}
+    missing_fields_payload: dict[str, Any] = {"resource": {}}
     assert (
         await advanced_security_processor.validate_payload(missing_fields_payload)
         is False
@@ -98,9 +101,11 @@ async def test_advanced_security_handle_event(
     payload = {
         "resourceContainers": {"project": {"id": "proj-123"}},
         "resource": {
-            "repositoryUrl": "http://_git/repo-123",
+            "repositoryId": "repo-123",
             "alertId": "alert-123",
             "state": "Active",
+            "severity": "Medium",
+            "alertType": "secret",
         },
     }
 
@@ -135,8 +140,8 @@ async def test_advanced_security_handle_event(
 
     # Test filtering by state
     mock_selector.criteria = MagicMock()
-    # Alert is "Active", so "Fixed" criteria should cause it to be skipped/deleted
-    mock_selector.criteria.states = ["Fixed"]
+    # Alert is "active", so "fixed" criteria should cause it to be skipped/deleted
+    mock_selector.criteria.states = ["fixed"]
 
     result_skipped = await advanced_security_processor.handle_event(
         payload, mock_resource_config

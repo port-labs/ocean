@@ -42,7 +42,7 @@ class AdvancedSecurityFilter(BaseModel):
             description="List of states to filter alerts by. If not provided, all states will be fetched.",
         )
     )
-    severity: Optional[
+    severities: Optional[
         List[Literal["low", "medium", "high", "critical", "note", "warning", "error"]]
     ] = Field(
         alias="severity",
@@ -60,11 +60,20 @@ class AdvancedSecurityFilter(BaseModel):
         params: dict[str, Any] = {"criteria": {}}
         if self.states:
             params["criteria"]["states"] = ",".join(self.states)
-        if self.severity:
-            params["criteria"]["severity"] = ",".join(self.severity)
+        if self.severities:
+            params["criteria"]["severity"] = ",".join(self.severities)
         if self.alert_type:
             params["criteria"]["alertType"] = self.alert_type
         return params
+
+    def matches(self, alert_state: str, alert_severity: str, alert_type: str) -> bool:
+        if self.states is not None and alert_state not in self.states:
+            return False
+        if self.severities is not None and alert_severity not in self.severities:
+            return False
+        if self.alert_type is not None and alert_type != self.alert_type:
+            return False
+        return True
 
 
 class AzureDevopsAdvancedSecuritySelector(Selector):
