@@ -51,7 +51,7 @@ from port_ocean.helpers.metric.metric import (
     MetricPhase,
 )
 from port_ocean.helpers.metric.utils import TimeMetric, TimeMetricWithResourceKind
-from port_ocean.helpers.monitor.monitor import get_monitor, start_monitoring, stop_monitoring
+from port_ocean.helpers.monitor.monitor import start_monitoring, stop_monitoring
 from port_ocean.utils.ipc import FileIPC
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
