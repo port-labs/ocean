@@ -52,17 +52,7 @@ async def test_advanced_security_validate_payload(
     }
     assert await advanced_security_processor.validate_payload(valid_payload) is True
 
-    invalid_publisher_payload = valid_payload.copy()
-    invalid_publisher_payload["publisherId"] = "wrong-publisher"
-    assert (
-        await advanced_security_processor.validate_payload(invalid_publisher_payload)
-        is False
-    )
-
-    missing_fields_payload = {
-        "publisherId": ADVANCED_SECURITY_PUBLISHER_ID,
-        "resource": {},
-    }
+    missing_fields_payload = {"resource": {}}
     assert (
         await advanced_security_processor.validate_payload(missing_fields_payload)
         is False
@@ -74,10 +64,28 @@ async def test_advanced_security_should_process_event(
     advanced_security_processor: AdvancedSecurityWebhookProcessor,
 ) -> None:
     event = MagicMock(spec=WebhookEvent)
-    event.payload = {"eventType": AdvancedSecurityAlertEvents.SECURITY_ALERT_CREATED}
+    event.payload = {
+        "eventType": AdvancedSecurityAlertEvents.SECURITY_ALERT_CREATED,
+        "publisherId": ADVANCED_SECURITY_PUBLISHER_ID,
+    }
     assert await advanced_security_processor.should_process_event(event) is True
 
-    event.payload = {"eventType": "wrong.event"}
+    event.payload = {
+        "eventType": "wrong.event",
+        "publisherId": ADVANCED_SECURITY_PUBLISHER_ID,
+    }
+    assert await advanced_security_processor.should_process_event(event) is False
+
+    event.payload = {
+        "eventType": AdvancedSecurityAlertEvents.SECURITY_ALERT_CREATED,
+        "publisherId": "wrong-publisher",
+    }
+    assert await advanced_security_processor.should_process_event(event) is False
+
+    event.payload = {
+        "eventType": "wrong.event",
+        "publisherId": "wrong-publisher",
+    }
     assert await advanced_security_processor.should_process_event(event) is False
 
 
