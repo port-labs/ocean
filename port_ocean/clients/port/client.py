@@ -9,6 +9,7 @@ from port_ocean.clients.port.mixins.entities import EntityClientMixin
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 from port_ocean.clients.port.mixins.migrations import MigrationClientMixin
 from port_ocean.clients.port.mixins.organization import OrganizationClientMixin
+from port_ocean.clients.port.mixins.workflow_nodes import WorkflowNodesClientMixin
 from port_ocean.clients.port.types import (
     KafkaCreds,
 )
@@ -26,6 +27,7 @@ class PortClient(
     MigrationClientMixin,
     OrganizationClientMixin,
     ActionsClientMixin,
+    WorkflowNodesClientMixin,
 ):
     def __init__(
         self,
@@ -57,6 +59,7 @@ class PortClient(
         MigrationClientMixin.__init__(self, self.auth, self.client)
         OrganizationClientMixin.__init__(self, self.auth, self.client)
         ActionsClientMixin.__init__(self, self.auth, self.client)
+        WorkflowNodesClientMixin.__init__(self, self.auth, self.client)
 
     async def get_kafka_creds(self) -> KafkaCreds:
         logger.info("Fetching organization kafka credentials")

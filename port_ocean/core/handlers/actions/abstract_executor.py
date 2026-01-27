@@ -5,7 +5,7 @@ from typing import Optional, Type
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from port_ocean.core.models import ActionRun
+from port_ocean.core.models import BaseRun
 
 
 class AbstractExecutor(ABC):
@@ -56,7 +56,7 @@ class AbstractExecutor(ABC):
     WEBHOOK_PROCESSOR_CLASS: Optional[Type[AbstractWebhookProcessor]]
     WEBHOOK_PATH: str
 
-    async def _get_partition_key(self, run: ActionRun) -> str | None:
+    async def _get_partition_key(self, run: BaseRun) -> str | None:
         """
         This method should return a string used to identify runs that must be executed sequentially,
         or return None to allow runs to execute in parallel.
@@ -112,12 +112,12 @@ class AbstractExecutor(ABC):
         pass
 
     @abstractmethod
-    async def execute(self, run: ActionRun) -> None:
+    async def execute(self, run: BaseRun) -> None:
         """
         Execute the integration action with the provided run configuration.
 
         Args:
-            run (ActionRun): The action run configuration
+            run (BaseRun): The action run configuration
                 containing all necessary parameters and context for execution.
 
         Raises:
@@ -126,7 +126,7 @@ class AbstractExecutor(ABC):
 
         Example:
             ```python
-            async def execute(self, run: ActionRun) -> None:
+            async def execute(self, run: BaseRun) -> None:
                 try:
                     # Extract parameters
                     params = run.payload.integrationActionExecutionProperties

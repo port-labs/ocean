@@ -24,8 +24,10 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 )
 from port_ocean.core.models import (
     ActionRun,
+    WorkflowNodeRun,
     IntegrationActionInvocationPayload,
     RunStatus,
+    WorkflowNodeRunStatus,
 )
 from port_ocean.exceptions.execution_manager import (
     DuplicateActionExecutorError,
@@ -53,14 +55,37 @@ def generate_mock_action_run(
     )
 
 
+def generate_mock_wf_node_run(
+    action_type: str = "test_action",
+    integrationActionExecutionProperties: dict[str, Any] | None = None,
+) -> WorkflowNodeRun:
+    if integrationActionExecutionProperties is None:
+        integrationActionExecutionProperties = {}
+    return WorkflowNodeRun(
+        id=f"test-wf-node-run-id-{uuid.uuid4()}",
+        status=WorkflowNodeRunStatus.IN_PROGRESS,
+        payload=IntegrationActionInvocationPayload(
+            type="INTEGRATION_ACTION",
+            installationId="test-installation-id",
+            integrationActionType=action_type,
+            integrationActionExecutionProperties=integrationActionExecutionProperties,
+        ),
+    )
+
+
 @pytest.fixture
 def mock_port_client() -> MagicMock:
     mock_port_client = MagicMock(spec=PortClient)
-    mock_port_client.claim_pending_runs = AsyncMock()
+    mock_port_client.claim_pending_runs = AsyncMock(return_value=[])
     mock_port_client.acknowledge_run = AsyncMock()
     mock_port_client.get_run_by_external_id = AsyncMock()
     mock_port_client.patch_run = AsyncMock()
     mock_port_client.post_run_log = AsyncMock()
+    # Workflow node run methods
+    mock_port_client.claim_pending_wf_node_runs = AsyncMock(return_value=[])
+    mock_port_client.acknowledge_wf_node_run = AsyncMock()
+    mock_port_client.get_wf_node_run_by_external_id = AsyncMock()
+    mock_port_client.patch_wf_node_run = AsyncMock()
     mock_port_client.auth = AsyncMock(spec=PortAuthentication)
     mock_port_client.auth.is_machine_user = AsyncMock(return_value=True)
     return mock_port_client
@@ -831,3 +856,45 @@ class TestExecutionManager:
         assert mock_port_client.claim_pending_runs.call_count >= 2
         # Should have successfully added runs from successful polls
         assert await execution_manager._get_queues_size() > 0
+
+    @pytest.mark.asyncio
+    async def test_execute_wf_node_run_should_acknowledge_with_wf_node_api(
+        self,
+        execution_manager: ExecutionManager,
+        mock_port_client: MagicMock,
+    ) -> None:
+        """Test that WorkflowNodeRun uses wf_node-specific API calls."""
+        # Arrange
+        mock_wf_node_run = generate_mock_wf_node_run()
+
+        # Act
+        with patch.object(
+            execution_manager._actions_executors["test_action"], "execute"
+        ) as mock_execute:
+            await execution_manager._execute_run(mock_wf_node_run)
+
+            # Assert - should use wf_node API, not action API
+            mock_port_client.acknowledge_wf_node_run.assert_called_once_with(
+                mock_wf_node_run.id
+            )
+            mock_port_client.acknowledge_run.assert_not_called()
+            mock_execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_action_and_wf_node_runs_share_same_queue(
+        self,
+        execution_manager: ExecutionManager,
+    ) -> None:
+        """Test that action runs and workflow node runs use the same queue."""
+        # Arrange
+        action_run = generate_mock_action_run()
+        wf_node_run = generate_mock_wf_node_run()
+
+        # Act
+        await execution_manager._add_run_to_queue(action_run, GLOBAL_SOURCE)
+        await execution_manager._add_run_to_queue(wf_node_run, GLOBAL_SOURCE)
+
+        # Assert - both should be in the same queue
+        assert await execution_manager._global_queue.size() == 2
+        assert action_run.id in execution_manager._deduplication_set
+        assert wf_node_run.id in execution_manager._deduplication_set

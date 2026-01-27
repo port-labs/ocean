@@ -144,6 +144,23 @@ class RunStatus(StrEnum):
     FAILURE = "FAILURE"
 
 
+class WorkflowNodeRunStatus(StrEnum):
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+
+
+class WorkflowNodeRunResult(StrEnum):
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class WorkflowNodeRunLog(BaseModel):
+    logLevel: Literal["INFO", "WARNING", "ERROR", "DEBUG"]
+    message: str
+    tags: list[str] = Field(default_factory=list)
+
+
 class IntegrationActionInvocationPayload(BaseModel):
     type: Literal["INTEGRATION_ACTION"]
     installationId: str
@@ -151,7 +168,20 @@ class IntegrationActionInvocationPayload(BaseModel):
     integrationActionExecutionProperties: dict[str, Any] = Field(default_factory=dict)
 
 
-class ActionRun(BaseModel):
+class BaseRun(BaseModel):
     id: str
-    status: RunStatus
+    status: str
     payload: IntegrationActionInvocationPayload
+
+    @property
+    def action_type(self) -> str:
+        return self.payload.integrationActionType
+
+
+class ActionRun(BaseRun):
+    status: RunStatus  # Narrow to specific enum
+
+
+class WorkflowNodeRun(BaseRun):
+    status: WorkflowNodeRunStatus
+    result: WorkflowNodeRunResult | None = None
