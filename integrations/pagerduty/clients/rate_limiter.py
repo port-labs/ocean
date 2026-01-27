@@ -43,23 +43,25 @@ class PagerDutyRateLimiter:
     """
 
     def __init__(self, max_concurrent: int = 10) -> None:
-        self._semaphore = asyncio.Semaphore(max_concurrent)
+        self._semaphore = asyncio.BoundedSemaphore(max_concurrent)
         self._lock = asyncio.Lock()
 
         self.rate_limit_info: Optional[RateLimitInfo] = None
-        self._proactive_remaining_threshold = 1
 
     async def __aenter__(self) -> "PagerDutyRateLimiter":
         await self._semaphore.acquire()
         async with self._lock:
-            if self.rate_limit_info and (
-                self.rate_limit_info.remaining <= self._proactive_remaining_threshold
+            # Sleep when rate limit is 90% used
+            if (
+                self.rate_limit_info
+                and self.rate_limit_info.utilization_percentage >= 90
             ):
                 sleep_seconds = self.rate_limit_info.seconds_until_reset
                 if sleep_seconds > 0:
                     logger.warning(
-                        f"PagerDuty requests paused for {sleep_seconds:.2f}s due to low remaining budget "
-                        f"({self.rate_limit_info.remaining}/{self.rate_limit_info.limit})."
+                        f"PagerDuty requests paused for {sleep_seconds:.2f}s due to rate limit usage at "
+                        f"{self.rate_limit_info.utilization_percentage:.1f}% "
+                        f"({self.rate_limit_info.remaining}/{self.rate_limit_info.limit} remaining)."
                     )
                     await asyncio.sleep(sleep_seconds)
         return self
