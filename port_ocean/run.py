@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
 from port_ocean.config.settings import ApplicationSettings, LogLevelType
-from port_ocean.core.defaults.initialize import initialize_defaults
+from port_ocean.core.defaults.initialization.initialize import initialize_defaults
 from port_ocean.core.utils.utils import validate_integration_runtime
 from port_ocean.log.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
