@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 from http import HTTPStatus
 import httpx
 
@@ -263,6 +263,16 @@ class TestRetryTransport:
         # Test numeric seconds
         assert transport._parse_retry_header("30") == 30.0
 
+        # Test numeric epoch timestamp (future): should be treated as reset time
+        with patch("port_ocean.helpers.retry.datetime") as mock_datetime:
+            mock_datetime.now.return_value.timestamp.return_value = 1_700_000_000
+            assert (
+                transport._parse_retry_header(str(1_700_000_005)) == 5.0
+            )  # 5 seconds in the future
+
+            # Past timestamps should not result in negative sleep
+            assert transport._parse_retry_header(str(1_699_999_000)) == 0.0
+
         # Test invalid numeric
         assert transport._parse_retry_header("invalid") is None
 
@@ -271,6 +281,79 @@ class TestRetryTransport:
         assert (
             transport._parse_retry_header("2023-12-01T12:00:00Z") is None
         )  # Will fail parsing
+
+    def test_retry_operation_uses_previous_response_headers_for_sleep(self) -> None:
+        """Ensure response headers are passed into _calculate_sleep on retries."""
+        mock_transport = Mock()
+        transport = RetryTransport(
+            wrapped_transport=mock_transport, retry_config=RetryConfig(max_attempts=2)
+        )
+
+        # First response triggers retry and includes Retry-After header
+        response1 = Mock()
+        response1.status_code = HTTPStatus.TOO_MANY_REQUESTS
+        response1.headers = {"Retry-After": "5"}
+        response1.close = Mock()
+
+        # Second response succeeds
+        response2 = Mock()
+        response2.status_code = HTTPStatus.OK
+        response2.headers = {}
+
+        send_method = Mock(side_effect=[response1, response2])
+        request = Mock()
+
+        with patch.object(
+            transport, "_calculate_sleep", return_value=0.0
+        ) as calc_sleep:
+            with patch("port_ocean.helpers.retry.time.sleep") as sleep:
+                transport._retry_operation(request, send_method)
+
+        # Called exactly once: before second attempt
+        assert calc_sleep.call_count == 1
+        _, headers_arg = calc_sleep.call_args.args
+        assert headers_arg == response1.headers
+        sleep.assert_called_once_with(0.0)
+
+    @pytest.mark.asyncio
+    async def test_retry_operation_async_uses_previous_response_headers_for_sleep(
+        self,
+    ) -> None:
+        """Async variant: ensure response headers are passed into _calculate_sleep on retries."""
+        mock_transport = Mock()
+        transport = RetryTransport(
+            wrapped_transport=mock_transport, retry_config=RetryConfig(max_attempts=2)
+        )
+
+        response1 = Mock()
+        response1.status_code = HTTPStatus.TOO_MANY_REQUESTS
+        response1.headers = {"Retry-After": "5"}
+        response1.aclose = AsyncMock()
+
+        response2 = Mock()
+        response2.status_code = HTTPStatus.OK
+        response2.headers = {}
+
+        # Provide stable in-order responses across awaits
+        responses = iter([response1, response2])
+
+        async def send_method_iter(req: httpx.Request) -> httpx.Response:
+            return next(responses)
+
+        request = httpx.Request("GET", "https://example.com")
+
+        with patch.object(
+            transport, "_calculate_sleep", return_value=0.0
+        ) as calc_sleep:
+            with patch(
+                "port_ocean.helpers.retry.asyncio.sleep",
+                new=AsyncMock(return_value=None),
+            ):
+                await transport._retry_operation_async(request, send_method_iter)
+
+        assert calc_sleep.call_count == 1
+        _, headers_arg = calc_sleep.call_args.args
+        assert headers_arg == response1.headers
 
 
 class TestRetryConfigIntegration:
