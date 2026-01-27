@@ -10,10 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.7.0 (2026-01-28)
 
 
-### Improvements
+### Features
 
 - Introduced resync for `advanced-security-alert` kind
 - Implemented live events for `advanced-security-alert` kind
+
+
+## 0.6.31 (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.1
 
 
 ## 0.6.30 (2026-01-27)

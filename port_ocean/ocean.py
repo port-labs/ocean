@@ -29,7 +29,6 @@ from port_ocean.core.handlers.webhook.processor_manager import (
 from port_ocean.core.handlers.actions.execution_manager import ExecutionManager
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.models import ProcessExecutionMode
-from port_ocean.helpers.monitor.monitor import start_monitoring
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.misc import IntegrationStateStatus
@@ -270,7 +269,6 @@ class Ocean:
         self.app_initialized = True
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        await start_monitoring()
         if not self.app_initialized:
             self.initialize_app()
 
