@@ -6,11 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.33.0 (2026-01-27)
+
+### Improvements
+
+- Allowing Empty setup mode which make integraion be created without any resources
+
+
+## 0.32.17 (2026-01-25)
+
+### Bug fixes
+
+- Fixed Bug: for kindIdentifier with index > 10 like  "name-12", kindIndex was 2 instead of 12 because only the last character was used. Parse the segment after the final "-" as the index (e.g. "name-12" → 12, "project-0" → 0).
+
+
+## 0.32.16 (2026-01-21)
+
+### Bug fixes
+
+- Fix retry sleep calculation for rate-limit reset headers by treating large numeric retry values as UNIX epoch timestamps and using response headers when computing retry delays.
+
+
+## 0.32.15 (2026-01-21)
+
+### Bug fixes
+
+- Handle webhook event not supported exception and log it as a warning
+
+
+## 0.32.14 (2026-01-20)
+
+### Bug fixes
+
+- Add export of system and request metrics
+
+
 ## 0.32.13 (2026-01-15)
 
 ### Bug fixes
 
 - Revert Add export of system and request metrics
+
 
 ## 0.32.12 (2026-01-15)
 
@@ -23,12 +60,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Format response when logging error
 - Prevent Lakehouse from breaking the regular integration behavior on error from port
 
+### Improvements
+
+- Add export of system and request metrics
+
 
 ## 0.32.11 (2026-01-14)
 
 ### Bug fixes
 
 - Added except clause to catch random errors
+
 
 ## 0.32.10 (2026-01-11)
 

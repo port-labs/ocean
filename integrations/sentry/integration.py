@@ -1,5 +1,6 @@
 from pydantic.fields import Field
 from typing import Literal
+from enum import StrEnum
 
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
@@ -9,6 +10,15 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+
+
+class ObjectKind(StrEnum):
+    PROJECT = "project"
+    ISSUE = "issue"
+    PROJECT_TAG = "project-tag"
+    ISSUE_TAG = "issue-tag"
+    USER = "user"
+    TEAM = "team"
 
 
 class SentrySelector(Selector):
@@ -27,9 +37,17 @@ class TeamSelector(Selector):
     )
 
 
+class IssueSelector(SentrySelector):
+    include_archived: bool = Field(
+        alias="includeArchived",
+        default=True,
+        description="Whether to include the archived issues, defaults to true",
+    )
+
+
 class SentryResourceConfig(ResourceConfig):
     selector: SentrySelector
-    kind: Literal["project", "issue", "project-tag", "issue-tag"]
+    kind: Literal["project", "project-tag"]
 
 
 class TeamResourceConfig(ResourceConfig):
@@ -37,10 +55,15 @@ class TeamResourceConfig(ResourceConfig):
     selector: TeamSelector
 
 
+class IssueResourceConfig(ResourceConfig):
+    kind: Literal["issue", "issue-tag"]
+    selector: IssueSelector
+
+
 class SentryPortAppConfig(PortAppConfig):
-    resources: list[SentryResourceConfig | TeamResourceConfig | ResourceConfig] = Field(
-        default_factory=list
-    )
+    resources: list[
+        SentryResourceConfig | TeamResourceConfig | IssueResourceConfig | ResourceConfig
+    ] = Field(default_factory=list)
 
 
 class SentryIntegration(BaseIntegration):
