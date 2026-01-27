@@ -89,7 +89,7 @@ class JiraClient(OAuthClient):
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
-    ) -> Any:
+    ) -> Any | None:
         try:
             async with self._rate_limiter:
                 response = await self.client.request(
@@ -98,6 +98,20 @@ class JiraClient(OAuthClient):
                 response.raise_for_status()
                 return response.json()
         except httpx.HTTPStatusError as e:
+            if e.response.status_code == 400:
+                try:
+                    error_body = e.response.json()
+                    error_messages = error_body.get("errorMessages", [])
+                except Exception:
+                    error_messages = [e.response.text]
+
+                logger.warning(
+                    f"Jira API request failed with 400 Bad Request. This may indicate "
+                    f"permission issues or invalid query parameters. "
+                    f"Error: {error_messages}. URL: {url}. "
+                    f"Skipping this request."
+                )
+                return None
             logger.error(
                 f"Jira API request failed with status {e.response.status_code}: {method} {url}"
             )
@@ -122,6 +136,10 @@ class JiraClient(OAuthClient):
         while True:
             params["startAt"] = start_at
             response_data = await self._send_api_request("GET", url, params=params)
+
+            if response_data is None:
+                break
+
             items = response_data.get(extract_key, []) if extract_key else response_data
 
             if not items:
@@ -150,6 +168,9 @@ class JiraClient(OAuthClient):
                 params[cursor_param] = cursor
 
             response_data = await self._send_api_request(method, url, params=params)
+
+            if response_data is None:
+                break
 
             items = response_data.get(extract_key, [])
             if not items:
@@ -283,6 +304,10 @@ class JiraClient(OAuthClient):
                 params["nextPageToken"] = next_page_token
 
             response_data = await self._send_api_request("GET", url, params=params)
+
+            if response_data is None:
+                break
+
             items = response_data.get(extract_key, []) if extract_key else response_data
 
             if not items:
@@ -299,31 +324,13 @@ class JiraClient(OAuthClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
         params = params or {}
-        jql = params.get("jql", "")
-        logger.info(f"Using JQL filter: {jql}")
+        logger.info(f"Using JQL filter: {params.get('jql', '')}")
         url = f"{self.api_url}/search/jql"
 
-        try:
-            async for issues in self._get_paginated_data_using_next_page_token(
-                url, "issues", initial_params=params
-            ):
-                yield issues
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 400:
-                try:
-                    error_body = e.response.json()
-                    error_messages = error_body.get("errorMessages", [])
-                except Exception:
-                    error_messages = [e.response.text]
-
-                logger.warning(
-                    f"JQL query failed with 400 Bad Request. This may indicate "
-                    f"permission issues with projects referenced in the JQL query. "
-                    f"Error: {error_messages}. JQL: {jql}. "
-                    f"Skipping issue sync for this selector."
-                )
-                return
-            raise
+        async for issues in self._get_paginated_data_using_next_page_token(
+            url, "issues", initial_params=params
+        ):
+            yield issues
 
     async def get_single_user(self, account_id: str) -> dict[str, Any]:
         return await self._send_api_request(

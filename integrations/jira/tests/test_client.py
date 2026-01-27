@@ -504,14 +504,13 @@ def test_jira_issue_selector_default_jql() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_issues_handles_400_permission_error(
+async def test_send_api_request_handles_400_permission_error(
     mock_jira_client: JiraClient,
 ) -> None:
-    """Test that get_paginated_issues handles 400 errors gracefully for permission issues.
+    """Test that _send_api_request handles 400 errors gracefully.
 
-    When a JQL query references a project the token doesn't have access to,
-    Jira returns a 400 error. The integration should log a warning and continue
-    rather than failing the entire sync.
+    When a request returns 400 (e.g., permission issues, invalid queries),
+    the method should log a warning and return None instead of raising.
     """
     error_response = Response(
         400,
@@ -525,27 +524,23 @@ async def test_get_paginated_issues_handles_400_permission_error(
     )
 
     with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        mock_jira_client.client, "request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.side_effect = httpx.HTTPStatusError(
-            "Bad Request", request=error_response.request, response=error_response
+        mock_request.return_value = error_response
+
+        result = await mock_jira_client._send_api_request(
+            "GET", "http://example.com/search"
         )
 
-        issues: list[dict[str, Any]] = []
-        async for issue_batch in mock_jira_client.get_paginated_issues(
-            params={"jql": "project in (ALLOWED, RESTRICTED_PROJECT)"}
-        ):
-            issues.extend(issue_batch)
-
-        # Should return empty list without raising an exception
-        assert issues == []
+        # Should return None without raising an exception
+        assert result is None
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_issues_handles_400_with_text_error(
+async def test_send_api_request_handles_400_with_text_error(
     mock_jira_client: JiraClient,
 ) -> None:
-    """Test that get_paginated_issues handles 400 errors with non-JSON response."""
+    """Test that _send_api_request handles 400 errors with non-JSON response."""
     error_response = Response(
         400,
         request=Request("GET", "http://example.com"),
@@ -553,27 +548,23 @@ async def test_get_paginated_issues_handles_400_with_text_error(
     )
 
     with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        mock_jira_client.client, "request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.side_effect = httpx.HTTPStatusError(
-            "Bad Request", request=error_response.request, response=error_response
+        mock_request.return_value = error_response
+
+        result = await mock_jira_client._send_api_request(
+            "GET", "http://example.com/search"
         )
 
-        issues: list[dict[str, Any]] = []
-        async for issue_batch in mock_jira_client.get_paginated_issues(
-            params={"jql": "invalid jql query"}
-        ):
-            issues.extend(issue_batch)
-
-        # Should return empty list without raising an exception
-        assert issues == []
+        # Should return None without raising an exception
+        assert result is None
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_issues_raises_on_non_400_errors(
+async def test_send_api_request_raises_on_non_400_errors(
     mock_jira_client: JiraClient,
 ) -> None:
-    """Test that get_paginated_issues still raises for non-400 HTTP errors."""
+    """Test that _send_api_request still raises for non-400 HTTP errors."""
     error_response = Response(
         500,
         request=Request("GET", "http://example.com"),
@@ -581,20 +572,30 @@ async def test_get_paginated_issues_raises_on_non_400_errors(
     )
 
     with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+        mock_jira_client.client, "request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.side_effect = httpx.HTTPStatusError(
-            "Internal Server Error",
-            request=error_response.request,
-            response=error_response,
-        )
+        mock_request.return_value = error_response
 
         with pytest.raises(httpx.HTTPStatusError):
-            async for _ in mock_jira_client.get_paginated_issues(
-                params={"jql": "project = TEST"}
-            ):
-                pass
+            await mock_jira_client._send_api_request("GET", "http://example.com/search")
 
 
-"""`                                                                    
-"""
+@pytest.mark.asyncio
+async def test_get_paginated_issues_returns_empty_on_400(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test that get_paginated_issues returns empty when _send_api_request returns None."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        # Simulate 400 error handling - _send_api_request returns None
+        mock_request.return_value = None
+
+        issues: list[dict[str, Any]] = []
+        async for issue_batch in mock_jira_client.get_paginated_issues(
+            params={"jql": "project = RESTRICTED"}
+        ):
+            issues.extend(issue_batch)
+
+        # Should return empty list
+        assert issues == []
