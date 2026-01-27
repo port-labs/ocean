@@ -29,7 +29,9 @@ class WorkflowNodesClientMixin:
         if response.is_error:
             logger.error("Error claiming pending wf_node runs", error=response.text)
             return []
-        return [WorkflowNodeRun.parse_obj(run) for run in response.json().get("runs", [])]
+        return [
+            WorkflowNodeRun.parse_obj(run) for run in response.json().get("runs", [])
+        ]
 
     async def acknowledge_wf_node_run(self, run_id: str) -> None:
         try:

@@ -171,14 +171,18 @@ class ExecutionManager:
                 poll_limit = self._high_watermark - queues_size
 
                 if self._poll_wf_node:
-                    runs: list[BaseRun] = await ocean.port_client.claim_pending_wf_node_runs(
-                        limit=poll_limit,
-                        visibility_timeout_ms=self._visibility_timeout_ms,
+                    runs: list[BaseRun] = list(
+                        await ocean.port_client.claim_pending_wf_node_runs(
+                            limit=poll_limit,
+                            visibility_timeout_ms=self._visibility_timeout_ms,
+                        )
                     )
                 else:
-                    runs = await ocean.port_client.claim_pending_runs(
-                        limit=poll_limit,
-                        visibility_timeout_ms=self._visibility_timeout_ms,
+                    runs = list(
+                        await ocean.port_client.claim_pending_runs(
+                            limit=poll_limit,
+                            visibility_timeout_ms=self._visibility_timeout_ms,
+                        )
                     )
                 self._poll_wf_node = not self._poll_wf_node
 

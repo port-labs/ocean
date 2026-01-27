@@ -1,3 +1,5 @@
+from typing import Any
+
 from github.actions.utils import build_external_id
 from github.context.auth import get_authenticated_actor
 from github.webhook.webhook_processors.workflow_run.base_workflow_run_webhook_processor import (
@@ -84,7 +86,7 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
 
     async def _update_action_run(
-        self, run: ActionRun, workflow_run: dict
+        self, run: ActionRun, workflow_run: dict[str, Any]
     ) -> None:
         if not run.payload.integrationActionExecutionProperties.get(
             "reportWorkflowStatus", False
@@ -106,7 +108,7 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
         await ocean.port_client.patch_run(run.id, {"status": status})
 
     async def _update_wf_node_run(
-        self, run: WorkflowNodeRun, workflow_run: dict
+        self, run: WorkflowNodeRun, workflow_run: dict[str, Any]
     ) -> None:
         if not run.payload.integrationActionExecutionProperties.get(
             "reportWorkflowStatus", False
@@ -130,10 +132,14 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
             {
                 "status": WorkflowNodeRunStatus.COMPLETED,
                 "result": result,
-                "logs": [{
-                    "logLevel": "INFO" if result == WorkflowNodeRunResult.SUCCESS else "ERROR",
-                    "message": f"Workflow completed: {workflow_run['conclusion']}",
-                    "tags": ["workflow_completion"]
-                }]
-            }
+                "logs": [
+                    {
+                        "logLevel": "INFO"
+                        if result == WorkflowNodeRunResult.SUCCESS
+                        else "ERROR",
+                        "message": f"Workflow completed: {workflow_run['conclusion']}",
+                        "tags": ["workflow_completion"],
+                    }
+                ],
+            },
         )

@@ -28,7 +28,6 @@ from port_ocean.core.models import (
     IntegrationActionInvocationPayload,
     RunStatus,
     WorkflowNodeRunStatus,
-    WorkflowNodeRunResult,
 )
 from port_ocean.exceptions.execution_manager import (
     DuplicateActionExecutorError,
