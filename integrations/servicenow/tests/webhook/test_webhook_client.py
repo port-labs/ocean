@@ -180,7 +180,7 @@ class TestServicenowWebhookClient:
         with patch.object(
             webhook_client,
             "make_request",
-            AsyncMock(return_value=httpx.Response(status_code=404, json={})),
+            AsyncMock(return_value=None),
         ):
             result = await webhook_client.get_record_by_sys_id(
                 "incident", "nonexistent_id"
