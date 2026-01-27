@@ -1338,7 +1338,7 @@ async def test_generate_security_alerts() -> None:
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
     )
 
-    repository = {
+    repository: dict[str, Any] = {
         "id": "repo1",
         "name": "Repo One",
         "project": {"id": "proj1", "name": "Project One"},
@@ -1366,10 +1366,10 @@ async def test_generate_security_alerts() -> None:
         # ASSERT
         assert len(alerts) == 2
         assert alerts[0]["id"] == 1
-        assert alerts[0]["__repository"] == repository
-        assert alerts[0]["__project"] == repository["project"]
+        assert alerts[0]["__repositoryId"] == repository["id"]
+        assert alerts[0]["__projectId"] == repository["project"]["id"]
         assert alerts[1]["id"] == 2
-        assert alerts[1]["__repository"] == repository
+        assert alerts[1]["__repositoryId"] == repository["id"]
 
 
 @pytest.mark.asyncio

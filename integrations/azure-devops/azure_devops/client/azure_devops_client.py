@@ -210,7 +210,9 @@ class AzureDevopsClient(HTTPBaseClient):
                 security_alerts_url, additional_params=additional_params
             ):
                 enriched_alerts = [
-                    self._enrich_security_alert(security_alert, repository)
+                    self._enrich_security_alert(
+                        security_alert, repository_id, project_id
+                    )
                     for security_alert in security_alerts
                 ]
                 yield enriched_alerts
@@ -222,12 +224,12 @@ class AzureDevopsClient(HTTPBaseClient):
             raise
 
     def _enrich_security_alert(
-        self, security_alert: dict[str, Any], repository: dict[str, Any]
+        self, security_alert: dict[str, Any], repository_id: str, project_id: str
     ) -> dict[str, Any]:
         return {
             **security_alert,
-            "__repository": repository,
-            "__project": repository["project"],
+            "__repositoryId": repository_id,
+            "__projectId": project_id,
         }
 
     @cache_iterator_result()

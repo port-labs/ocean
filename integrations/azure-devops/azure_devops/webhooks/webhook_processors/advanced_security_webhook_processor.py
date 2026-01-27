@@ -67,27 +67,8 @@ class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             )
 
         project_id = payload["resourceContainers"]["project"]["id"]
-        project = await client.get_single_project(project_id)
-        if not project:
-            logger.warning(
-                f"Project with ID {project_id} not found, cannot enrich advanced security alert"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
-
         repository_url = raw_security_alert["repositoryUrl"]
         repository_id = unquote(repository_url.split("/")[-1])
-        repository = await client.get_repository(repository_id)
-        if not repository:
-            logger.warning(
-                f"Repository with ID {repository_id} not found, cannot enrich advanced security alert"
-            )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
 
         security_alert = await client.get_single_advanced_security_alert(
             project_id, repository_id, alert_id
@@ -101,7 +82,7 @@ class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 deleted_raw_results=[],
             )
         enriched_security_alert = client._enrich_security_alert(
-            security_alert, repository
+            security_alert, repository_id, project_id
         )
         return WebhookEventRawResults(
             updated_raw_results=[enriched_security_alert],

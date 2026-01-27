@@ -109,9 +109,7 @@ async def test_advanced_security_handle_event(
     mock_client.get_single_advanced_security_alert = AsyncMock(
         return_value={"id": "alert-123"}
     )
-    mock_client._enrich_security_alert = MagicMock(
-        return_value={"id": "alert-123", "enriched": True}
-    )
+    mock_client._enrich_security_alert = MagicMock(return_value={"id": "alert-123"})
 
     # Test execution
     result = await advanced_security_processor.handle_event(
@@ -120,11 +118,9 @@ async def test_advanced_security_handle_event(
 
     # Assertions
     assert len(result.updated_raw_results) == 1
-    assert result.updated_raw_results[0] == {"id": "alert-123", "enriched": True}
+    assert result.updated_raw_results[0] == {"id": "alert-123"}
 
     # Verify client calls
-    mock_client.get_single_project.assert_called_with("proj-123")
-    mock_client.get_repository.assert_called_with("repo-123")
     mock_client.get_single_advanced_security_alert.assert_called_with(
         "proj-123", "repo-123", "alert-123"
     )
@@ -140,8 +136,8 @@ async def test_advanced_security_handle_event(
     assert len(result_skipped.deleted_raw_results) == 0
     assert len(result_skipped.updated_raw_results) == 0
 
-    # Test not found project
-    mock_client.get_single_project.return_value = None
+    # Test alert not found
+    mock_client.get_single_advanced_security_alert.return_value = None
     mock_selector.criteria = None  # Reset criteria
     result_no_proj = await advanced_security_processor.handle_event(
         payload, mock_resource_config
