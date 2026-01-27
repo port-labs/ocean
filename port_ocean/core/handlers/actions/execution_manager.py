@@ -382,9 +382,7 @@ class ExecutionManager:
         """
         is_wf_node = isinstance(run, WorkflowNodeRun)
 
-        with logger.contextualize(
-            run_id=run.id, action=run.action_type
-        ):
+        with logger.contextualize(run_id=run.id, action=run.action_type):
             error_summary: str | None = None
             try:
                 executor = self._actions_executors[run.action_type]
@@ -404,7 +402,11 @@ class ExecutionManager:
                     if is_wf_node:
                         await ocean.port_client.patch_wf_node_run(
                             run.id,
-                            {"logs": [{"logLevel": "WARNING", "message": msg, "tags": []}]},
+                            {
+                                "logs": [
+                                    {"logLevel": "WARNING", "message": msg, "tags": []}
+                                ]
+                            },
                             should_raise=False,
                         )
                     else:
@@ -458,7 +460,9 @@ class ExecutionManager:
                 {
                     "status": WorkflowNodeRunStatus.COMPLETED,
                     "result": WorkflowNodeRunResult.FAILED,
-                    "logs": [{"logLevel": "ERROR", "message": error_summary, "tags": []}],
+                    "logs": [
+                        {"logLevel": "ERROR", "message": error_summary, "tags": []}
+                    ],
                 },
                 should_raise=False,
             )
