@@ -51,13 +51,13 @@ class ApplicationWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
         tag_keys = selector.tag_keys
         tag_values = selector.tag_values
 
-        if not self._check_tag_keys_filter(payload, tag_keys):
+        if tag_keys and not self._check_tag_keys_filter(payload, tag_keys):
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[],
             )
 
-        if not self._check_tag_values_filter(payload, tag_values):
+        if tag_values and not self._check_tag_values_filter(payload, tag_values):
             return WebhookEventRawResults(
                 updated_raw_results=[],
                 deleted_raw_results=[],
@@ -78,13 +78,11 @@ class ApplicationWebhookProcessor(_CheckmarxOneAbstractWebhookProcessor):
     def _check_tag_keys_filter(
         self, application: dict[str, Any], tag_keys: list[str]
     ) -> bool:
-        if not tag_keys:
-            return True
         return any(tag_key in application["tags"] for tag_key in tag_keys)
 
     def _check_tag_values_filter(
         self, application: dict[str, Any], tag_values: list[str]
     ) -> bool:
-        if not tag_values:
-            return True
-        return any(tag_value in application["tags"].values() for tag_value in tag_values)
+        return any(
+            tag_value in application["tags"].values() for tag_value in tag_values
+        )
