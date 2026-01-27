@@ -1,0 +1,76 @@
+resources:
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"harborProject"'
+          properties:
+            ownerName: .owner_name
+            public: .metadata.public == "true"
+            repoCount: .repo_count
+            createdAt: .creation_time
+            updatedAt: .update_time
+
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .user_id | tostring
+          title: .username
+          blueprint: '"harborUser"'
+          properties:
+            email: .email
+            realname: .realname
+            hasAdminRole: .has_admin_role
+            createdAt: .creation_time
+            updatedAt: .update_time
+
+  - kind: repository
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .name | gsub("/"; "-")
+          title: .name
+          blueprint: '"harborRepository"'
+          properties:
+            artifactCount: .artifact_count
+            pullCount: .pull_count
+            createdAt: .creation_time
+            updatedAt: .update_time
+            description: .description // ""
+          relations:
+            project: .__project.name
+
+  - kind: artifact
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: (.__repository.name + "-" + (.digest[:12])) | gsub("/"; "-")
+          title: .__title
+          blueprint: '"harborArtifact"'
+          properties:
+            digest: .digest
+            size: .size
+            pushTime: .push_time
+            pullTime: .pull_time
+            tags: .__tags
+            labels: .__labels
+            scanStatus: .scanStatus
+            scanSeverity: .scanSeverity
+            vulnerabilityCritical: .vulnerabilityCritical
+            vulnerabilityHigh: .vulnerabilityHigh
+            vulnerabilityMedium: .vulnerabilityMedium
+            vulnerabilityLow: .vulnerabilityLow
+            vulnerabilityTotal: .vulnerabilityTotal
+          relations:
+            repository: .__repository.name | gsub("/"; "-")
