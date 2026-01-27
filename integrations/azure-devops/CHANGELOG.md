@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.6.31 (2026-01-27)
+
+
+### Improvements
+
+- Added OAuth configuration support for Azure DevOps integration.
+
+
 ## 0.6.30 (2026-01-27)
 
 

@@ -20,7 +20,7 @@ MAX_TIMEMOUT_RETRIES = 3
 
 
 class HTTPBaseClient(OAuthClient):
-    def __init__(self, personal_access_token: Optional[str] = None) -> None:
+    def __init__(self, personal_access_token: str) -> None:
         super().__init__()
         self._client = OceanAsyncClient(
             retry_config=RetryConfig(
@@ -30,7 +30,7 @@ class HTTPBaseClient(OAuthClient):
                 ],
             ),
         )
-        self._personal_access_token = personal_access_token or ""
+        self._personal_access_token = personal_access_token
         self._rate_limiter = AzureDevOpsRateLimiter()
 
     def is_oauth_enabled(self) -> bool:
