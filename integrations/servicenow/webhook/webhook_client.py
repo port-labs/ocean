@@ -167,6 +167,8 @@ class ServicenowWebhookClient(ServicenowClient):
         }
 
         response = await self.make_request(url, params=params)
+        if not response:
+            return None
         if result := response.json().get("result", []):
             return result[0]["sys_id"]
         return None
@@ -189,6 +191,8 @@ class ServicenowWebhookClient(ServicenowClient):
         parent_response = await self.make_request(
             parent_url, method="POST", json_data=parent_payload
         )
+        if not parent_response:
+            return None
         result = parent_response.json().get("result", {})
         if not (result and "sys_id" in result):
             logger.error(
@@ -219,6 +223,8 @@ class ServicenowWebhookClient(ServicenowClient):
         fn_response = await self.make_request(
             fn_url, method="POST", json_data=function_payload
         )
+        if not fn_response:
+            return False
 
         result = fn_response.json().get("result", {})
         if result and "sys_id" in result:

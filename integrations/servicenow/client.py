@@ -31,7 +31,7 @@ class ServicenowClient:
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
         json_data: Optional[Dict[str, Any]] = None,
-    ) -> httpx.Response:
+    ) -> Optional[httpx.Response]:
         await self._ensure_auth_headers()
         try:
             response = await self.http_client.request(
@@ -43,6 +43,9 @@ class ServicenowClient:
             response.raise_for_status()
             return response
         except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.error(f"HTTP error occurred while fetching record: {str(e)}")
+                return None
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
@@ -57,19 +60,13 @@ class ServicenowClient:
         self, table_name: str, sys_id: str
     ) -> Optional[dict[str, Any]]:
         url = f"{self.table_base_url}/{table_name}/{sys_id}"
-        try:
-            response = await self.make_request(url)
-            result = response.json().get("result")
-            if not result:
-                return None
-            return result
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.error(
-                    f"HTTP error occurred while fetching record {sys_id} from table {table_name}: {str(e)}"
-                )
-                return None
-            raise
+        response = await self.make_request(url)
+        if not response:
+            return None
+        result = response.json().get("result")
+        if not result:
+            return None
+        return result
 
     async def get_paginated_resource(
         self, resource_kind: str, api_query_params: Optional[dict[str, Any]] = None
@@ -95,6 +92,8 @@ class ServicenowClient:
 
         while url:
             response = await self.make_request(url, params=params)
+            if not response:
+                break
             records = response.json().get("result", [])
 
             yield records
@@ -108,7 +107,8 @@ class ServicenowClient:
             response = await self.make_request(
                 f"{self.table_base_url}/sys_user?sysparm_limit=1"
             )
-            response.raise_for_status()
+            if not response:
+                raise httpx.HTTPError("Servicenow sanity check failed")
             logger.info("Servicenow sanity check passed")
             logger.info(
                 f"Retrieved sample Servicenow user with first name: {response.json().get('result', [])[0].get('first_name')}"

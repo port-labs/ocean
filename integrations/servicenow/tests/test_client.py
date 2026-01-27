@@ -166,11 +166,11 @@ class TestServicenowClient:
                 assert vulnerabilities[0]["risk_score"] == "85"
 
     @pytest.mark.asyncio
-    async def test_get_paginated_resource_error_handling(
+    async def test_get_paginated_resource_error_handling_404(
         self, servicenow_client: ServicenowClient
     ) -> None:
-        """Test error handling when fetching resources fails."""
-        # Mock HTTP error response
+        """Test error handling when fetching resources returns 404."""
+        # Mock HTTP 404 error response - should return None and break loop
         error_response = MagicMock()
         error_response.status_code = 404
         error_response.text = "Table not found"
@@ -188,9 +188,42 @@ class TestServicenowClient:
                     "Authorization": "Basic dGVzdF91c2VyOnRlc3RfcGFzc3dvcmQ="
                 },
             ):
+                # 404 errors now return None and break the loop without raising
+                records: list[dict[str, Any]] = []
+                async for batch in servicenow_client.get_paginated_resource(
+                    resource_kind="nonexistent_table"
+                ):
+                    records.extend(batch)
+
+                # Should have no records since 404 breaks the loop
+                assert len(records) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_paginated_resource_error_handling_non_404(
+        self, servicenow_client: ServicenowClient
+    ) -> None:
+        """Test error handling when fetching resources fails with non-404 error."""
+        # Mock HTTP 500 error response - should raise exception
+        error_response = MagicMock()
+        error_response.status_code = 500
+        error_response.text = "Internal Server Error"
+        error_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Internal Server Error", request=MagicMock(), response=error_response
+        )
+
+        with patch.object(
+            servicenow_client.http_client, "request", return_value=error_response
+        ):
+            with patch.object(
+                servicenow_client.authenticator,
+                "get_headers",
+                return_value={
+                    "Authorization": "Basic dGVzdF91c2VyOnRlc3RfcGFzc3dvcmQ="
+                },
+            ):
                 with pytest.raises(httpx.HTTPStatusError):
                     async for _ in servicenow_client.get_paginated_resource(
-                        resource_kind="nonexistent_table"
+                        resource_kind="some_table"
                     ):
                         pass
 

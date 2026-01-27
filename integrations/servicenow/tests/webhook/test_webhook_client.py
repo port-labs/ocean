@@ -29,19 +29,44 @@ class TestServicenowWebhookClient:
                 result = await webhook_client.make_request(
                     "https://test-url.com/api/test"
                 )
-
+                assert result is not None
                 assert result.json() == {"result": {"sys_id": "test123"}}
 
     @pytest.mark.asyncio
-    async def test_make_request_http_status_error(
+    async def test_make_request_http_status_error_404(
         self, webhook_client: ServicenowWebhookClient
     ) -> None:
-        """Test handling HTTP status error."""
+        """Test handling HTTP 404 status error returns None."""
         mock_response = MagicMock()
         mock_response.status_code = 404
         mock_response.text = "Not Found"
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
             "Not Found", request=MagicMock(), response=mock_response
+        )
+
+        with patch.object(
+            webhook_client.http_client, "request", return_value=mock_response
+        ):
+            with patch.object(
+                webhook_client.authenticator,
+                "get_headers",
+                return_value={"Authorization": "Basic test"},
+            ):
+                result = await webhook_client.make_request(
+                    "https://test-url.com/api/test"
+                )
+                assert result is None
+
+    @pytest.mark.asyncio
+    async def test_make_request_http_status_error_non_404(
+        self, webhook_client: ServicenowWebhookClient
+    ) -> None:
+        """Test handling non-404 HTTP status error raises exception."""
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Internal Server Error", request=MagicMock(), response=mock_response
         )
 
         with patch.object(
