@@ -27,9 +27,6 @@ class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         if not await super().validate_payload(payload):
             return False
 
-        if payload["publisherId"] != ADVANCED_SECURITY_PUBLISHER_ID:
-            return False
-
         project_id = payload.get("resourceContainers", {}).get("project", {}).get("id")
         return (
             project_id is not None
@@ -40,6 +37,8 @@ class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
     async def should_process_event(self, event: WebhookEvent) -> bool:
         try:
+            if event.payload["publisherId"] != ADVANCED_SECURITY_PUBLISHER_ID:
+                return False
             event_type = event.payload["eventType"]
             return bool(AdvancedSecurityAlertEvents(event_type))
         except (KeyError, ValueError):
