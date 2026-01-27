@@ -134,9 +134,11 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
                 "result": result,
                 "logs": [
                     {
-                        "logLevel": "INFO"
-                        if result == WorkflowNodeRunResult.SUCCESS
-                        else "ERROR",
+                        "logLevel": (
+                            "INFO"
+                            if result == WorkflowNodeRunResult.SUCCESS
+                            else "ERROR"
+                        ),
                         "message": f"Workflow completed: {workflow_run['conclusion']}",
                         "tags": ["workflow_completion"],
                     }
