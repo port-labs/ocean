@@ -12,7 +12,7 @@ from http_server.helpers.auth_validation import (
     validate_custom_auth_request_config,
     validate_custom_auth_response_config,
 )
-from http_server.auth.custom.auth_flow import AuthFlowManager
+from http_server.auth.custom_helpers.auth_flow import AuthFlowManager
 
 
 class CustomAuth(AuthHandler):

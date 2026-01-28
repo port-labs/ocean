@@ -7,7 +7,7 @@ import time
 from typing import Dict, Any
 from unittest.mock import patch, MagicMock
 
-from http_server.auth.custom.auth_flow import AuthFlowManager
+from http_server.auth.custom_helpers.auth_flow import AuthFlowManager
 from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
 
 

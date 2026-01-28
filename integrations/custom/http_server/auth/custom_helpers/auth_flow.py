@@ -19,9 +19,11 @@ from http_server.exceptions import (
     CustomAuthRequestError,
 )
 from http_server.helpers.template_utils import evaluate_templates_in_dict
-from http_server.auth.custom.lock_manager import LockManager
-from http_server.auth.custom.template_cache import TemplateCache
-from http_server.auth.custom.token_expiration_tracker import TokenExpirationTracker
+from http_server.auth.custom_helpers.lock_manager import LockManager
+from http_server.auth.custom_helpers.template_cache import TemplateCache
+from http_server.auth.custom_helpers.token_expiration_tracker import (
+    TokenExpirationTracker,
+)
 
 # Constants
 DEFAULT_AUTH_TIMEOUT = 30.0

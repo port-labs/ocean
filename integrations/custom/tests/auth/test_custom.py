@@ -5,7 +5,7 @@ import httpx
 from typing import Dict, Any
 from unittest.mock import MagicMock
 
-from http_server.auth.custom_handler import CustomAuth
+from http_server.auth.custom import CustomAuth
 
 
 @pytest.mark.asyncio
@@ -43,7 +43,7 @@ class TestCustomAuthHandler:
         assert handler.config == config
         assert handler.custom_auth is not None
         # Verify it's an AuthFlowManager instance
-        from http_server.auth.custom.auth_flow import AuthFlowManager
+        from http_server.auth.custom_helpers.auth_flow import AuthFlowManager
 
         assert isinstance(handler.custom_auth, AuthFlowManager)
 
