@@ -15,7 +15,7 @@ from http_server.auth.simple import (
     BasicAuth,
     NoAuth,
 )
-from http_server.auth.custom_auth import CustomAuth, CustomAuthHandler
+from http_server.auth.custom_handler import CustomAuth
 
 __all__ = [
     "AuthHandler",
@@ -44,6 +44,6 @@ def get_auth_handler(
 ) -> AuthHandler:
     """Get the appropriate authentication handler"""
     if auth_type == "custom":
-        return CustomAuthHandler(client, config)
+        return CustomAuth(client, config)
     handler_class = AUTH_HANDLERS.get(auth_type, NoAuth)
     return handler_class(client, config)
