@@ -166,32 +166,38 @@ class AuthFlowManager(httpx.Auth):
                 "CustomAuth: No expiration interval configured - tokens will only be refreshed on 401 errors"
             )
 
-    async def _perform_auth_request(self) -> None:
-        """Make authentication request asynchronously and store token (non-blocking)"""
+    async def _perform_auth_request(self, *, force: bool = False) -> None:
+        """Make authentication request asynchronously and store token.
+
+        Lock is held for the duration so only one auth request runs at a time.
+        When force is False (proactive path), skip if token is still valid
+        after acquiring the lock (double-checked locking).
+        """
         if not self.custom_auth_request:
             raise CustomAuthRequestError("customAuthRequest configuration is required")
 
-        logger.info("CustomAuth: Starting authentication")
+        async with self._reauth_lock_manager.lock:
+            if not force and not self._expiration_tracker.is_expired():
+                return
 
-        auth_url = self._build_auth_url()
-        headers = self._prepare_auth_headers()
-        json_data, content = self._prepare_auth_body()
-        params = self.custom_auth_request.queryParams or {}
-        method = self.custom_auth_request.method
+            logger.info("CustomAuth: Starting authentication")
 
-        response = await self._execute_auth_request(
-            auth_url, headers, params, json_data, content, method
-        )
-        self._handle_auth_response(response)
-        self._log_auth_success()
+            auth_url = self._build_auth_url()
+            headers = self._prepare_auth_headers()
+            json_data, content = self._prepare_auth_body()
+            params = self.custom_auth_request.queryParams or {}
+            method = self.custom_auth_request.method
+
+            response = await self._execute_auth_request(
+                auth_url, headers, params, json_data, content, method
+            )
+            self._handle_auth_response(response)
+            self._log_auth_success()
 
     async def _ensure_authenticated(self) -> None:
-        """Checks expiration and handles locking for re-auth."""
+        """Checks expiration and triggers re-auth (lock is inside _perform_auth_request)."""
         if self._expiration_tracker.is_expired():
-            async with self._reauth_lock_manager.lock:
-                # Re-check after acquiring lock (double-checked locking pattern)
-                if self._expiration_tracker.is_expired():
-                    await self._perform_auth_request()
+            await self._perform_auth_request()
 
     async def async_auth_flow(
         self, request: httpx.Request
@@ -207,12 +213,10 @@ class AuthFlowManager(httpx.Auth):
 
         # 4. Reactive Auth Check (On status codes that require re-authentication)
         if response.status_code in STATUS_CODES_TO_REAUTH:
-            async with self._reauth_lock_manager.lock:
-                # Only re-auth if someone else hasn't already done it while we waited
-                await self._perform_auth_request()
-                authenticated_request = await self._override_request(request)
-                # Re-apply new tokens to the original request
-                yield authenticated_request
+            await self._perform_auth_request(force=True)
+            authenticated_request = await self._override_request(request)
+            # Re-apply new tokens to the original request
+            yield authenticated_request
 
     async def _override_request(self, request: httpx.Request) -> httpx.Request:
         """Override the request with the evaluated templates."""

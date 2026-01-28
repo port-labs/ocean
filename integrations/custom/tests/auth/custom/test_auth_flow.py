@@ -263,7 +263,7 @@ class TestAuthFlowManager:
 
         auth_calls = []
 
-        async def mock_auth_with_delay() -> None:
+        async def mock_auth_with_delay(*, force: bool = False) -> None:
             auth_calls.append("auth")
             await asyncio.sleep(0.1)
             custom_auth.auth_response = {"access_token": "new-token"}

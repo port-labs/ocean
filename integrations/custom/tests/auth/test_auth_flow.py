@@ -44,7 +44,9 @@ class TestAuthFlowManager:
         )
         mock_response.raise_for_status = MagicMock()
 
-        with patch("http_server.auth.custom.auth_flow.OceanAsyncClient") as mock_client_class:
+        with patch(
+            "http_server.auth.custom.auth_flow.OceanAsyncClient"
+        ) as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
@@ -69,7 +71,9 @@ class TestAuthFlowManager:
         mock_response.json = MagicMock(return_value={"access_token": "token"})
         mock_response.raise_for_status = MagicMock()
 
-        with patch("http_server.auth.custom.auth_flow.OceanAsyncClient") as mock_client_class:
+        with patch(
+            "http_server.auth.custom.auth_flow.OceanAsyncClient"
+        ) as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
@@ -97,7 +101,9 @@ class TestAuthFlowManager:
         mock_response.json = MagicMock(return_value={"access_token": "token"})
         mock_response.raise_for_status = MagicMock()
 
-        with patch("http_server.auth.custom.auth_flow.OceanAsyncClient") as mock_client_class:
+        with patch(
+            "http_server.auth.custom.auth_flow.OceanAsyncClient"
+        ) as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
@@ -126,7 +132,9 @@ class TestAuthFlowManager:
         )
         mock_response.raise_for_status = MagicMock(side_effect=error)
 
-        with patch("http_server.auth.custom.auth_flow.OceanAsyncClient") as mock_client_class:
+        with patch(
+            "http_server.auth.custom.auth_flow.OceanAsyncClient"
+        ) as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
@@ -152,7 +160,9 @@ class TestAuthFlowManager:
         mock_api_response.status_code = 200
         mock_api_response.read = MagicMock(return_value=b'{"data": "success"}')
 
-        with patch("http_server.auth.custom.auth_flow.OceanAsyncClient") as mock_client_class:
+        with patch(
+            "http_server.auth.custom.auth_flow.OceanAsyncClient"
+        ) as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
@@ -223,7 +233,9 @@ class TestAuthFlowManager:
         mock_auth_response.json = MagicMock(return_value={"access_token": "new-token"})
         mock_auth_response.raise_for_status = MagicMock()
 
-        with patch("http_server.auth.custom.auth_flow.OceanAsyncClient") as mock_client_class:
+        with patch(
+            "http_server.auth.custom.auth_flow.OceanAsyncClient"
+        ) as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
@@ -263,7 +275,7 @@ class TestAuthFlowManager:
 
         auth_calls = []
 
-        async def mock_auth_with_delay() -> None:
+        async def mock_auth_with_delay(*, force: bool = False) -> None:
             auth_calls.append("auth")
             await asyncio.sleep(0.1)
             custom_auth.auth_response = {"access_token": "new-token"}
@@ -317,9 +329,14 @@ class TestRequestOverride:
         self,
         auth_config: Dict[str, Any],
         custom_auth_request_minimal: CustomAuthRequestConfig,
+        custom_auth_response: CustomAuthResponseConfig,
     ) -> AuthFlowManager:
         # Create AuthFlowManager without custom_auth_response initially
-        return AuthFlowManager(auth_config, custom_auth_request_minimal, None)
+        return AuthFlowManager(
+            auth_config,
+            custom_auth_request_minimal,
+            custom_auth_response,
+        )
 
     async def test_override_request_headers(
         self, custom_auth: AuthFlowManager, mock_entity_processor: MagicMock

@@ -139,7 +139,7 @@ class TestTokenExpiration:
 
         authenticate_called = []
 
-        async def mock_authenticate() -> None:
+        async def mock_authenticate(*, force: bool = False) -> None:
             authenticate_called.append(True)
             custom_auth_with_interval.auth_response = {"access_token": "new-token"}
             custom_auth_with_interval._expiration_tracker.record_authentication()
@@ -165,7 +165,7 @@ class TestTokenExpiration:
 
         authenticate_called = []
 
-        async def mock_authenticate() -> None:
+        async def mock_authenticate(*, force: bool = False) -> None:
             authenticate_called.append(True)
 
         custom_auth_with_interval._perform_auth_request = mock_authenticate  # type: ignore[method-assign]
@@ -185,7 +185,7 @@ class TestTokenExpiration:
 
         authenticate_called = []
 
-        async def mock_authenticate() -> None:
+        async def mock_authenticate(*, force: bool = False) -> None:
             authenticate_called.append(True)
 
         custom_auth_without_interval._perform_auth_request = mock_authenticate  # type: ignore[method-assign]
@@ -210,7 +210,7 @@ class TestTokenExpiration:
 
         authenticate_called = []
 
-        async def mock_authenticate() -> None:
+        async def mock_authenticate(*, force: bool = False) -> None:
             authenticate_called.append(True)
             custom_auth_with_interval.auth_response = {"access_token": "new-token"}
             custom_auth_with_interval._expiration_tracker.record_authentication()
@@ -252,7 +252,7 @@ class TestTokenExpiration:
 
         authenticate_calls = []
 
-        async def mock_authenticate() -> None:
+        async def mock_authenticate(*, force: bool = False) -> None:
             authenticate_calls.append("auth")
             await asyncio.sleep(0.1)  # Simulate auth delay
             custom_auth_with_interval.auth_response = {"access_token": "new-token"}
