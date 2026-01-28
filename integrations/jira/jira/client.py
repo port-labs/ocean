@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from typing import Any, AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Generator, NamedTuple, Optional
 
 import httpx
 from httpx import Auth, BasicAuth, Request, Response, Timeout
@@ -12,6 +12,16 @@ from port_ocean.utils import http_async_client
 from .rate_limiter import JiraRateLimiter
 
 PAGE_SIZE = 50
+
+
+class IgnoredError(NamedTuple):
+    """Represents an error that should be ignored (logged but not raised)."""
+
+    status: int | str
+    message: Optional[str] = None
+    type: Optional[str] = None
+
+
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 MAX_CONCURRENT_REQUESTS = 10
 
@@ -73,6 +83,24 @@ class JiraClient(OAuthClient):
         self.client.timeout = Timeout(30)
         self._rate_limiter = JiraRateLimiter(max_concurrent=MAX_CONCURRENT_REQUESTS)
 
+    _DEFAULT_IGNORED_ERRORS = [
+        IgnoredError(
+            status=400,
+            message="Bad Request — may indicate permission issues or invalid query parameters",
+            type="BAD_REQUEST",
+        ),
+        IgnoredError(
+            status=403,
+            message="Forbidden — insufficient permissions to access this resource",
+            type="FORBIDDEN",
+        ),
+        IgnoredError(
+            status=404,
+            message="Resource not found or not accessible",
+            type="NOT_FOUND",
+        ),
+    ]
+
     def _get_bearer(self) -> BearerAuth:
         try:
             return BearerAuth(self.external_access_token)
@@ -82,6 +110,40 @@ class JiraClient(OAuthClient):
     def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
         return next(self._get_bearer().auth_flow(request))
 
+    def _should_ignore_error(
+        self,
+        error: httpx.HTTPStatusError,
+        url: str,
+        method: str,
+        ignored_errors: Optional[list[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
+    ) -> bool:
+        """Check if an HTTP error should be ignored (logged but not raised).
+
+        Args:
+            error: The HTTP status error to check
+            url: The URL that was requested
+            method: The HTTP method used
+            ignored_errors: Additional errors to ignore for this request
+            ignore_default_errors: Whether to also check default ignored errors
+
+        Returns:
+            True if the error should be ignored, False otherwise
+        """
+        all_ignored_errors = (ignored_errors or []) + (
+            self._DEFAULT_IGNORED_ERRORS if ignore_default_errors else []
+        )
+        status_code = error.response.status_code
+
+        for ignored_error in all_ignored_errors:
+            if str(status_code) == str(ignored_error.status):
+                logger.warning(
+                    f"Failed to {method} resources at {url} due to {ignored_error.message} "
+                    f"with status code {status_code}"
+                )
+                return True
+        return False
+
     async def _send_api_request(
         self,
         method: str,
@@ -89,7 +151,23 @@ class JiraClient(OAuthClient):
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
-    ) -> Any | None:
+        ignored_errors: Optional[list[IgnoredError]] = None,
+        ignore_default_errors: bool = True,
+    ) -> dict[str, Any]:
+        """Send a request to the Jira API with error handling and rate limiting.
+
+        Args:
+            method: HTTP method (GET, POST, etc.)
+            url: The URL to request
+            params: Query parameters
+            json: JSON body data
+            headers: Additional headers
+            ignored_errors: Additional errors to ignore for this request
+            ignore_default_errors: Whether to ignore default errors (400, 403, 404)
+
+        Returns:
+            JSON response data, or empty dict {} if an ignored error occurred
+        """
         try:
             async with self._rate_limiter:
                 response = await self.client.request(
@@ -98,20 +176,12 @@ class JiraClient(OAuthClient):
                 response.raise_for_status()
                 return response.json()
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 400:
-                try:
-                    error_body = e.response.json()
-                    error_messages = error_body.get("errorMessages", [])
-                except Exception:
-                    error_messages = [e.response.text]
+            response = e.response
+            if self._should_ignore_error(
+                e, url, method, ignored_errors, ignore_default_errors
+            ):
+                return {}
 
-                logger.warning(
-                    f"Jira API request failed with 400 Bad Request. This may indicate "
-                    f"permission issues or invalid query parameters. "
-                    f"Error: {error_messages}. URL: {url}. "
-                    f"Skipping this request."
-                )
-                return None
             logger.error(
                 f"Jira API request failed with status {e.response.status_code}: {method} {url}"
             )
@@ -120,7 +190,7 @@ class JiraClient(OAuthClient):
             logger.error(f"Failed to connect to Jira API: {method} {url} - {str(e)}")
             raise
         finally:
-            if "response" in locals() and response:
+            if "response" in locals():
                 await self._rate_limiter.update_rate_limit_headers(response.headers)
 
     async def _get_paginated_data(
@@ -203,15 +273,20 @@ class JiraClient(OAuthClient):
             url=f"{self.api_url}/mypermissions",
             params={"permissions": "ADMINISTER"},
         )
+        if not response:
+            logger.warning("Failed to check webhook permissions - empty response")
+            return False
         has_permission = response["permissions"]["ADMINISTER"]["havePermission"]
 
         return has_permission
 
     async def _create_events_webhook_oauth(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
-        webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(
-            "values"
-        )
+        response = await self._send_api_request("GET", url=self.webhooks_url)
+        if not response:
+            logger.warning("Failed to get webhooks - empty response, skipping webhook creation")
+            return
+        webhooks = response.get("values", [])
         if len(webhooks) > 0:
             # jira allows for only one webhook per user per oauth app that is why we are always checking the first webhook
             existing_webhook_url = webhooks[0].get("url")
@@ -258,10 +333,13 @@ class JiraClient(OAuthClient):
         webhook_target_app_host = f"{app_host}/integration/webhook"
         webhooks = await self._send_api_request("GET", url=self.webhooks_url)
 
-        for webhook in webhooks:
-            if webhook.get("url") == webhook_target_app_host:
-                logger.info("Ocean real time reporting webhook already exists")
-                return
+        if not webhooks:
+            logger.warning("Failed to get webhooks - empty response, attempting to create webhook")
+        elif isinstance(webhooks, list):
+            for webhook in webhooks:
+                if webhook.get("url") == webhook_target_app_host:
+                    logger.info("Ocean real time reporting webhook already exists")
+                    return
 
         body = {
             "name": f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}",

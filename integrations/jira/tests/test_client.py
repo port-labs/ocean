@@ -67,12 +67,12 @@ async def test_send_api_request_success(mock_jira_client: JiraClient) -> None:
 
 @pytest.mark.asyncio
 async def test_send_api_request_failure(mock_jira_client: JiraClient) -> None:
-    """Test API request raising exceptions."""
+    """Test API request raising exceptions for non-ignored status codes."""
     with patch.object(
         mock_jira_client.client, "request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.return_value = Response(
-            404, request=Request("GET", "http://example.com")
+            500, request=Request("GET", "http://example.com")
         )
         with pytest.raises(Exception):
             await mock_jira_client._send_api_request("GET", "http://example.com")
@@ -504,21 +504,29 @@ def test_jira_issue_selector_default_jql() -> None:
 
 
 @pytest.mark.asyncio
-async def test_send_api_request_handles_400_permission_error(
+@pytest.mark.parametrize(
+    "status_code,error_message",
+    [
+        (400, "The value 'RESTRICTED_PROJECT' does not exist for the field 'project'."),
+        (403, "You do not have permission to access this resource."),
+        (404, "Issue does not exist or you do not have permission to see it."),
+    ],
+)
+async def test_send_api_request_handles_ignored_errors(
     mock_jira_client: JiraClient,
+    status_code: int,
+    error_message: str,
 ) -> None:
-    """Test that _send_api_request handles 400 errors gracefully.
+    """Test that _send_api_request handles 400, 403, 404 errors gracefully.
 
-    When a request returns 400 (e.g., permission issues, invalid queries),
-    the method should log a warning and return None instead of raising.
+    These errors typically indicate permission issues or missing resources
+    and should not crash the entire resync.
     """
     error_response = Response(
-        400,
+        status_code,
         request=Request("GET", "http://example.com"),
         json={
-            "errorMessages": [
-                "The value 'RESTRICTED_PROJECT' does not exist for the field 'project'."
-            ],
+            "errorMessages": [error_message],
             "errors": {},
         },
     )
@@ -537,10 +545,10 @@ async def test_send_api_request_handles_400_permission_error(
 
 
 @pytest.mark.asyncio
-async def test_send_api_request_handles_400_with_text_error(
+async def test_send_api_request_handles_ignored_error_with_text_response(
     mock_jira_client: JiraClient,
 ) -> None:
-    """Test that _send_api_request handles 400 errors with non-JSON response."""
+    """Test that _send_api_request handles ignored errors with non-JSON response."""
     error_response = Response(
         400,
         request=Request("GET", "http://example.com"),
@@ -561,14 +569,16 @@ async def test_send_api_request_handles_400_with_text_error(
 
 
 @pytest.mark.asyncio
-async def test_send_api_request_raises_on_non_400_errors(
+@pytest.mark.parametrize("status_code", [500, 502, 503])
+async def test_send_api_request_raises_on_non_ignored_errors(
     mock_jira_client: JiraClient,
+    status_code: int,
 ) -> None:
-    """Test that _send_api_request still raises for non-400 HTTP errors."""
+    """Test that _send_api_request raises for non-ignored HTTP errors (5xx)."""
     error_response = Response(
-        500,
+        status_code,
         request=Request("GET", "http://example.com"),
-        json={"errorMessages": ["Internal Server Error"]},
+        json={"errorMessages": ["Server Error"]},
     )
 
     with patch.object(
