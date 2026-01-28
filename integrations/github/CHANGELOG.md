@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.0.15 (2026-01-27)
+## 5.0.15 (2026-01-28)
 
 
-### Features
+### Bug Fixes
 
-- Added support for workflow node runs in addition to action runs for GitHub workflow dispatch
+- Fix cache misses on repository kind when relationships are included.
 
 
 ## 5.0.14 (2026-01-27)

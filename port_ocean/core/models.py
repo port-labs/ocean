@@ -179,7 +179,7 @@ class BaseRun(BaseModel):
 
 
 class ActionRun(BaseRun):
-    status: RunStatus  # Narrow to specific enum
+    status: RunStatus
 
 
 class WorkflowNodeRun(BaseRun):
