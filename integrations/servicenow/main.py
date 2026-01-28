@@ -8,6 +8,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from initialize_client import initialize_client
 from webhook.initialize_client import initialize_webhook_client
 from webhook.webhook_client import WEBHOOK_ENDPOINT
+from webhook.events import DEFAULT_FIELDS_PER_TABLE
 from webhook.processors.incident_processor import IncidentWebhookProcessor
 from webhook.processors.service_catalog_processor import ServiceCatalogWebhookProcessor
 from webhook.processors.user_group_processor import UserGroupWebhookProcessor
@@ -74,8 +75,8 @@ async def on_start() -> None:
 
     live_event_tables = ocean.integration_config.get("live_event_tables")
     if not live_event_tables:
-        logger.info("Skipping webhook creation as no tables are specified")
-        return
+        logger.info("No tables specified for live events webhook. Using defaults")
+        live_event_tables = [str(kind) for kind in DEFAULT_FIELDS_PER_TABLE.keys()]
 
     webhook_client = initialize_webhook_client()
     tables = [table.strip() for table in live_event_tables]
