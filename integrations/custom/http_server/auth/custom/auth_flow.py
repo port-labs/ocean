@@ -31,8 +31,8 @@ class AuthFlowManager(httpx.Auth):
     def __init__(
         self,
         config: Dict[str, Any],
-        custom_auth_request: Optional[CustomAuthRequestConfig],
-        custom_auth_response: Optional[CustomAuthResponseConfig],
+        custom_auth_request: CustomAuthRequestConfig,
+        custom_auth_response: CustomAuthResponseConfig,
         cache: Optional[TemplateCache] = None,
         expiration_tracker: Optional[TokenExpirationTracker] = None,
         reauth_lock_manager: Optional[LockManager] = None,
@@ -92,7 +92,7 @@ class AuthFlowManager(httpx.Auth):
 
     def _prepare_auth_body(
         self,
-    ) -> tuple[Optional[Dict[str, Any]], Optional[Dict[str, str]]]:
+    ) -> tuple[Optional[Dict[str, Any]], Optional[str]]:
         """Prepare body data for authentication request.
 
         Returns:
@@ -112,7 +112,7 @@ class AuthFlowManager(httpx.Auth):
         headers: Dict[str, str],
         params: Dict[str, Any],
         json_data: Optional[Dict[str, Any]],
-        content: Optional[Dict[str, str]],
+        content: Optional[str],
         method: str,
     ) -> httpx.Response:
         """Execute the HTTP authentication request."""
