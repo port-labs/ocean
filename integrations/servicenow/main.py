@@ -17,7 +17,7 @@ from webhook.processors.release_project_processor import (
 from webhook.processors.vulnerability_processor import (
     VulnerabilityWebhookProcessor,
 )
-from integration import ServiceNowResourceConfig, ObjectKind
+from integration import ServiceNowResourceConfig
 
 
 @ocean.on_resync()
@@ -65,9 +65,21 @@ async def on_start() -> None:
     if not base_url:
         return
 
+    enable_tables_live_events_webhooks = ocean.integration_config.get(
+        "enable_tables_live_events_webhooks"
+    )
+    if not enable_tables_live_events_webhooks:
+        logger.info("Skipping webhook creation as it's not enabled")
+        return
+
+    live_event_tables = ocean.integration_config.get("live_event_tables")
+    if not live_event_tables:
+        logger.info("Skipping webhook creation as no tables are specified")
+        return
+
     webhook_client = initialize_webhook_client()
-    kinds = [str(kind) for kind in ObjectKind]
-    await webhook_client.create_webhook(base_url, kinds)
+    tables = [table.strip() for table in live_event_tables]
+    await webhook_client.create_webhook(base_url, tables)
 
 
 ocean.add_webhook_processor(WEBHOOK_ENDPOINT, IncidentWebhookProcessor)
