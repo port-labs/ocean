@@ -9,12 +9,10 @@ from typing_extensions import Type
 import httpx
 
 from http_server.auth.base import AuthHandler
-from http_server.auth.simple import (
-    BearerTokenAuth,
-    ApiKeyAuth,
-    BasicAuth,
-    NoAuth,
-)
+from http_server.auth.bearer_token import BearerTokenAuth
+from http_server.auth.api_key import ApiKeyAuth
+from http_server.auth.basic import BasicAuth
+from http_server.auth.no_auth import NoAuth
 from http_server.auth.custom_handler import CustomAuth
 
 __all__ = [
