@@ -10,6 +10,6 @@ class ApiKeyAuth(AuthHandler):
 
     def setup(self) -> None:
         api_key = self.config.get("api_key")
-        key_header = self.config.get("api_key_header", "X-API-Key")
-        if api_key and key_header:
+        if api_key:
+            key_header = self.config.get("api_key_header", "X-API-Key")
             self.client.headers[key_header] = api_key
