@@ -56,8 +56,11 @@ def generate_resolved_endpoints(
         List of tuples: (resolved_url, {param_name: param_value})
     """
     return [
-        (endpoint_template.replace(f"{{{param_name}}}", str(v)), {param_name: str(v)})
-        for v in param_values
+        (
+            endpoint_template.replace(f"{{{param_name}}}", str(param_value)),
+            {param_name: str(param_value)},
+        )
+        for param_value in param_values
     ]
 
 
@@ -81,8 +84,8 @@ def _get_items_from_response(
         if extracted is None:
             return []
         return extracted if isinstance(extracted, list) else [extracted]
-    except Exception as e:
-        logger.error(f"Error extracting data with path '{data_path}': {e}")
+    except Exception as error:
+        logger.error(f"Error extracting data with path '{data_path}': {error}")
         return []
 
 
@@ -108,8 +111,8 @@ def _get_filtered_value(
         if filter_expr and JQEntityProcessorSync._search(item, filter_expr) is not True:
             return None
         return str(value)
-    except Exception as e:
-        logger.warning(f"Error extracting value from item: {e}")
+    except Exception as error:
+        logger.warning(f"Error extracting value from item: {error}")
         return None
 
 
@@ -135,13 +138,13 @@ async def query_api_for_parameters(
             headers=param_config.headers,
         ):
             values = [
-                v
+                filtered_value
                 for response_item in batch
                 for item in _get_items_from_response(
                     response_item, param_config.data_path
                 )
                 if (
-                    v := _get_filtered_value(
+                    filtered_value := _get_filtered_value(
                         item, param_config.field, param_config.filter
                     )
                 )
