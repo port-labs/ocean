@@ -1,7 +1,7 @@
 """Tests for main resync function"""
 
 from types import SimpleNamespace
-from typing import Any, AsyncGenerator, AsyncIterator, Dict, cast
+from typing import Any, AsyncGenerator, AsyncIterator, Dict, List, cast
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
@@ -9,10 +9,21 @@ from http_server.overrides import HttpServerResourceConfig, HttpServerSelector
 
 
 async def mock_resolve_single_endpoint() -> (
-    AsyncGenerator[list[tuple[str, Dict[str, str]]], None]
+    AsyncGenerator[List[tuple[str, Dict[str, str]]], None]
 ):
     """Helper mock generator that yields a single batch with one endpoint"""
     yield [("/api/v1/users", {})]
+
+
+async def mock_process_endpoints(
+    endpoints: List[tuple[str, Dict[str, str]]],
+    fetch_fn: Any,
+    concurrency_limit: int = 10,
+) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    """Mock concurrent processing that just calls fetch_fn for each endpoint"""
+    for endpoint, path_params in endpoints:
+        async for batch in fetch_fn(endpoint, path_params):
+            yield batch
 
 
 class TestListResponseHandling:
@@ -49,7 +60,13 @@ class TestListResponseHandling:
                     "main.resolve_dynamic_endpoints",
                     return_value=mock_resolve_single_endpoint(),
                 ),
-                patch("main.ocean") as mock_ocean,
+                patch(
+                    "main.process_endpoints_concurrently",
+                    side_effect=mock_process_endpoints,
+                ),
+                patch(
+                    "http_server.helpers.utils.JQEntityProcessorSync"
+                ) as mock_jq_sync,
             ):
                 direct_list_response = [
                     {"id": 1, "name": "Alice"},
@@ -61,13 +78,11 @@ class TestListResponseHandling:
 
                 mock_client.fetch_paginated_data = mock_fetch_paginated_data
 
-                mock_ocean.app.integration.entity_processor._search = AsyncMock(
-                    return_value=direct_list_response
-                )
+                mock_jq_sync._search.return_value = direct_list_response
 
                 assert main.resync_resources is not None
                 result = main.resync_resources("/api/v1/users")
-                result_iter = cast(AsyncIterator[list[dict[str, Any]]], result)
+                result_iter = cast(AsyncIterator[List[Dict[str, Any]]], result)
 
                 batch = await result_iter.__anext__()
 
@@ -75,13 +90,13 @@ class TestListResponseHandling:
                 assert batch[0]["id"] == 1
                 assert batch[1]["id"] == 2
 
-                mock_ocean.app.integration.entity_processor._search.assert_called()
+                mock_jq_sync._search.assert_called()
 
     @pytest.mark.asyncio
-    async def test_error_logged_when_not_list_and_no_data_path(
+    async def test_warning_logged_when_not_list_and_no_data_path(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Test that error is logged when response is not a list and data_path is missing"""
+        """Test that warning is logged when response is not a list and data_path is missing"""
         with patch(
             "port_ocean.context.ocean.ocean.integration.on_resync",
             lambda fn, kind=None: fn,
@@ -108,6 +123,10 @@ class TestListResponseHandling:
                     "main.resolve_dynamic_endpoints",
                     return_value=mock_resolve_single_endpoint(),
                 ),
+                patch(
+                    "main.process_endpoints_concurrently",
+                    side_effect=mock_process_endpoints,
+                ),
                 patch("main.logger") as mock_logger,
             ):
                 object_response = {"data": [{"id": 1, "name": "Alice"}]}
@@ -119,14 +138,14 @@ class TestListResponseHandling:
 
                 assert main.resync_resources is not None
                 result = main.resync_resources("/api/v1/users")
-                result_iter = cast(AsyncIterator[list[dict[str, Any]]], result)
+                result_iter = cast(AsyncIterator[List[Dict[str, Any]]], result)
 
                 batch = await result_iter.__anext__()
 
-                mock_logger.error.assert_called()
-                error_call = mock_logger.error.call_args[0][0]
-                assert "not a list" in error_call
-                assert "data_path" in error_call
+                mock_logger.warning.assert_called()
+                warning_call = mock_logger.warning.call_args[0][0]
+                assert "not a list" in warning_call
+                assert "data_path" in warning_call
 
                 assert batch == [object_response]
 
@@ -161,7 +180,13 @@ class TestListResponseHandling:
                     "main.resolve_dynamic_endpoints",
                     return_value=mock_resolve_single_endpoint(),
                 ),
-                patch("main.ocean") as mock_ocean,
+                patch(
+                    "main.process_endpoints_concurrently",
+                    side_effect=mock_process_endpoints,
+                ),
+                patch(
+                    "http_server.helpers.utils.JQEntityProcessorSync"
+                ) as mock_jq_sync,
             ):
                 object_response = {"data": {"users": [{"id": 1, "name": "Alice"}]}}
 
@@ -171,19 +196,15 @@ class TestListResponseHandling:
                 mock_client.fetch_paginated_data = mock_fetch_paginated_data
 
                 extracted_users = [{"id": 1, "name": "Alice"}]
-                mock_ocean.app.integration.entity_processor._search = AsyncMock(
-                    return_value=extracted_users
-                )
+                mock_jq_sync._search.return_value = extracted_users
 
                 assert main.resync_resources is not None
                 result = main.resync_resources("/api/v1/users")
-                result_iter = cast(AsyncIterator[list[dict[str, Any]]], result)
+                result_iter = cast(AsyncIterator[List[Dict[str, Any]]], result)
 
                 batch = await result_iter.__anext__()
 
-                mock_ocean.app.integration.entity_processor._search.assert_called_with(
-                    object_response, ".data.users"
-                )
+                mock_jq_sync._search.assert_called_with(object_response, ".data.users")
 
                 assert len(batch) == 1
                 assert batch[0]["id"] == 1
