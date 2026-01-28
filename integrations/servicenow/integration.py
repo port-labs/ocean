@@ -8,6 +8,15 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 from pydantic import BaseModel, Field
+from enum import StrEnum
+
+
+class ObjectKind(StrEnum):
+    INCIDENT = "incident"
+    USER_GROUP = "sys_user_group"
+    SERVICE_CATALOG = "sc_catalog"
+    VULNERABILITY = "sn_vul_vulnerable_item"
+    RELEASE_PROJECT = "release_project"
 
 
 class APIQueryParams(BaseModel):
