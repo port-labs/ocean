@@ -141,10 +141,10 @@ class AuthFlowManager(httpx.Auth):
 
     async def _ensure_authenticated(self) -> None:
         """Checks expiration and handles locking for re-auth."""
-        if self._expiration_tracker.is_expired(self.auth_response is not None):
+        if self._expiration_tracker.is_expired():
             async with self._reauth_lock_manager.lock:
                 # Re-check after acquiring lock (double-checked locking pattern)
-                if self._expiration_tracker.is_expired(self.auth_response is not None):
+                if self._expiration_tracker.is_expired():
                     await self._perform_auth_request()
 
     async def async_auth_flow(

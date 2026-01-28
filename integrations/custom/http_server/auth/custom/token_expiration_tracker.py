@@ -19,14 +19,14 @@ class TokenExpirationTracker:
         """Record that authentication happened."""
         self._auth_timestamp = time.time()
 
-    def is_expired(self, has_auth_response: bool) -> bool:
+    def is_expired(self) -> bool:
         """Check if authentication has expired and needs to be refreshed.
 
         Returns:
             True if authentication is expired or about to expire (within buffer), False otherwise.
             Returns False if no expiration interval is configured (expiration checking disabled).
         """
-        if self._auth_timestamp is None or not has_auth_response:
+        if self._auth_timestamp is None:
             return True
 
         if self._reauthenticate_interval is None:

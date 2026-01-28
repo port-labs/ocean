@@ -3,10 +3,9 @@
 import pytest
 import httpx
 from typing import Dict, Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from http_server.auth.custom_handler import CustomAuth
-from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
 
 
 @pytest.mark.asyncio
@@ -57,9 +56,7 @@ class TestCustomAuthHandler:
 
         assert mock_client.auth == handler.custom_auth
 
-    def test_init_validates_config(
-        self, mock_client: httpx.AsyncClient
-    ) -> None:
+    def test_init_validates_config(self, mock_client: httpx.AsyncClient) -> None:
         """Test that invalid config raises appropriate errors"""
         invalid_config = {
             "base_url": "https://api.example.com",
