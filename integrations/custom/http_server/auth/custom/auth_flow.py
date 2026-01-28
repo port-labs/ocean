@@ -56,13 +56,8 @@ class AuthFlowManager(httpx.Auth):
         else:
             self._expiration_tracker = expiration_tracker
 
-    async def _perform_auth_request(self) -> None:
-        """Make authentication request asynchronously and store token (non-blocking)"""
-        if not self.custom_auth_request:
-            raise CustomAuthRequestError("customAuthRequest configuration is required")
-
-        logger.info("CustomAuth: Starting authentication")
-
+    def _build_auth_url(self) -> str:
+        """Build the authentication URL from endpoint and base_url."""
         endpoint = self.custom_auth_request.endpoint
         if endpoint.startswith(("http://", "https://")):
             auth_url = endpoint
@@ -74,7 +69,10 @@ class AuthFlowManager(httpx.Auth):
             logger.debug(
                 f"CustomAuth: Built auth URL from base_url and endpoint: {auth_url}"
             )
+        return auth_url
 
+    def _prepare_auth_headers(self) -> Dict[str, str]:
+        """Prepare headers for authentication request, including Content-Type."""
         headers = (
             self.custom_auth_request.headers.copy()
             if self.custom_auth_request.headers
@@ -87,15 +85,34 @@ class AuthFlowManager(httpx.Auth):
             elif self.custom_auth_request.body:
                 headers["Content-Type"] = "application/json"
 
+        return headers
+
+    def _prepare_auth_body(
+        self,
+    ) -> tuple[Optional[Dict[str, Any]], Optional[Dict[str, str]]]:
+        """Prepare body data for authentication request.
+
+        Returns:
+            Tuple of (json_data, content) where one will be None.
+        """
         json_data = None
         content = None
         if self.custom_auth_request.body:
             json_data = self.custom_auth_request.body
         elif self.custom_auth_request.bodyForm:
             content = self.custom_auth_request.bodyForm
+        return json_data, content
 
-        params = self.custom_auth_request.queryParams or {}
-        method = self.custom_auth_request.method
+    async def _execute_auth_request(
+        self,
+        auth_url: str,
+        headers: Dict[str, str],
+        params: Dict[str, Any],
+        json_data: Optional[Dict[str, Any]],
+        content: Optional[Dict[str, str]],
+        method: str,
+    ) -> httpx.Response:
+        """Execute the HTTP authentication request."""
         logger.debug(
             f"CustomAuth: Making {method} request to {auth_url} for authentication"
         )
@@ -114,29 +131,54 @@ class AuthFlowManager(httpx.Auth):
             logger.debug(
                 f"CustomAuth: Authentication response status: {response.status_code}"
             )
-            response.raise_for_status()
-            try:
-                self.auth_response = response.json()
-            except json.JSONDecodeError as e:
-                logger.error(
-                    f"CustomAuth: Failed to parse authentication response: {str(e)}",
-                    {"response": str(response.text)},
-                )
-                raise
-            self._cache.invalidate()
-            self._expiration_tracker.record_authentication()
+            return response
 
-            logger.info("CustomAuth: Authentication successful")
-            interval, buffer = self._expiration_tracker.get_expiration_info()
-            if interval:
-                logger.debug(
-                    f"CustomAuth: Token will expire in {interval} seconds "
-                    f"(will refresh {buffer} seconds before expiration)"
-                )
-            else:
-                logger.debug(
-                    "CustomAuth: No expiration interval configured - tokens will only be refreshed on 401 errors"
-                )
+    def _handle_auth_response(self, response: httpx.Response) -> None:
+        """Handle authentication response: parse JSON and update state."""
+        response.raise_for_status()
+        try:
+            self.auth_response = response.json()
+        except json.JSONDecodeError as e:
+            logger.error(
+                f"CustomAuth: Failed to parse authentication response: {str(e)}",
+                {"response": str(response.text)},
+            )
+            raise
+        self._cache.invalidate()
+        self._expiration_tracker.record_authentication()
+
+    def _log_auth_success(self) -> None:
+        """Log authentication success and expiration information."""
+        logger.info("CustomAuth: Authentication successful")
+        interval, buffer = self._expiration_tracker.get_expiration_info()
+        if interval:
+            logger.debug(
+                f"CustomAuth: Token will expire in {interval} seconds "
+                f"(will refresh {buffer} seconds before expiration)"
+            )
+        else:
+            logger.debug(
+                "CustomAuth: No expiration interval configured - tokens will only be refreshed on 401 errors"
+            )
+
+    async def _perform_auth_request(self) -> None:
+        """Make authentication request asynchronously and store token (non-blocking)"""
+        if not self.custom_auth_request:
+            raise CustomAuthRequestError("customAuthRequest configuration is required")
+
+        logger.info("CustomAuth: Starting authentication")
+
+        auth_url = self._build_auth_url()
+        headers = self._prepare_auth_headers()
+        json_data, content = self._prepare_auth_body()
+        params = self.custom_auth_request.queryParams or {}
+        method = self.custom_auth_request.method
+
+        response = await self._execute_auth_request(
+            auth_url, headers, params, json_data, content, method
+        )
+        self._handle_auth_response(response)
+        self._log_auth_success()
 
     async def _ensure_authenticated(self) -> None:
         """Checks expiration and handles locking for re-auth."""
