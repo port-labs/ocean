@@ -10,6 +10,9 @@ from typing import AsyncGenerator, Dict, Any, Optional
 
 from loguru import logger
 
+from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryTransport
+
 from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
 from http_server.exceptions import CustomAuthRequestError
 from http_server.helpers.template_utils import evaluate_templates_in_dict
@@ -117,8 +120,10 @@ class AuthFlowManager(httpx.Auth):
             f"CustomAuth: Making {method} request to {auth_url} for authentication"
         )
 
-        async with httpx.AsyncClient(
-            verify=self.verify_ssl, timeout=DEFAULT_AUTH_TIMEOUT
+        async with OceanAsyncClient(
+            RetryTransport,
+            verify=self.verify_ssl,
+            timeout=DEFAULT_AUTH_TIMEOUT,
         ) as async_client:
             response = await async_client.request(
                 method=method,
