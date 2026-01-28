@@ -159,7 +159,7 @@ configurations:
   - name: customAuthRequest
     required: false
     type: object
-    description: "Custom authentication request configuration. Required when authType is 'custom'. Defines how to make the authentication request. Example can be found in examples/config-custom-auth.env"
+    description: "Custom authentication request configuration. Required when authType is 'custom'. Defines how to make the authentication request. Example can be found in https://docs.port.io/build-your-software-catalog/custom-integration/ocean-custom-integration/installation-types/self-hosted/custom-authentication"
     dependencies:
       - on: authType
         when:
@@ -169,7 +169,7 @@ configurations:
   - name: customAuthResponse
     required: false
     type: object
-    description: "Custom authentication response usage configuration. Required when authType is 'custom'. Defines how to use auth response values in subsequent requests using template syntax {{.jq_path}}. Example can be found in examples/config-custom-auth.env"
+    description: "Custom authentication response usage configuration. Required when authType is 'custom'. Defines how to use auth response values in subsequent requests using template syntax {{.jq_path}}. Example can be found in https://docs.port.io/build-your-software-catalog/custom-integration/ocean-custom-integration/installation-types/self-hosted/custom-authentication"
     dependencies:
       - on: authType
         when:
