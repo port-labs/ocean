@@ -159,7 +159,7 @@ configurations:
   - name: customAuthRequest
     required: false
     type: object
-    description: "Custom authentication request configuration. Required when authType is 'custom'. Defines how to make the authentication request. Supports optional 'reauthenticateIntervalSeconds' field to control token refresh timing. If not provided, expiration checking is disabled and tokens will only be refreshed on 401 errors. Example: {\"endpoint\": \"/oauth/token\", \"method\": \"POST\", \"headers\": {\"Content-Type\": \"application/json\"}, \"body\": {\"grant_type\": \"client_credentials\", \"client_id\": \"...\", \"client_secret\": \"...\"}, \"queryParams\": {}, \"reauthenticateIntervalSeconds\": 3600}"
+    description: "Custom authentication request configuration. Required when authType is 'custom'. Defines how to make the authentication request. Example can be found in examples/config-custom-auth.env"
     dependencies:
       - on: authType
         when:
@@ -169,7 +169,7 @@ configurations:
   - name: customAuthResponse
     required: false
     type: object
-    description: "Custom authentication response usage configuration. Required when authType is 'custom'. Defines how to use auth response values in subsequent requests using template syntax {{.jq_path}}. Example: {\"headers\": {\"Authorization\": \"Bearer {{.access_token}}\"}, \"queryParams\": {\"api_key\": \"{{.access_token}}\"}, \"body\": {\"api_key\": \"{{.accessToken}}\"}}"
+    description: "Custom authentication response usage configuration. Required when authType is 'custom'. Defines how to use auth response values in subsequent requests using template syntax {{.jq_path}}. Example can be found in examples/config-custom-auth.env"
     dependencies:
       - on: authType
         when:
