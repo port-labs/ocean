@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.15 (2026-01-28)
+
+
+### Bug Fixes
+
+- Fix cache misses on repository kind when relationships are included.
+
+
+## 5.0.14 (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.1
+
+
+## 5.0.13 (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.0
+
+
 ## 5.0.12 (2026-01-26)
 
 
