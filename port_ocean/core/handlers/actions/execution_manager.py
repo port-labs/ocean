@@ -96,7 +96,6 @@ class ExecutionManager:
         self._poll_check_interval_seconds: int = poll_check_interval_seconds
         self._visibility_timeout_ms: int = visibility_timeout_ms
         self._max_wait_seconds_before_shutdown: float = max_wait_seconds_before_shutdown
-        self._poll_wf_node: bool = False
 
         signal_handler.register(self.shutdown)
 
@@ -164,21 +163,10 @@ class ExecutionManager:
 
                 poll_limit = self._high_watermark - queues_size
 
-                if self._poll_wf_node:
-                    runs: list[BaseRun] = list(
-                        await ocean.port_client.claim_pending_wf_node_runs(
-                            limit=poll_limit,
-                            visibility_timeout_ms=self._visibility_timeout_ms,
-                        )
-                    )
-                else:
-                    runs = list(
-                        await ocean.port_client.claim_pending_runs(
-                            limit=poll_limit,
-                            visibility_timeout_ms=self._visibility_timeout_ms,
-                        )
-                    )
-                self._poll_wf_node = not self._poll_wf_node
+                runs = await ocean.port_client.claim_pending_runs(
+                    limit=poll_limit,
+                    visibility_timeout_ms=self._visibility_timeout_ms,
+                )
 
                 if not runs:
                     logger.debug(
@@ -237,7 +225,6 @@ class ExecutionManager:
                     "Unexpected error in poll action runs, will attempt to re-poll",
                     error=e,
                 )
-                await asyncio.sleep(self._poll_check_interval_seconds)
 
     async def _get_queues_size(self) -> int:
         """
@@ -391,7 +378,7 @@ class ExecutionManager:
                         backoff_seconds=backoff_seconds,
                     )
                     msg = f"Delayed due to low remaining rate limit. Will attempt to re-run in {backoff_seconds} seconds"
-                    await ocean.port_client.post_base_run_log(
+                    await ocean.port_client.post_run_log(
                         run, msg, level="WARNING", should_raise=False
                     )
                     await asyncio.sleep(backoff_seconds)
@@ -402,7 +389,7 @@ class ExecutionManager:
                     )
                     return
 
-                await ocean.port_client.acknowledge_base_run(run)
+                await ocean.port_client.acknowledge_run(run)
                 logger.info("Run acknowledged successfully")
             except RunAlreadyAcknowledgedError:
                 logger.warning(
@@ -428,7 +415,7 @@ class ExecutionManager:
                 error_summary = f"Failed to execute run: {str(e)}"
 
             if error_summary:
-                await ocean.port_client.report_base_run_failure(
+                await ocean.port_client.report_run_failure(
                     run, error_summary, should_raise=False
                 )
 

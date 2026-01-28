@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 import httpx
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.mixins.actions import ActionsClientMixin
@@ -16,17 +16,36 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
     def __init__(self, auth: PortAuthentication, client: httpx.AsyncClient):
         ActionsClientMixin.__init__(self, auth, client)
         WorkflowNodesClientMixin.__init__(self, auth, client)
+        self._poll_wf_node: bool = False
 
     def _is_wf_node_run(self, run: BaseRun) -> bool:
         return isinstance(run, WorkflowNodeRun)
 
-    async def acknowledge_base_run(self, run: BaseRun) -> None:
+    async def claim_pending_runs(
+        self, limit: int, visibility_timeout_ms: int
+    ) -> list[BaseRun]:
+        if self._poll_wf_node:
+            runs: list[BaseRun] = list(
+                await self.claim_pending_wf_node_runs(
+                    limit=limit, visibility_timeout_ms=visibility_timeout_ms
+                )
+            )
+        else:
+            runs = list(
+                await self.claim_pending_action_runs(
+                    limit=limit, visibility_timeout_ms=visibility_timeout_ms
+                )
+            )
+        self._poll_wf_node = not self._poll_wf_node
+        return runs
+
+    async def acknowledge_run(self, run: BaseRun) -> None:
         if self._is_wf_node_run(run):
             await self.acknowledge_wf_node_run(run.id)
         else:
-            await self.acknowledge_run(run.id)
+            await self.acknowledge_action_run(run.id)
 
-    async def post_base_run_log(
+    async def post_run_log(
         self,
         run: BaseRun,
         message: str,
@@ -40,9 +59,9 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 should_raise=should_raise,
             )
         else:
-            await self.post_run_log(run.id, message)
+            await self.post_action_run_log(run.id, message)
 
-    async def report_base_run_failure(
+    async def report_run_failure(
         self,
         run: BaseRun,
         error_summary: str,

@@ -85,9 +85,10 @@ def mock_port_client() -> MagicMock:
     mock_port_client.acknowledge_wf_node_run = AsyncMock()
     mock_port_client.get_wf_node_run_by_external_id = AsyncMock()
     mock_port_client.patch_wf_node_run = AsyncMock()
-    mock_port_client.acknowledge_base_run = AsyncMock()
-    mock_port_client.post_base_run_log = AsyncMock()
-    mock_port_client.report_base_run_failure = AsyncMock()
+    mock_port_client.claim_pending_runs = AsyncMock(return_value=[])
+    mock_port_client.acknowledge_run = AsyncMock()
+    mock_port_client.post_run_log = AsyncMock()
+    mock_port_client.report_run_failure = AsyncMock()
     mock_port_client.auth = AsyncMock(spec=PortAuthentication)
     mock_port_client.auth.is_machine_user = AsyncMock(return_value=True)
     return mock_port_client
@@ -243,7 +244,7 @@ class TestExecutionManager:
             execution_manager._actions_executors["test_action"], "execute"
         ) as mock_execute:
             await execution_manager._execute_run(mock_test_action_run)
-            mock_port_client.acknowledge_base_run.assert_called_once_with(
+            mock_port_client.acknowledge_run.assert_called_once_with(
                 mock_test_action_run
             )
             mock_execute.assert_called_once()
@@ -256,7 +257,7 @@ class TestExecutionManager:
     ) -> None:
         # Arrange
         mock_test_action_run = generate_mock_action_run()
-        mock_port_client.acknowledge_base_run.side_effect = RunAlreadyAcknowledgedError()
+        mock_port_client.acknowledge_run.side_effect = RunAlreadyAcknowledgedError()
 
         # Act
         with patch.object(
@@ -265,7 +266,7 @@ class TestExecutionManager:
             await execution_manager._execute_run(mock_test_action_run)
 
             # Assert
-            mock_port_client.acknowledge_base_run.assert_called_once_with(
+            mock_port_client.acknowledge_run.assert_called_once_with(
                 mock_test_action_run
             )
             mock_execute.assert_not_called()
@@ -292,7 +293,7 @@ class TestExecutionManager:
         await execution_manager_without_executors._execute_run(mock_test_action_run)
 
         # Assert
-        mock_port_client.post_base_run_log.assert_called_with(
+        mock_port_client.post_run_log.assert_called_with(
             mock_test_action_run,
             ANY,
             level="WARNING",
@@ -387,7 +388,7 @@ class TestExecutionManager:
             await execution_manager._handle_global_queue_once()
 
             assert run.id not in execution_manager._deduplication_set
-            mock_port_client.acknowledge_base_run.assert_called_once_with(run)
+            mock_port_client.acknowledge_run.assert_called_once_with(run)
             mock_execute.assert_called_once_with(run)
 
     @pytest.mark.asyncio
@@ -411,7 +412,7 @@ class TestExecutionManager:
             await execution_manager._handle_partition_queue_once(partition_name)
 
             assert run.id not in execution_manager._deduplication_set
-            mock_port_client.acknowledge_base_run.assert_called_once_with(run)
+            mock_port_client.acknowledge_run.assert_called_once_with(run)
             mock_execute.assert_called_once_with(run)
 
     @pytest.mark.asyncio
@@ -525,11 +526,11 @@ class TestExecutionManager:
         await execution_manager.start_processing_action_runs()
 
         # Act
-        ack_calls_count: int = mock_port_client.acknowledge_base_run.call_count
+        ack_calls_count: int = mock_port_client.acknowledge_run.call_count
         await execution_manager.shutdown()
 
         # Assert
-        assert mock_port_client.acknowledge_base_run.call_count == ack_calls_count
+        assert mock_port_client.acknowledge_run.call_count == ack_calls_count
 
     @pytest.mark.asyncio
     async def test_global_and_partition_queues_concurrency(
@@ -682,8 +683,8 @@ class TestExecutionManager:
         await execution_manager._execute_run(run)
 
         # Assert
-        assert mock_port_client.report_base_run_failure.call_count == 1
-        called_args, called_kwargs = mock_port_client.report_base_run_failure.call_args
+        assert mock_port_client.report_run_failure.call_count == 1
+        called_args, called_kwargs = mock_port_client.report_run_failure.call_args
         assert called_args[0] == run
         assert error_msg in called_args[1]
         assert called_kwargs.get("should_raise") is False
@@ -704,14 +705,14 @@ class TestExecutionManager:
             request=MagicMock(),
             response=mock_response,
         )
-        mock_port_client.acknowledge_base_run.side_effect = http_error
+        mock_port_client.acknowledge_run.side_effect = http_error
 
         # Act
         await execution_manager._execute_run(run)
 
         # Assert
-        assert mock_port_client.report_base_run_failure.call_count == 1
-        called_args, called_kwargs = mock_port_client.report_base_run_failure.call_args
+        assert mock_port_client.report_run_failure.call_count == 1
+        called_args, called_kwargs = mock_port_client.report_run_failure.call_args
         assert called_args[0] == run
         assert "Failed to trigger run execution" == called_args[1]
         assert called_kwargs.get("should_raise") is False
@@ -772,7 +773,7 @@ class TestExecutionManager:
         # Arrange
         run = generate_mock_action_run()
 
-        # Make execute raise an exception, and report_base_run_failure also fail
+        # Make execute raise an exception, and report_run_failure also fail
         mock_test_executor.execute.side_effect = Exception("Execution failed")
         mock_response = MagicMock(spec=httpx.Response)
         mock_response.status_code = 503
@@ -781,7 +782,7 @@ class TestExecutionManager:
             request=MagicMock(),
             response=mock_response,
         )
-        mock_port_client.report_base_run_failure.side_effect = patch_error
+        mock_port_client.report_run_failure.side_effect = patch_error
 
         # Add run to queue
         await execution_manager._add_run_to_queue(run, GLOBAL_SOURCE)
@@ -809,9 +810,9 @@ class TestExecutionManager:
         # Assert
         # Exception should have been caught by worker loop, not crashed
         # Run should have been acknowledged before execution failed
-        mock_port_client.acknowledge_base_run.assert_called_once_with(run)
-        # report_base_run_failure should have been attempted (even if it failed)
-        mock_port_client.report_base_run_failure.assert_called_once()
+        mock_port_client.acknowledge_run.assert_called_once_with(run)
+        # report_run_failure should have been attempted (even if it failed)
+        mock_port_client.report_run_failure.assert_called_once()
         # Worker task should have completed (either naturally or cancelled), not crashed
         assert worker_task.done()
 
@@ -876,9 +877,7 @@ class TestExecutionManager:
             await execution_manager._execute_run(mock_wf_node_run)
 
             # Assert - should use unified API
-            mock_port_client.acknowledge_base_run.assert_called_once_with(
-                mock_wf_node_run
-            )
+            mock_port_client.acknowledge_run.assert_called_once_with(mock_wf_node_run)
             mock_execute.assert_called_once()
 
     @pytest.mark.asyncio
