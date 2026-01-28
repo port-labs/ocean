@@ -13,7 +13,7 @@ from loguru import logger
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryTransport
 
-from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
+from http_server.overrides import CustomAuthRequestConfig, CustomAuthRequestTemplateConfig
 from http_server.exceptions import CustomAuthRequestError
 from http_server.helpers.template_utils import evaluate_templates_in_dict
 from http_server.auth.custom.lock_manager import LockManager
@@ -32,7 +32,7 @@ class AuthFlowManager(httpx.Auth):
         self,
         config: Dict[str, Any],
         custom_auth_request: CustomAuthRequestConfig,
-        custom_auth_response: CustomAuthResponseConfig,
+        custom_auth_response: CustomAuthRequestTemplateConfig,
         cache: Optional[TemplateCache] = None,
         expiration_tracker: Optional[TokenExpirationTracker] = None,
         reauth_lock_manager: Optional[LockManager] = None,
@@ -275,7 +275,7 @@ class AuthFlowManager(httpx.Auth):
     async def _get_evaluated_templates(
         self,
     ) -> tuple[Dict[str, str], Dict[str, Any], Dict[str, Any]]:
-        """Get evaluated templates from customAuthResponse config, using cache if available.
+        """Get evaluated templates from customAuthRequestTemplate config, using cache if available.
 
         Returns:
             Tuple of (evaluated_headers, evaluated_query_params, evaluated_body)

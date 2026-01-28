@@ -122,7 +122,7 @@ async def test_custom_auth_with_mock_server(
 
     # Note: To fully test custom auth, you would need to:
     # - Set up a test HTTP server that implements OAuth2 or similar
-    # - Configure the integration with custom_auth_request and custom_auth_response
+    # - Configure the integration with custom_auth_request and custom_auth_request_template
     # - Run ocean sail to trigger a resync
     # - Verify the resync completed successfully
     # - Verify entities were created in Port

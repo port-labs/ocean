@@ -42,7 +42,7 @@ class CustomAuthRequestError(CustomAuthError):
     pass
 
 
-class CustomAuthResponseError(CustomAuthError):
-    """Raised when custom auth response configuration is invalid or missing"""
+class CustomAuthRequestTemplateError(CustomAuthError):
+    """Raised when custom auth request template configuration is invalid or missing"""
 
     pass

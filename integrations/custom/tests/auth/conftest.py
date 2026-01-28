@@ -4,7 +4,10 @@ from typing import Dict, Any
 from unittest.mock import MagicMock, AsyncMock
 import pytest
 
-from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
+from http_server.overrides import (
+    CustomAuthRequestConfig,
+    CustomAuthRequestTemplateConfig,
+)
 
 
 @pytest.fixture
@@ -46,9 +49,9 @@ def custom_auth_request() -> CustomAuthRequestConfig:
 
 
 @pytest.fixture
-def custom_auth_response() -> CustomAuthResponseConfig:
+def custom_auth_request_template() -> CustomAuthRequestTemplateConfig:
     """Default custom auth response config"""
-    return CustomAuthResponseConfig(
+    return CustomAuthRequestTemplateConfig(
         headers={"Authorization": "Bearer {{.access_token}}"},
         queryParams={"api_key": "{{.access_token}}"},
         body={"token": "{{.access_token}}"},

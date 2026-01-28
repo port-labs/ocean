@@ -8,7 +8,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from http_server.exceptions import (
     CustomAuthRequestError,
-    CustomAuthResponseError,
+    CustomAuthRequestTemplateError,
 )
 
 
@@ -132,7 +132,7 @@ class CustomAuthRequestConfig(BaseModel):
         allow_population_by_field_name = True
 
 
-class CustomAuthResponseConfig(BaseModel):
+class CustomAuthRequestTemplateConfig(BaseModel):
     """Configuration for using authentication response - defines how to apply auth values to subsequent requests"""
 
     headers: Optional[Dict[str, str]] = Field(
@@ -157,10 +157,10 @@ class CustomAuthResponseConfig(BaseModel):
         body = values.get("body")
 
         if not headers and not query_params and not body:
-            raise CustomAuthResponseError(
+            raise CustomAuthRequestTemplateError(
                 "At least one of 'headers', 'queryParams', or 'body' must be provided "
-                "in customAuthResponse when authType is 'custom'. "
-                "The customAuthResponse config defines how to use the authentication response "
+                "in customAuthRequestTemplate when authType is 'custom'. "
+                "The customAuthRequestTemplate config defines how to use the authentication response "
                 "in subsequent API requests."
             )
         return values

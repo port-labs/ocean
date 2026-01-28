@@ -10,7 +10,7 @@ import httpx
 from http_server.auth.base import AuthHandler
 from http_server.helpers.auth_validation import (
     validate_custom_auth_request_config,
-    validate_custom_auth_response_config,
+    validate_custom_auth_request_template_config,
 )
 from http_server.auth.custom.auth_flow import AuthFlowManager
 
@@ -27,8 +27,8 @@ class CustomAuth(AuthHandler):
         custom_auth_request = validate_custom_auth_request_config(
             config.get("custom_auth_request")
         )
-        custom_auth_response = validate_custom_auth_response_config(
-            config.get("custom_auth_response")
+        custom_auth_response = validate_custom_auth_request_template_config(
+            config.get("custom_auth_request_template")
         )
         self.custom_auth = AuthFlowManager(
             config, custom_auth_request, custom_auth_response

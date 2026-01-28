@@ -28,7 +28,7 @@ class TestCustomAuthHandler:
                 "method": "POST",
                 "body": {"grant_type": "client_credentials"},
             },
-            "custom_auth_response": {
+            "custom_auth_request_template": {
                 "headers": {"Authorization": "Bearer {{.access_token}}"},
             },
         }

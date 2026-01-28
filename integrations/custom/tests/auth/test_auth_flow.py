@@ -9,7 +9,7 @@ from typing import Dict, Any
 from unittest.mock import AsyncMock, patch, MagicMock
 
 from http_server.auth.custom.auth_flow import AuthFlowManager
-from http_server.overrides import CustomAuthRequestConfig, CustomAuthResponseConfig
+from http_server.overrides import CustomAuthRequestConfig, CustomAuthRequestTemplateConfig
 
 
 # ============================================================================
@@ -26,9 +26,11 @@ class TestAuthFlowManager:
         self,
         auth_config: Dict[str, Any],
         custom_auth_request: CustomAuthRequestConfig,
-        custom_auth_response: CustomAuthResponseConfig,
+        custom_auth_request_template: CustomAuthRequestTemplateConfig,
     ) -> AuthFlowManager:
-        return AuthFlowManager(auth_config, custom_auth_request, custom_auth_response)
+        return AuthFlowManager(
+            auth_config, custom_auth_request, custom_auth_request_template
+        )
 
     async def test_perform_auth_request_success(
         self, custom_auth: AuthFlowManager
@@ -329,13 +331,13 @@ class TestRequestOverride:
         self,
         auth_config: Dict[str, Any],
         custom_auth_request_minimal: CustomAuthRequestConfig,
-        custom_auth_response: CustomAuthResponseConfig,
+        custom_auth_request_template: CustomAuthRequestTemplateConfig,
     ) -> AuthFlowManager:
         # Create AuthFlowManager without custom_auth_response initially
         return AuthFlowManager(
             auth_config,
             custom_auth_request_minimal,
-            custom_auth_response,
+            custom_auth_request_template,
         )
 
     async def test_override_request_headers(
@@ -343,7 +345,7 @@ class TestRequestOverride:
     ) -> None:
         """Test that headers are correctly overridden"""
         custom_auth.auth_response = {"access_token": "test-token-123"}
-        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+        custom_auth.custom_auth_response = CustomAuthRequestTemplateConfig(
             headers={"Authorization": "Bearer {{.access_token}}", "X-Custom": "value"}
         )
 
@@ -374,7 +376,7 @@ class TestRequestOverride:
     ) -> None:
         """Test that query params are correctly overridden"""
         custom_auth.auth_response = {"access_token": "test-token-456"}
-        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+        custom_auth.custom_auth_response = CustomAuthRequestTemplateConfig(
             queryParams={"api_key": "{{.access_token}}", "version": "v2"}
         )
 
@@ -402,7 +404,7 @@ class TestRequestOverride:
     ) -> None:
         """Test that body is correctly overridden when request has existing JSON body"""
         custom_auth.auth_response = {"access_token": "test-token-789"}
-        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+        custom_auth.custom_auth_response = CustomAuthRequestTemplateConfig(
             body={"token": "{{.access_token}}", "source": "api"}
         )
 
@@ -439,7 +441,7 @@ class TestRequestOverride:
     ) -> None:
         """Test that body is correctly added when request has no body"""
         custom_auth.auth_response = {"access_token": "test-token-empty"}
-        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+        custom_auth.custom_auth_response = CustomAuthRequestTemplateConfig(
             body={"token": "{{.access_token}}"}
         )
 
@@ -467,7 +469,7 @@ class TestRequestOverride:
     ) -> None:
         """Test that body override handles non-JSON body gracefully"""
         custom_auth.auth_response = {"access_token": "test-token-nonjson"}
-        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+        custom_auth.custom_auth_response = CustomAuthRequestTemplateConfig(
             body={"token": "{{.access_token}}"}
         )
 
@@ -498,7 +500,7 @@ class TestRequestOverride:
     ) -> None:
         """Test that headers, query params, and body are all overridden together"""
         custom_auth.auth_response = {"access_token": "test-token-complete"}
-        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+        custom_auth.custom_auth_response = CustomAuthRequestTemplateConfig(
             headers={"Authorization": "Bearer {{.access_token}}"},
             queryParams={"api_key": "{{.access_token}}"},
             body={"token": "{{.access_token}}"},
@@ -539,7 +541,7 @@ class TestRequestOverride:
     ) -> None:
         """Test that request is returned unchanged when no auth_response exists"""
         custom_auth.auth_response = None
-        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+        custom_auth.custom_auth_response = CustomAuthRequestTemplateConfig(
             headers={"Authorization": "Bearer {{.access_token}}"}
         )
 
@@ -565,7 +567,7 @@ class TestRequestOverride:
     ) -> None:
         """Test that body stream is correctly set after overriding"""
         custom_auth.auth_response = {"access_token": "test-token-stream"}
-        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+        custom_auth.custom_auth_response = CustomAuthRequestTemplateConfig(
             body={"token": "{{.access_token}}"}
         )
 
@@ -595,7 +597,7 @@ class TestRequestOverride:
     ) -> None:
         """Test that request extensions are preserved"""
         custom_auth.auth_response = {"access_token": "test-token-ext"}
-        custom_auth.custom_auth_response = CustomAuthResponseConfig(
+        custom_auth.custom_auth_response = CustomAuthRequestTemplateConfig(
             headers={"Authorization": "Bearer {{.access_token}}"}
         )
 

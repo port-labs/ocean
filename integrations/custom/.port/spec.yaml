@@ -166,10 +166,10 @@ configurations:
           equals: custom
         then:
           required: true
-  - name: customAuthResponse
+  - name: customAuthRequestTemplate
     required: false
     type: object
-    description: "Custom authentication response usage configuration. Required when authType is 'custom'. Defines how to use auth response values in subsequent requests using template syntax {{.jq_path}}. Example can be found in examples/config-custom-auth.env"
+    description: "Custom authentication request template configuration. Required when authType is 'custom'. Defines how to use auth response values in subsequent requests using template syntax {{.jq_path}}. Example can be found in examples/config-custom-auth.env"
     dependencies:
       - on: authType
         when:

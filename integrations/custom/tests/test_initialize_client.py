@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import PropertyMock
 from http_server.exceptions import (
     CustomAuthRequestError,
-    CustomAuthResponseError,
+    CustomAuthRequestTemplateError,
     TemplateSyntaxError,
 )
 
@@ -21,7 +21,7 @@ class TestEarlyValidation:
                 "method": "POST",
                 "body": {"grant_type": "client_credentials"},
             },
-            "custom_auth_response": {
+            "custom_auth_request_template": {
                 "headers": {"Authorization": "Bearer {{.access_token}}"},
             },
         }
@@ -50,7 +50,7 @@ class TestEarlyValidation:
         from port_ocean.context.ocean import ocean
 
         config = ocean.integration_config.copy()
-        config["custom_auth_response"] = {
+        config["custom_auth_request_template"] = {
             "headers": {"Authorization": "Bearer {{access_token}}"},  # Missing dot
         }
         monkeypatch.setattr(
@@ -86,14 +86,14 @@ class TestEarlyValidation:
             init_client()
         assert "customAuthRequest is required" in str(exc_info.value)
 
-    def test_init_client_fails_on_missing_custom_auth_response(
+    def test_init_client_fails_on_missing_custom_auth_request_template(
         self, mock_ocean_config: None, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Test that missing customAuthResponse raises CustomAuthResponseError"""
+        """Test that missing customAuthRequestTemplate raises CustomAuthRequestTemplateError"""
         from port_ocean.context.ocean import ocean
 
         config = ocean.integration_config.copy()
-        del config["custom_auth_response"]
+        del config["custom_auth_request_template"]
         monkeypatch.setattr(
             ocean.__class__,
             "integration_config",
@@ -102,18 +102,18 @@ class TestEarlyValidation:
 
         from initialize_client import init_client
 
-        with pytest.raises(CustomAuthResponseError) as exc_info:
+        with pytest.raises(CustomAuthRequestTemplateError) as exc_info:
             init_client()
-        assert "customAuthResponse is required" in str(exc_info.value)
+        assert "customAuthRequestTemplate is required" in str(exc_info.value)
 
-    def test_init_client_validates_empty_custom_auth_response(
+    def test_init_client_validates_empty_custom_auth_request_template(
         self, mock_ocean_config: None, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Test that empty customAuthResponse raises CustomAuthResponseError"""
+        """Test that empty customAuthRequestTemplate raises CustomAuthRequestTemplateError"""
         from port_ocean.context.ocean import ocean
 
         config = ocean.integration_config.copy()
-        config["custom_auth_response"] = {}  # Empty - should fail
+        config["custom_auth_request_template"] = {}  # Empty - should fail
         monkeypatch.setattr(
             ocean.__class__,
             "integration_config",
@@ -122,7 +122,7 @@ class TestEarlyValidation:
 
         from initialize_client import init_client
 
-        with pytest.raises(CustomAuthResponseError) as exc_info:
+        with pytest.raises(CustomAuthRequestTemplateError) as exc_info:
             init_client()
         assert (
             "At least one of 'headers', 'queryParams', or 'body' must be provided"

@@ -1,37 +1,37 @@
 from http_server.overrides import (
     CustomAuthRequestConfig,
-    CustomAuthResponseConfig,
+    CustomAuthRequestTemplateConfig,
 )
 from http_server.exceptions import (
     CustomAuthRequestError,
-    CustomAuthResponseError,
+    CustomAuthRequestTemplateError,
 )
 import pytest
 
 
-class TestCustomAuthResponseConfigValidation:
-    """Test CustomAuthResponseConfig validation"""
+class TestCustomAuthRequestTemplateConfigValidation:
+    """Test CustomAuthRequestTemplateConfig validation"""
 
     def test_valid_config_with_headers(self) -> None:
         """Test that config with headers is valid"""
-        config = CustomAuthResponseConfig(
+        config = CustomAuthRequestTemplateConfig(
             headers={"Authorization": "Bearer {{.token}}"}
         )
         assert config.headers == {"Authorization": "Bearer {{.token}}"}
 
     def test_valid_config_with_query_params(self) -> None:
         """Test that config with queryParams is valid"""
-        config = CustomAuthResponseConfig(queryParams={"api_key": "{{.token}}"})
+        config = CustomAuthRequestTemplateConfig(queryParams={"api_key": "{{.token}}"})
         assert config.queryParams == {"api_key": "{{.token}}"}
 
     def test_valid_config_with_body(self) -> None:
         """Test that config with body is valid"""
-        config = CustomAuthResponseConfig(body={"token": "{{.token}}"})
+        config = CustomAuthRequestTemplateConfig(body={"token": "{{.token}}"})
         assert config.body == {"token": "{{.token}}"}
 
     def test_valid_config_with_multiple_fields(self) -> None:
         """Test that config with multiple fields is valid"""
-        config = CustomAuthResponseConfig(
+        config = CustomAuthRequestTemplateConfig(
             headers={"Authorization": "Bearer {{.token}}"},
             queryParams={"api_key": "{{.token}}"},
         )
@@ -39,18 +39,18 @@ class TestCustomAuthResponseConfigValidation:
         assert config.queryParams is not None
 
     def test_invalid_config_empty(self) -> None:
-        """Test that empty config raises CustomAuthResponseError"""
-        with pytest.raises(CustomAuthResponseError) as exc_info:
-            CustomAuthResponseConfig()
+        """Test that empty config raises CustomAuthRequestTemplateError"""
+        with pytest.raises(CustomAuthRequestTemplateError) as exc_info:
+            CustomAuthRequestTemplateConfig()
         assert (
             "At least one of 'headers', 'queryParams', or 'body' must be provided"
             in str(exc_info.value)
         )
 
     def test_invalid_config_all_none(self) -> None:
-        """Test that config with all fields None raises CustomAuthResponseError"""
-        with pytest.raises(CustomAuthResponseError) as exc_info:
-            CustomAuthResponseConfig(headers=None, queryParams=None, body=None)
+        """Test that config with all fields None raises CustomAuthRequestTemplateError"""
+        with pytest.raises(CustomAuthRequestTemplateError) as exc_info:
+            CustomAuthRequestTemplateConfig(headers=None, queryParams=None, body=None)
         assert (
             "At least one of 'headers', 'queryParams', or 'body' must be provided"
             in str(exc_info.value)
