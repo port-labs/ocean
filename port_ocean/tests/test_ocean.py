@@ -121,7 +121,7 @@ class TestBaseUrl:
             ("https://example.com", "/my-prefix/", "https://example.com/my-prefix"),
             ("https://example.com/", "/my-prefix/", "https://example.com/my-prefix"),
             ("https://example.com", None, "https://example.com"),
-            ("https://example.com/", None, "https://example.com"),
+            ("https://example.com/", None, "https://example.com/"),
         ],
     )
     def test_base_url_constructs_correct_url(
