@@ -2,7 +2,11 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 
-from webhook.webhook_client import ServicenowWebhookClient, REST_MESSAGE_NAME
+from webhook.webhook_client import (
+    ServicenowWebhookClient,
+    REST_MESSAGE_NAME,
+    WEBHOOK_ENDPOINT,
+)
 from tests.conftest import SAMPLE_INCIDENT_DATA
 
 
@@ -252,7 +256,7 @@ class TestOutboundMessage:
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._create_rest_message_parent(
-                "https://example.com/webhook"
+                f"https://example.com/integration/{WEBHOOK_ENDPOINT}"
             )
 
             assert result == "new_parent_id"
@@ -268,7 +272,7 @@ class TestOutboundMessage:
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._create_rest_message_parent(
-                "https://example.com/webhook",
+                f"https://example.com/integration/{WEBHOOK_ENDPOINT}",
             )
 
             assert result is None
@@ -286,7 +290,7 @@ class TestOutboundMessage:
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._create_rest_message_if_not_exists(
-                "https://example.com/webhook",
+                f"https://example.com/integration/{WEBHOOK_ENDPOINT}",
             )
 
             assert mock_request.call_count == 1
@@ -311,7 +315,7 @@ class TestOutboundMessage:
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._create_rest_message_if_not_exists(
-                "https://example.com/webhook",
+                f"https://example.com/integration/{WEBHOOK_ENDPOINT}",
             )
 
             assert result
@@ -331,7 +335,7 @@ class TestOutboundMessage:
 
         with patch.object(webhook_client, "make_request", mock_request):
             result = await webhook_client._create_rest_message_if_not_exists(
-                "https://example.com/webhook",
+                f"https://example.com/integration/{WEBHOOK_ENDPOINT}",
             )
 
             assert not result

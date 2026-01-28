@@ -9,7 +9,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from abc import abstractmethod
 
 
-class _ServicenowAbstractWebhookProcessor(AbstractWebhookProcessor):
+class ServicenowAbstractWebhookProcessor(AbstractWebhookProcessor):
     """Base class for all ServiceNow webhook processors."""
 
     @abstractmethod

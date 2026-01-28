@@ -1,6 +1,6 @@
 from typing import Any, List
 from webhook.processors._base_processor import (
-    _ServicenowAbstractWebhookProcessor,
+    ServicenowAbstractWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
@@ -12,7 +12,7 @@ from integration import ObjectKind
 from webhook.initialize_client import initialize_webhook_client
 
 
-class IncidentWebhookProcessor(_ServicenowAbstractWebhookProcessor):
+class IncidentWebhookProcessor(ServicenowAbstractWebhookProcessor):
     """Incident webhook processor."""
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:

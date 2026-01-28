@@ -6,6 +6,7 @@ import asyncio
 from webhook.events import DEFAULT_FIELDS_PER_TABLE
 
 REST_MESSAGE_NAME = "Ocean Port Webhook"
+WEBHOOK_ENDPOINT = "/webhook"
 
 
 class ServicenowWebhookClient(ServicenowClient):
@@ -258,7 +259,7 @@ class ServicenowWebhookClient(ServicenowClient):
 
     async def create_webhook(self, webhook_base_url: str, tables: List[str]) -> None:
         """Set up webhooks for the specified tables"""
-        webhook_url = f"{webhook_base_url.rstrip('/')}/integration/webhook"
+        webhook_url = f"{webhook_base_url.rstrip('/')}/integration/{WEBHOOK_ENDPOINT}"
 
         rest_message_exists = await self._create_rest_message_if_not_exists(webhook_url)
         if not rest_message_exists:

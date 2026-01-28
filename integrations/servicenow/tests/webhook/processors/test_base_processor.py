@@ -5,12 +5,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from webhook.processors._base_processor import _ServicenowAbstractWebhookProcessor
+from webhook.processors._base_processor import ServicenowAbstractWebhookProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 
-class MockServicenowProcessor(_ServicenowAbstractWebhookProcessor):
-    """Mock concrete implementation of _ServicenowAbstractWebhookProcessor for testing."""
+class MockServicenowProcessor(ServicenowAbstractWebhookProcessor):
+    """Mock concrete implementation of ServicenowAbstractWebhookProcessor for testing."""
 
     def _should_process_event(self, event: WebhookEvent) -> bool:
         # Simple implementation for testing: process if 'process_me' is in payload
@@ -36,7 +36,7 @@ def base_processor(mock_webhook_event: WebhookEvent) -> MockServicenowProcessor:
 
 @pytest.mark.asyncio
 class TestServicenowAbstractWebhookProcessor:
-    """Test suite for _ServicenowAbstractWebhookProcessor."""
+    """Test suite for ServicenowAbstractWebhookProcessor."""
 
     async def test_authenticate_always_returns_true(
         self, base_processor: MockServicenowProcessor
