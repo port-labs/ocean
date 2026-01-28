@@ -9,10 +9,10 @@ from http_server.overrides import HttpServerResourceConfig, HttpServerSelector
 
 
 async def mock_resolve_single_endpoint() -> (
-    AsyncGenerator[tuple[str, Dict[str, str]], None]
+    AsyncGenerator[list[tuple[str, Dict[str, str]]], None]
 ):
-    """Helper mock generator that yields a single endpoint"""
-    yield ("/api/v1/users", {})
+    """Helper mock generator that yields a single batch with one endpoint"""
+    yield [("/api/v1/users", {})]
 
 
 class TestListResponseHandling:
