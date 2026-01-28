@@ -44,7 +44,7 @@ class TestAuthFlowManager:
         )
         mock_response.raise_for_status = MagicMock()
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("http_server.auth.custom.auth_flow.OceanAsyncClient") as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
@@ -69,7 +69,7 @@ class TestAuthFlowManager:
         mock_response.json = MagicMock(return_value={"access_token": "token"})
         mock_response.raise_for_status = MagicMock()
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("http_server.auth.custom.auth_flow.OceanAsyncClient") as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
@@ -97,7 +97,7 @@ class TestAuthFlowManager:
         mock_response.json = MagicMock(return_value={"access_token": "token"})
         mock_response.raise_for_status = MagicMock()
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("http_server.auth.custom.auth_flow.OceanAsyncClient") as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
@@ -126,7 +126,7 @@ class TestAuthFlowManager:
         )
         mock_response.raise_for_status = MagicMock(side_effect=error)
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("http_server.auth.custom.auth_flow.OceanAsyncClient") as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
@@ -152,7 +152,7 @@ class TestAuthFlowManager:
         mock_api_response.status_code = 200
         mock_api_response.read = MagicMock(return_value=b'{"data": "success"}')
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("http_server.auth.custom.auth_flow.OceanAsyncClient") as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
@@ -223,7 +223,7 @@ class TestAuthFlowManager:
         mock_auth_response.json = MagicMock(return_value={"access_token": "new-token"})
         mock_auth_response.raise_for_status = MagicMock()
 
-        with patch("httpx.AsyncClient") as mock_client_class:
+        with patch("http_server.auth.custom.auth_flow.OceanAsyncClient") as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value.__aenter__.return_value = (
                 mock_client_instance
