@@ -4,6 +4,9 @@ if [ -z "$BUILD_CONTEXT" ]; then
     exit 1
 fi
 
+# Sync CA certificates to unprivileged user directory
+source /app/integrations/_infra/sync_ca_certs.sh
+
 if [ ! -d ".venv-docker" ]; then
     /usr/bin/python3 -m venv .venv-docker
     source .venv-docker/bin/activate
@@ -11,7 +14,7 @@ if [ ! -d ".venv-docker" ]; then
     python -m poetry install
 fi
 
-cd $BUILD_CONTEXT
+cd integrations/$BUILD_CONTEXT
 
 if [ ! -d ".venv-docker" ]; then
     /usr/bin/python3 -m venv .venv-docker
@@ -21,6 +24,7 @@ if [ ! -d ".venv-docker" ]; then
 fi
 source .venv-docker/bin/activate
 python -m pip install -e ../../
+python -m pip install -e .
 
 python -m pip install debugpy
 
