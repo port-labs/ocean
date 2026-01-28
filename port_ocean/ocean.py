@@ -222,7 +222,7 @@ class Ocean:
         url = self.config.base_url or integration_config.get("app_host")
         if not url:
             return url
-        return f"{url.rstrip('/')}{self.route_prefix}"
+        return f"{url.rstrip('/')}{self.route_prefix}" if self.route_prefix else url
 
     def load_external_oauth_access_token(self) -> str | None:
         if self.config.oauth_access_token_file_path is not None:
