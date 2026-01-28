@@ -1,13 +1,7 @@
 import time
 from typing import Dict, Set
 from loguru import logger
-from port_ocean.core.models import (
-    BaseRun,
-    WorkflowNodeRun,
-    RunStatus,
-    WorkflowNodeRunStatus,
-    WorkflowNodeRunResult,
-)
+from port_ocean.core.models import BaseRun
 import asyncio
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.queue.abstract_queue import AbstractQueue
@@ -380,8 +374,6 @@ class ExecutionManager:
         """
         Execute a run using its registered executor.
         """
-        is_wf_node = isinstance(run, WorkflowNodeRun)
-
         with logger.contextualize(run_id=run.id, action=run.action_type):
             error_summary: str | None = None
             try:
@@ -399,18 +391,9 @@ class ExecutionManager:
                         backoff_seconds=backoff_seconds,
                     )
                     msg = f"Delayed due to low remaining rate limit. Will attempt to re-run in {backoff_seconds} seconds"
-                    if is_wf_node:
-                        await ocean.port_client.patch_wf_node_run(
-                            run.id,
-                            {
-                                "logs": [
-                                    {"logLevel": "WARNING", "message": msg, "tags": []}
-                                ]
-                            },
-                            should_raise=False,
-                        )
-                    else:
-                        await ocean.port_client.post_run_log(run.id, msg)
+                    await ocean.port_client.post_base_run_log(
+                        run, msg, level="WARNING", should_raise=False
+                    )
                     await asyncio.sleep(backoff_seconds)
 
                 if self._is_shutting_down.is_set():
@@ -419,10 +402,7 @@ class ExecutionManager:
                     )
                     return
 
-                if is_wf_node:
-                    await ocean.port_client.acknowledge_wf_node_run(run.id)
-                else:
-                    await ocean.port_client.acknowledge_run(run.id)
+                await ocean.port_client.acknowledge_base_run(run)
                 logger.info("Run acknowledged successfully")
             except RunAlreadyAcknowledgedError:
                 logger.warning(
@@ -448,33 +428,9 @@ class ExecutionManager:
                 error_summary = f"Failed to execute run: {str(e)}"
 
             if error_summary:
-                await self._report_run_failure(run, error_summary, is_wf_node)
-
-    async def _report_run_failure(
-        self, run: BaseRun, error_summary: str, is_wf_node: bool
-    ) -> None:
-        """Report a run failure to the appropriate API."""
-        if is_wf_node:
-            await ocean.port_client.patch_wf_node_run(
-                run.id,
-                {
-                    "status": WorkflowNodeRunStatus.COMPLETED,
-                    "result": WorkflowNodeRunResult.FAILED,
-                    "logs": [
-                        {"logLevel": "ERROR", "message": error_summary, "tags": []}
-                    ],
-                },
-                should_raise=False,
-            )
-        else:
-            await ocean.port_client.patch_run(
-                run.id,
-                {
-                    "summary": error_summary,
-                    "status": RunStatus.FAILURE,
-                },
-                should_raise=False,
-            )
+                await ocean.port_client.report_base_run_failure(
+                    run, error_summary, should_raise=False
+                )
 
     async def _gracefully_cancel_task(self, task: asyncio.Task[None] | None) -> None:
         """
