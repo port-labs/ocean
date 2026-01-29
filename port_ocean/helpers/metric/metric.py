@@ -212,6 +212,7 @@ class Metrics:
         self._integration_version: Optional[str] = None
         self._ocean_version: Optional[str] = None
         self._installation_type: str = "Unknown"
+        self._execution_mode: str = "Unknown"
         self._event_id = ""
         self.sync_state = SyncState.PENDING
 
@@ -238,6 +239,14 @@ class Metrics:
     @installation_type.setter
     def installation_type(self, value: str) -> None:
         self._installation_type = value
+
+    @property
+    def execution_mode(self) -> str:
+        return self._execution_mode
+
+    @execution_mode.setter
+    def execution_mode(self, value: str) -> None:
+        self._execution_mode = value
 
     @property
     def integration_version(self) -> str:
@@ -472,6 +481,7 @@ class Metrics:
                 event = {
                     "integrationType": self.integration_configuration.type,
                     "installationType": self.installation_type,
+                    "executionMode": self.execution_mode,
                     "integrationIdentifier": self.integration_configuration.identifier,
                     "integrationVersion": self.integration_version,
                     "oceanVersion": self.ocean_version,

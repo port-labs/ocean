@@ -82,6 +82,7 @@ class Ocean:
             multiprocessing_enabled=self.process_execution_mode
             == ProcessExecutionMode.multi_process,
         )
+        self.metrics.execution_mode = self.process_execution_mode.value
 
         self.webhook_manager = LiveEventsProcessorManager(
             self.integration_router,
