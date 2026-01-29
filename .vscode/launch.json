@@ -339,6 +339,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/servicenow",
+      "envFile": "${workspaceFolder}/integrations/servicenow/.env",
+      "justMyCode": true,
+      "name": "Run servicenow integration",
+      "program": "${workspaceFolder}/integrations/servicenow/debug.py",
+      "python": "${workspaceFolder}/integrations/servicenow/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/custom",
       "envFile": "${workspaceFolder}/integrations/custom/examples/config-no-auth.env",
       "justMyCode": true,

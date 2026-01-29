@@ -39,7 +39,7 @@ class TemplateCache:
 
     def update(
         self,
-        hash_value: Optional[str],
+        hash_value: str,
         headers: Dict[str, str],
         query_params: Dict[str, Any],
         body: Dict[str, Any],

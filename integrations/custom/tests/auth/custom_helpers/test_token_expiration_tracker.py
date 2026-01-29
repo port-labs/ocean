@@ -7,8 +7,11 @@ import time
 from typing import Dict, Any
 from unittest.mock import patch, MagicMock
 
-from http_server.auth.custom.auth_flow import AuthFlowManager
-from http_server.overrides import CustomAuthRequestConfig, CustomAuthRequestTemplateConfig
+from http_server.auth.custom_helpers.auth_flow import AuthFlowManager
+from http_server.overrides import (
+    CustomAuthRequestConfig,
+    CustomAuthRequestTemplateConfig,
+)
 
 
 # ============================================================================
@@ -33,9 +36,7 @@ class TestTokenExpiration:
             body={"grant_type": "client_credentials"},
             reauthenticate_interval_seconds=3600,  # 1 hour
         )
-        return AuthFlowManager(
-            auth_config, auth_request, custom_auth_request_template
-        )
+        return AuthFlowManager(auth_config, auth_request, custom_auth_request_template)
 
     @pytest.fixture
     def custom_auth_without_interval(
@@ -50,9 +51,7 @@ class TestTokenExpiration:
             body={"grant_type": "client_credentials"},
             # reauthenticate_interval_seconds not set (None)
         )
-        return AuthFlowManager(
-            auth_config, auth_request, custom_auth_request_template
-        )
+        return AuthFlowManager(auth_config, auth_request, custom_auth_request_template)
 
     async def test_expiration_tracker_interval_config(
         self, custom_auth_with_interval: AuthFlowManager

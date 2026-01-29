@@ -2,7 +2,7 @@
 
 from typing import Dict, Any
 
-from http_server.auth.custom.template_cache import TemplateCache
+from http_server.auth.custom_helpers.template_cache import TemplateCache
 
 
 class TestTemplateCache:

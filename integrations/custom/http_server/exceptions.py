@@ -36,6 +36,12 @@ class TemplateVariableNotFoundError(TemplateEvaluationError):
     pass
 
 
+class AuthResponseHashGenerationError(CustomAuthError):
+    """Raised when failed to generate hash for auth response"""
+
+    pass
+
+
 class CustomAuthRequestError(CustomAuthError):
     """Raised when custom auth request configuration is invalid or missing"""
 

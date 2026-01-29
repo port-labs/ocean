@@ -13,12 +13,18 @@ from loguru import logger
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryTransport
 
-from http_server.overrides import CustomAuthRequestConfig, CustomAuthRequestTemplateConfig
+from http_server.overrides import (
+    CustomAuthRequestConfig,
+    CustomAuthRequestTemplateConfig,
+)
 from http_server.exceptions import CustomAuthRequestError
+from http_server.exceptions import AuthResponseHashGenerationError
 from http_server.helpers.template_utils import evaluate_templates_in_dict
-from http_server.auth.custom.lock_manager import LockManager
-from http_server.auth.custom.template_cache import TemplateCache
-from http_server.auth.custom.token_expiration_tracker import TokenExpirationTracker
+from http_server.auth.custom_helpers.lock_manager import LockManager
+from http_server.auth.custom_helpers.template_cache import TemplateCache
+from http_server.auth.custom_helpers.token_expiration_tracker import (
+    TokenExpirationTracker,
+)
 
 # Constants
 DEFAULT_AUTH_TIMEOUT = 30.0
@@ -284,6 +290,12 @@ class AuthFlowManager(httpx.Auth):
             return {}, {}, {}
 
         current_hash = self._get_auth_response_hash()
+
+        if not current_hash:
+            raise AuthResponseHashGenerationError(
+                "Failed to generate hash for auth response"
+            )
+
         if self._cache.is_valid(current_hash):
             logger.debug("CustomAuth: Using cached evaluated templates")
             return self._cache.get_cached()
