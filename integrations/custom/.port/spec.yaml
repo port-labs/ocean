@@ -10,9 +10,20 @@ features:
         description: HTTP API resources - kind is the endpoint path (e.g., /api/v1/users)
 configurations:
   - name: baseUrl
-    required: true
+    required: false
     type: string
-    description: "The base URL of your HTTP API, for example: https://api.example.com"
+    description: "The base URL of your HTTP API, for example: https://api.example.com (required unless multipleHosts is enabled)"
+    dependencies:
+      - on: multipleHosts
+        when:
+          equals: false
+        then:
+          required: true
+  - name: multipleHosts
+    required: false
+    type: boolean
+    default: false
+    description: "When enabled, the kind contains the full URL instead of just the endpoint path. The baseUrl is ignored in this mode."
   - name: authType
     required: false
     type: string
@@ -160,6 +171,7 @@ interface:
   sections:
     - label: Advanced Configuration
       configurationNames:
+        - multipleHosts
         - paginationType
         - pageSize
         - paginationParam

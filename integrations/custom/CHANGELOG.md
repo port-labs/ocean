@@ -1,3 +1,11 @@
+## 0.2.52-beta (2026-01-29)
+
+
+### Features
+
+- Added `multipleHosts` configuration option that enables fetching data from multiple different API hosts within a single integration instance. When enabled, the `kind` contains the full URL instead of just the endpoint path, and the `baseUrl` is ignored (PORT-000)
+
+
 ## 0.2.51-beta (2026-01-27)
 
 
