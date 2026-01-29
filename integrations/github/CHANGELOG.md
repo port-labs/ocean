@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.0.16 (2026-01-29)
+## 5.0.17 (2026-01-29)
 
 
 ### Improvements
 
 - Updated embedded installation/docs links in `.port/spec.yaml` to point to the new GitHub Ocean docs routes.
+
+
+## 5.0.16 (2026-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.34.0
 
 
 ## 5.0.15 (2026-01-28)
