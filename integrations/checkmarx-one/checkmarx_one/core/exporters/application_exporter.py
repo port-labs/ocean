@@ -31,8 +31,6 @@ class CheckmarxApplicationExporter(AbstractCheckmarxExporter):
             params["tag-keys"] = options["tag_keys"]
         if options.get("tag_values"):
             params["tag-values"] = options["tag_values"]
-        if options.get("name"):
-            params["name"] = options["name"]
         async for applications in self.client.send_paginated_request(
             "/applications", "applications", params=params
         ):

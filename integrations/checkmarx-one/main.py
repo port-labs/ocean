@@ -74,7 +74,6 @@ async def on_application_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         CheckmarxOneApplicationResourcesConfig, event.resource_config
     ).selector
     options = ListApplicationOptions(
-        name=selector.name,
         tag_keys=selector.tag_keys,
         tag_values=selector.tag_values,
     )
