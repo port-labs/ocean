@@ -51,7 +51,7 @@ from port_ocean.helpers.metric.metric import (
     MetricPhase,
 )
 from port_ocean.helpers.metric.utils import TimeMetric, TimeMetricWithResourceKind
-from port_ocean.helpers.monitor.monitor import get_monitor
+from port_ocean.helpers.monitor.monitor import start_monitoring, stop_monitoring
 from port_ocean.utils.ipc import FileIPC
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
@@ -708,6 +708,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         clear_http_client_context()
 
         async def process_resource_task() -> None:
+
             result = await self._process_resource(resource, index, user_agent_type)
             file_ipc_map["process_resource"].save(result)
             file_ipc_map["topological_entities"].save(
@@ -723,6 +724,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         # create resource context per resource kind, so resync method could have access to the resource
         # config as we might have multiple resources in the same event
         async with resource_context(resource, index):
+            await start_monitoring()
             resource_kind_id = f"{resource.kind}-{index}"
             ocean.metrics.sync_state = SyncState.SYNCING
 
@@ -750,6 +752,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             finally:
                 # Stop tracking and report resource usage metrics
                 stop_kind_tracking(resource_kind_id)
+                await stop_monitoring()
 
             await ocean.metrics.send_metrics_to_webhook(kind=resource_kind_id)
             await ocean.metrics.report_kind_sync_metrics(
