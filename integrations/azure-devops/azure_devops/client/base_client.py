@@ -3,6 +3,8 @@ from typing import Any, AsyncGenerator, Optional
 import httpx
 from httpx import BasicAuth, ReadTimeout, Response
 from loguru import logger
+from port_ocean.clients.auth.oauth_client import OAuthClient
+from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 from azure_devops.client.rate_limiter import (
@@ -17,8 +19,9 @@ CONTINUATION_TOKEN_KEY = "continuationToken"
 MAX_TIMEMOUT_RETRIES = 3
 
 
-class HTTPBaseClient:
+class HTTPBaseClient(OAuthClient):
     def __init__(self, personal_access_token: str) -> None:
+        super().__init__()
         self._client = OceanAsyncClient(
             retry_config=RetryConfig(
                 retry_after_headers=[
@@ -30,6 +33,48 @@ class HTTPBaseClient:
         self._personal_access_token = personal_access_token
         self._rate_limiter = AzureDevOpsRateLimiter()
 
+    def is_oauth_enabled(self) -> bool:
+        """
+        Safely determine whether OAuth is enabled for the current integration.
+
+        Falls back to False when Ocean app/config are not initialized
+        to preserve existing behavior in non-OAuth environments.
+        """
+        app = getattr(ocean, "app", None)
+        config = getattr(app, "config", None) if app is not None else None
+        return bool(getattr(config, "oauth_access_token_file_path", None))
+
+    def _ensure_oauth_headers(
+        self, headers: Optional[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """
+        Ensure the Authorization header is set correctly when OAuth is enabled.
+        Falls back to PAT if OAuth token is not available (e.g., at app startup).
+        """
+        headers = headers or {}
+        if self.is_oauth_enabled():
+            try:
+                access_token = self.external_access_token
+                headers["Authorization"] = f"Bearer {access_token}"
+            except ValueError:
+                pass
+        return headers
+
+    def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
+        """
+        Refresh Authorization header on retries when OAuth is enabled.
+        Falls back to PAT if OAuth token is not available (e.g., at app startup).
+        """
+        if not self.is_oauth_enabled():
+            return request
+
+        try:
+            access_token = self.external_access_token
+            request.headers["Authorization"] = f"Bearer {access_token}"
+        except ValueError:
+            pass
+        return request
+
     async def send_request(
         self,
         method: str,
@@ -39,7 +84,14 @@ class HTTPBaseClient:
         headers: Optional[dict[str, Any]] = None,
         timeout: int = 5,
     ) -> Response | None:
-        self._client.auth = BasicAuth("", self._personal_access_token)
+        if self.is_oauth_enabled():
+            self._client.auth = None
+            headers = self._ensure_oauth_headers(headers)
+            if not headers.get("Authorization"):
+                self._client.auth = BasicAuth("", self._personal_access_token)
+        else:
+            self._client.auth = BasicAuth("", self._personal_access_token)
+
         self._client.follow_redirects = True
 
         try:
