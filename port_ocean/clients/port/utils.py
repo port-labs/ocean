@@ -66,7 +66,8 @@ def handle_port_status_code(
     response: httpx.Response, should_raise: bool = True, should_log: bool = True
 ) -> None:
     if should_log and response.is_error:
-        error_message = f"Request failed with status code: {response.status_code}, Error: {response.text}"
+        escaped_response_text = response.text.replace("{", "{{").replace("}", "}}")
+        error_message = f"Request failed with status code: {response.status_code}, Error: {escaped_response_text}"
         if response.status_code >= 500 and response.headers.get("x-trace-id"):
             logger.error(
                 error_message,

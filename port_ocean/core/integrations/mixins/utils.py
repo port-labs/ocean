@@ -23,6 +23,7 @@ from port_ocean.exceptions.core import (
     KindNotImplementedException,
 )
 from port_ocean.helpers.metric.metric import MetricType, MetricPhase
+from port_ocean.helpers.monitor.monitor import get_monitor
 from port_ocean.utils.async_http import _http_client
 
 def extract_jq_deletion_path_revised(jq_expression: str) -> str | None:
@@ -202,3 +203,68 @@ def clear_http_client_context() -> None:
             _port_http_client.pop()
     except (RuntimeError, AttributeError):
         pass
+
+def start_kind_tracking(kind: str) -> None:
+    monitor = get_monitor()
+    monitor.start_kind_tracking(kind)
+
+def stop_kind_tracking(kind: str) -> None:
+    monitor = get_monitor()
+    monitor.stop_kind_tracking(kind)
+    stats = monitor.get_kind_stats(kind)
+    if stats.sample_count > 0:
+        # Report CPU metrics
+        ocean.metrics.set_metric(
+            MetricType.CPU_MAX_NAME, [kind], stats.cpu.cpu_max
+        )
+        ocean.metrics.set_metric(
+            MetricType.CPU_MEDIAN_NAME, [kind], stats.cpu.cpu_median
+        )
+        ocean.metrics.set_metric(
+            MetricType.CPU_AVG_NAME, [kind], stats.cpu.cpu_avg
+        )
+        # Report memory metrics
+        ocean.metrics.set_metric(
+            MetricType.MEMORY_MAX_NAME, [kind], stats.memory.memory_max
+        )
+        ocean.metrics.set_metric(
+            MetricType.MEMORY_MEDIAN_NAME,
+            [kind],
+            stats.memory.memory_median,
+        )
+        ocean.metrics.set_metric(
+            MetricType.MEMORY_AVG_NAME, [kind], stats.memory.memory_avg
+        )
+        # Report latency metrics
+        ocean.metrics.set_metric(
+            MetricType.LATENCY_MAX_NAME,
+            [kind],
+            stats.latency.latency_max,
+        )
+        ocean.metrics.set_metric(
+            MetricType.LATENCY_MEDIAN_NAME,
+            [kind],
+            stats.latency.latency_median,
+        )
+        ocean.metrics.set_metric(
+            MetricType.LATENCY_AVG_NAME,
+            [kind],
+            stats.latency.latency_avg,
+        )
+    # Report response size metrics (always report, even if no requests)
+    ocean.metrics.set_metric(
+        MetricType.RESPONSE_SIZE_TOTAL_NAME,
+        [kind],
+        stats.response_size.response_size_total,
+    )
+    ocean.metrics.set_metric(
+        MetricType.RESPONSE_SIZE_AVG_NAME,
+        [kind],
+        stats.response_size.response_size_avg,
+    )
+    ocean.metrics.set_metric(
+        MetricType.RESPONSE_SIZE_MEDIAN_NAME,
+        [kind],
+        stats.response_size.response_size_median,
+    )
+    monitor.cleanup_kind_tracking(kind)

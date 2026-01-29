@@ -1,6 +1,6 @@
 title: ServiceNow
 description: ServiceNow integration for Port Ocean
-icon: Servicenow  # Should be one of the available icons in Port
+icon: Servicenow # Should be one of the available icons in Port
 docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/incident-management/servicenow
 features:
   - type: exporter
@@ -36,3 +36,32 @@ configurations:
     type: string
     sensitive: true
     description: OAuth Client Secret for Client Credentials authentication. To configure OAuth, see the <a href="https://www.servicenow.com/docs/bundle/zurich-platform-security/page/integrate/machine-identity/task/configure-an-oauth-client-credential-grant.html" target="_blank">ServiceNow OAuth documentation</a>
+  - name: enableTablesLiveEventsWebhooks
+    required: false
+    type: boolean
+    default: false
+    description: "Enable automatic creation of Business Rules in ServiceNow for real-time events forwarding to Port. This is a heavy operation that creates Business Rules for All/specified tables by `liveEventTables`."
+  - name: liveEventTables
+    required: false
+    type: array
+    items:
+      type: string
+    description: "Optional list of specific table names to configure for live events. If not specified but enableTablesLiveEventsWebhooks is true, all supported tables will be configured. Use this to limit which tables trigger live events."
+installationDocs:
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: true
+      docs: build-your-software-catalog/sync-data-to-catalog/incident-management/servicenow?installation-methods=hosted-by-port#setup
+  githubWorkflow:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/servicenow?installation-methods=one-time-ci&cicd-method=github#setup
+  gitlabCI:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/servicenow?installation-methods=one-time-ci&cicd-method=gitlab#setup
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/incident-management/servicenow?installation-methods=real-time-self-hosted&cicd-method=gitlab&deploy=helm#setup
+  docker:
+    enabled: false
