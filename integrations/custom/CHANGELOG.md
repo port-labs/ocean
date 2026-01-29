@@ -1,3 +1,10 @@
+## 0.3.0-beta (2026-01-29)
+
+
+### Improvements
+
+- Added custom authentication support to the custom integration
+
 ## 0.2.51-beta (2026-01-27)
 
 
