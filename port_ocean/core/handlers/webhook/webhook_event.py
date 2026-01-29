@@ -64,7 +64,13 @@ class WebhookEvent(LiveEvent):
         cls: Type["WebhookEvent"], request: Request
     ) -> "WebhookEvent":
         trace_id = str(uuid4())
-        payload = await request.json()
+        body = await request.body()
+        logger.info(f"Received webhook request with body size: {len(body)} bytes")
+        try:
+            payload = await request.json()
+        except Exception as e:
+            logger.error(f"Failed to parse webhook body as JSON: {e}")
+            raise
 
         return cls(
             trace_id=trace_id,
