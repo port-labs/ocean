@@ -64,6 +64,11 @@ class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         alert_severity = raw_security_alert["severity"]
         alert_type = raw_security_alert["alertType"]
 
+        empty_results = WebhookEventRawResults(
+            updated_raw_results=[],
+            deleted_raw_results=[],
+        )
+
         if selector.criteria:
             criteria = selector.criteria
             if not self._check_alert_type_criteria(criteria, alert_type):
@@ -71,28 +76,19 @@ class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                     f"Advanced security alert {alert_id} filtered out: "
                     f"alert type '{alert_type}' does not match allowed type '{criteria.alert_type}'. Skipping..."
                 )
-                return WebhookEventRawResults(
-                    updated_raw_results=[],
-                    deleted_raw_results=[],
-                )
+                return empty_results
             if not self._check_severity_criteria(criteria, alert_severity):
                 logger.info(
                     f"Advanced security alert {alert_id} filtered out: "
                     f"severity '{alert_severity}' not in allowed severities {criteria.severities}. Skipping..."
                 )
-                return WebhookEventRawResults(
-                    updated_raw_results=[],
-                    deleted_raw_results=[],
-                )
+                return empty_results
             if not self._check_state_criteria(criteria, alert_state):
                 logger.info(
                     f"Advanced security alert {alert_id} filtered out: "
                     f"state '{alert_state}' not in allowed states {criteria.states}. Skipping..."
                 )
-                return WebhookEventRawResults(
-                    updated_raw_results=[],
-                    deleted_raw_results=[],
-                )
+                return empty_results
 
         security_alert = await client.get_single_advanced_security_alert(
             project_id, repository_id, alert_id
@@ -101,10 +97,7 @@ class AdvancedSecurityWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             logger.warning(
                 f"ID {alert_id} not found, cannot enrich advanced security alert"
             )
-            return WebhookEventRawResults(
-                updated_raw_results=[],
-                deleted_raw_results=[],
-            )
+            return empty_results
         enriched_security_alert = client._enrich_security_alert(
             security_alert, repository_id, project_id
         )
