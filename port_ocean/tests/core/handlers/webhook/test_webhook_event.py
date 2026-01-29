@@ -1,3 +1,4 @@
+import json
 import pytest
 from fastapi import Request
 from port_ocean.core.handlers.webhook.webhook_event import (
@@ -24,9 +25,14 @@ def mock_request(sample_payload: EventPayload, sample_headers: EventHeaders) -> 
         "type": "http",
         "headers": [(k.encode(), v.encode()) for k, v in sample_headers.items()],
     }
-    mock_request = Request(scope)
-    mock_request._json = sample_payload
-    return mock_request
+
+    async def receive() -> dict:
+        return {
+            "type": "http.request",
+            "body": json.dumps(sample_payload).encode("utf-8"),
+        }
+
+    return Request(scope, receive)
 
 
 @pytest.fixture
