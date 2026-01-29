@@ -1,3 +1,29 @@
+
+# Changelog
+
+All notable changes to the Custom integration will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+<!-- towncrier release notes start -->
+
+## 0.2.53-beta (2026-01-28)
+
+
+### Improvements
+
+- Updated requests to be made concurrently
+
+
+## 0.2.52-beta (2026-01-28)
+
+
+### Improvements
+
+- Updated endpoint resolver to yield resolved endpoints and path parameters as they're discovered
+
+
 ## 0.2.51-beta (2026-01-27)
 
 
@@ -314,13 +340,6 @@
 
 - Bumped ocean version to ^0.29.8
 
-
-# Changelog
-
-All notable changes to the Custom integration will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.2.11-beta] - 2025-01-27
 
