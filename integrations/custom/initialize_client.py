@@ -54,10 +54,11 @@ def init_client() -> HttpServerClient:
     custom_headers = _parse_custom_headers(config.get("custom_headers"))
 
     return HttpServerClient(
-        base_url=config["base_url"],
+        base_url=config.get("base_url", ""),
         auth_type=config.get("auth_type", "none"),
         auth_config=config,
         pagination_config=config,
+        multiple_hosts=config.get("multiple_hosts", False),
         verify_ssl=config.get("verify_ssl", True),
         max_concurrent_requests=int(config.get("max_concurrent_requests", 10)),
         custom_headers=custom_headers,

@@ -31,11 +31,13 @@ class HttpServerClient:
         auth_type: str,
         auth_config: Dict[str, Any],
         pagination_config: Dict[str, Any],
+        multiple_hosts: bool = False,
         verify_ssl: bool = True,
         max_concurrent_requests: int = 10,
         custom_headers: Optional[Dict[str, str]] = None,
     ):
-        self.base_url = base_url.rstrip("/")
+        self.base_url = base_url.rstrip("/") if base_url else ""
+        self.multiple_hosts = multiple_hosts
         self.auth_type = auth_type
         self.auth_config = auth_config
         self.pagination_config = pagination_config
@@ -90,16 +92,28 @@ class HttpServerClient:
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch data with pagination handling using handler pattern"""
 
-        base_url = self.base_url.rstrip("/")
-        endpoint_path = endpoint.lstrip("/")
+        if self.multiple_hosts:
+            # Multiple hosts mode: endpoint IS the full URL
+            if not endpoint.startswith(("http://", "https://")):
+                raise ValueError(
+                    f"In multiple_hosts mode, kind must be a full URL starting with "
+                    f"http:// or https://. Got: {endpoint}"
+                )
+            url = endpoint
+        else:
+            # Default mode: combine base_url + endpoint
+            base_url = self.base_url.rstrip("/")
+            endpoint_path = endpoint.lstrip("/")
 
-        # Validate - raise error if empty
-        if not base_url:
-            raise ValueError("base_url cannot be empty")
-        if not endpoint_path:
-            raise ValueError("endpoint cannot be empty")
+            if not base_url:
+                raise ValueError(
+                    "base_url cannot be empty when multiple_hosts is disabled"
+                )
+            if not endpoint_path:
+                raise ValueError("endpoint cannot be empty")
 
-        url = f"{base_url}/{endpoint_path}"
+            url = f"{base_url}/{endpoint_path}"
+
         params = query_params or {}
         request_headers = headers or {}
 
