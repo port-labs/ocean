@@ -205,12 +205,6 @@ class Ocean:
             await repeated_function()
 
     @property
-    def route_prefix(self) -> str:
-        return (
-            f"/{self.config.path_prefix.strip('/')}" if self.config.path_prefix else ""
-        )
-
-    @property
     def base_url(self) -> str:
         integration_config = self.config.integration.config
         if isinstance(integration_config, BaseModel):
@@ -219,10 +213,7 @@ class Ocean:
             logger.warning(
                 "The OCEAN__INTEGRATION__CONFIG__APP_HOST field is deprecated. Please use the OCEAN__BASE_URL field instead."
             )
-        url = self.config.base_url or integration_config.get("app_host")
-        if not url:
-            return url
-        return f"{url.rstrip('/')}{self.route_prefix}" if self.route_prefix else url
+        return self.config.base_url or integration_config.get("app_host")
 
     def load_external_oauth_access_token(self) -> str | None:
         if self.config.oauth_access_token_file_path is not None:
@@ -255,11 +246,9 @@ class Ocean:
             )
 
     def initialize_app(self) -> None:
+        self.fast_api_app.include_router(self.integration_router, prefix="/integration")
         self.fast_api_app.include_router(
-            self.integration_router, prefix=f"{self.route_prefix}/integration"
-        )
-        self.fast_api_app.include_router(
-            self.metrics.create_mertic_router(), prefix=f"{self.route_prefix}/metrics"
+            self.metrics.create_mertic_router(), prefix="/metrics"
         )
 
         @asynccontextmanager

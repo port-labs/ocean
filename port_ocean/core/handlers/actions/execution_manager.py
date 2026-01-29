@@ -225,7 +225,6 @@ class ExecutionManager:
                     "Unexpected error in poll action runs, will attempt to re-poll",
                     error=e,
                 )
-                await asyncio.sleep(self._poll_check_interval_seconds)
 
     async def _get_queues_size(self) -> int:
         """

@@ -107,7 +107,6 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     send_raw_data_examples: bool = True
     oauth_access_token_file_path: str | None = None
     base_url: str | None = None
-    path_prefix: str | None = None
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(
         default_factory=lambda: PollingEventListenerSettings(
