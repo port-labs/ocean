@@ -1,3 +1,11 @@
+## 0.2.52-beta (2026-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.34.0
+
+
 ## 0.2.51-beta (2026-01-27)
 
 
