@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.0 (2026-01-29)
+
+
+### Features
+
+- Introduced resync for `advanced-security-alert` kind
+- Implemented live events for `advanced-security-alert` kind
+
+
 ## 0.6.32 (2026-01-29)
 
 
