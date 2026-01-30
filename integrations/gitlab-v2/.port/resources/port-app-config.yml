@@ -15,7 +15,7 @@ resources:
             url: .web_url
             readme: file://README.md
             codeowners: file://CODEOWNERS
-            language: .__languages // {} | to_entries | max_by(.value) | .key
+            language: .__languages | to_entries | max_by(.value) | .key
   - kind: member
     selector:
       query: 'true'
@@ -71,4 +71,4 @@ resources:
               100) end)
             reviewers: .reviewers | map(.name)
           relations:
-            project: .references.full // "" | gsub("!.+"; "")
+            project: .references.full | gsub("!.+"; "")

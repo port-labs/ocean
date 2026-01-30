@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.30 (2026-01-30)
+
+
+### Improvements
+
+- Implemented `GitLabRateLimiter` with proactive rate limit tracking
+- Added support for GitLab rate limit response headers (`RateLimit-Remaining`, `RateLimit-Reset`, `RateLimit-Limit`)
+
+
 ## 0.5.29 (2026-01-29)
 
 
