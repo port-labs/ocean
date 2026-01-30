@@ -31,6 +31,7 @@ class Kind(StrEnum):
     FOLDER = "folder"
     ITERATION = "iteration"
     BRANCH = "branch"
+    ADVANCED_SECURITY_ALERT = "advanced-security-alert"
 
 
 ACTIVE_PULL_REQUEST_SEARCH_CRITERIA: dict[str, Any] = {
