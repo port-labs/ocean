@@ -121,7 +121,6 @@ class JiraClient(OAuthClient):
         url: str,
         method: str,
         ignored_errors: Optional[list[IgnoredError]] = None,
-        ignore_default_errors: bool = True,
     ) -> bool:
         """Check if an HTTP error should be ignored (logged but not raised).
 
@@ -130,13 +129,12 @@ class JiraClient(OAuthClient):
             url: The URL that was requested
             method: The HTTP method used
             ignored_errors: Additional errors to ignore for this request
-            ignore_default_errors: Whether to also check default ignored errors
 
         Returns:
             True if the error should be ignored, False otherwise
         """
         all_ignored_errors = (ignored_errors or []) + (
-            self._DEFAULT_IGNORED_ERRORS if ignore_default_errors else []
+            self._DEFAULT_IGNORED_ERRORS if self._DEFAULT_IGNORED_ERRORS else []
         )
         status_code = error.response.status_code
 
@@ -157,7 +155,6 @@ class JiraClient(OAuthClient):
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
         ignored_errors: Optional[list[IgnoredError]] = None,
-        ignore_default_errors: bool = True,
     ) -> dict[str, Any]:
         """Send a request to the Jira API with error handling and rate limiting.
 
@@ -168,7 +165,6 @@ class JiraClient(OAuthClient):
             json: JSON body data
             headers: Additional headers
             ignored_errors: Additional errors to ignore for this request
-            ignore_default_errors: Whether to ignore default errors (400, 403, 404)
 
         Returns:
             JSON response data, or empty dict {} if an ignored error occurred
@@ -182,9 +178,7 @@ class JiraClient(OAuthClient):
                 return response.json()
         except httpx.HTTPStatusError as e:
             response = e.response
-            if self._should_ignore_error(
-                e, url, method, ignored_errors, ignore_default_errors
-            ):
+            if self._should_ignore_error(e, url, method, ignored_errors):
                 return {}
 
             logger.error(
@@ -212,7 +206,7 @@ class JiraClient(OAuthClient):
             params["startAt"] = start_at
             response_data = await self._send_api_request("GET", url, params=params)
 
-            if response_data is None:
+            if not response_data:
                 break
 
             items = response_data.get(extract_key, []) if extract_key else response_data
@@ -244,7 +238,7 @@ class JiraClient(OAuthClient):
 
             response_data = await self._send_api_request(method, url, params=params)
 
-            if response_data is None:
+            if not response_data:
                 break
 
             items = response_data.get(extract_key, [])
@@ -395,7 +389,7 @@ class JiraClient(OAuthClient):
                 "GET", url, params=params, ignored_errors=ignored_errors
             )
 
-            if response_data is None:
+            if not response_data:
                 break
 
             items = response_data.get(extract_key, []) if extract_key else response_data
