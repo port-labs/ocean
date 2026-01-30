@@ -42,8 +42,10 @@ def get_pyproject_data() -> dict[str, Any] | None:
     try:
         with open("./pyproject.toml", "rb") as toml_file:
             pyproject_data = tomli.load(toml_file)
-            return pyproject_data["tool"]["poetry"]
-    except (FileNotFoundError, KeyError):
+            return pyproject_data.get("project") or pyproject_data.get("tool", {}).get(
+                "poetry"
+            )
+    except FileNotFoundError:
         return None
 
 
