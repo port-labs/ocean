@@ -10,10 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.5.29 (2026-01-29)
 
 
-### Improvements
+### Bug Fixes
 
-- Implemented `GitLabRateLimiter` with proactive rate limit tracking
-- Added support for GitLab rate limit response headers (`RateLimit-Remaining`, `RateLimit-Reset`, `RateLimit-Limit`)
+- Fixed null handling in port config mappings for language and project fields to prevent errors when fields are missing
 
 
 ## 0.5.28 (2026-01-29)
