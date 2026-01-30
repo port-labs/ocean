@@ -212,6 +212,21 @@ EXPECTED_WEBHOOK_EVENTS = [
     },
 ]
 
+EXPECTED_SECURITY_ALERTS = [
+    {
+        "id": 1,
+        "name": "Alert One",
+        "state": "active",
+        "severity": "high",
+    },
+    {
+        "id": 2,
+        "name": "Alert Two",
+        "state": "closed",
+        "severity": "low",
+    },
+]
+
 EXPECTED_SUBSCRIPTION_CREATION_RESPONSE = {
     "id": "subscription123",
     "eventType": "git.push",
@@ -1315,6 +1330,46 @@ async def test_generate_repository_policies() -> None:
 
             # ASSERT
             assert policies == EXPECTED_POLICIES
+
+
+@pytest.mark.asyncio
+async def test_generate_security_alerts() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    repository: dict[str, Any] = {
+        "id": "repo1",
+        "name": "Repo One",
+        "project": {"id": "proj1", "name": "Project One"},
+    }
+
+    # MOCK
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "alerts" in url:
+            yield EXPECTED_SECURITY_ALERTS
+        else:
+            yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        # ACT
+        alerts: List[Dict[str, Any]] = []
+        async for alert_batch in client.generate_advanced_security_alerts(repository):
+            alerts.extend(alert_batch)
+
+        # ASSERT
+        assert len(alerts) == 2
+        assert alerts[0]["id"] == 1
+        assert alerts[0]["__repositoryId"] == repository["id"]
+        assert alerts[0]["__projectId"] == repository["project"]["id"]
+        assert alerts[1]["id"] == 2
+        assert alerts[1]["__repositoryId"] == repository["id"]
 
 
 @pytest.mark.asyncio
