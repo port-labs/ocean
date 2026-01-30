@@ -10,7 +10,6 @@ from loguru import logger
 
 from port_ocean.context.ocean import ocean
 from http_server.overrides import HttpServerSelector, ApiPathParameter
-from initialize_client import init_client
 
 
 def extract_path_parameters(endpoint: str) -> List[str]:
@@ -69,6 +68,9 @@ async def query_api_for_parameters(param_config: ApiPathParameter) -> List[str]:
     Returns:
         List of parameter values extracted from API response
     """
+    # Lazy import to avoid circular dependency
+    from initialize_client import init_client
+
     http_client = init_client()
     logger.info(f"Querying API for parameter values from {param_config.endpoint}")
 

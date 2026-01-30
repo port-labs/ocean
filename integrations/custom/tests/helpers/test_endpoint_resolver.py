@@ -125,7 +125,7 @@ class TestGenerateResolvedEndpoints:
 class TestQueryApiForParameters:
     """Test querying API for parameter values"""
 
-    @patch("http_server.helpers.endpoint_resolver.init_client")
+    @patch("initialize_client.init_client")
     @patch("http_server.helpers.endpoint_resolver.ocean")
     async def test_query_with_single_batch(
         self, mock_ocean: MagicMock, mock_init_client: MagicMock
@@ -169,7 +169,7 @@ class TestQueryApiForParameters:
         assert result == ["team-1", "team-2"]
         mock_init_client.assert_called_once()
 
-    @patch("http_server.helpers.endpoint_resolver.init_client")
+    @patch("initialize_client.init_client")
     @patch("http_server.helpers.endpoint_resolver.ocean")
     async def test_query_with_filter(
         self, mock_ocean: MagicMock, mock_init_client: MagicMock
@@ -216,7 +216,7 @@ class TestQueryApiForParameters:
         # Assert - only active teams
         assert result == ["team-1", "team-3"]
 
-    @patch("http_server.helpers.endpoint_resolver.init_client")
+    @patch("initialize_client.init_client")
     @patch("http_server.helpers.endpoint_resolver.ocean")
     async def test_query_with_empty_response(
         self, mock_ocean: MagicMock, mock_init_client: MagicMock
