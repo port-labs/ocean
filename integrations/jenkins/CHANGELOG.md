@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.49 (2026-01-30)
+
+
+### Improvements
+
+- Cache and replay paginated jobs/builds chunks to avoid large batch mapping timeouts during resync
+
+
 ## 0.2.48 (2026-01-29)
 
 
