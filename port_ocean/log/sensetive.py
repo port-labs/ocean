@@ -52,9 +52,7 @@ class SensitiveLogFilter:
         if isinstance(obj, list):
             return [self.mask_object(o, full_hide) for o in obj]
         if isinstance(obj, dict):
-            for k, v in obj.items():
-                obj[k] = self.mask_object(v, full_hide)
-
+            return {k: self.mask_object(v, full_hide) for k, v in obj.items()}
         return obj
 
     def create_filter(self, full_hide: bool = False) -> Callable[["Record"], bool]:

@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.34.1 (2026-01-30)
+
+### Bug fixes
+
+- Fixed mask_object mutating original data in place, which caused entity properties to contain [REDACTED] values when examples were sent before entity transformation.
+
+
 ## 0.34.0 (2026-01-28)
 
 ### Improvements
