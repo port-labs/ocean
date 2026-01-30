@@ -7,7 +7,13 @@ from httpx import BasicAuth, Request, Response
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
-from jira.client import PAGE_SIZE, WEBHOOK_EVENTS, OAUTH2_WEBHOOK_EVENTS, JiraClient
+from jira.client import (
+    PAGE_SIZE,
+    WEBHOOK_EVENTS,
+    OAUTH2_WEBHOOK_EVENTS,
+    JiraClient,
+    IgnoredError,
+)
 from jira.overrides import JiraIssueSelector
 
 
@@ -162,11 +168,12 @@ async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
         assert len(issues) == 2
         assert issues == issues_data["issues"]
 
-        # Verify params were passed correctly
+        # Verify params were passed correctly including JQL ignored errors
         mock_request.assert_called_with(
             "GET",
             f"{mock_jira_client.api_url}/search/jql",
             params={"jql": "project = TEST"},
+            ignored_errors=mock_jira_client._JQL_IGNORED_ERRORS,
         )
 
 
@@ -215,6 +222,7 @@ async def test_get_paginated_issues_without_jql_param(
             "GET",
             f"{mock_jira_client.api_url}/search/jql",
             params={"jql": default_jql},
+            ignored_errors=mock_jira_client._JQL_IGNORED_ERRORS,
         )
 
 
@@ -242,6 +250,7 @@ async def test_get_paginated_issues_with_empty_jql(
             "GET",
             f"{mock_jira_client.api_url}/search/jql",
             params={"jql": custom_jql},
+            ignored_errors=mock_jira_client._JQL_IGNORED_ERRORS,
         )
 
 
@@ -507,17 +516,16 @@ def test_jira_issue_selector_default_jql() -> None:
 @pytest.mark.parametrize(
     "status_code,error_message",
     [
-        (400, "The value 'RESTRICTED_PROJECT' does not exist for the field 'project'."),
         (403, "You do not have permission to access this resource."),
         (404, "Issue does not exist or you do not have permission to see it."),
     ],
 )
-async def test_send_api_request_handles_ignored_errors(
+async def test_send_api_request_handles_default_ignored_errors(
     mock_jira_client: JiraClient,
     status_code: int,
     error_message: str,
 ) -> None:
-    """Test that _send_api_request handles 400, 403, 404 errors gracefully.
+    """Test that _send_api_request handles 403, 404 errors gracefully by default.
 
     These errors typically indicate permission issues or missing resources
     and should not crash the entire resync.
@@ -540,19 +548,24 @@ async def test_send_api_request_handles_ignored_errors(
             "GET", "http://example.com/search"
         )
 
-        # Should return None without raising an exception
-        assert result is None
+        # Should return empty dict without raising an exception
+        assert result == {}
 
 
 @pytest.mark.asyncio
-async def test_send_api_request_handles_ignored_error_with_text_response(
+async def test_send_api_request_raises_on_400_by_default(
     mock_jira_client: JiraClient,
 ) -> None:
-    """Test that _send_api_request handles ignored errors with non-JSON response."""
+    """Test that 400 errors are NOT ignored by default - they must be passed explicitly."""
     error_response = Response(
         400,
         request=Request("GET", "http://example.com"),
-        content=b"Bad Request: Invalid JQL",
+        json={
+            "errorMessages": [
+                "The value 'RESTRICTED_PROJECT' does not exist for the field 'project'."
+            ],
+            "errors": {},
+        },
     )
 
     with patch.object(
@@ -560,12 +573,42 @@ async def test_send_api_request_handles_ignored_error_with_text_response(
     ) as mock_request:
         mock_request.return_value = error_response
 
+        with pytest.raises(httpx.HTTPStatusError):
+            await mock_jira_client._send_api_request("GET", "http://example.com/search")
+
+
+@pytest.mark.asyncio
+async def test_send_api_request_handles_400_when_passed_explicitly(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test that 400 errors are ignored when passed explicitly via ignored_errors."""
+    error_response = Response(
+        400,
+        request=Request("GET", "http://example.com"),
+        json={
+            "errorMessages": [
+                "The value 'RESTRICTED_PROJECT' does not exist for the field 'project'."
+            ],
+            "errors": {},
+        },
+    )
+
+    with patch.object(
+        mock_jira_client.client, "request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = error_response
+
+        # Pass 400 as an ignored error explicitly (like JQL search does)
         result = await mock_jira_client._send_api_request(
-            "GET", "http://example.com/search"
+            "GET",
+            "http://example.com/search",
+            ignored_errors=[
+                IgnoredError(status=400, message="Bad Request", type="BAD_REQUEST")
+            ],
         )
 
-        # Should return None without raising an exception
-        assert result is None
+        # Should return empty dict without raising an exception
+        assert result == {}
 
 
 @pytest.mark.asyncio

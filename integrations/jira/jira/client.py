@@ -85,11 +85,6 @@ class JiraClient(OAuthClient):
 
     _DEFAULT_IGNORED_ERRORS = [
         IgnoredError(
-            status=400,
-            message="Bad Request — may indicate permission issues or invalid query parameters",
-            type="BAD_REQUEST",
-        ),
-        IgnoredError(
             status=403,
             message="Forbidden — insufficient permissions to access this resource",
             type="FORBIDDEN",
@@ -98,6 +93,16 @@ class JiraClient(OAuthClient):
             status=404,
             message="Resource not found or not accessible",
             type="NOT_FOUND",
+        ),
+    ]
+
+    # 400 errors for JQL queries - only used for search endpoints where
+    # permission issues can cause 400s (e.g., JQL referencing inaccessible projects)
+    _JQL_IGNORED_ERRORS = [
+        IgnoredError(
+            status=400,
+            message="Bad Request — may indicate permission issues or invalid JQL query",
+            type="BAD_REQUEST",
         ),
     ]
 
@@ -284,7 +289,9 @@ class JiraClient(OAuthClient):
         webhook_target_app_host = f"{app_host}/integration/webhook"
         response = await self._send_api_request("GET", url=self.webhooks_url)
         if not response:
-            logger.warning("Failed to get webhooks - empty response, skipping webhook creation")
+            logger.warning(
+                "Failed to get webhooks - empty response, skipping webhook creation"
+            )
             return
         webhooks = response.get("values", [])
         if len(webhooks) > 0:
@@ -334,7 +341,9 @@ class JiraClient(OAuthClient):
         webhooks = await self._send_api_request("GET", url=self.webhooks_url)
 
         if not webhooks:
-            logger.warning("Failed to get webhooks - empty response, attempting to create webhook")
+            logger.warning(
+                "Failed to get webhooks - empty response, attempting to create webhook"
+            )
         elif isinstance(webhooks, list):
             for webhook in webhooks:
                 if webhook.get("url") == webhook_target_app_host:
@@ -372,6 +381,7 @@ class JiraClient(OAuthClient):
         url: str,
         extract_key: str | None = None,
         initial_params: dict[str, Any] | None = None,
+        ignored_errors: Optional[list[IgnoredError]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get paginated data using token-based pagination for JQL endpoints."""
         params = initial_params or {}
@@ -381,7 +391,9 @@ class JiraClient(OAuthClient):
             if next_page_token:
                 params["nextPageToken"] = next_page_token
 
-            response_data = await self._send_api_request("GET", url, params=params)
+            response_data = await self._send_api_request(
+                "GET", url, params=params, ignored_errors=ignored_errors
+            )
 
             if response_data is None:
                 break
@@ -406,7 +418,10 @@ class JiraClient(OAuthClient):
         url = f"{self.api_url}/search/jql"
 
         async for issues in self._get_paginated_data_using_next_page_token(
-            url, "issues", initial_params=params
+            url,
+            "issues",
+            initial_params=params,
+            ignored_errors=self._JQL_IGNORED_ERRORS,
         ):
             yield issues
 
