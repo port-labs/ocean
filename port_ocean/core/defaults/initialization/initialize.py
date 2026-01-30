@@ -130,6 +130,7 @@ async def _initialize_defaults(
             logger.error(f"Failed to verify integration state: {err.response.text}.")
             raise err
 
+    ocean.metrics.installation_type = integration.get("installationType", "Unknown")
     await _verify_integration_configuration(integration_config, integration)
     await setup_instance.setup()
 

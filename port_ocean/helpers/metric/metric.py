@@ -211,6 +211,8 @@ class Metrics:
         self.load_metrics()
         self._integration_version: Optional[str] = None
         self._ocean_version: Optional[str] = None
+        self._installation_type: str = "Unknown"
+        self._execution_mode: str = "Unknown"
         self._event_id = ""
         self.sync_state = SyncState.PENDING
 
@@ -229,6 +231,22 @@ class Metrics:
     @sync_state.setter
     def sync_state(self, value: str) -> None:
         self._sync_state = value
+
+    @property
+    def installation_type(self) -> str:
+        return self._installation_type
+
+    @installation_type.setter
+    def installation_type(self, value: str) -> None:
+        self._installation_type = value
+
+    @property
+    def execution_mode(self) -> str:
+        return self._execution_mode
+
+    @execution_mode.setter
+    def execution_mode(self, value: str) -> None:
+        self._execution_mode = value
 
     @property
     def integration_version(self) -> str:
@@ -462,6 +480,8 @@ class Metrics:
                 index_part = kind_parts[-1] if len(kind_parts) > 1 else ""
                 event = {
                     "integrationType": self.integration_configuration.type,
+                    "installationType": self.installation_type,
+                    "executionMode": self.execution_mode,
                     "integrationIdentifier": self.integration_configuration.identifier,
                     "integrationVersion": self.integration_version,
                     "oceanVersion": self.ocean_version,

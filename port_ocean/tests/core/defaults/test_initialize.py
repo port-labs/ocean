@@ -112,6 +112,7 @@ def mock_ocean(
     ocean_mock.integration.config = mock_integration_config
     ocean_mock.integration_router = APIRouter()
     ocean_mock.fast_api_app = FastAPI()
+    ocean_mock.metrics = MagicMock()
     return ocean_mock
 
 
