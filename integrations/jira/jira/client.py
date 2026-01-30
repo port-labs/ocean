@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from typing import Any, AsyncGenerator, Generator, NamedTuple, Optional
+from typing import Any, AsyncGenerator, Generator, NamedTuple, Optional, cast
 
 import httpx
 from httpx import Auth, BasicAuth, Request, Response, Timeout
@@ -209,7 +209,10 @@ class JiraClient(OAuthClient):
             if not response_data:
                 break
 
-            items = response_data.get(extract_key, []) if extract_key else response_data
+            items = cast(
+                list[dict[str, Any]],
+                response_data.get(extract_key, []) if extract_key else response_data,
+            )
 
             if not items:
                 break
@@ -392,7 +395,10 @@ class JiraClient(OAuthClient):
             if not response_data:
                 break
 
-            items = response_data.get(extract_key, []) if extract_key else response_data
+            items = cast(
+                list[dict[str, Any]],
+                response_data.get(extract_key, []) if extract_key else response_data,
+            )
 
             if not items:
                 break
