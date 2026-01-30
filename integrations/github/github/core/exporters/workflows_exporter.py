@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, cast, Optional
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
 
@@ -13,11 +13,17 @@ from github.helpers.utils import enrich_with_repository, enrich_with_organizatio
 class RestWorkflowExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[
         ExporterOptionsT: SingleWorkflowOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         organization = options["organization"]
         endpoint = f"{self.client.base_url}/repos/{organization}/{options['repo_name']}/actions/workflows/{options['workflow_id']}"
 
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No workflow found with id: {options['workflow_id']} in repository: {options['repo_name']} from {organization}"
+            )
+            return None
+
         workflow = enrich_with_organization(
             enrich_with_repository(response, options["repo_name"]), organization
         )

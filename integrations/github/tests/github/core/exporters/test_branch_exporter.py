@@ -54,6 +54,7 @@ class TestRestBranchExporter:
                 )
             )
 
+            assert branch is not None
             assert branch["__repository"] == "repo1"  # Check repository is enriched
             assert branch["name"] == "main"  # Check name is preserved
 
@@ -173,6 +174,7 @@ class TestRestBranchExporter:
                     )
                 )
 
+                assert branch is not None
                 assert branch["__repository"] == "repo1"
                 assert branch["name"] == "main"
                 assert branch["__protection_rules"] == {"enabled": True}

@@ -1054,7 +1054,7 @@ class TestGraphQLTeamMembersAndReposExporter:
                 SingleTeamOptions(organization="test-org", slug="team-empty")
             )
 
-            assert result == {}
+            assert result is None
             mock_request.assert_called_once()
 
     async def test_get_team_member_repositories_team_not_found(
@@ -1074,5 +1074,5 @@ class TestGraphQLTeamMembersAndReposExporter:
             )
 
             # The method should handle None team gracefully
-            assert result == {}
+            assert result is None
             mock_request.assert_called_once()

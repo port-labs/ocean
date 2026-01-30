@@ -69,6 +69,10 @@ class TeamWebhookProcessor(_GithubAbstractWebhookProcessor):
         data_to_upsert = await exporter.get_resource(
             SingleTeamOptions(organization=organization, slug=team["slug"])
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         logger.info(f"Team {team['slug']} of organization: {organization} was upserted")
         return WebhookEventRawResults(

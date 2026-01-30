@@ -80,7 +80,8 @@ class WorkflowWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
             workflow = await exporter.get_resource(options)
-            workflows_to_upsert.append(workflow)
+            if workflow:
+                workflows_to_upsert.append(workflow)
 
         logger.info(
             f"Fetched {len(workflows_to_upsert)} workflows from {repo_name} of organization: {organization} "

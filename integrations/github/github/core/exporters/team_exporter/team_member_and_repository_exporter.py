@@ -32,7 +32,7 @@ class GraphQLTeamMembersAndReposExporter(AbstractGithubExporter[GithubGraphQLCli
 
     async def get_resource[
         ExporterOptionT: SingleTeamOptions
-    ](self, options: ExporterOptionT) -> RAW_ITEM:
+    ](self, options: ExporterOptionT) -> Optional[RAW_ITEM]:
         return await self._fetch_team_with_members_and_repositories(
             options["slug"], options["organization"]
         )
@@ -42,7 +42,7 @@ class GraphQLTeamMembersAndReposExporter(AbstractGithubExporter[GithubGraphQLCli
 
     async def _fetch_team_with_members_and_repositories(
         self, team_slug: str, organization: str
-    ) -> dict[str, Any]:
+    ) -> Optional[dict[str, Any]]:
         logger.info(f"Fetching team '{team_slug}' with members and repositories")
 
         state = TeamFetchState(team_slug=team_slug)
@@ -56,12 +56,12 @@ class GraphQLTeamMembersAndReposExporter(AbstractGithubExporter[GithubGraphQLCli
 
             if not response:
                 logger.warning(f"No response received for team '{team_slug}'")
-                return {}
+                return None
 
             team = response.get("data", {}).get("organization", {}).get("team")
             if not team:
                 logger.warning(f"No team data found in response for team '{team_slug}'")
-                return {}
+                return None
 
             if state.team_data is None:
                 state.team_data = dict(team)

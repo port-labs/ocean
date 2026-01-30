@@ -48,6 +48,18 @@ async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
         )
     )
 
+    if not file_response:
+        logger.error(
+            f"Port app config file not found using GitHub Global configuration for {github_org}",
+            extra={
+                "github_org": github_org,
+                "org_config_repo": ORG_CONFIG_REPO,
+                "default_branch": default_branch,
+                "file_path": ORG_CONFIG_FILE,
+            },
+        )
+        raise EmptyPortAppConfigError()
+
     content = file_response.get("content")
     if not content:
         logger.error(
