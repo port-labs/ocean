@@ -1,7 +1,7 @@
 title: GitHub
 description: GitHub integration for Port Ocean
 icon: Github
-docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github/
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean
 features:
   - type: exporter
     section: Git Providers
@@ -110,15 +110,15 @@ installationDocs:
       enabled: false
     - name: Saas
       enabled: true
-      docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?installation-methods=hosted-by-port#setup
+      docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?auth=github-app-wizard
   githubWorkflow:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?installation-methods=one-time-ci&cicd-method=github#setup
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?auth=pat&installation-methods=one-time-ci&cicd-method=github
   gitlabCI:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?installation-methods=one-time-ci&cicd-method=GitLab#setup
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?auth=pat&installation-methods=one-time-ci&cicd-method=gitlab
   helm:
     enabled: true
-    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?installation-methods=real-time-self-hosted&cicd-method=GitLab&deploy=helm#setup
+    docs: build-your-software-catalog/sync-data-to-catalog/git/github-ocean/installation/?auth=custom-github-app&installation-methods=real-time-self-hosted&deploy=helm
   docker:
     enabled: false
