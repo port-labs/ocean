@@ -7,11 +7,24 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.34.1 (2026-01-29)
+## 0.35.2 (2026-02-01)
 
 ### Improvements
 
 - Block integration initialization without version and support new pyproject.toml structure.
+
+## 0.35.1 (2026-02-01)
+
+### Improvements
+
+- Enhance sync metrics with installation type and execution mode
+
+## 0.35.0 (2026-01-28)
+
+### Improvements
+
+- Hardend dockerfile security
+
 
 ## 0.34.0 (2026-01-28)
 

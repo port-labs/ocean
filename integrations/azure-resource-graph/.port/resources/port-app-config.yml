@@ -25,6 +25,7 @@ resources:
         | project id, type, name, location, tags, subscriptionId, resourceGroup
         | extend resourceGroup=tolower(resourceGroup)
         | extend type=tolower(type)
+        | order by id
         "
     port:
       entity:
@@ -53,6 +54,7 @@ resources:
             | project rgName=tolower(name), rgTags=tags, rgSubscriptionId=subscriptionId
         ) on $left.subscriptionId == $right.rgSubscriptionId and $left.resourceGroup == $right.rgName
         | project id, type, name, location, tags, subscriptionId, resourceGroup, rgTags
+        | order by id
         "
     port:
       entity:
