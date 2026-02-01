@@ -30,7 +30,7 @@ class WorkflowNodesClientMixin:
             logger.error("Error claiming pending wf_node runs", error=response.text)
             return []
         return [
-            WorkflowNodeRun.parse_obj(run) for run in response.json().get("runs", [])
+            WorkflowNodeRun.parse_obj(run) for run in response.json().get("nodeRuns", [])
         ]
 
     async def acknowledge_wf_node_run(self, run_id: str) -> None:
@@ -41,7 +41,7 @@ class WorkflowNodesClientMixin:
                     **(await self.auth.headers()),
                     **INTERNAL_WORKFLOW_CLIENT_HEADER,
                 },
-                json={"runId": run_id},
+                json={"nodeRunIdentifier": run_id},
             )
             handle_port_status_code(response)
         except httpx.HTTPStatusError as e:
