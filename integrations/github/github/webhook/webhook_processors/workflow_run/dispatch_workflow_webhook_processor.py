@@ -1,6 +1,9 @@
-from typing import Any
-
 from github.actions.utils import build_external_id
+from github.helpers.port_client_helpers import (
+    get_run_by_external_id,
+    is_run_in_progress,
+    report_run_workflow_completed,
+)
 from github.context.auth import get_authenticated_actor
 from github.webhook.webhook_processors.workflow_run.base_workflow_run_webhook_processor import (
     BaseWorkflowRunWebhookProcessor,
@@ -11,13 +14,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
     WebhookEventRawResults,
-)
-from port_ocean.core.models import (
-    ActionRun,
-    WorkflowNodeRun,
-    RunStatus,
-    WorkflowNodeRunStatus,
-    WorkflowNodeRunResult,
 )
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     WebhookProcessorType,
@@ -74,74 +70,21 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
         workflow_run = payload["workflow_run"]
         external_id = build_external_id(workflow_run)
 
-        action_run = await ocean.port_client.get_run_by_external_id(external_id)
-        if action_run and action_run.status == RunStatus.IN_PROGRESS:
-            await self._update_action_run(action_run, workflow_run)
-            return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
-
-        wf_node_run = await ocean.port_client.get_wf_node_run_by_external_id(external_id)
-        if wf_node_run and wf_node_run.status == WorkflowNodeRunStatus.IN_PROGRESS:
-            await self._update_wf_node_run(wf_node_run, workflow_run)
+        run = await get_run_by_external_id(ocean.port_client, external_id)
+        if (
+            run
+            and is_run_in_progress(run)
+            and run.payload.integrationActionExecutionProperties.get(
+                "reportWorkflowStatus", False
+            )
+        ):
+            logger.info(
+                f"Updating run {run.id} with workflow conclusion: {workflow_run['conclusion']}",
+                run_id=run.id,
+                conclusion=workflow_run["conclusion"],
+            )
+            await report_run_workflow_completed(
+                ocean.port_client, run, workflow_run["conclusion"]
+            )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
-
-    async def _update_action_run(
-        self, run: ActionRun, workflow_run: dict[str, Any]
-    ) -> None:
-        if not run.payload.integrationActionExecutionProperties.get(
-            "reportWorkflowStatus", False
-        ):
-            return
-
-        status = (
-            RunStatus.SUCCESS
-            if workflow_run["conclusion"] in ["success", "skipped", "neutral"]
-            else RunStatus.FAILURE
-        )
-
-        logger.info(
-            f"Updating action run {run.id} status to {status}",
-            action_run_id=run.id,
-            status=status,
-        )
-
-        await ocean.port_client.patch_run(run.id, {"status": status})
-
-    async def _update_wf_node_run(
-        self, run: WorkflowNodeRun, workflow_run: dict[str, Any]
-    ) -> None:
-        if not run.payload.integrationActionExecutionProperties.get(
-            "reportWorkflowStatus", False
-        ):
-            return
-
-        result = (
-            WorkflowNodeRunResult.SUCCESS
-            if workflow_run["conclusion"] in ["success", "skipped", "neutral"]
-            else WorkflowNodeRunResult.FAILED
-        )
-
-        logger.info(
-            f"Updating wf_node run {run.id} with result {result}",
-            wf_node_run_id=run.id,
-            result=result,
-        )
-
-        await ocean.port_client.patch_wf_node_run(
-            run.id,
-            {
-                "status": WorkflowNodeRunStatus.COMPLETED,
-                "result": result,
-                "logs": [
-                    {
-                        "logLevel": (
-                            "INFO"
-                            if result == WorkflowNodeRunResult.SUCCESS
-                            else "ERROR"
-                        ),
-                        "message": f"Workflow completed: {workflow_run['conclusion']}",
-                        "tags": ["workflow_completion"],
-                    }
-                ],
-            },
-        )

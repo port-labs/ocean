@@ -1,4 +1,5 @@
 from typing import Literal
+
 import httpx
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.mixins.actions import ActionsClientMixin

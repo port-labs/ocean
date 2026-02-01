@@ -26,11 +26,8 @@ from github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_pr
 )
 from port_ocean.context.ocean import ocean
 
-from port_ocean.core.models import (
-    WorkflowNodeRun,
-    BaseRun,
-    WorkflowNodeRunStatus,
-)
+from port_ocean.core.models import BaseRun
+from github.helpers.port_client_helpers import update_run_workflow_started
 from github.actions.abstract_github_executor import (
     AbstractGithubExecutor,
 )
@@ -229,23 +226,13 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             )
             external_id = build_external_id(workflow_run)
 
-            if isinstance(run, WorkflowNodeRun):
-                await ocean.port_client.patch_wf_node_run(
-                    run.id,
-                    {
-                        "status": WorkflowNodeRunStatus.IN_PROGRESS,
-                        "output": {
-                            "workflowRunUrl": workflow_run["html_url"],
-                            "externalRunId": external_id,
-                            "workflowRunId": workflow_run["id"],
-                        },
-                    },
-                )
-            else:
-                await ocean.port_client.patch_run(
-                    run.id,
-                    {"link": workflow_run["html_url"], "externalRunId": external_id},
-                )
+            await update_run_workflow_started(
+                ocean.port_client,
+                run,
+                workflow_run["html_url"],
+                external_id,
+                workflow_run["id"],
+            )
         except Exception as e:
             error_message = str(e)
             if isinstance(e, httpx.HTTPStatusError):
