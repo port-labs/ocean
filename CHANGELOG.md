@@ -7,11 +7,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.35.0 (2026-01-28)
+
+### Improvements
+
+- Hardend dockerfile security
+
 ## 0.34.0 (2026-01-28)
 
 ### Improvements
 
-- Added an optional environment variable to allow adding prefix to the routes registered by for webhooks and metrics 
+- Added an optional environment variable to allow adding prefix to the routes registered by for webhooks and metrics
 
 
 ## 0.33.1 (2026-01-27)
