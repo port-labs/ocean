@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.35.2 (2026-02-01)
+
+### Improvements
+
+- Block integration initialization without version and support new pyproject.toml structure.
+
 ## 0.35.1 (2026-02-01)
 
 ### Improvements
@@ -17,6 +24,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Improvements
 
 - Hardend dockerfile security
+
 
 ## 0.34.0 (2026-01-28)
 
