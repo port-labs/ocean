@@ -98,20 +98,21 @@ class HTTPBaseClient:
                 )
                 response.raise_for_status()
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
+            if response.status_code == 404:
                 logger.warning(f"Couldn't access url: {url}. Failed due to 404 error")
                 return None
-            if e.response.status_code == 401:
+            else:
+                if response.status_code == 401:
+                    logger.error(
+                        f"Couldn't access url {url} . Make sure the PAT (Personal Access Token) is valid!"
+                    )
                 logger.error(
-                    f"Couldn't access url {url}. Make sure the PAT (Personal Access Token) is valid!"
+                    f"Request with bad status code {response.status_code}: {method} to url {url}"
                 )
-            logger.error(
-                f"HTTP error {e.response.status_code} for {method} {url}: {e.response.text}"
-            )
-            raise
+                raise e
         except httpx.HTTPError as e:
-            logger.error(f"HTTP error for {method} {url}: {str(e)}")
-            raise
+            logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
+            raise e
         finally:
             if "response" in locals() and response:
                 await self._rate_limiter.update_from_headers(response.headers)
