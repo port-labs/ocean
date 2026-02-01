@@ -54,7 +54,7 @@ saas:
 installationDocs:
   saas:
     - name: SaasOAuth2
-      enabled: true
+      enabled: false
     - name: Saas
       enabled: false
   githubWorkflow:

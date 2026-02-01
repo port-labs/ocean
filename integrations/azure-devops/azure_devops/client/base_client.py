@@ -3,8 +3,6 @@ from typing import Any, AsyncGenerator, Optional
 import httpx
 from httpx import BasicAuth, ReadTimeout, Response
 from loguru import logger
-from port_ocean.clients.auth.oauth_client import OAuthClient
-from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 from azure_devops.client.rate_limiter import (
@@ -12,6 +10,7 @@ from azure_devops.client.rate_limiter import (
     LIMIT_RESET_HEADER,
     LIMIT_RETRY_AFTER_HEADER,
 )
+from azure_devops.client.auth_client import AuthClient
 
 PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
@@ -19,9 +18,8 @@ CONTINUATION_TOKEN_KEY = "continuationToken"
 MAX_TIMEMOUT_RETRIES = 3
 
 
-class HTTPBaseClient(OAuthClient):
+class HTTPBaseClient:
     def __init__(self, personal_access_token: str) -> None:
-        super().__init__()
         self._client = OceanAsyncClient(
             retry_config=RetryConfig(
                 retry_after_headers=[
@@ -32,6 +30,7 @@ class HTTPBaseClient(OAuthClient):
         )
         self._personal_access_token = personal_access_token
         self._rate_limiter = AzureDevOpsRateLimiter()
+        self._auth_client = AuthClient(personal_access_token)
 
     def is_oauth_enabled(self) -> bool:
         """
@@ -40,9 +39,7 @@ class HTTPBaseClient(OAuthClient):
         Falls back to False when Ocean app/config are not initialized
         to preserve existing behavior in non-OAuth environments.
         """
-        app = getattr(ocean, "app", None)
-        config = getattr(app, "config", None) if app is not None else None
-        return bool(getattr(config, "oauth_access_token_file_path", None))
+        return self._auth_client.is_oauth_enabled()
 
     def _ensure_oauth_headers(
         self, headers: Optional[dict[str, Any]]
@@ -51,29 +48,31 @@ class HTTPBaseClient(OAuthClient):
         Ensure the Authorization header is set correctly when OAuth is enabled.
         Falls back to PAT if OAuth token is not available (e.g., at app startup).
         """
-        headers = headers or {}
-        if self.is_oauth_enabled():
-            try:
-                access_token = self.external_access_token
-                headers["Authorization"] = f"Bearer {access_token}"
-            except ValueError:
-                pass
-        return headers
+        return self._auth_client.get_headers(headers)
 
     def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
         """
         Refresh Authorization header on retries when OAuth is enabled.
         Falls back to PAT if OAuth token is not available (e.g., at app startup).
         """
-        if not self.is_oauth_enabled():
-            return request
+        return self._auth_client.refresh_request_auth_creds(request)
 
-        try:
-            access_token = self.external_access_token
-            request.headers["Authorization"] = f"Bearer {access_token}"
-        except ValueError:
-            pass
-        return request
+    def _prepare_auth_and_headers(
+        self, headers: Optional[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """
+        Prepare authentication and headers for the request.
+        Returns the prepared headers dictionary.
+        """
+        if self.is_oauth_enabled():
+            self._client.auth = None
+            headers = self._ensure_oauth_headers(headers)
+            if not headers.get("Authorization"):
+                self._client.auth = BasicAuth("", self._personal_access_token)
+        else:
+            self._client.auth = BasicAuth("", self._personal_access_token)
+
+        return headers or {}
 
     async def send_request(
         self,
@@ -84,14 +83,7 @@ class HTTPBaseClient(OAuthClient):
         headers: Optional[dict[str, Any]] = None,
         timeout: int = 5,
     ) -> Response | None:
-        if self.is_oauth_enabled():
-            self._client.auth = None
-            headers = self._ensure_oauth_headers(headers)
-            if not headers.get("Authorization"):
-                self._client.auth = BasicAuth("", self._personal_access_token)
-        else:
-            self._client.auth = BasicAuth("", self._personal_access_token)
-
+        headers = self._prepare_auth_and_headers(headers)
         self._client.follow_redirects = True
 
         try:
@@ -106,21 +98,20 @@ class HTTPBaseClient(OAuthClient):
                 )
                 response.raise_for_status()
         except httpx.HTTPStatusError as e:
-            if response.status_code == 404:
+            if e.response.status_code == 404:
                 logger.warning(f"Couldn't access url: {url}. Failed due to 404 error")
                 return None
-            else:
-                if response.status_code == 401:
-                    logger.error(
-                        f"Couldn't access url {url} . Make sure the PAT (Personal Access Token) is valid!"
-                    )
+            if e.response.status_code == 401:
                 logger.error(
-                    f"Request with bad status code {response.status_code}: {method} to url {url}"
+                    f"Couldn't access url {url}. Make sure the PAT (Personal Access Token) is valid!"
                 )
-                raise e
+            logger.error(
+                f"HTTP error {e.response.status_code} for {method} {url}: {e.response.text}"
+            )
+            raise
         except httpx.HTTPError as e:
-            logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
-            raise e
+            logger.error(f"HTTP error for {method} {url}: {str(e)}")
+            raise
         finally:
             if "response" in locals() and response:
                 await self._rate_limiter.update_from_headers(response.headers)
@@ -153,7 +144,14 @@ class HTTPBaseClient(OAuthClient):
                 )
                 if not response:
                     break
-                response_json = response.json()
+                try:
+                    response_json = response.json()
+                except ValueError as json_error:
+                    logger.error(
+                        f"Failed to parse JSON response from {url} with params {params}. "
+                        f"Error: {json_error}"
+                    )
+                    raise
                 items = response_json[data_key]
 
                 logger.info(
@@ -202,7 +200,14 @@ class HTTPBaseClient(OAuthClient):
                 if not response:
                     break
 
-                objects_page = response.json()["value"]
+                try:
+                    objects_page = response.json()["value"]
+                except ValueError as json_error:
+                    logger.error(
+                        f"Failed to parse JSON response from {url} with params {params}. "
+                        f"Error: {json_error}"
+                    )
+                    raise
                 if objects_page:
                     logger.info(
                         f"Found {len(objects_page)} objects in url {url} with params: {params} and max_results: {max_results}"
