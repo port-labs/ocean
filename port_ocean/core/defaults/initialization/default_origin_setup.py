@@ -48,6 +48,9 @@ class DefaultOriginSetup(BaseSetup):
         try:
             logger.info("Found default resources, starting creation process")
             await self._create_resources(self._defaults)
+            await self.port_client.patch_integration(
+                are_port_resources_initialized=True,
+            )
         except AbortDefaultCreationError as e:
             logger.warning(
                 f"Failed to create resources. Rolling back blueprints : {e.blueprints_to_rollback}"

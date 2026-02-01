@@ -131,7 +131,7 @@ async def _initialize_defaults(
             raise err
 
     await _verify_integration_configuration(integration_config, integration)
-    await setup_instance.setup()
+    await setup_instance.setup(integration)
 
 
 def initialize_defaults(
