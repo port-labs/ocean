@@ -170,6 +170,7 @@ class IntegrationClientMixin:
         changelog_destination: dict[str, Any] | None = None,
         port_app_config: Optional["PortAppConfig"] = None,
         actions_processing_enabled: Optional[bool] = False,
+        are_port_resources_initialized: Optional[bool] = None,
     ) -> dict:
         logger.info(f"Updating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
@@ -178,6 +179,8 @@ class IntegrationClientMixin:
             json["installationAppType"] = _type
         if port_app_config:
             json["config"] = port_app_config.to_request()
+        if are_port_resources_initialized:
+            json["arePortResourcesInitialized"] = are_port_resources_initialized
 
         json["changelogDestination"] = changelog_destination
         json["actionsProcessingEnabled"] = actions_processing_enabled
