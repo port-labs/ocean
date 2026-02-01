@@ -391,6 +391,17 @@
       "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/custom",
+      "envFile": "${workspaceFolder}/integrations/custom/examples/config-custom-auth-request.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - Custom Auth",
+      "program": "${workspaceFolder}/integrations/custom/debug.py",
+      "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }
