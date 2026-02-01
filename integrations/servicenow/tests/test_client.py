@@ -25,7 +25,7 @@ class TestServicenowClient:
         mock_response.raise_for_status.return_value = None
 
         with patch.object(
-            servicenow_client.http_client, "get", return_value=mock_response
+            servicenow_client.http_client, "request", return_value=mock_response
         ):
             with patch.object(
                 servicenow_client.authenticator,
@@ -68,7 +68,7 @@ class TestServicenowClient:
 
         with patch.object(
             servicenow_client.http_client,
-            "get",
+            "request",
             side_effect=[first_page_response, second_page_response],
         ):
             with patch.object(
@@ -106,8 +106,8 @@ class TestServicenowClient:
         }
 
         with patch.object(
-            servicenow_client.http_client, "get", return_value=mock_response
-        ):
+            servicenow_client.http_client, "request", return_value=mock_response
+        ) as mock_request:
             with patch.object(
                 servicenow_client.authenticator,
                 "get_headers",
@@ -122,9 +122,8 @@ class TestServicenowClient:
                     records.extend(batch)
 
                 # Verify the request was made with correct params
-                mock_get = servicenow_client.http_client.get
-                mock_get.assert_called_once()  # type: ignore[attr-defined]
-                call_args = mock_get.call_args  # type: ignore[attr-defined]
+                mock_request.assert_called_once()
+                call_args = mock_request.call_args
                 assert "incident" in call_args[1]["url"]
                 assert (
                     call_args[1]["params"]["sysparm_query"]
@@ -143,7 +142,7 @@ class TestServicenowClient:
         mock_response.raise_for_status.return_value = None
 
         with patch.object(
-            servicenow_client.http_client, "get", return_value=mock_response
+            servicenow_client.http_client, "request", return_value=mock_response
         ):
             with patch.object(
                 servicenow_client.authenticator,
@@ -167,11 +166,11 @@ class TestServicenowClient:
                 assert vulnerabilities[0]["risk_score"] == "85"
 
     @pytest.mark.asyncio
-    async def test_get_paginated_resource_error_handling(
+    async def test_get_paginated_resource_error_handling_404(
         self, servicenow_client: ServicenowClient
     ) -> None:
-        """Test error handling when fetching resources fails."""
-        # Mock HTTP error response
+        """Test error handling when fetching resources returns 404."""
+        # Mock HTTP 404 error response - should return None and break loop
         error_response = MagicMock()
         error_response.status_code = 404
         error_response.text = "Table not found"
@@ -180,7 +179,40 @@ class TestServicenowClient:
         )
 
         with patch.object(
-            servicenow_client.http_client, "get", return_value=error_response
+            servicenow_client.http_client, "request", return_value=error_response
+        ):
+            with patch.object(
+                servicenow_client.authenticator,
+                "get_headers",
+                return_value={
+                    "Authorization": "Basic dGVzdF91c2VyOnRlc3RfcGFzc3dvcmQ="
+                },
+            ):
+                # 404 errors now return None and break the loop without raising
+                records: list[dict[str, Any]] = []
+                async for batch in servicenow_client.get_paginated_resource(
+                    resource_kind="nonexistent_table"
+                ):
+                    records.extend(batch)
+
+                # Should have no records since 404 breaks the loop
+                assert len(records) == 0
+
+    @pytest.mark.asyncio
+    async def test_get_paginated_resource_error_handling_non_404(
+        self, servicenow_client: ServicenowClient
+    ) -> None:
+        """Test error handling when fetching resources fails with non-404 error."""
+        # Mock HTTP 500 error response - should raise exception
+        error_response = MagicMock()
+        error_response.status_code = 500
+        error_response.text = "Internal Server Error"
+        error_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Internal Server Error", request=MagicMock(), response=error_response
+        )
+
+        with patch.object(
+            servicenow_client.http_client, "request", return_value=error_response
         ):
             with patch.object(
                 servicenow_client.authenticator,
@@ -191,7 +223,7 @@ class TestServicenowClient:
             ):
                 with pytest.raises(httpx.HTTPStatusError):
                     async for _ in servicenow_client.get_paginated_resource(
-                        resource_kind="nonexistent_table"
+                        resource_kind="some_table"
                     ):
                         pass
 
@@ -205,8 +237,8 @@ class TestServicenowClient:
         mock_response.raise_for_status.return_value = None
 
         with patch.object(
-            servicenow_client.http_client, "get", return_value=mock_response
-        ) as mock_get:
+            servicenow_client.http_client, "request", return_value=mock_response
+        ) as mock_request:
             with patch.object(
                 servicenow_client.authenticator,
                 "get_headers",
@@ -217,16 +249,16 @@ class TestServicenowClient:
                 await servicenow_client.sanity_check()
 
                 # Verify sanity check was called with correct endpoint
-                mock_get.assert_called_once()
-                call_args = mock_get.call_args
-                # The get method is called with url as first positional arg
+                mock_request.assert_called_once()
+                call_args = mock_request.call_args
+                # The request method is called with url as keyword arg
                 if call_args[0]:
                     url = call_args[0][0]
                 else:
                     url = call_args[1].get("url", "")
                 assert "sys_user" in url
                 # Check params if they exist
-                if call_args[1] and "params" in call_args[1]:
+                if call_args[1].get("params"):
                     assert call_args[1]["params"].get("sysparm_limit") == 1
 
     @pytest.mark.asyncio
@@ -242,7 +274,7 @@ class TestServicenowClient:
         )
 
         with patch.object(
-            servicenow_client.http_client, "get", return_value=error_response
+            servicenow_client.http_client, "request", return_value=error_response
         ):
             with patch.object(
                 servicenow_client.authenticator,
@@ -305,8 +337,8 @@ class TestServicenowClient:
         mock_response.raise_for_status.return_value = None
 
         with patch.object(
-            servicenow_client.http_client, "get", return_value=mock_response
-        ):
+            servicenow_client.http_client, "request", return_value=mock_response
+        ) as mock_request:
             with patch.object(
                 servicenow_client.authenticator,
                 "get_headers",
@@ -320,8 +352,7 @@ class TestServicenowClient:
                     pass
 
                 # Verify default ordering was added
-                mock_get = servicenow_client.http_client.get
-                call_args = mock_get.call_args  # type: ignore[attr-defined]
+                call_args = mock_request.call_args
                 assert (
                     call_args[1]["params"]["sysparm_query"]
                     == "ORDERBYDESCsys_created_on"
@@ -342,8 +373,8 @@ class TestServicenowClient:
         }
 
         with patch.object(
-            servicenow_client.http_client, "get", return_value=mock_response
-        ):
+            servicenow_client.http_client, "request", return_value=mock_response
+        ) as mock_request:
             with patch.object(
                 servicenow_client.authenticator,
                 "get_headers",
@@ -357,8 +388,7 @@ class TestServicenowClient:
                     pass
 
                 # Verify custom ordering was preserved and default was appended
-                mock_get = servicenow_client.http_client.get
-                call_args = mock_get.call_args  # type: ignore[attr-defined]
+                call_args = mock_request.call_args
                 assert (
                     "active=true^ORDERBYuser_name^ORDERBYDESCsys_created_on"
                     in call_args[1]["params"]["sysparm_query"]
