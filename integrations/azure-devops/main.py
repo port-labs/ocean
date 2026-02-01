@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Any
 
 from loguru import logger
 
@@ -30,6 +30,9 @@ from azure_devops.webhooks.webhook_processors.repository_processor import (
 from azure_devops.webhooks.webhook_processors.work_item_webhook_processor import (
     WorkItemWebhookProcessor,
 )
+from azure_devops.webhooks.webhook_processors.advanced_security_webhook_processor import (
+    AdvancedSecurityWebhookProcessor,
+)
 from integration import (
     AzureDevopsPipelineResourceConfig,
     AzureDevopsProjectResourceConfig,
@@ -38,6 +41,7 @@ from integration import (
     AzureDevopsWorkItemResourceConfig,
     AzureDevopsTestRunResourceConfig,
     AzureDevopsPullRequestResourceConfig,
+    AzureDevopsAdvancedSecurityResourceConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -325,6 +329,27 @@ async def resync_iterations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield iterations
 
 
+@ocean.on_resync(Kind.ADVANCED_SECURITY_ALERT)
+async def resync_advanced_security_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    selector = cast(
+        AzureDevopsAdvancedSecurityResourceConfig, event.resource_config
+    ).selector
+    params: dict[str, Any] = {}
+    if selector.criteria:
+        params = selector.criteria.as_params
+
+    async for repositories in azure_devops_client.generate_repositories():
+        for repository in repositories:
+            async for (
+                security_alerts
+            ) in azure_devops_client.generate_advanced_security_alerts(
+                repository, params
+            ):
+                logger.info(f"Resyncing {len(security_alerts)} security alerts")
+                yield security_alerts
+
+
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FileWebhookProcessor)
@@ -332,3 +357,4 @@ ocean.add_webhook_processor("/webhook", GitopsWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FolderWebhookProcessor)
 ocean.add_webhook_processor("/webhook", BranchWebhookProcessor)
 ocean.add_webhook_processor("/webhook", WorkItemWebhookProcessor)
+ocean.add_webhook_processor("/webhook", AdvancedSecurityWebhookProcessor)
