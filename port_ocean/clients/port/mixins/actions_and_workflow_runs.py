@@ -53,9 +53,11 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         should_raise: bool = False,
     ) -> None:
         if self._is_wf_node_run(run):
+            # API expects "WARN" not "WARNING"
+            log_level = "WARN" if level == "WARNING" else level
             await self.patch_wf_node_run(
                 run.id,
-                {"logs": [{"logLevel": level, "message": message, "tags": []}]},
+                {"logs": [{"logLevel": log_level, "message": message, "tags": []}]},
                 should_raise=should_raise,
             )
         else:
