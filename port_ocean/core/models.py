@@ -156,7 +156,7 @@ class WorkflowNodeRunResult(StrEnum):
 
 
 class WorkflowNodeRunLog(BaseModel):
-    logLevel: Literal["INFO", "WARNING", "ERROR", "DEBUG"]
+    logLevel: Literal["INFO", "WARN", "ERROR", "DEBUG"]
     message: str
     tags: list[str] = Field(default_factory=list)
 
@@ -185,3 +185,6 @@ class ActionRun(BaseRun):
 class WorkflowNodeRun(BaseRun):
     status: WorkflowNodeRunStatus
     result: WorkflowNodeRunResult | None = None
+    config: dict[str, Any] | None = None
+    output: dict[str, Any] = Field(default_factory=dict)
+    identifier: str | None = None
