@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.4.46 (2026-02-02)
+
+
+### Bug Fixes
+
+- Raised proactive PagerDuty rate limit threshold from 1 to 90% to prevent 429 errors when processing large datasets with concurrency.
+
 
 ## 0.4.45 (2026-02-02)
 
