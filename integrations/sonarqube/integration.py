@@ -39,9 +39,6 @@ class SonarQubeComponentSearchFilter(BaseModel):
     tags: Union[str, list[str]] | None = Field(
         description="List of tags or a single tag"
     )
-    qualifier: Literal["TRK", "APP"] | None = Field(
-        description="To filter on a component qualifier"
-    )
 
     def generate_search_filters(self) -> str:
         params = []
