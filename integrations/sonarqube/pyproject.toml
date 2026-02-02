@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sonarqube"
-version = "0.1.293"
+version = "0.1.294"
 description = "SonarQube projects and code quality analysis integration"
 authors = ["Port Team <support@getport.io>"]
 
