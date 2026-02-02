@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from typing import Any, AsyncGenerator, Generator, NamedTuple, Optional, cast
+from typing import Any, AsyncGenerator, Generator, Optional, cast
 
 import httpx
 from httpx import Auth, BasicAuth, Request, Response, Timeout
@@ -10,16 +10,9 @@ from port_ocean.clients.auth.oauth_client import OAuthClient
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 from .rate_limiter import JiraRateLimiter
+from .utils import IgnoredError
 
 PAGE_SIZE = 50
-
-
-class IgnoredError(NamedTuple):
-    """Represents an error that should be ignored (logged but not raised)."""
-
-    status: int | str
-    message: Optional[str] = None
-    type: Optional[str] = None
 
 
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
@@ -96,12 +89,10 @@ class JiraClient(OAuthClient):
         ),
     ]
 
-    # 400 errors for JQL queries - only used for search endpoints where
-    # permission issues can cause 400s (e.g., JQL referencing inaccessible projects)
     _JQL_IGNORED_ERRORS = [
         IgnoredError(
             status=400,
-            message="Bad Request — may indicate permission issues or invalid JQL query",
+            message="Bad Request — JQL validation error or inaccessible resource",
             type="BAD_REQUEST",
         ),
     ]
@@ -133,9 +124,7 @@ class JiraClient(OAuthClient):
         Returns:
             True if the error should be ignored, False otherwise
         """
-        all_ignored_errors = (ignored_errors or []) + (
-            self._DEFAULT_IGNORED_ERRORS if self._DEFAULT_IGNORED_ERRORS else []
-        )
+        all_ignored_errors = (ignored_errors or []) + self._DEFAULT_IGNORED_ERRORS
         status_code = error.response.status_code
 
         for ignored_error in all_ignored_errors:
@@ -285,12 +274,8 @@ class JiraClient(OAuthClient):
     async def _create_events_webhook_oauth(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
         response = await self._send_api_request("GET", url=self.webhooks_url)
-        if not response:
-            logger.warning(
-                "Failed to get webhooks - empty response, skipping webhook creation"
-            )
-            return
-        webhooks = response.get("values", [])
+        webhooks = response.get("values", []) if response else []
+
         if len(webhooks) > 0:
             # jira allows for only one webhook per user per oauth app that is why we are always checking the first webhook
             existing_webhook_url = webhooks[0].get("url")
