@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "github-ocean"
-version = "5.0.19"
+version = "5.0.20"
 description = "This integration ingest data from github"
 authors = ["Chukwuemeka Nwaoma <joelchukks@gmail.com>", "Melody Anyaegbulam <melodyogonna@gmail.com>", "Michael Armah <mikeyarmah@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
 pyjwt = {extras = ["crypto"], version = "^2.10.1"}
-port_ocean = {version = "^0.35.2", extras = ["cli"]}
+port_ocean = {version = "^0.35.4", extras = ["cli"]}
 wcmatch = "^10.1"
 types-pyyaml = "^6.0.12.20250516"
 
@@ -23,7 +23,6 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
-types-python-dateutil = "^2.9.0"
 
 [tool.towncrier]
 directory = "changelog"
