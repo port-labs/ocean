@@ -72,7 +72,9 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         ):
             yield batch
 
-    async def get_resource[ExporterOptionsT: None](self, options: None) -> Optional[RAW_ITEM]:
+    async def get_resource[
+        ExporterOptionsT: None
+    ](self, options: None) -> Optional[RAW_ITEM]:
         raise NotImplementedError
 
     async def _stream_selected_organizations(

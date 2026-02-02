@@ -13,7 +13,7 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
     ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         organization = options["organization"]
         repo_name = options["repo_name"]
-        run_id = options['run_id']
+        run_id = options["run_id"]
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/actions/runs/{run_id}"
         response = await self.client.send_api_request(endpoint)
         if not response:
