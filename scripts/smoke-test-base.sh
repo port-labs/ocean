@@ -10,10 +10,10 @@
 SCRIPT_BASE="$(cd -P "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd -P "${SCRIPT_BASE}/../" && pwd)"
 
-RANDOM_ID="${RANDOM}"
-# if [[ -n ${SMOKE_TEST_SUFFIX} ]]; then
-#     RANDOM_ID="-${SMOKE_TEST_SUFFIX}"
-# fi
+RANDOM_ID=""
+if [[ -n ${SMOKE_TEST_SUFFIX} ]]; then
+    RANDOM_ID="-${SMOKE_TEST_SUFFIX}"
+fi
 export INTEGRATION_IDENTIFIER="smoke-test-integration${RANDOM_ID}"
 export BLUEPRINT_DEPARTMENT="fake-department${RANDOM_ID}"
 export BLUEPRINT_PERSON="fake-person${RANDOM_ID}"
