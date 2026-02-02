@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Type
+from typing import Any, Type
 
 from loguru import logger
 
@@ -30,8 +30,12 @@ class BaseSetup(ABC):
     async def _setup(self) -> None:
         pass
 
-    async def setup(self) -> None:
+    async def setup(self, integration: dict[str, Any]) -> None:
         """Execute initialization for this setup strategy."""
+
+        if integration.get("arePortResourcesInitialized", False):
+            logger.info("Port resources are already initialized, skipping setup")
+            return
 
         logger.info("Initializing integration at port")
         await self._setup()
