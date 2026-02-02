@@ -148,7 +148,7 @@ async def _initialize_defaults(
 
     ocean.metrics.installation_type = integration.get("installationType", "Unknown")
     await _verify_integration_configuration(integration_config, integration)
-    await setup_instance.setup()
+    await setup_instance.setup(integration)
 
 
 def initialize_defaults(
