@@ -45,9 +45,11 @@ class DefaultOriginSetup(BaseSetup):
             logger.info("Resources initialization disabled, skipping resource creation")
             return
 
+        has_initialized: bool = False
         try:
             logger.info("Found default resources, starting creation process")
             await self._create_resources(self._defaults)
+            has_initialized = True
         except AbortDefaultCreationError as e:
             logger.warning(
                 f"Failed to create resources. Rolling back blueprints : {e.blueprints_to_rollback}"
@@ -62,11 +64,13 @@ class DefaultOriginSetup(BaseSetup):
                     for identifier in e.blueprints_to_rollback
                 )
             )
+            has_initialized = True
             raise ExceptionGroup[Exception](str(e), e.errors)
         finally:
-            await self.port_client.patch_integration(
-                are_port_resources_initialized=True,
-            )
+            if has_initialized:
+                await self.port_client.patch_integration(
+                    are_port_resources_initialized=True,
+                )
 
     async def _create_resources(self, defaults: Defaults) -> None:
         """Create blueprints, actions, scorecards, and pages."""
