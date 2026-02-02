@@ -48,7 +48,6 @@ def branch_webhook_processor(
 
 @pytest.mark.asyncio
 class TestBranchWebhookProcessor:
-
     @pytest.mark.parametrize(
         "github_event,ref,ref_type,result",
         [
@@ -155,6 +154,7 @@ class TestBranchWebhookProcessor:
                     repo_name="test-repo",
                     branch_name=branch_name,
                     protection_rules=protection_rules,
+                    repo={"name": "test-repo"},
                 )
             )
 
@@ -167,6 +167,35 @@ class TestBranchWebhookProcessor:
 
         if expected_deleted:
             assert result.deleted_raw_results == [{"name": branch_name}]
+
+    async def test_handle_event_skips_when_branch_names_selector_excludes_branch(
+        self,
+        branch_webhook_processor: BranchWebhookProcessor,
+        resource_config: GithubBranchConfig,
+    ) -> None:
+        payload = {
+            "ref": "refs/heads/feature-x",
+            "ref_type": "branch",
+            "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
+        }
+
+        branch_webhook_processor._event_type = "push"
+        resource_config.selector.branch_names = ["main", "develop"]
+
+        mock_exporter = AsyncMock()
+        with patch(
+            "github.webhook.webhook_processors.branch_webhook_processor.RestBranchExporter",
+            return_value=mock_exporter,
+        ):
+            result = await branch_webhook_processor.handle_event(
+                payload, resource_config
+            )
+
+        assert isinstance(result, WebhookEventRawResults)
+        assert result.updated_raw_results == []
+        assert result.deleted_raw_results == []
+        mock_exporter.get_resource.assert_not_called()
 
     @pytest.mark.parametrize(
         "payload,expected",

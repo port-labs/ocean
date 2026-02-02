@@ -1,4 +1,5 @@
 from typing import Any, AsyncGenerator
+from urllib.parse import quote
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
@@ -49,6 +50,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     branch_name="main",
                     protection_rules=False,
+                    repo={"name": "repo1"},
                 )
             )
 
@@ -77,6 +79,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     protection_rules=False,
                     detailed=False,
+                    repo={"name": "repo1"},
                 )
                 exporter = RestBranchExporter(rest_client)
 
@@ -95,6 +98,50 @@ class TestRestBranchExporter:
                     f"{rest_client.base_url}/repos/test-org/repo1/branches",
                     {},
                 )
+
+    async def test_get_paginated_resources_with_branch_names_filter(
+        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
+    ) -> None:
+        exporter = RestBranchExporter(rest_client)
+
+        async def fake_fetch_branch(
+            repo_name: str, branch_name: str, organization: str
+        ) -> dict[str, Any]:
+            return {"name": branch_name, "_links": {}}
+
+        with (
+            patch.object(rest_client, "send_paginated_request") as mock_paginated,
+            patch.object(
+                exporter,
+                "fetch_branch",
+                new_callable=AsyncMock,
+                side_effect=fake_fetch_branch,
+            ) as mock_fetch_branch,
+        ):
+            async with event_context("test_event"):
+                options = ListBranchOptions(
+                    organization="test-org",
+                    repo_name="repo1",
+                    branch_names=["main", "develop"],
+                    protection_rules=False,
+                    detailed=False,  # ignored when branch_names is provided
+                    repo={"name": "repo1"},
+                )
+
+                batches = [
+                    batch async for batch in exporter.get_paginated_resources(options)
+                ]
+
+                assert len(batches) == 1
+                result = batches[0]
+                assert [b["name"] for b in result] == ["main", "develop"]
+                assert all(b.get("__repository") == "repo1" for b in result)
+
+                mock_fetch_branch.assert_any_await("repo1", "main", "test-org")
+                mock_fetch_branch.assert_any_await("repo1", "develop", "test-org")
+
+                # Ensure we didn't hit the list-branches endpoint
+                mock_paginated.assert_not_called()
 
     async def test_get_resource_with_protection_rules(
         self, rest_client: GithubRestClient
@@ -122,6 +169,7 @@ class TestRestBranchExporter:
                         repo_name="repo1",
                         branch_name="main",
                         protection_rules=True,
+                        repo={"name": "repo1"},
                     )
                 )
 
@@ -161,6 +209,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     detailed=True,
                     protection_rules=False,
+                    repo={"name": "repo1"},
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -206,6 +255,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     detailed=False,
                     protection_rules=True,
+                    repo={"name": "repo1"},
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -259,6 +309,7 @@ class TestRestBranchExporter:
                     repo_name="repo1",
                     detailed=True,
                     protection_rules=True,
+                    repo={"name": "repo1"},
                 )
                 batches = [
                     batch async for batch in exporter.get_paginated_resources(options)
@@ -271,3 +322,62 @@ class TestRestBranchExporter:
                     b.get("__protection_rules") == {"enabled": True} for b in result
                 )
                 assert all(b.get("__repository") == "repo1" for b in result)
+
+    async def test_fetch_branch_url_encodes_special_characters(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """Test that branch names with special characters are properly URL-encoded."""
+        exporter = RestBranchExporter(rest_client)
+        branch_name_with_special_chars = "feature/test-branch-33%-with-special-chars"
+        expected_encoded_name = quote(branch_name_with_special_chars)
+
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "name": branch_name_with_special_chars,
+            "commit": {"sha": "abc123"},
+        }
+
+        with patch.object(
+            rest_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = mock_response.json()
+            await exporter.fetch_branch(
+                "repo1", branch_name_with_special_chars, "test-org"
+            )
+
+            # Verify the URL contains the properly encoded branch name
+            mock_request.assert_called_once()
+            called_url = mock_request.call_args[0][0]
+            assert expected_encoded_name in called_url
+            assert (
+                branch_name_with_special_chars not in called_url
+                or quote(branch_name_with_special_chars) in called_url
+            )
+
+    async def test_enrich_branch_with_protection_rules_url_encodes_special_characters(
+        self, rest_client: GithubRestClient
+    ) -> None:
+        """Test that branch names with special characters are properly URL-encoded when fetching protection rules."""
+        exporter = RestBranchExporter(rest_client)
+        branch_name_with_special_chars = "feature/test-branch-33%-with-special-chars"
+        expected_encoded_name = quote(branch_name_with_special_chars)
+
+        branch_data = {
+            "name": branch_name_with_special_chars,
+            "commit": {"sha": "abc123"},
+        }
+
+        with patch.object(
+            rest_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_request:
+            mock_request.return_value = {"enabled": True}
+            await exporter._enrich_branch_with_protection_rules(
+                "repo1", branch_data, "test-org"
+            )
+
+            # Verify the URL contains the properly encoded branch name
+            mock_request.assert_called_once()
+            called_url = mock_request.call_args[0][0]
+            assert expected_encoded_name in called_url
+            assert f"/branches/{expected_encoded_name}/protection" in called_url

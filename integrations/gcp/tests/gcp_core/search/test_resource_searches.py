@@ -1,8 +1,10 @@
 from typing import Any, Generator
 from unittest.mock import AsyncMock, patch, MagicMock
 import pytest
+import sys
 from port_ocean.context.event import event_context
-from port_ocean.context.ocean import initialize_port_ocean_context
+import port_ocean.context.ocean as ocean_module
+from port_ocean.context.ocean import initialize_port_ocean_context, PortOceanContext
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from google.pubsub_v1.types import pubsub
@@ -20,13 +22,34 @@ async def mock_subscription_pages(
 
 
 @pytest.fixture(autouse=True)
-def mock_ocean_context() -> None:
+def mock_ocean_context() -> Generator[None, None, None]:
     """Fixture to initialize the PortOcean context."""
     mock_app = MagicMock()
     mock_app.config.integration.config = {"search_all_resources_per_minute_quota": 100}
     mock_app.cache_provider = AsyncMock()
     mock_app.cache_provider.get.return_value = None
     initialize_port_ocean_context(mock_app)
+
+    yield
+
+    # Reset the context after each test to allow subsequent tests to initialize it
+    ocean_module._port_ocean = PortOceanContext(None)
+
+
+@pytest.fixture(autouse=True)
+def clean_module_cache() -> Generator[None, None, None]:
+    """Remove resource_searches from module cache to ensure fresh imports and clean patching."""
+    # Remove the module before test if it exists
+    module_name = "gcp_core.search.resource_searches"
+    cached_module = sys.modules.pop(module_name, None)
+
+    yield
+
+    # Restore or remove after test
+    if cached_module is not None:
+        sys.modules[module_name] = cached_module
+    else:
+        sys.modules.pop(module_name, None)
 
 
 @pytest.fixture

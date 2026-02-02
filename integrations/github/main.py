@@ -1,6 +1,7 @@
 from typing import Any, cast
 
 from loguru import logger
+
 from github.actions.registry import register_actions_executors
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -18,10 +19,10 @@ from github.clients.client_factory import (
     GitHubAuthenticatorFactory,
     create_github_client,
 )
+from github.webhook.clients.client_factory import GithubWebhookClientFactory
 from github.core.exporters.workflow_runs_exporter import RestWorkflowRunExporter
 from github.clients.utils import (
     get_github_organizations,
-    integration_config,
 )
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.exporters.branch_exporter import RestBranchExporter
@@ -29,7 +30,10 @@ from github.core.exporters.deployment_exporter import RestDeploymentExporter
 from github.core.exporters.environment_exporter import RestEnvironmentExporter
 from github.core.exporters.file_exporter import RestFileExporter
 from github.core.exporters.issue_exporter import RestIssueExporter
-from github.core.exporters.pull_request_exporter import RestPullRequestExporter
+from github.core.exporters.pull_request_exporter import (
+    GraphQLPullRequestExporter,
+    RestPullRequestExporter,
+)
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )
@@ -73,8 +77,6 @@ from github.helpers.utils import (
     GithubClientType,
     enrich_user_with_primary_email,
 )
-from github.webhook.events import WEBHOOK_CREATE_EVENTS
-from github.webhook.webhook_client import GithubWebhookClient
 
 from integration import (
     GithubFolderResourceConfig,
@@ -90,12 +92,17 @@ from integration import (
     GithubBranchConfig,
     GithubSecretScanningAlertConfig,
     GithubUserConfig,
+    GithubDeploymentConfig,
 )
+
+MAX_CONCURRENT_REPOS = 10
 
 
 async def _create_webhooks_for_organization(org_name: str, base_url: str) -> None:
+    github_host = ocean.integration_config["github_host"]
+    webhook_secret = ocean.integration_config["webhook_secret"]
     authenticator = GitHubAuthenticatorFactory.create(
-        github_host=ocean.integration_config["github_host"],
+        github_host=github_host,
         organization=org_name,
         token=ocean.integration_config.get("github_token"),
         app_id=ocean.integration_config.get("github_app_id"),
@@ -103,14 +110,14 @@ async def _create_webhooks_for_organization(org_name: str, base_url: str) -> Non
         private_key=ocean.integration_config.get("github_app_private_key"),
     )
 
-    client = GithubWebhookClient(
-        **integration_config(authenticator),
+    client = await GithubWebhookClientFactory.create(
+        authenticator=authenticator,
         organization=org_name,
-        webhook_secret=ocean.integration_config["webhook_secret"],
+        webhook_secret=webhook_secret,
     )
 
     logger.info(f"Subscribing to GitHub webhooks for organization: {org_name}")
-    await client.upsert_webhook(base_url, WEBHOOK_CREATE_EVENTS)
+    await client.upsert_webhook(base_url)
 
 
 @ocean.on_start()
@@ -365,12 +372,18 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Starting resync for kind: {kind}")
 
     rest_client = create_github_client()
+    graphql_client = create_github_client(GithubClientType.GRAPHQL)
     org_exporter = RestOrganizationExporter(rest_client)
     repository_exporter = RestRepositoryExporter(rest_client)
-    pull_request_exporter = RestPullRequestExporter(rest_client)
-
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubPullRequestConfig, event.resource_config)
+
+    is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
+    pull_request_exporter: AbstractGithubExporter[Any] = (
+        GraphQLPullRequestExporter(graphql_client)
+        if is_graphql_api
+        else RestPullRequestExporter(rest_client)
+    )
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -396,7 +409,8 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 repo_name=repo["name"],
                                 states=list(config.selector.states),
                                 max_results=config.selector.max_results,
-                                since=config.selector.since,
+                                updated_after=config.selector.updated_after,
+                                repo=repo if is_graphql_api else None,
                             )
                         )
                     )
@@ -441,6 +455,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 state=config.selector.state,
+                                labels=config.selector.labels_str,
                             )
                         )
                     )
@@ -524,7 +539,7 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     tasks.append(
                         tag_exporter.get_paginated_resources(
                             ListTagOptions(
-                                organization=org_name, repo_name=repo["name"]
+                                organization=org_name, repo_name=repo["name"], repo=repo
                             )
                         )
                     )
@@ -568,14 +583,22 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             ListBranchOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
-                                detailed=selector.detailed,
                                 protection_rules=selector.protection_rules,
+                                detailed=selector.detailed,
+                                branch_names=selector.branch_names,
+                                repo=repo,
                             )
                         )
                     )
 
-        async for branches in stream_async_iterators_tasks(*tasks):
-            yield branches
+                    if len(tasks) == MAX_CONCURRENT_REPOS:
+                        async for branches in stream_async_iterators_tasks(*tasks):
+                            yield branches
+                        tasks.clear()
+
+        if tasks:
+            async for branches in stream_async_iterators_tasks(*tasks):
+                yield branches
 
 
 @ocean.on_resync(ObjectKind.ENVIRONMENT)
@@ -632,7 +655,7 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     deployment_exporter = RestDeploymentExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    config = cast(GithubRepoSearchConfig, event.resource_config)
+    config = cast(GithubDeploymentConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -656,6 +679,8 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             ListDeploymentsOptions(
                                 organization=org_name,
                                 repo_name=repo["name"],
+                                task=config.selector.task,
+                                environment=config.selector.environment,
                             )
                         )
                     )
@@ -701,6 +726,8 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 state=list(config.selector.states),
+                                severity=config.selector.severity_str,
+                                ecosystem=config.selector.ecosystems_str,
                             )
                         )
                     )
@@ -745,6 +772,7 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 organization=org_name,
                                 repo_name=repo["name"],
                                 state=config.selector.state,
+                                severity=config.selector.severity,
                             )
                         )
                     )

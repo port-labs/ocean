@@ -1,9 +1,9 @@
-from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from loguru import logger
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError, Timeout
+from utils import ObjectKind, build_resource_url
 
 PAGE_SIZE = 50
 WEBHOOK_TIMEOUT = "00:00:50"
@@ -12,21 +12,22 @@ KINDS_WITH_LIMITATION = ["deployment"]
 MAX_ITEMS_LIMITATION = 100
 
 
-class ObjectKind(StrEnum):
-    SPACE = "space"
-    PROJECT = "project"
-    DEPLOYMENT = "deployment"
-    RELEASE = "release"
-    MACHINE = "machine"
-
-
 class OctopusClient:
     def __init__(self, server_url: str, octopus_api_key: str) -> None:
-        self.octopus_url = f"{server_url.rstrip('/')}/api/"
+        self.server_url = server_url.rstrip("/")
+        self.octopus_url = f"{self.server_url}/api/"
         self.api_auth_header = {"X-Octopus-ApiKey": octopus_api_key}
         self.client = http_async_client
         self.client.timeout = Timeout(CLIENT_TIMEOUT)
         self.client.headers.update(self.api_auth_header)
+
+    def _enrich_with_url(
+        self, resources: list[dict[str, Any]], kind: str
+    ) -> list[dict[str, Any]]:
+        return [
+            {**resource, "__url": build_resource_url(resource, kind, self.server_url)}
+            for resource in resources
+        ]
 
     async def _send_api_request(
         self,
@@ -70,7 +71,7 @@ class OctopusClient:
             response = await self._send_api_request(endpoint, params=params)
             items = response.get("Items", [])
             last_page = response.get("LastPageNumber", 0)
-            yield items
+            yield self._enrich_with_url(items, kind)
             if page >= last_page:
                 break
             if kind in KINDS_WITH_LIMITATION and params["skip"] >= MAX_ITEMS_LIMITATION:
@@ -85,11 +86,18 @@ class OctopusClient:
         self, resource_kind: str, resource_id: str, space_id: str
     ) -> dict[str, Any]:
         """Get a single resource by kind and ID."""
-        return await self._send_api_request(f"{space_id}/{resource_kind}/{resource_id}")
+        resource = await self._send_api_request(
+            f"{space_id}/{resource_kind}/{resource_id}"
+        )
+        kind = ObjectKind(resource_kind.rstrip("s"))
+        resource["__url"] = build_resource_url(resource, kind, self.server_url)
+        return resource
 
     async def get_single_space(self, space_id: str) -> dict[str, Any]:
         """Get a single space by ID."""
-        return await self._send_api_request(f"{ObjectKind.SPACE}s/{space_id}")
+        space = await self._send_api_request(f"{ObjectKind.SPACE}s/{space_id}")
+        space["__url"] = build_resource_url(space, ObjectKind.SPACE, self.server_url)
+        return space
 
     @cache_iterator_result()
     async def get_all_spaces(self) -> AsyncGenerator[list[dict[str, Any]], None]:

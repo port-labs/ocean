@@ -19,7 +19,11 @@ from port_ocean.core.models import (
     ProcessExecutionMode,
     Runtime,
 )
-from port_ocean.utils.misc import get_integration_name, get_spec_file
+from port_ocean.utils.misc import (
+    get_cgroup_cpu_limit,
+    get_integration_name,
+    get_spec_file,
+)
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
@@ -99,11 +103,11 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     initialize_port_resources: bool = True
     scheduled_resync_interval: int | None = None
     client_timeout: int = 60
-    # Determines if Port should generate resources such as blueprints and pages instead of ocean
     create_port_resources_origin: CreatePortResourcesOrigin | None = None
     send_raw_data_examples: bool = True
     oauth_access_token_file_path: str | None = None
     base_url: str | None = None
+    path_prefix: str | None = None
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(
         default_factory=lambda: PollingEventListenerSettings(
@@ -132,9 +136,12 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
     lakehouse_enabled: bool = False
-    yield_items_to_parse: bool = True
-    yield_items_to_parse_batch_size: int = 10
-
+    yield_items_to_parse_batch_size: int = 200
+    process_in_queue_timeout: int = 120
+    process_in_queue_max_workers: int = Field(
+        default_factory=lambda: get_cgroup_cpu_limit()
+    )
+    delete_entities_max_batch_size: int = 1000
     streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
     actions_processor: ActionsProcessorSettings = Field(
         default_factory=lambda: ActionsProcessorSettings()
@@ -184,20 +191,6 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         )
 
         return values
-
-    @validator("create_port_resources_origin")
-    def validate_create_port_resources_origin(
-        cls, create_port_resources_origin: CreatePortResourcesOrigin | None
-    ) -> CreatePortResourcesOrigin | None:
-        spec = get_spec_file()
-        if spec and spec.get("create_port_resources_origin", None):
-            spec_create_port_resources_origin = spec.get("create_port_resources_origin")
-            if spec_create_port_resources_origin in [
-                CreatePortResourcesOrigin.Port,
-                CreatePortResourcesOrigin.Ocean,
-            ]:
-                return CreatePortResourcesOrigin(spec_create_port_resources_origin)
-        return create_port_resources_origin
 
     @validator("runtime")
     def validate_runtime(cls, runtime: Runtime) -> Runtime:

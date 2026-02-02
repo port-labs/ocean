@@ -19,6 +19,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from github.helpers.utils import ObjectKind
 from integration import GithubFilePattern, GithubFileResourceConfig
 from loguru import logger
+from github.helpers.port_app_config import ORG_CONFIG_REPO
 
 
 YAML_SUFFIX = (".yaml", ".yml")
@@ -34,11 +35,13 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        event_type = event.headers.get("x-github-event")
-
-        return event_type == "push" and event.payload.get("ref", "").startswith(
-            "refs/heads/"
+        is_push_event = event.headers.get("x-github-event") == "push"
+        is_github_private_repo = (
+            event.payload.get("repository", {}).get("name") == ORG_CONFIG_REPO
         )
+        has_branch_name = event.payload.get("ref", "").startswith("refs/heads/")
+
+        return is_push_event and not is_github_private_repo and has_branch_name
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.FILE]
@@ -46,7 +49,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
         repository = payload["repository"]
         before_sha = payload["before"]
         after_sha = payload["after"]

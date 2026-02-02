@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from httpx import Request, Response
+from httpx import Request, Response, HTTPStatusError
 from port_ocean.context.event import EventContext, event_context
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -209,6 +209,21 @@ EXPECTED_WEBHOOK_EVENTS = [
         "consumerInputs": None,
         "publisherInputs": None,
         "status": None,
+    },
+]
+
+EXPECTED_SECURITY_ALERTS = [
+    {
+        "id": 1,
+        "name": "Alert One",
+        "state": "active",
+        "severity": "high",
+    },
+    {
+        "id": 2,
+        "name": "Alert Two",
+        "state": "closed",
+        "severity": "low",
     },
 ]
 
@@ -874,7 +889,10 @@ async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
         ]
 
     async def mock_get_paginated_by_top_and_skip(
-        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+        url: str,
+        additional_params: Optional[Dict[str, Any]] = None,
+        max_results: Optional[int] = None,
+        **kwargs: Any,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         if "pullrequests" in url:
             yield EXPECTED_PULL_REQUESTS
@@ -1315,6 +1333,46 @@ async def test_generate_repository_policies() -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_security_alerts() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    repository: dict[str, Any] = {
+        "id": "repo1",
+        "name": "Repo One",
+        "project": {"id": "proj1", "name": "Project One"},
+    }
+
+    # MOCK
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "alerts" in url:
+            yield EXPECTED_SECURITY_ALERTS
+        else:
+            yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        # ACT
+        alerts: List[Dict[str, Any]] = []
+        async for alert_batch in client.generate_advanced_security_alerts(repository):
+            alerts.extend(alert_batch)
+
+        # ASSERT
+        assert len(alerts) == 2
+        assert alerts[0]["id"] == 1
+        assert alerts[0]["__repositoryId"] == repository["id"]
+        assert alerts[0]["__projectId"] == repository["project"]["id"]
+        assert alerts[1]["id"] == 2
+        assert alerts[1]["__repositoryId"] == repository["id"]
+
+
+@pytest.mark.asyncio
 async def test_generate_releases(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(
         MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
@@ -1552,6 +1610,67 @@ async def test_get_columns() -> None:
 
         # ASSERT
         assert columns == EXPECTED_COLUMNS
+
+
+@pytest.mark.asyncio
+async def test_get_boards_skips_team_on_500_error(
+    mock_azure_client: AzureDevopsClient,
+) -> None:
+    """
+    Tests that the _get_boards method skips a team if the Azure DevOps API returns a 500 error,
+    which can happen for teams not in a sprint iteration.
+    """
+    project_id = "project123"
+    teams = [
+        {"id": "team1", "name": "Team With Boards"},
+        {"id": "team2", "name": "Team Without Boards (500 error)"},
+    ]
+    boards_for_team1 = [{"id": "board1", "name": "Board 1"}]
+
+    async def mock_paginated_teams(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        yield teams
+
+    async def mock_send_request(
+        method: str, url: str, **kwargs: Any
+    ) -> Optional[Response]:
+        if "team1" in url and "boards" in url:
+            return Response(status_code=200, json={"value": boards_for_team1})
+        if "team2" in url and "boards" in url:
+            raise HTTPStatusError(
+                "Internal Server Error",
+                request=Request("GET", url),
+                response=Response(status_code=500),
+            )
+        return None
+
+    async def mock_enrich_boards(
+        boards: list[dict[str, Any]], project_id: str, team_id: str
+    ) -> list[dict[str, Any]]:
+        # Simple passthrough enrichment for test
+        for board in boards:
+            board["__enriched"] = True
+        return boards
+
+    with (
+        patch.object(
+            mock_azure_client,
+            "_get_paginated_by_top_and_skip",
+            side_effect=mock_paginated_teams,
+        ),
+        patch.object(mock_azure_client, "send_request", side_effect=mock_send_request),
+        patch.object(
+            mock_azure_client, "_enrich_boards", side_effect=mock_enrich_boards
+        ),
+    ):
+        all_boards = []
+        async for boards_batch in mock_azure_client._get_boards(project_id):
+            all_boards.extend(boards_batch)
+
+        assert len(all_boards) == 1
+        assert all_boards[0]["id"] == "board1"
+        assert all_boards[0]["__enriched"] is True
 
 
 @pytest.mark.asyncio
@@ -2056,11 +2175,41 @@ async def test_process_folder_patterns(
             "project": {"name": project_name, "id": "project-123"},
         }
 
+    async def mock_get_repositories_for_project(
+        project_name: str,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        repos_data = [
+            {
+                "name": "repo1",
+                "id": "repo1-id",
+                "project": {"name": project_name, "id": "project-123"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "name": "repo2",
+                "id": "repo2-id",
+                "project": {"name": project_name, "id": "project-123"},
+                "defaultBranch": "refs/heads/main",
+            },
+            {
+                "name": "repo3",
+                "id": "repo3-id",
+                "project": {"name": project_name, "id": "project-123"},
+                "defaultBranch": "refs/heads/develop",
+            },
+        ]
+        yield repos_data
+
     with (
         patch.object(
             mock_azure_client,
             "generate_repositories",
             side_effect=mock_generate_repositories,
+        ),
+        patch.object(
+            mock_azure_client,
+            "_get_repositories_for_project",
+            side_effect=mock_get_repositories_for_project,
         ),
         patch.object(
             mock_azure_client,
@@ -2993,7 +3142,9 @@ async def test_generate_pipeline_deployments() -> None:
     ):
         # ACT
         deployments: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            1, {"id": "proj1", "name": "Project One"}
+        ):
             deployments.extend(deployment_batch)
 
         # ASSERT
@@ -3011,7 +3162,9 @@ async def test_generate_pipeline_deployments_will_skip_404() -> None:
 
     with patch.object(client._client, "request", side_effect=mock_make_request):
         deployments: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            1, {"id": "proj1", "name": "Project One"}
+        ):
             deployments.extend(deployment_batch)
 
         assert not deployments
@@ -3045,12 +3198,16 @@ async def test_generate_pipeline_deployments_with_multiple_environments() -> Non
     ):
         # Test environment 1
         deployments_env1: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 1):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            1, {"id": "proj1", "name": "Project One"}
+        ):
             deployments_env1.extend(deployment_batch)
 
         # Test environment 2
         deployments_env2: List[Dict[str, Any]] = []
-        async for deployment_batch in client.generate_pipeline_deployments("proj1", 2):
+        async for deployment_batch in client.generate_pipeline_deployments(
+            2, {"id": "proj1", "name": "Project One"}
+        ):
             deployments_env2.extend(deployment_batch)
 
         # ASSERT

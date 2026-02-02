@@ -43,7 +43,7 @@ class TeamMemberWebhookProcessor(_GithubAbstractWebhookProcessor):
         action = payload["action"]
         team = payload["team"]
         member = payload["member"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Processing {action} event for team {team['name']} from {organization}"

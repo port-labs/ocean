@@ -1,3 +1,4 @@
+from typing import cast, Any
 from loguru import logger
 from github.webhook.events import DEPENDABOT_ACTION_TO_STATE
 from github.helpers.utils import (
@@ -14,8 +15,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from github.core.options import SingleDependabotAlertOptions
 from github.core.exporters.dependabot_exporter import RestDependabotAlertExporter
-from typing import cast
-from integration import GithubDependabotAlertConfig
+from integration import GithubDependabotAlertConfig, GithubDependabotAlertSelector
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
 )
@@ -39,17 +39,29 @@ class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         repo = payload["repository"]
         alert_number = alert["number"]
         repo_name = repo["name"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Processing Dependabot alert event: {action} for alert {alert_number} in {repo_name} from {organization}"
         )
 
         config = cast(GithubDependabotAlertConfig, resource_config)
+
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
         current_state = DEPENDABOT_ACTION_TO_STATE[action]
 
-        if current_state not in config.selector.states:
+        if not self._check_alert_filters(config.selector, alert):
+            logger.info(
+                f"Dependabot alert {repo_name}/{alert_number} filtered out by selector criteria"
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
+        if current_state not in config.selector.states:
             alert = enrich_with_organization(
                 enrich_with_repository(alert, repo_name), organization
             )
@@ -72,3 +84,24 @@ class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
+
+    def _check_alert_filters(
+        self, selector: GithubDependabotAlertSelector, alert: dict[str, Any]
+    ) -> bool:
+        """Check if alert matches selector severity and ecosystem filters."""
+        security_advisory = alert["security_advisory"]
+
+        alert_severity = security_advisory["severity"]
+        if selector.severity and alert_severity.lower() not in {
+            s.lower() for s in selector.severity
+        }:
+            return False
+
+        package = alert["dependency"]["package"]
+        alert_ecosystem = package["ecosystem"]
+        if selector.ecosystems and alert_ecosystem.lower() not in {
+            e.lower() for e in selector.ecosystems
+        }:
+            return False
+
+        return True

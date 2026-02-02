@@ -1,10 +1,8 @@
 from itertools import chain
-from typing import Any, AsyncGenerator, AsyncIterator, cast, Optional, List
+from typing import Any, AsyncGenerator, AsyncIterator, Optional, List
 
 import httpx
-from integration import SentryResourceConfig
 from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
@@ -45,7 +43,6 @@ class SentryClient:
             max_attempts=5,
         )
         self._client = OceanAsyncClient(retry_config=retry_config)
-        self.selector = cast(SentryResourceConfig, event.resource_config).selector
         self._rate_limiter = SentryRateLimiter()
 
     @staticmethod
@@ -164,38 +161,49 @@ class SentryClient:
                 logger.error(f"HTTP occurred while fetching Sentry data: {e}")
                 raise
 
-    async def _get_single_resource(self, url: str) -> list[dict[str, Any]]:
+    async def _get_tags(self, url: str) -> list[dict[str, Any]]:
+        logger.debug(f"Getting tags from Sentry for URL: {url}")
+        try:
+            response = await self.send_api_request("GET", url)
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.warning(
+                f"Failed to get tags at {url} due to {e.response.status_code}"
+            )
+            return []
+
+    async def _get_single_resource(self, url: str) -> dict[str, Any]:
         logger.debug(f"Getting single resource from Sentry for URL: {url}")
         try:
             response = await self.send_api_request("GET", url)
             return response.json()
-        except httpx.HTTPStatusError:
-            logger.debug(f"Ignoring non-fatal error for single resource: {url}")
-            return []
+        except httpx.HTTPStatusError as e:
+            logger.warning(f"Failed to get single resource at {url} due to {str(e)}")
+            return {}
 
     async def _get_project_tags_iterator(
-        self, project: dict[str, Any]
+        self, project: dict[str, Any], tag: Optional[str]
     ) -> AsyncIterator[list[dict[str, Any]]]:
         try:
-            url = f"{self.api_url}/projects/{self.organization}/{project['slug']}/tags/{self.selector.tag}/values/"
-            tags = await self._get_single_resource(url)
-            yield [{**project, "__tags": tag} for tag in tags]
+            url = f"{self.api_url}/projects/{self.organization}/{project['slug']}/tags/{tag}/values/"
+            tags = await self._get_tags(url)
+            yield [{**project, "__tags": tag_item} for tag_item in tags]
         except ResourceNotFoundError:
             logger.debug(
-                f"No values found for project {project['slug']} and tag {self.selector.tag} in {self.organization}"
+                f"No values found for project {project['slug']} and tag {tag} in {self.organization}"
             )
             yield []
 
     async def _get_issue_tags_iterator(
-        self, issue: dict[str, Any]
+        self, issue: dict[str, Any], tag: Optional[str]
     ) -> AsyncIterator[list[dict[str, Any]]]:
         try:
-            url = f"{self.api_url}/organizations/{self.organization}/issues/{issue['id']}/tags/{self.selector.tag}/values/"
-            tags = await self._get_single_resource(url)
+            url = f"{self.api_url}/organizations/{self.organization}/issues/{issue['id']}/tags/{tag}/values/"
+            tags = await self._get_tags(url)
             yield [{**issue, "__tags": tags}]
         except ResourceNotFoundError:
             logger.debug(
-                f"No values found for issue {issue['id']} and tag {self.selector.tag} in {self.organization}"
+                f"No values found for issue {issue['id']} and tag {tag} in {self.organization}"
             )
             yield []
 
@@ -221,10 +229,10 @@ class SentryClient:
             yield issues
 
     async def get_issues_tags_from_issues(
-        self, issues: list[dict[str, Any]]
+        self, tag: Optional[str], issues: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         add_tags_to_issues_tasks = [
-            self._get_issue_tags_iterator(issue) for issue in issues
+            self._get_issue_tags_iterator(issue, tag) for issue in issues
         ]
         issues_with_tags = []
         async for issues_with_tags_batch in stream_async_iterators_tasks(
@@ -234,10 +242,10 @@ class SentryClient:
         return flatten_list(issues_with_tags)
 
     async def get_projects_tags_from_projects(
-        self, projects: list[dict[str, Any]]
+        self, tag: Optional[str], projects: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         project_tags = []
-        tasks = [self._get_project_tags_iterator(project) for project in projects]
+        tasks = [self._get_project_tags_iterator(project, tag) for project in projects]
         async for project_tags_batch in stream_async_iterators_tasks(*tasks):
             if project_tags_batch:
                 project_tags.append(project_tags_batch)
@@ -273,3 +281,10 @@ class SentryClient:
             f"Received a total of {len(team_members_List)} members for team {team_slug}"
         )
         return team_members_List
+
+    async def get_issue(self, issue_id: str) -> dict[str, Any]:
+        logger.info(f"Getting issue for issue_id {issue_id}")
+        issue = await self._get_single_resource(
+            f"{self.api_url}/organizations/{self.organization}/issues/{issue_id}/",
+        )
+        return issue

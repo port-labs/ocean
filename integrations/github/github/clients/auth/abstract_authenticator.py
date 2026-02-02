@@ -1,13 +1,20 @@
 from typing import Any, Dict, Optional
 from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
+from github.clients.auth.retry_transport import GitHubRetryTransport
 from pydantic import BaseModel, PrivateAttr, Field
 from dateutil.parser import parse
 
 from port_ocean.context.ocean import ocean
 from port_ocean.helpers.retry import RetryConfig
 from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.utils.cache import cache_coroutine_result
+from loguru import logger
+
 import httpx
+
+
+GITHUB_RETRY_MAX_BACKOFF = 1800
 
 
 class GitHubToken(BaseModel):
@@ -38,6 +45,8 @@ class GitHubHeaders(BaseModel):
 
 
 class AbstractGitHubAuthenticator(ABC):
+    _http_client: Optional[httpx.AsyncClient] = None
+
     @abstractmethod
     async def get_token(self, **kwargs: Any) -> GitHubToken:
         pass
@@ -48,14 +57,31 @@ class AbstractGitHubAuthenticator(ABC):
 
     @property
     def client(self) -> httpx.AsyncClient:
-        retry_config = RetryConfig(
-            retry_after_headers=[
-                "Retry-After",
-                "X-RateLimit-Reset",
-            ]
-        )
+        if self._http_client is None:
+            retry_config = RetryConfig(
+                retry_after_headers=[
+                    "Retry-After",
+                    "X-RateLimit-Reset",
+                ],
+                max_backoff_wait=GITHUB_RETRY_MAX_BACKOFF,
+            )
+            self._http_client = OceanAsyncClient(
+                GitHubRetryTransport,
+                retry_config=retry_config,
+                timeout=ocean.config.client_timeout,
+            )
+        return self._http_client
 
-        return OceanAsyncClient(
-            retry_config=retry_config,
-            timeout=ocean.config.client_timeout,
-        )
+    @cache_coroutine_result()
+    async def is_personal_org(self, github_host: str, organization: str) -> bool:
+        try:
+            url = f"{github_host}/users/{organization}"
+            response = await self.client.get(url)
+            response.raise_for_status()
+            user_data = response.json()
+            return user_data["type"] == "User"
+        except Exception:
+            logger.exception(
+                "Failed to check if organization is personal, assuming it is not a personal org"
+            )
+            return False

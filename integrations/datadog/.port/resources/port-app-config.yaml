@@ -16,7 +16,7 @@ resources:
             status: .attributes.status
             disabled: .attributes.disabled
             verified: .attributes.verified
-            createdAt: .attributes.created_at | todate
+            createdAt: .attributes.created_at
   - kind: team
     selector:
       query: 'true'
@@ -32,12 +32,12 @@ resources:
             handle: .attributes.handle
             userCount: .attributes.user_count
             summary: .attributes.summary
-            createdAt: .attributes.created_at | todate
+            createdAt: .attributes.created_at
           relations:
             members: if .__members then [.__members[] | .id] else [] end
   - kind: host
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -57,7 +57,7 @@ resources:
             tags: .tags_by_source
   - kind: monitor
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -75,7 +75,7 @@ resources:
             updatedAt: .modified
   - kind: service
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -101,7 +101,7 @@ resources:
                   value: .attributes.schema.team
   - kind: slo
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:

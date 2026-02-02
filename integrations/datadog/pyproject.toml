@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "datadog"
-version = "0.3.46"
+version = "0.3.81"
 description = "Datadog Ocean Integration"
 authors = ["Albert Luganga <albertluganga@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.30.2", extras = ["cli"]}
+port_ocean = {version = "^0.35.1", extras = ["cli"]}
 loguru = "^0.7.2"
 
 [tool.poetry.group.dev.dependencies]

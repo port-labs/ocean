@@ -131,6 +131,7 @@ class TestIssueWebhookProcessor:
             "number": 42,
             "title": "Test Issue",
             "state": issue_state,
+            "labels": [],
         }
 
         repo_data = {"name": "test-repo"}
@@ -181,3 +182,68 @@ class TestIssueWebhookProcessor:
                 assert result.updated_raw_results == []
                 assert result.deleted_raw_results == [issue_data]
                 mock_exporter.get_resource.assert_not_called()
+
+
+class TestIssueFiltering:
+    """Tests for issue filtering functionality."""
+
+    def test_labels_filter_matches(
+        self, issue_webhook_processor: IssueWebhookProcessor
+    ) -> None:
+        """Test labels filter accepts issues with ALL matching labels (AND logic)."""
+        selector = GithubIssueSelector(
+            query=".pull_request == null", labels=["bug", "enhancement"]
+        )
+
+        # Issue has BOTH required labels
+        issue = {
+            "labels": [
+                {"name": "bug"},
+                {"name": "enhancement"},
+                {"name": "priority:high"},
+            ]
+        }
+
+        assert issue_webhook_processor._check_labels_filter(selector, issue) is True
+
+    def test_labels_filter_no_match(
+        self, issue_webhook_processor: IssueWebhookProcessor
+    ) -> None:
+        """Test labels filter rejects issues without ALL required labels (AND logic)."""
+        selector = GithubIssueSelector(
+            query=".pull_request == null", labels=["enhancement", "feature"]
+        )
+
+        # Issue has only "bug", missing "enhancement" and "feature"
+        issue = {"labels": [{"name": "bug"}, {"name": "priority:high"}]}
+
+        assert issue_webhook_processor._check_labels_filter(selector, issue) is False
+
+    def test_labels_filter_partial_match(
+        self, issue_webhook_processor: IssueWebhookProcessor
+    ) -> None:
+        """Test labels filter rejects issues with only some required labels."""
+        selector = GithubIssueSelector(
+            query=".pull_request == null", labels=["bug", "enhancement", "feature"]
+        )
+
+        # Issue has "bug" and "enhancement" but missing "feature"
+        issue = {
+            "labels": [
+                {"name": "bug"},
+                {"name": "enhancement"},
+                {"name": "priority:high"},
+            ]
+        }
+
+        assert issue_webhook_processor._check_labels_filter(selector, issue) is False
+
+    def test_labels_filter_no_labels_specified(
+        self, issue_webhook_processor: IssueWebhookProcessor
+    ) -> None:
+        """Test labels filter accepts when no labels are specified in selector."""
+        selector = GithubIssueSelector(query=".pull_request == null")  # No labels field
+
+        issue = {"labels": [{"name": "any-label"}]}
+
+        assert issue_webhook_processor._check_labels_filter(selector, issue) is True

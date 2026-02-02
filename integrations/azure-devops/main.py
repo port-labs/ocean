@@ -1,10 +1,37 @@
-from typing import cast
+from typing import cast, Any
+
+from loguru import logger
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.misc import (
-    PULL_REQUEST_SEARCH_CRITERIA,
+    create_closed_pull_request_search_criteria,
+    ACTIVE_PULL_REQUEST_SEARCH_CRITERIA,
     Kind,
     AzureDevopsFolderResourceConfig,
+)
+from azure_devops.webhooks.webhook_processors.branch_webhook_processor import (
+    BranchWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.file_webhook_processor import (
+    FileWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.folder_webhook_processor import (
+    FolderWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.gitops_webhook_processor import (
+    GitopsWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.pull_request_processor import (
+    PullRequestWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.repository_processor import (
+    RepositoryWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.work_item_webhook_processor import (
+    WorkItemWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.advanced_security_webhook_processor import (
+    AdvancedSecurityWebhookProcessor,
 )
 from integration import (
     AzureDevopsPipelineResourceConfig,
@@ -13,29 +40,9 @@ from integration import (
     AzureDevopsTeamResourceConfig,
     AzureDevopsWorkItemResourceConfig,
     AzureDevopsTestRunResourceConfig,
+    AzureDevopsPullRequestResourceConfig,
+    AzureDevopsAdvancedSecurityResourceConfig,
 )
-
-from azure_devops.webhooks.webhook_processors.pull_request_processor import (
-    PullRequestWebhookProcessor,
-)
-
-from azure_devops.webhooks.webhook_processors.repository_processor import (
-    RepositoryWebhookProcessor,
-)
-from azure_devops.webhooks.webhook_processors.file_webhook_processor import (
-    FileWebhookProcessor,
-)
-from azure_devops.webhooks.webhook_processors.gitops_webhook_processor import (
-    GitopsWebhookProcessor,
-)
-from azure_devops.webhooks.webhook_processors.folder_webhook_processor import (
-    FolderWebhookProcessor,
-)
-from azure_devops.webhooks.webhook_processors.branch_webhook_processor import (
-    BranchWebhookProcessor,
-)
-
-from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -106,11 +113,25 @@ async def resync_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.PULL_REQUEST)
 async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    for search_filter in PULL_REQUEST_SEARCH_CRITERIA:
+    selector = cast(
+        AzureDevopsPullRequestResourceConfig, event.resource_config
+    ).selector
+
+    async for pull_requests in azure_devops_client.generate_pull_requests(
+        ACTIVE_PULL_REQUEST_SEARCH_CRITERIA
+    ):
+        logger.info(f"Resyncing {len(pull_requests)} active pull_requests")
+        yield pull_requests
+
+    for search_filter in create_closed_pull_request_search_criteria(
+        selector.min_time_datetime
+    ):
         async for pull_requests in azure_devops_client.generate_pull_requests(
-            search_filter
+            search_filter, selector.max_results
         ):
-            logger.info(f"Resyncing {len(pull_requests)} pull_requests")
+            logger.info(
+                f"Resyncing {len(pull_requests)} abandoned/completed pull_requests"
+            )
             yield pull_requests
 
 
@@ -215,8 +236,8 @@ async def resync_pipeline_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for environments in azure_devops_client.generate_environments():
         tasks = [
             azure_devops_client.generate_pipeline_deployments(
-                project_id=environment["project"]["id"],
                 environment_id=environment["id"],
+                project=environment["project"],
             )
             for environment in environments
         ]
@@ -308,9 +329,32 @@ async def resync_iterations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield iterations
 
 
+@ocean.on_resync(Kind.ADVANCED_SECURITY_ALERT)
+async def resync_advanced_security_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    selector = cast(
+        AzureDevopsAdvancedSecurityResourceConfig, event.resource_config
+    ).selector
+    params: dict[str, Any] = {}
+    if selector.criteria:
+        params = selector.criteria.as_params
+
+    async for repositories in azure_devops_client.generate_repositories():
+        for repository in repositories:
+            async for (
+                security_alerts
+            ) in azure_devops_client.generate_advanced_security_alerts(
+                repository, params
+            ):
+                logger.info(f"Resyncing {len(security_alerts)} security alerts")
+                yield security_alerts
+
+
 ocean.add_webhook_processor("/webhook", PullRequestWebhookProcessor)
 ocean.add_webhook_processor("/webhook", RepositoryWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FileWebhookProcessor)
 ocean.add_webhook_processor("/webhook", GitopsWebhookProcessor)
 ocean.add_webhook_processor("/webhook", FolderWebhookProcessor)
 ocean.add_webhook_processor("/webhook", BranchWebhookProcessor)
+ocean.add_webhook_processor("/webhook", WorkItemWebhookProcessor)
+ocean.add_webhook_processor("/webhook", AdvancedSecurityWebhookProcessor)

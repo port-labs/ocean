@@ -51,6 +51,21 @@ class MetricType:
     SUCCESS_NAME = "success"
     RATE_LIMIT_WAIT_NAME = "rate_limit_wait_seconds"
 
+    # Resource usage metrics (CPU, memory, latency)
+    CPU_MAX_NAME = "cpu_max_percent"
+    CPU_MEDIAN_NAME = "cpu_median_percent"
+    CPU_AVG_NAME = "cpu_avg_percent"
+    MEMORY_MAX_NAME = "memory_max_bytes"
+    MEMORY_MEDIAN_NAME = "memory_median_bytes"
+    MEMORY_AVG_NAME = "memory_avg_bytes"
+    LATENCY_MAX_NAME = "event_loop_latency_max_ms"
+    LATENCY_MEDIAN_NAME = "event_loop_latency_median_ms"
+    LATENCY_AVG_NAME = "event_loop_latency_avg_ms"
+
+    RESPONSE_SIZE_TOTAL_NAME = "response_size_total_bytes"
+    RESPONSE_SIZE_AVG_NAME = "response_size_avg_bytes"
+    RESPONSE_SIZE_MEDIAN_NAME = "response_size_median_bytes"
+
 
 class SyncState:
     SYNCING = "syncing"
@@ -87,6 +102,70 @@ _metrics_registry: Dict[str, Tuple[str, str, List[str]]] = {
         MetricType.RATE_LIMIT_WAIT_NAME,
         "rate_limit_wait description",
         ["kind", "phase", "endpoint"],
+    ),
+    # CPU metrics
+    MetricType.CPU_MAX_NAME: (
+        MetricType.CPU_MAX_NAME,
+        "Maximum CPU usage percentage during kind processing",
+        ["kind"],
+    ),
+    MetricType.CPU_MEDIAN_NAME: (
+        MetricType.CPU_MEDIAN_NAME,
+        "Median CPU usage percentage during kind processing",
+        ["kind"],
+    ),
+    MetricType.CPU_AVG_NAME: (
+        MetricType.CPU_AVG_NAME,
+        "Average CPU usage percentage during kind processing",
+        ["kind"],
+    ),
+    # Memory metrics
+    MetricType.MEMORY_MAX_NAME: (
+        MetricType.MEMORY_MAX_NAME,
+        "Maximum memory usage in bytes during kind processing",
+        ["kind"],
+    ),
+    MetricType.MEMORY_MEDIAN_NAME: (
+        MetricType.MEMORY_MEDIAN_NAME,
+        "Median memory usage in bytes during kind processing",
+        ["kind"],
+    ),
+    MetricType.MEMORY_AVG_NAME: (
+        MetricType.MEMORY_AVG_NAME,
+        "Average memory usage in bytes during kind processing",
+        ["kind"],
+    ),
+    # Event loop latency metrics
+    MetricType.LATENCY_MAX_NAME: (
+        MetricType.LATENCY_MAX_NAME,
+        "Maximum event loop latency in milliseconds during kind processing",
+        ["kind"],
+    ),
+    MetricType.LATENCY_MEDIAN_NAME: (
+        MetricType.LATENCY_MEDIAN_NAME,
+        "Median event loop latency in milliseconds during kind processing",
+        ["kind"],
+    ),
+    MetricType.LATENCY_AVG_NAME: (
+        MetricType.LATENCY_AVG_NAME,
+        "Average event loop latency in milliseconds during kind processing",
+        ["kind"],
+    ),
+    # HTTP request size metrics
+    MetricType.RESPONSE_SIZE_TOTAL_NAME: (
+        MetricType.RESPONSE_SIZE_TOTAL_NAME,
+        "Total size of HTTP responses received during kind processing",
+        ["kind"],
+    ),
+    MetricType.RESPONSE_SIZE_AVG_NAME: (
+        MetricType.RESPONSE_SIZE_AVG_NAME,
+        "Average size of HTTP responses received during kind processing",
+        ["kind"],
+    ),
+    MetricType.RESPONSE_SIZE_MEDIAN_NAME: (
+        MetricType.RESPONSE_SIZE_MEDIAN_NAME,
+        "Median size of HTTP responses received during kind processing",
+        ["kind"],
     ),
 }
 
@@ -132,6 +211,8 @@ class Metrics:
         self.load_metrics()
         self._integration_version: Optional[str] = None
         self._ocean_version: Optional[str] = None
+        self._installation_type: str = "Unknown"
+        self._execution_mode: str = "Unknown"
         self._event_id = ""
         self.sync_state = SyncState.PENDING
 
@@ -150,6 +231,22 @@ class Metrics:
     @sync_state.setter
     def sync_state(self, value: str) -> None:
         self._sync_state = value
+
+    @property
+    def installation_type(self) -> str:
+        return self._installation_type
+
+    @installation_type.setter
+    def installation_type(self, value: str) -> None:
+        self._installation_type = value
+
+    @property
+    def execution_mode(self) -> str:
+        return self._execution_mode
+
+    @execution_mode.setter
+    def execution_mode(self, value: str) -> None:
+        self._execution_mode = value
 
     @property
     def integration_version(self) -> str:
@@ -321,7 +418,6 @@ class Metrics:
         metrics = self.generate_metrics(metric_name, kind, blueprint)
         if not metrics:
             return None
-
         try:
             for metric in metrics:
                 await self.port_client.put_integration_sync_metrics(metric)
@@ -380,18 +476,20 @@ class Metrics:
                 if kind and kind_key != kind:
                     continue
 
+                kind_parts = kind_key.split("-")
+                index_part = kind_parts[-1] if len(kind_parts) > 1 else ""
                 event = {
                     "integrationType": self.integration_configuration.type,
+                    "installationType": self.installation_type,
+                    "executionMode": self.execution_mode,
                     "integrationIdentifier": self.integration_configuration.identifier,
                     "integrationVersion": self.integration_version,
                     "oceanVersion": self.ocean_version,
                     "kindIdentifier": kind_key,
                     "kind": (
-                        "-".join(kind_key.split("-")[:-1])
-                        if "-" in kind_key
-                        else kind_key
+                        "-".join(kind_parts[:-1]) if len(kind_parts) > 1 else kind_key
                     ),
-                    "kindIndex": int(kind_key[-1]) if kind_key[-1].isdigit() else 0,
+                    "kindIndex": int(index_part) if index_part.isdigit() else 0,
                     "eventId": self.event_id,
                     "syncState": self.sync_state,
                     "blueprint": blueprint if blueprint else "",

@@ -1,5 +1,6 @@
 import asyncio
 from typing import Any, cast
+from urllib.parse import quote
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
@@ -11,13 +12,15 @@ from github.helpers.utils import (
     enrich_with_organization,
 )
 
+BATCH_CONCURRENCY_LIMIT = 10
+
 
 class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def fetch_branch(
         self, repo_name: str, branch_name: str, organization: str
     ) -> RAW_ITEM:
-        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/branches/{branch_name}"
+        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/branches/{quote(branch_name)}"
         response = await self.client.send_api_request(endpoint)
         return response
 
@@ -29,8 +32,14 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         branch_name = params["branch_name"]
         protection_rules = bool(params["protection_rules"])
         repo_name = cast(str, repo_name)
+        repo = params.pop("repo")
 
         response = await self.fetch_branch(repo_name, branch_name, organization)
+        if not response:
+            logger.warning(
+                f"No branch found with name: {branch_name} in repository: {repo_name} from {organization}"
+            )
+            return {}
 
         if protection_rules:
             response = await self._enrich_branch_with_protection_rules(
@@ -42,7 +51,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         )
 
         return enrich_with_organization(
-            enrich_with_repository(response, repo_name), organization
+            enrich_with_repository(response, repo_name, repo=repo), organization
         )
 
     async def get_paginated_resources[
@@ -54,39 +63,82 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         detailed = bool(params.pop("detailed"))
         protection_rules = bool(params.pop("protection_rules"))
         repo_name = cast(str, repo_name)
+        repo = params.pop("repo")
+        branch_names = params.pop("branch_names", [])
+        is_explicit = bool(branch_names)
 
-        async for branches in self.client.send_paginated_request(
-            f"{self.client.base_url}/repos/{organization}/{repo_name}/branches",
-            params,
-        ):
+        if branch_names:
+
+            async def _explicit_branches() -> ASYNC_GENERATOR_RESYNC_TYPE:
+                yield [{"name": name} for name in branch_names if name]
+
+            branches_iterator = _explicit_branches()
+        else:
+            branches_iterator = self.client.send_paginated_request(
+                f"{self.client.base_url}/repos/{organization}/{repo_name}/branches",
+                params,
+            )
+
+        async for branches in branches_iterator:
             logger.info(
                 f"Fetched batch of {len(branches)} branches from repository {repo_name} from {organization}"
             )
+
+            batch_concurrency_limit = asyncio.Semaphore(BATCH_CONCURRENCY_LIMIT)
+
             tasks = [
-                self._hydrate_branch(
-                    repo_name, organization, b, detailed, protection_rules
+                self._run_branch_hydration(
+                    repo,
+                    organization,
+                    branch,
+                    is_explicit or detailed,
+                    protection_rules,
+                    batch_concurrency_limit,
                 )
-                for b in branches
+                for branch in branches
             ]
+
             hydrated = await asyncio.gather(*tasks)
-
-            logger.info(f"Processed {len(hydrated)} branches for '{repo_name}'.")
-
             yield hydrated
+
+    async def _run_branch_hydration(
+        self,
+        repo: dict[str, Any],
+        organization: str,
+        branch: dict[str, Any],
+        detailed: bool,
+        protection_rules: bool,
+        batch_concurrency_limit: asyncio.Semaphore,
+    ) -> dict[str, Any]:
+        async with batch_concurrency_limit:
+            return await self._hydrate_branch(
+                repo,
+                organization,
+                branch,
+                detailed,
+                protection_rules,
+            )
 
     async def _hydrate_branch(
         self,
-        repo_name: str,
+        repo: dict[str, Any],
         organization: str,
         branch: dict[str, Any],
         detailed: bool,
         protection_rules: bool,
     ) -> dict[str, Any]:
+        repo_name = repo["name"]
         branch_name = branch["name"]
 
         if detailed:
             branch = await self.fetch_branch(repo_name, branch_name, organization)
-            logger.debug(
+            if not branch:
+                logger.warning(
+                    f"No branch found with name: {branch_name} in repository: {repo_name} from {organization}"
+                )
+                return {}
+
+            logger.info(
                 f"Added extra details for branch '{branch_name}' in repo '{repo_name}'."
             )
 
@@ -96,7 +148,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             )
 
         return enrich_with_organization(
-            enrich_with_repository(branch, repo_name), organization
+            enrich_with_repository(branch, repo_name, repo=repo), organization
         )
 
     async def _enrich_branch_with_protection_rules(
@@ -107,12 +159,11 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
         endpoint = (
             f"{self.client.base_url}/repos/"
-            f"{organization}/{repo_name}/branches/{branch_name}/protection"
+            f"{organization}/{repo_name}/branches/{quote(branch_name)}/protection"
         )
 
         protection_rules = await self.client.send_api_request(endpoint)
-
-        branch = {**branch, "__protection_rules": protection_rules}
+        branch["__protection_rules"] = protection_rules
 
         logger.debug(
             f"Fetched protection rules for branch '{branch_name}' in repo '{repo_name}'."

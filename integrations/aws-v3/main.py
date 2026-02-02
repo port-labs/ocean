@@ -26,10 +26,28 @@ from aws.core.exporters.aws_lambda.function.exporter import LambdaFunctionExport
 from aws.core.exporters.aws_lambda.function.models import PaginatedLambdaFunctionRequest
 from aws.core.exporters.sqs import SqsQueueExporter
 from aws.core.exporters.sqs.queue.models import PaginatedQueueRequest
+from aws.core.exporters.ecr import EcrRepositoryExporter
+from aws.core.exporters.ecr.repository.models import PaginatedRepositoryRequest
 from aws.core.helpers.utils import is_access_denied_exception
 
 from loguru import logger
 from resync import ResyncAWSService
+from aws.auth.session_factory import (
+    initialize_aws_account_sessions,
+    clear_aws_account_sessions,
+)
+
+
+@ocean.on_resync_start()
+async def initialize_aws_sessions() -> None:
+    """Initialize AWS account sessions before resync."""
+    await initialize_aws_account_sessions()
+
+
+@ocean.on_resync_complete()
+async def cleanup_aws_sessions() -> None:
+    """Clear AWS sessions from memory after resync completes."""
+    await clear_aws_account_sessions()
 
 
 @ocean.on_resync(ObjectKind.S3_BUCKET)
@@ -153,6 +171,15 @@ async def resync_organizations_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE
 async def resync_sqs_queue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     service = ResyncAWSService(
         kind, SqsQueueExporter, PaginatedQueueRequest, regional=True
+    )
+    async for batch in service:
+        yield batch
+
+
+@ocean.on_resync(ObjectKind.ECR_REPOSITORY)
+async def resync_ecr_repository(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    service = ResyncAWSService(
+        kind, EcrRepositoryExporter, PaginatedRepositoryRequest, regional=True
     )
     async for batch in service:
         yield batch

@@ -42,11 +42,17 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
         action = payload["action"]
         repo = payload["repository"]
         name = repo["name"]
-        organization = payload["organization"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
+        resource_config = cast(GithubRepositoryConfig, resource_config)
 
         logger.info(
             f"Processing repository event: {action} for {name} from {organization}"
         )
+
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         if action in REPOSITORY_DELETE_EVENTS:
             return WebhookEventRawResults(
@@ -56,7 +62,6 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
         rest_client = create_github_client()
         exporter = RestRepositoryExporter(rest_client)
 
-        resource_config = cast(GithubRepositoryConfig, resource_config)
         options = SingleRepositoryOptions(
             organization=organization,
             name=name,

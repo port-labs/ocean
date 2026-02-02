@@ -6,6 +6,273 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.35.2 (2026-02-01)
+
+### Improvements
+
+- Block integration initialization without version and support new pyproject.toml structure.
+
+## 0.35.1 (2026-02-01)
+
+### Improvements
+
+- Enhance sync metrics with installation type and execution mode
+
+## 0.35.0 (2026-01-28)
+
+### Improvements
+
+- Hardend dockerfile security
+
+
+## 0.34.0 (2026-01-28)
+
+### Improvements
+
+- Added an optional environment variable to allow adding prefix to the routes registered by for webhooks and metrics
+
+
+## 0.33.1 (2026-01-27)
+
+### Bug fixes
+
+- Start monitoring in each process seperatly.
+
+
+## 0.33.0 (2026-01-27)
+
+### Improvements
+
+- Allowing Empty setup mode which make integraion be created without any resources
+
+
+## 0.32.17 (2026-01-25)
+
+### Bug fixes
+
+- Fixed Bug: for kindIdentifier with index > 10 like  "name-12", kindIndex was 2 instead of 12 because only the last character was used. Parse the segment after the final "-" as the index (e.g. "name-12" → 12, "project-0" → 0).
+
+
+## 0.32.16 (2026-01-21)
+
+### Bug fixes
+
+- Fix retry sleep calculation for rate-limit reset headers by treating large numeric retry values as UNIX epoch timestamps and using response headers when computing retry delays.
+
+
+## 0.32.15 (2026-01-21)
+
+### Bug fixes
+
+- Handle webhook event not supported exception and log it as a warning
+
+
+## 0.32.14 (2026-01-20)
+
+### Bug fixes
+
+- Add export of system and request metrics
+
+
+## 0.32.13 (2026-01-15)
+
+### Bug fixes
+
+- Revert Add export of system and request metrics
+
+
+## 0.32.12 (2026-01-15)
+
+### Vulnerabilities
+
+- Fix urllib3 vulnerability
+
+### Bug fixes
+
+- Format response when logging error
+- Prevent Lakehouse from breaking the regular integration behavior on error from port
+
+### Improvements
+
+- Add export of system and request metrics
+
+
+## 0.32.11 (2026-01-14)
+
+### Bug fixes
+
+- Added except clause to catch random errors
+
+
+## 0.32.10 (2026-01-11)
+
+### Bug fixes
+
+- Unset prometheous dir so db file wont be created.
+
+
+## 0.32.9 (2025-12-24)
+
+### Improvements
+
+- Added `BaseConfigChangeWebhookProcessor` base class for config change webhooks, exposing a `trigger_resync` hook that performs a full `ocean.sync_raw_all()` resync for the integration.
+
+
+## 0.32.8 (2025-12-23)
+
+### Bug fixes
+
+- Remove setup instruction for .env.example copying from CLI flow
+
+
+## 0.32.7 (2025-12-22)
+
+### Bug fixes
+
+- Update the pool to be used as context so its closed propely.
+- Update loop to accumulate batches over multiple objects.
+- Update jq processor sync to use cache that is local to it's process.
+
+
+## 0.32.6 (2025-12-21)
+
+### Bug fixes
+
+- Fix .env.example coockiecutter generation to conceal Port secrets
+
+
+## 0.32.5 (2025-12-18)
+
+### Bug fixes
+
+- Update compare entities with port to use async generator and compare entities incrementaly.
+- Update delete diff to use maps for comparing.
+- When deleteing entities batch by 1k.
+
+
+## 0.32.4 (2025-12-16)
+
+### Bug fixes
+
+- Update the core to handle jq calculations without a loop, the search functions that need to be executed by the
+  overwriten function will execute in the event loop.
+ that we can merge them.
+
+
+## 0.32.3 (2025-12-15)
+
+### Bug fixes
+
+- Fixed an issue where starting with POLLING and changing to KAFKA event listener would cause the integration to not receive messages
+
+
+## 0.32.2 (2025-12-14)
+
+### Bug fixes
+
+- Increase timeout
+- Clear http context.
+- Fix posix path error when sending logs.
+
+## 0.32.1 (2025-12-10)
+
+### Bug fixes
+
+- handle overwrite of `_search` with process pool
+
+## 0.32.0 (2025-12-09)
+
+### Improvements
+
+- Add multiprocessing
+- Memory optimizations
+
+
+## 0.31.7 (2025-12-09)
+
+### Improvements
+
+- Added log on partial bulk upsert failures
+- Updated react & react-dom versions
+
+
+## 0.31.6 (2025-12-09)
+
+### Improvements
+
+- Ocean core: Bumped minimum requirements for werkzeug & urllib3
+
+## 0.31.5 (2025-12-08)
+
+### Improvements
+
+- Change the example sending logic, so instead of collecting the
+examples in a class after a successful transformation, always send the
+examples ahead of each JQ transformation
+
+## 0.31.4 (2025-12-08)
+
+### Improvements
+
+- Add flag `itemsToParseTopLevelTransform` to control the top level payload form.
+
+## 0.31.3 (2025-12-08)
+
+### Bug fixes
+
+- fix webhook processor crashing when entity identifier is a dictionary
+
+## 0.31.2 (2025-12-07)
+
+### Vulnerabilities
+
+- Ocean core: Fixed werkzeug & urllib3 vulnerabilities
+- Ocean docs: docusaurus, glob, js-yaml & node-forge
+
+## 0.31.1 (2025-12-04)
+
+### Bug Fixes
+
+- Fixed logger.exception() call in execution manager to properly capture exceptions without interfering with automatic exception capture
+
+
+## 0.31.0 (2025-12-03)
+
+### Improvements
+
+- Remove multi-threading from ocean core.
+
+
+## 0.30.7 (2025-12-03)
+
+### Improvements
+
+- Make mapping errors have error log instead of info
+
+## 0.30.6 (2025-11-27)
+
+### Improvements
+
+- `cache_iterator_result` preserves the chunks that got inserted.
+
+## 0.30.5 (2025-11-27)
+
+### Bug Fixes
+
+-  Fix delete target logic for complex items_to_parse jq expressions
+-  Fix items_to_parse with yield_items_to_parse enabled item construction
+
+## 0.30.4 (2025-11-26)
+- Updated upsert (load) metrics to be calculated directly from response
+- Updated log on duplicate count
+
+## 0.30.3 (2025-11-25)
+
+### Improvements
+
+-  Add StreamingWrapper to core
+
 ## 0.30.2 (2025-11-24)
 
 ### Improvements
