@@ -40,16 +40,23 @@ jobs:
             core:
               - '!integrations/**'
               - '!scripts/*'
-              - '!scripts/*'
               - '!./*.md'
               - '!.github/**'
               - '!docs/**'
+              # Include workflow/script files that should trigger core tests
+              - '.github/workflows/core-test.yml'
+              - '.github/workflows/lint.yml'
+              - '.github/workflows/actions/build-docker-image/**'
+              - 'scripts/run-smoke-test.sh'
+              - 'scripts/smoke-test-base.sh'
             integrations:
               - 'integrations/**'
               - '!integrations/**/*.md'
               - '!integrations/_infra/*'
             infra:
               - 'integrations/_infra/*'
+              # Include workflow that builds infra images
+              - '.github/workflows/build-infra-images.yml'
 
       - name: Set integrations and all matrix
         id: set-all-matrix
