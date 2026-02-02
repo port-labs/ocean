@@ -74,8 +74,8 @@ class SonarQubeProjectApiFilter(BaseSonarQubeApiFilter):
         if s := value.pop("s", None):
             value["s"] = s
         logger.warning(
-            "The 'qualifiers' parameter has been deprecated and will not have any effect. "
-            "This parameter will be ignored in API requests."
+            "The 'qualifiers' parameter has no effect on the API request "
+            "and will be removed in future API requests."
         )
         return value
 
