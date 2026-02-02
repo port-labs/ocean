@@ -33,6 +33,15 @@ from azure_devops.webhooks.webhook_processors.work_item_webhook_processor import
 from azure_devops.webhooks.webhook_processors.advanced_security_webhook_processor import (
     AdvancedSecurityWebhookProcessor,
 )
+from azure_devops.webhooks.webhook_processors.pipeline_webhook_processor import (
+    PipelineWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.pipeline_stage_webhook_processor import (
+    PipelineStageWebhookProcessor,
+)
+from azure_devops.webhooks.webhook_processors.pipeline_run_webhook_processor import (
+    PipelineRunWebhookProcessor,
+)
 from integration import (
     AzureDevopsPipelineResourceConfig,
     AzureDevopsProjectResourceConfig,
@@ -157,7 +166,7 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_repository_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for policies in azure_devops_client.generate_repository_policies():
-        logger.info(f"Resyncing repository {len(policies)} policies")
+        logger.info(f"Resyncing {len(policies)} repository policies")
         yield policies
 
 
@@ -358,3 +367,6 @@ ocean.add_webhook_processor("/webhook", FolderWebhookProcessor)
 ocean.add_webhook_processor("/webhook", BranchWebhookProcessor)
 ocean.add_webhook_processor("/webhook", WorkItemWebhookProcessor)
 ocean.add_webhook_processor("/webhook", AdvancedSecurityWebhookProcessor)
+ocean.add_webhook_processor("/webhook", PipelineWebhookProcessor)
+ocean.add_webhook_processor("/webhook", PipelineStageWebhookProcessor)
+ocean.add_webhook_processor("/webhook", PipelineRunWebhookProcessor)

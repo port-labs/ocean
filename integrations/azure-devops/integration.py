@@ -66,15 +66,6 @@ class AdvancedSecurityFilter(BaseModel):
             params["criteria"]["alertType"] = self.alert_type
         return params
 
-    def matches(self, alert_state: str, alert_severity: str, alert_type: str) -> bool:
-        if self.states is not None and alert_state not in self.states:
-            return False
-        if self.severities is not None and alert_severity not in self.severities:
-            return False
-        if self.alert_type is not None and alert_type != self.alert_type:
-            return False
-        return True
-
 
 class AzureDevopsAdvancedSecuritySelector(Selector):
     query: str
