@@ -71,7 +71,7 @@ class GitLabRateLimiter:
         info = self.rate_limit_info
         if info:
             logger.debug(
-                f"GitLab: {info.remaining}/{info.limit} remaining "
-                f"({info.utilization_percentage:.1f}% used) - "
-                f"resets in {info.seconds_until_reset}s"
+                f"GitLab rate limit: {info.remaining} of {info.limit} requests remaining "
+                f"({info.utilization_percentage:.1f}% used). "
+                f"Resets in {info.seconds_until_reset} seconds."
             )
