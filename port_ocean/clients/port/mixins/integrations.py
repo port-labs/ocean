@@ -179,11 +179,11 @@ class IntegrationClientMixin:
             json["installationAppType"] = _type
         if port_app_config:
             json["config"] = port_app_config.to_request()
-        if are_port_resources_initialized:
+        if are_port_resources_initialized is not None:
             json["arePortResourcesInitialized"] = are_port_resources_initialized
-        if actions_processing_enabled:
+        if actions_processing_enabled is not None:
             json["actionsProcessingEnabled"] = actions_processing_enabled
-        if changelog_destination:
+        if changelog_destination is not None:
             json["changelogDestination"] = changelog_destination
 
         json["version"] = self.integration_version
