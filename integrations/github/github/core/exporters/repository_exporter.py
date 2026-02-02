@@ -26,12 +26,17 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_resource[
         ExporterOptionsT: SingleRepositoryOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         name = options["name"]
         organization = options["organization"]
         included_relationships = options.get("included_relationships")
 
         response = await get_repository_metadata(self.client, organization, name)
+        if not response:
+            logger.warning(
+                f"No repository found with identifier: {name} for organization {organization}"
+            )
+            return None
 
         logger.info(
             f"Fetched repository with identifier: {name} for organization {organization}"

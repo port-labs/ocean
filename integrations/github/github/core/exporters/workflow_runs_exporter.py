@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, cast, Optional
 from loguru import logger
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
@@ -10,14 +10,20 @@ from github.core.options import ListWorkflowRunOptions, SingleWorkflowRunOptions
 class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
     async def get_resource[
         ExporterOptionsT: SingleWorkflowRunOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         organization = options["organization"]
         repo_name = options["repo_name"]
-        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/actions/runs/{options['run_id']}"
+        run_id = options['run_id']
+        endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/actions/runs/{run_id}"
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No workflow run found with id: {run_id} in {repo_name} from {organization}"
+            )
+            return None
 
         logger.info(
-            f"Fetched workflow run {options['run_id']} from {repo_name} from {organization}"
+            f"Fetched workflow run {run_id} from {repo_name} from {organization}"
         )
 
         return response

@@ -32,6 +32,11 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             f"{self.client.base_url}/repos/{organization}/{repo_name}/pulls/{pr_number}"
         )
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No pull request found with number: {pr_number} in repository: {repo_name} from {organization}"
+            )
+            return None
 
         logger.debug(
             f"Fetched pull request with identifier: {repo_name}/{pr_number} from {organization}"

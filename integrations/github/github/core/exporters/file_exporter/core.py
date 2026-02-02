@@ -340,6 +340,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         resource = f"{self.client.base_url}/repos/{organization}/{repo_name}/compare/{before_sha}...{after_sha}"
         response = await self.client.send_api_request(resource)
+        if not response:
+            logger.warning(
+                f"No commit diff found for {before_sha}...{after_sha} in {repo_name} from {organization}"
+            )
+            return {"files": []}
 
         logger.info(
             f"Found {len(response['files'])} files in commit diff from {organization}"
