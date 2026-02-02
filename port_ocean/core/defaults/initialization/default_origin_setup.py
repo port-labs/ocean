@@ -64,7 +64,6 @@ class DefaultOriginSetup(BaseSetup):
             )
             raise ExceptionGroup[Exception](str(e), e.errors)
         finally:
-            # consult with mayam on whether we want only one try to create or until we create it keep trying
             await self.port_client.patch_integration(
                 are_port_resources_initialized=True,
             )
