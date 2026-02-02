@@ -6,14 +6,8 @@ import pytest
 from httpx import BasicAuth, Request, Response
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
-
-from jira.client import (
-    PAGE_SIZE,
-    WEBHOOK_EVENTS,
-    OAUTH2_WEBHOOK_EVENTS,
-    JiraClient,
-    IgnoredError,
-)
+from jira.utils import IgnoredError
+from jira.client import PAGE_SIZE, WEBHOOK_EVENTS, OAUTH2_WEBHOOK_EVENTS, JiraClient
 from jira.overrides import JiraIssueSelector
 
 
