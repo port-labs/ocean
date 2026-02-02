@@ -47,7 +47,7 @@ jobs:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
           OCEAN__PROCESS_EXECUTION_MODE: single_process
           OCEAN__CACHING_STORAGE_MODE: memory
         run: |
@@ -59,7 +59,7 @@ jobs:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
 
         run: |
           make smoke/test
@@ -71,7 +71,7 @@ jobs:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
         run: |
           make smoke/clean
 
@@ -80,7 +80,7 @@ jobs:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
           OCEAN__PROCESS_EXECUTION_MODE: multi_process
           OCEAN__CACHING_STORAGE_MODE: disk
         run: |
@@ -92,7 +92,7 @@ jobs:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
 
         run: |
           make smoke/test
@@ -104,7 +104,7 @@ jobs:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
         run: |
           make smoke/clean
 

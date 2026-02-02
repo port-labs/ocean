@@ -11,4 +11,8 @@ class EmptySetup(BaseSetup):
 
     async def _setup(self) -> None:
         """Initialize integration with empty mapping only."""
-        pass
+
+        await self.port_client.patch_integration(
+            port_app_config=self._default_mapping,
+            are_port_resources_initialized=True,
+        )
