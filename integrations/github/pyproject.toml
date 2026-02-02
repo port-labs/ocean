@@ -23,6 +23,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
+types-python-dateutil = "^2.9.0"
 
 [tool.towncrier]
 directory = "changelog"

@@ -2079,6 +2079,17 @@ jinja2 = "*"
 dev = ["furo", "packaging", "sphinx (>=5)", "twisted"]
 
 [[package]]
+name = "types-python-dateutil"
+version = "2.9.0.20260124"
+description = "Typing stubs for python-dateutil"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "types_python_dateutil-2.9.0.20260124-py3-none-any.whl", hash = "sha256:f802977ae08bf2260142e7ca1ab9d4403772a254409f7bbdf652229997124951"},
+    {file = "types_python_dateutil-2.9.0.20260124.tar.gz", hash = "sha256:7d2db9f860820c30e5b8152bfe78dbdf795f7d1c6176057424e8b3fdd1f581af"},
+]
+
+[[package]]
 name = "types-pyyaml"
 version = "6.0.12.20250915"
 description = "Typing stubs for PyYAML"
@@ -2194,4 +2205,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "674e04ec88de17d121ff27f2d62b67966ec37c8f0448fe8668f3c05ed4bfb6a9"
+content-hash = "fa9b3c46e32b6695b98c8c7cf6a13696241267efa26236346a5767e795478088"
