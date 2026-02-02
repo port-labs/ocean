@@ -3,9 +3,6 @@ deleteDependentEntities: true
 resources:
   - kind: projects_ga
     selector:
-      apiFilters:
-        tags:
-          - ga
       query: 'true'
       metrics:
         - code_smells
