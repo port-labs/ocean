@@ -14,7 +14,7 @@ jobs:
     name: 🌊 Ocean Core Tests
     needs: detect-changes
     runs-on: ubuntu-latest
-    if: ${{ needs.detect-changes.outputs.core == 'true' }}
+    if: ${{ needs.detect-changes.outputs.core == 'true' || needs.detect-changes.outputs.core_ci_files_changed == 'true' }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v5
@@ -42,12 +42,25 @@ jobs:
         run: |
           make build
 
+      - name: Build fake-integration image for smoke test
+        uses: ./.github/workflows/actions/build-docker-image
+        with:
+          dockerfile: integrations/_infra/Dockerfile
+          platforms: linux/amd64
+          tags: port-ocean-fake-integration:smoke-test-local
+          build-args: |
+            BUILD_CONTEXT=integrations/fake-integration
+          skip-push: 'true'
+          load-created-image: 'true'
+          skip-login: 'true'
+
       - name: Run fake integration for core test
         env:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
+          SMOKE_TEST_IMAGE: port-ocean-fake-integration:smoke-test-local
           OCEAN__PROCESS_EXECUTION_MODE: single_process
           OCEAN__CACHING_STORAGE_MODE: memory
         run: |
@@ -81,6 +94,7 @@ jobs:
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
+          SMOKE_TEST_IMAGE: port-ocean-fake-integration:smoke-test-local
           OCEAN__PROCESS_EXECUTION_MODE: multi_process
           OCEAN__CACHING_STORAGE_MODE: disk
         run: |
