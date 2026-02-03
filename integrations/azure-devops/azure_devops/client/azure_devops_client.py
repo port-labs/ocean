@@ -80,6 +80,7 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
         publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_COMMENTED
     ),
     WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_DELETED),
+    WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_RESTORED),
     WebhookSubscription(
         publisherId=ADVANCED_SECURITY_PUBLISHER_ID,
         eventType=AdvancedSecurityAlertEvents.SECURITY_ALERT_CREATED,

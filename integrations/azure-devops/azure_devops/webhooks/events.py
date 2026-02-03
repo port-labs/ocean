@@ -29,6 +29,7 @@ class WorkItemEvents(StrEnum):
     WORK_ITEM_UPDATED = "workitem.updated"
     WORK_ITEM_COMMENTED = "workitem.commented"
     WORK_ITEM_DELETED = "workitem.deleted"
+    WORK_ITEM_RESTORED = "workitem.restored"
 
 
 class AdvancedSecurityAlertEvents(StrEnum):
