@@ -82,8 +82,8 @@ class BitbucketClient:
         # synced under one hour.
         self.rate_limiter = AsyncLimiter(rate_limit, rate_limit_window)
 
-        # Initialize semaphore for controlling concurrent PR requests
-        self.pr_semaphore = asyncio.BoundedSemaphore(max_concurrent_requests)
+        # Initialize semaphore for controlling concurrent API requests
+        self.semaphore = asyncio.BoundedSemaphore(max_concurrent_requests)
 
     async def _send_api_request(
         self,
@@ -278,6 +278,7 @@ class BitbucketClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get repositories across multiple projects, optionally filtered by project keys.
+        Uses semaphore to control concurrency and processes each project batch immediately.
 
         Args:
             projects_filter: Optional set of project keys to filter by
@@ -285,13 +286,18 @@ class BitbucketClient:
         Yields:
             Batches of repository data
         """
-        tasks = []
         async for project_batch in self.get_projects(projects_filter):
-            for project in project_batch:
-                tasks.append(self.get_repositories_for_project(project["key"]))
-
-        async for repo_batch in stream_async_iterators_tasks(*tasks):
-            yield repo_batch
+            tasks = [
+                semaphore_async_iterator(
+                    self.semaphore,
+                    functools.partial(
+                        self.get_repositories_for_project, project["key"]
+                    ),
+                )
+                for project in project_batch
+            ]
+            async for repo_batch in stream_async_iterators_tasks(*tasks):
+                yield repo_batch
 
     async def _get_pull_requests_for_repository(
         self, project_key: str, repo_slug: str, state: str = "OPEN"
@@ -320,7 +326,7 @@ class BitbucketClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get pull requests across multiple repositories, optionally filtered by project keys.
-        Uses semaphore to control concurrency for parallel PR fetching.
+        Uses semaphore to control concurrency and processes each repository batch immediately.
 
         Args:
             projects_filter: Optional set of project keys to filter by
@@ -329,21 +335,21 @@ class BitbucketClient:
         Yields:
             Batches of pull request data
         """
-        tasks = []
         async for repo_batch in self.get_repositories(projects_filter):
-            for repo in repo_batch:
-                pr_iterator_func = functools.partial(
-                    self._get_pull_requests_for_repository,
-                    repo["project"]["key"],
-                    repo["slug"],
-                    state,
+            tasks = [
+                semaphore_async_iterator(
+                    self.semaphore,
+                    functools.partial(
+                        self._get_pull_requests_for_repository,
+                        repo["project"]["key"],
+                        repo["slug"],
+                        state,
+                    ),
                 )
-                tasks.append(
-                    semaphore_async_iterator(self.pr_semaphore, pr_iterator_func)
-                )
-
-        async for pr_batch in stream_async_iterators_tasks(*tasks):
-            yield pr_batch
+                for repo in repo_batch
+            ]
+            async for pr_batch in stream_async_iterators_tasks(*tasks):
+                yield pr_batch
 
     async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """

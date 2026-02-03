@@ -171,7 +171,7 @@ async def test_configurable_concurrency() -> None:
     client = _build_client(max_concurrent_requests=custom_concurrency)
 
     assert client.max_concurrent_requests == custom_concurrency
-    assert client.pr_semaphore._value == custom_concurrency
+    assert client.semaphore._value == custom_concurrency
 
 
 @pytest.mark.asyncio
@@ -180,7 +180,7 @@ async def test_default_concurrency() -> None:
     client = _build_client()
 
     assert client.max_concurrent_requests == DEFAULT_MAX_CONCURRENT_REQUESTS
-    assert client.pr_semaphore._value == DEFAULT_MAX_CONCURRENT_REQUESTS
+    assert client.semaphore._value == DEFAULT_MAX_CONCURRENT_REQUESTS
 
 
 @pytest.mark.asyncio
@@ -253,5 +253,5 @@ async def test_parallel_pr_fetching_uses_semaphore() -> None:
     max_concurrent = 5
     client = _build_client(max_concurrent_requests=max_concurrent)
 
-    assert client.pr_semaphore._value == max_concurrent
+    assert client.semaphore._value == max_concurrent
     assert client.max_concurrent_requests == max_concurrent
