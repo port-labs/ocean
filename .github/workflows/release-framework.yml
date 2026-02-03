@@ -1,16 +1,73 @@
 name: Release framework
 on:
   push:
-    tags:
-      - v*
-  workflow_dispatch:
+    branches:
+      - main
+    paths:
+      - 'pyproject.toml'
 
 env:
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
   PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
 jobs:
+  tag-main:
+    name: Tag main branch and create release
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-latest
+    outputs:
+      current_tag: ${{ steps.get_current_version.outputs.current_tag }}
+      prev_tag: ${{ steps.get_previous_version.outputs.prev_tag }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get current version
+        id: get_current_version
+        run: |
+          # Get the current version from pyproject.toml
+          CURRENT_TAG=$(grep -E '^version = ".*"' pyproject.toml | cut -d'"' -f2)
+          echo "current_tag=${CURRENT_TAG}" >> $GITHUB_ENV
+          echo "current_tag=${CURRENT_TAG}" >> $GITHUB_OUTPUT
+      - name: Get previous version
+        id: get_previous_version
+        run: |
+          # Get the version from the previous commit for comparison
+          # Handle case where HEAD~1 doesn't exist (first commit) or file doesn't exist
+          PREV_TAG=$(git show HEAD~1:pyproject.toml 2>/dev/null | grep -E '^version = ".*"' | cut -d'"' -f2 || echo "")
+          echo "prev_tag=${PREV_TAG}" >> $GITHUB_ENV
+          echo "prev_tag=${PREV_TAG}" >> $GITHUB_OUTPUT
+      - name: Tag main
+        if: steps.get_current_version.outputs.current_tag != steps.get_previous_version.outputs.prev_tag
+        run: |
+          CURRENT_TAG="${{ steps.get_current_version.outputs.current_tag }}"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          LATEST_COMMIT_MESSAGE=$(git log -1 --pretty=format:%s)
+          git tag -a "v${CURRENT_TAG}" -m "${LATEST_COMMIT_MESSAGE}"
+          # Explicitly push the tag (not a branch)
+          git push origin refs/tags/v${CURRENT_TAG}
+      - name: Create GitHub Release
+        if: steps.get_current_version.outputs.current_tag != steps.get_previous_version.outputs.prev_tag
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_current_version.outputs.current_tag }}
+          name: Ocean Framework ${{ steps.get_current_version.outputs.current_tag }}
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(steps.get_current_version.outputs.current_tag, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish_ocean:
-    name: Publish Ocean
+    name: Publish framework to PyPI
+    needs: tag-main
+    if: needs.tag-main.outputs.current_tag != needs.tag-main.outputs.prev_tag
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python 3.12
@@ -20,15 +77,16 @@ jobs:
 
       - name: Checkout Repo
         uses: actions/checkout@v5
+        with:
+          ref: v${{ needs.tag-main.outputs.current_tag }}
 
       - name: Make install and build
         run: |
             make install
             make build
 
-      - name: Remove 'v' from version name
-        continue-on-error: true
-        run: echo "VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//g')" >> $GITHUB_ENV
+      - name: Set version from tag-main output
+        run: echo "VERSION=${{ needs.tag-main.outputs.current_tag }}" >> $GITHUB_ENV
 
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

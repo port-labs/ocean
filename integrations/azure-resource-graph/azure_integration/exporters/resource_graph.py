@@ -10,10 +10,20 @@ from azure_integration.options import (
 )
 from azure_integration.helpers.http import format_query
 from azure_integration.clients.base import AzureRequest
+from port_ocean.context.ocean import ocean
 
-
-_SUBCRIPTION_BATCH_SIZE = 100
+# Due to a bug in the Azure API, when working in multiple batches and Azure contains a lot of resources
+# per subscription, the results become inconsistent UNSELL order by clause is used. Do not change this value without validating the
+# exact use-case of the customers using this integration
+_DEFAULT_SUBSCRIPTION_BATCH_SIZE = 100
 _MAX_CONCURRENT_REQUESTS = 10
+
+
+def _get_subscription_batch_size() -> int:
+    """Get subscription batch size from config at runtime when ocean context is available."""
+    return ocean.integration_config.get(
+        "azure_subscription_batch_size", _DEFAULT_SUBSCRIPTION_BATCH_SIZE
+    )
 
 
 class ResourceGraphExporter(BaseExporter):
@@ -22,8 +32,10 @@ class ResourceGraphExporter(BaseExporter):
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         query = format_query(options.query)
         tasks = []
+        subscription_batch_size = _get_subscription_batch_size()
+        logger.info(f"Using subscription batch size: {subscription_batch_size}")
         for subscription_batch in batched(
-            options.subscriptions, _SUBCRIPTION_BATCH_SIZE
+            options.subscriptions, subscription_batch_size
         ):
             subscription_ids = [sub["subscriptionId"] for sub in subscription_batch]
             logger.info(
