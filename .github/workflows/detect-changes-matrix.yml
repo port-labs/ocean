@@ -11,6 +11,9 @@ on:
       core:
         value: ${{ jobs.detect-changes.outputs.core }}
         description: "Determine if any core changes per git commit changes"
+      core_ci_files_changed:
+        value: ${{ jobs.detect-changes.outputs.core_ci_files_changed }}
+        description: "Determine if CI workflow/script files changed"
       infra:
         value: ${{ jobs.detect-changes.outputs.infra }}
         description: "Determine if any changes to docker infra"
@@ -23,6 +26,7 @@ jobs:
       matrix: ${{ steps.set-all-matrix.outputs.matrix }}
       integrations: ${{ steps.set-all-matrix.outputs.integrations }}
       core: ${{ steps.set-all-matrix.outputs.core }}
+      core_ci_files_changed: ${{ steps.set-all-matrix.outputs.core_ci_files_changed }}
       infra: ${{ steps.set-all-matrix.outputs.infra}}
     steps:
       - name: Checkout Repo
@@ -43,9 +47,9 @@ jobs:
               - '!./*.md'
               - '!.github/**'
               - '!docs/**'
-              # Include workflow/script files that should trigger core tests
+            core_ci_files:
               - '.github/workflows/core-test.yml'
-              - '.github/workflows/lint.yml'
+              - '.github/workflows/detect-changes-matrix.yml'
               - '.github/workflows/actions/build-docker-image/**'
               - 'scripts/run-smoke-test.sh'
               - 'scripts/smoke-test-base.sh'
@@ -55,21 +59,22 @@ jobs:
               - '!integrations/_infra/*'
             infra:
               - 'integrations/_infra/*'
-              # Include workflow that builds infra images
-              - '.github/workflows/build-infra-images.yml'
 
       - name: Set integrations and all matrix
         id: set-all-matrix
         run: |
           INTEGRATIONS=$(node -e 'integrations=${{ steps.changed-files.outputs.integrations_all_changed_files }};console.log(JSON.stringify(integrations.map(integration => integration.split("/")[1])))')
           HAS_CORE=${{ steps.changed-files.outputs.core_all_changed_files != '[]' }}
+          HAS_CORE_CI_FILES=${{ steps.changed-files.outputs.core_ci_files_all_changed_files != '[]' }}
           echo "Core changes : ${HAS_CORE}"
-          MATRIX=$(node -e "integrations=${INTEGRATIONS}; hasCore=${HAS_CORE}; console.log(JSON.stringify(hasCore ? integrations.concat(['.']) : integrations))")
+          echo "Core CI files changes : ${HAS_CORE_CI_FILES}"
+          MATRIX=$(node -e "integrations=${INTEGRATIONS}; hasCore=${HAS_CORE}; hasCoreCI=${HAS_CORE_CI_FILES}; console.log(JSON.stringify((hasCore || hasCoreCI) ? integrations.concat(['.']) : integrations))")
           HAS_INFRA=${{ steps.changed-files.outputs.infra_all_changed_files != '[]' }}
           echo "Infra changes : ${HAS_INFRA}"
           echo "Integration changes : ${INTEGRATIONS}"
           echo "All changes : ${MATRIX}"
           echo "core=${HAS_CORE}" >> $GITHUB_OUTPUT
+          echo "core_ci_files_changed=${HAS_CORE_CI_FILES}" >> $GITHUB_OUTPUT
           echo "integrations=${INTEGRATIONS}" >> $GITHUB_OUTPUT
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
           echo "infra=${HAS_INFRA}" >> $GITHUB_OUTPUT

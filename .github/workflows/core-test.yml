@@ -14,7 +14,7 @@ jobs:
     name: 🌊 Ocean Core Tests
     needs: detect-changes
     runs-on: ubuntu-latest
-    if: ${{ needs.detect-changes.outputs.core == 'true' }}
+    if: ${{ needs.detect-changes.outputs.core == 'true' || needs.detect-changes.outputs.core_ci_files_changed == 'true' }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v5
