@@ -1,5 +1,5 @@
 from wiz.webhook_processors._abstract_webhook_processor import (
-    _WizAbstractWebhookProcessor,
+    WizAbstractWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
@@ -16,7 +16,7 @@ from wiz.options import IssueOptions
 from typing import cast
 
 
-class IssueWebhookProcessor(_WizAbstractWebhookProcessor):
+class IssueWebhookProcessor(WizAbstractWebhookProcessor):
     """Handles webhook events for issues."""
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
@@ -38,11 +38,9 @@ class IssueWebhookProcessor(_WizAbstractWebhookProcessor):
         issue_id = payload["issue"]["id"]
         issue_details = await self._client.get_single_issue(issue_id, options)
         return WebhookEventRawResults(
-            updated_raw_results=[issue_details],
+            updated_raw_results=[issue_details] if issue_details else [],
             deleted_raw_results=[],
         )
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return (
-            payload.get("issue") is not None and payload["issue"].get("id") is not None
-        )
+        return payload.get("issue", {}).get("id") is not None

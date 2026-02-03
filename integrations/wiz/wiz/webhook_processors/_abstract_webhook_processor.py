@@ -12,7 +12,7 @@ from fastapi import HTTPException
 from typing import Optional
 
 
-class _WizAbstractWebhookProcessor(AbstractWebhookProcessor):
+class WizAbstractWebhookProcessor(AbstractWebhookProcessor):
 
     _client = init_client()
     _verification_token: Optional[str] = ocean.integration_config[

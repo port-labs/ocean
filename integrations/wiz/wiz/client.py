@@ -199,7 +199,7 @@ class WizClient:
 
     async def get_single_issue(
         self, issue_id: str, options: IssueOptions
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         logger.info(f"Fetching issue with id {issue_id}")
 
         query_variables = {
@@ -211,8 +211,10 @@ class WizClient:
             self._enrich_variables_with_issue_options(query_variables, options)
         )
         response_data = await self.make_graphql_query(ISSUES_GQL, query_variables)
-        issue = response_data.get("issues", {}).get("nodes", [])[0]
-        return issue
+        nodes = response_data.get("issues", {}).get("nodes", [])
+        if not nodes:
+            return None
+        return nodes[0]
 
     def _enrich_variables_with_issue_options(
         self, variables: dict[str, Any], options: IssueOptions
