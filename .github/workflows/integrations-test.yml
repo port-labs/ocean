@@ -20,19 +20,11 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v5
 
-      - name: Install poetry
-        run: pipx install 'poetry>=1.0.0,<2.0.0'
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - name: Setup Python environment
+        uses: ./.github/workflows/actions/setup-python-poetry
         with:
-          python-version: '3.12'
-          cache: 'poetry'
-
-      - name: Install dependencies
-        working-directory: ${{ format('integrations/{0}', matrix.folder) }}
-        run: |
-          make install
+          skip-checkout: 'true'
+          working-directory: ${{ format('integrations/{0}', matrix.folder) }}
 
       - name: Test
         working-directory: ${{ format('integrations/{0}', matrix.folder) }}
