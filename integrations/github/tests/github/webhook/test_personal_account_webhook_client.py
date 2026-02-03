@@ -191,7 +191,7 @@ class TestGithubPersonalAccountWebhookClient:
 
         async def mock_paginated_request(
             url: str, *args: Any, **kwargs: Any
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        ) -> AsyncGenerator[Dict[str, Any], None]:
             yield {"total_count": 1, "repositories": [{"id": 1, "name": "repo1"}]}
 
         with patch.object(

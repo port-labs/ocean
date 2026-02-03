@@ -1,4 +1,4 @@
-from typing import AsyncIterator
+from typing import Any, AsyncIterator, cast
 
 from github.webhook.clients.base_webhook_client import (
     BaseGithubWebhookClient,
@@ -41,7 +41,8 @@ class GithubPersonalAccountWebhookClient(BaseGithubWebhookClient):
             async for page in self.send_paginated_request(
                 f"{self.base_url}/installation/repositories",
             ):
-                yield page["repositories"]
+                response = cast(dict[str, list[dict[str, Any]]], page)
+                yield response["repositories"]
             return
 
         async for repos in self.send_paginated_request(
