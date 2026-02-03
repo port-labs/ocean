@@ -13,8 +13,6 @@ from .rate_limiter import JiraRateLimiter
 from .utils import IgnoredError
 
 PAGE_SIZE = 50
-
-
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 MAX_CONCURRENT_REQUESTS = 10
 
@@ -144,20 +142,7 @@ class JiraClient(OAuthClient):
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
         ignored_errors: Optional[list[IgnoredError]] = None,
-    ) -> dict[str, Any]:
-        """Send a request to the Jira API with error handling and rate limiting.
-
-        Args:
-            method: HTTP method (GET, POST, etc.)
-            url: The URL to request
-            params: Query parameters
-            json: JSON body data
-            headers: Additional headers
-            ignored_errors: Additional errors to ignore for this request
-
-        Returns:
-            JSON response data, or empty dict {} if an ignored error occurred
-        """
+    ) -> Any:
         try:
             async with self._rate_limiter:
                 response = await self.client.request(
@@ -178,7 +163,7 @@ class JiraClient(OAuthClient):
             logger.error(f"Failed to connect to Jira API: {method} {url} - {str(e)}")
             raise
         finally:
-            if "response" in locals():
+            if "response" in locals() and response:
                 await self._rate_limiter.update_rate_limit_headers(response.headers)
 
     async def _get_paginated_data(
@@ -276,7 +261,7 @@ class JiraClient(OAuthClient):
         webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(
             "values"
         )
-        if webhooks:
+        if len(webhooks) > 0:
             # jira allows for only one webhook per user per oauth app that is why we are always checking the first webhook
             existing_webhook_url = webhooks[0].get("url")
             if existing_webhook_url == webhook_target_app_host:

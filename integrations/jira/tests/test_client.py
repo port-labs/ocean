@@ -162,7 +162,7 @@ async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
         assert len(issues) == 2
         assert issues == issues_data["issues"]
 
-        # Verify params were passed correctly including JQL ignored errors
+        # Verify params were passed correctly
         mock_request.assert_called_with(
             "GET",
             f"{mock_jira_client.api_url}/search/jql",
