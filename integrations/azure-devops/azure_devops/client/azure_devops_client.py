@@ -17,6 +17,9 @@ from azure_devops.webhooks.events import (
     PullRequestEvents,
     PushEvents,
     WorkItemEvents,
+    PipelineEvents,
+    PipelineStageEvents,
+    PipelineRunEvents,
 )
 
 from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
@@ -49,6 +52,7 @@ API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
 ADVANCED_SECURITY_API_PARAMS = {"api-version": "7.2-preview.1"}
 ADVANCED_SECURITY_PUBLISHER_ID = "advsec"
+PIPELINES_PUBLISHER_ID = "pipelines"
 API_PARAMS = {"api-version": "7.1"}
 WEBHOOK_URL_SUFFIX = "/integration/webhook"
 # Maximum number of work item IDs allowed in a single API request
@@ -76,6 +80,7 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
         publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_COMMENTED
     ),
     WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_DELETED),
+    WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_RESTORED),
     WebhookSubscription(
         publisherId=ADVANCED_SECURITY_PUBLISHER_ID,
         eventType=AdvancedSecurityAlertEvents.SECURITY_ALERT_CREATED,
@@ -87,6 +92,30 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
     WebhookSubscription(
         publisherId=ADVANCED_SECURITY_PUBLISHER_ID,
         eventType=AdvancedSecurityAlertEvents.SECURITY_ALERT_UPDATED,
+    ),
+    WebhookSubscription(
+        publisherId=PIPELINES_PUBLISHER_ID,
+        eventType=PipelineEvents.PIPELINE_UPDATED,
+    ),
+    WebhookSubscription(
+        publisherId=PIPELINES_PUBLISHER_ID,
+        eventType=PipelineStageEvents.PIPELINE_JOB_STATE_CHANGED,
+    ),
+    WebhookSubscription(
+        publisherId=PIPELINES_PUBLISHER_ID,
+        eventType=PipelineStageEvents.PIPELINE_STAGE_STATE_CHANGED,
+    ),
+    WebhookSubscription(
+        publisherId=PIPELINES_PUBLISHER_ID,
+        eventType=PipelineStageEvents.PIPELINE_STAGE_APPROVAL_PENDING,
+    ),
+    WebhookSubscription(
+        publisherId=PIPELINES_PUBLISHER_ID,
+        eventType=PipelineStageEvents.PIPELINE_STAGE_APPROVAL_COMPLETED,
+    ),
+    WebhookSubscription(
+        publisherId=PIPELINES_PUBLISHER_ID,
+        eventType=PipelineRunEvents.PIPELINE_RUN_STATE_CHANGED,
     ),
 ]
 
@@ -493,11 +522,11 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             if not runs:
                 continue
-            self._annotate_runs(runs, project=project, pipeline=pipeline)
+            self.annotate_runs(runs, project=project, pipeline=pipeline)
             yield runs
 
     @staticmethod
-    def _annotate_runs(
+    def annotate_runs(
         runs: Iterable[dict[str, Any]],
         project: dict[str, Any],
         pipeline: dict[str, Any],
@@ -894,6 +923,45 @@ class AzureDevopsClient(HTTPBaseClient):
             return None
         repository_data = response.json()
         return repository_data
+
+    async def get_pipeline(
+        self, project_id: str, pipeline_id: str
+    ) -> dict[Any, Any] | None:
+        get_single_pipeline_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/pipelines/{pipeline_id}"
+        response = await self.send_request("GET", get_single_pipeline_url)
+        if not response:
+            return None
+        pipeline_data = response.json()
+        return pipeline_data
+
+    async def get_pipeline_run(
+        self, project_id: str, pipeline_id: str, run_id: str
+    ) -> dict[Any, Any] | None:
+        get_single_pipeline_run_url = (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}"
+            f"/pipelines/{pipeline_id}/runs/{run_id}"
+        )
+        response = await self.send_request("GET", get_single_pipeline_run_url)
+        if not response:
+            return None
+        pipeline_run_data = response.json()
+        return pipeline_run_data
+
+    async def get_pipeline_stage(
+        self, project: dict[str, Any], pipeline_id: str, run_id: str, stage_id: str
+    ) -> dict[Any, Any] | None:
+        pipeline_run = await self.get_pipeline_run(project["id"], pipeline_id, run_id)
+        if not pipeline_run:
+            return None
+
+        stages = await self._fetch_stages_for_build(project, pipeline_run)
+        if not stages:
+            return None
+
+        for stage in stages:
+            if stage["id"] == stage_id:
+                return stage
+        return None
 
     async def get_columns(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for boards in self.get_boards_in_organization():
