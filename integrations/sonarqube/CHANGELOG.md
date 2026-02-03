@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.296 (2026-02-02)
+
+### Bug Fixes
+
+- Removed deprecated `qualifiers` parameter from projects/search API calls to align with SonarQube API specification
+
+
 ## 0.1.295 (2026-02-02)
 
 
@@ -366,7 +373,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## 0.1.250 (2025-11-18)
-
 
 ### Improvements
 
