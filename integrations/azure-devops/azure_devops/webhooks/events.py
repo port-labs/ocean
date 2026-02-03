@@ -58,6 +58,7 @@ class PipelineStageEvents(StrEnum):
     https://learn.microsoft.com/en-us/azure/devops/service-hooks/events?view=azure-devops#run-stage-waiting-for-approval
     """
 
+    PIPELINE_JOB_STATE_CHANGED = "ms.vss-pipelines.job-state-changed-event"
     PIPELINE_STAGE_STATE_CHANGED = "ms.vss-pipelines.stage-state-changed-event"
     PIPELINE_STAGE_APPROVAL_PENDING = "ms.vss-pipelinechecks-events.approval-pending"
     PIPELINE_STAGE_APPROVAL_COMPLETED = (

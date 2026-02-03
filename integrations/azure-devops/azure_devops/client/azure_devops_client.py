@@ -99,6 +99,10 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
     ),
     WebhookSubscription(
         publisherId=PIPELINES_PUBLISHER_ID,
+        eventType=PipelineStageEvents.PIPELINE_JOB_STATE_CHANGED,
+    ),
+    WebhookSubscription(
+        publisherId=PIPELINES_PUBLISHER_ID,
         eventType=PipelineStageEvents.PIPELINE_STAGE_STATE_CHANGED,
     ),
     WebhookSubscription(
