@@ -273,10 +273,10 @@ class JiraClient(OAuthClient):
 
     async def _create_events_webhook_oauth(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
-        response = await self._send_api_request("GET", url=self.webhooks_url)
-        webhooks = response.get("values", []) if response else []
-
-        if len(webhooks) > 0:
+        webhooks = (await self._send_api_request("GET", url=self.webhooks_url)).get(
+            "values"
+        )
+        if webhooks:
             # jira allows for only one webhook per user per oauth app that is why we are always checking the first webhook
             existing_webhook_url = webhooks[0].get("url")
             if existing_webhook_url == webhook_target_app_host:
@@ -322,15 +322,10 @@ class JiraClient(OAuthClient):
         webhook_target_app_host = f"{app_host}/integration/webhook"
         webhooks = await self._send_api_request("GET", url=self.webhooks_url)
 
-        if not webhooks:
-            logger.warning(
-                "Failed to get webhooks - empty response, attempting to create webhook"
-            )
-        elif isinstance(webhooks, list):
-            for webhook in webhooks:
-                if webhook.get("url") == webhook_target_app_host:
-                    logger.info("Ocean real time reporting webhook already exists")
-                    return
+        for webhook in webhooks:
+            if webhook.get("url") == webhook_target_app_host:
+                logger.info("Ocean real time reporting webhook already exists")
+                return
 
         body = {
             "name": f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}",
