@@ -142,7 +142,7 @@ class BaseGithubWebhookClient(GithubRestClient):
             existing_webhook_secret = existing_webhook["config"].get("secret")
 
             logger.info(
-                f"Found existing webhook for {target.target_type} - {self._target_name(target)} with ID {existing_webhook_id}"
+                f"Found existing webhook ID: {existing_webhook_id} for {target.target_type} - {self._target_name(target)}"
             )
 
             if bool(self.webhook_secret) ^ bool(existing_webhook_secret):
