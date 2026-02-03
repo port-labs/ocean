@@ -7,6 +7,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   detect-changes:
     uses: ./.github/workflows/detect-changes-matrix.yml
