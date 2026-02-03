@@ -44,6 +44,14 @@ inputs:
     required: false
     description: Optionally skip docker login
     default: ''
+  cache-from:
+    required: false
+    description: Docker build cache source (e.g., type=gha)
+    default: ''
+  cache-to:
+    required: false
+    description: Docker build cache destination (e.g., type=gha,mode=max)
+    default: ''
 
 runs:
   using: 'composite'
@@ -75,6 +83,8 @@ runs:
         tags: ${{ inputs.tags }}
         build-args: |
           ${{ inputs.build-args }}
+        cache-from: ${{ inputs.cache-from }}
+        cache-to: ${{ inputs.cache-to }}
 
     - name: Verify Built Image
       shell: bash

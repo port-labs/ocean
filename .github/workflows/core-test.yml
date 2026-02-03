@@ -10,8 +10,10 @@ on:
 jobs:
   detect-changes:
     uses: ./.github/workflows/detect-changes-matrix.yml
-  test:
-    name: 🌊 Ocean Core Tests
+
+  # Job 1: Run core unit tests and build core tarball
+  core-unit-tests:
+    name: 🧪 Core Unit Tests
     needs: detect-changes
     runs-on: ubuntu-latest
     if: ${{ needs.detect-changes.outputs.core == 'true' || needs.detect-changes.outputs.core_ci_files_changed == 'true' }}
@@ -19,28 +21,55 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v5
 
-      - name: Install poetry
-        run: pipx install 'poetry>=1.0.0,<2.0.0'
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - name: Setup Python environment
+        uses: ./.github/workflows/actions/setup-python-poetry
         with:
-          python-version: '3.12'
-          cache: 'poetry'
-
-      - name: Install dependencies
-        run: |
-          make install
+          skip-checkout: 'true'
 
       - name: Unit Test Core
         env:
           PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/unit-test-results-ocean/core.xml
-        run: |
-          make test
+        run: make test
 
       - name: Build core for smoke test
-        run: |
-          make build
+        run: make build
+
+      - name: Upload core tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-tarball
+          path: dist/*.tar.gz
+          retention-days: 1
+
+      - name: Upload core coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-core-unit
+          path: .coverage
+          retention-days: 1
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-core-unit
+          path: junit/
+          retention-days: 1
+
+  # Job 2: Run smoke tests (single and multi process sequentially)
+  smoke-tests:
+    name: 🔥 Smoke Tests
+    needs: [detect-changes, core-unit-tests]
+    runs-on: ubuntu-latest
+    if: ${{ needs.detect-changes.outputs.core == 'true' || needs.detect-changes.outputs.core_ci_files_changed == 'true' }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
+      - name: Setup Python environment
+        uses: ./.github/workflows/actions/setup-python-poetry
+        with:
+          skip-checkout: 'true'
 
       - name: Build fake-integration image for smoke test
         uses: ./.github/workflows/actions/build-docker-image
@@ -53,8 +82,11 @@ jobs:
           skip-push: 'true'
           load-created-image: 'true'
           skip-login: 'true'
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Run fake integration for core test
+      # Single process mode
+      - name: Run fake integration (single process)
         env:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -63,32 +95,31 @@ jobs:
           SMOKE_TEST_IMAGE: port-ocean-fake-integration:smoke-test-local
           OCEAN__PROCESS_EXECUTION_MODE: single_process
           OCEAN__CACHING_STORAGE_MODE: memory
-        run: |
-          ./scripts/run-smoke-test.sh
+        run: ./scripts/run-smoke-test.sh
 
-      - name: Smoke Test Core
+      - name: Smoke Test Core (single process)
         env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
+          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/single.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
+        run: make smoke/test
 
-        run: |
-          make smoke/test
-
-      - name: Cleanup Smoke Test
+      - name: Cleanup Smoke Test (single process)
         if: always()
         env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-single
-        run: |
-          make smoke/clean
+        run: make smoke/clean
 
-      - name: Run fake integration for core test with multiprocessing enabled
+      - name: Save single process coverage
+        run: mv .coverage .coverage.single
+
+      # Multi process mode
+      - name: Run fake integration (multi process)
         env:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
@@ -97,76 +128,182 @@ jobs:
           SMOKE_TEST_IMAGE: port-ocean-fake-integration:smoke-test-local
           OCEAN__PROCESS_EXECUTION_MODE: multi_process
           OCEAN__CACHING_STORAGE_MODE: disk
-        run: |
-          ./scripts/run-smoke-test.sh
+        run: ./scripts/run-smoke-test.sh
 
-      - name: Smoke Test Core
+      - name: Smoke Test Core (multi process)
         env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
+          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/multi.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
+        run: make smoke/test
 
-        run: |
-          make smoke/test
-
-      - name: Cleanup Smoke Test
+      - name: Cleanup Smoke Test (multi process)
         if: always()
         env:
-          PYTEST_ADDOPTS: --cov --cov-report= --cov-append --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}-multi
-        run: |
-          make smoke/clean
+        run: make smoke/clean
 
-      - name: Install current core for all integrations
+      - name: Save multi process coverage
+        run: mv .coverage .coverage.multi
+
+      - name: Upload smoke test coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-smoke-tests
+          path: .coverage.*
+          retention-days: 1
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-smoke
+          path: junit/
+          retention-days: 1
+
+  # Job 3: Test all integrations with current core (single runner)
+  test-integrations:
+    name: 🚢 Integration Tests
+    needs: [detect-changes, core-unit-tests]
+    runs-on: ubuntu-latest
+    if: ${{ needs.detect-changes.outputs.core == 'true' || needs.detect-changes.outputs.core_ci_files_changed == 'true' }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
+      - name: Setup Python environment
+        uses: ./.github/workflows/actions/setup-python-poetry
+        with:
+          skip-checkout: 'true'
+          skip-install: 'true'
+
+      - name: Download core tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: core-tarball
+          path: dist/
+
+      - name: Install dependencies for all integrations
         run: |
-          echo "Installing local core for all integrations"
-          SCRIPT_TO_RUN='make install/local-core' make execute/all
+          echo "Installing dependencies for all integrations"
+          SCRIPT_TO_RUN='make install' make execute/all
+
+      - name: Install core tarball for all integrations
+        run: |
+          echo "Installing core tarball for all integrations"
+          CORE_TARBALL=$(realpath dist/*.tar.gz)
+          SCRIPT_TO_RUN=". .venv/bin/activate && pip install \"${CORE_TARBALL}[cli]\"" make execute/all
 
       - name: Test all integrations with current core
+        env:
+          PROMETHEUS_MULTIPROC_DIR: /tmp/ocean/prometheus/metrics
         run: |
+          mkdir -p /tmp/ocean/prometheus/metrics
           echo "Testing all integrations with local core"
-          SCRIPT_TO_RUN="PYTEST_ADDOPTS=\"--cov --cov-report= --cov-append --junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml\" make test" make execute/all
+          SCRIPT_TO_RUN="PYTEST_ADDOPTS=\"--cov --cov-report= --cov-append --junitxml=junit/test-results-\$(basename \$PWD).xml\" make test" make execute/all
 
-      - name: Get PR_NUMBER
-        id: pr-number
-        run: |
-          if [ ! -z ${{ inputs.PR_NUMBER }} ]; then
-            echo "PR_NUMBER=${{ inputs.PR_NUMBER }}" >> $GITHUB_OUTPUT
-          elif [ ! -z ${{ github.event.pull_request.number }} ]; then
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
-          else
-            echo "PR_NUMBER=0" >> $GITHUB_OUTPUT
-          fi
+      - name: Upload integration coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-integrations
+          path: integrations/*/.coverage
+          retention-days: 1
 
-      - name: Produce coverage report
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-integrations
+          path: integrations/*/junit/
+          retention-days: 1
+
+  # Job 4: Aggregate coverage and report
+  aggregate-coverage:
+    name: 📊 Coverage Report
+    needs: [detect-changes, core-unit-tests, smoke-tests, test-integrations]
+    runs-on: ubuntu-latest
+    # Run if core tests ran, even if integration tests were skipped
+    if: ${{ always() && (needs.core-unit-tests.result == 'success' || needs.smoke-tests.result == 'success') }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
+      - name: Setup Python environment
+        uses: ./.github/workflows/actions/setup-python-poetry
+        with:
+          skip-checkout: 'true'
+
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: coverage-*
+          path: coverage-artifacts/
+
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: test-results-*
+          path: junit/
+          merge-multiple: true
+
+      - name: Merge coverage reports
+        id: merge-coverage
         run: |
           mkdir -p coverage-merge
           i=0
-          find . -type f -name ".coverage" | while read -r file; do
+          # Copy all coverage files found
+          find coverage-artifacts -name ".coverage" -o -name ".coverage.*" 2>/dev/null | while read -r file; do
             i=$((i + 1))
             cp "$file" "coverage-merge/.coverage.$i"
           done
+          # List what we found
+          echo "Coverage files found:"
+          ls -la coverage-merge/ || echo "No coverage-merge directory"
+          # Check if any coverage files exist before merging
+          COVERAGE_COUNT=$(find coverage-merge -name '.coverage.*' 2>/dev/null | wc -l)
+          if [ "$COVERAGE_COUNT" -eq 0 ]; then
+            echo "::warning::No coverage files found to merge"
+            echo "has_coverage=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "has_coverage=true" >> $GITHUB_OUTPUT
+          # Merge and generate report
           make coverage
 
       - name: Upload coverage report
         id: upload-coverage
+        if: ${{ steps.merge-coverage.outputs.has_coverage == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: htmlcov
 
-      - name: Set repo code coverage percentage by the percentage of statements covered in the tests
+      - name: Set repo code coverage percentage
         id: set-stmts-coverage
+        if: ${{ steps.merge-coverage.outputs.has_coverage == 'true' }}
         run: |
           stmts=$(jq '.totals.percent_covered | . * 100 | round | . / 100' coverage.json)
           echo "STMTS_COVERAGE=$stmts" >> $GITHUB_OUTPUT
 
+      - name: Get PR_NUMBER
+        id: pr-number
+        run: |
+          if [ ! -z "${{ github.event.pull_request.number }}" ]; then
+            echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          else
+            echo "PR_NUMBER=0" >> $GITHUB_OUTPUT
+          fi
+
       - name: Comment PR with code coverage summary
+        if: ${{ steps.merge-coverage.outputs.has_coverage == 'true' && steps.pr-number.outputs.PR_NUMBER != '0' }}
         uses: actions/github-script@v7
         env:
           CODE_COVERAGE_ARTIFACT_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
@@ -185,6 +322,7 @@ jobs:
             })
 
       - name: Get current repo coverage percentage from Port
+        if: ${{ steps.merge-coverage.outputs.has_coverage == 'true' }}
         uses: port-labs/port-github-action@v1
         id: get-current-coverage
         with:
@@ -196,11 +334,12 @@ jobs:
           blueprint: repository
 
       - name: Set current code coverage
+        if: ${{ steps.merge-coverage.outputs.has_coverage == 'true' }}
         id: set-current-coverage
         run: echo "CURRENT_COVERAGE=${{ fromJson(steps.get-current-coverage.outputs.entity).properties.coverage_percent }}" >> $GITHUB_OUTPUT
 
       - name: Comment if Coverage Regression
-        if: ${{ (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (steps.pr-number.outputs.PR_NUMBER != 0) }}
+        if: ${{ steps.merge-coverage.outputs.has_coverage == 'true' && (fromJson(steps.set-stmts-coverage.outputs.STMTS_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (steps.pr-number.outputs.PR_NUMBER != '0') }}
         uses: actions/github-script@v7
         env:
           PR_NUMBER: ${{ steps.pr-number.outputs.PR_NUMBER }}
@@ -219,18 +358,20 @@ jobs:
             })
 
       - name: Calculate minimum required coverage with tolerance
+        id: calc-min-coverage
+        if: ${{ steps.merge-coverage.outputs.has_coverage == 'true' }}
         run: |
           STMT_COVERAGE=${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}
           THRESHOLD_DELTA=${{ vars.COVERAGE_THRESHOLD_DELTA }}
           MIN_REQUIRED=$(echo "$STMT_COVERAGE + $THRESHOLD_DELTA" | bc)
-          echo "MIN_REQUIRED_COVERAGE=$MIN_REQUIRED" >> $GITHUB_ENV
+          echo "MIN_REQUIRED_COVERAGE=$MIN_REQUIRED" >> $GITHUB_OUTPUT
 
       - name: Fail PR if current code coverage percentage is higher than the new one
-        if: ${{ (fromJson(env.MIN_REQUIRED_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (vars.CODE_COVERAGE_ENFORCEMENT == 'true') }}
+        if: ${{ steps.merge-coverage.outputs.has_coverage == 'true' && (fromJson(steps.calc-min-coverage.outputs.MIN_REQUIRED_COVERAGE) < fromJson(steps.set-current-coverage.outputs.CURRENT_COVERAGE)) && (vars.CODE_COVERAGE_ENFORCEMENT == 'true') }}
         run: exit 1
 
       - name: Update service code coverage percentage in Port
-        if: ${{ (github.event_name == 'push') }}
+        if: ${{ steps.merge-coverage.outputs.has_coverage == 'true' && (github.event_name == 'push') }}
         uses: port-labs/port-github-action@v1
         with:
           clientId: ${{ secrets.PORT_MAIN_CLIENT_ID }}
@@ -248,7 +389,7 @@ jobs:
         uses: mikepenz/action-junit-report@v5
         if: ${{ always() }}
         with:
-          report_paths: '**/junit/**-test-results-**/*.xml'
+          report_paths: '**/junit/**/*.xml'
           include_passed: true
           require_tests: true
           fail_on_failure: true
