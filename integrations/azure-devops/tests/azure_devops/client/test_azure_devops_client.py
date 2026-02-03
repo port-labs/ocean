@@ -265,6 +265,9 @@ EXPECTED_PIPELINE_STAGES = [
     }
 ]
 
+EXPECTED_SINGLE_PIPELINE = {"id": "pipeline123", "name": "Single Pipeline"}
+EXPECTED_SINGLE_PIPELINE_RUN = {"id": "run456", "name": "Single Run"}
+
 MOCK_FILE_CONTENT = b"file content"
 MOCK_FILE_PATH = "/path/to/file.txt"
 MOCK_REPOSITORY_ID = "repo123"
@@ -3921,3 +3924,78 @@ async def test_generate_branches(mock_event_context: MagicMock) -> None:
                 assert branches[0]["objectId"] == "abc123def456"
                 assert branches[0]["__repository"]["name"] == "Repository One"
                 assert branches[0]["__project"]["name"] == "Project One"
+
+
+@pytest.mark.asyncio
+async def test_get_pipeline() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json=EXPECTED_SINGLE_PIPELINE
+        )
+
+        pipeline_id = "pipeline123"
+        project_id = "project123"
+        pipeline = await client.get_pipeline(project_id, pipeline_id)
+
+        assert pipeline == EXPECTED_SINGLE_PIPELINE
+        mock_send_request.assert_called_once_with(
+            "GET",
+            f"{MOCK_ORG_URL}/{project_id}/_apis/pipelines/{pipeline_id}",
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_pipeline_run() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json=EXPECTED_SINGLE_PIPELINE_RUN
+        )
+
+        project_id = "project123"
+        pipeline_id = "pipeline123"
+        run_id = "run456"
+        pipeline_run = await client.get_pipeline_run(project_id, pipeline_id, run_id)
+
+        assert pipeline_run == EXPECTED_SINGLE_PIPELINE_RUN
+        mock_send_request.assert_called_once_with(
+            "GET",
+            f"{MOCK_ORG_URL}/{project_id}/_apis/pipelines/{pipeline_id}/runs/{run_id}",
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_pipeline_stage() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    project = {"id": "project123"}
+    pipeline_id = "pipeline123"
+    run_id = "run456"
+    stage_id = "stage1"
+
+    with patch.object(client, "get_pipeline_run") as mock_get_pipeline_run:
+        mock_get_pipeline_run.return_value = EXPECTED_SINGLE_PIPELINE_RUN
+
+        with patch.object(client, "_fetch_stages_for_build") as mock_fetch_stages:
+            mock_fetch_stages.return_value = EXPECTED_PIPELINE_STAGES
+
+            stage = await client.get_pipeline_stage(
+                project, pipeline_id, run_id, stage_id
+            )
+
+            assert stage == EXPECTED_PIPELINE_STAGES[0]
+            mock_get_pipeline_run.assert_called_once_with(
+                project["id"], pipeline_id, run_id
+            )
+            mock_fetch_stages.assert_called_once_with(
+                project, EXPECTED_SINGLE_PIPELINE_RUN
+            )
