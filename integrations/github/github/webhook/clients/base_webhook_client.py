@@ -17,6 +17,7 @@ class HookTarget:
     hooks_url: str
     single_hook_url_template: str
     log_scope: Dict[str, str]
+    target_type: str
 
     def hook_url(self, webhook_id: str) -> str:
         return self.single_hook_url_template.format(webhook_id=webhook_id)
@@ -82,7 +83,14 @@ class BaseGithubWebhookClient(GithubRestClient):
     async def _create_new_github_webhook(
         self, webhook_url: str, webhook_events: List[str], target: HookTarget
     ) -> None:
-        logger.info(f"Creating new webhook with URL {webhook_url}")
+        target_name = (
+            target.log_scope["repository"]
+            if target.target_type == "repository"
+            else self.organization
+        )
+        logger.info(
+            f"Creating new webhook for {target.target_type} - {target_name} with URL {webhook_url}"
+        )
         webhook_data = {
             "name": "web",
             "active": True,

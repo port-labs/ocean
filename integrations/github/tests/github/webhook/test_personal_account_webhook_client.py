@@ -3,6 +3,7 @@ from typing import Any, AsyncGenerator, Dict, List
 from unittest.mock import AsyncMock, patch
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
 from github.webhook.clients.base_webhook_client import HookTarget
 from github.webhook.clients.personal_account_webhook_client import (
     GithubPersonalAccountWebhookClient,
@@ -36,6 +37,7 @@ class TestGithubPersonalAccountWebhookClient:
             authenticator=authenticator,
         )
         target = HookTarget(
+            target_type="repository",
             hooks_url=f"{client.base_url}/repos/test-user/test-repo/hooks",
             single_hook_url_template=(
                 f"{client.base_url}/repos/test-user/test-repo/hooks/{{webhook_id}}"
@@ -87,6 +89,7 @@ class TestGithubPersonalAccountWebhookClient:
             authenticator=authenticator,
         )
         target = HookTarget(
+            target_type="repository",
             hooks_url=f"{client.base_url}/repos/test-user/test-repo/hooks",
             single_hook_url_template=(
                 f"{client.base_url}/repos/test-user/test-repo/hooks/{{webhook_id}}"
@@ -131,6 +134,7 @@ class TestGithubPersonalAccountWebhookClient:
         )
 
         target = HookTarget(
+            target_type="repository",
             hooks_url=f"{client.base_url}/repos/test-user/test-repo/hooks",
             single_hook_url_template=(
                 f"{client.base_url}/repos/test-user/test-repo/hooks/{{webhook_id}}"
@@ -167,4 +171,35 @@ class TestGithubPersonalAccountWebhookClient:
             target.hooks_url,
             method="POST",
             json_data=expected_data,
+        )
+
+    async def test_iter_owned_repositories_uses_installation_endpoint_when_app_auth(
+        self,
+    ) -> None:
+        client = GithubPersonalAccountWebhookClient(
+            token="test-token",
+            organization="test-org",
+            github_host="https://api.github.com",
+            authenticator=GitHubAppAuthenticator(
+                app_id="app",
+                private_key="key",
+                organization="test-org",
+                github_host="https://api.github.com",
+                installation_id="123",
+            ),
+        )
+
+        async def mock_paginated_request(
+            url: str, *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[list[dict[str, Any]], None]:
+            yield {"total_count": 1, "repositories": [{"id": 1, "name": "repo1"}]}
+
+        with patch.object(
+            client, "send_paginated_request", side_effect=mock_paginated_request
+        ) as mock_request:
+            repos = [batch async for batch in client._iter_owned_repositories()]
+
+        assert repos == [[{"id": 1, "name": "repo1"}]]
+        mock_request.assert_called_once_with(
+            "https://api.github.com/installation/repositories"
         )

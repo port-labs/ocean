@@ -4,6 +4,7 @@ from github.webhook.clients.base_webhook_client import (
     BaseGithubWebhookClient,
     HookTarget,
 )
+from github.clients.auth.github_app_authenticator import GitHubAppAuthenticator
 from github.webhook.events import WEBHOOK_CREATE_EVENTS
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -35,6 +36,14 @@ class GithubPersonalAccountWebhookClient(BaseGithubWebhookClient):
 
         Yields lists of repository dicts as returned by GitHub's REST API.
         """
+
+        if isinstance(self.authenticator, GitHubAppAuthenticator):
+            async for page in self.send_paginated_request(
+                f"{self.base_url}/installation/repositories",
+            ):
+                yield page["repositories"]
+            return
+
         async for repos in self.send_paginated_request(
             f"{self.base_url}/user/repos",
             {"affiliation": "owner"},
@@ -56,4 +65,5 @@ class GithubPersonalAccountWebhookClient(BaseGithubWebhookClient):
                         "organization": self.organization,
                         "repository": repo_name,
                     },
+                    target_type="repository",
                 )
