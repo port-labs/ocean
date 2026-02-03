@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- The default blueprint was updated to remove incorrect property constraints, preventing potential validation errors during resource synchronization.
+- The default blueprint was updated to remove incorrect property constraints, preventing validation errors during resource synchronization.
 
 
 ## 0.1.83-beta (2026-02-02)
