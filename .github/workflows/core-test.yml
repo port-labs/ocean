@@ -194,7 +194,26 @@ jobs:
           name: core-tarball
           path: dist/
 
+      - name: Cache integration venvs
+        uses: actions/cache@v4
+        id: cache-integration-venvs
+        with:
+          path: |
+            integrations/*/.venv
+          key: integration-venvs-${{ runner.os }}-${{ hashFiles('.github/workflows/actions/setup-python-poetry/action.yml') }}-${{ hashFiles('integrations/*/poetry.lock') }}
+          restore-keys: |
+            integration-venvs-${{ runner.os }}-${{ hashFiles('.github/workflows/actions/setup-python-poetry/action.yml') }}-
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('integrations/*/poetry.lock') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
+
       - name: Install dependencies for all integrations
+        if: steps.cache-integration-venvs.outputs.cache-hit != 'true'
         run: |
           echo "Installing dependencies for all integrations"
           SCRIPT_TO_RUN='make install' make execute/all
