@@ -7,6 +7,7 @@ from github.clients.rate_limiter.utils import (
     RateLimitInfo,
     RateLimiterRequiredHeaders,
 )
+from github.helpers.utils import has_exhausted_rate_limit_headers
 
 
 class GitHubRateLimiter:
@@ -49,10 +50,7 @@ class GitHubRateLimiter:
         if status_code not in self.get_rate_limit_status_codes():
             return False
 
-        return status_code == 429 or (
-            headers.get("x-ratelimit-remaining") == "0"
-            and headers.get("x-ratelimit-reset") is not None
-        )
+        return status_code == 429 or has_exhausted_rate_limit_headers(headers)
 
     def _parse_rate_limit_headers(
         self, headers: RateLimiterRequiredHeaders

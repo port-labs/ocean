@@ -7,6 +7,127 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.21 (2026-02-02)
+
+
+### Improvements
+
+- Updated embedded installation/docs links in `.port/spec.yaml` to point to the new GitHub Ocean docs routes.
+
+
+## 5.0.20 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+## 5.0.19 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
+
+
+## 5.0.18 (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.1
+
+
+## 5.0.17 (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.0
+
+
+## 5.0.16 (2026-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.34.0
+
+
+## 5.0.15 (2026-01-28)
+
+
+### Bug Fixes
+
+- Fix cache misses on repository kind when relationships are included.
+
+
+## 5.0.14 (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.1
+
+
+## 5.0.13 (2026-01-27)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.33.0
+
+
+## 5.0.12 (2026-01-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.17
+
+
+## 5.0.11 (2026-01-22)
+
+
+### Bug Fixes
+
+- Retried GitHub rate-limit `403` responses when rate-limit headers indicate an exhausted quota, and increased backoff window to better align with reset timings.
+
+
+## 5.0.10 (2026-01-22)
+
+
+### Improvements
+
+- Fix SAML identity provider timeout for large organizations
+- Added prevention of multi client created for multiple requests
+
+
+## 5.0.9 (2026-01-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.16
+
+
+## 5.0.8 (2026-01-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.15
+
+
+## 5.0.7 (2026-01-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.32.14
+
+
 ## 5.0.6 (2026-01-18)
 
 

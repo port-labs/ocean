@@ -42,8 +42,10 @@ def get_pyproject_data() -> dict[str, Any] | None:
     try:
         with open("./pyproject.toml", "rb") as toml_file:
             pyproject_data = tomli.load(toml_file)
-            return pyproject_data["tool"]["poetry"]
-    except (FileNotFoundError, KeyError):
+            return pyproject_data.get("project") or pyproject_data.get("tool", {}).get(
+                "poetry"
+            )
+    except FileNotFoundError:
         return None
 
 
@@ -99,3 +101,36 @@ def get_cgroup_cpu_limit() -> int:
     except Exception as e:
         print(f"Error reading cgroup limit: {e}")
         return multiprocessing.cpu_count()
+
+
+def run_async_in_new_event_loop(coro: Any) -> None:
+    """Run an async coroutine in a new event loop, ensuring proper cleanup.
+
+    This utility function creates a new event loop, runs the coroutine, and ensures
+    the loop is properly closed even if an exception occurs. This prevents issues
+    with unclosed event loops causing errors during interpreter shutdown (e.g.,
+    "I/O operation on closed kqueue object" on macOS).
+
+    Exceptions raised by the coroutine will propagate up to the caller after cleanup.
+
+    Args:
+        coro: A coroutine to execute (result of calling an async function)
+
+    Raises:
+        Any exception raised by the coroutine will be propagated.
+
+    Example:
+        ```python
+        async def my_async_function():
+            await some_async_operation()
+
+        run_async_in_new_event_loop(my_async_function())
+        ```
+    """
+    import asyncio
+
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(coro)
+    finally:
+        loop.close()
