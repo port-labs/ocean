@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.22 (2026-02-03)
+
+
+### Bug Fixes
+
+- Fixed repository-webhook upsertion for GitHub App authentication by correctly iterating the `GET /installation/repositories` response shape.
+
+### Improvements
+
+- Improved webhook creation logs to include whether the target is an organization or repository.
+
+
 ## 5.0.21 (2026-02-02)
 
 
