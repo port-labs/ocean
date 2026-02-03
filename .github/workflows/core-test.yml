@@ -7,6 +7,8 @@ on:
   pull_request:
   workflow_dispatch:
 
+# See .github/CI.md for workflow documentation
+
 permissions:
   contents: read
   pull-requests: write
@@ -126,7 +128,7 @@ jobs:
         run: make smoke/clean
 
       - name: Save single process coverage
-        run: mv .coverage .coverage.single
+        run: test -f .coverage && mv .coverage .coverage.single || echo "No coverage file to save"
 
       # Multi process mode
       - name: Run fake integration (multi process)
@@ -159,7 +161,7 @@ jobs:
         run: make smoke/clean
 
       - name: Save multi process coverage
-        run: mv .coverage .coverage.multi
+        run: test -f .coverage && mv .coverage .coverage.multi || echo "No coverage file to save"
 
       - name: Upload smoke test coverage
         uses: actions/upload-artifact@v4
@@ -198,13 +200,17 @@ jobs:
           name: core-tarball
           path: dist/
 
+      - name: Generate dependency cache key (excluding port-ocean)
+        id: deps-hash
+        run: echo "hash=$(./scripts/get-deps-hash.sh)" >> $GITHUB_OUTPUT
+
       - name: Cache integration venvs
         uses: actions/cache@v4
         id: cache-integration-venvs
         with:
           path: |
             integrations/*/.venv
-          key: integration-venvs-${{ runner.os }}-${{ hashFiles('.github/workflows/actions/setup-python-poetry/action.yml') }}-${{ hashFiles('integrations/*/poetry.lock') }}
+          key: integration-venvs-${{ runner.os }}-${{ hashFiles('.github/workflows/actions/setup-python-poetry/action.yml') }}-${{ steps.deps-hash.outputs.hash }}
           restore-keys: |
             integration-venvs-${{ runner.os }}-${{ hashFiles('.github/workflows/actions/setup-python-poetry/action.yml') }}-
 
@@ -212,7 +218,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ hashFiles('integrations/*/poetry.lock') }}
+          key: pip-${{ runner.os }}-${{ steps.deps-hash.outputs.hash }}
           restore-keys: |
             pip-${{ runner.os }}-
 
@@ -268,6 +274,7 @@ jobs:
         with:
           skip-checkout: 'true'
 
+      # --- Download Artifacts ---
       - name: Download all coverage artifacts
         uses: actions/download-artifact@v4
         continue-on-error: true
@@ -283,16 +290,17 @@ jobs:
           path: junit/
           merge-multiple: true
 
+      # --- Merge Coverage Reports ---
       - name: Merge coverage reports
         id: merge-coverage
         run: |
           mkdir -p coverage-merge
           i=0
-          # Copy all coverage files found
-          find coverage-artifacts -name ".coverage" -o -name ".coverage.*" 2>/dev/null | while read -r file; do
+          # Copy all coverage files found (using process substitution to avoid subshell variable scope issue)
+          while IFS= read -r file; do
             i=$((i + 1))
             cp "$file" "coverage-merge/.coverage.$i"
-          done
+          done < <(find coverage-artifacts \( -name ".coverage" -o -name ".coverage.*" \) 2>/dev/null)
           # List what we found
           echo "Coverage files found:"
           ls -la coverage-merge/ || echo "No coverage-merge directory"
@@ -322,10 +330,11 @@ jobs:
           stmts=$(jq '.totals.percent_covered | . * 100 | round | . / 100' coverage.json)
           echo "STMTS_COVERAGE=$stmts" >> $GITHUB_OUTPUT
 
+      # --- PR Comments ---
       - name: Get PR_NUMBER
         id: pr-number
         run: |
-          if [ ! -z "${{ github.event.pull_request.number }}" ]; then
+          if [ -n "${{ github.event.pull_request.number }}" ]; then
             echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
           else
             echo "PR_NUMBER=0" >> $GITHUB_OUTPUT
@@ -350,6 +359,7 @@ jobs:
               body: output
             })
 
+      # --- Port.io Integration ---
       - name: Get current repo coverage percentage from Port
         if: ${{ steps.merge-coverage.outputs.has_coverage == 'true' }}
         uses: port-labs/port-github-action@v1
@@ -386,6 +396,7 @@ jobs:
               body: output
             })
 
+      # --- Coverage Enforcement ---
       - name: Calculate minimum required coverage with tolerance
         id: calc-min-coverage
         if: ${{ steps.merge-coverage.outputs.has_coverage == 'true' }}
@@ -414,6 +425,7 @@ jobs:
               "coverage_percent": "${{ steps.set-stmts-coverage.outputs.STMTS_COVERAGE }}"
             }
 
+      # --- Test Report ---
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v5
         if: ${{ always() }}

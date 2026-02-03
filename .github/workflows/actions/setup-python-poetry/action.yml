@@ -35,7 +35,7 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
         cache: 'poetry'
-        cache-dependency-path: ${{ inputs.working-directory }}/poetry.lock
+        cache-dependency-path: ${{ inputs.working-directory == '.' && 'poetry.lock' || format('{0}/poetry.lock', inputs.working-directory) }}
 
     - name: Install dependencies
       if: ${{ inputs.skip-install == 'false' }}
