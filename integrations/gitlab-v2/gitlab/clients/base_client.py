@@ -48,9 +48,9 @@ class HTTPBaseClient:
         data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         url = f"{self.base_url}/{path}"
-        logger.info(f"Sending {method} request to {url}")
 
         async with self._rate_limiter:
+            logger.info(f"Sending {method} request to {url}")
             response: Optional[httpx.Response] = None
             try:
                 response = await self._client.request(

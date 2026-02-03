@@ -12,6 +12,7 @@ from gitlab.clients.rate_limiter.utils import (
 class GitLabRateLimiter:
     def __init__(self, config: GitLabRateLimiterConfig) -> None:
         self._semaphore = asyncio.Semaphore(config.max_concurrent)
+        self._max_concurrent = config.max_concurrent
         self.rate_limit_info: Optional[RateLimitInfo] = None
         self._block_lock = asyncio.Lock()
 
@@ -19,14 +20,18 @@ class GitLabRateLimiter:
         await self._semaphore.acquire()
 
         async with self._block_lock:
-            if self.rate_limit_info and (self.rate_limit_info.remaining <= 1):
+            # Pause when remaining requests <= max concurrent to account for in-flight requests
+            if self.rate_limit_info and (
+                self.rate_limit_info.remaining <= self._max_concurrent
+            ):
                 delay = self.rate_limit_info.seconds_until_reset
                 if delay > 0:
                     logger.warning(
-                        f"GitLab rate limit low ({self.rate_limit_info.remaining} remaining), "
-                        f"pausing for {delay:.1f}s"
+                        f"GitLab rate limit is running low: {self.rate_limit_info.remaining} requests left. "
+                        f"Max concurrency is {self._max_concurrent}. Pausing for {delay:.1f} seconds."
                     )
                     await asyncio.sleep(delay)
+                    self.rate_limit_info = None  # Reset after pause
 
         return self
 
