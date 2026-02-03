@@ -71,6 +71,12 @@ jobs:
         with:
           skip-checkout: 'true'
 
+      - name: Download core tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: core-tarball
+          path: dist/
+
       - name: Build fake-integration image for smoke test
         uses: ./.github/workflows/actions/build-docker-image
         with:
