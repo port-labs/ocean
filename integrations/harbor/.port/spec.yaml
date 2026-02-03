@@ -10,21 +10,21 @@ features:
       - kind: repository
       - kind: artifact
 configurations:
-  - name: harborUrl
+  - name: harbor_url
     required: true
     type: url
     description: 'The URL of the Harbor instance to connect to.'
-  - name: harborUsername
+  - name: harbor_username
     required: true
     type: string
     sensitive: true
     description: 'The admin username to authenticate with the Harbor instance.'
-  - name: harborPassword
+  - name: harbor_password
     required: true
     type: string
     sensitive: true
     description: 'The admin password to authenticate with the Harbor instance.'
-  - name: harborWebhookSecret
+  - name: harbor_webhook_secret
     required: false
     type: string
     sensitive: true
