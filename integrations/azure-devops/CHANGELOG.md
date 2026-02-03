@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Added live events support for `pipeline`, `pipeline-run`, and `pipeline-stage` kinds
+- Updated `work-item` live events to include `workitem.restored` event
 
 
 ## 0.7.4 (2026-02-02)
