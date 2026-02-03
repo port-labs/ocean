@@ -1,16 +1,70 @@
 resources:
-  - kind: harbor-example-kind
+  - kind: project
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: .my_custom_id
-          title: '(.my_component + " @ " + .my_service)'
-          blueprint: '"harborExampleBlueprint"'
+          identifier: .name
+          title: .name
+          blueprint: '"harborProject"'
           properties:
-            status: .my_enum
-            text: .my_custom_text
-            component: .my_component
-            service: .my_service
-            score: .my_special_score
+            name: .name
+            visibility: .metadata.public == "true"
+            repo_count: .repo_count
+            metadata: .metadata
+            creation_time: .creation_time
+            update_time: .update_time
+
+  - kind: user
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .username
+          title: .username
+          blueprint: '"harborUser"'
+          properties:
+            username: .username
+            email: .email
+            admin_flag: .sysadmin_flag
+            creation_time: .creation_time
+
+  - kind: repository
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"harborRepository"'
+          properties:
+            name: .name
+            artifact_count: .artifact_count
+            pull_count: .pull_count
+            creation_time: .creation_time
+            update_time: .update_time
+          relations:
+            project: .name | split("/") | .[0]
+
+  - kind: artifact
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .repository_name + "@" + .digest
+          title: .repository_name + ":" + (.tags[0].name // .digest[:16])
+          blueprint: '"harborArtifact"'
+          properties:
+            digest: .digest
+            size: .size
+            media_type: .media_type
+            push_time: .push_time
+            tags: '[.tags[]?.name]'
+            scan_status: .scan_overview | to_entries | first | .value.scan_status // "Not Scanned"
+            vulnerabilities: .scan_overview | to_entries | first | .value.summary
+          relations:
+            repository: .repository_name

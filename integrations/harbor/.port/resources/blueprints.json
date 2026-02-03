@@ -1,41 +1,165 @@
 [
     {
-        "identifier": "harborExampleBlueprint",
-        "title": "harbor Example",
-        "icon": "Blueprint",
+        "identifier": "harborProject",
+        "title": "Harbor Project",
+        "icon": "Harbor",
         "schema": {
             "properties": {
-                "status": {
+                "name": {
                     "type": "string",
-                    "enum": [
-                        "VALID",
-                        "FAILED"
-                    ],
-                    "enumColors": {
-                        "VALID": "green",
-                        "FAILED": "red"
-                    },
-                    "title": "Status"
+                    "title": "Name"
                 },
-                "text": {
-                    "type": "string",
-                    "title": "Text"
+                "visibility": {
+                    "type": "boolean",
+                    "title": "Public"
                 },
-                "component": {
-                    "type": "string",
-                    "title": "Component"
-                },
-                "service": {
-                    "type": "string",
-                    "title": "Service"
-                },
-                "score": {
+                "repo_count": {
                     "type": "number",
-                    "title": "Score"
+                    "title": "Repository Count"
+                },
+                "metadata": {
+                    "type": "object",
+                    "title": "Metadata"
+                },
+                "creation_time": {
+                    "type": "string",
+                    "title": "Creation Time",
+                    "format": "date-time"
+                },
+                "update_time": {
+                    "type": "string",
+                    "title": "Update Time",
+                    "format": "date-time"
                 }
-            },
-            "required": []
+            }
         },
         "relations": {}
+    },
+    {
+        "identifier": "harborUser",
+        "title": "Harbor User",
+        "icon": "Harbor",
+        "schema": {
+            "properties": {
+                "username": {
+                    "type": "string",
+                    "title": "Username"
+                },
+                "name": {
+                    "type": "string",
+                    "title": "Name"
+                },
+                "email": {
+                    "type": "string",
+                    "title": "Email",
+                    "format": "email"
+                },
+                "admin_flag": {
+                    "type": "boolean",
+                    "title": "Admin"
+                },
+                "user_type": {
+                    "type": "string",
+                    "title": "User Type",
+                    "enum": ["ProjectAdmin", "Maintainer", "Developer", "Guest", "Limited Guest", "SystemAdmin"]
+                },
+                "creation_time": {
+                    "type": "string",
+                    "title": "Creation Time",
+                    "format": "date-time"
+                }
+            },
+            "required": ["username", "email"]
+        },
+        "relations": {}
+    },
+    {
+        "identifier": "harborRepository",
+        "title": "Harbor Repository",
+        "icon": "Harbor",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Name"
+                },
+                "artifact_count": {
+                    "type": "number",
+                    "title": "Artifact Count"
+                },
+                "pull_count": {
+                    "type": "number",
+                    "title": "Pull Count"
+                },
+                "creation_time": {
+                    "type": "string",
+                    "title": "Creation Time",
+                    "format": "date-time"
+                },
+                "update_time": {
+                    "type": "string",
+                    "title": "Update Time",
+                    "format": "date-time"
+                }
+            }
+        },
+        "relations": {
+            "project": {
+                "title": "Project",
+                "target": "harborProject",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "harborArtifact",
+        "title": "Harbor Artifact",
+        "icon": "Harbor",
+        "schema": {
+            "properties": {
+                "digest": {
+                    "type": "string",
+                    "title": "Digest"
+                },
+                "size": {
+                    "type": "number",
+                    "title": "Size"
+                },
+                "media_type": {
+                    "type": "string",
+                    "title": "Media Type"
+                },
+                "push_time": {
+                    "type": "string",
+                    "title": "Push Time",
+                    "format": "date-time"
+                },
+                "tags": {
+                    "type": "array",
+                    "title": "Tags",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "scan_status": {
+                    "type": "string",
+                    "title": "Scan Status",
+                    "enum": ["Not Scanned", "Running", "Finished", "Error"]
+                },
+                "vulnerabilities": {
+                    "type": "object",
+                    "title": "Vulnerabilities"
+                }
+            }
+        },
+        "relations": {
+            "repository": {
+                "title": "Repository",
+                "target": "harborRepository",
+                "required": false,
+                "many": false
+            }
+        }
     }
 ]

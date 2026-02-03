@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "harbor"
 version = "0.1.0-beta"
-description = "Harbor integration to injest container-registry data"
+description = "Harbor integration to ingest container-registry data"
 authors = ["Emeka Allison <emekaallison4@gmail.com>"]
 
 [tool.poetry.dependencies]

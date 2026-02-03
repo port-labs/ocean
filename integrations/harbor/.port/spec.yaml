@@ -1,15 +1,35 @@
 description: harbor integration for Port Ocean
-icon: Cookiecutter  # Should be one of the available icons in Port
+title: Harbor
+icon: Cookiecutter  # Needs to be updated to Harbor icon when supported
 features:
   - type: exporter
-    section: Under Development  # Should be one of the available sections in Port
+    section: IaC  # Needs to be updated to "Container Registries" when supported
     resources:
-      - kind: harbor-example-kind
-      # - kind: <ResourceName2>
+      - kind: project
+      - kind: user
+      - kind: repository
+      - kind: artifact
 configurations:
-  - name: myharborToken
-    # required: true
+  - name: harborUrl
+    required: true
+    type: url
+    description: 'The URL of the Harbor instance to connect to.'
+  - name: harborUsername
+    required: true
     type: string
     sensitive: true
-  - name: someApplicationUrl
-    type: url
+    description: 'The admin username to authenticate with the Harbor instance.'
+  - name: harborPassword
+    required: true
+    type: string
+    sensitive: true
+    description: 'The admin password to authenticate with the Harbor instance.'
+  - name: harborWebhookSecret
+    required: false
+    type: string
+    sensitive: true
+saas:
+  enabled: false
+deploymentMethodOverride:
+  - type: helm
+  - type: docker
