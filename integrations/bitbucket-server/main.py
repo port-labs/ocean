@@ -10,22 +10,20 @@ from integration import (
     BitbucketPullRequestResourceConfig,
     ObjectKind,
 )
-from initialize_client import initialize_client
+from initialize_client import init_client
 from webhook_processors.processors import (
     ProjectWebhookProcessor,
     PullRequestWebhookProcessor,
     RepositoryWebhookProcessor,
 )
-from webhook_processors.webhook_client import (
-    initialize_client as initialize_webhook_client,
-)
+from webhook_processors.webhook_client import init_webhook_client
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(BitbucketGenericResourceConfig, event.resource_config).selector
     logger.info(f"Resyncing projects with filter: {selector.projects}")
-    client = initialize_client()
+    client = init_client()
     async for project_batch in client.get_projects(projects_filter=selector.projects):
         logger.info(f"Received {len(project_batch)} projects")
         yield project_batch
@@ -35,7 +33,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(BitbucketGenericResourceConfig, event.resource_config).selector
     logger.info(f"Resyncing repositories for projects: {selector.projects}")
-    client = initialize_client()
+    client = init_client()
     async for repo_batch in client.get_repositories(projects_filter=selector.projects):
         logger.info(f"Received {len(repo_batch)} repositories")
         yield repo_batch
@@ -45,7 +43,7 @@ async def on_resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(BitbucketPullRequestResourceConfig, event.resource_config).selector
     logger.info(f"Resyncing pull requests with state: {selector.state}")
-    client = initialize_client()
+    client = init_client()
     async for pr_batch in client.get_pull_requests(
         projects_filter=selector.projects, state=selector.state
     ):
@@ -56,7 +54,7 @@ async def on_resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Resyncing users")
-    client = initialize_client()
+    client = init_client()
     async for user_batch in client.get_users():
         logger.info(f"Received {len(user_batch)} users")
         yield user_batch
@@ -66,12 +64,12 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_start() -> None:
     logger.info("Starting Bitbucket Server integration")
     logger.info("Performing healthcheck")
-    client = initialize_client()
+    client = init_client()
     await client.healthcheck()
     logger.info("Healthcheck passed")
     if client.app_host:
         logger.info("Setting up webhooks")
-        webhook_client = initialize_webhook_client()
+        webhook_client = init_webhook_client()
         await webhook_client.setup_webhooks()
         logger.info("Webhooks set up")
 

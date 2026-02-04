@@ -1,13 +1,15 @@
 import asyncio
 import hashlib
 import hmac
+from dataclasses import asdict
 from typing import Any, cast
 
 from fastapi import Request
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
-from client import BitbucketClient, DEFAULT_PAGE_SIZE, DEFAULT_MAX_CONCURRENT_REQUESTS
+from client import BitbucketClient
+from helpers import BitbucketClientConfig
 
 PROJECT_WEBHOOK_EVENTS = [
     "project:modified",
@@ -325,22 +327,20 @@ class BitbucketServerWebhookClient(BitbucketClient):
         return hmac.compare_digest(signature, expected_signature)
 
 
-def initialize_client() -> BitbucketServerWebhookClient:
-    config = ocean.integration_config
+def init_webhook_client() -> BitbucketServerWebhookClient:
+    """Initialize and return the BitbucketServerWebhookClient instance."""
+    integration_config = ocean.integration_config
 
-    return BitbucketServerWebhookClient(
-        username=config["bitbucket_username"],
-        password=config["bitbucket_password"],
-        base_url=config["bitbucket_base_url"],
-        webhook_secret=config.get("bitbucket_webhook_secret"),
+    config = BitbucketClientConfig(
+        username=integration_config["bitbucket_username"],
+        password=integration_config["bitbucket_password"],
+        base_url=integration_config["bitbucket_base_url"],
+        webhook_secret=integration_config.get("bitbucket_webhook_secret"),
         app_host=ocean.app.base_url,
         is_version_8_7_or_older=cast(
-            bool,
-            config.get("bitbucket_is_version8_point7_or_older"),
+            bool, integration_config.get("bitbucket_is_version8_point7_or_older")
         ),
-        rate_limit=int(config["bitbucket_rate_limit_quota"]),
-        rate_limit_window=int(config["bitbucket_rate_limit_window"]),
-        page_size=DEFAULT_PAGE_SIZE,
-        max_concurrent_requests=DEFAULT_MAX_CONCURRENT_REQUESTS,
-        project_filter_regex=None,
+        rate_limit=int(integration_config["bitbucket_rate_limit_quota"]),
+        rate_limit_window=int(integration_config["bitbucket_rate_limit_window"]),
     )
+    return BitbucketServerWebhookClient(**asdict(config))
