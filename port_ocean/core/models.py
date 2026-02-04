@@ -15,7 +15,9 @@ class EventListenerType(StrEnum):
 
 
 class CreatePortResourcesOrigin(StrEnum):
+    Empty = "Empty"
     Ocean = "Ocean"
+    Default = "Default"
     Port = "Port"
 
 

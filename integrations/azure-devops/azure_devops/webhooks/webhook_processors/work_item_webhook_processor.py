@@ -68,7 +68,7 @@ class WorkItemWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[deleted_work_item]
             )
 
-        # For created, updated, and commented events, fetch the full work item
+        # For created, updated, restored and commented events, fetch the full work item
         try:
             work_item = await client.get_work_item(project_id, work_item_id)
 

@@ -7,6 +7,118 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.179-post1 (2026-02-02)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+0.2.178-post1 (2026-02-02)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
+
+
+0.2.177-post1 (2026-02-01)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.35.1
+
+
+0.2.176-post1 (2026-02-01)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.35.0
+
+
+0.2.175-post1 (2026-01-29)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.34.0
+
+
+0.2.174-post1 (2026-01-27)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.33.1
+
+
+0.2.173-post1 (2026-01-27)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.33.0
+
+
+0.2.172-post1 (2026-01-26)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.32.17
+
+
+0.2.171-post1 (2026-01-22)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.32.16
+
+
+0.2.170-post1 (2026-01-21)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.32.15
+
+
+0.2.169-post1 (2026-01-20)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.32.14
+
+
+0.2.168-post1 (2026-01-16)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.32.13
+
+
+0.2.167-post1 (2026-01-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.32.12
+
+
+0.2.166-post1 (2026-01-14)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.32.11
+
+
 0.2.165-post1 (2026-01-11)
 ==========================
 
