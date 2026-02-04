@@ -9,6 +9,7 @@ from port_ocean.core.defaults.initialization import InitializationFactory
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.core.models import CreatePortResourcesOrigin, IntegrationFeatureFlag
 from port_ocean.utils.misc import run_async_in_new_event_loop
+from port_ocean.version import __integration_version__
 
 
 def _determine_origin(
@@ -67,6 +68,19 @@ async def _verify_integration_configuration(
         )
 
 
+def _validate_integration_version() -> None:
+    """Validate that integration version is set.
+
+    Raises:
+        ValueError: If integration version is not set
+    """
+    if not __integration_version__:
+        raise ValueError(
+            "Integration version is not set. "
+            "Please ensure pyproject.toml contains a valid version field."
+        )
+
+
 async def _initialize_defaults(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
@@ -115,6 +129,8 @@ async def _initialize_defaults(
     )
 
     if not integration:
+        _validate_integration_version()
+
         try:
             logger.info(
                 "Integration does not exist, Creating new integration with default mapping"
@@ -130,8 +146,9 @@ async def _initialize_defaults(
             logger.error(f"Failed to verify integration state: {err.response.text}.")
             raise err
 
+    ocean.metrics.installation_type = integration.get("installationType", "Unknown")
     await _verify_integration_configuration(integration_config, integration)
-    await setup_instance.setup()
+    await setup_instance.setup(integration)
 
 
 def initialize_defaults(

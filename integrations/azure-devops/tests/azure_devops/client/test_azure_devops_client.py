@@ -212,6 +212,21 @@ EXPECTED_WEBHOOK_EVENTS = [
     },
 ]
 
+EXPECTED_SECURITY_ALERTS = [
+    {
+        "id": 1,
+        "name": "Alert One",
+        "state": "active",
+        "severity": "high",
+    },
+    {
+        "id": 2,
+        "name": "Alert Two",
+        "state": "closed",
+        "severity": "low",
+    },
+]
+
 EXPECTED_SUBSCRIPTION_CREATION_RESPONSE = {
     "id": "subscription123",
     "eventType": "git.push",
@@ -249,6 +264,9 @@ EXPECTED_PIPELINE_STAGES = [
         },
     }
 ]
+
+EXPECTED_SINGLE_PIPELINE = {"id": "pipeline123", "name": "Single Pipeline"}
+EXPECTED_SINGLE_PIPELINE_RUN = {"id": "run456", "name": "Single Run"}
 
 MOCK_FILE_CONTENT = b"file content"
 MOCK_FILE_PATH = "/path/to/file.txt"
@@ -1315,6 +1333,46 @@ async def test_generate_repository_policies() -> None:
 
             # ASSERT
             assert policies == EXPECTED_POLICIES
+
+
+@pytest.mark.asyncio
+async def test_generate_security_alerts() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    repository: dict[str, Any] = {
+        "id": "repo1",
+        "name": "Repo One",
+        "project": {"id": "proj1", "name": "Project One"},
+    }
+
+    # MOCK
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "alerts" in url:
+            yield EXPECTED_SECURITY_ALERTS
+        else:
+            yield []
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated_by_top_and_continuation_token,
+    ):
+        # ACT
+        alerts: List[Dict[str, Any]] = []
+        async for alert_batch in client.generate_advanced_security_alerts(repository):
+            alerts.extend(alert_batch)
+
+        # ASSERT
+        assert len(alerts) == 2
+        assert alerts[0]["id"] == 1
+        assert alerts[0]["__repositoryId"] == repository["id"]
+        assert alerts[0]["__projectId"] == repository["project"]["id"]
+        assert alerts[1]["id"] == 2
+        assert alerts[1]["__repositoryId"] == repository["id"]
 
 
 @pytest.mark.asyncio
@@ -3866,3 +3924,78 @@ async def test_generate_branches(mock_event_context: MagicMock) -> None:
                 assert branches[0]["objectId"] == "abc123def456"
                 assert branches[0]["__repository"]["name"] == "Repository One"
                 assert branches[0]["__project"]["name"] == "Project One"
+
+
+@pytest.mark.asyncio
+async def test_get_pipeline() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json=EXPECTED_SINGLE_PIPELINE
+        )
+
+        pipeline_id = "pipeline123"
+        project_id = "project123"
+        pipeline = await client.get_pipeline(project_id, pipeline_id)
+
+        assert pipeline == EXPECTED_SINGLE_PIPELINE
+        mock_send_request.assert_called_once_with(
+            "GET",
+            f"{MOCK_ORG_URL}/{project_id}/_apis/pipelines/{pipeline_id}",
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_pipeline_run() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    with patch.object(client, "send_request") as mock_send_request:
+        mock_send_request.return_value = Response(
+            status_code=200, json=EXPECTED_SINGLE_PIPELINE_RUN
+        )
+
+        project_id = "project123"
+        pipeline_id = "pipeline123"
+        run_id = "run456"
+        pipeline_run = await client.get_pipeline_run(project_id, pipeline_id, run_id)
+
+        assert pipeline_run == EXPECTED_SINGLE_PIPELINE_RUN
+        mock_send_request.assert_called_once_with(
+            "GET",
+            f"{MOCK_ORG_URL}/{project_id}/_apis/pipelines/{pipeline_id}/runs/{run_id}",
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_pipeline_stage() -> None:
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    project = {"id": "project123"}
+    pipeline_id = "pipeline123"
+    run_id = "run456"
+    stage_id = "stage1"
+
+    with patch.object(client, "get_pipeline_run") as mock_get_pipeline_run:
+        mock_get_pipeline_run.return_value = EXPECTED_SINGLE_PIPELINE_RUN
+
+        with patch.object(client, "_fetch_stages_for_build") as mock_fetch_stages:
+            mock_fetch_stages.return_value = EXPECTED_PIPELINE_STAGES
+
+            stage = await client.get_pipeline_stage(
+                project, pipeline_id, run_id, stage_id
+            )
+
+            assert stage == EXPECTED_PIPELINE_STAGES[0]
+            mock_get_pipeline_run.assert_called_once_with(
+                project["id"], pipeline_id, run_id
+            )
+            mock_fetch_stages.assert_called_once_with(
+                project, EXPECTED_SINGLE_PIPELINE_RUN
+            )
