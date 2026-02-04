@@ -9,10 +9,8 @@ from jira_server.helpers.utils import IgnoredError
 PAGE_SIZE = 100
 
 
-# Jira returns 400 (not 403) when JQL references projects the user can't access
-# because Jira treats inaccessible resources as "non-existent" during validation
-JQL_IGNORED_ERRORS = [
-    IgnoredError(status=400, message="JQL query references inaccessible project"),
+IGNORED_ERRORS = [
+    IgnoredError(status=404, message="Resource not found"),
 ]
 
 
@@ -64,6 +62,25 @@ class JiraServerClient:
                 return True
         return False
 
+    def _log_jira_error_response(
+        self,
+        response: httpx.Response,
+        method: str,
+        url: str,
+    ) -> None:
+        """Log descriptive error messages from Jira API responses."""
+        try:
+            error_body = response.json()
+            logger.error(
+                f"Jira API error for {method} {url}: "
+                f"Status {response.status_code}, Response: {error_body}"
+            )
+        except Exception:
+            logger.error(
+                f"Jira API error for {method} {url}: "
+                f"Status {response.status_code}, Response: {response.text}"
+            )
+
     async def _send_api_request(
         self,
         method: str,
@@ -86,6 +103,7 @@ class JiraServerClient:
         except httpx.HTTPStatusError as e:
             if self._should_ignore_error(e, url, method, ignored_errors):
                 return {}
+            self._log_jira_error_response(e.response, method, url)
             raise
 
     @staticmethod
@@ -160,11 +178,7 @@ class JiraServerClient:
     async def get_paginated_issues(
         self, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get issues from Jira Server with pagination using the search endpoint.
-
-        Note: JQL queries referencing inaccessible projects return 400 errors.
-        These are gracefully handled and logged rather than crashing the resync.
-        """
+        """Get issues from Jira Server with pagination using the search endpoint."""
         logger.info("Getting issues from Jira Server (paginated)")
         params = params or {}
         if "jql" in params:
@@ -173,7 +187,7 @@ class JiraServerClient:
             f"{self.api_url}/search",
             "issues",
             initial_params=params,
-            ignored_errors=JQL_IGNORED_ERRORS,
+            ignored_errors=IGNORED_ERRORS,
         ):
             yield issues
 
