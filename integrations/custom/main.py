@@ -11,7 +11,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from initialize_client import init_client
+from initialize_client import get_client
 from http_server.overrides import HttpServerResourceConfig
 from http_server.helpers.endpoint_resolver import resolve_dynamic_endpoints
 
@@ -20,15 +20,16 @@ from http_server.helpers.endpoint_resolver import resolve_dynamic_endpoints
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync resources from HTTP endpoints - kind is the endpoint path"""
     logger.info(f"Starting resync for kind (endpoint): {kind}")
-    http_client = init_client()
+    http_client = await get_client()
     resource_config = cast(HttpServerResourceConfig, event.resource_config)
 
     selector = resource_config.selector
 
-    # Extract method, query_params, headers from selector
+    # Extract method, query_params, headers, body from selector
     method = getattr(selector, "method", "GET")
     query_params = getattr(selector, "query_params", None) or {}
     headers = getattr(selector, "headers", None) or {}
+    body = getattr(selector, "body", None)
 
     # The kind IS the endpoint path (e.g., "/api/v1/users")
     # Check if endpoint has path parameters that need resolution
@@ -46,6 +47,7 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     method=method,
                     query_params=query_params,
                     headers=headers,
+                    body=body,
                 ):
                     logger.info(f"Received {len(batch)} records from {endpoint}")
 

@@ -12,7 +12,6 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
     JQEntityProcessorSync,
 )
 from http_server.overrides import HttpServerSelector, ApiPathParameter
-from initialize_client import init_client
 
 
 def extract_path_parameters(endpoint: str) -> List[str]:
@@ -127,6 +126,9 @@ async def query_api_for_parameters(
     Yields:
         Batches of parameter values extracted from API response
     """
+    # Lazy import to avoid circular dependency
+    from initialize_client import init_client
+
     http_client = init_client()
     logger.info(f"Querying API for parameter values from {param_config.endpoint}")
 

@@ -44,7 +44,9 @@ class TestListResponseHandling:
             )
 
             with (
-                patch("main.init_client", return_value=mock_client),
+                patch(
+                    "main.get_client", new_callable=AsyncMock, return_value=mock_client
+                ),
                 patch(
                     "main.resolve_dynamic_endpoints",
                     return_value=mock_resolve_single_endpoint(),
@@ -103,7 +105,9 @@ class TestListResponseHandling:
             )
 
             with (
-                patch("main.init_client", return_value=mock_client),
+                patch(
+                    "main.get_client", new_callable=AsyncMock, return_value=mock_client
+                ),
                 patch(
                     "main.resolve_dynamic_endpoints",
                     return_value=mock_resolve_single_endpoint(),
@@ -156,7 +160,9 @@ class TestListResponseHandling:
             )
 
             with (
-                patch("main.init_client", return_value=mock_client),
+                patch(
+                    "main.get_client", new_callable=AsyncMock, return_value=mock_client
+                ),
                 patch(
                     "main.resolve_dynamic_endpoints",
                     return_value=mock_resolve_single_endpoint(),
