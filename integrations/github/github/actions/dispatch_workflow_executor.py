@@ -27,7 +27,6 @@ from github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_pr
 from port_ocean.context.ocean import ocean
 
 from port_ocean.core.models import BaseRun
-from github.helpers.port_client_helpers import update_run_workflow_started
 from github.actions.abstract_github_executor import (
     AbstractGithubExecutor,
 )
@@ -226,12 +225,11 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             )
             external_id = build_external_id(workflow_run)
 
-            await update_run_workflow_started(
-                ocean.port_client,
+            await ocean.port_client.update_run_started(
                 run,
                 workflow_run["html_url"],
                 external_id,
-                workflow_run["id"],
+                extra_output={"workflowRunId": workflow_run["id"]},
             )
         except Exception as e:
             error_message = str(e)

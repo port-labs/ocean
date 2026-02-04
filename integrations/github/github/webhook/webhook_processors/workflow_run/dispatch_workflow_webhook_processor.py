@@ -1,9 +1,4 @@
 from github.actions.utils import build_external_id
-from github.helpers.port_client_helpers import (
-    get_run_by_external_id,
-    is_run_in_progress,
-    report_run_workflow_completed,
-)
 from github.context.auth import get_authenticated_actor
 from github.webhook.webhook_processors.workflow_run.base_workflow_run_webhook_processor import (
     BaseWorkflowRunWebhookProcessor,
@@ -70,21 +65,23 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
         workflow_run = payload["workflow_run"]
         external_id = build_external_id(workflow_run)
 
-        run = await get_run_by_external_id(ocean.port_client, external_id)
+        run = await ocean.port_client.find_run_by_external_id(external_id)
         if (
             run
-            and is_run_in_progress(run)
+            and ocean.port_client.is_run_in_progress(run)
             and run.payload.integrationActionExecutionProperties.get(
                 "reportWorkflowStatus", False
             )
         ):
+            conclusion = workflow_run["conclusion"]
+            success = conclusion in ("success", "skipped", "neutral")
             logger.info(
-                f"Updating run {run.id} with workflow conclusion: {workflow_run['conclusion']}",
+                f"Updating run {run.id} with workflow conclusion: {conclusion}",
                 run_id=run.id,
-                conclusion=workflow_run["conclusion"],
+                conclusion=conclusion,
             )
-            await report_run_workflow_completed(
-                ocean.port_client, run, workflow_run["conclusion"]
+            await ocean.port_client.report_run_completed(
+                run, success, f"Workflow completed: {conclusion}"
             )
 
         return WebhookEventRawResults(updated_raw_results=[], deleted_raw_results=[])
