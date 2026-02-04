@@ -127,7 +127,6 @@ class JiraServerClient:
                 "GET", url, params=params, ignored_errors=ignored_errors
             )
 
-            # Handle ignored errors (returns empty dict {})
             if not response_data:
                 logger.info(
                     "Stopping pagination due to empty response or ignored error"
