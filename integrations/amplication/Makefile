@@ -49,7 +49,7 @@ install:
 	poetry install --with dev
 
 install/local-core: install
-	# Installs local Ocean core in editable mode - Note: do not commit the resulting environment changes
+	# For local development only: installs local Ocean core in editable mode - Note: do not commit the resulting environment changes
 	$(ACTIVATE) && pip install -e ../../
 
 install/prod:
