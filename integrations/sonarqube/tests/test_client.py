@@ -1163,8 +1163,9 @@ async def test_get_issues_by_component_pops_pagination_param_and_resets(
     query_params = {"some_other_param": "value"}
 
     mock_http_client = AsyncMock()
-    # Mock sequence for a paginated request with 2 pages
-    mock_http_client.request.side_effect = [
+
+    # Prepare mock responses
+    mock_responses = [
         httpx.Response(
             200,
             json={
@@ -1187,9 +1188,17 @@ async def test_get_issues_by_component_pops_pagination_param_and_resets(
             request=httpx.Request("GET", "https://sonarqube.com"),
         ),
     ]
+
+    captured_params: list[dict[str, Any]] = []
+
+    async def capture_request(*args, **kwargs):
+        captured_params.append(dict(kwargs.get("params", {})))
+        return mock_responses.pop(0)
+
+    mock_http_client.request.side_effect = capture_request
     sonarqube_client.http_client = mock_http_client
 
-    # First call: Processes 2 pages
+    # First call: processes 2 pages
     batches = []
     async for batch in sonarqube_client.get_issues_by_component(
         component, query_params=query_params
@@ -1198,27 +1207,27 @@ async def test_get_issues_by_component_pops_pagination_param_and_resets(
 
     assert len(batches) == 2
 
-    # Check first request of first call
-    first_call_args = mock_http_client.request.call_args_list[0]
-    sent_params_1 = first_call_args.kwargs.get("params")
+    # First request: no pagination param
+    sent_params_1 = captured_params[0]
     assert "p" not in sent_params_1
     assert sent_params_1["ps"] == 100
+    assert sent_params_1["some_other_param"] == "value"
+    assert sent_params_1["componentKeys"] == "test-project"
 
-    # Check second request of first call (pagination happened)
-    second_request_args = mock_http_client.request.call_args_list[1]
-    sent_params_2 = second_request_args.kwargs.get("params")
+    # Second request: pagination applied
+    sent_params_2 = captured_params[1]
     assert sent_params_2["p"] == 2
+    assert sent_params_2["ps"] == 100
 
-    # Verify original query_params was NOT mutated at all
+    # Original query params must remain untouched
     assert query_params == {"some_other_param": "value"}
 
-    # Second call: Ensure it resets and starts from page 1 (no 'p' in params)
+    # Second call: should reset pagination (no 'p' again)
     async for _ in sonarqube_client.get_issues_by_component(
         component, query_params=query_params
     ):
         pass
 
-    third_request_args = mock_http_client.request.call_args_list[2]
-    sent_params_3 = third_request_args.kwargs.get("params")
+    sent_params_3 = captured_params[2]
     assert "p" not in sent_params_3
     assert sent_params_3["ps"] == 100

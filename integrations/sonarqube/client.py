@@ -146,8 +146,7 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = query_params.copy() if query_params else {}
-        params.pop("p", None)
+        params = {**query_params} if query_params else {}
         params["ps"] = PAGE_SIZE
         logger.info(f"Starting paginated request to {endpoint}")
         try:
@@ -192,7 +191,7 @@ class SonarQubeClient:
                         "The request exceeded the maximum number of issues that can be returned (10,000) from SonarQube API. Returning accumulated issues and skipping further results."
                     )
                     break
-                params = {**params, "p": page_index + 1}
+                params |= {"p": page_index + 1}
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
