@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Increased visibility of GitHub API rate-limit hits by logging them as warnings.
+- Log warnings when GitHub API rate limits are exhausted or near exhaustion (keep other quota logs at debug).
 
 
 ## 5.0.23 (2026-02-05)

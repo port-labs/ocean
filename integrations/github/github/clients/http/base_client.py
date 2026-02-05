@@ -162,9 +162,6 @@ class AbstractGithubClient(ABC):
         """Get current rate limit status for monitoring."""
         return self.rate_limiter.rate_limit_info
 
-    def log_rate_limit_status(self) -> None:
-        """Log current rate limit status for debugging."""
-        self.rate_limiter.log_rate_limit_status()
 
     @abstractmethod
     def send_paginated_request(
