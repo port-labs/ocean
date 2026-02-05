@@ -23,4 +23,3 @@ configurations:
     type: string
     description: "JSON string format of cluster configuration mapping. Use this when deploying via GitHub Actions where secrets are passed as strings. Example: '{\"my cluster\":{\"bootstrap.servers\": \"localhost:9092\"}}'"
     sensitive: true
-
