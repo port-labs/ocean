@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import yaml
 from loguru import logger
@@ -9,7 +9,8 @@ from github.core.options import FileContentOptions
 from port_ocean.exceptions.api import EmptyPortAppConfigError
 
 ORG_CONFIG_REPO = ".github-private"
-ORG_CONFIG_FILE = "port-app-config.yml"
+ORG_CONFIG_FILE = "port-app-config"
+YAML_FILE_SUFFIX = (".yaml", ".yml")
 
 
 def is_repo_managed_mapping(integration: Dict[str, Any]) -> bool:
@@ -18,13 +19,41 @@ def is_repo_managed_mapping(integration: Dict[str, Any]) -> bool:
     return bool(config.get("repoManagedMapping"))
 
 
-async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
+def validate_config_file_name(config_file_name: Optional[str]) -> str:
+    """
+    Validate and normalize the organization config file name.
+
+    The file name must:
+    - Start with ORG_CONFIG_FILE
+    - End with a supported YAML suffix
+
+    If no file name is provided, a default is returned.
+    """
+    if not config_file_name:
+        return f"{ORG_CONFIG_FILE}.yml"
+
+    if not config_file_name.startswith(ORG_CONFIG_FILE):
+        raise ValueError(f"Config file name must start with '{ORG_CONFIG_FILE}'")
+
+    if not any(config_file_name.endswith(suffix) for suffix in YAML_FILE_SUFFIX):
+        raise ValueError(
+            f"Config file name must end with one of: {', '.join(YAML_FILE_SUFFIX)}"
+        )
+
+    return config_file_name
+
+
+async def load_org_port_app_config(
+    github_org: str, config_file_name: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Load the global Port app config from the GitHub organization config repository.
 
     Get the file `<github_org>/.github-private/port-app-config.yml` from the repository's default
     branch and using it as the single global mapping.
     """
+
+    config_file_name = validate_config_file_name(config_file_name)
 
     rest_client = create_github_client()
     repo_metadata = await rest_client.send_api_request(
@@ -43,7 +72,7 @@ async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
         FileContentOptions(
             organization=github_org,
             repo_name=ORG_CONFIG_REPO,
-            file_path=ORG_CONFIG_FILE,
+            file_path=config_file_name,
             branch=default_branch,
         )
     )
@@ -56,7 +85,7 @@ async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
                 "github_org": github_org,
                 "org_config_repo": ORG_CONFIG_REPO,
                 "default_branch": default_branch,
-                "file_path": ORG_CONFIG_FILE,
+                "file_path": config_file_name,
             },
         )
         raise EmptyPortAppConfigError()
@@ -66,7 +95,7 @@ async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
     except Exception as exc:
         logger.exception(
             "Failed to parse GitHub Port app config YAML from file "
-            f"port-app-config.yml: {exc}"
+            f"{config_file_name}: {exc}"
         )
         raise EmptyPortAppConfigError("Port app config is invalid") from exc
 
@@ -88,7 +117,7 @@ async def load_org_port_app_config(github_org: str) -> Dict[str, Any]:
             "github_org": github_org,
             "org_config_repo": ORG_CONFIG_REPO,
             "default_branch": default_branch,
-            "file_path": ORG_CONFIG_FILE,
+            "file_path": config_file_name,
         },
     )
     return file_config

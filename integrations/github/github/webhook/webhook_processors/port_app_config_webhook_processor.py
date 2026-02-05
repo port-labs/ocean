@@ -1,3 +1,4 @@
+import os
 from typing import Any, Set
 
 from loguru import logger
@@ -17,7 +18,10 @@ from github.webhook.webhook_processors.github_abstract_webhook_processor import 
     _GithubAbstractWebhookProcessor,
 )
 from github.core.exporters.file_exporter.utils import group_files_by_status
-from github.helpers.port_app_config import is_repo_managed_mapping
+from github.helpers.port_app_config import (
+    is_repo_managed_mapping,
+    validate_config_file_name,
+)
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.clients.client_factory import create_github_client
 from github.helpers.port_app_config import ORG_CONFIG_FILE, ORG_CONFIG_REPO
@@ -102,7 +106,9 @@ class PortAppConfigWebhookProcessor(
 
         changed_paths: Set[str] = {f["filename"] for f in deleted_files + updated_files}
 
-        if ORG_CONFIG_FILE not in changed_paths:
+        if not any(
+            os.path.basename(path).startswith(ORG_CONFIG_FILE) for path in changed_paths
+        ):
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
@@ -118,6 +124,23 @@ class PortAppConfigWebhookProcessor(
                 extra={
                     "organization": organization,
                     "repository": repo_name,
+                },
+            )
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        config_file_name = validate_config_file_name(
+            integration.get("config", {}).get("configFileName")
+        )
+        if config_file_name not in changed_paths:
+            logger.info(
+                "Detected change to global Port app config in GitHub, but "
+                "config file name is not in the changed paths; skipping resync",
+                extra={
+                    "organization": organization,
+                    "repository": repo_name,
+                    "config_file_name": config_file_name,
                 },
             )
             return WebhookEventRawResults(
