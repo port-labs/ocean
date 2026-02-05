@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.24 (2026-02-05)
+
+
+### Improvements
+
+- Increased visibility of GitHub API rate-limit hits by logging them as warnings.
+
+
 ## 5.0.23 (2026-02-05)
 
 

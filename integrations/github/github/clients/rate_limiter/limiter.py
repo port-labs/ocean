@@ -76,7 +76,7 @@ class GitHubRateLimiter:
         info = self._parse_rate_limit_headers(rate_limit_headers)
         if info:
             self.rate_limit_info = info
-            logger.debug(
+            logger.warning(
                 f"Rate limit hit on {resource} for {self.api_type}: {info.remaining}/{info.limit} remaining"
             )
         return info
