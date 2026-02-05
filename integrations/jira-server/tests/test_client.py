@@ -412,7 +412,7 @@ class TestLogJiraErrorResponse:
 
             mock_logger.error.assert_called_once()
             call_args = mock_logger.error.call_args[0][0]
-            assert "Status 400" in call_args
+            assert "(HTTP 400)" in call_args
             assert "errorMessages" in call_args
 
     def test_log_jira_error_response_logs_raw_text_on_json_error(
@@ -432,7 +432,7 @@ class TestLogJiraErrorResponse:
 
             mock_logger.error.assert_called_once()
             call_args = mock_logger.error.call_args[0][0]
-            assert "Status 500" in call_args
+            assert "(HTTP 500)" in call_args
 
 
 class TestGetPaginatedIssuesErrorHandling:
