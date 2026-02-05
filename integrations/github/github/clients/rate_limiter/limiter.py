@@ -76,7 +76,7 @@ class GitHubRateLimiter:
         info = self._parse_rate_limit_headers(rate_limit_headers)
         if not info:
             return None
-        
+
         self.rate_limit_info = info
         self._log_rate_limit_status(info, resource)
         return info

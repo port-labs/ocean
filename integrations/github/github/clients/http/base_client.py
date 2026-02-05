@@ -162,7 +162,6 @@ class AbstractGithubClient(ABC):
         """Get current rate limit status for monitoring."""
         return self.rate_limiter.rate_limit_info
 
-
     @abstractmethod
     def send_paginated_request(
         self,
