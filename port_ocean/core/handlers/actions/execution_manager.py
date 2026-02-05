@@ -1,7 +1,7 @@
 import time
 from typing import Dict, Set
 from loguru import logger
-from port_ocean.core.models import BaseRun
+from port_ocean.core.models import ActionRun, WorkflowNodeRun
 import asyncio
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.queue.abstract_queue import AbstractQueue
@@ -39,8 +39,8 @@ class ExecutionManager:
         _workers_pool (set[asyncio.Task[None]]): Pool of worker tasks processing runs
         _actions_executors (Dict[str, AbstractExecutor]): Registered action executors
         _is_shutting_down (asyncio.Event): Event flag for graceful shutdown
-        _global_queue (LocalQueue[BaseRun]): Queue for non-partitioned actions
-        _partition_queues (Dict[str, AbstractQueue[BaseRun]]): Queues for partitioned actions
+        _global_queue (LocalQueue[ActionRun | WorkflowNodeRun]): Queue for non-partitioned actions
+        _partition_queues (Dict[str, AbstractQueue[ActionRun | WorkflowNodeRun]]): Queues for partitioned actions
         _deduplication_set (Set[str]): Set of run IDs for deduplication
         _queues_locks (Dict[str, asyncio.Lock]): Locks for queue access synchronization
         _active_sources (AbstractQueue[str]): Queue of active sources (global or partition-specific) used for round-robin distribution of work among workers
@@ -86,8 +86,10 @@ class ExecutionManager:
         self._workers_pool: set[asyncio.Task[None]] = set[asyncio.Task[None]]()
         self._actions_executors: Dict[str, AbstractExecutor] = {}
         self._is_shutting_down = asyncio.Event()
-        self._global_queue = LocalQueue[BaseRun]()
-        self._partition_queues: Dict[str, AbstractQueue[BaseRun]] = {}
+        self._global_queue: LocalQueue[ActionRun | WorkflowNodeRun] = LocalQueue()
+        self._partition_queues: Dict[
+            str, AbstractQueue[ActionRun | WorkflowNodeRun]
+        ] = {}
         self._deduplication_set: Set[str] = set[str]()
         self._queues_locks: Dict[str, asyncio.Lock] = {GLOBAL_SOURCE: asyncio.Lock()}
         self._active_sources: AbstractQueue[str] = LocalQueue[str]()
@@ -238,14 +240,14 @@ class ExecutionManager:
 
     async def _add_run_to_queue(
         self,
-        run: BaseRun,
+        run: ActionRun | WorkflowNodeRun,
         queue_name: str,
     ) -> None:
         """
         Add a run to the queue, if the queue is empty, add the source to the active sources.
         """
         if queue_name != GLOBAL_SOURCE and queue_name not in self._partition_queues:
-            self._partition_queues[queue_name] = LocalQueue[BaseRun]()
+            self._partition_queues[queue_name] = LocalQueue()
             self._queues_locks[queue_name] = asyncio.Lock()
 
         queue = (
@@ -357,7 +359,7 @@ class ExecutionManager:
             await queue.commit()
             await self._add_source_if_not_empty(partition_name)
 
-    async def _execute_run(self, run: BaseRun) -> None:
+    async def _execute_run(self, run: ActionRun | WorkflowNodeRun) -> None:
         """
         Execute a run using its registered executor.
         """

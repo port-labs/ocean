@@ -170,7 +170,6 @@ class IntegrationActionInvocationPayload(BaseModel):
 
 class BaseRun(BaseModel):
     id: str
-    status: str
     payload: IntegrationActionInvocationPayload
 
     @property
@@ -188,3 +187,7 @@ class WorkflowNodeRun(BaseRun):
     config: dict[str, Any] | None = None
     output: dict[str, Any] = Field(default_factory=dict)
     identifier: str | None = None
+
+
+# Type alias for union of all run types - use this in public APIs
+Run = ActionRun | WorkflowNodeRun

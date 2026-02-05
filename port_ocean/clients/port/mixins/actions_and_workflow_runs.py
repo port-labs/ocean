@@ -4,7 +4,7 @@ from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.mixins.actions import ActionsClientMixin
 from port_ocean.clients.port.mixins.workflow_nodes import WorkflowNodesClientMixin
 from port_ocean.core.models import (
-    BaseRun,
+    ActionRun,
     WorkflowNodeRun,
     RunStatus,
     WorkflowNodeRunStatus,
@@ -18,14 +18,15 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         WorkflowNodesClientMixin.__init__(self, auth, client)
         self._poll_wf_node: bool = False
 
-    def _is_wf_node_run(self, run: BaseRun) -> bool:
+    def _is_wf_node_run(self, run: ActionRun | WorkflowNodeRun) -> bool:
         return isinstance(run, WorkflowNodeRun)
 
     async def claim_pending_runs(
         self, limit: int, visibility_timeout_ms: int
-    ) -> list[BaseRun]:
+    ) -> list[ActionRun | WorkflowNodeRun]:
+        runs: list[ActionRun | WorkflowNodeRun]
         if self._poll_wf_node:
-            runs: list[BaseRun] = list(
+            runs = list(
                 await self.claim_pending_wf_node_runs(
                     limit=limit, visibility_timeout_ms=visibility_timeout_ms
                 )
@@ -39,7 +40,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         self._poll_wf_node = not self._poll_wf_node
         return runs
 
-    async def acknowledge_run(self, run: BaseRun) -> None:
+    async def acknowledge_run(self, run: ActionRun | WorkflowNodeRun) -> None:
         if self._is_wf_node_run(run):
             await self.acknowledge_wf_node_run(run.id)
         else:
@@ -47,7 +48,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
 
     async def post_run_log(
         self,
-        run: BaseRun,
+        run: ActionRun | WorkflowNodeRun,
         message: str,
         level: Literal["INFO", "WARNING", "ERROR", "DEBUG"] = "INFO",
         should_raise: bool = False,
@@ -65,7 +66,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
 
     async def report_run_failure(
         self,
-        run: BaseRun,
+        run: ActionRun | WorkflowNodeRun,
         error_summary: str,
         should_raise: bool = False,
     ) -> None:
@@ -91,14 +92,16 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 should_raise=should_raise,
             )
 
-    async def find_run_by_external_id(self, external_id: str) -> BaseRun | None:
+    async def find_run_by_external_id(
+        self, external_id: str
+    ) -> ActionRun | WorkflowNodeRun | None:
         """Get a run (action or workflow node) by its external ID."""
         action_run = await self.get_run_by_external_id(external_id)
         if action_run:
             return action_run
         return await self.get_wf_node_run_by_external_id(external_id)
 
-    def is_run_in_progress(self, run: BaseRun) -> bool:
+    def is_run_in_progress(self, run: ActionRun | WorkflowNodeRun) -> bool:
         """Check if a run is currently in progress."""
         if self._is_wf_node_run(run):
             return run.status == WorkflowNodeRunStatus.IN_PROGRESS
@@ -106,7 +109,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
 
     async def update_run_started(
         self,
-        run: BaseRun,
+        run: ActionRun | WorkflowNodeRun,
         link: str,
         external_id: str,
         extra_output: dict[str, Any] | None = None,
@@ -134,7 +137,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
 
     async def report_run_completed(
         self,
-        run: BaseRun,
+        run: ActionRun | WorkflowNodeRun,
         success: bool,
         message: str | None = None,
     ) -> None:
