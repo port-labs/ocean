@@ -126,11 +126,11 @@ class TestPortAppConfigWebhookProcessor:
         payload: EventPayload,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        # Arrange: mock diff to include ORG_CONFIG_FILE
+        # Arrange: mock diff to include the (default) config file name
         mock_exporter = AsyncMock()
         mock_exporter.fetch_commit_diff.return_value = {
             "files": [
-                {"filename": ORG_CONFIG_FILE, "status": "modified"},
+                {"filename": f"{ORG_CONFIG_FILE}.yml", "status": "modified"},
             ]
         }
 

@@ -460,7 +460,9 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
                         "from the integration configuration."
                     )
                     raise EmptyPortAppConfigError()
-                return await load_org_port_app_config(github_org)
+                return await load_org_port_app_config(
+                    github_org, raw_config.get("configFileName")
+                )
 
             if raw_config:
                 logger.debug("Using Port integration config from API")

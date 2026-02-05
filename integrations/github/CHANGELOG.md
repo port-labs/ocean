@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.23 (2026-02-05)
+
+
+### Improvements
+
+- Added support for configuring the organization Port app config filename (supports `.yml`/`.yaml`) and updated the config-change webhook handler to trigger resync only when that specific file changes.
+
+
 ## 5.0.22 (2026-02-03)
 
 
