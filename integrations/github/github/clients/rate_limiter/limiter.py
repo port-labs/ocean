@@ -74,18 +74,23 @@ class GitHubRateLimiter:
         rate_limit_headers = RateLimiterRequiredHeaders(**headers)
 
         info = self._parse_rate_limit_headers(rate_limit_headers)
-        if info:
-            self.rate_limit_info = info
-            logger.debug(
-                f"Rate limit hit on {resource} for {self.api_type}: {info.remaining}/{info.limit} remaining"
-            )
+        if not info:
+            return None
+
+        self.rate_limit_info = info
+        self._log_rate_limit_status(info, resource)
         return info
 
-    def log_rate_limit_status(self) -> None:
-        info = self.rate_limit_info
-        if info:
-            logger.debug(
-                f"{self.api_type}: {info.remaining}/{info.limit} remaining "
-                f"({info.utilization_percentage:.1f}% used) - "
-                f"resets in {info.seconds_until_reset}s"
-            )
+    def _log_rate_limit_status(self, info: RateLimitInfo, resource: str) -> None:
+        resets_in = info.seconds_until_reset
+        message = (
+            f"GitHub rate limit status on {resource} for {self.api_type}: "
+            f"{info.remaining}/{info.limit} remaining (resets in {resets_in}s)"
+        )
+
+        if info.remaining <= 0:
+            logger.warning(message.replace("status", "exhausted"))
+        elif info.remaining <= 1:
+            logger.warning(message.replace("status", "near exhaustion"))
+        else:
+            logger.debug(message)
