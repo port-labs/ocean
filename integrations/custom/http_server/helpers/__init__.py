@@ -13,6 +13,12 @@ from http_server.helpers.template_utils import (
     evaluate_template,
     validate_template_syntax,
 )
+from http_server.helpers.utils import (
+    inject_path_params,
+    extract_and_enrich_batch,
+    process_endpoints_concurrently,
+    DEFAULT_CONCURRENCY_LIMIT,
+)
 
 __all__ = [
     "extract_path_parameters",
@@ -24,4 +30,8 @@ __all__ = [
     "validate_templates_in_dict",
     "evaluate_template",
     "validate_template_syntax",
+    "inject_path_params",
+    "extract_and_enrich_batch",
+    "process_endpoints_concurrently",
+    "DEFAULT_CONCURRENCY_LIMIT",
 ]
