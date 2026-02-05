@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.23 (2026-02-05)
+
+
+### Features
+
+- Added `defaultBranchOnly` selector for branch ingestion to sync only the repository default branch (takes precedence over `branchNames`) across resync and live-events.
+
+
 ## 5.0.22 (2026-02-03)
 
 
