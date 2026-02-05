@@ -365,7 +365,6 @@ class SonarQubeClient:
             params=project_query_params, enrich_project=False
         ):
             for component in components:
-                query_params.pop("p", None)
                 async for responses in self.get_issues_by_component(
                     component=component, query_params=query_params
                 ):
