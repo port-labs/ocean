@@ -1148,7 +1148,7 @@ async def test_sonarqube_client_normalizes_trailing_slashes(
 
 
 @pytest.mark.asyncio
-async def test_get_issues_by_component_pops_pagination_param(
+async def test_get_issues_by_component_pops_pagination_param_and_resets(
     mock_ocean_context: Any,
 ) -> None:
     sonarqube_client = SonarQubeClient(
@@ -1160,32 +1160,65 @@ async def test_get_issues_by_component_pops_pagination_param(
     )
 
     component = {"key": "test-project"}
-    query_params = {"p": 10, "some_other_param": "value"}
+    query_params = {"some_other_param": "value"}
 
     mock_http_client = AsyncMock()
-    mock_http_client.request.return_value = httpx.Response(
-        200,
-        json={"issues": [], "paging": {"pageIndex": 1, "pageSize": 100, "total": 0}},
-        request=httpx.Request("GET", "https://sonarqube.com"),
-    )
+    # Mock sequence for a paginated request with 2 pages
+    mock_http_client.request.side_effect = [
+        httpx.Response(
+            200,
+            json={
+                "issues": [{"key": "issue1"}],
+                "paging": {"pageIndex": 1, "pageSize": 1, "total": 2},
+            },
+            request=httpx.Request("GET", "https://sonarqube.com"),
+        ),
+        httpx.Response(
+            200,
+            json={
+                "issues": [{"key": "issue2"}],
+                "paging": {"pageIndex": 2, "pageSize": 1, "total": 2},
+            },
+            request=httpx.Request("GET", "https://sonarqube.com"),
+        ),
+        httpx.Response(
+            200,
+            json={"issues": [], "paging": {"pageIndex": 1, "pageSize": 1, "total": 0}},
+            request=httpx.Request("GET", "https://sonarqube.com"),
+        ),
+    ]
     sonarqube_client.http_client = mock_http_client
 
+    # First call: Processes 2 pages
+    batches = []
+    async for batch in sonarqube_client.get_issues_by_component(
+        component, query_params=query_params
+    ):
+        batches.append(batch)
+
+    assert len(batches) == 2
+
+    # Check first request of first call
+    first_call_args = mock_http_client.request.call_args_list[0]
+    sent_params_1 = first_call_args.kwargs.get("params")
+    assert "p" not in sent_params_1
+    assert sent_params_1["ps"] == 100
+
+    # Check second request of first call (pagination happened)
+    second_request_args = mock_http_client.request.call_args_list[1]
+    sent_params_2 = second_request_args.kwargs.get("params")
+    assert sent_params_2["p"] == 2
+
+    # Verify original query_params was NOT mutated at all
+    assert query_params == {"some_other_param": "value"}
+
+    # Second call: Ensure it resets and starts from page 1 (no 'p' in params)
     async for _ in sonarqube_client.get_issues_by_component(
         component, query_params=query_params
     ):
         pass
 
-    args, kwargs = mock_http_client.request.call_args
-    sent_params = kwargs.get("params")
-
-    assert "p" not in sent_params
-    assert sent_params["some_other_param"] == "value"
-    assert sent_params["ps"] == 100
-    assert sent_params["componentKeys"] == "test-project"
-
-    # Verify original query_params only has componentKeys added
-    assert query_params == {
-        "p": 10,
-        "some_other_param": "value",
-        "componentKeys": "test-project",
-    }
+    third_request_args = mock_http_client.request.call_args_list[2]
+    sent_params_3 = third_request_args.kwargs.get("params")
+    assert "p" not in sent_params_3
+    assert sent_params_3["ps"] == 100

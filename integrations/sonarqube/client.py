@@ -7,7 +7,6 @@ from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
-from copy import deepcopy
 
 
 def turn_sequence_to_chunks(
@@ -147,15 +146,16 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        query_params = query_params or {}
-        query_params["ps"] = PAGE_SIZE
+        params = query_params.copy() if query_params else {}
+        params.pop("p", None)
+        params["ps"] = PAGE_SIZE
         logger.info(f"Starting paginated request to {endpoint}")
         try:
             while True:
                 response = await self._send_api_request(
                     endpoint=endpoint,
                     method=method,
-                    query_params=query_params,
+                    query_params=params,
                     json_data=json_data,
                 )
                 if not response:
@@ -189,14 +189,14 @@ class SonarQubeClient:
                         "The request exceeded the maximum number of issues that can be returned (10,000) from SonarQube API. Returning accumulated issues and skipping further results."
                     )
                     break
-                query_params["p"] = page_index + 1
+                params = {**params, "p": page_index + 1}
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
             if (
                 e.response.status_code == 400
-                and query_params.get("ps", 0) > PAGE_SIZE
+                and params.get("ps", 0) > PAGE_SIZE
                 and endpoint == Endpoints.ISSUES_SEARCH
             ):
                 logger.error(
@@ -363,6 +363,7 @@ class SonarQubeClient:
             params=project_query_params, enrich_project=False
         ):
             for component in components:
+                query_params.pop("p", None)
                 async for responses in self.get_issues_by_component(
                     component=component, query_params=query_params
                 ):
@@ -371,7 +372,7 @@ class SonarQubeClient:
     async def get_issues_by_component(
         self,
         component: dict[str, Any],
-        query_params: dict[str, Any] = {},
+        query_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieve issues data across a single component (in this case, project) from SonarQube API.
@@ -380,18 +381,14 @@ class SonarQubeClient:
 
         :return (list[Any]): A list containing issues data for the specified component.
         """
+        params = query_params.copy() if query_params else {}
         component_key = component.get("key")
 
         if self.is_onpremise:
-            query_params["components"] = component_key
+            params["components"] = component_key
         else:
-            query_params["componentKeys"] = component_key
+            params["componentKeys"] = component_key
 
-        params: dict[str, Any] = deepcopy(query_params)
-        params.pop("p", None)
-        logger.debug(
-            f"Fetching issues for component: {component_key} with params: {params}"
-        )
         async for responses in self._send_paginated_request(
             endpoint=Endpoints.ISSUES_SEARCH,
             data_key="issues",
