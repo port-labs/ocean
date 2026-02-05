@@ -6,11 +6,69 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.35.4 (2026-02-02)
+
+### Bug fixes
+
+- Fixed mask_object mutating original data in place, which caused entity properties to contain [REDACTED] values when examples were sent before entity transformation.
+
+
+## 0.35.3 (2026-02-02)
+
+### Improvements
+
+- Save resources initialization state of integration
+
+
+## 0.35.2 (2026-02-01)
+
+### Improvements
+
+- Block integration initialization without version and support new pyproject.toml structure.
+
+
+## 0.35.1 (2026-02-01)
+
+### Improvements
+
+- Enhance sync metrics with installation type and execution mode
+
+
+## 0.35.0 (2026-01-28)
+
+### Improvements
+
+- Hardend dockerfile security
+
+
+## 0.34.0 (2026-01-28)
+
+### Improvements
+
+- Added an optional environment variable to allow adding prefix to the routes registered by for webhooks and metrics
+
+
+## 0.33.1 (2026-01-27)
+
+### Bug fixes
+
+- Start monitoring in each process seperatly.
+
+
+## 0.33.0 (2026-01-27)
+
+### Improvements
+
+- Allowing Empty setup mode which make integraion be created without any resources
+
+
 ## 0.32.17 (2026-01-25)
 
 ### Bug fixes
 
 - Fixed Bug: for kindIdentifier with index > 10 like  "name-12", kindIndex was 2 instead of 12 because only the last character was used. Parse the segment after the final "-" as the index (e.g. "name-12" → 12, "project-0" → 0).
+
 
 ## 0.32.16 (2026-01-21)
 
@@ -25,17 +83,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Handle webhook event not supported exception and log it as a warning
 
+
 ## 0.32.14 (2026-01-20)
 
 ### Bug fixes
 
 - Add export of system and request metrics
 
+
 ## 0.32.13 (2026-01-15)
 
 ### Bug fixes
 
 - Revert Add export of system and request metrics
+
 
 ## 0.32.12 (2026-01-15)
 
@@ -51,6 +112,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Improvements
 
 - Add export of system and request metrics
+
 
 ## 0.32.11 (2026-01-14)
 

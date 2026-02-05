@@ -339,6 +339,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/servicenow",
+      "envFile": "${workspaceFolder}/integrations/servicenow/.env",
+      "justMyCode": true,
+      "name": "Run servicenow integration",
+      "program": "${workspaceFolder}/integrations/servicenow/debug.py",
+      "python": "${workspaceFolder}/integrations/servicenow/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/custom",
       "envFile": "${workspaceFolder}/integrations/custom/examples/config-no-auth.env",
       "justMyCode": true,
@@ -376,6 +387,17 @@
       "envFile": "${workspaceFolder}/integrations/custom/examples/config-api-key.env",
       "justMyCode": true,
       "name": "Generic HTTP - API Key",
+      "program": "${workspaceFolder}/integrations/custom/debug.py",
+      "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/custom",
+      "envFile": "${workspaceFolder}/integrations/custom/examples/config-custom-auth-request.env",
+      "justMyCode": true,
+      "name": "Generic HTTP - Custom Auth",
       "program": "${workspaceFolder}/integrations/custom/debug.py",
       "python": "${workspaceFolder}/integrations/custom/.venv/bin/python",
       "request": "launch",

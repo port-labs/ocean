@@ -62,7 +62,11 @@ class TestHttpServerClient:
         captured_url: str | None = None
 
         async def mock_make_request(
-            url: str, method: str, params: dict[str, Any], headers: dict[str, str]
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
         ) -> AsyncMock:
             nonlocal captured_url
             captured_url = url
@@ -89,7 +93,11 @@ class TestHttpServerClient:
         captured_url: str | None = None
 
         async def mock_make_request(
-            url: str, method: str, params: dict[str, Any], headers: dict[str, str]
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
         ) -> AsyncMock:
             nonlocal captured_url
             captured_url = url
@@ -116,7 +124,11 @@ class TestHttpServerClient:
         captured_url: str | None = None
 
         async def mock_make_request(
-            url: str, method: str, params: dict[str, Any], headers: dict[str, str]
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
         ) -> AsyncMock:
             nonlocal captured_url
             captured_url = url
@@ -143,7 +155,11 @@ class TestHttpServerClient:
         captured_url: str | None = None
 
         async def mock_make_request(
-            url: str, method: str, params: dict[str, Any], headers: dict[str, str]
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
         ) -> AsyncMock:
             nonlocal captured_url
             captured_url = url
@@ -170,7 +186,11 @@ class TestHttpServerClient:
         captured_url: str | None = None
 
         async def mock_make_request(
-            url: str, method: str, params: dict[str, Any], headers: dict[str, str]
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
         ) -> AsyncMock:
             nonlocal captured_url
             captured_url = url
@@ -197,7 +217,11 @@ class TestHttpServerClient:
         captured_url: str | None = None
 
         async def mock_make_request(
-            url: str, method: str, params: dict[str, Any], headers: dict[str, str]
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
         ) -> AsyncMock:
             nonlocal captured_url
             captured_url = url
@@ -224,7 +248,11 @@ class TestHttpServerClient:
         captured_url: str | None = None
 
         async def mock_make_request(
-            url: str, method: str, params: dict[str, Any], headers: dict[str, str]
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
         ) -> AsyncMock:
             nonlocal captured_url
             captured_url = url
@@ -251,7 +279,11 @@ class TestHttpServerClient:
         captured_url: str | None = None
 
         async def mock_make_request(
-            url: str, method: str, params: dict[str, Any], headers: dict[str, str]
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
         ) -> AsyncMock:
             nonlocal captured_url
             captured_url = url
@@ -315,7 +347,11 @@ class TestHttpServerClient:
         captured_headers: dict[str, str] | None = None
 
         async def mock_make_request(
-            url: str, method: str, params: dict[str, Any], headers: dict[str, str]
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
         ) -> AsyncMock:
             nonlocal captured_headers
             merged_headers = {**client.custom_headers, **headers}
@@ -354,7 +390,11 @@ class TestHttpServerClient:
         captured_headers: dict[str, str] | None = None
 
         async def mock_make_request(
-            url: str, method: str, params: dict[str, Any], headers: dict[str, str]
+            url: str,
+            method: str,
+            params: dict[str, Any],
+            headers: dict[str, str],
+            body: dict[str, Any] | None = None,
         ) -> AsyncMock:
             nonlocal captured_headers
             merged_headers = {**client.custom_headers, **headers}
