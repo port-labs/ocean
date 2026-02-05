@@ -72,12 +72,13 @@ class JiraServerClient:
         try:
             error_body = response.json()
             logger.error(
-                  f"Jira API request failed with (HTTP {status_code}) for {method} {url} . See response for details: {error_body}"
+                f"Jira API request failed with (HTTP {response.status_code}) for {method} {url} . "
+                f"See response for details: {error_body}"
             )
         except Exception:
             logger.error(
-                f"Jira API error for {method} {url}: "
-                f"Status {response.status_code}, Response: {response.text}"
+                f"Jira API request failed with (HTTP {response.status_code}) for {method} {url} . "
+                f"See response for details: {response.text}"
             )
 
     async def _send_api_request(
