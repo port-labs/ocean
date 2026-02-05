@@ -72,8 +72,7 @@ class JiraServerClient:
         try:
             error_body = response.json()
             logger.error(
-                f"Jira API error for {method} {url}: "
-                f"Status {response.status_code}, Response: {error_body}"
+                  f"Jira API request failed with (HTTP {status_code}) for {method} {url} . See response for details: {error_body}"
             )
         except Exception:
             logger.error(
