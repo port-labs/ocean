@@ -7,6 +7,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.utils.cache import cache_iterator_result
+from copy import deepcopy
 
 
 def turn_sequence_to_chunks(
@@ -386,10 +387,12 @@ class SonarQubeClient:
         else:
             query_params["componentKeys"] = component_key
 
+        params: dict[str, Any] = deepcopy(query_params)
+        params.pop("p", None)
         async for responses in self._send_paginated_request(
             endpoint=Endpoints.ISSUES_SEARCH,
             data_key="issues",
-            query_params=query_params,
+            query_params=params,
         ):
             yield [
                 {
