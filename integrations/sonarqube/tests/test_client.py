@@ -1145,3 +1145,47 @@ async def test_sonarqube_client_normalizes_trailing_slashes(
     assert client_without_app_host.base_url == "https://sonarqube.com"
     assert client_without_app_host.app_host is None
     assert client_without_app_host.webhook_invoke_url == ""
+
+
+@pytest.mark.asyncio
+async def test_get_issues_by_component_pops_pagination_param(
+    mock_ocean_context: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    component = {"key": "test-project"}
+    query_params = {"p": 10, "some_other_param": "value"}
+
+    mock_http_client = AsyncMock()
+    mock_http_client.request.return_value = httpx.Response(
+        200,
+        json={"issues": [], "paging": {"pageIndex": 1, "pageSize": 100, "total": 0}},
+        request=httpx.Request("GET", "https://sonarqube.com"),
+    )
+    sonarqube_client.http_client = mock_http_client
+
+    async for _ in sonarqube_client.get_issues_by_component(
+        component, query_params=query_params
+    ):
+        pass
+
+    args, kwargs = mock_http_client.request.call_args
+    sent_params = kwargs.get("params")
+
+    assert "p" not in sent_params
+    assert sent_params["some_other_param"] == "value"
+    assert sent_params["ps"] == 100
+    assert sent_params["componentKeys"] == "test-project"
+
+    # Verify original query_params only has componentKeys added
+    assert query_params == {
+        "p": 10,
+        "some_other_param": "value",
+        "componentKeys": "test-project",
+    }

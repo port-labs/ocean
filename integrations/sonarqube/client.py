@@ -389,6 +389,9 @@ class SonarQubeClient:
 
         params: dict[str, Any] = deepcopy(query_params)
         params.pop("p", None)
+        logger.debug(
+            f"Fetching issues for component: {component_key} with params: {params}"
+        )
         async for responses in self._send_paginated_request(
             endpoint=Endpoints.ISSUES_SEARCH,
             data_key="issues",
