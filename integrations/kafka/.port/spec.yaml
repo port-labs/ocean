@@ -14,7 +14,24 @@ saas:
   enabled: false
 configurations:
   - name: clusterConfMapping
-    required: true
+    required: false
     type: object
-    description: "Mapping of Kafka cluster names to Kafka client config. example: {\"my cluster\":{\"bootstrap.servers\": \"localhost:9092\"}}"
+    description: "Mapping of Kafka cluster names to Kafka client config. Use this OR clusterConfMappingString. Example: {\"my cluster\":{\"bootstrap.servers\": \"localhost:9092\"}}"
     sensitive: true
+    dependencies:
+      - on: clusterConfMappingString
+        when:
+          empty: true
+        then:
+          required: true
+  - name: clusterConfMappingString
+    required: false
+    type: string
+    description: "JSON string format of cluster configuration mapping. Use this when deploying via GitHub Actions where secrets are passed as strings. Example: '{\"my cluster\":{\"bootstrap.servers\": \"localhost:9092\"}}'"
+    sensitive: true
+    dependencies:
+      - on: clusterConfMapping
+        when:
+          empty: true
+        then:
+          required: true
