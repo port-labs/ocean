@@ -292,6 +292,14 @@ class GithubBranchSelector(RepoSearchSelector):
     detailed: bool = Field(
         default=False, description="Include extra details about the branch"
     )
+    default_branch_only: bool = Field(
+        default=False,
+        alias="defaultBranchOnly",
+        description=(
+            "If true, only the repository's default branch will be synced. "
+            "If provided, it takes precedence and branchNames will be ignored."
+        ),
+    )
     protection_rules: bool = Field(
         default=False,
         alias="protectionRules",
