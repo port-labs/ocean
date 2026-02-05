@@ -166,7 +166,14 @@ class TestBranchWebhookProcessor:
             assert result.updated_raw_results == [branch_data]
 
         if expected_deleted:
-            assert result.deleted_raw_results == [{"name": branch_name}]
+            assert result.deleted_raw_results == [
+                {
+                    "name": branch_name,
+                    "__repository": "test-repo",
+                    "__repository_object": {"name": "test-repo"},
+                    "__organization": "test-org",
+                }
+            ]
 
     async def test_handle_event_skips_when_branch_names_selector_excludes_branch(
         self,

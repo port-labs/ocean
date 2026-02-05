@@ -145,7 +145,14 @@ class TestWorkflowRunWebhookProcessor:
             assert result.updated_raw_results == [workflow_run]
 
         if expected_deleted:
-            assert result.deleted_raw_results == [workflow_run]
+            assert result.deleted_raw_results == [
+                {
+                    **workflow_run,
+                    "__repository": "test-repo",
+                    "__repository_object": repo_data,
+                    "__organization": "test-org",
+                }
+            ]
 
     @pytest.mark.parametrize(
         "payload,expected",

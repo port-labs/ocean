@@ -155,7 +155,14 @@ class TestTagWebhookProcessor:
             assert result.updated_raw_results == [tag_data]
 
         if expected_deleted:
-            assert result.deleted_raw_results == [{"name": tag_ref}]
+            assert result.deleted_raw_results == [
+                {
+                    "name": tag_ref,
+                    "__repository": "test-repo",
+                    "__repository_object": {"name": "test-repo"},
+                    "__organization": "test-org",
+                }
+            ]
 
     @pytest.mark.parametrize(
         "payload,expected",

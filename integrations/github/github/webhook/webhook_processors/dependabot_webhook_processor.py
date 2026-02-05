@@ -63,7 +63,7 @@ class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         if current_state not in config.selector.states:
             alert = enrich_with_organization(
-                enrich_with_repository(alert, repo_name), organization
+                enrich_with_repository(alert, repo_name, repo=repo), organization
             )
 
             return WebhookEventRawResults(

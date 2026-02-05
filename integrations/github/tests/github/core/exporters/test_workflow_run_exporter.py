@@ -51,7 +51,11 @@ async def test_single_resource(rest_client: GithubRestClient) -> None:
     ) as mock_request:
         async with event_context("test_event"):
             wf = await exporter.get_resource(options)
-            assert wf == TEST_DATA["workflow_runs"][0]
+            assert wf == {
+                **TEST_DATA["workflow_runs"][0],
+                "__repository": "test",
+                "__organization": "test-org",
+            }
             mock_request.assert_called_with(
                 f"{rest_client.base_url}/repos/test-org/{options['repo_name']}/actions/runs/{options['run_id']}"
             )
@@ -83,7 +87,13 @@ async def test_get_paginated_resources(rest_client: GithubRestClient) -> None:
 
             assert len(wf) == 1
             assert len(wf[0]) == 1
-            assert wf[0] == TEST_DATA["workflow_runs"]
+            assert wf[0] == [
+                {
+                    **TEST_DATA["workflow_runs"][0],
+                    "__repository": "test",
+                    "__organization": "test-org",
+                }
+            ]
 
         mock_request.assert_called_once_with(
             f"{rest_client.base_url}/repos/test-org/{options['repo_name']}/actions/workflows/159038/runs"

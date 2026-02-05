@@ -180,7 +180,10 @@ class TestIssueWebhookProcessor:
                 )
             elif expected_delete:
                 assert result.updated_raw_results == []
-                assert result.deleted_raw_results == [issue_data]
+                # Deletions are enriched with repository + organization metadata
+                assert result.deleted_raw_results == [
+                    {**issue_data, "__organization": "test-org"}
+                ]
                 mock_exporter.get_resource.assert_not_called()
 
 

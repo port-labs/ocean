@@ -199,6 +199,8 @@ class TestCollaboratorMemberWebhookProcessor:
                         "login": "test-user",
                         "id": 1,
                         "__repository": "test-repo",
+                        "__repository_object": {"name": "test-repo"},
+                        "__organization": "test-org",
                     }
                     assert result.deleted_raw_results == [expected_deleted_data]
                     mock_exporter.get_resource.assert_not_called()
