@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.24 (2026-02-05)
+
+
+### Improvements
+
+- Log warnings when GitHub API rate limits are exhausted or near exhaustion (keep other quota logs at debug).
+
+
 ## 5.0.23 (2026-02-05)
 
 
