@@ -1191,7 +1191,7 @@ async def test_get_issues_by_component_pops_pagination_param_and_resets(
 
     captured_params: list[dict[str, Any]] = []
 
-    async def capture_request(*args, **kwargs):
+    async def capture_request(*args: Any, **kwargs: Any) -> httpx.Response:
         captured_params.append(dict(kwargs.get("params", {})))
         return mock_responses.pop(0)
 
