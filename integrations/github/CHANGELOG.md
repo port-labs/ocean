@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.25 (2026-02-06)
+
+
+### Bug Fixes
+
+- Treat transient GitHub 500 errors when fetching repository teams as an empty teams list (and log the GitHub request id for correlation).
+
+
 ## 5.0.24 (2026-02-05)
 
 
