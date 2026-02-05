@@ -152,6 +152,9 @@ class SonarQubeClient:
         logger.info(f"Starting paginated request to {endpoint}")
         try:
             while True:
+                logger.debug(
+                    f"Sending paginated API request to {endpoint} with query params: {params}"
+                )
                 response = await self._send_api_request(
                     endpoint=endpoint,
                     method=method,
