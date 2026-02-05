@@ -382,7 +382,7 @@ class SonarQubeClient:
 
         :return (list[Any]): A list containing issues data for the specified component.
         """
-        params = query_params.copy() if query_params else {}
+        params = {**query_params} if query_params else {}
         component_key = component.get("key")
 
         if self.is_onpremise:
