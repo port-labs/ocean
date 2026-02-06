@@ -107,7 +107,9 @@ integration:
 
 The reason Ocean is open source is that we aim for the Port integration library to offer numerous useful out-of-the-box integrations. We have confidence that developers and DevOps professionals who rely on Port in their everyday work will be inclined to contribute and assist in making it a comprehensive tool.
 
-In order to learn how you can contribute to Ocean, read our [contributing guide](./CONTRIBUTING.md)
+In order to learn how you can contribute to Ocean, read our [contributing guide](./CONTRIBUTING.md).
+
+For information about CI/CD workflows and testing, see [CI documentation](./.github/CI.md).
 
 ### Local Development (Framework)
 

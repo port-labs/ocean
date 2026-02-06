@@ -1,0 +1,44 @@
+name: Setup Python with Poetry
+description: Setup Python environment with Poetry and install dependencies
+
+inputs:
+  python-version:
+    description: Python version to use
+    required: false
+    default: '3.12'
+  working-directory:
+    description: Directory to run make install in
+    required: false
+    default: '.'
+  skip-checkout:
+    description: Skip checkout step (if already done or needs custom options)
+    required: false
+    default: 'false'
+  skip-install:
+    description: Skip make install step (if custom install logic is needed)
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout Repo
+      if: ${{ inputs.skip-checkout == 'false' }}
+      uses: actions/checkout@v5
+
+    - name: Install poetry
+      shell: bash
+      run: pipx install 'poetry>=1.0.0,<2.0.0'
+
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: 'poetry'
+        cache-dependency-path: ${{ inputs.working-directory == '.' && 'poetry.lock' || format('{0}/poetry.lock', inputs.working-directory) }}
+
+    - name: Install dependencies
+      if: ${{ inputs.skip-install == 'false' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: make install
