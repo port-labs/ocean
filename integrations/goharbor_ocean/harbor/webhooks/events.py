@@ -1,0 +1,26 @@
+from enum import StrEnum
+
+
+class HarborEventType(StrEnum):
+    """Harbor webhook event types."""
+
+    PUSH_ARTIFACT = "PUSH_ARTIFACT"
+    PULL_ARTIFACT = "PULL_ARTIFACT"
+    DELETE_ARTIFACT = "DELETE_ARTIFACT"
+
+    SCANNING_COMPLETED = "SCANNING_COMPLETED"
+    SCANNING_FAILED = "SCANNING_FAILED"
+
+    QUOTA_EXCEED = "QUOTA_EXCEED"
+    QUOTA_WARNING = "QUOTA_WARNING"
+
+    REPLICATION = "REPLICATION"
+
+
+WEBHOOK_EVENTS_TO_LISTEN = [
+    HarborEventType.PUSH_ARTIFACT,
+    HarborEventType.DELETE_ARTIFACT,
+    HarborEventType.SCANNING_COMPLETED,
+    HarborEventType.QUOTA_EXCEED,
+    HarborEventType.QUOTA_WARNING,
+]
