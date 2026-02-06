@@ -1,6 +1,5 @@
 import asyncio
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
-import httpx
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import parse_github_options, get_repository_metadata
@@ -201,34 +200,17 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         self, repository: Dict[str, Any], organization: str
     ) -> RAW_ITEM:
         """Enrich repository with teams."""
-
-        RETRYABLE_STATUS_CODE = 500  # GitHub sometimes returns 500 for transient issues
-
         repo_name = repository["name"]
-        full_repo_name = f"{organization}/{repo_name}"
-        url = f"{self.client.base_url}/repos/{organization}/{repo_name}/teams"
         all_teams = []
 
-        try:
-            async for page in self.client.send_paginated_request(url, {}):
-                logger.info(
-                    f"Fetched batch of {len(page)} teams for repository {full_repo_name} in repository relationship"
-                )
-                all_teams.extend(page)
-
-        except httpx.HTTPStatusError as exc:
-            status_code = exc.response.status_code
-            if status_code != RETRYABLE_STATUS_CODE:
-                raise
-
-            github_request_id = exc.response.headers.get(
-                "x-github-request-id", "unknown"
+        async for teams in self.client.send_paginated_request(
+            f"{self.client.base_url}/repos/{organization}/{repo_name}/teams",
+            {},
+        ):
+            logger.info(
+                f"Fetched batch of {len(teams)} teams for repository {repo_name} in repository relationship"
             )
-            logger.warning(
-                "Failed to fetch repository teams. Continuing with empty team. "
-                f"repo={full_repo_name} endpoint={url} status={status_code} "
-                f"github_request_id={github_request_id} response={exc.response.text}"
-            )
+            all_teams.extend(teams)
 
         repository["__teams"] = all_teams
         return repository

@@ -40,19 +40,6 @@ TEST_COLLABORATORS = [
     },
 ]
 
-TEST_TEAMS = [
-    {
-        "id": 201,
-        "name": "team-1",
-        "slug": "team-1",
-    },
-    {
-        "id": 202,
-        "name": "team-2",
-        "slug": "team-2",
-    },
-]
-
 
 @pytest.mark.asyncio
 class TestRestRepositoryExporter:
@@ -174,49 +161,6 @@ class TestRestRepositoryExporter:
                 assert mock_request.call_count == 3
                 mock_request.assert_any_call(*expected_collaborator_calls[0])
                 mock_request.assert_any_call(*expected_collaborator_calls[1])
-
-    async def test_get_paginated_resources_with_teams_500_does_not_fail_batch(
-        self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
-    ) -> None:
-        async def mock_paginated_request(
-            url: str, *args: Any, **kwargs: Any
-        ) -> AsyncGenerator[list[dict[str, Any]], None]:
-            if url.endswith("/teams"):
-                mock_response = MagicMock(spec=httpx.Response)
-                mock_response.status_code = 500
-                mock_response.headers = {"x-github-request-id": "REQ123"}
-                mock_response.text = "Internal Server Error"
-                raise httpx.HTTPStatusError(
-                    "500 Internal Server Error",
-                    request=MagicMock(),
-                    response=mock_response,
-                )
-            if "orgs/test-org/repos" in url:
-                yield TEST_REPOS
-                return
-            yield TEST_TEAMS
-
-        with patch.object(
-            rest_client, "send_paginated_request", side_effect=mock_paginated_request
-        ):
-            async with event_context("test_event"):
-                options = ListRepositoryOptions(
-                    organization="test-org",
-                    organization_type="Organization",
-                    type=mock_port_app_config.repository_type,
-                    included_relationships=["teams"],
-                )
-                exporter = RestRepositoryExporter(rest_client)
-
-                repos: list[list[dict[str, Any]]] = [
-                    batch async for batch in exporter.get_paginated_resources(options)
-                ]
-
-                assert len(repos) == 1
-                assert len(repos[0]) == 2
-                for repo in repos[0]:
-                    assert "__teams" in repo
-                    assert repo["__teams"] == []
 
     async def test_get_paginated_resources_with_search_params(
         self, rest_client: GithubRestClient, mock_port_app_config: GithubPortAppConfig
