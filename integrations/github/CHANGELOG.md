@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.25 (2026-02-06)
+
+
+### Bug Fixes
+
+- Retry transient GitHub 500 errors across GitHub API requests, and include the GitHub request id in error logs for correlation.
+
+
 ## 5.0.24 (2026-02-05)
 
 
