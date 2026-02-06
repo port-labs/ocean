@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, cast, Optional
 from datetime import datetime
 
 from loguru import logger
@@ -24,7 +24,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_resource[
         ExporterOptionsT: SinglePullRequestOptions
-    ](self, options: ExporterOptionsT,) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT,) -> Optional[RAW_ITEM]:
         repo_name, organization, params = parse_github_options(dict(options))
         pr_number = params["pr_number"]
 
@@ -32,6 +32,11 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
             f"{self.client.base_url}/repos/{organization}/{repo_name}/pulls/{pr_number}"
         )
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No pull request found with number: {pr_number} in repository: {repo_name} from {organization}"
+            )
+            return None
 
         logger.debug(
             f"Fetched pull request with identifier: {repo_name}/{pr_number} from {organization}"
@@ -146,7 +151,7 @@ class RestPullRequestExporter(AbstractGithubExporter[GithubRestClient]):
 class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
     async def get_resource[
         ExporterOptionsT: SinglePullRequestOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         repo_name, organization, params = parse_github_options(dict(options))
         pr_number: int = params["pr_number"]
         repo = params["repo"]
@@ -172,7 +177,7 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
             logger.warning(
                 f"[GraphQL] PR {organization}/{repo_name}#{pr_number} not found"
             )
-            return {}
+            return None
 
         pr_node = response["data"]["repository"]["pullRequest"]
         return self._normalize_pr_node(pr_node, repo, organization)

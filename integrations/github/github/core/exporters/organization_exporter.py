@@ -6,7 +6,7 @@ from port_ocean.utils.cache import cache_iterator_result, cache_coroutine_result
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.http.rest_client import GithubRestClient
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
-from typing import List
+from typing import List, Optional
 
 
 class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
@@ -72,7 +72,9 @@ class RestOrganizationExporter(AbstractGithubExporter[GithubRestClient]):
         ):
             yield batch
 
-    async def get_resource[ExporterOptionsT: None](self, options: None) -> RAW_ITEM:
+    async def get_resource[
+        ExporterOptionsT: None
+    ](self, options: None) -> Optional[RAW_ITEM]:
         raise NotImplementedError
 
     async def _stream_selected_organizations(

@@ -395,6 +395,7 @@ class TestGraphQLPullRequestExporter:
         )
 
         # Normalization assertions
+        assert pr is not None
         assert pr["__organization"] == "test-org"
         assert pr["__repository"] == "repo1"
         assert pr["comments"] == 2

@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, Dict, List, Any, Tuple, cast
+from typing import AsyncGenerator, Dict, List, Any, Optional, Tuple, cast
 from urllib.parse import quote
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client
@@ -39,7 +39,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_resource[
         ExporterOptionsT: FileContentOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         """
         Fetch the content of a file from a repository using the Contents API.
         """
@@ -58,7 +58,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.warning(
                 f"File {file_path} not found in {repo_name}@{branch} from {organization}"
             )
-            return {}
+            return None
 
         response_size = response["size"]
         content = None
@@ -172,6 +172,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     branch=branch,
                 )
             )
+
+            if not file_data:
+                logger.warning(f"File {file_path} not found from {organization}")
+                continue
 
             decoded_content = file_data.pop("content", None)
             if decoded_content is None:
@@ -336,6 +340,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         resource = f"{self.client.base_url}/repos/{organization}/{repo_name}/compare/{before_sha}...{after_sha}"
         response = await self.client.send_api_request(resource)
+        if not response:
+            logger.warning(
+                f"No commit diff found for {before_sha}...{after_sha} in {repo_name} from {organization}"
+            )
+            return {"files": []}
 
         logger.info(
             f"Found {len(response['files'])} files in commit diff from {organization}"

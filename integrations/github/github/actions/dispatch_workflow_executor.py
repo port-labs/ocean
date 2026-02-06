@@ -132,7 +132,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         repo = await repoExporter.get_resource(
             SingleRepositoryOptions(organization=organization, name=repo_name)
         )
-        if not repo.get("default_branch"):
+        if not repo or not repo.get("default_branch"):
             logger.error(
                 f"Default branch not found for repository {organization}/{repo_name}",
                 organization=organization,

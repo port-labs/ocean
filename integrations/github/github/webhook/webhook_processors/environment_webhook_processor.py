@@ -47,6 +47,10 @@ class EnvironmentWebhookProcessor(BaseDeploymentWebhookProcessor):
                 name=environment,
             )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

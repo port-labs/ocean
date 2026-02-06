@@ -55,6 +55,10 @@ class UserWebhookProcessor(_GithubAbstractWebhookProcessor):
         data_to_upsert = await exporter.get_resource(
             SingleUserOptions(organization=organization, login=user["login"])
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         logger.info(
             f"User {user['login']} of organization: {organization} was upserted"

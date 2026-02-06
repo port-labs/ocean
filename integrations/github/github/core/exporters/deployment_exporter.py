@@ -1,4 +1,4 @@
-from typing import cast
+from typing import cast, Optional
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import (
@@ -15,13 +15,18 @@ class RestDeploymentExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_resource[
         ExporterOptionsT: SingleDeploymentOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         """Get a single deployment for a repository."""
         repo_name, organization, params = parse_github_options(dict(options))
         deployment_id = params["id"]
 
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/deployments/{deployment_id}"
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No deployment found with identifier: {deployment_id} in repository: {repo_name} from {organization}"
+            )
+            return None
 
         logger.info(
             f"Fetched deployment with identifier {deployment_id} from repository {repo_name} from {organization}"
