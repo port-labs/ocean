@@ -18,13 +18,14 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
         ExporterOptionT: SingleUserOptions
     ](self, options: ExporterOptionT) -> Optional[RAW_ITEM]:
         organization = options["organization"]
-        variables = {"login": options["login"]}
+        login_option = options["login"]
+        variables = {"login": login_option}
         payload = self.client.build_graphql_payload(FETCH_GITHUB_USER_GQL, variables)
         response = await self.client.send_api_request(
             self.client.base_url, method="POST", json_data=payload
         )
         if not response:
-            logger.warning(f"No user found with login: {options['login']}")
+            logger.warning(f"No user found with login: {login_option}")
             return None
 
         user = response["data"]["user"]
