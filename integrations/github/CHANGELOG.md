@@ -7,12 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.0.21 (2026-02-02)
+## 5.0.24 (2026-02-05)
+
+
+### Improvements
+
+- Log warnings when GitHub API rate limits are exhausted or near exhaustion (keep other quota logs at debug).
+
+
+## 5.0.23 (2026-02-05)
+
+
+### Features
+
+- Added `defaultBranchOnly` selector for branch ingestion to sync only the repository default branch (takes precedence over `branchNames`) across resync and live-events.
+
+
+## 5.0.22 (2026-02-03)
 
 
 ### Bug Fixes
 
-- Fixed empty responses not being properly handled in GitHub exporters for webhooks by returning None instead of empty objects, with updated type hints to Optional[RAW_ITEM]
+- Fixed repository-webhook upsertion for GitHub App authentication by correctly iterating the `GET /installation/repositories` response shape.
+
+### Improvements
+
+- Improved webhook creation logs to include whether the target is an organization or repository.
+
+
+## 5.0.21 (2026-02-02)
+
+
+### Improvements
+
+- Updated embedded installation/docs links in `.port/spec.yaml` to point to the new GitHub Ocean docs routes.
 
 
 ## 5.0.20 (2026-02-02)

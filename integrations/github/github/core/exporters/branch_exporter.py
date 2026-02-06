@@ -65,8 +65,12 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         repo_name = cast(str, repo_name)
         repo = params.pop("repo")
         branch_names = params.pop("branch_names", [])
-        is_explicit = bool(branch_names)
+        default_branch_only = bool(params.pop("default_branch_only", False))
 
+        if default_branch_only:
+            branch_names = [repo["default_branch"]]
+
+        is_explicit = bool(branch_names)
         if branch_names:
 
             async def _explicit_branches() -> ASYNC_GENERATOR_RESYNC_TYPE:

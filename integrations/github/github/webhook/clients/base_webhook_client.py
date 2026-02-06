@@ -17,6 +17,7 @@ class HookTarget:
     hooks_url: str
     single_hook_url_template: str
     log_scope: Dict[str, str]
+    target_type: str
 
     def hook_url(self, webhook_id: str) -> str:
         return self.single_hook_url_template.format(webhook_id=webhook_id)
@@ -82,7 +83,9 @@ class BaseGithubWebhookClient(GithubRestClient):
     async def _create_new_github_webhook(
         self, webhook_url: str, webhook_events: List[str], target: HookTarget
     ) -> None:
-        logger.info(f"Creating new webhook with URL {webhook_url}")
+        logger.info(
+            f"Creating new webhook for {target.target_type} - {self._target_name(target)} with URL {webhook_url}"
+        )
         webhook_data = {
             "name": "web",
             "active": True,
@@ -138,7 +141,9 @@ class BaseGithubWebhookClient(GithubRestClient):
             existing_webhook_id = existing_webhook["id"]
             existing_webhook_secret = existing_webhook["config"].get("secret")
 
-            logger.info(f"Found existing webhook with ID: {existing_webhook_id}")
+            logger.info(
+                f"Found existing webhook ID: {existing_webhook_id} for {target.target_type} - {self._target_name(target)}"
+            )
 
             if bool(self.webhook_secret) ^ bool(existing_webhook_secret):
                 await self._patch_webhook_config(
@@ -165,3 +170,10 @@ class BaseGithubWebhookClient(GithubRestClient):
 
     def get_supported_events(self) -> list[str]:
         return WEBHOOK_CREATE_EVENTS
+
+    def _target_name(self, target: HookTarget) -> str:
+        return (
+            target.log_scope["repository"]
+            if target.target_type == "repository"
+            else self.organization
+        )
