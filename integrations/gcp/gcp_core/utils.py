@@ -290,7 +290,17 @@ async def fetch_quota_info_rest(name: str) -> List[Dict[str, Any]]:
 
 
 async def get_initial_quota_for_project_via_rest() -> int:
-    project_id = get_service_account_project_id()
+    default_quota = int(
+        ocean.integration_config.get("search_all_resources_per_minute_quota", 400)
+    )
+    try:
+        project_id = get_service_account_project_id()
+    except Exception as e:
+        logger.warning(
+            f"Failed to get service account project id, using default quota. Error: {e}"
+        )
+        return max(int(default_quota * _QUOTA_PERCENTAGE), 1)
+
     name = (
         f"projects/{project_id}/locations/global/services/"
         f"cloudresourcemanager.googleapis.com/quotaInfos/ProjectV3GetRequestsPerMinutePerProject"
@@ -298,9 +308,6 @@ async def get_initial_quota_for_project_via_rest() -> int:
     logger.debug(f"[get_initial_quota_for_project_via_rest] name: {name}")
     quota_info = await fetch_quota_info_rest(name)
     if not quota_info:
-        default_quota = int(
-            ocean.integration_config.get("search_all_resources_per_minute_quota", 400)
-        )
         logger.debug(
             f"[get_initial_quota_for_project_via_rest] no quota info, using default_quota: {default_quota}"
         )
