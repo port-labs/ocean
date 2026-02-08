@@ -221,22 +221,29 @@ class CursorPagination(PaginationHandler):
                         or response_data.get("links", {}).get("next")
                     )
 
-                # Check has_more
-                has_more = False
+                # Stop if cursor is empty/null (handles APIs where
+                # empty cursor means no more pages)
+                if not next_cursor:
+                    break
+
+                # Check has_more if explicitly configured
                 if has_more_path:
                     has_more = self.get_nested_value(response_data, has_more_path)
+                    if not has_more:
+                        break
                 else:
-                    has_more = response_data.get(
-                        "has_more",
-                        response_data.get(
-                            "hasMore",
-                            response_data.get("meta", {}).get("has_more", False),
-                        ),
-                    )
+                    # Try common has_more field patterns
+                    # Use None as sentinel to distinguish "field not found" from "field is False"
+                    has_more = response_data.get("has_more")
+                    if has_more is None:
+                        has_more = response_data.get("hasMore")
+                    if has_more is None:
+                        has_more = response_data.get("meta", {}).get("has_more")
 
-                # Stop if no more pages
-                if not next_cursor or not has_more:
-                    break
+                    # If has_more field exists and is explicitly False, stop pagination
+                    # If field doesn't exist (None), continue and rely on cursor
+                    if has_more is False:
+                        break
 
                 # Update cursor for next iteration
                 cursor = next_cursor
