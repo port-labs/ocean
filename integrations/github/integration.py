@@ -51,6 +51,14 @@ class GithubRepositorySelector(RepoSearchSelector):
         max_items=3,
         description="Specify the relationships to include in the repository",
     )
+    attached_files: list[str] = Field(
+        alias="attachedFiles",
+        default_factory=list,
+        description=(
+            "List of file paths to fetch from the repository and attach to "
+            "the raw data under __attachedFiles. E.g. ['README.md', 'CODEOWNERS']"
+        ),
+    )
 
 
 class GithubRepositoryConfig(ResourceConfig):
@@ -358,6 +366,13 @@ class GitManipulationHandler(JQEntityProcessor):
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         entity_processor: Type[JQEntityProcessor]
         if pattern.startswith(FILE_PROPERTY_PREFIX):
+            logger.warning(
+                f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
+                f"Pattern: '{pattern}'. "
+                f"Use the 'attachedFiles' selector instead. Example: "
+                f"selector.attachedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
+                f"and mapping: .__attachedFiles[\"{pattern[len(FILE_PROPERTY_PREFIX):]}\"]"
+            )
             entity_processor = FileEntityProcessor
         else:
             entity_processor = JQEntityProcessor

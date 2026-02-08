@@ -1,3 +1,4 @@
+import asyncio
 from typing import Union, cast, Any
 
 from loguru import logger
@@ -27,6 +28,7 @@ from integration import (
     RepositoryResourceConfig,
     PullRequestResourceConfig,
 )
+from bitbucket_cloud.client import BitbucketClient
 from bitbucket_cloud.helpers.folder import (
     process_folder_patterns,
 )
@@ -59,13 +61,57 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield projects
 
 
+async def _enrich_repo_with_attached_files(
+    client: BitbucketClient,
+    repo: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a repository dict with __attachedFiles from the given file paths."""
+    repo_slug = repo.get("slug") or repo.get("name", "").replace(" ", "-")
+    default_branch = repo.get("mainbranch", {}).get("name", "main")
+    attached: dict[str, Any] = {}
+
+    for file_path in file_paths:
+        try:
+            content = await client.get_repository_files(
+                repo_slug, default_branch, file_path
+            )
+            attached[file_path] = content
+        except Exception as e:
+            logger.debug(
+                f"Could not fetch file {file_path} from {repo_slug}@{default_branch}: {e}"
+            )
+            attached[file_path] = None
+
+    repo["__attachedFiles"] = attached
+    return repo
+
+
+async def _enrich_repos_batch_with_attached_files(
+    client: BitbucketClient,
+    repositories: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of repositories with attached files."""
+    tasks = [
+        _enrich_repo_with_attached_files(client, repo, file_paths)
+        for repo in repositories
+    ]
+    return list(await asyncio.gather(*tasks))
+
+
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories in the workspace."""
     client = init_client()
     selector = cast(RepositoryResourceConfig, event.resource_config).selector
     params: dict[str, Any] = build_repo_params(selector.user_role, selector.repo_query)
+    attached_files = selector.attached_files or []
     async for repositories in client.get_repositories(params=params):
+        if attached_files:
+            repositories = await _enrich_repos_batch_with_attached_files(
+                client, repositories, attached_files
+            )
         yield repositories
 
 

@@ -21,6 +21,9 @@ resources:
   - kind: repository
     selector:
       query: 'true'
+      attachedFiles:
+        - README.md
+        - CODEOWNERS
     port:
       entity:
         mappings:
@@ -29,8 +32,8 @@ resources:
           blueprint: '"azureDevopsRepository"'
           properties:
             url: .remoteUrl
-            readme: file://README.md
-            codeowners: file://CODEOWNERS
+            readme: .__attachedFiles["README.md"]
+            codeowners: .__attachedFiles["CODEOWNERS"]
           relations:
             project: .project.id | gsub(" "; "")
   - kind: repository-policy

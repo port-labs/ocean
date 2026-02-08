@@ -1,4 +1,5 @@
-from typing import cast, Any
+import asyncio
+from typing import Any, cast
 
 from loguru import logger
 
@@ -51,6 +52,7 @@ from integration import (
     AzureDevopsTestRunResourceConfig,
     AzureDevopsPullRequestResourceConfig,
     AzureDevopsAdvancedSecurityResourceConfig,
+    AzureDevopsRepositoryResourceConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -144,12 +146,61 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield pull_requests
 
 
+async def _enrich_repo_with_attached_files(
+    client: AzureDevopsClient,
+    repo: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a repository dict with __attachedFiles from the given file paths."""
+    repo_id = repo.get("id", "")
+    default_branch_ref = repo.get("defaultBranch", "refs/heads/main")
+    # Strip the refs/heads/ prefix to get the branch name
+    branch_name = default_branch_ref.replace("refs/heads/", "")
+    attached: dict[str, Any] = {}
+
+    for file_path in file_paths:
+        try:
+            content_bytes = await client.get_file_by_branch(
+                file_path, repo_id, branch_name
+            )
+            attached[file_path] = content_bytes.decode("utf-8") if content_bytes else None
+        except Exception as e:
+            logger.debug(
+                f"Could not fetch file {file_path} from repo {repo.get('name', repo_id)}@{branch_name}: {e}"
+            )
+            attached[file_path] = None
+
+    repo["__attachedFiles"] = attached
+    return repo
+
+
+async def _enrich_repos_batch_with_attached_files(
+    client: AzureDevopsClient,
+    repositories: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of repositories with attached files."""
+    tasks = [
+        _enrich_repo_with_attached_files(client, repo, file_paths)
+        for repo in repositories
+    ]
+    return list(await asyncio.gather(*tasks))
+
+
 @ocean.on_resync(Kind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    selector = cast(
+        AzureDevopsRepositoryResourceConfig, event.resource_config
+    ).selector
+    attached_files = selector.attached_files or []
 
     async for repositories in azure_devops_client.generate_repositories():
         logger.info(f"Resyncing {len(repositories)} repositories")
+        if attached_files:
+            repositories = await _enrich_repos_batch_with_attached_files(
+                azure_devops_client, repositories, attached_files
+            )
         yield repositories
 
 

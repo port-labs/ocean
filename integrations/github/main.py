@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, cast, Optional
 
 from loguru import logger
 
@@ -94,6 +94,8 @@ from integration import (
     GithubUserConfig,
     GithubDeploymentConfig,
 )
+from github.core.exporters.file_exporter.core import RestFileExporter
+from github.core.options import FileContentOptions
 
 MAX_CONCURRENT_REPOS = 10
 
@@ -166,6 +168,54 @@ async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield organizations
 
 
+async def _enrich_repo_with_attached_files(
+    rest_client: Any,
+    repo: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a repository dict with __attachedFiles from the given file paths."""
+    repo_name = repo["name"]
+    organization = repo["owner"]["login"]
+    default_branch = repo.get("default_branch")
+    attached: dict[str, Any] = {}
+    file_exporter = RestFileExporter(rest_client)
+
+    for file_path in file_paths:
+        try:
+            response = await file_exporter.get_resource(
+                FileContentOptions(
+                    organization=organization,
+                    repo_name=repo_name,
+                    file_path=file_path,
+                    branch=default_branch,
+                )
+            )
+            attached[file_path] = response.get("content")
+        except Exception as e:
+            logger.debug(
+                f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
+            )
+            attached[file_path] = None
+
+    repo["__attachedFiles"] = attached
+    return repo
+
+
+async def _enrich_repos_batch_with_attached_files(
+    rest_client: Any,
+    repositories: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of repositories with attached files."""
+    import asyncio
+
+    tasks = [
+        _enrich_repo_with_attached_files(rest_client, repo, file_paths)
+        for repo in repositories
+    ]
+    return list(await asyncio.gather(*tasks))
+
+
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories across organizations."""
@@ -176,6 +226,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     repo_config = cast(GithubRepositoryConfig, event.resource_config)
     included_relationships = repo_config.selector.include
+    attached_files = repo_config.selector.attached_files or []
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -193,6 +244,10 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             for org in organizations
         )
         async for repositories in stream_async_iterators_tasks(*tasks):
+            if attached_files:
+                repositories = await _enrich_repos_batch_with_attached_files(
+                    rest_client, repositories, attached_files
+                )
             yield repositories
 
 
