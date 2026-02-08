@@ -1,3 +1,11 @@
+## 0.3.5-beta (2026-02-08)
+
+
+### Bug Fixes
+
+- Improved cursor pagination to work with APIs that don't have a `has_more` field. The handler now relies on empty/null cursor to stop pagination when no `has_more` field is present, while maintaining backward compatibility for APIs that do provide `has_more`, `hasMore`, or `meta.has_more` fields.
+
+
 ## 0.3.4-beta (2026-02-02)
 
 
