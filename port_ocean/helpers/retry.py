@@ -61,6 +61,7 @@ class RetryConfig:
         retry_status_codes: Optional[Iterable[int]] = None,
         retry_after_headers: Optional[List[str]] = None,
         additional_retry_status_codes: Optional[Iterable[int]] = None,
+        exponential_backoff_only_status_codes: Optional[Iterable[int]] = None,
     ):
         """
         Initialize retry configuration.
