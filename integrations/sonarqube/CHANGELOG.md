@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.297 (2026-02-05)
+
+
+### Bug Fixes
+
+- Fixed pagination bug in SonarQube issues ingestion where subsequent projects after a large one (>10,000 issues) ingested zero or partial issues due to shared query params not resetting
+
+
 ## 0.1.296 (2026-02-02)
 
 ### Bug Fixes
