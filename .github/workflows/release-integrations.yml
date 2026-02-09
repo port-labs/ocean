@@ -182,7 +182,7 @@ jobs:
 
       - name: Configure AWS Credentials 🔒
         if: steps.prepare_tags.outputs.is_dev_version == 'false'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ vars.ECR_PULL_THROUGH_CACHE_AWS_REGION }}
           role-to-assume: ${{ vars.ECR_PULL_THROUGH_CACHE_DELETE_ROLE_ARN }}
@@ -233,7 +233,7 @@ jobs:
         uses: actions/checkout@v5
       - name: Configure AWS Credentials 🔒
         id: aws-credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
