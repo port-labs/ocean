@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.27 (2026-02-09)
+
+
+### Improvements
+
+- Improve batch processing to process tasks in batches the repositories are fetched. #AI! improve this
+
+
 ## 5.0.26 (2026-02-09)
 
 
