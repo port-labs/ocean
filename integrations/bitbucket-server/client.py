@@ -51,7 +51,7 @@ class BitbucketClient:
             webhook_secret: Optional secret for webhook signature verification
             app_host: Optional host URL for webhook callbacks
             is_version_8_7_or_older: Whether the Bitbucket Server version is 8.7 or older
-            page_size: Number of items per page for paginated requests (default: 25)
+            page_size: Number of items per page for paginated requests (default: 100)
             max_concurrent_requests: Maximum number of concurrent repository PR requests (default: 10)
             project_filter_regex: Optional regex pattern to filter project keys (e.g., "^PROJ-.*" for prefix or ".*-PROD$" for suffix)
         """
@@ -60,8 +60,6 @@ class BitbucketClient:
         self.base_url = base_url
         self.bitbucket_auth = BasicAuth(username=username, password=password)
         self.client = http_async_client
-        self.client.auth = self.bitbucket_auth
-        self.client.timeout = httpx.Timeout(60)
         self.app_host = app_host
         self.webhook_secret = webhook_secret
         self.is_version_8_7_or_older = is_version_8_7_or_older
@@ -110,7 +108,7 @@ class BitbucketClient:
                     f"Sending {method} request to {url} with payload: {payload}"
                 )
                 response = await self.client.request(
-                    method, url, params=params, json=payload
+                    method, url, params=params, json=payload, auth=self.bitbucket_auth
                 )
                 response.raise_for_status()
                 return response.json()
@@ -320,7 +318,6 @@ class BitbucketClient:
         ):
             yield cast(list[dict[str, Any]], pr_batch)
 
-    @cache_iterator_result()
     async def get_pull_requests(
         self, projects_filter: set[str] | None = None, state: str = "OPEN"
     ) -> AsyncGenerator[list[dict[str, Any]], None]:

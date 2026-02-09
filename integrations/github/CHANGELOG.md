@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.0.26 (2026-02-09)
+## 5.0.27 (2026-02-09)
 
 
 ### Features
 
 - Added `attachedFiles` selector for repository entities to fetch file contents (e.g. README.md, CODEOWNERS) during enrichment and expose them under `__attachedFiles` in the raw data
 - Added deprecation warning when using `file://` prefix in mappings, guiding users to migrate to the new `attachedFiles` selector
+
+
+## 5.0.26 (2026-02-09)
+
+
+### Bug Fixes
+
+- Include `__typename` in the pull-request GraphQL query for `reviewRequests.requestedReviewer` to support reviewer type extraction.
 
 
 ## 5.0.25 (2026-02-06)
