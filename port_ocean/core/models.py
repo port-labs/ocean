@@ -157,8 +157,8 @@ class WorkflowNodeRunResult(StrEnum):
 
 class WorkflowNodeRunLog(BaseModel):
     logLevel: Literal["INFO", "WARN", "ERROR", "DEBUG"]
-    message: str
-    tags: list[str] = Field(default_factory=list)
+    log: str
+    tags: dict[str, str] = Field(default_factory=dict)
 
 
 class IntegrationActionInvocationPayload(BaseModel):
@@ -168,26 +168,36 @@ class IntegrationActionInvocationPayload(BaseModel):
     integrationActionExecutionProperties: dict[str, Any] = Field(default_factory=dict)
 
 
-class BaseRun(BaseModel):
+class ActionRun(BaseModel):
     id: str
+    status: RunStatus
     payload: IntegrationActionInvocationPayload
 
     @property
     def action_type(self) -> str:
         return self.payload.integrationActionType
 
+    @property
+    def execution_properties(self) -> dict[str, Any]:
+        return self.payload.integrationActionExecutionProperties
 
-class ActionRun(BaseRun):
-    status: RunStatus
 
-
-class WorkflowNodeRun(BaseRun):
+class WorkflowNodeRun(BaseModel):
+    identifier: str
     status: WorkflowNodeRunStatus
+    node: dict[str, Any]
+    config: dict[str, Any]
     result: WorkflowNodeRunResult | None = None
-    config: dict[str, Any] | None = None
     output: dict[str, Any] = Field(default_factory=dict)
-    identifier: str | None = None
 
+    @property
+    def id(self) -> str:
+        return self.identifier
 
-# Type alias for union of all run types - use this in public APIs
-Run = ActionRun | WorkflowNodeRun
+    @property
+    def action_type(self) -> str:
+        return self.config["integrationInvocationType"]
+
+    @property
+    def execution_properties(self) -> dict[str, Any]:
+        return self.config.get("integrationActionExecutionProperties", {})

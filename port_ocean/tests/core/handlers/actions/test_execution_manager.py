@@ -62,14 +62,15 @@ def generate_mock_wf_node_run(
     if integrationActionExecutionProperties is None:
         integrationActionExecutionProperties = {}
     return WorkflowNodeRun(
-        id=f"test-wf-node-run-id-{uuid.uuid4()}",
+        identifier=f"test-wf-node-run-id-{uuid.uuid4()}",
         status=WorkflowNodeRunStatus.IN_PROGRESS,
-        payload=IntegrationActionInvocationPayload(
-            type="INTEGRATION_ACTION",
-            installationId="test-installation-id",
-            integrationActionType=action_type,
-            integrationActionExecutionProperties=integrationActionExecutionProperties,
-        ),
+        node={"identifier": "test-node"},
+        config={
+            "type": "INTEGRATION_ACTION",
+            "installationId": "test-installation-id",
+            "integrationInvocationType": action_type,
+            "integrationActionExecutionProperties": integrationActionExecutionProperties,
+        },
     )
 
 
@@ -146,7 +147,7 @@ def mock_test_partition_executor() -> MagicMock:
     mock_executor.WEBHOOK_PROCESSOR_CLASS = None
     mock_executor.WEBHOOK_PATH = None
     mock_executor._get_partition_key = AsyncMock(
-        side_effect=lambda run: run.payload.integrationActionExecutionProperties.get(
+        side_effect=lambda run: run.execution_properties.get(
             "partition_name", "default_partition"
         )
     )

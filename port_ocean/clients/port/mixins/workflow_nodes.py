@@ -62,14 +62,3 @@ class WorkflowNodesClientMixin:
             json=payload,
         )
         handle_port_status_code(response, should_raise=should_raise)
-
-    async def get_wf_node_run_by_external_id(
-        self, external_id: str
-    ) -> WorkflowNodeRun | None:
-        response = await self.client.get(
-            f"{self.auth.api_url}/workflows/nodes/runs?external_run_id={external_id}",
-            headers=await self.auth.headers(),
-        )
-        handle_port_status_code(response)
-        runs = response.json().get("runs", [])
-        return None if not len(runs) else WorkflowNodeRun.parse_obj(runs[0])

@@ -129,7 +129,7 @@ class AbstractExecutor(ABC):
             async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:
                 try:
                     # Extract parameters
-                    params = run.payload.integrationActionExecutionProperties
+                    params = run.execution_properties
                     resource_id = params.get("resource_id")
                     if not resource_id:
                         raise ValueError("resource_id is required")
