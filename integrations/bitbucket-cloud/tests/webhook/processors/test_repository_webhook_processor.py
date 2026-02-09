@@ -80,6 +80,7 @@ class TestRepositoryWebhookProcessor:
         # Arrange
         payload = {"repository": {"uuid": "repo-123"}}
         resource_config = MagicMock()
+        resource_config.selector.attached_files = []
 
         webhook_client_mock.get_repository.return_value = {
             "uuid": "repo-123",
