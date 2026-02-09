@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Any, Dict, Optional
 from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
@@ -63,6 +64,7 @@ class AbstractGitHubAuthenticator(ABC):
                     "Retry-After",
                     "X-RateLimit-Reset",
                 ],
+                additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
                 max_backoff_wait=GITHUB_RETRY_MAX_BACKOFF,
             )
             self._http_client = OceanAsyncClient(
