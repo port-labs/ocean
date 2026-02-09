@@ -14,5 +14,5 @@ class IgnoredError(NamedTuple):
         message: Human-readable description of why this error is ignored
     """
 
-    status: int | str
+    status: int
     message: str | None = None

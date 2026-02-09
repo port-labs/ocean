@@ -1,3 +1,4 @@
+import json
 from enum import StrEnum
 from typing import Any, AsyncGenerator
 import httpx
@@ -54,7 +55,7 @@ class JiraServerClient:
         status_code = error.response.status_code
 
         for ignored_error in ignored_errors:
-            if str(status_code) == str(ignored_error.status):
+            if status_code == ignored_error.status:
                 logger.warning(
                     f"Ignored error {status_code} for {method} {url}: "
                     f"{ignored_error.message or 'No message'}"
@@ -72,13 +73,17 @@ class JiraServerClient:
         try:
             error_body = response.json()
             logger.error(
-                f"Jira API request failed with (HTTP {response.status_code}) for {method} {url} . "
+                f"Jira API request failed with (HTTP {response.status_code}) for {method} {url}. "
                 f"See response for details: {error_body}"
             )
-        except Exception:
+        except json.JSONDecodeError:
+            try:
+                response_text = response.text
+            except httpx.DecodingError:
+                response_text = "<unable to decode response body>"
             logger.error(
-                f"Jira API request failed with (HTTP {response.status_code}) for {method} {url} . "
-                f"See response for details: {response.text}"
+                f"Jira API request failed with (HTTP {response.status_code}) for {method} {url}. "
+                f"See response for details: {response_text}"
             )
 
     async def _send_api_request(
@@ -117,8 +122,7 @@ class JiraServerClient:
         initial_params: dict[str, Any] | None = None,
         ignored_errors: list[IgnoredError] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = initial_params or {}
-        params |= self._generate_base_req_params()
+        params = {**(initial_params or {}), **self._generate_base_req_params()}
 
         start_at = 0
         while True:
