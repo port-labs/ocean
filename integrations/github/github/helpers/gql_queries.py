@@ -272,6 +272,7 @@ PR_FIELDS = """
   reviewRequests(first: 10) {
     nodes {
       requestedReviewer {
+        __typename
         ... on User {
           login
           avatarUrl
