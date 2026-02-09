@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import pytest
+import httpx
 from unittest.mock import AsyncMock, Mock, patch, PropertyMock
 
 from github.clients.auth.abstract_authenticator import GitHubToken
@@ -284,3 +285,41 @@ class TestGithubAuthenticator:
             # But each should still return the same instance on repeated access
             assert auth1.client is client1
             assert auth2.client is client2
+
+    async def test_client_retries_on_500(
+        self, github_auth: GitHubAppAuthenticator
+    ) -> None:
+        """
+        Verify the authenticator's HTTP client retries on a 500 response.
+
+        This test simulates a transient GitHub 500 followed by a 200 and asserts the
+        request was attempted more than once.
+        """
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+            calls: list[int] = []
+
+            async def fake_handle_async_request(
+                self: httpx.AsyncHTTPTransport, request: httpx.Request
+            ) -> httpx.Response:
+                calls.append(1)
+                # Ensure we don't trigger response size logging reads.
+                headers = {"Content-Length": "0"}
+                if len(calls) == 1:
+                    return httpx.Response(500, headers=headers, request=request)
+                return httpx.Response(200, headers=headers, request=request)
+
+            with (
+                patch.object(
+                    httpx.AsyncHTTPTransport,
+                    "handle_async_request",
+                    fake_handle_async_request,
+                ),
+                patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
+            ):
+                client = github_auth.client
+                resp = await client.get("https://api.github.com/test")
+                await client.aclose()
+
+            assert resp.status_code == 200
+            assert len(calls) == 2

@@ -60,7 +60,17 @@ class BranchWebhookProcessor(BaseRepositoryWebhookProcessor):
             )
 
         selector = cast(GithubBranchConfig, resource_config).selector
-        if selector.branch_names and branch_name not in selector.branch_names:
+        if selector.default_branch_only:
+            default_branch = repo["default_branch"]
+            if branch_name != default_branch:
+                logger.debug(
+                    f"Skipping branch event for branch '{branch_name}' because defaultBranchOnly is enabled "
+                    f"and repository default branch is '{default_branch}'."
+                )
+                return WebhookEventRawResults(
+                    updated_raw_results=[], deleted_raw_results=[]
+                )
+        elif selector.branch_names and branch_name not in selector.branch_names:
             logger.debug(
                 f"Skipping branch event for branch '{branch_name}' because it is not in selector.branch_names"
             )
