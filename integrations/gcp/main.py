@@ -274,8 +274,6 @@ async def feed_events_callback(
             status_code=http.HTTPStatus.BAD_REQUEST, content="Client disconnected."
         )
     try:
-        # Check if real-time controllers are initialized (happens in on_start)
-        # If not, return 503 so Pub/Sub will retry later
         if (
             len(
                 [
