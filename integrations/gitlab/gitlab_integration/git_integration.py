@@ -99,8 +99,22 @@ class GitManipulationHandler(JQEntityProcessor):
     async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         entity_processor: Type[JQEntityProcessor]
         if pattern.startswith(FILE_PROPERTY_PREFIX):
+            logger.warning(
+                f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
+                f"Pattern: '{pattern}'. "
+                f"Use the 'attachedFiles' selector instead. Example: "
+                f"selector.attachedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
+                f"Then map to .__attachedFiles[\"{pattern[len(FILE_PROPERTY_PREFIX):]}\"]"
+            )
             entity_processor = FileEntityProcessor
         elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
+            logger.warning(
+                f"DEPRECATION: Using 'search://' prefix in mappings is deprecated and will be removed in a future version. "
+                f"Pattern: '{pattern}'. "
+                f"Use the 'searchQueries' selector instead. Example: "
+                f"selector.searchQueries: [{{name: '<queryName>', scope: '<scope>', query: '<query>'}}] "
+                f"Then map to .__searchQueries[\"<queryName>\"]"
+            )
             entity_processor = SearchEntityProcessor
         else:
             entity_processor = JQEntityProcessor

@@ -93,6 +93,11 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(ProjectResourceConfig, event.resource_config).selector
     include_languages = bool(selector.include_languages)
     include_only_active_projects = selector.include_only_active_projects
+    search_queries = (
+        [sq.dict() for sq in selector.search_queries]
+        if selector.search_queries
+        else None
+    )
 
     async for projects_batch in client.get_projects(
         params=build_project_params(
@@ -100,6 +105,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ),
         max_concurrent=DEFAULT_MAX_CONCURRENT,
         include_languages=include_languages,
+        search_queries=search_queries,
     ):
         logger.info(f"Received project batch with {len(projects_batch)} projects")
         yield projects_batch
