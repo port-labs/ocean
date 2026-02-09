@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Improve batch processing to process tasks in batches the repositories are fetched. #AI! improve this
+- Improved batch processing to process tasks concurrently as repositories are fetched, optimizing resource utilization and reducing overall processing time.
 
 
 ## 5.0.26 (2026-02-09)
