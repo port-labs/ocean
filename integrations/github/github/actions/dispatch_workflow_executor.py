@@ -110,7 +110,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         """
         Get the workflow name as the partition key.
         """
-        return run.payload.integrationActionExecutionProperties.get("workflow")
+        return run.execution_properties.get("workflow")
 
     async def _get_default_ref(self, organization: str, repo_name: str) -> str:
         """
@@ -193,18 +193,16 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         Execute a workflow dispatch action by triggering a GitHub Actions workflow.
         """
         logger.info(f"Dispatching workflow for action run {run.id}", run_id=run.id)
-        organization = run.payload.integrationActionExecutionProperties.get("org")
-        repo = run.payload.integrationActionExecutionProperties.get("repo")
-        workflow = run.payload.integrationActionExecutionProperties.get("workflow")
+        organization = run.execution_properties.get("org")
+        repo = run.execution_properties.get("repo")
+        workflow = run.execution_properties.get("workflow")
 
         if not (organization and repo and workflow):
             raise InvalidActionParametersException(
                 "organization, repo and workflow are required"
             )
 
-        inputs: dict[str, Any] = run.payload.integrationActionExecutionProperties.get(
-            "workflowInputs", {}
-        )
+        inputs: dict[str, Any] = run.execution_properties.get("workflowInputs", {})
         ref = inputs.pop("ref", None)
         if not ref:
             ref = await self._get_default_ref(organization, repo)

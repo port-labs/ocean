@@ -69,9 +69,7 @@ class DispatchWorkflowWebhookProcessor(BaseWorkflowRunWebhookProcessor):
         if (
             run
             and ocean.port_client.is_run_in_progress(run)
-            and run.payload.integrationActionExecutionProperties.get(
-                "reportWorkflowStatus", False
-            )
+            and run.execution_properties.get("reportWorkflowStatus", False)
         ):
             conclusion = workflow_run["conclusion"]
             success = conclusion in ("success", "skipped", "neutral")
