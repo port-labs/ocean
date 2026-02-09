@@ -36,6 +36,7 @@ class TestRetryConfig:
             ]
         )
         assert config.retry_after_headers == ["Retry-After"]
+        assert config.ignore_retry_after_status_codes == frozenset()
 
     def test_custom_configuration(self) -> None:
         """Test RetryConfig with custom parameters."""
@@ -48,6 +49,7 @@ class TestRetryConfig:
             retryable_methods=["GET", "POST"],
             retry_after_headers=["X-Custom-Retry", "Retry-After"],
             additional_retry_status_codes=[418, 420],
+            ignore_retry_after_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
         )
 
         assert config.max_attempts == 5
@@ -71,6 +73,9 @@ class TestRetryConfig:
         )
         assert config.retry_status_codes == expected_codes
         assert config.retry_after_headers == ["X-Custom-Retry", "Retry-After"]
+        assert config.ignore_retry_after_status_codes == frozenset(
+            [HTTPStatus.INTERNAL_SERVER_ERROR]
+        )
 
     def test_additional_status_codes(self) -> None:
         """Test that additional status codes extend defaults."""
@@ -283,7 +288,7 @@ class TestRetryTransport:
         )  # Will fail parsing
 
     def test_retry_operation_uses_previous_response_headers_for_sleep(self) -> None:
-        """Ensure response headers are passed into _calculate_sleep on retries."""
+        """Ensure previous response headers are passed into _calculate_sleep on retries."""
         mock_transport = Mock()
         transport = RetryTransport(
             wrapped_transport=mock_transport, retry_config=RetryConfig(max_attempts=2)
@@ -311,15 +316,16 @@ class TestRetryTransport:
 
         # Called exactly once: before second attempt
         assert calc_sleep.call_count == 1
-        _, headers_arg = calc_sleep.call_args.args
+        _, headers_arg, status_code_arg = calc_sleep.call_args.args
         assert headers_arg == response1.headers
+        assert status_code_arg == response1.status_code
         sleep.assert_called_once_with(0.0)
 
     @pytest.mark.asyncio
     async def test_retry_operation_async_uses_previous_response_headers_for_sleep(
         self,
     ) -> None:
-        """Async variant: ensure response headers are passed into _calculate_sleep on retries."""
+        """Async variant: ensure previous response headers are passed into _calculate_sleep on retries."""
         mock_transport = Mock()
         transport = RetryTransport(
             wrapped_transport=mock_transport, retry_config=RetryConfig(max_attempts=2)
@@ -352,8 +358,45 @@ class TestRetryTransport:
                 await transport._retry_operation_async(request, send_method_iter)
 
         assert calc_sleep.call_count == 1
-        _, headers_arg = calc_sleep.call_args.args
+        _, headers_arg, status_code_arg = calc_sleep.call_args.args
         assert headers_arg == response1.headers
+        assert status_code_arg == response1.status_code
+
+    def test_calculate_sleep_ignores_retry_after_for_configured_status_codes(
+        self,
+    ) -> None:
+        """When configured, status codes should ignore Retry-After and use exponential backoff."""
+        mock_transport = Mock()
+        config = RetryConfig(
+            base_delay=1.0,
+            jitter_ratio=0.0,
+            respect_retry_after_header=True,
+            retry_after_headers=["Retry-After"],
+            ignore_retry_after_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
+        )
+        transport = RetryTransport(
+            wrapped_transport=mock_transport, retry_config=config
+        )
+
+        # 500 with Retry-After header should still use exponential backoff (attempt 1 => 1.0s)
+        assert (
+            transport._calculate_sleep(
+                1,
+                {"Retry-After": "30"},
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+            == 1.0
+        )
+
+        # Non-ignored status codes should still respect Retry-After when enabled
+        assert (
+            transport._calculate_sleep(
+                1,
+                {"Retry-After": "30"},
+                status_code=HTTPStatus.TOO_MANY_REQUESTS,
+            )
+            == 30.0
+        )
 
 
 class TestRetryConfigIntegration:

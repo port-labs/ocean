@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.35.5 (2026-02-10)
+
+### Bug fixes
+
+Add `ignore_retry_after_status_codes` to the retry configuration to force exponential backoff for specified status codes.
+
+
 ## 0.35.4 (2026-02-02)
 
 ### Bug fixes
