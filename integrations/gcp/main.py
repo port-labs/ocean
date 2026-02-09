@@ -43,7 +43,7 @@ from gcp_core.utils import (
 
 PROJECT_V3_GET_REQUESTS_RATE_LIMITER: PersistentAsyncLimiter
 PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE: BoundedSemaphore
-BACKGROUND_TASK_THRESHOLD: float | None = None
+BACKGROUND_TASK_THRESHOLD: float
 
 
 async def _resolve_resync_method_for_resource(
@@ -104,16 +104,17 @@ async def setup_real_time_request_controllers() -> None:
     global PROJECT_V3_GET_REQUESTS_RATE_LIMITER
     global PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE
     global BACKGROUND_TASK_THRESHOLD
-    effective_quota = await get_initial_quota_for_project_via_rest()
-    PROJECT_V3_GET_REQUESTS_RATE_LIMITER = PersistentAsyncLimiter.get_limiter(
-        max_rate=effective_quota
-    )
-    PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE = asyncio.BoundedSemaphore(
-        effective_quota
-    )
-    BACKGROUND_TASK_THRESHOLD = float(
-        PROJECT_V3_GET_REQUESTS_RATE_LIMITER.max_rate * 10
-    )
+    if not ocean.event_listener_type == "ONCE":
+        effective_quota = await get_initial_quota_for_project_via_rest()
+        PROJECT_V3_GET_REQUESTS_RATE_LIMITER = PersistentAsyncLimiter.get_limiter(
+            max_rate=effective_quota
+        )
+        PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE = asyncio.BoundedSemaphore(
+            effective_quota
+        )
+        BACKGROUND_TASK_THRESHOLD = float(
+            PROJECT_V3_GET_REQUESTS_RATE_LIMITER.max_rate * 10
+        )
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.FOLDER)
@@ -253,6 +254,16 @@ async def feed_events_callback(
     The subscription has a retry policy, so the event will be retried later if it's rejected.
     Documentation: https://cloud.google.com/pubsub/docs/handling-failures#subscription_retry_policy
     """
+    if not ocean.event_listener_type == "ONCE":
+        logger.warning(
+            "Live events are not supported for the 'ONCE' event listener type. "
+            "Remove live event configuration from the integration to prevent this warning"
+        )
+        return Response(
+            status_code=http.HTTPStatus.BAD_REQUEST,
+            content="Client disconnected.",
+        )
+
     try:
         request_json = await request.json()
     except Exception as e:
@@ -265,11 +276,6 @@ async def feed_events_callback(
     try:
         # Check if real-time controllers are initialized (happens in on_start)
         # If not, return 503 so Pub/Sub will retry later
-        if BACKGROUND_TASK_THRESHOLD is None:
-            logger.warning(
-                "Real-time event received before initialization completed. Returning 503 for retry."
-            )
-            return Response(status_code=http.HTTPStatus.SERVICE_UNAVAILABLE)
         if (
             len(
                 [
