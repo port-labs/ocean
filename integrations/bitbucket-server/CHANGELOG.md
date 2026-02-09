@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.116-beta (2026-02-09)
+
+
+### Bug Fixes
+
+- Fixed authentication not persisting across resource kinds by passing auth per-request instead of mutating the shared HTTP client state
+
+
 ## 0.1.115-beta (2025-02-05)
 
 
