@@ -1,0 +1,35 @@
+# Helm values for Port Ocean Ocean Custom - HubSpot example
+# NOTE: Replace the ${...} placeholders via your preferred method (envsubst or manual edits).
+
+integration:
+  identifier: hubspot-integration
+  type: custom
+  version: 0.1.0-dev
+  config:
+    base_url: https://api.hubapi.com
+    auth_type: bearer_token
+    # HubSpot cursor pagination
+    pagination_type: cursor
+    page_size: 100
+    pagination_param: after
+    size_param: limit
+    cursor_path: paging.next.after
+    has_more_path: paging.next
+  secrets:
+    # Provide at install time, do not commit real values
+    apiToken: ${HUBSPOT_API_TOKEN}
+
+port:
+  clientId: ${PORT_CLIENT_ID}
+  clientSecret: ${PORT_CLIENT_SECRET}
+  baseUrl: https://api.getport.io
+
+initializePortResources: true
+sendRawDataExamples: true
+scheduledResyncInterval: 1440
+
+# Usage:
+#   export PORT_CLIENT_ID=... PORT_CLIENT_SECRET=... HUBSPOT_API_TOKEN=...
+#   envsubst < integrations/custom/examples/hubspot/helm-values.yaml > /tmp/hubspot-values.yaml
+#   helm upgrade --install port-ocean-hubspot port-labs/port-ocean \
+#     -n port-ocean --create-namespace -f /tmp/hubspot-values.yaml

@@ -105,7 +105,11 @@ class TestUserWebhookProcessor:
             "type": "User",
         }
 
-        payload = {"action": action, "membership": {"user": user_data}}
+        payload = {
+            "action": action,
+            "membership": {"user": user_data},
+            "organization": {"login": "test-org"},
+        }
 
         if is_deletion:
             result = await user_webhook_processor.handle_event(payload, resource_config)
@@ -122,7 +126,7 @@ class TestUserWebhookProcessor:
                 )
 
             mock_exporter.get_resource.assert_called_once_with(
-                SingleUserOptions(login="test-user")
+                SingleUserOptions(organization="test-org", login="test-user")
             )
 
         assert isinstance(result, WebhookEventRawResults)
@@ -142,6 +146,7 @@ class TestUserWebhookProcessor:
                 {
                     "action": USER_UPSERT_EVENTS[0],
                     "membership": {"user": {"login": "user1"}},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -149,6 +154,7 @@ class TestUserWebhookProcessor:
                 {
                     "action": USER_DELETE_EVENTS[0],
                     "membership": {"user": {"login": "user2"}},
+                    "organization": {"login": "test-org"},
                 },
                 True,
             ),
@@ -162,6 +168,7 @@ class TestUserWebhookProcessor:
                 {
                     "action": USER_UPSERT_EVENTS[0],
                     "membership": {"user": {}},
+                    "organization": {"login": "test-org"},
                 },  # no login
                 False,
             ),

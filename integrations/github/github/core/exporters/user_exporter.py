@@ -1,12 +1,14 @@
 from typing import Any
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from port_ocean.utils.cache import cache_coroutine_result
 from github.clients.http.graphql_client import GithubGraphQLClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from github.core.options import SingleUserOptions
+from github.core.options import SingleUserOptions, ListUserOptions
 from github.helpers.gql_queries import (
     LIST_EXTERNAL_IDENTITIES_GQL,
     LIST_ORG_MEMBER_GQL,
+    LIST_ORG_MEMBER_WITHOUT_BOTS_GQL,
     FETCH_GITHUB_USER_GQL,
 )
 
@@ -15,6 +17,7 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
     async def get_resource[
         ExporterOptionT: SingleUserOptions
     ](self, options: ExporterOptionT) -> RAW_ITEM:
+        organization = options["organization"]
         variables = {"login": options["login"]}
         payload = self.client.build_graphql_payload(FETCH_GITHUB_USER_GQL, variables)
         response = await self.client.send_api_request(
@@ -24,20 +27,27 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
             return response
 
         user = response["data"]["user"]
+
         if not user.get("email"):
-            await self._fetch_external_identities([user], {(0, user["login"]): user})
+            await self._fetch_external_identities(
+                organization, [user], {(0, user["login"]): user}
+            )
         return user
 
-    async def get_paginated_resources(
-        self, options: None = None
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionT: ListUserOptions
+    ](self, options: ExporterOptionT) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        organization = options["organization"]
         variables = {
-            "organization": self.client.organization,
+            "organization": organization,
             "__path": "organization.membersWithRole",
         }
-        async for users in self.client.send_paginated_request(
-            LIST_ORG_MEMBER_GQL, variables
-        ):
+        include_bots = options.get("include_bots")
+        if include_bots:
+            resource = LIST_ORG_MEMBER_GQL
+        else:
+            resource = LIST_ORG_MEMBER_WITHOUT_BOTS_GQL
+        async for users in self.client.send_paginated_request(resource, variables):
             users_with_no_email = {
                 (idx, user["login"]): user
                 for idx, user in enumerate(users)
@@ -49,45 +59,64 @@ class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
                     f"Found {len(users_with_no_email)} users without an email address."
                     f"Attempting to fetch their emails from an external identity provider."
                 )
-                await self._fetch_external_identities(users, users_with_no_email)
+                await self._fetch_external_identities(
+                    organization, users, users_with_no_email
+                )
             yield users
 
     async def _fetch_external_identities(
         self,
+        organization: str,
         users: list[dict[str, Any]],
         users_no_email: dict[tuple[int, str], dict[str, Any]],
     ) -> None:
+        remaining_users = set(users_no_email.keys())
+
+        saml_users = await self._get_saml_identities(organization)
+
+        for (idx, login), user in users_no_email.items():
+            if login in saml_users:
+                users[idx]["email"] = saml_users[login]
+                remaining_users.remove((idx, login))
+
+        if not remaining_users:
+            logger.info(
+                "Successfully retrieved and updated email addresses for all identified users from external identity provider."
+            )
+
+    @cache_coroutine_result()
+    async def _get_saml_identities(self, organization: str) -> dict[str, str]:
+        """Load and cache SAML identities for an organization.
+
+        Uses Ocean's built-in caching to prevent redundant API calls across batches.
+        """
         variables = {
-            "organization": self.client.organization,
+            "organization": organization,
             "first": 100,
             "__path": "organization.samlIdentityProvider.externalIdentities",
             "__node_key": "edges",
         }
 
-        remaining_users = set(users_no_email.keys())
+        saml_users: dict[str, str] = {}
+        batch_count = 0
+
+        logger.info(f"Starting SAML identity fetch for organization '{organization}'")
 
         try:
             async for identity_batch in self.client.send_paginated_request(
                 LIST_EXTERNAL_IDENTITIES_GQL,
                 variables,
             ):
-                saml_users = {
-                    user["node"]["user"]["login"]: user["node"]["samlIdentity"][
-                        "nameId"
-                    ]
-                    for user in identity_batch
-                    if user["node"].get("user")
-                }
-                for (idx, login), user in users_no_email.items():
-                    if login in saml_users:
-                        users[idx]["email"] = saml_users[login]
-                        remaining_users.remove((idx, login))
+                for user in identity_batch:
+                    if user["node"].get("user"):
+                        login = user["node"]["user"]["login"]
+                        name_id = user["node"]["samlIdentity"]["nameId"]
+                        saml_users[login] = name_id
 
-                if not remaining_users:
-                    logger.info(
-                        "Successfully retrieved and updated email addresses for all identified users from external identity provider."
-                    )
-                    return
+            logger.info(
+                f"SAML fetch complete for '{organization}': "
+                f"{len(saml_users)} identities in {batch_count} batches"
+            )
         except TypeError:
-            logger.info("SAML not enabled for organization")
-            return
+            logger.info(f"SAML not enabled for organization '{organization}'")
+        return saml_users

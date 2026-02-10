@@ -1,11 +1,14 @@
-from typing import Generator
+from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, cast
 from _pytest.fixtures import SubRequest
 import pytest
 import asyncio
+import gzip
 import time
 from unittest.mock import Mock, patch
 import httpx
 
+from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.http.base_client import AbstractGithubClient
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
 
@@ -32,6 +35,62 @@ def clear_rate_limiter_registry() -> Generator[None, None, None]:
     GitHubRateLimiterRegistry._instances.clear()
     yield
     GitHubRateLimiterRegistry._instances.clear()
+
+
+class _DummyHeaders:
+    def as_dict(self) -> dict[str, str]:
+        return {}
+
+
+class _DummyAuthenticator:
+    def __init__(self, response: httpx.Response):
+        self._response = response
+        self.client = self
+
+    async def get_headers(self, **kwargs: Any) -> _DummyHeaders:
+        return _DummyHeaders()
+
+    async def request(
+        self,
+        method: str,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        json: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,
+    ) -> httpx.Response:
+        return self._response
+
+
+class _DummyBaseClient(AbstractGithubClient):
+    def __init__(
+        self,
+        github_host: str,
+        authenticator: _DummyAuthenticator,
+        config: GitHubRateLimiterConfig,
+    ):
+        self._config = config
+        super().__init__(
+            github_host=github_host,
+            authenticator=cast(AbstractGitHubAuthenticator, authenticator),
+        )
+
+    @property
+    def base_url(self) -> str:
+        return "https://api.github.com"
+
+    @property
+    def rate_limiter_config(self) -> GitHubRateLimiterConfig:
+        return self._config
+
+    async def send_paginated_request(
+        self,
+        resource: str,
+        params: Optional[Dict[str, Any]] = None,
+        method: str = "GET",
+        ignored_errors: Optional[List[Any]] = None,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if False:
+            yield []
 
 
 class MockGitHubClient:
@@ -90,11 +149,12 @@ class TestRateLimiter:
         resp = await client.make_request("/user")
         assert resp.status_code == 200
 
-        status = client.rate_limiter.get_rate_limit_status()
-        assert client_config.api_type in status
-        assert status[client_config.api_type]["limit"] == 1000
-        assert status[client_config.api_type]["remaining"] == 999
-        assert status[client_config.api_type]["utilization_percentage"] == 0.1
+        info = client.rate_limiter.rate_limit_info
+
+        assert info is not None
+        assert info.limit == 1000
+        assert info.remaining == 999
+        assert info.utilization_percentage == 0.1
 
         # No sleeping purely for success
         mock_sleep.assert_not_called()
@@ -111,7 +171,7 @@ class TestRateLimiter:
         assert exc.value.response.status_code == 429
 
         # No headers were parsed; limiter has no info and did not sleep.
-        assert client.rate_limiter._rate_limit_info is None
+        assert client.rate_limiter.rate_limit_info is None
         mock_sleep.assert_not_called()
 
     @pytest.mark.asyncio
@@ -129,9 +189,7 @@ class TestRateLimiter:
         info = RateLimitInfo(
             limit=1000, remaining=1, reset_time=int(time.time()) + reset_in
         )
-        client.rate_limiter._rate_limit_info = (
-            info  # trusted internal seed for the test
-        )
+        client.rate_limiter.rate_limit_info = info  # trusted internal seed for the test
 
         # This call should sleep on __aenter__
         mock_sleep.reset_mock()
@@ -187,8 +245,10 @@ class TestRateLimiter:
         assert c1.rate_limiter is c2.rate_limiter
 
         await c1.make_request("/user")
-        status = c2.rate_limiter.get_rate_limit_status()
-        assert status[client_config.api_type]["remaining"] == 999
+        info = c2.rate_limiter.rate_limit_info
+
+        assert info is not None
+        assert info.remaining == 999
 
     @pytest.mark.asyncio
     async def test_success_paths_do_not_sleep(
@@ -214,7 +274,7 @@ class TestRateLimiter:
         async def task_a() -> None:
             order.append("A-enter")
             # Seed limiter so that __aenter__ will sleep
-            limiter._rate_limit_info = RateLimitInfo(
+            limiter.rate_limit_info = RateLimitInfo(
                 remaining=0, limit=1000, reset_time=int(time.time()) + 5
             )
             async with limiter:
@@ -243,3 +303,45 @@ class TestRateLimiter:
         # Sleep used to enforce the pause
         assert mock_sleep.call_count >= 1
         assert any(args[0] >= 5 for args, _ in mock_sleep.call_args_list)
+
+
+class TestBaseClientRateLimit403Mapping:
+    @pytest.mark.asyncio
+    async def test_rate_limit_403_is_not_ignored(
+        self, github_host: str, client_config: GitHubRateLimiterConfig, mock_sleep: Mock
+    ) -> None:
+        # Ensure the limiter doesn't sleep due to prior cached headers
+        mock_sleep.reset_mock()
+
+        resource = "https://api.github.com/user"
+        req = httpx.Request("GET", resource)
+        gzipped_body = gzip.compress(b"{}")
+        resp = httpx.Response(
+            403,
+            request=req,
+            headers={
+                "x-ratelimit-remaining": "0",
+                "x-ratelimit-reset": str(int(time.time()) + 3600),
+                "x-ratelimit-limit": "5000",
+            },
+            content=gzipped_body,
+        )
+
+        client = _DummyBaseClient(github_host, _DummyAuthenticator(resp), client_config)
+        with pytest.raises(httpx.HTTPStatusError) as exc:
+            await client.make_request(resource)
+        # With the current base client behavior, rate-limit 403s are not ignored and are raised as-is.
+        assert exc.value.response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_non_rate_limit_403_raises_when_not_ignored(
+        self, github_host: str, client_config: GitHubRateLimiterConfig
+    ) -> None:
+        resource = "https://api.github.com/user"
+        req = httpx.Request("GET", resource)
+        resp = httpx.Response(403, request=req, headers={}, content=b"{}")
+
+        client = _DummyBaseClient(github_host, _DummyAuthenticator(resp), client_config)
+
+        with pytest.raises(httpx.HTTPStatusError):
+            await client.make_request(resource, ignore_default_errors=False)

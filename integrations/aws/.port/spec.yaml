@@ -1,6 +1,7 @@
-title: AWS
-description: AWS integration for Port Ocean
+title: AWS Self Hosted
+description: AWS Self hosted integration for Port Ocean
 icon: AWS
+docs: https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/aws
 features:
   - type: exporter
     section: Cloud Providers
@@ -40,7 +41,7 @@ configurations:
     description: AWS API Key for custom events, used to validate the event source for real-time event updates.
   - name: maximumConcurrentAccounts
     type: integer
-    require: false
+    required: false
     description: The number of concurrent accounts to scan. By default, it is set to 50. [DEPRECATED] This configuration will be removed in a future version.
     default: 10
 deploymentMethodRequirements:

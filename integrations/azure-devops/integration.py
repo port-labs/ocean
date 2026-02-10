@@ -1,36 +1,83 @@
+from typing import List, Literal, Optional, Union, Any
+from datetime import datetime, timedelta, timezone
+
 from pydantic import Field, BaseModel
-from port_ocean.context.ocean import PortOceanContext
-from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
-from port_ocean.core.handlers.webhook.processor_manager import (
-    LiveEventsProcessorManager,
-)
-from port_ocean.core.integrations.base import BaseIntegration
 
 from azure_devops.gitops.file_entity_processor import GitManipulationHandler
-
-from typing import List, Literal, Optional, Union
-
+from azure_devops.misc import AzureDevopsFolderResourceConfig
+from port_ocean.context.ocean import PortOceanContext
+from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
     Selector,
 )
-from port_ocean.utils.signal import signal_handler
+from port_ocean.core.handlers.webhook.processor_manager import (
+    LiveEventsProcessorManager,
+)
+from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from azure_devops.misc import AzureDevopsFolderResourceConfig
+from port_ocean.utils.signal import signal_handler
+
+
+class AzureDevopsSelector(Selector):
+    query: str
+    default_team: bool = Field(
+        default=False,
+        description="If set to true, it ingests default team for each project to Port. This causes latency while syncing the entities to Port.  Default value is false. ",
+        alias="defaultTeam",
+    )
 
 
 class AzureDevopsProjectResourceConfig(ResourceConfig):
-    class AzureDevopsSelector(Selector):
-        query: str
-        default_team: bool = Field(
-            default=False,
-            description="If set to true, it ingests default team for each project to Port. This causes latency while syncing the entities to Port.  Default value is false. ",
-            alias="defaultTeam",
-        )
-
     kind: Literal["project"]
     selector: AzureDevopsSelector
+
+
+class AdvancedSecurityFilter(BaseModel):
+    states: Optional[List[Literal["active", "dismissed", "fixed", "autoDismissed"]]] = (
+        Field(
+            alias="states",
+            default=None,
+            description="List of states to filter alerts by. If not provided, all states will be fetched.",
+        )
+    )
+    severities: Optional[
+        List[Literal["low", "medium", "high", "critical", "note", "warning", "error"]]
+    ] = Field(
+        alias="severity",
+        default=None,
+        description="List of severity levels to filter alerts by. If not provided, all severity levels will be fetched.",
+    )
+    alert_type: Optional[Literal["dependency", "code", "secret"]] = Field(
+        default=None,
+        alias="alertType",
+        description="Type of alerts to filter by. If not provided, all alerts will be fetched.",
+    )
+
+    @property
+    def as_params(self) -> dict[str, Any]:
+        params: dict[str, Any] = {"criteria": {}}
+        if self.states:
+            params["criteria"]["states"] = ",".join(self.states)
+        if self.severities:
+            params["criteria"]["severity"] = ",".join(self.severities)
+        if self.alert_type:
+            params["criteria"]["alertType"] = self.alert_type
+        return params
+
+
+class AzureDevopsAdvancedSecuritySelector(Selector):
+    query: str
+    criteria: Optional[AdvancedSecurityFilter] = Field(
+        default=None,
+        description="Filter criteria for alerts. If not provided, all alerts will be fetched.",
+    )
+
+
+class AzureDevopsAdvancedSecurityResourceConfig(ResourceConfig):
+    kind: Literal["advanced-security-alert"]
+    selector: AzureDevopsAdvancedSecuritySelector
 
 
 class AzureDevopsWorkItemResourceConfig(ResourceConfig):
@@ -165,6 +212,31 @@ class AzureDevopsTestRunResourceConfig(ResourceConfig):
     selector: AzureDevopsTestRunSelector
 
 
+class AzureDevopsPullRequestSelector(Selector):
+    min_time_in_days: int = Field(
+        default=7,
+        ge=1,
+        alias="minTimeInDays",
+        description="Minimum time in days since the pull request was abandoned or closed. Default value is 7.",
+    )
+    max_results: int = Field(
+        default=100,
+        ge=1,
+        alias="maxResults",
+        description="Maximum number of closed pull requests to fetch. Default value is 100.",
+    )
+
+    @property
+    def min_time_datetime(self) -> datetime:
+        """Convert the min time in days to a timezone-aware datetime object."""
+        return datetime.now(timezone.utc) - timedelta(days=self.min_time_in_days)
+
+
+class AzureDevopsPullRequestResourceConfig(ResourceConfig):
+    kind: Literal["pull-request"]
+    selector: AzureDevopsPullRequestSelector
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -186,6 +258,8 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsFileResourceConfig
         | AzureDevopsPipelineResourceConfig
         | AzureDevopsTestRunResourceConfig
+        | AzureDevopsPullRequestResourceConfig
+        | AzureDevopsAdvancedSecurityResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

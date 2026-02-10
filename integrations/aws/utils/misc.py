@@ -41,6 +41,29 @@ class CloudControlThrottlingConfig(enum.Enum):
     RETRY_MODE: Literal["legacy", "standard", "adaptive"] = "adaptive"
 
 
+OPT_IN_REGIONS = frozenset(
+    {
+        "af-south-1",
+        "ap-east-1",
+        "ap-south-2",
+        "ap-southeast-3",
+        "ap-southeast-4",
+        "ap-southeast-5",
+        "ap-southeast-6",
+        "ap-east-2",
+        "ap-southeast-7",
+        "ca-west-1",
+        "eu-south-1",
+        "eu-south-2",
+        "eu-central-2",
+        "il-central-1",
+        "mx-central-1",
+        "me-south-1",
+        "me-central-1",
+    }
+)
+
+
 class CustomProperties(enum.StrEnum):
     ACCOUNT_ID = "__AccountId"
     KIND = "__Kind"
@@ -56,6 +79,17 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     ELBV2_LOAD_BALANCER = "AWS::ELBV2::LoadBalancer"
     SQS_QUEUE = "AWS::SQS::Queue"
     RESOURCE_GROUP = "AWS::ResourceGroups::Group"
+    S3_BUCKET = "AWS::S3::Bucket"
+
+
+def _check_general_service_exception(e: Exception, patterns: List[str]) -> bool:
+    """Check if GeneralServiceException message contains any of the given patterns."""
+    if hasattr(e, "response") and e.response is not None:
+        error_code = e.response.get("Error", {}).get("Code")
+        if error_code == "GeneralServiceException":
+            error_message = e.response.get("Error", {}).get("Message", "").lower()
+            return any(pattern in error_message for pattern in patterns)
+    return False
 
 
 def is_access_denied_exception(e: Exception) -> bool:
@@ -67,7 +101,19 @@ def is_access_denied_exception(e: Exception) -> bool:
 
     if hasattr(e, "response") and e.response is not None:
         error_code = e.response.get("Error", {}).get("Code")
-        return error_code in access_denied_error_codes
+
+        if error_code in access_denied_error_codes:
+            return True
+
+        access_denied_patterns = [
+            "access denied",
+            "accessdenied",
+            "unauthorized",
+            "forbidden",
+            "permission denied",
+        ]
+        if _check_general_service_exception(e, access_denied_patterns):
+            return True
 
     return False
 
@@ -89,7 +135,18 @@ def is_resource_not_found_exception(e: Exception) -> bool:
 
     if hasattr(e, "response") and e.response is not None:
         error_code = e.response.get("Error", {}).get("Code")
-        return error_code in resource_not_found_error_codes
+
+        if error_code in resource_not_found_error_codes:
+            return True
+
+        not_found_patterns = [
+            "not found",
+            "notfound",
+            "does not exist",
+            "resourcenotfound",
+        ]
+        if _check_general_service_exception(e, not_found_patterns):
+            return True
 
     return False
 

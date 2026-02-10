@@ -8,14 +8,13 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_port_status_code
+from port_ocean.core.models import CreatePortResourcesOrigin
 from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
-
-ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG = "USE_PROVISIONED_DEFAULTS"
 INTEGRATION_POLLING_INTERVAL_INITIAL_SECONDS = 3
 INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR = 1.55
 INTEGRATION_POLLING_RETRY_LIMIT = 30
@@ -79,33 +78,10 @@ class IntegrationClientMixin:
         self,
         should_raise: bool = True,
         should_log: bool = True,
-        has_provision_feature_flag: bool = False,
     ) -> dict[str, Any]:
         response = await self._get_current_integration()
         handle_port_status_code(response, should_raise, should_log)
-        integration = response.json().get("integration", {})
-        if integration.get("config", None) or not integration:
-            return integration
-        is_provision_enabled_for_integration = (
-            integration.get("installationAppType", None)
-            and (
-                await self.is_integration_provision_enabled(
-                    integration.get("installationAppType", ""),
-                    should_raise,
-                    should_log,
-                )
-            )
-            and has_provision_feature_flag
-        )
-
-        if is_provision_enabled_for_integration:
-            logger.info(
-                "integration type is enabled, polling until provisioning is complete"
-            )
-            integration = (
-                await self._poll_integration_until_default_provisioning_is_complete()
-            )
-        return integration
+        return response.json().get("integration", {})
 
     async def get_log_attributes(self) -> LogAttributes:
         if self._log_attributes is None:
@@ -119,7 +95,7 @@ class IntegrationClientMixin:
             self._metrics_attributes = response["metricAttributes"]
         return self._metrics_attributes
 
-    async def _poll_integration_until_default_provisioning_is_complete(
+    async def poll_integration_until_default_provisioning_is_complete(
         self,
     ) -> Dict[str, Any]:
         attempts = 0
@@ -152,7 +128,8 @@ class IntegrationClientMixin:
         _type: str,
         changelog_destination: dict[str, Any],
         port_app_config: Optional["PortAppConfig"] = None,
-        create_port_resources_origin_in_port: Optional[bool] = False,
+        create_port_resources_origin: CreatePortResourcesOrigin = CreatePortResourcesOrigin.Ocean,
+        actions_processing_enabled: Optional[bool] = False,
     ) -> Dict[str, Any]:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
@@ -162,14 +139,16 @@ class IntegrationClientMixin:
             "version": self.integration_version,
             "changelogDestination": changelog_destination,
             "config": {},
+            "actionsProcessingEnabled": actions_processing_enabled,
+            "createPortResourcesOrigin": create_port_resources_origin.value,
         }
 
         query_params = {}
 
-        if create_port_resources_origin_in_port:
+        if create_port_resources_origin == CreatePortResourcesOrigin.Port:
             query_params[CREATE_RESOURCES_PARAM_NAME] = CREATE_RESOURCES_PARAM_VALUE
 
-        if port_app_config and not create_port_resources_origin_in_port:
+        if port_app_config:
             json["config"] = port_app_config.to_request()
         response = await self.client.post(
             f"{self.auth.api_url}/integration",
@@ -178,9 +157,9 @@ class IntegrationClientMixin:
             params=query_params,
         )
         handle_port_status_code(response)
-        if create_port_resources_origin_in_port:
+        if create_port_resources_origin == CreatePortResourcesOrigin.Port:
             result = (
-                await self._poll_integration_until_default_provisioning_is_complete()
+                await self.poll_integration_until_default_provisioning_is_complete()
             )
             return result["integration"]
         return response.json()["integration"]
@@ -190,16 +169,23 @@ class IntegrationClientMixin:
         _type: str | None = None,
         changelog_destination: dict[str, Any] | None = None,
         port_app_config: Optional["PortAppConfig"] = None,
+        actions_processing_enabled: Optional[bool] = None,
+        are_port_resources_initialized: Optional[bool] = None,
     ) -> dict:
         logger.info(f"Updating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
         json: dict[str, Any] = {}
         if _type:
             json["installationAppType"] = _type
-        if changelog_destination:
-            json["changelogDestination"] = changelog_destination
         if port_app_config:
             json["config"] = port_app_config.to_request()
+        if are_port_resources_initialized is not None:
+            json["arePortResourcesInitialized"] = are_port_resources_initialized
+        if actions_processing_enabled is not None:
+            json["actionsProcessingEnabled"] = actions_processing_enabled
+        if changelog_destination is not None:
+            json["changelogDestination"] = changelog_destination
+
         json["version"] = self.integration_version
 
         response = await self.client.patch(
@@ -304,5 +290,5 @@ class IntegrationClientMixin:
                 "extractionTimestamp": int(datetime.now().timestamp() * 1000),
             },
         )
-        handle_port_status_code(response, should_log=False)
+        handle_port_status_code(response, should_raise=False, should_log=True)
         logger.debug("Finished POST raw data request")

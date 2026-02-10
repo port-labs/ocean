@@ -1,39 +1,77 @@
-from typing import Any, AsyncGenerator, Optional
-import base64
+from typing import Any, AsyncGenerator, Optional, Dict
+
 import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
+
+from auth.abstract_authenticator import AbstractServiceNowAuthenticator
 
 PAGE_SIZE = 100
 
 
 class ServicenowClient:
     def __init__(
-        self, servicenow_url: str, servicenow_username: str, servicenow_password: str
+        self,
+        servicenow_url: str,
+        authenticator: AbstractServiceNowAuthenticator,
     ):
         self.servicenow_url = servicenow_url
-        self.servicenow_username = servicenow_username
-        self.servicenow_password = servicenow_password
+        self.table_base_url = f"{self.servicenow_url}/api/now/table"
+        self.authenticator = authenticator
         self.http_client = http_async_client
-        self.http_client.headers.update(self.api_auth_params["headers"])
 
-    @property
-    def api_auth_params(self) -> dict[str, Any]:
-        auth_message = f"{self.servicenow_username}:{self.servicenow_password}"
-        auth_bytes = auth_message.encode("ascii")
-        b64_bytes = base64.standard_b64encode(auth_bytes)
-        b64_message = b64_bytes.decode("ascii")
+    async def _ensure_auth_headers(self) -> None:
+        """Update HTTP client headers with current authentication."""
+        headers = await self.authenticator.get_headers()
+        self.http_client.headers.update(headers)
 
-        return {
-            "headers": {
-                "Authorization": f"Basic {b64_message}",
-                "Content-Type": "application/json",
-            },
-        }
+    async def make_request(
+        self,
+        url: str,
+        params: Optional[Dict[str, Any]] = None,
+        method: str = "GET",
+        json_data: Optional[Dict[str, Any]] = None,
+    ) -> Optional[httpx.Response]:
+        await self._ensure_auth_headers()
+        try:
+            response = await self.http_client.request(
+                url=url,
+                params=params,
+                method=method,
+                json=json_data,
+            )
+            response.raise_for_status()
+            return response
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.error(f"HTTP error occurred while fetching record: {str(e)}")
+                return None
+            logger.error(
+                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+            )
+            raise
+        except httpx.HTTPError as e:
+            logger.error(
+                f"HTTP error occurred while fetching Servicenow data: {str(e)}"
+            )
+            raise
+
+    async def get_record_by_sys_id(
+        self, table_name: str, sys_id: str
+    ) -> Optional[dict[str, Any]]:
+        url = f"{self.table_base_url}/{table_name}/{sys_id}"
+        response = await self.make_request(url)
+        if not response:
+            return None
+        result = response.json()["result"]
+        if not result:
+            return None
+        return result
 
     async def get_paginated_resource(
         self, resource_kind: str, api_query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        await self._ensure_auth_headers()
 
         safe_params = (api_query_params or {}).copy()
         user_query = safe_params.pop("sysparm_query", "")
@@ -50,40 +88,30 @@ class ServicenowClient:
         logger.info(
             f"Fetching Servicenow data for resource: {resource_kind} with request params: {params}"
         )
-        url = f"{self.servicenow_url}/api/now/table/{resource_kind}"
+        url = f"{self.table_base_url}/{resource_kind}"
 
         while url:
-            try:
-                response = await self.http_client.get(
-                    url=url,
-                    params=params,
-                )
-                response.raise_for_status()
-                records = response.json().get("result", [])
+            response = await self.make_request(url, params=params)
+            if not response:
+                break
+            records = response.json()["result"]
 
-                yield records
+            yield records
 
-                url = self.extract_next_link(response.headers.get("Link", ""))
-                params = None
-
-            except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
-                )
-                raise
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP occurred while fetching Servicenow data: {e}")
-                raise
+            url = self.extract_next_link(response.headers.get("Link", ""))
+            params = None
 
     async def sanity_check(self) -> None:
+        await self._ensure_auth_headers()
         try:
-            response = await self.http_client.get(
-                f"{self.servicenow_url}/api/now/table/sys_user?sysparm_limit=1"
+            response = await self.make_request(
+                f"{self.table_base_url}/sys_user?sysparm_limit=1"
             )
-            response.raise_for_status()
+            if not response:
+                raise httpx.HTTPError("Servicenow sanity check failed")
             logger.info("Servicenow sanity check passed")
             logger.info(
-                f"Retrieved sample Servicenow user with first name: {response.json().get('result', [])[0].get('first_name')}"
+                f"Retrieved sample Servicenow user with first name: {response.json()['result'][0].get('first_name')}"
             )
         except httpx.HTTPStatusError as e:
             logger.error(

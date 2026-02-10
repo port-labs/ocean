@@ -9,7 +9,6 @@ from bitbucket_cloud.helpers.auth import BitbucketAuthFacade, AbstractAuth
 from bitbucket_cloud.helpers.token_manager import TokenRateLimiterContext, TokenManager
 from bitbucket_cloud.helpers.utils import BitbucketRateLimiterConfig
 
-PULL_REQUEST_STATE = "OPEN"
 PULL_REQUEST_PAGE_SIZE = 50
 PAGE_SIZE = 100
 RATE_LIMITER: RollingWindowLimiter = RollingWindowLimiter(
@@ -26,6 +25,8 @@ class BitbucketClient:
         host: str,
         username: Optional[str] = None,
         app_password: Optional[str] = None,
+        user_email: Optional[str] = None,
+        user_scoped_token: Optional[str] = None,
         workspace_token: Optional[str] = None,
     ) -> None:
         self.base_url = host
@@ -37,6 +38,8 @@ class BitbucketClient:
             username=username,
             app_password=app_password,
             workspace_token=workspace_token,
+            user_email=user_email,
+            user_scoped_token=user_scoped_token,
         )
 
         # Set headers from authentication
@@ -75,6 +78,10 @@ class BitbucketClient:
             host=ocean.integration_config["bitbucket_host_url"],
             username=ocean.integration_config.get("bitbucket_username"),
             app_password=ocean.integration_config.get("bitbucket_app_password"),
+            user_email=ocean.integration_config.get("bitbucket_user_email"),
+            user_scoped_token=ocean.integration_config.get(
+                "bitbucket_user_scoped_token"
+            ),
             workspace_token=ocean.integration_config.get("bitbucket_workspace_token"),
         )
 
@@ -130,8 +137,12 @@ class BitbucketClient:
                         url, params=params, method=method
                     )
 
-            if values := response.get(data_key, []):
-                yield values
+            values: list[dict[str, Any]] = response.get(data_key, [])
+            if not values:
+                break
+
+            yield values
+
             url = response.get("next")
             params = None
             if not url:
@@ -241,13 +252,10 @@ class BitbucketClient:
             yield contents
 
     async def get_pull_requests(
-        self, repo_slug: str
+        self, repo_slug: str, params: dict[str, Any] = {}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get pull requests for a repository."""
-        params = {
-            "state": PULL_REQUEST_STATE,
-            "pagelen": PULL_REQUEST_PAGE_SIZE,
-        }
+        params["pagelen"] = PULL_REQUEST_PAGE_SIZE
         async for pull_requests in self._fetch_paginated_api_with_rate_limiter(
             f"{self.base_url}/repositories/{self.workspace}/{repo_slug}/pullrequests",
             params=params,

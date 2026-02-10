@@ -4,7 +4,7 @@ description: okta integration for Port Ocean
 icon: Okta
 features:
   - type: exporter
-    section: Other
+    section: Identity Providers
     resources:
       - kind: okta-user
       - kind: okta-group
@@ -24,3 +24,24 @@ configurations:
     type: string
     description: Optional secret used to verify incoming webhook requests. Ensures that only legitimate events from Okta are accepted.
     sensitive: true
+saas:
+  enabled: true
+  liveEvents:
+    enabled: true
+installationDocs:
+  saas:
+    - name: SaasOAuth2
+      enabled: false
+    - name: Saas
+      enabled: true
+      docs: build-your-software-catalog/sync-data-to-catalog/identity-providers/okta?installation-methods=hosted-by-port
+  githubWorkflow:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/identity-providers/okta?installation-methods=one-time-ci&cicd-method=github
+  gitlabCI:
+    enabled: false
+  helm:
+    enabled: true
+    docs: build-your-software-catalog/sync-data-to-catalog/identity-providers/okta?installation-methods=real-time-self-hosted
+  docker:
+    enabled: false

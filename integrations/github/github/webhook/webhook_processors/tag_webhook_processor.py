@@ -1,5 +1,9 @@
 from loguru import logger
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import (
+    ObjectKind,
+    enrich_with_organization,
+    enrich_with_repository,
+)
 from github.clients.client_factory import create_github_client
 from github.webhook.webhook_processors.base_repository_webhook_processor import (
     BaseRepositoryWebhookProcessor,
@@ -38,13 +42,22 @@ class TagWebhookProcessor(BaseRepositoryWebhookProcessor):
         tag_ref = payload["ref"]
         repo = payload["repository"]
         repo_name = repo["name"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
-            f"Processing tag event: {self._event_type} for tag {tag_ref} in {repo_name}"
+            f"Processing tag event: {self._event_type} for tag {tag_ref} in {repo_name} from {organization}"
         )
 
+        if not await self.should_process_repo_search(payload, resource_config):
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         if self._event_type == "delete":
-            data_to_delete = {"name": tag_ref}
+            data_to_delete = enrich_with_organization(
+                enrich_with_repository({"name": tag_ref}, repo_name, repo=repo),
+                organization,
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[data_to_delete]
             )
@@ -53,7 +66,12 @@ class TagWebhookProcessor(BaseRepositoryWebhookProcessor):
         exporter = RestTagExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
-            SingleTagOptions(repo_name=repo_name, tag_name=tag_ref)
+            SingleTagOptions(
+                organization=organization,
+                repo_name=repo_name,
+                tag_name=tag_ref,
+                repo=repo,
+            )
         )
 
         return WebhookEventRawResults(

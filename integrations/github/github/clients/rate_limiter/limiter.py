@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, Optional, Dict, Any, Type
+from typing import List, Optional, Any, Type
 import httpx
 from loguru import logger
 from github.clients.rate_limiter.utils import (
@@ -7,13 +7,14 @@ from github.clients.rate_limiter.utils import (
     RateLimitInfo,
     RateLimiterRequiredHeaders,
 )
+from github.helpers.utils import has_exhausted_rate_limit_headers
 
 
 class GitHubRateLimiter:
     def __init__(self, config: GitHubRateLimiterConfig) -> None:
         self.api_type = config.api_type
         self._semaphore = asyncio.Semaphore(config.max_concurrent)
-        self._rate_limit_info: Optional[RateLimitInfo] = None
+        self.rate_limit_info: Optional[RateLimitInfo] = None
 
         self._block_lock = asyncio.Lock()
         self._current_resource: Optional[str] = None
@@ -22,8 +23,8 @@ class GitHubRateLimiter:
         await self._semaphore.acquire()
 
         async with self._block_lock:
-            if self._rate_limit_info and (self._rate_limit_info.remaining <= 1):
-                delay = self._rate_limit_info.seconds_until_reset
+            if self.rate_limit_info and (self.rate_limit_info.remaining <= 1):
+                delay = self.rate_limit_info.seconds_until_reset
                 if delay > 0:
                     logger.warning(
                         f"{self.api_type} requests paused for {delay:.1f}s due to earlier rate limit"
@@ -37,7 +38,6 @@ class GitHubRateLimiter:
         exc_val: Optional[BaseException],
         exc_tb: Optional[Any],
     ) -> None:
-
         self._semaphore.release()
 
     def get_rate_limit_status_codes(self) -> List[int]:
@@ -50,10 +50,7 @@ class GitHubRateLimiter:
         if status_code not in self.get_rate_limit_status_codes():
             return False
 
-        return status_code == 429 or (
-            headers.get("X-RateLimit-Remaining") == "0"
-            and headers.get("X-RateLimit-Reset") is not None
-        )
+        return status_code == 429 or has_exhausted_rate_limit_headers(headers)
 
     def _parse_rate_limit_headers(
         self, headers: RateLimiterRequiredHeaders
@@ -74,41 +71,26 @@ class GitHubRateLimiter:
     def update_rate_limits(
         self, headers: httpx.Headers, resource: str
     ) -> Optional[RateLimitInfo]:
-
         rate_limit_headers = RateLimiterRequiredHeaders(**headers)
 
         info = self._parse_rate_limit_headers(rate_limit_headers)
-        if info:
-            self._rate_limit_info = info
-            logger.debug(
-                f"Rate limit hit on {resource} for {self.api_type}: {info.remaining}/{info.limit} remaining"
-            )
+        if not info:
+            return None
+
+        self.rate_limit_info = info
+        self._log_rate_limit_status(info, resource)
         return info
 
-    def get_rate_limit_status(self) -> Dict[str, Any]:
-        if not self._rate_limit_info:
-            return {}
-
-        info = self._rate_limit_info
-        return {
-            self.api_type: {
-                "limit": info.limit,
-                "remaining": info.remaining,
-                "reset_time": info.reset_time,
-                "seconds_until_reset": info.seconds_until_reset,
-                "utilization_percentage": ((info.limit - info.remaining) / info.limit)
-                * 100,
-            }
-        }
-
-    def log_rate_limit_status(self) -> None:
-        status = self.get_rate_limit_status()
-        if not status:
-            return
-
-        info = status[self.api_type]
-        logger.debug(
-            f"{self.api_type}: {info['remaining']}/{info['limit']} remaining "
-            f"({info['utilization_percentage']:.1f}% used) - "
-            f"resets in {info['seconds_until_reset']}s"
+    def _log_rate_limit_status(self, info: RateLimitInfo, resource: str) -> None:
+        resets_in = info.seconds_until_reset
+        message = (
+            f"GitHub rate limit status on {resource} for {self.api_type}: "
+            f"{info.remaining}/{info.limit} remaining (resets in {resets_in}s)"
         )
+
+        if info.remaining <= 0:
+            logger.warning(message.replace("status", "exhausted"))
+        elif info.remaining <= 1:
+            logger.warning(message.replace("status", "near exhaustion"))
+        else:
+            logger.debug(message)

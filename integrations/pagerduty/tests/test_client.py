@@ -45,6 +45,7 @@ def mock_ocean_context() -> None:
             "token": TEST_INTEGRATION_CONFIG["token"],
             "api_url": TEST_INTEGRATION_CONFIG["api_url"],
         }
+        mock_ocean_app.config.client_timeout = 30.0
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
         mock_ocean_app.base_url = TEST_INTEGRATION_CONFIG["app_host"]
@@ -66,8 +67,8 @@ def client() -> PagerDutyClient:
     return PagerDutyClient(**TEST_INTEGRATION_CONFIG)
 
 
-@pytest.mark.asyncio
 class TestPagerDutyClient:
+    @pytest.mark.asyncio
     async def test_paginate_request_to_pager_duty(
         self, client: PagerDutyClient
     ) -> None:
@@ -84,25 +85,50 @@ class TestPagerDutyClient:
             MagicMock(json=lambda: {"users": TEST_DATA["users"][1:], "more": False}),
         ]
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", side_effect=mock_responses
-        ):
+        with patch.object(client.http_client, "request", side_effect=mock_responses):
             collected_data: list[dict[str, Any]] = []
             async for page in client.paginate_request_to_pager_duty("users"):
                 collected_data.extend(page)
 
             assert collected_data == TEST_DATA["users"]
 
+    @pytest.mark.asyncio
+    async def test_paginate_request_to_pager_duty_max_limit(
+        self, client: PagerDutyClient
+    ) -> None:
+        from clients.pagerduty import MAX_PAGERDUTY_RESOURCES, PAGE_SIZE
+
+        num_pages = MAX_PAGERDUTY_RESOURCES // PAGE_SIZE
+        mock_responses: list[Any] = []
+
+        for _ in range(num_pages):
+            mock_responses.append(
+                MagicMock(
+                    json=lambda: {
+                        "users": [{"id": "some_id"}],
+                        "more": True,
+                        "limit": PAGE_SIZE,
+                    }
+                )
+            )
+
+        with patch.object(client.http_client, "request", side_effect=mock_responses):
+            collected_data: list[dict[str, Any]] = []
+            async for page in client.paginate_request_to_pager_duty("users"):
+                collected_data.extend(page)
+
+            assert len(collected_data) == num_pages
+
+    @pytest.mark.asyncio
     async def test_get_single_resource(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         mock_response.json.return_value = {"user": TEST_DATA["users"][0]}
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
-        ):
+        with patch.object(client.http_client, "request", return_value=mock_response):
             result = await client.get_single_resource("users", "PU123")
             assert result == {"user": TEST_DATA["users"][0]}
 
+    @pytest.mark.asyncio
     async def test_create_webhooks_if_not_exists(self, client: PagerDutyClient) -> None:
         # Scenario 1: No existing webhooks
         no_webhook_response = MagicMock()
@@ -116,8 +142,9 @@ class TestPagerDutyClient:
             "webhook_subscription": {"id": "new-webhook"}
         }
 
-        with patch(
-            "port_ocean.utils.http_async_client.request",
+        with patch.object(
+            client.http_client,
+            "request",
             side_effect=[no_webhook_response, create_webhook_response],
         ):
             await client.create_webhooks_if_not_exists()
@@ -136,8 +163,9 @@ class TestPagerDutyClient:
             "more": False,
         }
 
-        with patch(
-            "port_ocean.utils.http_async_client.request",
+        with patch.object(
+            client.http_client,
+            "request",
             return_value=existing_webhook_response,
         ):
             await client.create_webhooks_if_not_exists()
@@ -150,6 +178,7 @@ class TestPagerDutyClient:
         )
         await client_no_host.create_webhooks_if_not_exists()
 
+    @pytest.mark.asyncio
     async def test_get_oncall_user(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -157,12 +186,11 @@ class TestPagerDutyClient:
             "more": False,
         }
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
-        ):
+        with patch.object(client.http_client, "request", return_value=mock_response):
             result = await client.get_oncall_user("PE123", "PE456")
             assert result == TEST_DATA["oncalls"]
 
+    @pytest.mark.asyncio
     async def test_update_oncall_users(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -170,9 +198,7 @@ class TestPagerDutyClient:
             "more": False,
         }
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
-        ):
+        with patch.object(client.http_client, "request", return_value=mock_response):
             services: list[dict[str, Any]] = TEST_DATA["services"].copy()
             updated = await client.update_oncall_users(services)
 
@@ -187,6 +213,7 @@ class TestPagerDutyClient:
                 ]
                 assert service["__oncall_user"] == matching_oncalls
 
+    @pytest.mark.asyncio
     async def test_get_incident_analytics(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         expected_analytics: dict[str, int] = {
@@ -195,12 +222,11 @@ class TestPagerDutyClient:
         }
         mock_response.json.return_value = expected_analytics
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
-        ):
+        with patch.object(client.http_client, "request", return_value=mock_response):
             result = await client.get_incident_analytics("INCIDENT123")
             assert result == expected_analytics
 
+    @pytest.mark.asyncio
     async def test_get_service_analytics(self, client: PagerDutyClient) -> None:
         # Scenario 1: Successful data retrieval
         mock_response = MagicMock()
@@ -210,21 +236,18 @@ class TestPagerDutyClient:
         ]
         mock_response.json.return_value = {"data": analytics_response}
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
-        ):
+        with patch.object(client.http_client, "request", return_value=mock_response):
             result = await client.get_service_analytics(["SERVICE123", "SERVICE456"])
             assert result == analytics_response
 
+    @pytest.mark.asyncio
     async def test_send_api_request(self, client: PagerDutyClient) -> None:
         # Successful request
         mock_response = MagicMock()
         mock_response.json.return_value = {"result": "success"}
         mock_response.raise_for_status.return_value = None
 
-        with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
-        ):
+        with patch.object(client.http_client, "request", return_value=mock_response):
             result = await client.send_api_request("test/endpoint")
             assert result == {"result": "success"}
 
@@ -236,13 +259,15 @@ class TestPagerDutyClient:
             "Not Found", request=MagicMock(), response=not_found_response
         )
 
-        with patch(
-            "port_ocean.utils.http_async_client.request",
+        with patch.object(
+            client.http_client,
+            "request",
             return_value=not_found_response,
         ):
             result = await client.send_api_request("nonexistent/endpoint")
             assert result == {}
 
+    @pytest.mark.asyncio
     async def test_transform_user_ids_to_emails(self, client: PagerDutyClient) -> None:
         # Mock the fetch_and_cache_users method to populate user cache
         async def mock_fetch_and_cache_users() -> None:
@@ -315,6 +340,7 @@ class TestPagerDutyClient:
         assert regular_headers["Authorization"] == "Token token=test_token"
         assert "Accept" not in regular_headers
 
+    @pytest.mark.asyncio
     async def test_refresh_request_auth_creds_fallback_to_token(
         self, client: PagerDutyClient
     ) -> None:

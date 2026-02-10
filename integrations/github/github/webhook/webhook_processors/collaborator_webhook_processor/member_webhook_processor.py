@@ -3,7 +3,11 @@ from loguru import logger
 from github.clients.client_factory import create_github_client
 from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
 from github.core.options import SingleCollaboratorOptions
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import (
+    ObjectKind,
+    enrich_with_organization,
+    enrich_with_repository,
+)
 from github.webhook.events import (
     COLLABORATOR_DELETE_EVENTS,
     COLLABORATOR_EVENTS,
@@ -43,28 +47,39 @@ class CollaboratorMemberWebhookProcessor(BaseRepositoryWebhookProcessor):
         repository = payload["repository"]
         repo_name = repository["name"]
         username = payload["member"]["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
-        logger.info(f"Processing member event: {action} for {username} in {repo_name}")
+        logger.info(
+            f"Processing member event: {action} for {username} in {repo_name} of organization: {organization}"
+        )
 
         if action in COLLABORATOR_DELETE_EVENTS:
             logger.info(
-                f"Collaborator {username} was removed from repository {repo_name}"
+                f"Collaborator {username} was removed from repository {repo_name} of organization: {organization}"
             )
-            data_to_delete = {
+            constructed_payload = {
                 "login": username,
                 "id": payload["member"]["id"],
-                "__repository": repo_name,
             }
+
+            data_to_delete = enrich_with_organization(
+                enrich_with_repository(constructed_payload, repo_name, repo=repository),
+                organization,
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[data_to_delete]
             )
 
-        logger.info(f"Creating REST client and exporter for collaborator {username}")
+        logger.info(
+            f"Creating REST client and exporter for collaborator {username} of organization: {organization}"
+        )
         rest_client = create_github_client()
         exporter = RestCollaboratorExporter(rest_client)
 
         data_to_upsert = await exporter.get_resource(
-            SingleCollaboratorOptions(repo_name=repo_name, username=username)
+            SingleCollaboratorOptions(
+                organization=organization, repo_name=repo_name, username=username
+            )
         )
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

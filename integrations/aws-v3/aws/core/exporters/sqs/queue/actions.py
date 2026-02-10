@@ -42,8 +42,8 @@ class GetQueueAttributesAction(Action):
         return response["Attributes"]
 
 
-class GetQueueTagsAction(Action):
-    """Fetches tags for SQS queues."""
+class ListQueueTagsAction(Action):
+    """Lists tags for SQS queues."""
 
     async def _execute(self, queues: list[str]) -> list[dict[str, Any]]:
         if not queues:
@@ -91,4 +91,4 @@ class SqsQueueActionsMap(ActionMap):
     """Groups all actions for SQS queues."""
 
     defaults: list[Type[Action]] = [ListQueuesAction, GetQueueAttributesAction]
-    options: list[Type[Action]] = [GetQueueTagsAction]
+    options: list[Type[Action]] = [ListQueueTagsAction]

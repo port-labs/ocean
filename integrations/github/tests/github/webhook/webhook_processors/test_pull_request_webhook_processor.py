@@ -34,6 +34,7 @@ def resource_config() -> GithubPullRequestConfig:
         selector=GithubPullRequestSelector(
             query="true",
             states=["open"],
+            api="rest",
         ),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -140,7 +141,12 @@ class TestPullRequestWebhookProcessor:
             "state": "open" if action == "opened" else "closed",
         }
         repo_data = {"name": "test-repo", "full_name": "test-org/test-repo"}
-        payload = {"action": action, "pull_request": pr_data, "repository": repo_data}
+        payload = {
+            "action": action,
+            "pull_request": pr_data,
+            "repository": repo_data,
+            "organization": {"login": "test-org"},
+        }
 
         updated_pr_data = {**pr_data, "additional_data": "from_api"}
         mock_exporter = AsyncMock()
@@ -160,9 +166,17 @@ class TestPullRequestWebhookProcessor:
                 assert result.updated_raw_results == [updated_pr_data]
                 assert result.deleted_raw_results == []
                 mock_exporter.get_resource.assert_called_once_with(
-                    SinglePullRequestOptions(repo_name="test-repo", pr_number=101)
+                    SinglePullRequestOptions(
+                        organization="test-org",
+                        repo_name="test-repo",
+                        pr_number=101,
+                        repo=None,
+                    )
                 )
             elif expected_delete:
                 assert result.updated_raw_results == []
-                assert result.deleted_raw_results == [pr_data]
+                # Deletions are enriched with repository + organization metadata
+                assert result.deleted_raw_results == [
+                    {**pr_data, "__organization": "test-org"}
+                ]
                 mock_exporter.get_resource.assert_not_called()

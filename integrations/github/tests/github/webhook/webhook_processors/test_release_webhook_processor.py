@@ -12,19 +12,19 @@ from github.core.options import SingleReleaseOptions
 
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
 )
 from github.helpers.utils import ObjectKind
+from integration import GithubRepoSearchConfig, RepoSearchSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+    return GithubRepoSearchConfig(
         kind=ObjectKind.RELEASE,
-        selector=Selector(query="true"),
+        selector=RepoSearchSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -47,7 +47,6 @@ def release_webhook_processor(
 
 @pytest.mark.asyncio
 class TestReleaseWebhookProcessor:
-
     @pytest.mark.parametrize(
         "github_event,result", [(ObjectKind.RELEASE, True), ("invalid", False)]
     )
@@ -104,6 +103,7 @@ class TestReleaseWebhookProcessor:
             "action": action,
             "release": release_data,
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         if is_deletion:
@@ -125,7 +125,9 @@ class TestReleaseWebhookProcessor:
 
             # Verify exporter was called with correct options
             mock_exporter.get_resource.assert_called_once_with(
-                SingleReleaseOptions(repo_name="test-repo", release_id=1)
+                SingleReleaseOptions(
+                    organization="test-org", repo_name="test-repo", release_id=1
+                )
             )
 
         assert isinstance(result, WebhookEventRawResults)
@@ -136,7 +138,10 @@ class TestReleaseWebhookProcessor:
             assert result.updated_raw_results == [release_data]
 
         if expected_deleted:
-            assert result.deleted_raw_results == [release_data]
+            # Deletions are enriched with repository + organization metadata
+            assert result.deleted_raw_results == [
+                {**release_data, "__organization": "test-org"}
+            ]
 
     @pytest.mark.parametrize(
         "payload,expected",

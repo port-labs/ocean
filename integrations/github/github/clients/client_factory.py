@@ -19,24 +19,26 @@ from github.helpers.exceptions import MissingCredentials
 class GitHubAuthenticatorFactory:
     @staticmethod
     def create(
-        organization: str,
         github_host: str,
+        organization: Optional[str] = None,
         token: Optional[str] = None,
         app_id: Optional[str] = None,
+        installation_id: Optional[str] = None,
         private_key: Optional[str] = None,
     ) -> AbstractGitHubAuthenticator:
         if token:
             logger.debug(
-                f"Creating Personal Token Authenticator for {organization} on {github_host}"
+                f"Creating Personal Token Authenticator for select organizations for PAT on {github_host}"
             )
             return PersonalTokenAuthenticator(token)
 
-        if app_id and private_key:
+        if organization and app_id and private_key:
             logger.debug(
                 f"Creating GitHub App Authenticator for {organization} on {github_host}"
             )
             return GitHubAppAuthenticator(
                 app_id=app_id,
+                installation_id=installation_id,
                 private_key=private_key,
                 organization=organization,
                 github_host=github_host,
@@ -77,12 +79,17 @@ class GithubClientFactory:
                 raise ValueError(f"Invalid client type: {client_type}")
 
             authenticator = GitHubAuthenticatorFactory.create(
-                organization=ocean.integration_config["github_organization"],
                 github_host=ocean.integration_config["github_host"],
+                organization=ocean.integration_config.get("github_organization"),
                 token=ocean.integration_config.get("github_token"),
                 app_id=ocean.integration_config.get("github_app_id"),
+                installation_id=ocean.integration_config.get(
+                    "github_app_installation_id"
+                ),
                 private_key=ocean.integration_config.get("github_app_private_key"),
             )
+
+            logger.info(f"instantiated new {client_type} client.")
 
             self._instances[client_type] = self._clients[client_type](
                 **integration_config(authenticator),

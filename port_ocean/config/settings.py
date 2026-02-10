@@ -1,5 +1,5 @@
 import platform
-from typing import Any, Literal, Optional, Type, cast
+from typing import Any, Literal, Optional, Type
 
 from pydantic import AnyHttpUrl, Extra, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
@@ -8,14 +8,22 @@ from pydantic.fields import Field
 from pydantic.main import BaseModel
 
 from port_ocean.config.base import BaseOceanModel, BaseOceanSettings
-from port_ocean.core.event_listener import EventListenerSettingsType
+from port_ocean.core.event_listener import (
+    EventListenerSettingsType,
+    PollingEventListenerSettings,
+)
 from port_ocean.core.models import (
     CachingStorageMode,
     CreatePortResourcesOrigin,
+    EventListenerType,
     ProcessExecutionMode,
     Runtime,
 )
-from port_ocean.utils.misc import get_integration_name, get_spec_file
+from port_ocean.utils.misc import (
+    get_cgroup_cpu_limit,
+    get_integration_name,
+    get_spec_file,
+)
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
@@ -80,6 +88,14 @@ class StreamingSettings(BaseOceanModel, extra=Extra.allow):
     location: str = Field(default="/tmp/ocean/streaming")
 
 
+class ActionsProcessorSettings(BaseOceanModel, extra=Extra.allow):
+    enabled: bool = Field(default=False)
+    runs_buffer_high_watermark: int = Field(default=100)
+    visibility_timeout_ms: int = Field(default=30000)
+    poll_check_interval_seconds: int = Field(default=10)
+    workers_count: int = Field(default=1)
+
+
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     _integration_config_model: BaseModel | None = None
 
@@ -87,14 +103,16 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     initialize_port_resources: bool = True
     scheduled_resync_interval: int | None = None
     client_timeout: int = 60
-    # Determines if Port should generate resources such as blueprints and pages instead of ocean
     create_port_resources_origin: CreatePortResourcesOrigin | None = None
     send_raw_data_examples: bool = True
     oauth_access_token_file_path: str | None = None
     base_url: str | None = None
+    path_prefix: str | None = None
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(
-        default=cast(EventListenerSettingsType, {"type": "POLLING"})
+        default_factory=lambda: PollingEventListenerSettings(
+            type=EventListenerType.POLLING
+        )
     )
     event_workers_count: int = 1
     # If an identifier or type is not provided, it will be generated based on the integration name
@@ -118,10 +136,16 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     upsert_entities_batch_max_length: int = 20
     upsert_entities_batch_max_size_in_bytes: int = 1024 * 1024
     lakehouse_enabled: bool = False
-    yield_items_to_parse: bool = False
-    yield_items_to_parse_batch_size: int = 10
-
+    yield_items_to_parse_batch_size: int = 200
+    process_in_queue_timeout: int = 120
+    process_in_queue_max_workers: int = Field(
+        default_factory=lambda: get_cgroup_cpu_limit()
+    )
+    delete_entities_max_batch_size: int = 1000
     streaming: StreamingSettings = Field(default_factory=lambda: StreamingSettings())
+    actions_processor: ActionsProcessorSettings = Field(
+        default_factory=lambda: ActionsProcessorSettings()
+    )
 
     @validator("process_execution_mode")
     def validate_process_execution_mode(
@@ -168,20 +192,6 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
 
         return values
 
-    @validator("create_port_resources_origin")
-    def validate_create_port_resources_origin(
-        cls, create_port_resources_origin: CreatePortResourcesOrigin | None
-    ) -> CreatePortResourcesOrigin | None:
-        spec = get_spec_file()
-        if spec and spec.get("create_port_resources_origin", None):
-            spec_create_port_resources_origin = spec.get("create_port_resources_origin")
-            if spec_create_port_resources_origin in [
-                CreatePortResourcesOrigin.Port,
-                CreatePortResourcesOrigin.Ocean,
-            ]:
-                return CreatePortResourcesOrigin(spec_create_port_resources_origin)
-        return create_port_resources_origin
-
     @validator("runtime")
     def validate_runtime(cls, runtime: Runtime) -> Runtime:
         if runtime.is_saas_runtime:
@@ -197,3 +207,18 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
                 raise ValueError("This integration can't be ran as Saas")
 
         return runtime
+
+    @validator("actions_processor")
+    def validate_actions_processor(
+        cls, actions_processor: ActionsProcessorSettings
+    ) -> ActionsProcessorSettings:
+        if not actions_processor.enabled:
+            return actions_processor
+
+        spec = get_spec_file()
+        if not (spec and spec.get("actionsProcessingEnabled", False)):
+            raise ValueError(
+                "Serving as an actions processor is not currently supported for this integration."
+            )
+
+        return actions_processor

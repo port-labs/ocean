@@ -7,7 +7,11 @@ from github.core.exporters.team_exporter import (
     RestTeamExporter,
 )
 from github.core.options import SingleTeamOptions
-from github.helpers.utils import ObjectKind, enrich_with_repository
+from github.helpers.utils import (
+    ObjectKind,
+    enrich_with_repository,
+    enrich_with_organization,
+)
 from github.webhook.events import (
     COLLABORATOR_EVENTS,
     COLLABORATOR_UPSERT_EVENTS,
@@ -60,6 +64,7 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
         member = payload["member"]
         team_slug = payload["team"]["slug"]
         member_login = member["login"]
+        organization = self.get_webhook_payload_organization(payload)["login"]
 
         logger.info(
             f"Handling membership event: {action} for {member_login} in team {team_slug}"
@@ -68,7 +73,7 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
         if action not in COLLABORATOR_UPSERT_EVENTS:
             # Since we cannot ascertain the repos for which the member was a collaborator,
             logger.info(
-                f"Skipping unsupported membership event {action} for {member_login}"
+                f"Skipping unsupported membership event {action} for {member_login} of organization: {organization}"
             )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
@@ -79,22 +84,22 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         repositories = []
         async for batch in team_exporter.get_team_repositories_by_slug(
-            SingleTeamOptions(slug=team_slug)
+            SingleTeamOptions(organization=organization, slug=team_slug)
         ):
             for repo in batch:
                 if not await self.validate_repository_visibility(repo["visibility"]):
                     logger.info(
-                        f"Skipping repository {repo['name']} due to visibility validation"
+                        f"Skipping repository {repo['name']} due to visibility validation of organization: {organization}"
                     )
                     continue
                 repositories.append(repo)
 
         list_data_to_upsert = self._enrich_collaborators_with_repositories(
-            member, repositories
+            member, repositories, organization
         )
 
         logger.info(
-            f"Upserting {len(list_data_to_upsert)} collaborators for member {member_login} in team {team_slug}"
+            f"Upserting {len(list_data_to_upsert)} collaborators for member {member_login} in team {team_slug} of organization: {organization}"
         )
 
         return WebhookEventRawResults(
@@ -102,13 +107,21 @@ class CollaboratorMembershipWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
     def _enrich_collaborators_with_repositories(
-        self, response: Dict[str, Any], repositories: List[Dict[str, Any]]
+        self,
+        response: Dict[str, Any],
+        repositories: List[Dict[str, Any]],
+        organization: str,
     ) -> List[Dict[str, Any]]:
         """Helper function to enrich response with repository information."""
         list_of_collaborators = []
         for repository in repositories:
             collaborator_copy = response.copy()
             list_of_collaborators.append(
-                enrich_with_repository(collaborator_copy, repository["name"])
+                enrich_with_organization(
+                    enrich_with_repository(
+                        collaborator_copy, repository["name"], repo=repository
+                    ),
+                    organization,
+                )
             )
         return list_of_collaborators

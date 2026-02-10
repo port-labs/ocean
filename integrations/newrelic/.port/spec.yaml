@@ -9,6 +9,7 @@ features:
     resources:
       - kind: newRelicService
       - kind: newRelicAlert
+      - kind: newRelicAlertCondition
       - kind: newRelicServiceLevel
 configurations:
   - name: newRelicAPIKey
@@ -26,3 +27,8 @@ configurations:
     type: string
     default: https://api.newrelic.com/graphql
     description: URL for New Relic GraphQL API. If not provided, the default value will be https://api.newrelic.com/graphql. Users in the EU region should use <a href="https://api.eu.newrelic.com/graphql" target="_blank"> https://api.eu.newrelic.com/graphql</a>. For more information on GraphQL URL, see the <a href="https://docs.newrelic.com/docs/apis/nerdgraph/get-started/introduction-new-relic-nerdgraph/" target="_blank"> New Relic documentation</a>.
+  - name: newRelicRestApiURL
+    required: false
+    type: string
+    default: https://api.newrelic.com
+    description: Base URL for New Relic REST API. If not provided, the default value will be https://api.newrelic.com. Users in the EU region should use <a href="https://api.eu.newrelic.com" target="_blank"> https://api.eu.newrelic.com</a>. For more information on REST API URL, see the <a href="https://docs.newrelic.com/docs/apis/rest-api-v2/get-started/introduction-new-relic-rest-apis/" target="_blank"> New Relic documentation</a>.

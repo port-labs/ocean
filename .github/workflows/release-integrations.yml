@@ -37,9 +37,13 @@ jobs:
               integrations_to_release+=($file)
             fi
           done
-          echo $(echo ${integrations_to_release[@]} | jq -R -c 'split(" ")')
-          echo "INTEGRATIONS_MATRIX=$(echo ${integrations_to_release[@]} | jq -R -c 'split(" ")')" >> $GITHUB_OUTPUT
-
+          if [ ${#integrations_to_release[@]} -eq 0 ]; then
+            matrix_json='[]'
+          else
+            matrix_json=$(printf '%s\n' "${integrations_to_release[@]}" | jq -R -s -c 'split("\n")[:-1]')
+          fi
+          echo "$matrix_json"
+          echo "INTEGRATIONS_MATRIX=$matrix_json" >> $GITHUB_OUTPUT
 
   release-integration:
     runs-on: ubuntu-latest
@@ -47,6 +51,7 @@ jobs:
     outputs:
       is_dev_version: ${{ steps.prepare_tags.outputs.is_dev_version }}
     permissions:
+      id-token: write
       packages: write
       contents: read
     needs: [prepare-matrix]
@@ -71,6 +76,7 @@ jobs:
           version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
           type=$(grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
           echo "version=$version" >> $GITHUB_OUTPUT
+          echo "type=$type" >> $GITHUB_OUTPUT
 
           dockerfile_path=integrations/_infra/Dockerfile
           if test -e $folder/../Dockerfile; then
@@ -103,6 +109,118 @@ jobs:
             INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+
+      - name: Get image sizes
+        continue-on-error: true
+        id: image_size
+        run: |
+          IMAGE="ghcr.io/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}:${{ steps.prepare_tags.outputs.version }}"
+
+          for arch in amd64 arm64; do
+            echo "📦 Pulling ${arch} image..."
+            docker pull --platform "linux/${arch}" "${IMAGE}"
+            if [[ $? -ne 0 ]]; then
+              echo "⚠️ Failed to pull ${arch} image"
+              exit 1
+            fi
+
+            # `docker images` can output multiple rows for the same reference; pick a single deterministic value.
+            RAW_SIZE="$(docker images "${IMAGE}" --format '{{.VirtualSize}}' | head -n 1)"
+            if [[ -z "${RAW_SIZE}" ]]; then
+              echo "⚠️ Failed to get virtual size for ${arch}"
+              exit 1
+            fi
+
+            echo "🔎 Debug: raw 'docker images ${IMAGE}' output (${arch}): ${RAW_SIZE}"
+
+            SIZE="$(
+              awk -v s="${RAW_SIZE}" 'BEGIN{IGNORECASE=1
+                val = s
+                gsub(/[^0-9.]/,"",val)
+                if (s ~ /GB/) print int(val * 1073741824)
+                else if (s ~ /MB/) print int(val * 1048576)
+                else if (s ~ /KB/) print int(val * 1024)
+                else print int(val)
+              }'
+            )"
+            echo "🔎 Debug: converted size for ${arch}: ${SIZE}"
+            echo "size_bytes_linux_${arch}=${SIZE}" >> $GITHUB_OUTPUT
+
+          done
+
+      - name: Track image size in New Relic (amd64)
+        if: steps.image_size.outputs.size_bytes_linux_amd64
+        continue-on-error: true
+        uses: ./.github/actions/new-relic-metric
+        with:
+          metric_name: "image.size"
+          metric_value: ${{ steps.image_size.outputs.size_bytes_linux_amd64 }}
+          new_relic_api_key: ${{ secrets.NEW_RELIC_INGEST_API_KEY }}
+          metric_attributes: |
+            {
+              "image_name": "port-ocean-${{ steps.prepare_tags.outputs.type }}",
+              "image_version": "${{ steps.prepare_tags.outputs.version }}",
+              "platform": "linux/amd64",
+              "size_bytes": ${{ steps.image_size.outputs.size_bytes_linux_amd64 }}
+            }
+
+      - name: Track image size in New Relic (arm64)
+        if: steps.image_size.outputs.size_bytes_linux_arm64
+        continue-on-error: true
+        uses: ./.github/actions/new-relic-metric
+        with:
+          metric_name: "image.size"
+          metric_value: ${{ steps.image_size.outputs.size_bytes_linux_arm64 }}
+          new_relic_api_key: ${{ secrets.NEW_RELIC_INGEST_API_KEY }}
+          metric_attributes: |
+            {
+              "image_name": "port-ocean-${{ steps.prepare_tags.outputs.type }}",
+              "image_version": "${{ steps.prepare_tags.outputs.version }}",
+              "platform": "linux/arm64",
+              "size_bytes": ${{ steps.image_size.outputs.size_bytes_linux_arm64 }}
+            }
+
+      - name: Configure AWS Credentials 🔒
+        if: steps.prepare_tags.outputs.is_dev_version == 'false'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.ECR_PULL_THROUGH_CACHE_AWS_REGION }}
+          role-to-assume: ${{ vars.ECR_PULL_THROUGH_CACHE_DELETE_ROLE_ARN }}
+
+      - name: Login to ECR
+        if: steps.prepare_tags.outputs.is_dev_version == 'false'
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          mask-password: 'true'
+
+      - name: Delete ECR pull through cache repository
+        if: steps.prepare_tags.outputs.is_dev_version == 'false'
+        run: |
+          repository_name="github/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}"
+          aws_region="${{ vars.ECR_PULL_THROUGH_CACHE_AWS_REGION }}"
+
+          echo "Attempting to delete ECR pull through cache repository: $repository_name"
+
+          # Check if repository exists
+          if ! aws ecr describe-repositories \
+            --repository-names "$repository_name" \
+            --region "$aws_region" \
+            >/dev/null 2>&1; then
+            echo "Repository does not exist in ECR, skipping deletion: $repository_name"
+            exit 0
+          fi
+
+          # Delete the entire repository
+          if aws ecr delete-repository \
+            --repository-name "$repository_name" \
+            --region "$aws_region" \
+            --force \
+            >/dev/null 2>&1; then
+            echo "Successfully deleted ECR pull through cache repository: $repository_name"
+          else
+            echo "Failed to delete ECR repository: $repository_name"
+            exit 1
+          fi
 
   upload-specs:
     runs-on: ubuntu-latest
@@ -145,7 +263,6 @@ jobs:
 
           while IFS= read -r file; do
               integration_dir=$(dirname "$file")
-              integration_name=$(echo "$integration_dir" | awk -F'/' '{print $2}')
 
               # Extract the type for pyproject.toml
               type=$(grep -E '^name = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
@@ -153,9 +270,9 @@ jobs:
               # Extract the version from pyproject.toml
               version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
-              integration_spec="$integration_name-$version.json"
-              integration_dest="$integration_name/$integration_spec"
-              integration_legacy_dest="$integration_name.json" # TODO: legacy support, remove once not in use
+              integration_spec="$type-$version.json"
+              integration_dest="$type/$integration_spec"
+              integration_legacy_dest="$type.json" # TODO: legacy support, remove once not in use
 
               # Convert YAML to JSON
               yq -o json "$file" >"$temp_file"

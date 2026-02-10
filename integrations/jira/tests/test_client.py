@@ -7,6 +7,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from jira.client import PAGE_SIZE, WEBHOOK_EVENTS, OAUTH2_WEBHOOK_EVENTS, JiraClient
+from jira.overrides import JiraIssueSelector
 
 
 @pytest.fixture(autouse=True)
@@ -193,8 +194,9 @@ async def test_get_paginated_issues_with_jql_param(
 async def test_get_paginated_issues_without_jql_param(
     mock_jira_client: JiraClient,
 ) -> None:
-    """Test get_paginated_issues without JQL parameter"""
+    """Test get_paginated_issues without JQL parameter - should use default JQL"""
     issues_data = {"issues": [{"key": "TEST-1"}, {"key": "TEST-2"}], "total": 2}
+    default_jql = "(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)"
 
     with patch.object(
         mock_jira_client, "_send_api_request", new_callable=AsyncMock
@@ -202,10 +204,44 @@ async def test_get_paginated_issues_without_jql_param(
         mock_request.side_effect = [issues_data, {"issues": []}]
 
         issues = []
-        async for issue_batch in mock_jira_client.get_paginated_issues(params={}):
+        async for issue_batch in mock_jira_client.get_paginated_issues(
+            params={"jql": default_jql}
+        ):
             issues.extend(issue_batch)
 
         assert len(issues) == 2
+        mock_request.assert_called_with(
+            "GET",
+            f"{mock_jira_client.api_url}/search/jql",
+            params={"jql": default_jql},
+        )
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_issues_with_empty_jql(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test get_paginated_issues with empty JQL - should use default JQL and /search/jql endpoint"""
+    issues_data = {"issues": [{"key": "TEST-1"}, {"key": "TEST-2"}], "total": 2}
+    custom_jql = "project = MYPROJECT ORDER BY updated DESC"
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [issues_data, {"issues": []}]
+
+        issues = []
+        async for issue_batch in mock_jira_client.get_paginated_issues(
+            params={"jql": custom_jql}
+        ):
+            issues.extend(issue_batch)
+
+        assert len(issues) == 2
+        mock_request.assert_called_with(
+            "GET",
+            f"{mock_jira_client.api_url}/search/jql",
+            params={"jql": custom_jql},
+        )
 
 
 @pytest.mark.asyncio
@@ -448,3 +484,19 @@ async def test_create_events_webhook_oauth(mock_jira_client: JiraClient) -> None
 
         await mock_jira_client.create_webhooks(app_host)
         mock_request.assert_called_once()  # Only checks for existence
+
+
+def test_jira_issue_selector_default_jql() -> None:
+    """Test that JiraIssueSelector uses the correct default JQL when not provided"""
+    selector = JiraIssueSelector(query="true")
+
+    expected_default_jql = (
+        "(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)"
+    )
+    assert (
+        selector.jql == expected_default_jql
+    ), f"Expected default JQL to be '{expected_default_jql}', but got '{selector.jql}'"
+
+    assert (
+        selector.fields == "*all"
+    ), f"Expected default fields to be '*all', but got '{selector.fields}'"

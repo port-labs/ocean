@@ -12,19 +12,19 @@ from github.core.options import SingleTagOptions
 
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
-    Selector,
     PortResourceConfig,
     EntityMapping,
     MappingsConfig,
 )
 from github.helpers.utils import ObjectKind
+from integration import GithubRepoSearchConfig, RepoSearchSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
-    return ResourceConfig(
+    return GithubRepoSearchConfig(
         kind=ObjectKind.TAG,
-        selector=Selector(query="true"),
+        selector=RepoSearchSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
                 mappings=EntityMapping(
@@ -47,7 +47,6 @@ def tag_webhook_processor(
 
 @pytest.mark.asyncio
 class TestTagWebhookProcessor:
-
     @pytest.mark.parametrize(
         "github_event,ref,ref_type,result",
         [
@@ -118,6 +117,7 @@ class TestTagWebhookProcessor:
             "ref": tag_ref,
             "ref_type": "tag",
             "repository": {"name": "test-repo"},
+            "organization": {"login": "test-org"},
         }
 
         tag_webhook_processor._event_type = event_type
@@ -139,7 +139,12 @@ class TestTagWebhookProcessor:
 
             # Verify exporter was called with correct options
             mock_exporter.get_resource.assert_called_once_with(
-                SingleTagOptions(repo_name="test-repo", tag_name=tag_ref)
+                SingleTagOptions(
+                    organization="test-org",
+                    repo_name="test-repo",
+                    tag_name=tag_ref,
+                    repo={"name": "test-repo"},
+                )
             )
 
         assert isinstance(result, WebhookEventRawResults)
@@ -150,7 +155,14 @@ class TestTagWebhookProcessor:
             assert result.updated_raw_results == [tag_data]
 
         if expected_deleted:
-            assert result.deleted_raw_results == [{"name": tag_ref}]
+            assert result.deleted_raw_results == [
+                {
+                    "name": tag_ref,
+                    "__repository": "test-repo",
+                    "__repository_object": {"name": "test-repo"},
+                    "__organization": "test-org",
+                }
+            ]
 
     @pytest.mark.parametrize(
         "payload,expected",
