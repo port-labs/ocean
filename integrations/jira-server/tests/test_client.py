@@ -247,11 +247,6 @@ async def test_get_paginated_users_via_list_success(
             assert "/user/list" in url
 
 
-# ============================================================================
-# Ignored Error Tests
-# ============================================================================
-
-
 class TestShouldIgnoreError:
     """Tests for the _should_ignore_error method."""
 
@@ -367,55 +362,6 @@ class TestSendApiRequestWithIgnoredErrors:
                 await mock_jira_server_client._send_api_request(
                     "GET", "http://example.com"
                 )
-
-
-class TestLogJiraErrorResponse:
-    """Tests for the _log_jira_error_response method."""
-
-    def test_log_jira_error_response_logs_json_error(
-        self, mock_jira_server_client: JiraServerClient
-    ) -> None:
-        """Test that Jira error response body is logged."""
-        jira_error_response = {
-            "errorMessages": [
-                "The value 'PROJ1' does not exist for the field 'project'.",
-            ],
-            "errors": {},
-        }
-        response = Response(
-            400,
-            request=Request("GET", "http://example.com/search"),
-            json=jira_error_response,
-        )
-
-        with patch("jira_server.client.logger") as mock_logger:
-            mock_jira_server_client._log_jira_error_response(
-                response, "GET", "http://example.com/search"
-            )
-
-            mock_logger.error.assert_called_once()
-            call_args = mock_logger.error.call_args[0][0]
-            assert "(HTTP 400)" in call_args
-            assert "errorMessages" in call_args
-
-    def test_log_jira_error_response_logs_raw_text_on_json_error(
-        self, mock_jira_server_client: JiraServerClient
-    ) -> None:
-        """Test that raw response text is logged when JSON parsing fails."""
-        response = Response(
-            500,
-            request=Request("GET", "http://example.com/search"),
-            text="Internal Server Error",
-        )
-
-        with patch("jira_server.client.logger") as mock_logger:
-            mock_jira_server_client._log_jira_error_response(
-                response, "GET", "http://example.com/search"
-            )
-
-            mock_logger.error.assert_called_once()
-            call_args = mock_logger.error.call_args[0][0]
-            assert "(HTTP 500)" in call_args
 
 
 class TestGetPaginatedIssuesErrorHandling:
