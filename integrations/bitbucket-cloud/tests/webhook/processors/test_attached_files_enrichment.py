@@ -180,7 +180,9 @@ class TestBitbucketAttachedFilesEnrichment:
         assert isinstance(result, WebhookEventRawResults)
         assert len(result.updated_raw_results) == 1
         assert "__attachedFiles" in result.updated_raw_results[0]
-        assert result.updated_raw_results[0]["__attachedFiles"]["README.md"] == "# Hello"
+        assert (
+            result.updated_raw_results[0]["__attachedFiles"]["README.md"] == "# Hello"
+        )
         assert (
             result.updated_raw_results[0]["__attachedFiles"]["CODEOWNERS"] == "* @admin"
         )

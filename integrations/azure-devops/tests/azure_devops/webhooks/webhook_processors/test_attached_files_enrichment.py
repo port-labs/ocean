@@ -62,9 +62,7 @@ class TestAzureDevopsAttachedFilesEnrichment:
         assert result["__attachedFiles"]["CODEOWNERS"] == "* @owner"
         assert mock_client.get_file_by_branch.call_count == 2
         mock_client.get_file_by_branch.assert_any_call("README.md", "repo-123", "main")
-        mock_client.get_file_by_branch.assert_any_call(
-            "CODEOWNERS", "repo-123", "main"
-        )
+        mock_client.get_file_by_branch.assert_any_call("CODEOWNERS", "repo-123", "main")
 
     async def test_enrich_with_attached_files_missing_file(
         self,

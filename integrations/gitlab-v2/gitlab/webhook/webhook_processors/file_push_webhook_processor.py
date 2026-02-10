@@ -136,8 +136,11 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         if attached_files and updated_results:
             for file_entity in updated_results:
                 await _enrich_file_with_attached_files(
-                    self._gitlab_webhook_client, file_entity, attached_files,
-                    project_path=repo_path, ref=branch,
+                    self._gitlab_webhook_client,
+                    file_entity,
+                    attached_files,
+                    project_path=repo_path,
+                    ref=branch,
                 )
 
         logger.info(

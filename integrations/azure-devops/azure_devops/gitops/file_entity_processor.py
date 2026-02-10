@@ -18,7 +18,7 @@ class GitManipulationHandler(JQEntityProcessor):
                 f"Pattern: '{pattern}'. "
                 f"Use the 'attachedFiles' selector instead. Example: "
                 f"selector.attachedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
-                f"and mapping: .__attachedFiles[\"{pattern[len(FILE_PROPERTY_PREFIX):]}\"]"
+                f'and mapping: .__attachedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
             )
             return await self._search_by_file(data, pattern)
 

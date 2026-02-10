@@ -87,8 +87,11 @@ class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         if attached_files and folders:
             for folder in folders:
                 await _enrich_folder_with_attached_files(
-                    self._gitlab_webhook_client, folder, attached_files,
-                    project_path=repo_path, ref=ref,
+                    self._gitlab_webhook_client,
+                    folder,
+                    attached_files,
+                    project_path=repo_path,
+                    ref=ref,
                 )
 
         if not folders:

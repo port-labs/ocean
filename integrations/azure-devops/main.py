@@ -163,7 +163,9 @@ async def _enrich_repo_with_attached_files(
             content_bytes = await client.get_file_by_branch(
                 file_path, repo_id, branch_name
             )
-            attached[file_path] = content_bytes.decode("utf-8") if content_bytes else None
+            attached[file_path] = (
+                content_bytes.decode("utf-8") if content_bytes else None
+            )
         except Exception as e:
             logger.debug(
                 f"Could not fetch file {file_path} from repo {repo.get('name', repo_id)}@{branch_name}: {e}"
@@ -190,9 +192,7 @@ async def _enrich_repos_batch_with_attached_files(
 @ocean.on_resync(Kind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    selector = cast(
-        AzureDevopsRepositoryResourceConfig, event.resource_config
-    ).selector
+    selector = cast(AzureDevopsRepositoryResourceConfig, event.resource_config).selector
     attached_files = selector.attached_files or []
 
     async for repositories in azure_devops_client.generate_repositories():
@@ -314,13 +314,17 @@ async def _enrich_folder_with_attached_files(
     """Enrich a folder entity with __attachedFiles from the given file paths."""
     repo = folder.get("__repository", {})
     repo_id = repo.get("id", "")
-    branch = folder.get("__branch") or repo.get("defaultBranch", "refs/heads/main").replace("refs/heads/", "")
+    branch = folder.get("__branch") or repo.get(
+        "defaultBranch", "refs/heads/main"
+    ).replace("refs/heads/", "")
     attached: dict[str, Any] = {}
 
     for file_path in file_paths:
         try:
             content_bytes = await client.get_file_by_branch(file_path, repo_id, branch)
-            attached[file_path] = content_bytes.decode("utf-8") if content_bytes else None
+            attached[file_path] = (
+                content_bytes.decode("utf-8") if content_bytes else None
+            )
         except Exception as e:
             logger.debug(
                 f"Could not fetch file {file_path} from repo {repo.get('name', repo_id)}@{branch}: {e}"
@@ -358,7 +362,9 @@ async def _enrich_file_entity_with_attached_files(
     for file_path in file_paths:
         try:
             content_bytes = await client.get_file_by_branch(file_path, repo_id, branch)
-            attached[file_path] = content_bytes.decode("utf-8") if content_bytes else None
+            attached[file_path] = (
+                content_bytes.decode("utf-8") if content_bytes else None
+            )
         except Exception as e:
             logger.debug(
                 f"Could not fetch file {file_path} from repo {repo.get('name', repo_id)}@{branch}: {e}"

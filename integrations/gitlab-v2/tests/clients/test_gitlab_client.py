@@ -996,9 +996,7 @@ class TestGitLabClient:
         with patch.object(
             client,
             "get_file_content",
-            AsyncMock(
-                side_effect=["# README content", "* @owner"]
-            ),
+            AsyncMock(side_effect=["# README content", "* @owner"]),
         ) as mock_get_file_content:
             result = await client.enrich_project_with_attached_files(
                 project, ["README.md", "CODEOWNERS"]
@@ -1009,9 +1007,7 @@ class TestGitLabClient:
             assert result["__attachedFiles"]["CODEOWNERS"] == "* @owner"
             assert mock_get_file_content.call_count == 2
             mock_get_file_content.assert_any_call("test/project", "README.md", "main")
-            mock_get_file_content.assert_any_call(
-                "test/project", "CODEOWNERS", "main"
-            )
+            mock_get_file_content.assert_any_call("test/project", "CODEOWNERS", "main")
 
     async def test_enrich_project_with_attached_files_missing_file(
         self, client: GitLabClient
@@ -1026,9 +1022,7 @@ class TestGitLabClient:
         with patch.object(
             client,
             "get_file_content",
-            AsyncMock(
-                side_effect=["# README content", Exception("404 Not Found")]
-            ),
+            AsyncMock(side_effect=["# README content", Exception("404 Not Found")]),
         ):
             result = await client.enrich_project_with_attached_files(
                 project, ["README.md", "MISSING.md"]
@@ -1050,9 +1044,7 @@ class TestGitLabClient:
         result = await client.enrich_project_with_attached_files(project, [])
         assert result["__attachedFiles"] == {}
 
-    async def test_get_projects_with_attached_files(
-        self, client: GitLabClient
-    ) -> None:
+    async def test_get_projects_with_attached_files(self, client: GitLabClient) -> None:
         """Test that get_projects enriches with attached files when specified."""
         mock_projects = [
             {
@@ -1088,9 +1080,7 @@ class TestGitLabClient:
             assert results[0]["__attachedFiles"] == {"README.md": "# Hello"}
             mock_enrich_files.assert_called_once()
 
-    async def test_get_project_with_attached_files(
-        self, client: GitLabClient
-    ) -> None:
+    async def test_get_project_with_attached_files(self, client: GitLabClient) -> None:
         """Test that get_project (single) enriches with attached files."""
         mock_project = {
             "id": "123",
@@ -1121,9 +1111,7 @@ class TestGitLabClient:
 
             assert "__attachedFiles" in result
             assert result["__attachedFiles"]["README.md"] == "content"
-            mock_enrich_files.assert_called_once_with(
-                mock_project, ["README.md"]
-            )
+            mock_enrich_files.assert_called_once_with(mock_project, ["README.md"])
 
     async def test_selector_attached_files_field(self) -> None:
         """Test that ProjectSelector correctly parses the attachedFiles field."""
@@ -1131,12 +1119,13 @@ class TestGitLabClient:
 
         # Test with attachedFiles
         selector = ProjectSelector(
-            **{"query": "true", "attachedFiles": ["README.md", "CODEOWNERS"]}
+            query="true",
+            attachedFiles=["README.md", "CODEOWNERS"],
         )
         assert selector.attached_files == ["README.md", "CODEOWNERS"]
 
         # Test without attachedFiles (default empty list)
-        selector_default = ProjectSelector(**{"query": "true"})
+        selector_default = ProjectSelector(query="true")
         assert selector_default.attached_files == []
 
     async def test_get_parent_groups(self, client: GitLabClient) -> None:

@@ -46,9 +46,7 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                 deleted_raw_results=[],
             )
 
-        selector = cast(
-            AzureDevopsRepositoryResourceConfig, resource_config
-        ).selector
+        selector = cast(AzureDevopsRepositoryResourceConfig, resource_config).selector
         attached_files = selector.attached_files or []
         if attached_files:
             repository = await self._enrich_with_attached_files(

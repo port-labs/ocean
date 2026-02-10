@@ -244,9 +244,7 @@ class TestFolderEnrichWithAttachedFiles:
         }
         assert client.get_file_content.call_count == 2
         client.get_file_content.assert_any_call("group/project", "README.md", "abc123")
-        client.get_file_content.assert_any_call(
-            "group/project", "CODEOWNERS", "abc123"
-        )
+        client.get_file_content.assert_any_call("group/project", "CODEOWNERS", "abc123")
 
     async def test_enrich_folder_missing_file(self) -> None:
         """Test enrichment when a file cannot be fetched — stores None."""
