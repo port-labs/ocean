@@ -138,7 +138,10 @@ class TestReleaseWebhookProcessor:
             assert result.updated_raw_results == [release_data]
 
         if expected_deleted:
-            assert result.deleted_raw_results == [release_data]
+            # Deletions are enriched with repository + organization metadata
+            assert result.deleted_raw_results == [
+                {**release_data, "__organization": "test-org"}
+            ]
 
     @pytest.mark.parametrize(
         "payload,expected",

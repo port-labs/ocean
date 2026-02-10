@@ -31,7 +31,6 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     selector = resource_config.selector
 
-    # Extract method, query_params, headers, body from selector
     method = getattr(selector, "method", "GET")
     query_params = getattr(selector, "query_params", None) or {}
     headers = getattr(selector, "headers", None) or {}
@@ -54,7 +53,6 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 logger.info(f"Received {len(batch)} records from {endpoint}")
 
-                # If data_path is default ('.') and batch[0] is not a list, yield as-is
                 if data_path == "." and batch and not isinstance(batch[0], list):
                     logger.warning(
                         f"Response from {endpoint} is not a list and 'data_path' is not specified. "
@@ -77,11 +75,7 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         except Exception as e:
             logger.error(f"Error fetching data from {endpoint}: {str(e)}")
 
-    # The kind IS the endpoint path (e.g., "/api/v1/users")
-    # Check if endpoint has path parameters that need resolution
-    # Yields batches of tuples: [(endpoint_url, {param_name: param_value}), ...]
     async for endpoint_batch in resolve_dynamic_endpoints(selector, kind):
-        # Process endpoints concurrently with bounded semaphore
         async for batch in process_endpoints_concurrently(
             endpoints=endpoint_batch,
             fetch_fn=fetch_endpoint_data,
