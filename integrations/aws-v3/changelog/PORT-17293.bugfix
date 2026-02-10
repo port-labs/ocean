@@ -1,1 +1,0 @@
-Fixed _valid_arns accumulation across resyncs by resetting state at the start of healthcheck() in both MultiAccountHealthCheckMixin and OrganizationsHealthCheckMixin
