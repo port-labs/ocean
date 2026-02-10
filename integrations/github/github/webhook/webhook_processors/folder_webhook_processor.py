@@ -21,9 +21,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from main import _enrich_folders_batch_with_attached_files
-
-
 class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         return event.headers.get("x-github-event") == "push"
@@ -58,6 +55,8 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
             )
         else:
             if attached_files:
+                from main import _enrich_folders_batch_with_attached_files
+
                 client = create_github_client()
                 folders = await _enrich_folders_batch_with_attached_files(
                     client, folders, attached_files

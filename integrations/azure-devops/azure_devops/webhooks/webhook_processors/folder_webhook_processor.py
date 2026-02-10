@@ -16,7 +16,6 @@ from azure_devops.webhooks.webhook_processors.base_processor import (
 )
 from azure_devops.webhooks.events import PushEvents
 from azure_devops.client.azure_devops_client import AzureDevopsClient
-from main import _enrich_folders_batch_with_attached_files
 import fnmatch
 
 
@@ -130,6 +129,8 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
         updated_folders = created_folders + modified_folders
         if attached_files and updated_folders:
+            from main import _enrich_folders_batch_with_attached_files
+
             updated_folders = await _enrich_folders_batch_with_attached_files(
                 client, updated_folders, attached_files
             )

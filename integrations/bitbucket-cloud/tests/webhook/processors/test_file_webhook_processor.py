@@ -105,6 +105,7 @@ class TestFileWebhookProcessor:
             mock_resource_config.selector.files.skip_parsing = False
             # Set up the tracked_repository field to include our test repository
             mock_resource_config.selector.files.repos = ["test-repo"]
+            mock_resource_config.selector.attached_files = []
 
             # Call the handle_event function
             result = await processor.handle_event(test_payload, mock_resource_config)
@@ -188,6 +189,7 @@ class TestFileWebhookProcessor:
             mock_resource_config = MagicMock()
             mock_resource_config.selector.files.skip_parsing = False
             mock_resource_config.selector.files.repos = ["test-repo"]
+            mock_resource_config.selector.attached_files = []
 
             result = await processor.handle_event(test_payload, mock_resource_config)
 
@@ -255,6 +257,7 @@ class TestFileWebhookProcessor:
             mock_resource_config = MagicMock()
             mock_resource_config.selector.files.skip_parsing = False
             mock_resource_config.selector.files.repos = ["test-repo"]
+            mock_resource_config.selector.attached_files = []
 
             result = await processor.handle_event(test_payload, mock_resource_config)
 
