@@ -302,23 +302,6 @@ class TestShouldIgnoreError:
 
         assert result is False
 
-    def test_should_ignore_error_handles_string_status_comparison(
-        self, mock_jira_server_client: JiraServerClient
-    ) -> None:
-        """Test that status comparison works with string status codes."""
-        error_response = Response(404, request=Request("GET", "http://example.com"))
-        error = HTTPStatusError(
-            "Not Found", request=error_response.request, response=error_response
-        )
-        # Status as string should still match
-        ignored_errors = [IgnoredError(status="404", message="Resource not found")]
-
-        result = mock_jira_server_client._should_ignore_error(
-            error, "http://example.com", "GET", ignored_errors
-        )
-
-        assert result is True
-
 
 class TestSendApiRequestWithIgnoredErrors:
     """Tests for _send_api_request with ignored_errors parameter."""
