@@ -1,4 +1,3 @@
-import json
 from enum import StrEnum
 from typing import Any, AsyncGenerator
 import httpx
@@ -63,29 +62,6 @@ class JiraServerClient:
                 return True
         return False
 
-    def _log_jira_error_response(
-        self,
-        response: httpx.Response,
-        method: str,
-        url: str,
-    ) -> None:
-        """Log descriptive error messages from Jira API responses."""
-        try:
-            error_body = response.json()
-            logger.error(
-                f"Jira API request failed with (HTTP {response.status_code}) for {method} {url}. "
-                f"See response for details: {error_body}"
-            )
-        except json.JSONDecodeError:
-            try:
-                response_text = response.text
-            except httpx.DecodingError:
-                response_text = "<unable to decode response body>"
-            logger.error(
-                f"Jira API request failed with (HTTP {response.status_code}) for {method} {url}. "
-                f"See response for details: {response_text}"
-            )
-
     async def _send_api_request(
         self,
         method: str,
@@ -108,7 +84,10 @@ class JiraServerClient:
         except httpx.HTTPStatusError as e:
             if self._should_ignore_error(e, url, method, ignored_errors):
                 return {}
-            self._log_jira_error_response(e.response, method, url)
+            logger.error(
+                f"Jira API request failed with (HTTP {e.response.status_code}) for {method} {url}. "
+                f"Response: {e.response.text}"
+            )
             raise
 
     @staticmethod
