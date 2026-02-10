@@ -15,6 +15,8 @@ from azure_devops.webhooks.webhook_processors.base_processor import (
 )
 from azure_devops.client.file_processing import matches_glob_pattern, parse_file_content
 from azure_devops.webhooks.events import PushEvents
+
+
 class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [Kind.FILE]
