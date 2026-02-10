@@ -17,11 +17,10 @@ async def _enrich_folder_with_attached_files(
     client: Any,
     folder: dict[str, Any],
     file_paths: list[str],
+    project_path: str,
+    ref: str,
 ) -> dict[str, Any]:
     """Enrich a single folder entity with __attachedFiles."""
-    project_id = folder["repo"]["id"]
-    project_path = folder["repo"].get("path_with_namespace", str(project_id))
-    ref = folder["branch"]
     attached_files: dict[str, Optional[str]] = {}
 
     for file_path in file_paths:
@@ -88,7 +87,8 @@ class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         if attached_files and folders:
             for folder in folders:
                 await _enrich_folder_with_attached_files(
-                    self._gitlab_webhook_client, folder, attached_files
+                    self._gitlab_webhook_client, folder, attached_files,
+                    project_path=repo_path, ref=ref,
                 )
 
         if not folders:

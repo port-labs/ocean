@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from gitlab.webhook.webhook_processors.file_push_webhook_processor import (
     FilePushWebhookProcessor,
+    _enrich_file_with_attached_files,
 )
 from gitlab.helpers.utils import ObjectKind
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
@@ -81,6 +82,7 @@ class TestFilePushWebhookProcessor:
         """Create a mocked GitLabFilesResourceConfig with default no-repos config"""
         config = MagicMock(spec=ResourceConfig)
         config.selector = mock_gitlab_files_selector
+        config.selector.attached_files = []
         config.kind = "file"
         return config
 
@@ -161,6 +163,7 @@ class TestFilePushWebhookProcessor:
         # Mock ResourceConfig
         resource_config = MagicMock(spec=ResourceConfig)
         resource_config.selector = gitlab_files_selector
+        resource_config.selector.attached_files = []
         resource_config.kind = "file"
 
         project_id = push_payload["project_id"]
@@ -243,6 +246,7 @@ class TestFilePushWebhookProcessor:
         # Mock ResourceConfig
         resource_config = MagicMock(spec=ResourceConfig)
         resource_config.selector = gitlab_files_selector
+        resource_config.selector.attached_files = []
         resource_config.kind = "file"
 
         processor._gitlab_webhook_client = MagicMock()
@@ -333,3 +337,82 @@ class TestFilePushWebhookProcessor:
         assert len(result.deleted_raw_results) == 2
         assert result.deleted_raw_results == enriched_deleted_data
         assert not result.updated_raw_results
+
+
+@pytest.mark.asyncio
+class TestFileEnrichWithAttachedFiles:
+    """Tests for the _enrich_file_with_attached_files function"""
+
+    async def test_enrich_file_success(self) -> None:
+        """Test successful enrichment with attached files."""
+        client = MagicMock()
+        client.get_file_content = AsyncMock(
+            side_effect=["readme content", "owners content"]
+        )
+
+        file_entity: dict[str, Any] = {
+            "file": {"path": "src/main.py"},
+            "repo": {"id": 1, "path_with_namespace": "group/project"},
+        }
+
+        result = await _enrich_file_with_attached_files(
+            client,
+            file_entity,
+            ["README.md", "CODEOWNERS"],
+            project_path="group/project",
+            ref="main",
+        )
+
+        assert result["__attachedFiles"] == {
+            "README.md": "readme content",
+            "CODEOWNERS": "owners content",
+        }
+        assert client.get_file_content.call_count == 2
+        client.get_file_content.assert_any_call("group/project", "README.md", "main")
+        client.get_file_content.assert_any_call("group/project", "CODEOWNERS", "main")
+
+    async def test_enrich_file_missing_file(self) -> None:
+        """Test enrichment when a file cannot be fetched — stores None."""
+        client = MagicMock()
+        client.get_file_content = AsyncMock(
+            side_effect=["content", Exception("Not found")]
+        )
+
+        file_entity: dict[str, Any] = {
+            "file": {"path": "src/main.py"},
+            "repo": {"id": 1},
+        }
+
+        result = await _enrich_file_with_attached_files(
+            client,
+            file_entity,
+            ["README.md", "MISSING.md"],
+            project_path="group/project",
+            ref="main",
+        )
+
+        assert result["__attachedFiles"] == {
+            "README.md": "content",
+            "MISSING.md": None,
+        }
+
+    async def test_enrich_file_empty_file_list(self) -> None:
+        """Test enrichment with empty file list yields empty dict."""
+        client = MagicMock()
+        client.get_file_content = AsyncMock()
+
+        file_entity: dict[str, Any] = {
+            "file": {"path": "src/main.py"},
+            "repo": {"id": 1},
+        }
+
+        result = await _enrich_file_with_attached_files(
+            client,
+            file_entity,
+            [],
+            project_path="group/project",
+            ref="main",
+        )
+
+        assert result["__attachedFiles"] == {}
+        client.get_file_content.assert_not_called()

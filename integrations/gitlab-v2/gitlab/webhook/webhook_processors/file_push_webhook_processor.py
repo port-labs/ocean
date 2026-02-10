@@ -18,11 +18,10 @@ async def _enrich_file_with_attached_files(
     client: Any,
     file_entity: dict[str, Any],
     file_paths: list[str],
+    project_path: str,
+    ref: str,
 ) -> dict[str, Any]:
     """Enrich a single file entity with __attachedFiles."""
-    project_id = file_entity["repo"]["id"]
-    project_path = file_entity["repo"].get("path_with_namespace", str(project_id))
-    ref = file_entity["branch"]
     attached_files: dict[str, Optional[str]] = {}
 
     for file_path in file_paths:
@@ -137,7 +136,8 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         if attached_files and updated_results:
             for file_entity in updated_results:
                 await _enrich_file_with_attached_files(
-                    self._gitlab_webhook_client, file_entity, attached_files
+                    self._gitlab_webhook_client, file_entity, attached_files,
+                    project_path=repo_path, ref=branch,
                 )
 
         logger.info(
