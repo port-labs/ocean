@@ -100,6 +100,11 @@ class FilesSelector(BaseModel):
 
 class GitLabFilesSelector(GroupSelector):
     files: FilesSelector
+    attached_files: list[str] = Field(
+        alias="attachedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the file entity",
+    )
 
 
 class GitLabFilesResourceConfig(ResourceConfig):

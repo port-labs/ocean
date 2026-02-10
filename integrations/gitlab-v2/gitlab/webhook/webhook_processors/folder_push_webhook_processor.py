@@ -8,9 +8,34 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from loguru import logger
-from typing import cast
+from typing import Any, Optional, cast
 from integration import GitLabFoldersResourceConfig
 from gitlab.helpers.utils import ObjectKind
+
+
+async def _enrich_folder_with_attached_files(
+    client: Any,
+    folder: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a single folder entity with __attachedFiles."""
+    project_id = folder["repo"]["id"]
+    project_path = folder["repo"].get("path_with_namespace", str(project_id))
+    ref = folder["branch"]
+    attached_files: dict[str, Optional[str]] = {}
+
+    for file_path in file_paths:
+        try:
+            content = await client.get_file_content(project_path, file_path, ref)
+            attached_files[file_path] = content
+        except Exception:
+            logger.debug(
+                f"Could not fetch file '{file_path}' from {project_path}@{ref}, storing as None"
+            )
+            attached_files[file_path] = None
+
+    folder["__attachedFiles"] = attached_files
+    return folder
 
 
 class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
@@ -34,6 +59,7 @@ class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         config = cast(GitLabFoldersResourceConfig, resource_config)
         selector = config.selector
         folder_patterns = selector.folders
+        attached_files = selector.attached_files or []
 
         folders = []
         for pattern in folder_patterns:
@@ -57,6 +83,13 @@ class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 path=pattern.path, repository=repo_path, branch=branch
             ):
                 folders.extend(folder_batch)
+
+        # Enrich folders with attached files if configured
+        if attached_files and folders:
+            for folder in folders:
+                await _enrich_folder_with_attached_files(
+                    self._gitlab_webhook_client, folder, attached_files
+                )
 
         if not folders:
             logger.info(

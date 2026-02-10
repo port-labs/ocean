@@ -87,6 +87,11 @@ class FolderSelector(BaseModel):
 
 class GithubFolderSelector(Selector):
     folders: list[FolderSelector]
+    attached_files: list[str] = Field(
+        alias="attachedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the folder entity",
+    )
 
 
 class GithubUserSelector(Selector):
@@ -289,6 +294,11 @@ class GithubFilePattern(BaseModel):
 
 class GithubFileSelector(Selector):
     files: list[GithubFilePattern]
+    attached_files: list[str] = Field(
+        alias="attachedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the file entity",
+    )
 
 
 class GithubFileResourceConfig(ResourceConfig):

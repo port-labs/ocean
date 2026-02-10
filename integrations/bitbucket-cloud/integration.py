@@ -121,6 +121,11 @@ class BitbucketFilePattern(BaseModel):
 
 class BitbucketFileSelector(Selector):
     files: BitbucketFilePattern
+    attached_files: list[str] = Field(
+        alias="attachedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the file entity",
+    )
 
 
 class BitbucketFileResourceConfig(ResourceConfig):

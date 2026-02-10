@@ -20,6 +20,7 @@ from github.helpers.utils import ObjectKind
 from integration import GithubFilePattern, GithubFileResourceConfig
 from loguru import logger
 from github.helpers.port_app_config import ORG_CONFIG_REPO
+from main import _enrich_file_entities_batch_with_attached_files
 
 
 YAML_SUFFIX = (".yaml", ".yml")
@@ -85,6 +86,13 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
             repository,
             current_branch,
         )
+
+        attached_files = selector.attached_files or []
+        if attached_files and updated_raw_results:
+            rest_client = create_github_client()
+            updated_raw_results = await _enrich_file_entities_batch_with_attached_files(
+                rest_client, updated_raw_results, attached_files
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=updated_raw_results,

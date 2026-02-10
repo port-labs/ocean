@@ -138,6 +138,82 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield batch
 
 
+async def _enrich_folder_with_attached_files(
+    client: BitbucketClient,
+    folder: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a folder entity with __attachedFiles from the given file paths."""
+    repo = folder.get("repo", {})
+    repo_slug = repo.get("slug") or repo.get("name", "").replace(" ", "-")
+    branch = folder.get("branch", "main")
+    attached: dict[str, Any] = {}
+
+    for file_path in file_paths:
+        try:
+            content = await client.get_repository_files(repo_slug, branch, file_path)
+            attached[file_path] = content
+        except Exception as e:
+            logger.debug(
+                f"Could not fetch file {file_path} from {repo_slug}@{branch}: {e}"
+            )
+            attached[file_path] = None
+
+    folder["__attachedFiles"] = attached
+    return folder
+
+
+async def _enrich_folders_batch_with_attached_files(
+    client: BitbucketClient,
+    folders: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of folders with attached files."""
+    tasks = [
+        _enrich_folder_with_attached_files(client, folder, file_paths)
+        for folder in folders
+    ]
+    return list(await asyncio.gather(*tasks))
+
+
+async def _enrich_file_entity_with_attached_files(
+    client: BitbucketClient,
+    file_entity: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a file entity with __attachedFiles from the given file paths."""
+    repo = file_entity.get("repo", {})
+    repo_slug = repo.get("slug") or repo.get("name", "").replace(" ", "-")
+    branch = file_entity.get("branch") or repo.get("mainbranch", {}).get("name", "main")
+    attached: dict[str, Any] = {}
+
+    for file_path in file_paths:
+        try:
+            content = await client.get_repository_files(repo_slug, branch, file_path)
+            attached[file_path] = content
+        except Exception as e:
+            logger.debug(
+                f"Could not fetch file {file_path} from {repo_slug}@{branch}: {e}"
+            )
+            attached[file_path] = None
+
+    file_entity["__attachedFiles"] = attached
+    return file_entity
+
+
+async def _enrich_file_entities_batch_with_attached_files(
+    client: BitbucketClient,
+    file_entities: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of file entities with attached files."""
+    tasks = [
+        _enrich_file_entity_with_attached_files(client, fe, file_paths)
+        for fe in file_entities
+    ]
+    return list(await asyncio.gather(*tasks))
+
+
 @ocean.on_resync(ObjectKind.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync folders based on configuration."""
@@ -147,11 +223,16 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(BitbucketFolderSelector, config.selector)
     client = init_client()
     params: dict[str, Any] = build_repo_params(selector.user_role, selector.repo_query)
+    attached_files = selector.attached_files or []
     async for matching_folders in process_folder_patterns(
         selector.folders,
         client,
         params=params,
     ):
+        if attached_files:
+            matching_folders = await _enrich_folders_batch_with_attached_files(
+                client, matching_folders, attached_files
+            )
         yield matching_folders
 
 
@@ -162,7 +243,13 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         Union[ResourceConfig, BitbucketFileResourceConfig], event.resource_config
     )
     selector = cast(BitbucketFileSelector, config.selector)
+    attached_files = selector.attached_files or []
+    client = init_client() if attached_files else None
     async for file_result in process_file_patterns(selector.files):
+        if attached_files and client:
+            file_result = await _enrich_file_entities_batch_with_attached_files(
+                client, file_result, attached_files
+            )
         yield file_result
 
 

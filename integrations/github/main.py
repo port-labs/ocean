@@ -836,6 +836,104 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield alerts
 
 
+async def _enrich_folder_with_attached_files(
+    rest_client: Any,
+    folder: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a folder entity with __attachedFiles from the given file paths."""
+    repo = folder.get("__repository", {})
+    organization = folder.get("__organization", "")
+    repo_name = repo.get("name", "")
+    default_branch = repo.get("default_branch")
+    attached: dict[str, Any] = {}
+    file_exporter = RestFileExporter(rest_client)
+
+    for file_path in file_paths:
+        try:
+            response = await file_exporter.get_resource(
+                FileContentOptions(
+                    organization=organization,
+                    repo_name=repo_name,
+                    file_path=file_path,
+                    branch=default_branch,
+                )
+            )
+            attached[file_path] = response.get("content")
+        except Exception as e:
+            logger.debug(
+                f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
+            )
+            attached[file_path] = None
+
+    folder["__attachedFiles"] = attached
+    return folder
+
+
+async def _enrich_folders_batch_with_attached_files(
+    rest_client: Any,
+    folders: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of folders with attached files."""
+    import asyncio
+
+    tasks = [
+        _enrich_folder_with_attached_files(rest_client, folder, file_paths)
+        for folder in folders
+    ]
+    return list(await asyncio.gather(*tasks))
+
+
+async def _enrich_file_entity_with_attached_files(
+    rest_client: Any,
+    file_entity: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a file entity with __attachedFiles from the given file paths."""
+    organization = file_entity.get("organization", "")
+    repo = file_entity.get("repository", {})
+    repo_name = repo.get("name", "") if isinstance(repo, dict) else ""
+    branch = file_entity.get("branch")
+    attached: dict[str, Any] = {}
+    file_exporter = RestFileExporter(rest_client)
+
+    for file_path in file_paths:
+        try:
+            response = await file_exporter.get_resource(
+                FileContentOptions(
+                    organization=organization,
+                    repo_name=repo_name,
+                    file_path=file_path,
+                    branch=branch,
+                )
+            )
+            attached[file_path] = response.get("content")
+        except Exception as e:
+            logger.debug(
+                f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
+            )
+            attached[file_path] = None
+
+    file_entity["__attachedFiles"] = attached
+    return file_entity
+
+
+async def _enrich_file_entities_batch_with_attached_files(
+    rest_client: Any,
+    file_entities: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of file entities with attached files."""
+    import asyncio
+
+    tasks = [
+        _enrich_file_entity_with_attached_files(rest_client, fe, file_paths)
+        for fe in file_entities
+    ]
+    return list(await asyncio.gather(*tasks))
+
+
 @ocean.on_resync(ObjectKind.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all folders in specified repositories."""
@@ -845,6 +943,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     folder_exporter = RestFolderExporter(rest_client)
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
+    attached_files = selector.attached_files or []
 
     org_exporter = RestOrganizationExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
@@ -858,6 +957,10 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repo_path_map = await pattern_builder.build(selector.folders)
 
     async for folders in folder_exporter.get_paginated_resources(repo_path_map):
+        if attached_files:
+            folders = await _enrich_folders_batch_with_attached_files(
+                rest_client, folders, attached_files
+            )
         yield folders
 
 
@@ -873,6 +976,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     config = cast(GithubFileResourceConfig, event.resource_config)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
+    attached_files = config.selector.attached_files or []
 
     pattern_builder = FilePatternMappingBuilder(
         org_exporter=org_exporter,
@@ -882,6 +986,10 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repo_path_map = await pattern_builder.build(config.selector.files)
 
     async for file_results in file_exporter.get_paginated_resources(repo_path_map):
+        if attached_files:
+            file_results = await _enrich_file_entities_batch_with_attached_files(
+                rest_client, file_results, attached_files
+            )
         yield file_results
 
 

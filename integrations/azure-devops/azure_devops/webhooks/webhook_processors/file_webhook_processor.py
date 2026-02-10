@@ -15,6 +15,7 @@ from azure_devops.webhooks.webhook_processors.base_processor import (
 )
 from azure_devops.client.file_processing import matches_glob_pattern, parse_file_content
 from azure_devops.webhooks.events import PushEvents
+from main import _enrich_file_entities_batch_with_attached_files
 
 
 class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
@@ -56,8 +57,16 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         created, modified, deleted = await self._process_push_updates(
             matching_resource_config, payload, updates, client
         )
+
+        attached_files = selector.attached_files or []
+        updated = created + modified
+        if attached_files and updated:
+            updated = await _enrich_file_entities_batch_with_attached_files(
+                client, updated, attached_files
+            )
+
         return WebhookEventRawResults(
-            updated_raw_results=created + modified,
+            updated_raw_results=updated,
             deleted_raw_results=deleted,
         )
 
