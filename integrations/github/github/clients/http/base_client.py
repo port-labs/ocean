@@ -120,9 +120,12 @@ class AbstractGithubClient(ABC):
                     ):
                         return Response(200, content=b"{}")
 
+                github_request_id = response.headers.get(
+                    "x-github-request-id", "unknown"
+                )
                 logger.error(
                     f"GitHub API error for endpoint '{resource}': Status {response.status_code}, "
-                    f"Method: {method}, Response: {response.text}"
+                    f"Method: {method}, GitHub Request ID: {github_request_id}, Response: {response.text}"
                 )
 
                 raise

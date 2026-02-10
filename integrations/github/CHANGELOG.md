@@ -7,12 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.27 (2026-02-09)
+
+
+### Bug Fixes
+
+- Fixed GitHub webhook delete handling by enriching `deleted_raw_results` with repository + organization metadata across processors (branch, tag, collaborator, issue, pull request, release, workflow run).
+- Enriched workflow run exporter responses with repository + organization metadata for consistent mappings.
+
+
+## 5.0.26 (2026-02-09)
+
+
+### Bug Fixes
+
+- Include `__typename` in the pull-request GraphQL query for `reviewRequests.requestedReviewer` to support reviewer type extraction.
+
+
 ## 5.0.25 (2026-02-06)
 
 
 ### Bug Fixes
 
-- Fixed empty responses not being properly handled in GitHub exporters for webhooks by returning None instead of empty objects, with updated type hints to Optional[RAW_ITEM]
+- Retry transient GitHub 500 errors across GitHub API requests, and include the GitHub request id in error logs for correlation.
 
 
 ## 5.0.24 (2026-02-05)

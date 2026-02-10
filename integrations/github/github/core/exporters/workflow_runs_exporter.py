@@ -5,6 +5,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import ListWorkflowRunOptions, SingleWorkflowRunOptions
+from github.helpers.utils import enrich_with_organization, enrich_with_repository
 
 
 class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
@@ -26,7 +27,9 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
             f"Fetched workflow run {run_id} from {repo_name} from {organization}"
         )
 
-        return response
+        return enrich_with_organization(
+            enrich_with_repository(response, repo_name), organization
+        )
 
     async def get_paginated_resources[
         ExporterOptionsT: ListWorkflowRunOptions
@@ -47,7 +50,13 @@ class RestWorkflowRunExporter(AbstractGithubExporter[GithubRestClient]):
                 f"Fetched batch of {len(workflow_runs)} workflow runs from {repo_name} "
                 f"for workflow {workflow_id} from {organization}"
             )
-            yield workflow_runs
+            batch = [
+                enrich_with_organization(
+                    enrich_with_repository(workflow_run, repo_name), organization
+                )
+                for workflow_run in workflow_runs
+            ]
+            yield batch
 
             fetched_batch = fetched_batch + len(workflow_runs)
             if fetched_batch >= options["max_runs"]:
