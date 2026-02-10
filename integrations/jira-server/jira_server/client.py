@@ -4,7 +4,14 @@ import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 
+from jira_server.helpers.utils import IgnoredError
+
 PAGE_SIZE = 100
+
+
+IGNORED_ERRORS = [
+    IgnoredError(status=404, message="Resource not found"),
+]
 
 
 class ResourceKey(StrEnum):
@@ -33,6 +40,28 @@ class JiraServerClient:
                 "Either token or both username and password must be provided"
             )
 
+    def _should_ignore_error(
+        self,
+        error: httpx.HTTPStatusError,
+        url: str,
+        method: str,
+        ignored_errors: list[IgnoredError] | None = None,
+    ) -> bool:
+        """Check if an HTTP error should be ignored based on the ignored_errors list."""
+        if not ignored_errors:
+            return False
+
+        status_code = error.response.status_code
+
+        for ignored_error in ignored_errors:
+            if status_code == ignored_error.status:
+                logger.warning(
+                    f"Ignored error {status_code} for {method} {url}: "
+                    f"{ignored_error.message or 'No message'}"
+                )
+                return True
+        return False
+
     async def _send_api_request(
         self,
         method: str,
@@ -40,12 +69,26 @@ class JiraServerClient:
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
+        ignored_errors: list[IgnoredError] | None = None,
     ) -> Any:
-        response = await self.client.request(
-            method=method, url=url, params=params, json=json, headers=headers
-        )
-        response.raise_for_status()
-        return response.json()
+        """Send an API request with optional error ignoring.
+
+        Returns an empty dict {} for ignored errors, allowing callers to handle gracefully.
+        """
+        try:
+            response = await self.client.request(
+                method=method, url=url, params=params, json=json, headers=headers
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            if self._should_ignore_error(e, url, method, ignored_errors):
+                return {}
+            logger.error(
+                f"Jira API request failed with (HTTP {e.response.status_code}) for {method} {url}. "
+                f"Response: {e.response.text}"
+            )
+            raise
 
     @staticmethod
     def _generate_base_req_params(startAt: int = 0) -> dict[str, Any]:
@@ -56,14 +99,23 @@ class JiraServerClient:
         url: str,
         extract_key: str | None = None,
         initial_params: dict[str, Any] | None = None,
+        ignored_errors: list[IgnoredError] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = initial_params or {}
-        params |= self._generate_base_req_params()
+        params = {**(initial_params or {}), **self._generate_base_req_params()}
 
         start_at = 0
         while True:
             params["startAt"] = start_at
-            response_data = await self._send_api_request("GET", url, params=params)
+            response_data = await self._send_api_request(
+                "GET", url, params=params, ignored_errors=ignored_errors
+            )
+
+            if not response_data:
+                logger.info(
+                    "Stopping pagination due to empty response or ignored error"
+                )
+                break
+
             items = response_data.get(extract_key, []) if extract_key else response_data
 
             if not items:
@@ -114,7 +166,10 @@ class JiraServerClient:
         if "jql" in params:
             logger.info(f"Using JQL filter: {params['jql']}")
         async for issues in self._get_paginated_data(
-            f"{self.api_url}/search", "issues", initial_params=params
+            f"{self.api_url}/search",
+            "issues",
+            initial_params=params,
+            ignored_errors=IGNORED_ERRORS,
         ):
             yield issues
 

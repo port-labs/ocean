@@ -86,6 +86,10 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 repo=repo if is_graphql_api else None,
             )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         logger.debug(f"Successfully fetched pull request data for {repo_name}/{number}")
         return WebhookEventRawResults(
