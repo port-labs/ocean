@@ -138,6 +138,11 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             response = await self.client.send_api_request(
                 self.client.base_url, method="POST", json_data=payload
             )
+            if not response or "data" not in response:
+                logger.warning(
+                    f"No data returned while paginating members for team '{team_slug}', stopping pagination"
+                )
+                break
 
             team_data = response["data"]["organization"]["team"]
 

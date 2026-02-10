@@ -227,7 +227,12 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
 
         url = f"{self.client.base_url}/repos/{organization}/{repo_name}/dependency-graph/sbom"
         response = await self.client.send_api_request(url)
-        sbom = response.get("sbom", {})
+        if not response:
+            logger.warning(
+                f"No SBOM found for repository {repo_name} in organization {organization}"
+            )
+            repository["__sbom"] = {}
+            return repository
 
-        repository["__sbom"] = sbom
+        repository["__sbom"] = response.get("sbom", {})
         return repository
