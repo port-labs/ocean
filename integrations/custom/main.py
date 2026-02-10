@@ -31,7 +31,7 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     headers = getattr(selector, "headers", None) or {}
     body = getattr(selector, "body", None)
 
-    # The kind IS the endpoint path (e.g., "/api/v1/users")
+    # The kind IS the endpoint path (e.g., "/api/v1/users")...
     # Check if endpoint has path parameters that need resolution
     # Yields batches of tuples: [(endpoint_url, {param_name: param_value}), ...]
     async for endpoint_batch in resolve_dynamic_endpoints(selector, kind):
