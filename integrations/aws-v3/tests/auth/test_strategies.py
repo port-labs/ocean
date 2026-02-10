@@ -603,7 +603,6 @@ class TestOrganizationsHealthCheckMixin:
                 )
                 assert strategy.valid_arns == [expected_arn]
 
-
     @pytest.mark.asyncio
     async def test_healthcheck_is_idempotent(
         self, strategy: OrganizationsStrategy, mock_aiosession: AsyncMock
