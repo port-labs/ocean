@@ -7,13 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.0.27 (2026-02-09)
+## 5.0.28 (2026-02-10)
 
 
 ### Features
 
-- Added `attachedFiles` selector for repository entities to fetch file contents (e.g. README.md, CODEOWNERS) during enrichment and expose them under `__attachedFiles` in the raw data
+- Added `attachedFiles` selector for repository, folder and file entities to fetch file contents (e.g. README.md, CODEOWNERS) during enrichment and expose them under `__attachedFiles` in the raw data
 - Added deprecation warning when using `file://` prefix in mappings, guiding users to migrate to the new `attachedFiles` selector
+
+
+## 5.0.27 (2026-02-09)
+
+
+### Bug Fixes
+
+- Fixed GitHub webhook delete handling by enriching `deleted_raw_results` with repository + organization metadata across processors (branch, tag, collaborator, issue, pull request, release, workflow run).
+- Enriched workflow run exporter responses with repository + organization metadata for consistent mappings.
 
 
 ## 5.0.26 (2026-02-09)
