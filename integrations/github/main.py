@@ -1,4 +1,4 @@
-from typing import Any, cast, Optional
+from typing import Any, cast
 
 from loguru import logger
 
@@ -94,7 +94,6 @@ from integration import (
     GithubUserConfig,
     GithubDeploymentConfig,
 )
-from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.options import FileContentOptions
 
 MAX_CONCURRENT_REPOS = 10
