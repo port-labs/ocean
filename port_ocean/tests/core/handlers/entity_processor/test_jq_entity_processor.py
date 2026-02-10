@@ -999,3 +999,93 @@ class TestJQEntityProcessor:
             "jq_field": ".jq_field",
             "async_field": ".async_field",
         }
+
+    async def test_shallow_copy_with_mask_object_does_not_corrupt_original(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        """
+        Regression test for bug where mask_object mutated data in place,
+        causing entity properties to contain [REDACTED] values.
+
+        The bug occurred because:
+        1. _parse_items creates a shallow copy for examples: item.copy()
+        2. mask_object (in ingest_integration_kind_examples) mutated nested dicts in place
+        3. The mutation affected the original raw_results used for entity mapping
+
+        This test directly exercises the buggy code path:
+        - Creates data with nested objects containing sensitive patterns
+        - Makes a shallow copy (as _parse_items does)
+        - Calls mask_object on the copy
+        - Verifies the original is NOT mutated
+        """
+        from copy import deepcopy
+        from port_ocean.log.sensetive import SensitiveLogFilter, sensitive_log_filter
+
+        # Save original patterns to restore after test (compiled_patterns is class-level)
+        original_patterns = SensitiveLogFilter.compiled_patterns.copy()
+
+        try:
+            # Add a sensitive pattern (simulating organizationUrl marked as sensitive)
+            sensitive_url = "https://dev.azure.com/my-secret-org"
+            sensitive_log_filter.hide_sensitive_strings(sensitive_url)
+
+            # Simulate raw_results from Azure DevOps API with nested objects
+            raw_results: list[dict[str, Any]] = [
+                {
+                    "id": "board-123",
+                    "name": "Sprint Board",
+                    "url": f"{sensitive_url}/project/_apis/work/boards/123",
+                    "__project": {
+                        "id": "project-456",
+                        "name": "My Project",
+                        "url": f"{sensitive_url}/_apis/projects/456",
+                    },
+                    "_links": {
+                        "self": {
+                            "href": f"{sensitive_url}/project/_apis/work/boards/123"
+                        },
+                    },
+                },
+            ]
+
+            # Store original values for comparison
+            raw_results_before: list[dict[str, Any]] = deepcopy(raw_results)
+
+            # Simulate what JQEntityProcessor._parse_items does: shallow copy for examples
+            examples_to_send = [item.copy() for item in raw_results[:1]]
+
+            # Call mask_object on the examples (as ingest_integration_kind_examples does)
+            masked_examples: list[dict[str, Any]] = sensitive_log_filter.mask_object(
+                examples_to_send, full_hide=True
+            )
+
+            # Verify the masked examples contain [REDACTED]
+            assert (
+                "[REDACTED]" in masked_examples[0]["url"]
+            ), "Masked examples should contain [REDACTED]"
+            assert (
+                "[REDACTED]" in masked_examples[0]["__project"]["url"]
+            ), "Nested URLs should be masked"
+
+            # CRITICAL ASSERTION: The original raw_results should NOT be mutated
+            # Before the fix, this failed because mask_object mutated nested dicts in place
+            assert raw_results == raw_results_before, (
+                "raw_results was mutated by mask_object! "
+                f"Original nested URL was: {raw_results_before[0]['__project']['url']}, "
+                f"but now it's: {raw_results[0]['__project']['url']}. "
+                "This bug causes entity properties to contain [REDACTED] values."
+            )
+
+            # Verify specific nested values are unchanged
+            assert (
+                raw_results[0]["__project"]["url"]
+                == f"{sensitive_url}/_apis/projects/456"
+            ), "Nested __project.url should not be mutated"
+            assert (
+                raw_results[0]["_links"]["self"]["href"]
+                == f"{sensitive_url}/project/_apis/work/boards/123"
+            ), "Deeply nested _links.self.href should not be mutated"
+
+        finally:
+            # Restore original patterns to avoid affecting other tests
+            SensitiveLogFilter.compiled_patterns = original_patterns

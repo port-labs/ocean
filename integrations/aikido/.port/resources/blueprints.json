@@ -35,7 +35,7 @@
                     "title": "Last Scanned At"
                 }
             },
-            "required": ["name", "provider", "externalRepoId"]
+            "required": ["name", "provider"]
         },
         "relations": {
             "aikidoIssue": {
@@ -59,7 +59,7 @@
                 "attackSurface": {
                     "type": "string",
                     "title": "Attack Surface",
-                    "enum": ["backend", "frontend", "infrastructure", "container"]
+                    "enum": ["backend", "frontend", "infrastructure", "docker_container", "cloud"]
                 },
                 "status": {
                     "type": "string",
@@ -84,7 +84,7 @@
                 "type": {
                     "type": "string",
                     "title": "Issue Type",
-                    "enum": ["open_source", "leaked_secret", "cloud", "iac", "sast", "mobile", "surface_monitoring", "malware", "eol", "scm_security", "license"]
+                    "enum": ["open_source", "leaked_secret", "cloud", "iac", "sast", "mobile", "surface_monitoring", "malware", "eol", "scm_security", "ai_pentest", "license"]
                 },
                 "rule": {
                     "type": "string",
@@ -107,7 +107,7 @@
                     "title": "Closed At"
                 }
             },
-            "required": ["status", "severity", "type", "rule"]
+            "required": ["status", "severity", "type"]
         },
         "relations": {
             "aikidoRepository": {
