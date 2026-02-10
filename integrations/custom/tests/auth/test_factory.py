@@ -1,12 +1,12 @@
 from typing import Dict, Any
 import pytest
 import httpx
-from http_server.auth.factory import get_auth_handler
-from http_server.auth.api_key import ApiKeyAuth
-from http_server.auth.basic import BasicAuth
-from http_server.auth.bearer_token import BearerTokenAuth
-from http_server.auth.custom import CustomAuth
-from http_server.auth.no_auth import NoAuth
+from custom.auth.factory import get_auth_handler
+from custom.auth.api_key import ApiKeyAuth
+from custom.auth.basic import BasicAuth
+from custom.auth.bearer_token import BearerTokenAuth
+from custom.auth.custom import CustomAuth
+from custom.auth.no_auth import NoAuth
 
 
 @pytest.mark.asyncio

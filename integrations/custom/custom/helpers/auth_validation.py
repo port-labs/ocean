@@ -6,12 +6,12 @@ from typing import Any
 
 from pydantic import parse_raw_as, parse_obj_as
 
-from http_server.overrides import (
+from custom.auth.models import (
     CustomAuthRequestConfig,
     CustomAuthRequestTemplateConfig,
 )
-from http_server.helpers.template_utils import validate_templates_in_dict
-from http_server.exceptions import (
+from custom.helpers.template_utils import validate_templates_in_dict
+from custom.exceptions import (
     CustomAuthRequestError,
     CustomAuthRequestTemplateError,
     TemplateSyntaxError,

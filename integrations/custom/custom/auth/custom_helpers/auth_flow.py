@@ -13,16 +13,16 @@ from loguru import logger
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryTransport
 
-from http_server.overrides import (
+from custom.auth.models import (
     CustomAuthRequestConfig,
     CustomAuthRequestTemplateConfig,
 )
-from http_server.exceptions import CustomAuthRequestError
-from http_server.exceptions import AuthResponseHashGenerationError
-from http_server.helpers.template_utils import evaluate_templates_in_dict
-from http_server.auth.custom_helpers.lock_manager import LockManager
-from http_server.auth.custom_helpers.template_cache import TemplateCache
-from http_server.auth.custom_helpers.token_expiration_tracker import (
+from custom.exceptions import CustomAuthRequestError
+from custom.exceptions import AuthResponseHashGenerationError
+from custom.helpers.template_utils import evaluate_templates_in_dict
+from custom.auth.custom_helpers.lock_manager import LockManager
+from custom.auth.custom_helpers.template_cache import TemplateCache
+from custom.auth.custom_helpers.token_expiration_tracker import (
     TokenExpirationTracker,
 )
 

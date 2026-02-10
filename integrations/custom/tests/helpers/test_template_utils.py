@@ -1,11 +1,11 @@
 import pytest
-from http_server.helpers.template_utils import (
+from custom.helpers.template_utils import (
     evaluate_templates_in_dict,
     validate_template_syntax,
     validate_templates_in_dict,
     evaluate_template,
 )
-from http_server.exceptions import (
+from custom.exceptions import (
     TemplateEvaluationError,
     TemplateSyntaxError,
     TemplateVariableNotFoundError,

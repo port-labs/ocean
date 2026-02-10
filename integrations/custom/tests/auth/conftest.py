@@ -4,7 +4,7 @@ from typing import Dict, Any
 from unittest.mock import MagicMock, AsyncMock
 import pytest
 
-from http_server.overrides import (
+from custom.auth.models import (
     CustomAuthRequestConfig,
     CustomAuthRequestTemplateConfig,
 )

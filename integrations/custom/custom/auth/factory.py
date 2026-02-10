@@ -1,12 +1,12 @@
 from typing import Dict, Any, Type
 import httpx
 
-from http_server.auth.base import AuthHandler
-from http_server.auth.bearer_token import BearerTokenAuth
-from http_server.auth.api_key import ApiKeyAuth
-from http_server.auth.basic import BasicAuth
-from http_server.auth.no_auth import NoAuth
-from http_server.auth.custom import CustomAuth
+from custom.auth.base import AuthHandler
+from custom.auth.bearer_token import BearerTokenAuth
+from custom.auth.api_key import ApiKeyAuth
+from custom.auth.basic import BasicAuth
+from custom.auth.no_auth import NoAuth
+from custom.auth.custom import CustomAuth
 
 AUTH_HANDLERS: Dict[str, Type[AuthHandler]] = {
     "bearer_token": BearerTokenAuth,

@@ -10,7 +10,7 @@ import asyncio
 from typing import Dict, Any
 
 from port_ocean.context.ocean import ocean
-from http_server.exceptions import (
+from custom.exceptions import (
     TemplateSyntaxError,
     TemplateEvaluationError,
     TemplateVariableNotFoundError,
