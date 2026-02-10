@@ -323,6 +323,20 @@ class TestMultiAccountHealthCheckMixin:
             assert len(strategy._valid_arns) == 25
             assert len(strategy._valid_sessions) == 25
 
+    @pytest.mark.asyncio
+    async def test_healthcheck_is_idempotent(
+        self, strategy: MultiAccountStrategy, mock_aiosession: AsyncMock
+    ) -> None:
+        """Test that calling healthcheck multiple times does not accumulate duplicate ARNs."""
+        with patch.object(strategy, "_can_assume_role", return_value=mock_aiosession):
+            await strategy.healthcheck()
+            assert len(strategy._valid_arns) == 2
+
+            # Call healthcheck again (simulates retry after failed resync)
+            await strategy.healthcheck()
+            assert len(strategy._valid_arns) == 2
+            assert len(strategy._valid_sessions) == 2
+
 
 class TestOrganizationsHealthCheckMixin:
     """Test OrganizationsHealthCheckMixin."""
@@ -588,6 +602,29 @@ class TestOrganizationsHealthCheckMixin:
                     "arn:aws:iam::123456789012:role/OrganizationAccountAccessRole"
                 )
                 assert strategy.valid_arns == [expected_arn]
+
+
+    @pytest.mark.asyncio
+    async def test_healthcheck_is_idempotent(
+        self, strategy: OrganizationsStrategy, mock_aiosession: AsyncMock
+    ) -> None:
+        """Test that calling healthcheck multiple times does not accumulate duplicate ARNs."""
+        mock_accounts = [
+            {"Id": "123456789012", "Name": "Test Account 1", "Status": "ACTIVE"},
+            {"Id": "123456789013", "Name": "Test Account 2", "Status": "ACTIVE"},
+        ]
+
+        with patch.object(strategy, "discover_accounts", return_value=mock_accounts):
+            with patch.object(
+                strategy, "_can_assume_role_in_account", return_value=mock_aiosession
+            ):
+                await strategy.healthcheck()
+                assert len(strategy.valid_arns) == 2
+
+                # Call healthcheck again (simulates retry after failed resync)
+                await strategy.healthcheck()
+                assert len(strategy.valid_arns) == 2
+                assert len(strategy.valid_sessions) == 2
 
 
 class TestOrganizationsStrategy:

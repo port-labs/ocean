@@ -47,6 +47,9 @@ class MultiAccountHealthCheckMixin(AWSSessionStrategy, HealthCheckMixin):
             return None
 
     async def healthcheck(self) -> bool:
+        self._valid_arns = []
+        self._valid_sessions = {}
+
         arns = normalize_arn_list(self.config.get("account_role_arns", []))
         if not arns:
             logger.error("No account_role_arns provided for healthcheck")

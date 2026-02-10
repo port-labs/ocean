@@ -212,6 +212,10 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin
 
     async def healthcheck(self) -> bool:
         """Perform health check by discovering accounts and validating role assumption."""
+        self._valid_arns = []
+        self._valid_sessions = {}
+        self._discovered_accounts = []
+
         try:
             # Discover accounts first
             accounts = await self.discover_accounts()
