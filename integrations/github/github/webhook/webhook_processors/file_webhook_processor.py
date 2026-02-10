@@ -20,6 +20,7 @@ from github.helpers.utils import ObjectKind
 from integration import GithubFilePattern, GithubFileResourceConfig
 from loguru import logger
 from github.helpers.port_app_config import ORG_CONFIG_REPO
+
 YAML_SUFFIX = (".yaml", ".yml")
 JSON_SUFFIX = ".json"
 
@@ -89,10 +90,8 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
             from main import _enrich_file_entities_batch_with_attached_files
 
             rest_client = create_github_client()
-            updated_raw_results = (
-                await _enrich_file_entities_batch_with_attached_files(
-                    rest_client, updated_raw_results, attached_files
-                )
+            updated_raw_results = await _enrich_file_entities_batch_with_attached_files(
+                rest_client, updated_raw_results, attached_files
             )
 
         return WebhookEventRawResults(

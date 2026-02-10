@@ -15,6 +15,7 @@ from bitbucket_cloud.helpers.file_kind_live_event import (
 )
 from loguru import logger
 from initialize_client import init_client
+
 YAML_SUFFIX = (".yaml", ".yml")
 JSON_SUFFIX = ".json"
 
@@ -62,10 +63,8 @@ class FileWebhookProcessor(_BitbucketAbstractWebhookProcessor):
             from main import _enrich_file_entities_batch_with_attached_files
 
             client = init_client()
-            updated_raw_results = (
-                await _enrich_file_entities_batch_with_attached_files(
-                    client, updated_raw_results, attached_files
-                )
+            updated_raw_results = await _enrich_file_entities_batch_with_attached_files(
+                client, updated_raw_results, attached_files
             )
 
         return WebhookEventRawResults(
