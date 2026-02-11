@@ -61,7 +61,7 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
                         branch=default_branch,
                     )
                 )
-                attached[file_path] = response.get("content")
+                attached[file_path] = response.get("content") if response else None
             except Exception as e:
                 logger.debug(
                     f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"

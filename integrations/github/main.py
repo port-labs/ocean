@@ -189,7 +189,7 @@ async def _enrich_repo_with_attached_files(
                     branch=default_branch,
                 )
             )
-            attached[file_path] = response.get("content")
+            attached[file_path] = response.get("content") if response else None
         except Exception as e:
             logger.debug(
                 f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
@@ -859,7 +859,7 @@ async def _enrich_folder_with_attached_files(
                     branch=default_branch,
                 )
             )
-            attached[file_path] = response.get("content")
+            attached[file_path] = response.get("content") if response else None
         except Exception as e:
             logger.debug(
                 f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
@@ -908,7 +908,7 @@ async def _enrich_file_entity_with_attached_files(
                     branch=branch,
                 )
             )
-            attached[file_path] = response.get("content")
+            attached[file_path] = response.get("content") if response else None
         except Exception as e:
             logger.debug(
                 f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
