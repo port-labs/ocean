@@ -6,7 +6,11 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import (
+    ObjectKind,
+    enrich_with_organization,
+    enrich_with_repository,
+)
 from github.webhook.events import ISSUE_DELETE_EVENTS, ISSUE_EVENTS
 from github.core.exporters.issue_exporter import RestIssueExporter
 from github.core.options import SingleIssueOptions
@@ -36,7 +40,8 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
     ) -> WebhookEventRawResults:
         action = payload["action"]
         issue = payload["issue"]
-        repo_name = payload["repository"]["name"]
+        repo = payload["repository"]
+        repo_name = repo["name"]
         issue_number = payload["issue"]["number"]
         organization = self.get_webhook_payload_organization(payload)["login"]
         config = cast(GithubIssueConfig, resource_config)
@@ -61,9 +66,12 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
         if (
             action == "closed" and config.selector.state == "open"
         ) or action in ISSUE_DELETE_EVENTS:
+            data_to_delete = enrich_with_organization(
+                enrich_with_repository(issue, repo_name, repo=repo), organization
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[],
-                deleted_raw_results=[issue],
+                deleted_raw_results=[data_to_delete],
             )
         exporter = RestIssueExporter(create_github_client())
         data_to_upsert = await exporter.get_resource(
@@ -73,6 +81,10 @@ class IssueWebhookProcessor(BaseRepositoryWebhookProcessor):
                 issue_number=issue_number,
             )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
