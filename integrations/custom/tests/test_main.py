@@ -67,9 +67,7 @@ class TestListResponseHandling:
                     "custom.core.exporters.resource_exporter.process_endpoints_concurrently",
                     side_effect=mock_process_endpoints,
                 ),
-                patch(
-                    "custom.helpers.utils.JQEntityProcessorSync"
-                ) as mock_jq_sync,
+                patch("custom.helpers.utils.JQEntityProcessorSync") as mock_jq_sync,
             ):
                 direct_list_response = [
                     {"id": 1, "name": "Alice"},
@@ -133,9 +131,7 @@ class TestListResponseHandling:
                     "custom.core.exporters.resource_exporter.process_endpoints_concurrently",
                     side_effect=mock_process_endpoints,
                 ),
-                patch(
-                    "custom.core.exporters.resource_exporter.logger"
-                ) as mock_logger,
+                patch("custom.core.exporters.resource_exporter.logger") as mock_logger,
             ):
                 object_response = {"data": [{"id": 1, "name": "Alice"}]}
 
@@ -195,9 +191,7 @@ class TestListResponseHandling:
                     "custom.core.exporters.resource_exporter.process_endpoints_concurrently",
                     side_effect=mock_process_endpoints,
                 ),
-                patch(
-                    "custom.helpers.utils.JQEntityProcessorSync"
-                ) as mock_jq_sync,
+                patch("custom.helpers.utils.JQEntityProcessorSync") as mock_jq_sync,
             ):
                 object_response = {"data": {"users": [{"id": 1, "name": "Alice"}]}}
 
