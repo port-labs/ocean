@@ -2,6 +2,7 @@ import os
 from dataclasses import asdict
 from typing import cast
 
+from aiolimiter import AsyncLimiter
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 
@@ -12,17 +13,24 @@ _client: BitbucketClient | None = None
 _client_pid: int | None = None
 
 
+def _recreate_rate_limiter(old: AsyncLimiter) -> AsyncLimiter:
+    """Create a new AsyncLimiter bound to the current event loop, preserving consumption state."""
+    new = AsyncLimiter(old.max_rate, old.time_period)
+    new._level = old._level
+    new._last_check = old._last_check
+    return new
+
+
 def init_client() -> BitbucketClient:
     """Initialize and return the BitbucketClient instance."""
     global _client, _client_pid
     current_pid = os.getpid()
-    if _client is None or _client_pid != current_pid:
-        old_rate_limiter = _client.rate_limiter if _client else None
+    if _client is None:
         config = _create_config()
         _client = BitbucketClient(**asdict(config))
-        if old_rate_limiter is not None:
-            _client.rate_limiter._level = old_rate_limiter._level
-            _client.rate_limiter._last_check = old_rate_limiter._last_check
+        _client_pid = current_pid
+    elif _client_pid != current_pid:
+        _client.rate_limiter = _recreate_rate_limiter(_client.rate_limiter)
         _client_pid = current_pid
     return _client
 
