@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from loguru import logger
@@ -17,10 +17,11 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
 
     async def get_resource[
         ExporterOptionT: SingleTeamOptions
-    ](self, options: ExporterOptionT) -> RAW_ITEM:
+    ](self, options: ExporterOptionT) -> Optional[RAW_ITEM]:
         organization = options["organization"]
+        slug = options["slug"]
         variables = {
-            "slug": options["slug"],
+            "slug": slug,
             "organization": organization,
             "memberFirst": self.MEMBER_PAGE_SIZE,
         }
@@ -32,7 +33,10 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             self.client.base_url, method="POST", json_data=payload
         )
         if not response:
-            return response
+            logger.warning(
+                f"No team found with slug: {slug} in organization {organization}"
+            )
+            return None
 
         data = response["data"]
         team = data["organization"]["team"]
@@ -134,6 +138,11 @@ class GraphQLTeamWithMembersExporter(AbstractGithubExporter[GithubGraphQLClient]
             response = await self.client.send_api_request(
                 self.client.base_url, method="POST", json_data=payload
             )
+            if not response or "data" not in response:
+                logger.warning(
+                    f"No data returned while paginating members for team '{team_slug}', stopping pagination"
+                )
+                break
 
             team_data = response["data"]["organization"]["team"]
 

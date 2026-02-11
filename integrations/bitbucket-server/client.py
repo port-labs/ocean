@@ -75,9 +75,6 @@ class BitbucketClient:
                 "Both rate_limit and rate_limit_window must be provided when initializing BitbucketClient."
             )
 
-        # Despite this, being the rate limits, we do not reduce to the lowest common factor because we want to allow as much
-        # concurrency as possible. This is because we expect most users to have resources
-        # synced under one hour.
         self.rate_limiter = AsyncLimiter(rate_limit, rate_limit_window)
 
         # Initialize semaphore for controlling concurrent API requests

@@ -350,7 +350,7 @@ class TestGetAllAccountSessions:
         """Test that clear_aws_account_sessions clears the cached strategy and all its state."""
         # Create a mock strategy with state (ARNs, sessions)
         mock_strategy = MagicMock(spec=MultiAccountStrategy)
-        mock_strategy._valid_arns = ["arn:aws:iam::123456789012:role/TestRole"]
+        mock_strategy._valid_arns = {"arn:aws:iam::123456789012:role/TestRole"}
         mock_strategy._valid_sessions = {
             "arn:aws:iam::123456789012:role/TestRole": mock_aiosession
         }
@@ -360,9 +360,9 @@ class TestGetAllAccountSessions:
 
         # Verify strategy exists and has state
         assert AccountStrategyFactory._cached_strategy is not None
-        assert AccountStrategyFactory._cached_strategy._valid_arns == [
+        assert AccountStrategyFactory._cached_strategy._valid_arns == {
             "arn:aws:iam::123456789012:role/TestRole"
-        ]
+        }
         assert len(AccountStrategyFactory._cached_strategy._valid_sessions) == 1
 
         # Clear the strategy
@@ -437,10 +437,10 @@ class TestGetAllAccountSessions:
                 mock_get_session.side_effect = [mock_session_1, mock_session_2]
 
                 async def fake_healthcheck(self: MultiAccountStrategy) -> bool:
-                    self._valid_arns = [
+                    self._valid_arns = {
                         "arn:aws:iam::123456789012:role/test-role-1",
                         "arn:aws:iam::987654321098:role/test-role-2",
-                    ]
+                    }
                     self._valid_sessions = {
                         "arn:aws:iam::123456789012:role/test-role-1": mock_session_1,
                         "arn:aws:iam::987654321098:role/test-role-2": mock_session_2,
@@ -466,10 +466,13 @@ class TestGetAllAccountSessions:
                         ) in strategy.get_account_sessions():
                             sessions.append((account_info, session))
                         assert len(sessions) == 2
-                        assert sessions[0][0]["Id"] == "123456789012"
-                        assert sessions[1][0]["Id"] == "987654321098"
-                        assert sessions[0][1] == mock_session_1
-                        assert sessions[1][1] == mock_session_2
+                        sessions_by_id = {s[0]["Id"]: s[1] for s in sessions}
+                        assert set(sessions_by_id.keys()) == {
+                            "123456789012",
+                            "987654321098",
+                        }
+                        assert sessions_by_id["123456789012"] == mock_session_1
+                        assert sessions_by_id["987654321098"] == mock_session_2
 
 
 @pytest.fixture

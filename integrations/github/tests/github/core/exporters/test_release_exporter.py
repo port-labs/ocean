@@ -49,6 +49,7 @@ class TestRestReleaseExporter:
                 )
             )
 
+            assert release is not None
             assert release["name"] == "Release 1.0"
             assert release["__repository"] == "repo1"  # Check repository is enriched
 

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, cast
+from typing import Any, cast, Optional
 from urllib.parse import quote
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
@@ -26,7 +26,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_resource[
         ExporterOptionsT: SingleBranchOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
 
         repo_name, organization, params = parse_github_options(dict(options))
         branch_name = params["branch_name"]
@@ -39,7 +39,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             logger.warning(
                 f"No branch found with name: {branch_name} in repository: {repo_name} from {organization}"
             )
-            return {}
+            return None
 
         if protection_rules:
             response = await self._enrich_branch_with_protection_rules(
@@ -103,7 +103,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
             ]
 
             hydrated = await asyncio.gather(*tasks)
-            yield hydrated
+            yield [branch for branch in hydrated if branch is not None]
 
     async def _run_branch_hydration(
         self,
@@ -113,7 +113,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         detailed: bool,
         protection_rules: bool,
         batch_concurrency_limit: asyncio.Semaphore,
-    ) -> dict[str, Any]:
+    ) -> Optional[dict[str, Any]]:
         async with batch_concurrency_limit:
             return await self._hydrate_branch(
                 repo,
@@ -130,7 +130,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
         branch: dict[str, Any],
         detailed: bool,
         protection_rules: bool,
-    ) -> dict[str, Any]:
+    ) -> Optional[dict[str, Any]]:
         repo_name = repo["name"]
         branch_name = branch["name"]
 
@@ -140,7 +140,7 @@ class RestBranchExporter(AbstractGithubExporter[GithubRestClient]):
                 logger.warning(
                     f"No branch found with name: {branch_name} in repository: {repo_name} from {organization}"
                 )
-                return {}
+                return None
 
             logger.info(
                 f"Added extra details for branch '{branch_name}' in repo '{repo_name}'."
