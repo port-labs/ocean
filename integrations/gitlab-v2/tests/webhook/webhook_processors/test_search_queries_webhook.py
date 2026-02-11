@@ -1,4 +1,5 @@
 """Tests for webhook processors handling search queries enrichment."""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
@@ -9,7 +10,6 @@ from gitlab.webhook.webhook_processors.push_webhook_processor import (
     PushWebhookProcessor,
 )
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
-from typing import Any
 
 from integration import SearchQuery
 
@@ -66,9 +66,7 @@ class TestProjectWebhookWithSearchQueries:
 
         # Verify search_queries were serialized and passed
         call_kwargs = processor._gitlab_webhook_client.get_project.call_args
-        assert call_kwargs[1]["search_queries"] == [
-            sq.dict() for sq in search_queries
-        ]
+        assert call_kwargs[1]["search_queries"] == [sq.dict() for sq in search_queries]
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0]["__searchQueries"]["hasPortYml"] is True
 
@@ -173,12 +171,12 @@ class TestPushWebhookWithSearchQueries:
         result = await processor.handle_event(payload, resource_config)
 
         call_kwargs = processor._gitlab_webhook_client.get_project.call_args
-        assert call_kwargs[1]["search_queries"] == [
-            sq.dict() for sq in search_queries
-        ]
+        assert call_kwargs[1]["search_queries"] == [sq.dict() for sq in search_queries]
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0]["__searchQueries"]["hasCI"] is True
-        assert result.updated_raw_results[0]["__searchQueries"]["hasDockerfile"] is False
+        assert (
+            result.updated_raw_results[0]["__searchQueries"]["hasDockerfile"] is False
+        )
 
     async def test_handle_event_without_search_queries(
         self, processor: PushWebhookProcessor

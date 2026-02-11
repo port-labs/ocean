@@ -1,8 +1,13 @@
 """Tests for deprecation warnings when using file:// and search:// prefixes in mappings."""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from integration import GitManipulationHandler, FILE_PROPERTY_PREFIX, SEARCH_PROPERTY_PREFIX
+from integration import (
+    GitManipulationHandler,
+    FILE_PROPERTY_PREFIX,
+    SEARCH_PROPERTY_PREFIX,
+)
 
 
 @pytest.fixture
@@ -28,9 +33,7 @@ class TestDeprecationWarnings:
         pattern = f"{FILE_PROPERTY_PREFIX}README.md"
 
         with (
-            patch(
-                "integration.FileEntityProcessor"
-            ) as MockFileProcessor,
+            patch("integration.FileEntityProcessor") as MockFileProcessor,
             patch("integration.logger") as mock_logger,
         ):
             mock_instance = MagicMock()
@@ -55,9 +58,7 @@ class TestDeprecationWarnings:
         pattern = f"{SEARCH_PROPERTY_PREFIX}scope=blobs&&query=filename:port.yml"
 
         with (
-            patch(
-                "integration.SearchEntityProcessor"
-            ) as MockSearchProcessor,
+            patch("integration.SearchEntityProcessor") as MockSearchProcessor,
             patch("integration.logger") as mock_logger,
         ):
             mock_instance = MagicMock()
@@ -77,14 +78,9 @@ class TestDeprecationWarnings:
         self, handler: GitManipulationHandler
     ) -> None:
         """Test that patterns without special prefixes don't trigger deprecation warnings."""
-        data = {"id": 123}
-        pattern = ".name"
-
         with (
-            patch.object(
-                handler, "_search", wraps=handler._search
-            ),
-            patch("integration.logger") as mock_logger,
+            patch.object(handler, "_search", wraps=handler._search),
+            patch("integration.logger") as _mock_logger,
             patch(
                 "integration.JQEntityProcessor._search",
                 new_callable=AsyncMock,
@@ -107,9 +103,7 @@ class TestDeprecationWarnings:
         pattern = f"{FILE_PROPERTY_PREFIX}README.md"
 
         with (
-            patch(
-                "integration.FileEntityProcessor"
-            ) as MockFileProcessor,
+            patch("integration.FileEntityProcessor") as MockFileProcessor,
             patch("integration.logger"),
         ):
             mock_instance = MagicMock()
@@ -130,9 +124,7 @@ class TestDeprecationWarnings:
         pattern = f"{SEARCH_PROPERTY_PREFIX}scope=blobs&&query=filename:port.yml"
 
         with (
-            patch(
-                "integration.SearchEntityProcessor"
-            ) as MockSearchProcessor,
+            patch("integration.SearchEntityProcessor") as MockSearchProcessor,
             patch("integration.logger"),
         ):
             mock_instance = MagicMock()

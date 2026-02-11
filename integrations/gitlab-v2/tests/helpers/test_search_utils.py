@@ -1,4 +1,5 @@
 """Tests for the search utility functions."""
+
 import pytest
 
 from gitlab.entity_processors.utils import parse_search_string

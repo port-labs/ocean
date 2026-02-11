@@ -310,7 +310,7 @@ class GitManipulationHandler(JQEntityProcessor):
                 f"Pattern: '{pattern}'. "
                 f"Use the 'attachedFiles' selector instead. Example: "
                 f"selector.attachedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
-                f"Then map to .__attachedFiles[\"{pattern[len(FILE_PROPERTY_PREFIX):]}\"]"
+                f'Then map to .__attachedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
             )
             entity_processor = FileEntityProcessor
         elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
@@ -319,7 +319,7 @@ class GitManipulationHandler(JQEntityProcessor):
                 f"Pattern: '{pattern}'. "
                 f"Use the 'searchQueries' selector instead. Example: "
                 f"selector.searchQueries: [{{name: '<queryName>', scope: '<scope>', query: '<query>'}}] "
-                f"Then map to .__searchQueries[\"<queryName>\"]"
+                f'Then map to .__searchQueries["<queryName>"]'
             )
             entity_processor = SearchEntityProcessor
         else:

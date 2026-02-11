@@ -1,4 +1,5 @@
 """Tests for SearchQuery model and ProjectSelector.search_queries field."""
+
 import pytest
 from pydantic import ValidationError
 
@@ -28,12 +29,12 @@ class TestSearchQueryModel:
     def test_search_query_missing_name(self) -> None:
         """Test that SearchQuery requires 'name'."""
         with pytest.raises(ValidationError):
-            SearchQuery(query="test")  # type: ignore
+            SearchQuery(query="test")  # type: ignore[call-arg]
 
     def test_search_query_missing_query(self) -> None:
         """Test that SearchQuery requires 'query'."""
         with pytest.raises(ValidationError):
-            SearchQuery(name="test")  # type: ignore
+            SearchQuery(name="test")  # type: ignore[call-arg]
 
     def test_search_query_dict_output(self) -> None:
         """Test dict serialization of SearchQuery."""
@@ -56,9 +57,11 @@ class TestProjectSelectorSearchQueries:
         """Test ProjectSelector with search queries provided."""
         selector = ProjectSelector(
             query="true",
-            searchQueries=[  # type: ignore[call-arg]
-                {"name": "hasPortYml", "scope": "blobs", "query": "filename:port.yml"},
-                {"name": "hasDocker", "query": "filename:Dockerfile"},
+            searchQueries=[
+                SearchQuery(
+                    name="hasPortYml", scope="blobs", query="filename:port.yml"
+                ),
+                SearchQuery(name="hasDocker", query="filename:Dockerfile"),
             ],
         )
         assert len(selector.search_queries) == 2
@@ -71,16 +74,14 @@ class TestProjectSelectorSearchQueries:
 
     def test_selector_with_empty_search_queries_list(self) -> None:
         """Test ProjectSelector with explicitly empty search queries."""
-        selector = ProjectSelector(query="true", searchQueries=[])  # type: ignore[call-arg]
+        selector = ProjectSelector(query="true", searchQueries=[])
         assert selector.search_queries == []
 
     def test_selector_search_queries_alias(self) -> None:
         """Test that 'searchQueries' alias works for 'search_queries'."""
         selector = ProjectSelector(
             query="true",
-            searchQueries=[  # type: ignore[call-arg]
-                {"name": "test", "query": "test_query"}
-            ],
+            searchQueries=[SearchQuery(name="test", query="test_query")],
         )
         # The Python attribute name is search_queries
         assert len(selector.search_queries) == 1
@@ -89,20 +90,22 @@ class TestProjectSelectorSearchQueries:
     def test_selector_invalid_search_query_entry(self) -> None:
         """Test that invalid search query entries raise ValidationError."""
         with pytest.raises(ValidationError):
-            ProjectSelector(
-                query="true",
-                searchQueries=[  # type: ignore[call-arg]
-                    {"scope": "blobs"}  # missing name and query
-                ],
+            ProjectSelector.parse_obj(
+                {
+                    "query": "true",
+                    "searchQueries": [{"scope": "blobs"}],  # missing name and query
+                }
             )
 
     def test_selector_combined_fields(self) -> None:
         """Test ProjectSelector with multiple fields including search_queries."""
         selector = ProjectSelector(
             query="true",
-            includeLanguages=True,  # type: ignore[call-arg]
-            searchQueries=[  # type: ignore[call-arg]
-                {"name": "hasCI", "scope": "blobs", "query": "filename:.gitlab-ci.yml"}
+            includeLanguages=True,
+            searchQueries=[
+                SearchQuery(
+                    name="hasCI", scope="blobs", query="filename:.gitlab-ci.yml"
+                )
             ],
         )
         assert selector.include_languages is True

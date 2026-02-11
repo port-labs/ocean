@@ -1,4 +1,5 @@
 """Tests for the search queries enrichment feature in GitLabClient."""
+
 from typing import Any, AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -120,9 +121,7 @@ class TestSearchQueriesEnrichment:
         self, client: GitLabClient, sample_project: dict[str, Any]
     ) -> None:
         """Test enrichment with an empty search queries list."""
-        result = await client._enrich_project_with_search_queries(
-            sample_project, []
-        )
+        result = await client._enrich_project_with_search_queries(sample_project, [])
 
         assert "__searchQueries" in result
         assert result["__searchQueries"] == {}
@@ -204,9 +203,7 @@ class TestSearchQueriesEnrichment:
             {"name": "hasCI", "scope": "blobs", "query": "filename:.gitlab-ci.yml"}
         ]
 
-        with patch.object(
-            client, "file_exists", AsyncMock(return_value=True)
-        ):
+        with patch.object(client, "file_exists", AsyncMock(return_value=True)):
             result = await client._enrich_project_with_search_queries(
                 project, search_queries
             )
@@ -227,9 +224,7 @@ class TestSearchQueriesEnrichment:
             "id": 789,
             "path_with_namespace": "my-org/my-project",
         }
-        search_queries = [
-            {"name": "test", "scope": "blobs", "query": "test"}
-        ]
+        search_queries = [{"name": "test", "scope": "blobs", "query": "test"}]
 
         with patch.object(
             client, "file_exists", AsyncMock(return_value=True)
@@ -247,18 +242,14 @@ class TestSearchQueriesEnrichment:
         project = {
             "id": 789,
         }
-        search_queries = [
-            {"name": "test", "scope": "blobs", "query": "test"}
-        ]
+        search_queries = [{"name": "test", "scope": "blobs", "query": "test"}]
 
         with patch.object(
             client, "file_exists", AsyncMock(return_value=True)
         ) as mock_file_exists:
             await client._enrich_project_with_search_queries(project, search_queries)
 
-            mock_file_exists.assert_called_once_with(
-                "789", "blobs", "test"
-            )
+            mock_file_exists.assert_called_once_with("789", "blobs", "test")
 
 
 @pytest.mark.asyncio
@@ -269,9 +260,7 @@ class TestGetProjectsWithSearchQueries:
     def client(self) -> GitLabClient:
         return GitLabClient("https://gitlab.example.com", "test-token")
 
-    async def test_get_projects_with_search_queries(
-        self, client: GitLabClient
-    ) -> None:
+    async def test_get_projects_with_search_queries(self, client: GitLabClient) -> None:
         """Test that get_projects passes search_queries to enrichment."""
         mock_projects = [
             {
@@ -382,9 +371,7 @@ class TestGetProjectWithSearchQueries:
     def client(self) -> GitLabClient:
         return GitLabClient("https://gitlab.example.com", "test-token")
 
-    async def test_get_project_with_search_queries(
-        self, client: GitLabClient
-    ) -> None:
+    async def test_get_project_with_search_queries(self, client: GitLabClient) -> None:
         """Test that get_project applies search queries enrichment."""
         mock_project = {
             "id": 123,
