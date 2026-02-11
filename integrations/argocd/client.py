@@ -36,6 +36,7 @@ class ArgocdClient:
         server_url: str,
         ignore_server_error: bool,
         allow_insecure: bool,
+        custom_http_headers: Optional[dict[str, Any]] = None,
         use_streaming: bool = False,
     ):
         self.token = token
@@ -53,6 +54,8 @@ class ArgocdClient:
             # Type ignore because http_async_client is typed as AsyncClient but returns OceanAsyncClient
             self.http_client = http_async_client  # type: ignore
         self.http_client.headers.update(self.api_auth_header)
+        if custom_http_headers:
+            self.http_client.headers.update(custom_http_headers)
         self.streaming_client = StreamingClientWrapper(self.http_client)
         self.use_streaming = use_streaming
 

@@ -660,3 +660,36 @@ async def test_get_managed_resources_with_streaming_disabled() -> None:
             assert len(resources) == 2
             # Verify application is added to each resource
             assert all("__application" in resource for resource in resources)
+
+
+# Tests for custom HTTP headers
+def test_argocd_client_custom_headers() -> None:
+    custom_headers: dict[str, str] = {
+        "X-Custom-Header": "value",
+        "CF-Access-Client-Id": "id",
+    }
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://argocd.example.com",
+        ignore_server_error=False,
+        allow_insecure=True,
+        custom_http_headers=custom_headers,
+    )
+
+    # Check if Authorization header is present
+    assert client.http_client.headers["Authorization"] == "Bearer test_token"
+    # Check if custom headers are present
+    assert client.http_client.headers["X-Custom-Header"] == "value"
+    assert client.http_client.headers["CF-Access-Client-Id"] == "id"
+
+
+def test_argocd_client_without_custom_headers() -> None:
+    client = ArgocdClient(
+        token="test_token",
+        server_url="https://argocd.example.com",
+        ignore_server_error=False,
+        allow_insecure=True,
+    )
+
+    assert client.http_client.headers["Authorization"] == "Bearer test_token"
+    assert "X-Custom-Header" not in client.http_client.headers
