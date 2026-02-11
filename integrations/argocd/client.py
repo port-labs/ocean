@@ -147,7 +147,7 @@ class ArgocdClient:
         cluster_names = [cluster["name"] for cluster in available_clusters]
         url = f"{self.api_url}/{resource_kind}s"
 
-        all_resources = []
+        batch = []
         for cluster_name in cluster_names:
             try:
                 if self.use_streaming:
@@ -156,26 +156,21 @@ class ArgocdClient:
                         target_items_path="items",
                         params={"cluster": cluster_name},
                     ):
-                        all_resources.extend(resources)
+                        batch.extend(resources)
+                        if len(batch) >= PAGE_SIZE:
+                            yield batch
+                            batch = []
                 else:
                     response_data = await self._send_api_request(
                         url=url, query_params={"cluster": cluster_name}
                     )
-                    all_resources.extend(response_data.get("items", []))
+                    yield response_data.get("items", [])
             except Exception as e:
                 logger.error(
                     f"Failed to fetch resources of kind {resource_kind} for cluster {cluster_name}: {e}"
                 )
                 if not self.ignore_server_error:
                     raise
-
-        # Yield in batches of PAGE_SIZE
-        batch = []
-        for resource in all_resources:
-            batch.append(resource)
-            if len(batch) >= PAGE_SIZE:
-                yield batch
-                batch = []
 
         if batch:
             yield batch

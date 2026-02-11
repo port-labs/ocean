@@ -54,25 +54,24 @@ async def on_managed_k8s_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_T
 async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     argocd_client = init_client()
 
-    applications_list = []
     async for app_batch in argocd_client.get_resources_for_available_clusters(
         resource_kind=ObjectKind.APPLICATION
     ):
-        applications_list.extend(app_batch)
-    applications = applications_list
-    if not applications:
-        logger.info("No applications were found. Skipping managed resources ingestion")
-        return
+        if not app_batch:
+            logger.info(
+                "No applications were found. Skipping managed resources ingestion"
+            )
+            return
 
-    for application in applications:
-        if application:
-            async for managed_resources in argocd_client.get_managed_resources(
-                application=application
-            ):
-                logger.info(
-                    f"Ingesting managed resources for application: {application.get('metadata', {}).get('name')}"
-                )
-                yield managed_resources
+        for application in app_batch:
+            if application:
+                async for managed_resources in argocd_client.get_managed_resources(
+                    application=application
+                ):
+                    logger.info(
+                        f"Ingesting managed resources for application: {application.get('metadata', {}).get('name')}"
+                    )
+                    yield managed_resources
 
 
 @ocean.router.post("/webhook")
