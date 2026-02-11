@@ -37,7 +37,7 @@ configurations:
   - name: customHttpHeaders
     type: string
     required: false
-    description: Custom HTTP headers applied to ArgoCD requests. When provided, these headers are used by the exporter to authenticate with the ArgoCD server.
+    description: JSON string format of custom HTTP headers applied to ArgoCD requests. When provided, these headers are used by the exporter to authenticate with the ArgoCD server.
 installationDocs:
   saas:
     - name: SaasOAuth2

@@ -57,15 +57,12 @@ class ArgocdClient:
         self.http_client.headers.update(self.api_auth_header)
         if custom_http_headers:
             try:
-                parsed_headers: dict[str, str] = json.loads(custom_http_headers)
-                logger.debug(
-                    f"Applying custom HTTP headers: {list(parsed_headers.keys())}"
-                )
-                self.http_client.headers.update(parsed_headers)
-            except TypeError as e:
-                logger.error(f"Failed to parse custom HTTP headers: {e}")
-                if not self.ignore_server_error:
-                    raise
+                parsed_headers = json.loads(custom_http_headers)
+                if isinstance(parsed_headers, dict):
+                    logger.debug(
+                        f"Applying custom HTTP headers: {list(parsed_headers.keys())}"
+                    )
+                    self.http_client.headers.update(parsed_headers)
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse custom HTTP headers: {e}")
                 if not self.ignore_server_error:
