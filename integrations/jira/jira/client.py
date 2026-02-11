@@ -327,7 +327,11 @@ class JiraClient(OAuthClient):
             "maxResults": len(issue_ids),
         }
         response_data = await self._send_api_request("POST", url, json=body)
-        return response_data.get("issues", [])
+        issues = response_data["issues"]
+        logger.info(
+            f"Found {len(issues)} issues matching JQL filter for issue IDs: {issue_ids}"
+        )
+        return issues
 
     async def get_single_user(self, account_id: str) -> dict[str, Any]:
         return await self._send_api_request(
