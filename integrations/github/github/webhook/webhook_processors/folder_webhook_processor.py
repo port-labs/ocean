@@ -147,26 +147,28 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         repo_options = SingleRepositoryOptions(
             organization=organization, name=repository["name"]
         )
-        repository = await repo_exporter.get_resource(repo_options)
+        repo_data = await repo_exporter.get_resource(repo_options)
+        if not repo_data:
+            return []
 
         for pattern in folder_selector:
-            if not self._has_matched_repo(pattern, repository, branch):
+            if not self._has_matched_repo(pattern, repo_data, branch):
                 continue
 
             logger.debug(
-                f"Fetching folders for path '{pattern.path}' in {repository['name']} of organization: {organization} on branch {branch}"
+                f"Fetching folders for path '{pattern.path}' in {repo_data['name']} of organization: {organization} on branch {branch}"
             )
 
             options = [
                 ListFolderOptions(
                     organization=organization,
-                    repo_name=repository["name"],
+                    repo_name=repo_data["name"],
                     folders=[
                         FolderSearchOptions(
                             organization=organization,
                             path=pattern.path,
                             branch=branch,
-                            repo=repository,
+                            repo=repo_data,
                         )
                     ],
                 )

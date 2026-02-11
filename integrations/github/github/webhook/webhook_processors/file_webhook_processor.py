@@ -213,6 +213,11 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
                             branch=current_branch,
                         )
                     )
+                    if not file_content_response:
+                        logger.warning(
+                            f"No response for file {file_path} from {organization}"
+                        )
+                        continue
 
                     content = file_content_response.get("content")
                     if content is None:

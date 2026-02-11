@@ -104,6 +104,10 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         data_to_upsert = await exporter.get_resource(options)
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         attached_files = resource_config.selector.attached_files or []
         if attached_files:

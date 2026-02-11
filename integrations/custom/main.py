@@ -4,7 +4,9 @@ HTTP Server Integration Main Module
 Main entry point for the HTTP server integration with resync handlers.
 """
 
-from typing import cast
+import functools
+from typing import cast, AsyncGenerator, Dict, List, Any, Optional
+
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -13,7 +15,73 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from initialize_client import get_client
 from http_server.overrides import HttpServerResourceConfig
+from http_server.client import HttpServerClient
 from http_server.helpers.endpoint_resolver import resolve_dynamic_endpoints
+from http_server.helpers.utils import (
+    extract_and_enrich_batch,
+    process_endpoints_concurrently,
+    DEFAULT_CONCURRENCY_LIMIT,
+)
+
+
+async def fetch_endpoint_data(
+    endpoint: str,
+    path_params: Dict[str, str],
+    http_client: HttpServerClient,
+    method: str,
+    query_params: Dict[str, Any],
+    headers: Dict[str, str],
+    body: Optional[Dict[str, Any]],
+    data_path: str,
+) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    """Fetch and process data from a single endpoint
+
+    Args:
+        endpoint: The endpoint URL to fetch data from
+        path_params: Path parameters to inject into each entity
+        http_client: The HTTP client instance for making requests
+        method: HTTP method (GET, POST, etc.)
+        query_params: Query parameters for the request
+        headers: HTTP headers for the request
+        body: Optional request body
+        data_path: JQ path to extract data from response
+
+    Yields:
+        Batches of processed data from the endpoint
+    """
+    logger.info(f"Fetching data from: {method} {endpoint}")
+
+    try:
+        async for batch in http_client.fetch_paginated_data(
+            endpoint=endpoint,
+            method=method,
+            query_params=query_params,
+            headers=headers,
+            body=body,
+        ):
+            logger.info(f"Received {len(batch)} records from {endpoint}")
+
+            if data_path == "." and batch and not isinstance(batch[0], list):
+                logger.warning(
+                    f"Response from {endpoint} is not a list and 'data_path' is not specified. "
+                    f"Yielding response as-is. If mapping fails, please specify 'data_path' in your selector "
+                    f"(e.g., data_path: '.data'). Response type: {type(batch[0]).__name__}"
+                )
+                yield batch
+                continue
+
+            processed_batch = extract_and_enrich_batch(
+                batch, data_path, path_params, endpoint
+            )
+
+            if processed_batch:
+                logger.info(
+                    f"Extracted {len(processed_batch)} items using data_path: {data_path}"
+                )
+                yield processed_batch
+
+    except Exception as e:
+        logger.error(f"Error fetching data from {endpoint}: {str(e)}")
 
 
 @ocean.on_resync()
@@ -25,78 +93,26 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     selector = resource_config.selector
 
-    # Extract method, query_params, headers, body from selector
     method = getattr(selector, "method", "GET")
     query_params = getattr(selector, "query_params", None) or {}
     headers = getattr(selector, "headers", None) or {}
     body = getattr(selector, "body", None)
+    data_path = getattr(selector, "data_path", None) or "."
 
-    # The kind IS the endpoint path (e.g., "/api/v1/users")...
-    # Check if endpoint has path parameters that need resolution
-    # Yields batches of tuples: [(endpoint_url, {param_name: param_value}), ...]
+    fetch_fn = functools.partial(
+        fetch_endpoint_data,
+        http_client=http_client,
+        method=method,
+        query_params=query_params,
+        headers=headers,
+        body=body,
+        data_path=data_path,
+    )
+
     async for endpoint_batch in resolve_dynamic_endpoints(selector, kind):
-        for endpoint, path_params in endpoint_batch:
-            logger.info(f"Fetching data from: {method} {endpoint}")
-
-            # Extract data_path per endpoint, defaulting to '.' if not specified or None
-            data_path = getattr(selector, "data_path", None) or "."
-
-            try:
-                async for batch in http_client.fetch_paginated_data(
-                    endpoint=endpoint,
-                    method=method,
-                    query_params=query_params,
-                    headers=headers,
-                    body=body,
-                ):
-                    logger.info(f"Received {len(batch)} records from {endpoint}")
-
-                    # If data_path is default ('.') and batch[0] is not a list, yield as-is
-                    if data_path == "." and batch and not isinstance(batch[0], list):
-                        logger.error(
-                            f"Response from {endpoint} is not a list and 'data_path' is not specified. "
-                            f"Yielding response as-is. If mapping fails, please specify 'data_path' in your selector "
-                            f"(e.g., data_path: '.data'). Response type: {type(batch[0]).__name__}"
-                        )
-                        yield batch
-                        continue
-
-                    # Extract the array from each response using data_path
-                    processed_batch = []
-                    for item in batch:
-                        try:
-                            # Use Ocean's built-in JQ processor
-                            extracted_data = await ocean.app.integration.entity_processor._search(  # type: ignore[attr-defined]
-                                item, data_path
-                            )
-                            if isinstance(extracted_data, list):
-                                # Inject path parameters into each extracted item
-                                for entity in extracted_data:
-                                    if isinstance(entity, dict) and path_params:
-                                        for (
-                                            param_name,
-                                            param_value,
-                                        ) in path_params.items():
-                                            entity[f"__{param_name}"] = param_value
-                                processed_batch.extend(extracted_data)
-                            elif extracted_data is not None:
-                                # Inject path parameters for single item
-                                if isinstance(extracted_data, dict) and path_params:
-                                    for param_name, param_value in path_params.items():
-                                        extracted_data[f"__{param_name}"] = param_value
-                                processed_batch.append(extracted_data)
-                        except Exception as e:
-                            logger.error(
-                                f"Error extracting data with JQ path '{data_path}': {e}"
-                            )
-                            continue
-
-                    if processed_batch:
-                        logger.info(
-                            f"Extracted {len(processed_batch)} items using data_path: {data_path}"
-                        )
-                        yield processed_batch
-
-            except Exception as e:
-                logger.error(f"Error fetching data from {endpoint}: {str(e)}")
-                continue
+        async for batch in process_endpoints_concurrently(
+            endpoints=endpoint_batch,
+            fetch_fn=fetch_fn,
+            concurrency_limit=DEFAULT_CONCURRENCY_LIMIT,
+        ):
+            yield batch

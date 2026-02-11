@@ -7,13 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.0.28 (2026-02-10)
+## 5.0.30 (2026-02-11)
 
 
 ### Features
 
 - Added `attachedFiles` selector for repository, folder and file entities to fetch file contents (e.g. README.md, CODEOWNERS) during enrichment and expose them under `__attachedFiles` in the raw data
 - Added deprecation warning when using `file://` prefix in mappings, guiding users to migrate to the new `attachedFiles` selector
+
+
+## 5.0.29 (2026-02-11)
+
+
+### Improvements
+
+- Improved batch processing to process tasks concurrently as repositories are fetched, optimizing resource utilization and reducing overall processing time.
+
+
+## 5.0.28 (2026-02-10)
+
+
+### Bug Fixes
+
+- Fixed empty responses not being properly handled in GitHub exporters for webhooks by returning None instead of empty objects, with updated type hints to allow None values when no item is returned.
 
 
 ## 5.0.27 (2026-02-09)
