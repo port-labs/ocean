@@ -110,8 +110,25 @@ async def test_authenticate(
 async def test_validate_payload(
     jiraIssueWebhookProcessor: IssueWebhookProcessor,
 ) -> None:
-    result = await jiraIssueWebhookProcessor.validate_payload({})
+    result = await jiraIssueWebhookProcessor.validate_payload(
+        {
+            "webhookEvent": "jira:issue_created",
+            "issue": {"key": "TEST-1", "id": "10001"},
+        }
+    )
     assert result is True
+
+    assert await jiraIssueWebhookProcessor.validate_payload({}) is False
+    assert (
+        await jiraIssueWebhookProcessor.validate_payload(
+            {"webhookEvent": "jira:issue_created"}
+        )
+        is False
+    )
+    assert (
+        await jiraIssueWebhookProcessor.validate_payload({"issue": {"key": "TEST-1"}})
+        is False
+    )
 
 
 @pytest.mark.asyncio

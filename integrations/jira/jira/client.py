@@ -311,12 +311,15 @@ class JiraClient(OAuthClient):
         self,
         jql: str,
         issue_ids: list[int],
-        fields: str = "*all",
+        fields: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Filter known issues against a JQL query with read-after-write consistency"""
-
+        """Filter known issues against a JQL query with read-after-write consistency."""
         url = f"{self.api_url}/search/jql"
-        fields_list = fields.split(",") if fields != "*all" else ["*all"]
+        fields_list = (
+            ["*all"]
+            if not fields or fields == "*all"
+            else [field.strip() for field in fields.split(",") if field.strip()]
+        )
         body = {
             "jql": jql,
             "fields": fields_list,

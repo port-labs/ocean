@@ -47,7 +47,7 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         issues = await client.search_issues_by_ids(
             jql=jql,
             issue_ids=[issue_id],
-            fields=config.selector.fields or "*all",
+            fields=config.selector.fields,
         )
 
         data_to_update = []
@@ -71,4 +71,4 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return True
+        return "webhookEvent" in payload and "issue" in payload
