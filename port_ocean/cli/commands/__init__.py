@@ -3,6 +3,7 @@ from .main import cli_start
 from .new import new
 from .pull import pull
 from .sail import sail
+from .schema import schema
 from .version import version
 from .defaults.dock import dock
 from .defaults.clean import clean
@@ -13,6 +14,7 @@ __all__ = [
     "new",
     "pull",
     "sail",
+    "schema",
     "version",
     "dock",
     "clean",

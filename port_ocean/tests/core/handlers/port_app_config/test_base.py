@@ -115,7 +115,7 @@ async def test_get_port_app_config_get_entity_deletion_threshold_with_flag_defin
     # Act
     async with event_context(EventType.RESYNC, trigger_type="machine"):
         result = await port_app_config_handler.get_port_app_config()
-        deletion_threshold = result.get_entity_deletion_threshold()
+        deletion_threshold = result.entity_deletion_threshold
 
     # Assert
     assert isinstance(result, PortAppConfig)
@@ -155,11 +155,11 @@ async def test_get_port_app_config_get_entity_deletion_threshold_with_flag_not_d
     # Act
     async with event_context(EventType.RESYNC, trigger_type="machine"):
         result = await port_app_config_handler.get_port_app_config()
-        deletion_threshold = result.get_entity_deletion_threshold()
+        deletion_threshold = result.entity_deletion_threshold
 
     # Assert
     assert isinstance(result, PortAppConfig)
-    assert deletion_threshold == result._default_entity_deletion_threshold
+    assert deletion_threshold == 0.9
     port_app_config_handler.mock_get_port_app_config.assert_called_once()
 
 

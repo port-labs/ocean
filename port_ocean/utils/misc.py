@@ -1,15 +1,21 @@
+from __future__ import annotations
+
 import inspect
 from enum import Enum
 from importlib.util import module_from_spec, spec_from_file_location
 import multiprocessing
 from pathlib import Path
+import sys
 from time import time
 from types import ModuleType
-from typing import Any, Callable
+from typing import Any, Callable, Type, TYPE_CHECKING, TypeVar
 from uuid import uuid4
 
 import tomli
 import yaml
+
+if TYPE_CHECKING:
+    from port_ocean.core.integrations.base import BaseIntegration
 
 
 class IntegrationStateStatus(Enum):
@@ -77,6 +83,37 @@ def load_module(file_path: str) -> ModuleType:
     spec.loader.exec_module(module)
 
     return module
+
+
+type GenericClass = TypeVar("GenericClass", bound=Any)
+
+
+def get_subclass_class_from_module(
+    module: ModuleType,
+    base_class: Type[GenericClass],
+) -> Type[GenericClass] | None:
+
+    for name, obj in inspect.getmembers(module):
+        if (
+            inspect.isclass(obj)
+            and type(obj) is type
+            and issubclass(obj, base_class)
+            and obj != base_class
+        ):
+            return obj
+
+    return None
+
+
+def get_integration_class(
+    path: str,
+) -> Type["BaseIntegration"] | None:
+    from port_ocean.core.integrations.base import BaseIntegration
+
+    sys.path.append(".")
+    integration_path = f"{path}/integration.py" if path else "integration.py"
+    module = load_module(integration_path)
+    return get_subclass_class_from_module(module, BaseIntegration)
 
 
 def get_cgroup_cpu_limit() -> int:

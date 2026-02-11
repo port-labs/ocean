@@ -71,6 +71,7 @@ aiofiles = "^24.1.0"
 cryptography = "^44.0.1"
 jmespath = "^1.0.1"
 psutil = "^7.2.1"
+jinja2-strcase = "^0.0.2"
 
 [tool.poetry.extras]
 cli = ["click", "rich", "cookiecutter", "jinja2-time"]
@@ -163,7 +164,7 @@ disallow_untyped_defs = true
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
-exclude = ['venv', '.venv', 'integrations']
+exclude = ['venv', '.venv', 'integrations', 'port_ocean/cli/cookiecutter']
 target-version = "py311"
 
 [tool.pydantic-mypy]
@@ -188,6 +189,7 @@ exclude = '''
   |integrations
   |docs
   |node_modules
+  |cookiecutter
 )/
 '''
 

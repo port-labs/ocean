@@ -11,6 +11,7 @@
     "is_us_region": false,
     "_extensions": [
         "jinja2_time.TimeExtension",
-        "extensions.VersionExtension"
+        "extensions.VersionExtension",
+        "jinja2_strcase.StrcaseExtension"
     ]
 }
