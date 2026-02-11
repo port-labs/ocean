@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.117-beta (2026-02-11)
+
+
+### Bug Fixes
+
+- Fixed future attached to a different loop error when syncing large numbers of pull requests in multiprocess mode
+
+
 ## 0.1.116-beta (2026-02-09)
 
 
