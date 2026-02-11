@@ -56,10 +56,8 @@ class ArgocdClient:
             self.http_client = http_async_client  # type: ignore
         self.http_client.headers.update(self.api_auth_header)
         if custom_http_headers:
-            parsed_headers = json.loads(custom_http_headers)
-            logger.info(
-                f"Applying custom HTTP headers: {list(parsed_headers.keys())}"
-            )
+            parsed_headers: dict[str, str] = json.loads(custom_http_headers)
+            logger.debug(f"Applying custom HTTP headers: {list(parsed_headers.keys())}")
             self.http_client.headers.update(parsed_headers)
         self.streaming_client = StreamingClientWrapper(self.http_client)
         self.use_streaming = use_streaming

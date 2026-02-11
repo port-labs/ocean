@@ -1,5 +1,6 @@
 from typing import Any
 from unittest.mock import AsyncMock, patch
+import json
 
 import pytest
 from client import (
@@ -673,7 +674,7 @@ def test_argocd_client_custom_headers() -> None:
         server_url="https://argocd.example.com",
         ignore_server_error=False,
         allow_insecure=True,
-        custom_http_headers=custom_headers,
+        custom_http_headers=json.dumps(custom_headers),
     )
 
     # Check if Authorization header is present
