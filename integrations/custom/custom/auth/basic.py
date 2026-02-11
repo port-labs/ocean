@@ -4,7 +4,7 @@ Basic authentication handler.
 
 import httpx
 
-from http_server.auth.base import AuthHandler
+from custom.auth.base import AuthHandler
 
 
 class BasicAuth(AuthHandler):

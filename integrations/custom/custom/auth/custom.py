@@ -7,12 +7,12 @@ Supports custom authentication flows with template-based token injection into re
 from typing import Dict, Any
 import httpx
 
-from http_server.auth.base import AuthHandler
-from http_server.helpers.auth_validation import (
+from custom.auth.base import AuthHandler
+from custom.helpers.auth_validation import (
     validate_custom_auth_request_config,
     validate_custom_auth_request_template_config,
 )
-from http_server.auth.custom_helpers.auth_flow import AuthFlowManager
+from custom.auth.custom_helpers.auth_flow import AuthFlowManager
 
 
 class CustomAuth(AuthHandler):

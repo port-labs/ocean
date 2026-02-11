@@ -2,7 +2,7 @@
 Bearer token authentication handler.
 """
 
-from http_server.auth.base import AuthHandler
+from custom.auth.base import AuthHandler
 
 
 class BearerTokenAuth(AuthHandler):

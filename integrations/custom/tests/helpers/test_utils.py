@@ -4,7 +4,7 @@ import asyncio
 from typing import Any, AsyncGenerator, Dict, List, Tuple
 import pytest
 
-from http_server.helpers.utils import (
+from custom.helpers.utils import (
     process_endpoints_concurrently,
     DEFAULT_CONCURRENCY_LIMIT,
 )

@@ -5,14 +5,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from http_server.helpers.endpoint_resolver import (
+from custom.helpers.endpoint_resolver import (
     extract_path_parameters,
     validate_endpoint_parameters,
     generate_resolved_endpoints,
     query_api_for_parameters,
     resolve_dynamic_endpoints,
 )
-from http_server.overrides import (
+from integration import (
     ApiPathParameter,
     HttpServerSelector,
 )
@@ -125,13 +125,12 @@ class TestGenerateResolvedEndpoints:
 class TestQueryApiForParameters:
     """Test querying API for parameter values - yields batches of values"""
 
-    @patch("initialize_client.init_client")
-    @patch("http_server.helpers.endpoint_resolver.JQEntityProcessorSync")
+    @patch("custom.clients.initialize_client.get_client")
+    @patch("custom.helpers.endpoint_resolver.JQEntityProcessorSync")
     async def test_query_with_single_batch(
-        self, mock_jq_sync: MagicMock, mock_init_client: MagicMock
+        self, mock_jq_sync: MagicMock, mock_get_client: MagicMock
     ) -> None:
         """Test querying API that returns a single batch"""
-        # Setup mock client
         mock_client = AsyncMock()
 
         async def mock_fetch(
@@ -143,7 +142,7 @@ class TestQueryApiForParameters:
             ]
 
         mock_client.fetch_paginated_data = mock_fetch
-        mock_init_client.return_value = mock_client
+        mock_get_client.return_value = mock_client
 
         # Setup mock sync JQ processor
         def mock_search(data: Any, path: str) -> Any:
@@ -167,15 +166,14 @@ class TestQueryApiForParameters:
 
         # Assert - yields a single batch containing all values
         assert result == [["team-1", "team-2"]]
-        mock_init_client.assert_called_once()
+        mock_get_client.assert_called_once()
 
-    @patch("initialize_client.init_client")
-    @patch("http_server.helpers.endpoint_resolver.JQEntityProcessorSync")
+    @patch("custom.clients.initialize_client.get_client")
+    @patch("custom.helpers.endpoint_resolver.JQEntityProcessorSync")
     async def test_query_with_filter(
-        self, mock_jq_sync: MagicMock, mock_init_client: MagicMock
+        self, mock_jq_sync: MagicMock, mock_get_client: MagicMock
     ) -> None:
         """Test querying API with a filter applied"""
-        # Setup mock client
         mock_client = AsyncMock()
 
         async def mock_fetch(
@@ -188,7 +186,7 @@ class TestQueryApiForParameters:
             ]
 
         mock_client.fetch_paginated_data = mock_fetch
-        mock_init_client.return_value = mock_client
+        mock_get_client.return_value = mock_client
 
         # Setup mock sync JQ processor
         def mock_search(data: Any, path: str) -> Any:
@@ -216,10 +214,9 @@ class TestQueryApiForParameters:
         # Assert - single batch with only active teams
         assert result == [["team-1", "team-3"]]
 
-    @patch("initialize_client.init_client")
-    async def test_query_with_empty_response(self, mock_init_client: MagicMock) -> None:
+    @patch("custom.clients.initialize_client.get_client")
+    async def test_query_with_empty_response(self, mock_get_client: MagicMock) -> None:
         """Test querying API that returns empty results"""
-        # Setup mock client
         mock_client = AsyncMock()
 
         async def mock_fetch(
@@ -228,7 +225,7 @@ class TestQueryApiForParameters:
             yield []
 
         mock_client.fetch_paginated_data = mock_fetch
-        mock_init_client.return_value = mock_client
+        mock_get_client.return_value = mock_client
 
         # Create param config
         param_config = ApiPathParameter(
@@ -282,7 +279,7 @@ class TestResolveDynamicEndpoints:
         # Returns single batch with template as-is when config is missing
         assert result == [[("/api/v1/teams/{team_id}/members", {})]]
 
-    @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
+    @patch("custom.helpers.endpoint_resolver.query_api_for_parameters")
     async def test_resolve_with_single_parameter(self, mock_query: MagicMock) -> None:
         """Test resolving endpoint with a single path parameter"""
 
@@ -320,7 +317,7 @@ class TestResolveDynamicEndpoints:
         ]
         mock_query.assert_called_once_with(param_config)
 
-    @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
+    @patch("custom.helpers.endpoint_resolver.query_api_for_parameters")
     async def test_resolve_with_no_values_found(self, mock_query: MagicMock) -> None:
         """Test resolving when API returns no parameter values"""
 
@@ -353,7 +350,7 @@ class TestResolveDynamicEndpoints:
         # Assert - returns empty list when no values found
         assert result == []
 
-    @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
+    @patch("custom.helpers.endpoint_resolver.query_api_for_parameters")
     async def test_resolve_with_multiple_parameters_warns(
         self, mock_query: MagicMock
     ) -> None:

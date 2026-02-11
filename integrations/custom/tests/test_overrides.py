@@ -1,8 +1,8 @@
-from http_server.overrides import (
+from custom.auth.models import (
     CustomAuthRequestConfig,
     CustomAuthRequestTemplateConfig,
 )
-from http_server.exceptions import (
+from custom.exceptions import (
     CustomAuthRequestError,
     CustomAuthRequestTemplateError,
 )

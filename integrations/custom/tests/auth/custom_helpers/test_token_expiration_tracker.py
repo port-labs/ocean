@@ -7,8 +7,8 @@ import time
 from typing import Dict, Any
 from unittest.mock import patch, MagicMock
 
-from http_server.auth.custom_helpers.auth_flow import AuthFlowManager
-from http_server.overrides import (
+from custom.auth.custom_helpers.auth_flow import AuthFlowManager
+from custom.auth.models import (
     CustomAuthRequestConfig,
     CustomAuthRequestTemplateConfig,
 )
@@ -268,16 +268,16 @@ class TestTokenExpiration:
         mock_response.read = MagicMock(return_value=b'{"data": "success"}')
 
         async def run_auth_flow() -> None:
-            with patch(
-                "port_ocean.context.ocean.ocean.app.integration.entity_processor",
-                mock_entity_processor,
-            ):
-                request = httpx.Request("GET", "https://api.example.com/data")
-                auth_flow = custom_auth_with_interval.async_auth_flow(request)
-                await auth_flow.__anext__()
+            request = httpx.Request("GET", "https://api.example.com/data")
+            auth_flow = custom_auth_with_interval.async_auth_flow(request)
+            await auth_flow.__anext__()
 
-        # Run two concurrent auth flows
-        await asyncio.gather(run_auth_flow(), run_auth_flow())
+        # Run two concurrent auth flows with shared patch context
+        with patch(
+            "port_ocean.context.ocean.ocean.app.integration.entity_processor",
+            mock_entity_processor,
+        ):
+            await asyncio.gather(run_auth_flow(), run_auth_flow())
 
         # Should authenticate at least once, but lock should prevent race conditions
         assert len(authenticate_calls) >= 1

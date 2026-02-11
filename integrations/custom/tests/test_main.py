@@ -1,11 +1,11 @@
-"""Tests for main resync function"""
+"""Tests for main resync function and endpoint exporter"""
 
 from types import SimpleNamespace
 from typing import Any, AsyncGenerator, AsyncIterator, Dict, List, cast
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from http_server.overrides import HttpServerResourceConfig, HttpServerSelector
+from integration import HttpServerResourceConfig, HttpServerSelector
 
 
 async def mock_resolve_single_endpoint() -> (
@@ -47,7 +47,7 @@ class TestListResponseHandling:
             mock_selector.method = "GET"
             mock_selector.query_params = {}
             mock_selector.headers = {}
-            # data_path not set - will default to '.'
+            mock_selector.data_path = None
             mock_resource_config.selector = mock_selector
 
             monkeypatch.setattr(
@@ -56,19 +56,18 @@ class TestListResponseHandling:
 
             with (
                 patch(
-                    "main.get_client", new_callable=AsyncMock, return_value=mock_client
+                    "main.get_client",
+                    return_value=mock_client,
                 ),
                 patch(
-                    "main.resolve_dynamic_endpoints",
+                    "custom.core.exporters.resource_exporter.resolve_dynamic_endpoints",
                     return_value=mock_resolve_single_endpoint(),
                 ),
                 patch(
-                    "main.process_endpoints_concurrently",
+                    "custom.core.exporters.resource_exporter.process_endpoints_concurrently",
                     side_effect=mock_process_endpoints,
                 ),
-                patch(
-                    "http_server.helpers.utils.JQEntityProcessorSync"
-                ) as mock_jq_sync,
+                patch("custom.helpers.utils.JQEntityProcessorSync") as mock_jq_sync,
             ):
                 direct_list_response = [
                     {"id": 1, "name": "Alice"},
@@ -112,7 +111,7 @@ class TestListResponseHandling:
             mock_selector.method = "GET"
             mock_selector.query_params = {}
             mock_selector.headers = {}
-            # data_path not set - will default to '.'
+            mock_selector.data_path = None
             mock_resource_config.selector = mock_selector
 
             monkeypatch.setattr(
@@ -121,17 +120,18 @@ class TestListResponseHandling:
 
             with (
                 patch(
-                    "main.get_client", new_callable=AsyncMock, return_value=mock_client
+                    "main.get_client",
+                    return_value=mock_client,
                 ),
                 patch(
-                    "main.resolve_dynamic_endpoints",
+                    "custom.core.exporters.resource_exporter.resolve_dynamic_endpoints",
                     return_value=mock_resolve_single_endpoint(),
                 ),
                 patch(
-                    "main.process_endpoints_concurrently",
+                    "custom.core.exporters.resource_exporter.process_endpoints_concurrently",
                     side_effect=mock_process_endpoints,
                 ),
-                patch("main.logger") as mock_logger,
+                patch("custom.core.exporters.resource_exporter.logger") as mock_logger,
             ):
                 object_response = {"data": [{"id": 1, "name": "Alice"}]}
 
@@ -180,19 +180,18 @@ class TestListResponseHandling:
 
             with (
                 patch(
-                    "main.get_client", new_callable=AsyncMock, return_value=mock_client
+                    "main.get_client",
+                    return_value=mock_client,
                 ),
                 patch(
-                    "main.resolve_dynamic_endpoints",
+                    "custom.core.exporters.resource_exporter.resolve_dynamic_endpoints",
                     return_value=mock_resolve_single_endpoint(),
                 ),
                 patch(
-                    "main.process_endpoints_concurrently",
+                    "custom.core.exporters.resource_exporter.process_endpoints_concurrently",
                     side_effect=mock_process_endpoints,
                 ),
-                patch(
-                    "http_server.helpers.utils.JQEntityProcessorSync"
-                ) as mock_jq_sync,
+                patch("custom.helpers.utils.JQEntityProcessorSync") as mock_jq_sync,
             ):
                 object_response = {"data": {"users": [{"id": 1, "name": "Alice"}]}}
 

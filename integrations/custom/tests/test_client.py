@@ -3,7 +3,7 @@
 from typing import Any
 import pytest
 from unittest.mock import AsyncMock, patch
-from http_server.client import HttpServerClient
+from custom.clients.http.client import HttpServerClient
 
 
 class TestHttpServerClient:
