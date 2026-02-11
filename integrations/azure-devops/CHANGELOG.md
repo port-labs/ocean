@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.6 (2026-02-11)
+
+
+### Features
+
+- Added group and group-member kind
+- Added recursive support for group-member with depth and max depth configuration
+
+
 ## 0.7.5 (2026-02-02)
 
 
