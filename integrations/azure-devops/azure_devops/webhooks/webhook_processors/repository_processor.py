@@ -47,10 +47,10 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             )
 
         selector = cast(AzureDevopsRepositoryResourceConfig, resource_config).selector
-        attached_files = selector.attached_files or []
-        if attached_files:
-            repository = await self._enrich_with_attached_files(
-                client, repository, attached_files
+        included_files = selector.included_files or []
+        if included_files:
+            repository = await self._enrich_with_included_files(
+                client, repository, included_files
             )
 
         return WebhookEventRawResults(
@@ -70,30 +70,30 @@ class RepositoryWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         return {"kind": Kind.REPOSITORY, **repository}
 
     @staticmethod
-    async def _enrich_with_attached_files(
+    async def _enrich_with_included_files(
         client: AzureDevopsClient,
         repo_data: Dict[str, Any],
         file_paths: list[str],
     ) -> Dict[str, Any]:
-        """Enrich a repository dict with __attachedFiles."""
+        """Enrich a repository dict with __includedFiles."""
         repo_id = repo_data.get("id", "")
         default_branch_ref = repo_data.get("defaultBranch", "refs/heads/main")
         branch_name = default_branch_ref.replace("refs/heads/", "")
-        attached: Dict[str, Any] = {}
+        included: Dict[str, Any] = {}
 
         for file_path in file_paths:
             try:
                 content_bytes = await client.get_file_by_branch(
                     file_path, repo_id, branch_name
                 )
-                attached[file_path] = (
+                included[file_path] = (
                     content_bytes.decode("utf-8") if content_bytes else None
                 )
             except Exception as e:
                 logger.debug(
                     f"Could not fetch file {file_path} from repo {repo_data.get('name', repo_id)}@{branch_name}: {e}"
                 )
-                attached[file_path] = None
+                included[file_path] = None
 
-        repo_data["__attachedFiles"] = attached
+        repo_data["__includedFiles"] = included
         return repo_data

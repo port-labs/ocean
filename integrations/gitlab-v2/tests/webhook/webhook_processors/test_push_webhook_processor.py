@@ -63,7 +63,7 @@ class TestPushWebhookProcessor:
     ) -> None:
         """Test handling a push event"""
         resource_config = MagicMock()
-        resource_config.selector.attached_files = []
+        resource_config.selector.included_files = []
         project_id = push_payload["project_id"]
         expected_push = {
             "id": project_id,
@@ -78,7 +78,7 @@ class TestPushWebhookProcessor:
         result = await processor.handle_event(push_payload, resource_config)
 
         processor._gitlab_webhook_client.get_project.assert_called_once_with(
-            project_id, attached_files=None
+            project_id, included_files=None
         )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == expected_push

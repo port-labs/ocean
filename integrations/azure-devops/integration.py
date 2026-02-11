@@ -153,8 +153,8 @@ class AzureDevopsFileSelector(Selector):
         ```
         """,
     )
-    attached_files: list[str] = Field(
-        alias="attachedFiles",
+    included_files: list[str] = Field(
+        alias="includedFiles",
         default_factory=list,
         description="List of file paths to fetch and attach to the file entity",
     )
@@ -243,12 +243,12 @@ class AzureDevopsPullRequestResourceConfig(ResourceConfig):
 
 
 class AzureDevopsRepositorySelector(Selector):
-    attached_files: list[str] = Field(
-        alias="attachedFiles",
+    included_files: list[str] = Field(
+        alias="includedFiles",
         default_factory=list,
         description=(
             "List of file paths to fetch from the repository and attach to "
-            "the raw data under __attachedFiles. E.g. ['README.md', 'CODEOWNERS']"
+            "the raw data under __includedFiles. E.g. ['README.md', 'CODEOWNERS']"
         ),
     )
 

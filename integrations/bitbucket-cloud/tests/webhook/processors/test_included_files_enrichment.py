@@ -51,7 +51,7 @@ def sample_repo() -> dict[str, Any]:
 
 
 @pytest.mark.asyncio
-class TestBitbucketAttachedFilesEnrichment:
+class TestBitbucketIncludedFilesEnrichment:
     """Tests for the _enrich_with_included_files method on RepositoryWebhookProcessor."""
 
     async def test_enrich_with_included_files_success(
@@ -60,7 +60,7 @@ class TestBitbucketAttachedFilesEnrichment:
         webhook_client_mock: MagicMock,
         sample_repo: dict[str, Any],
     ) -> None:
-        """Test enriching a repo with attached files successfully fetches content."""
+        """Test enriching a repo with included files successfully fetches content."""
         webhook_client_mock.get_repository_files = AsyncMock(
             side_effect=["# README content", "* @owner"]
         )
@@ -163,7 +163,7 @@ class TestBitbucketAttachedFilesEnrichment:
         webhook_client_mock: MagicMock,
         sample_repo: dict[str, Any],
     ) -> None:
-        """Test that handle_event enriches with attached files when configured."""
+        """Test that handle_event enriches with included files when configured."""
         payload = {"repository": {"uuid": "repo-123"}}
         resource_config = MagicMock()
         resource_config.selector.included_files = ["README.md", "CODEOWNERS"]

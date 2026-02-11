@@ -25,29 +25,29 @@ class RepositoryWebhookProcessor(_BitbucketAbstractWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.REPOSITORY]
 
-    async def _enrich_with_attached_files(
+    async def _enrich_with_included_files(
         self,
         repo_data: dict[str, Any],
         file_paths: list[str],
     ) -> dict[str, Any]:
-        """Enrich a repository dict with __attachedFiles."""
+        """Enrich a repository dict with __includedFiles."""
         repo_slug = repo_data.get("slug") or repo_data.get("name", "").replace(" ", "-")
         default_branch = repo_data.get("mainbranch", {}).get("name", "main")
-        attached: dict[str, Any] = {}
+        included: dict[str, Any] = {}
 
         for file_path in file_paths:
             try:
                 content = await self._webhook_client.get_repository_files(
                     repo_slug, default_branch, file_path
                 )
-                attached[file_path] = content
+                included[file_path] = content
             except Exception as e:
                 logger.debug(
                     f"Could not fetch file {file_path} from {repo_slug}@{default_branch}: {e}"
                 )
-                attached[file_path] = None
+                included[file_path] = None
 
-        repo_data["__attachedFiles"] = attached
+        repo_data["__includedFiles"] = included
         return repo_data
 
     async def handle_event(
@@ -61,10 +61,10 @@ class RepositoryWebhookProcessor(_BitbucketAbstractWebhookProcessor):
         repository_details = await self._webhook_client.get_repository(repository_id)
 
         selector = cast(RepositoryResourceConfig, resource_config).selector
-        attached_files = selector.attached_files or []
-        if attached_files:
-            repository_details = await self._enrich_with_attached_files(
-                repository_details, attached_files
+        included_files = selector.included_files or []
+        if included_files:
+            repository_details = await self._enrich_with_included_files(
+                repository_details, included_files
             )
 
         return WebhookEventRawResults(

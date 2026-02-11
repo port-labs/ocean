@@ -13,27 +13,27 @@ from integration import GitLabFoldersResourceConfig
 from gitlab.helpers.utils import ObjectKind
 
 
-async def _enrich_folder_with_attached_files(
+async def _enrich_folder_with_included_files(
     client: Any,
     folder: dict[str, Any],
     file_paths: list[str],
     project_path: str,
     ref: str,
 ) -> dict[str, Any]:
-    """Enrich a single folder entity with __attachedFiles."""
-    attached_files: dict[str, Optional[str]] = {}
+    """Enrich a single folder entity with __includedFiles."""
+    included_files: dict[str, Optional[str]] = {}
 
     for file_path in file_paths:
         try:
             content = await client.get_file_content(project_path, file_path, ref)
-            attached_files[file_path] = content
+            included_files[file_path] = content
         except Exception:
             logger.debug(
                 f"Could not fetch file '{file_path}' from {project_path}@{ref}, storing as None"
             )
-            attached_files[file_path] = None
+            included_files[file_path] = None
 
-    folder["__attachedFiles"] = attached_files
+    folder["__includedFiles"] = included_files
     return folder
 
 
@@ -58,7 +58,7 @@ class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         config = cast(GitLabFoldersResourceConfig, resource_config)
         selector = config.selector
         folder_patterns = selector.folders
-        attached_files = selector.attached_files or []
+        included_files = selector.included_files or []
 
         folders = []
         for pattern in folder_patterns:
@@ -83,13 +83,13 @@ class FolderPushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             ):
                 folders.extend(folder_batch)
 
-        # Enrich folders with attached files if configured
-        if attached_files and folders:
+        # Enrich folders with included files if configured
+        if included_files and folders:
             for folder in folders:
-                await _enrich_folder_with_attached_files(
+                await _enrich_folder_with_included_files(
                     self._gitlab_webhook_client,
                     folder,
-                    attached_files,
+                    included_files,
                     project_path=repo_path,
                     ref=ref,
                 )

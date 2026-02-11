@@ -28,10 +28,10 @@ class PushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         logger.info(f"Handling push webhook event for project with ID '{project_id}'")
 
         selector = cast(ProjectResourceConfig, resource_config).selector
-        attached_files = selector.attached_files or []
+        included_files = selector.included_files or []
         project = await self._gitlab_webhook_client.get_project(
             project_id,
-            attached_files=attached_files if attached_files else None,
+            included_files=included_files if included_files else None,
         )
 
         return WebhookEventRawResults(

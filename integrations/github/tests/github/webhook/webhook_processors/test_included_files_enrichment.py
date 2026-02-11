@@ -83,13 +83,13 @@ def resource_config_without_included_files() -> GithubRepositoryConfig:
 
 
 @pytest.mark.asyncio
-class TestGithubAttachedFilesEnrichment:
+class TestGithubIncludedFilesEnrichment:
     """Tests for the _enrich_with_included_files static method on RepositoryWebhookProcessor."""
 
     async def test_enrich_with_included_files_success(
         self, sample_repo: dict[str, Any]
     ) -> None:
-        """Test enriching a repo with attached files successfully fetches content."""
+        """Test enriching a repo with included files successfully fetches content."""
         mock_rest_client = MagicMock()
         mock_file_exporter = AsyncMock()
         mock_file_exporter.get_resource.side_effect = [
@@ -172,7 +172,7 @@ class TestGithubAttachedFilesEnrichment:
         resource_config_with_included_files: GithubRepositoryConfig,
         sample_repo: dict[str, Any],
     ) -> None:
-        """Test that handle_event enriches with attached files when configured."""
+        """Test that handle_event enriches with included files when configured."""
         payload = {
             "action": "created",
             "repository": sample_repo,

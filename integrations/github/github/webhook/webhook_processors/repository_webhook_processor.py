@@ -39,16 +39,16 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
         return [ObjectKind.REPOSITORY]
 
     @staticmethod
-    async def _enrich_with_attached_files(
+    async def _enrich_with_included_files(
         rest_client: Any,
         repo_data: dict[str, Any],
         file_paths: list[str],
     ) -> dict[str, Any]:
-        """Enrich a repository dict with __attachedFiles."""
+        """Enrich a repository dict with __includedFiles."""
         repo_name = repo_data["name"]
         organization = repo_data["owner"]["login"]
         default_branch = repo_data.get("default_branch")
-        attached: dict[str, Any] = {}
+        included: dict[str, Any] = {}
         file_exporter = RestFileExporter(rest_client)
 
         for file_path in file_paths:
@@ -61,14 +61,14 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
                         branch=default_branch,
                     )
                 )
-                attached[file_path] = response.get("content") if response else None
+                included[file_path] = response.get("content") if response else None
             except Exception as e:
                 logger.debug(
                     f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
                 )
-                attached[file_path] = None
+                included[file_path] = None
 
-        repo_data["__attachedFiles"] = attached
+        repo_data["__includedFiles"] = included
         return repo_data
 
     async def handle_event(
@@ -109,10 +109,10 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
                 updated_raw_results=[], deleted_raw_results=[]
             )
 
-        attached_files = resource_config.selector.attached_files or []
-        if attached_files:
-            data_to_upsert = await self._enrich_with_attached_files(
-                rest_client, data_to_upsert, attached_files
+        included_files = resource_config.selector.included_files or []
+        if included_files:
+            data_to_upsert = await self._enrich_with_included_files(
+                rest_client, data_to_upsert, included_files
             )
 
         return WebhookEventRawResults(

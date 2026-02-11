@@ -57,13 +57,13 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
             matching_resource_config, payload, updates, client
         )
 
-        attached_files = selector.attached_files or []
+        included_files = selector.included_files or []
         updated = created + modified
-        if attached_files and updated:
-            from main import _enrich_file_entities_batch_with_attached_files
+        if included_files and updated:
+            from main import _enrich_file_entities_batch_with_included_files
 
-            updated = await _enrich_file_entities_batch_with_attached_files(
-                client, updated, attached_files
+            updated = await _enrich_file_entities_batch_with_included_files(
+                client, updated, included_files
             )
 
         return WebhookEventRawResults(

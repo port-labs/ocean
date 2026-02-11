@@ -14,27 +14,27 @@ import fnmatch
 from integration import GitLabFilesResourceConfig
 
 
-async def _enrich_file_with_attached_files(
+async def _enrich_file_with_included_files(
     client: Any,
     file_entity: dict[str, Any],
     file_paths: list[str],
     project_path: str,
     ref: str,
 ) -> dict[str, Any]:
-    """Enrich a single file entity with __attachedFiles."""
-    attached_files: dict[str, Optional[str]] = {}
+    """Enrich a single file entity with __includedFiles."""
+    included_files: dict[str, Optional[str]] = {}
 
     for file_path in file_paths:
         try:
             content = await client.get_file_content(project_path, file_path, ref)
-            attached_files[file_path] = content
+            included_files[file_path] = content
         except Exception:
             logger.debug(
                 f"Could not fetch file '{file_path}' from {project_path}@{ref}, storing as None"
             )
-            attached_files[file_path] = None
+            included_files[file_path] = None
 
-    file_entity["__attachedFiles"] = attached_files
+    file_entity["__includedFiles"] = included_files
     return file_entity
 
 
@@ -59,7 +59,7 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
         selector = config.selector
         search_path = selector.files.path
         repos = selector.files.repos
-        attached_files = selector.attached_files or []
+        included_files = selector.included_files or []
 
         # If repos is provided and doesn't include the event's repo, skip processing
         if repos and repo_path not in repos:
@@ -132,13 +132,13 @@ class FilePushWebhookProcessor(_GitlabAbstractWebhookProcessor):
                 )
             )
 
-        # Enrich updated file results with attached files if configured
-        if attached_files and updated_results:
+        # Enrich updated file results with included files if configured
+        if included_files and updated_results:
             for file_entity in updated_results:
-                await _enrich_file_with_attached_files(
+                await _enrich_file_with_included_files(
                     self._gitlab_webhook_client,
                     file_entity,
-                    attached_files,
+                    included_files,
                     project_path=repo_path,
                     ref=branch,
                 )

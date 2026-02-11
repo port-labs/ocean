@@ -51,12 +51,12 @@ class GithubRepositorySelector(RepoSearchSelector):
         max_items=3,
         description="Specify the relationships to include in the repository",
     )
-    attached_files: list[str] = Field(
-        alias="attachedFiles",
+    included_files: list[str] = Field(
+        alias="includedFiles",
         default_factory=list,
         description=(
             "List of file paths to fetch from the repository and attach to "
-            "the raw data under __attachedFiles. E.g. ['README.md', 'CODEOWNERS']"
+            "the raw data under __includedFiles. E.g. ['README.md', 'CODEOWNERS']"
         ),
     )
 
@@ -87,8 +87,8 @@ class FolderSelector(BaseModel):
 
 class GithubFolderSelector(Selector):
     folders: list[FolderSelector]
-    attached_files: list[str] = Field(
-        alias="attachedFiles",
+    included_files: list[str] = Field(
+        alias="includedFiles",
         default_factory=list,
         description="List of file paths to fetch and attach to the folder entity",
     )
@@ -294,8 +294,8 @@ class GithubFilePattern(BaseModel):
 
 class GithubFileSelector(Selector):
     files: list[GithubFilePattern]
-    attached_files: list[str] = Field(
-        alias="attachedFiles",
+    included_files: list[str] = Field(
+        alias="includedFiles",
         default_factory=list,
         description="List of file paths to fetch and attach to the file entity",
     )
@@ -379,9 +379,9 @@ class GitManipulationHandler(JQEntityProcessor):
             logger.warning(
                 f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
                 f"Pattern: '{pattern}'. "
-                f"Use the 'attachedFiles' selector instead. Example: "
-                f"selector.attachedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
-                f'and mapping: .__attachedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
+                f"Use the 'includedFiles' selector instead. Example: "
+                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
+                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
             )
             entity_processor = FileEntityProcessor
         else:

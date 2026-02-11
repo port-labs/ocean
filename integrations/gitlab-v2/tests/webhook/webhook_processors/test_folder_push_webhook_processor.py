@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
     FolderPushWebhookProcessor,
-    _enrich_folder_with_attached_files,
+    _enrich_folder_with_included_files,
 )
 from gitlab.helpers.utils import ObjectKind
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
@@ -80,7 +80,7 @@ class TestFolderPushWebhookProcessor:
         """Create a mocked GitLabFoldersResourceConfig with default no-repos config"""
         config = MagicMock(spec=ResourceConfig)
         config.selector = mock_gitlab_folder_selector
-        config.selector.attached_files = []
+        config.selector.included_files = []
         config.kind = "folder"
         return config
 
@@ -111,7 +111,7 @@ class TestFolderPushWebhookProcessor:
         # Mock ResourceConfig
         resource_config = MagicMock(spec=ResourceConfig)
         resource_config.selector = gitlab_folder_selector
-        resource_config.selector.attached_files = []
+        resource_config.selector.included_files = []
         resource_config.kind = "folder"
 
         # Mock folder data
@@ -169,7 +169,7 @@ class TestFolderPushWebhookProcessor:
         # Mock ResourceConfig
         resource_config = MagicMock(spec=ResourceConfig)
         resource_config.selector = gitlab_folder_selector
-        resource_config.selector.attached_files = []
+        resource_config.selector.included_files = []
         resource_config.kind = "folder"
 
         processor._gitlab_webhook_client = MagicMock()
@@ -203,7 +203,7 @@ class TestFolderPushWebhookProcessor:
         # Mock ResourceConfig
         resource_config = MagicMock(spec=ResourceConfig)
         resource_config.selector = gitlab_folder_selector
-        resource_config.selector.attached_files = []
+        resource_config.selector.included_files = []
         resource_config.kind = "folder"
 
         processor._gitlab_webhook_client = MagicMock()
@@ -218,11 +218,11 @@ class TestFolderPushWebhookProcessor:
 
 
 @pytest.mark.asyncio
-class TestFolderEnrichWithAttachedFiles:
-    """Tests for the _enrich_folder_with_attached_files function"""
+class TestFolderEnrichWithIncludedFiles:
+    """Tests for the _enrich_folder_with_included_files function"""
 
     async def test_enrich_folder_success(self) -> None:
-        """Test successful enrichment with attached files."""
+        """Test successful enrichment with included files."""
         client = MagicMock()
         client.get_file_content = AsyncMock(
             side_effect=["readme content", "owners content"]
@@ -230,7 +230,7 @@ class TestFolderEnrichWithAttachedFiles:
 
         folder: dict[str, Any] = {"name": "src", "path": "src"}
 
-        result = await _enrich_folder_with_attached_files(
+        result = await _enrich_folder_with_included_files(
             client,
             folder,
             ["README.md", "CODEOWNERS"],
@@ -238,7 +238,7 @@ class TestFolderEnrichWithAttachedFiles:
             ref="abc123",
         )
 
-        assert result["__attachedFiles"] == {
+        assert result["__includedFiles"] == {
             "README.md": "readme content",
             "CODEOWNERS": "owners content",
         }
@@ -255,7 +255,7 @@ class TestFolderEnrichWithAttachedFiles:
 
         folder: dict[str, Any] = {"name": "src", "path": "src"}
 
-        result = await _enrich_folder_with_attached_files(
+        result = await _enrich_folder_with_included_files(
             client,
             folder,
             ["README.md", "MISSING.md"],
@@ -263,7 +263,7 @@ class TestFolderEnrichWithAttachedFiles:
             ref="abc123",
         )
 
-        assert result["__attachedFiles"] == {
+        assert result["__includedFiles"] == {
             "README.md": "content",
             "MISSING.md": None,
         }
@@ -275,7 +275,7 @@ class TestFolderEnrichWithAttachedFiles:
 
         folder: dict[str, Any] = {"name": "src", "path": "src"}
 
-        result = await _enrich_folder_with_attached_files(
+        result = await _enrich_folder_with_included_files(
             client,
             folder,
             [],
@@ -283,5 +283,5 @@ class TestFolderEnrichWithAttachedFiles:
             ref="abc123",
         )
 
-        assert result["__attachedFiles"] == {}
+        assert result["__includedFiles"] == {}
         client.get_file_content.assert_not_called()

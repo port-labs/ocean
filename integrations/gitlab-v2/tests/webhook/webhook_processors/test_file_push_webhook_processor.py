@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from gitlab.webhook.webhook_processors.file_push_webhook_processor import (
     FilePushWebhookProcessor,
-    _enrich_file_with_attached_files,
+    _enrich_file_with_included_files,
 )
 from gitlab.helpers.utils import ObjectKind
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
@@ -82,7 +82,7 @@ class TestFilePushWebhookProcessor:
         """Create a mocked GitLabFilesResourceConfig with default no-repos config"""
         config = MagicMock(spec=ResourceConfig)
         config.selector = mock_gitlab_files_selector
-        config.selector.attached_files = []
+        config.selector.included_files = []
         config.kind = "file"
         return config
 
@@ -163,7 +163,7 @@ class TestFilePushWebhookProcessor:
         # Mock ResourceConfig
         resource_config = MagicMock(spec=ResourceConfig)
         resource_config.selector = gitlab_files_selector
-        resource_config.selector.attached_files = []
+        resource_config.selector.included_files = []
         resource_config.kind = "file"
 
         project_id = push_payload["project_id"]
@@ -246,7 +246,7 @@ class TestFilePushWebhookProcessor:
         # Mock ResourceConfig
         resource_config = MagicMock(spec=ResourceConfig)
         resource_config.selector = gitlab_files_selector
-        resource_config.selector.attached_files = []
+        resource_config.selector.included_files = []
         resource_config.kind = "file"
 
         processor._gitlab_webhook_client = MagicMock()
@@ -340,11 +340,11 @@ class TestFilePushWebhookProcessor:
 
 
 @pytest.mark.asyncio
-class TestFileEnrichWithAttachedFiles:
-    """Tests for the _enrich_file_with_attached_files function"""
+class TestFileEnrichWithIncludedFiles:
+    """Tests for the _enrich_file_with_included_files function"""
 
     async def test_enrich_file_success(self) -> None:
-        """Test successful enrichment with attached files."""
+        """Test successful enrichment with included files."""
         client = MagicMock()
         client.get_file_content = AsyncMock(
             side_effect=["readme content", "owners content"]
@@ -355,7 +355,7 @@ class TestFileEnrichWithAttachedFiles:
             "repo": {"id": 1, "path_with_namespace": "group/project"},
         }
 
-        result = await _enrich_file_with_attached_files(
+        result = await _enrich_file_with_included_files(
             client,
             file_entity,
             ["README.md", "CODEOWNERS"],
@@ -363,7 +363,7 @@ class TestFileEnrichWithAttachedFiles:
             ref="main",
         )
 
-        assert result["__attachedFiles"] == {
+        assert result["__includedFiles"] == {
             "README.md": "readme content",
             "CODEOWNERS": "owners content",
         }
@@ -383,7 +383,7 @@ class TestFileEnrichWithAttachedFiles:
             "repo": {"id": 1},
         }
 
-        result = await _enrich_file_with_attached_files(
+        result = await _enrich_file_with_included_files(
             client,
             file_entity,
             ["README.md", "MISSING.md"],
@@ -391,7 +391,7 @@ class TestFileEnrichWithAttachedFiles:
             ref="main",
         )
 
-        assert result["__attachedFiles"] == {
+        assert result["__includedFiles"] == {
             "README.md": "content",
             "MISSING.md": None,
         }
@@ -406,7 +406,7 @@ class TestFileEnrichWithAttachedFiles:
             "repo": {"id": 1},
         }
 
-        result = await _enrich_file_with_attached_files(
+        result = await _enrich_file_with_included_files(
             client,
             file_entity,
             [],
@@ -414,5 +414,5 @@ class TestFileEnrichWithAttachedFiles:
             ref="main",
         )
 
-        assert result["__attachedFiles"] == {}
+        assert result["__includedFiles"] == {}
         client.get_file_content.assert_not_called()

@@ -16,9 +16,9 @@ class GitManipulationHandler(JQEntityProcessor):
             logger.warning(
                 f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
                 f"Pattern: '{pattern}'. "
-                f"Use the 'attachedFiles' selector instead. Example: "
-                f"selector.attachedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
-                f'and mapping: .__attachedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
+                f"Use the 'includedFiles' selector instead. Example: "
+                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
+                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
             )
             return await self._search_by_file(data, pattern)
 

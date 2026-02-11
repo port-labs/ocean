@@ -63,7 +63,7 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
 
         folder_config = cast(AzureDevopsFolderResourceConfig, resource_config)
         folder_patterns = [pattern.path for pattern in folder_config.selector.folders]
-        attached_files = folder_config.selector.attached_files or []
+        included_files = folder_config.selector.included_files or []
 
         repo_name = repository["name"]
         configured_repos = {
@@ -128,11 +128,11 @@ class FolderWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
                             modified_folders.append(folder_entity)
 
         updated_folders = created_folders + modified_folders
-        if attached_files and updated_folders:
-            from main import _enrich_folders_batch_with_attached_files
+        if included_files and updated_folders:
+            from main import _enrich_folders_batch_with_included_files
 
-            updated_folders = await _enrich_folders_batch_with_attached_files(
-                client, updated_folders, attached_files
+            updated_folders = await _enrich_folders_batch_with_included_files(
+                client, updated_folders, included_files
             )
 
         return WebhookEventRawResults(

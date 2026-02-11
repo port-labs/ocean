@@ -146,44 +146,44 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield pull_requests
 
 
-async def _enrich_repo_with_attached_files(
+async def _enrich_repo_with_included_files(
     client: AzureDevopsClient,
     repo: dict[str, Any],
     file_paths: list[str],
 ) -> dict[str, Any]:
-    """Enrich a repository dict with __attachedFiles from the given file paths."""
+    """Enrich a repository dict with __includedFiles from the given file paths."""
     repo_id = repo.get("id", "")
     default_branch_ref = repo.get("defaultBranch", "refs/heads/main")
     # Strip the refs/heads/ prefix to get the branch name
     branch_name = default_branch_ref.replace("refs/heads/", "")
-    attached: dict[str, Any] = {}
+    included: dict[str, Any] = {}
 
     for file_path in file_paths:
         try:
             content_bytes = await client.get_file_by_branch(
                 file_path, repo_id, branch_name
             )
-            attached[file_path] = (
+            included[file_path] = (
                 content_bytes.decode("utf-8") if content_bytes else None
             )
         except Exception as e:
             logger.debug(
                 f"Could not fetch file {file_path} from repo {repo.get('name', repo_id)}@{branch_name}: {e}"
             )
-            attached[file_path] = None
+            included[file_path] = None
 
-    repo["__attachedFiles"] = attached
+    repo["__includedFiles"] = included
     return repo
 
 
-async def _enrich_repos_batch_with_attached_files(
+async def _enrich_repos_batch_with_included_files(
     client: AzureDevopsClient,
     repositories: list[dict[str, Any]],
     file_paths: list[str],
 ) -> list[dict[str, Any]]:
-    """Enrich a batch of repositories with attached files."""
+    """Enrich a batch of repositories with included files."""
     tasks = [
-        _enrich_repo_with_attached_files(client, repo, file_paths)
+        _enrich_repo_with_included_files(client, repo, file_paths)
         for repo in repositories
     ]
     return list(await asyncio.gather(*tasks))
@@ -193,13 +193,13 @@ async def _enrich_repos_batch_with_attached_files(
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     selector = cast(AzureDevopsRepositoryResourceConfig, event.resource_config).selector
-    attached_files = selector.attached_files or []
+    included_files = selector.included_files or []
 
     async for repositories in azure_devops_client.generate_repositories():
         logger.info(f"Resyncing {len(repositories)} repositories")
-        if attached_files:
-            repositories = await _enrich_repos_batch_with_attached_files(
-                azure_devops_client, repositories, attached_files
+        if included_files:
+            repositories = await _enrich_repos_batch_with_included_files(
+                azure_devops_client, repositories, included_files
             )
         yield repositories
 
@@ -306,83 +306,83 @@ async def resync_pipeline_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield deployments
 
 
-async def _enrich_folder_with_attached_files(
+async def _enrich_folder_with_included_files(
     client: AzureDevopsClient,
     folder: dict[str, Any],
     file_paths: list[str],
 ) -> dict[str, Any]:
-    """Enrich a folder entity with __attachedFiles from the given file paths."""
+    """Enrich a folder entity with __includedFiles from the given file paths."""
     repo = folder.get("__repository", {})
     repo_id = repo.get("id", "")
     branch = folder.get("__branch") or repo.get(
         "defaultBranch", "refs/heads/main"
     ).replace("refs/heads/", "")
-    attached: dict[str, Any] = {}
+    included: dict[str, Any] = {}
 
     for file_path in file_paths:
         try:
             content_bytes = await client.get_file_by_branch(file_path, repo_id, branch)
-            attached[file_path] = (
+            included[file_path] = (
                 content_bytes.decode("utf-8") if content_bytes else None
             )
         except Exception as e:
             logger.debug(
                 f"Could not fetch file {file_path} from repo {repo.get('name', repo_id)}@{branch}: {e}"
             )
-            attached[file_path] = None
+            included[file_path] = None
 
-    folder["__attachedFiles"] = attached
+    folder["__includedFiles"] = included
     return folder
 
 
-async def _enrich_folders_batch_with_attached_files(
+async def _enrich_folders_batch_with_included_files(
     client: AzureDevopsClient,
     folders: list[dict[str, Any]],
     file_paths: list[str],
 ) -> list[dict[str, Any]]:
-    """Enrich a batch of folders with attached files."""
+    """Enrich a batch of folders with included files."""
     tasks = [
-        _enrich_folder_with_attached_files(client, folder, file_paths)
+        _enrich_folder_with_included_files(client, folder, file_paths)
         for folder in folders
     ]
     return list(await asyncio.gather(*tasks))
 
 
-async def _enrich_file_entity_with_attached_files(
+async def _enrich_file_entity_with_included_files(
     client: AzureDevopsClient,
     file_entity: dict[str, Any],
     file_paths: list[str],
 ) -> dict[str, Any]:
-    """Enrich a file entity with __attachedFiles from the given file paths."""
+    """Enrich a file entity with __includedFiles from the given file paths."""
     repo = file_entity.get("repo", {})
     repo_id = repo.get("id", "")
     branch = repo.get("defaultBranch", "refs/heads/main").replace("refs/heads/", "")
-    attached: dict[str, Any] = {}
+    included: dict[str, Any] = {}
 
     for file_path in file_paths:
         try:
             content_bytes = await client.get_file_by_branch(file_path, repo_id, branch)
-            attached[file_path] = (
+            included[file_path] = (
                 content_bytes.decode("utf-8") if content_bytes else None
             )
         except Exception as e:
             logger.debug(
                 f"Could not fetch file {file_path} from repo {repo.get('name', repo_id)}@{branch}: {e}"
             )
-            attached[file_path] = None
+            included[file_path] = None
 
-    file_entity["__attachedFiles"] = attached
+    file_entity["__includedFiles"] = included
     return file_entity
 
 
-async def _enrich_file_entities_batch_with_attached_files(
+async def _enrich_file_entities_batch_with_included_files(
     client: AzureDevopsClient,
     file_entities: list[dict[str, Any]],
     file_paths: list[str],
 ) -> list[dict[str, Any]]:
-    """Enrich a batch of file entities with attached files."""
+    """Enrich a batch of file entities with included files."""
     tasks = [
-        _enrich_file_entity_with_attached_files(client, fe, file_paths)
+        _enrich_file_entity_with_included_files(client, fe, file_paths)
         for fe in file_entities
     ]
     return list(await asyncio.gather(*tasks))
@@ -392,7 +392,7 @@ async def _enrich_file_entities_batch_with_attached_files(
 async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     config = cast(AzureDevopsFileResourceConfig, event.resource_config)
-    attached_files = config.selector.attached_files or []
+    included_files = config.selector.included_files or []
 
     logger.info(f"Starting file resync for paths: {config.selector.files.path}")
 
@@ -402,9 +402,9 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         if files_batch:
             logger.info(f"Resyncing batch of {len(files_batch)} files")
-            if attached_files:
-                files_batch = await _enrich_file_entities_batch_with_attached_files(
-                    azure_devops_client, files_batch, attached_files
+            if included_files:
+                files_batch = await _enrich_file_entities_batch_with_included_files(
+                    azure_devops_client, files_batch, included_files
                 )
             yield files_batch
 
@@ -448,13 +448,13 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync folders based on configuration."""
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     selector = cast(AzureDevopsFolderResourceConfig, event.resource_config).selector
-    attached_files = selector.attached_files or []
+    included_files = selector.included_files or []
     async for matching_folders in azure_devops_client.process_folder_patterns(
         selector.folders, selector.project_name
     ):
-        if attached_files:
-            matching_folders = await _enrich_folders_batch_with_attached_files(
-                azure_devops_client, matching_folders, attached_files
+        if included_files:
+            matching_folders = await _enrich_folders_batch_with_included_files(
+                azure_devops_client, matching_folders, included_files
             )
         yield matching_folders
 
