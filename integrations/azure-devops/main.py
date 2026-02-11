@@ -51,6 +51,7 @@ from integration import (
     AzureDevopsTestRunResourceConfig,
     AzureDevopsPullRequestResourceConfig,
     AzureDevopsAdvancedSecurityResourceConfig,
+    AzureDevopsGroupMemberResourceConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -100,6 +101,25 @@ async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for members in azure_devops_client.generate_members():
         logger.info(f"Resyncing {len(members)} members")
+        yield members
+
+
+@ocean.on_resync(Kind.GROUP)
+async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for groups in azure_devops_client.generate_groups():
+        logger.info(f"Resyncing {len(groups)} groups")
+        yield groups
+
+
+@ocean.on_resync(Kind.GROUP_MEMBER)
+async def resync_group_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    selector = cast(AzureDevopsGroupMemberResourceConfig, event.resource_config).selector
+    async for members in azure_devops_client.generate_group_members(
+        max_depth=selector.depth
+    ):
+        logger.info(f"Resyncing {len(members)} group members")
         yield members
 
 

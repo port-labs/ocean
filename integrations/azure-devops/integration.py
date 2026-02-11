@@ -19,6 +19,9 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 
+DEFAULT_GROUP_MEMBER_DEPTH = 1
+MAX_GROUP_MEMBER_DEPTH = 3
+
 
 class AzureDevopsSelector(Selector):
     query: str
@@ -237,6 +240,21 @@ class AzureDevopsPullRequestResourceConfig(ResourceConfig):
     selector: AzureDevopsPullRequestSelector
 
 
+class GroupMemberSelector(Selector):
+    depth: int = Field(
+        default=DEFAULT_GROUP_MEMBER_DEPTH,
+        ge=DEFAULT_GROUP_MEMBER_DEPTH,
+        le=MAX_GROUP_MEMBER_DEPTH,
+        alias="depth",
+        description="Depth of nested group expansion. Default is 1, maximum is 3.",
+    )
+
+
+class AzureDevopsGroupMemberResourceConfig(ResourceConfig):
+    kind: Literal["group-member"]
+    selector: GroupMemberSelector
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -260,6 +278,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsTestRunResourceConfig
         | AzureDevopsPullRequestResourceConfig
         | AzureDevopsAdvancedSecurityResourceConfig
+        | AzureDevopsGroupMemberResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

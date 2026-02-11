@@ -330,6 +330,152 @@ class AzureDevopsClient(HTTPBaseClient):
             yield users
 
     @cache_iterator_result()
+    async def generate_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Generate all security groups in the organization."""
+        groups_url = (
+            self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/groups"
+        )
+        async for groups in self._get_paginated_by_top_and_continuation_token(
+            groups_url
+        ):
+            yield groups
+
+    async def _get_group_direct_members(
+        self, group_descriptor: str
+    ) -> list[dict[str, Any]]:
+        """Get direct members of a group."""
+        members_url = (
+            self._format_service_url("vssps")
+            + f"/{API_URL_PREFIX}/graph/Memberships/{group_descriptor}"
+        )
+        response = await self.send_request(
+            "GET", members_url, params={"direction": "Down"}
+        )
+        if not response:
+            return []
+        return response.json().get("value", [])
+
+    async def _lookup_subjects(
+        self, descriptors: list[str]
+    ) -> dict[str, dict[str, Any]]:
+        """Batch lookup subject details for multiple descriptors."""
+        if not descriptors:
+            return {}
+
+        lookup_url = (
+            self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/subjectlookup"
+        )
+        request_body = {"lookupKeys": [{"descriptor": d} for d in descriptors]}
+
+        response = await self.send_request(
+            "POST",
+            lookup_url,
+            data=json.dumps(request_body),
+            headers={"Content-Type": "application/json"},
+            params={"api-version": "7.1-preview.1"},
+        )
+        if not response:
+            return {}
+        return response.json().get("value", {})
+
+    async def _get_group_members_recursive(
+        self,
+        group_descriptor: str,
+        group_display_name: str,
+        root_group_descriptor: str,
+        root_group_display_name: str,
+        visited: set[str],
+        path: list[str],
+        max_depth: int,
+        _depth: int,
+    ) -> list[dict[str, Any]]:
+        """Internal recursive method for resolving group members."""
+        if group_descriptor in visited:
+            return []
+
+        if _depth > max_depth:
+            logger.warning(
+                f"Max depth {max_depth} reached for group {group_display_name}"
+            )
+            return []
+
+        visited.add(group_descriptor)
+        current_path = path + [group_display_name]
+
+        memberships = await self._get_group_direct_members(group_descriptor)
+        if not memberships:
+            return []
+
+        descriptors = [m["memberDescriptor"] for m in memberships]
+        subject_details = await self._lookup_subjects(descriptors)
+
+        resolved_users = []
+
+        for membership in memberships:
+            member_descriptor = membership["memberDescriptor"]
+            subject_info = subject_details.get(member_descriptor, {})
+            subject_kind = subject_info.get("subjectKind", "")
+
+            if subject_kind == "group":
+                nested_group_name = subject_info.get("displayName", "Unknown Group")
+                nested_users = await self._get_group_members_recursive(
+                    member_descriptor,
+                    group_display_name=nested_group_name,
+                    root_group_descriptor=root_group_descriptor,
+                    root_group_display_name=root_group_display_name,
+                    visited=visited,
+                    path=current_path,
+                    max_depth=max_depth,
+                    _depth=_depth + 1,
+                )
+                resolved_users.extend(nested_users)
+            else:
+                user_name = subject_info.get("displayName", "Unknown User")
+                full_path = current_path + [user_name]
+
+                user_record = {
+                    **subject_info,
+                    "memberDescriptor": member_descriptor,
+                    "__groupDescriptor": root_group_descriptor,
+                    "__groupDisplayName": root_group_display_name,
+                    "__membershipPath": " > ".join(full_path),
+                    "__depth": _depth,
+                }
+                resolved_users.append(user_record)
+
+        return resolved_users
+
+    async def generate_group_members(
+        self,
+        max_depth: int = 1,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate all group memberships with recursive expansion.
+        Each group's members are expanded until only users remain.
+        """
+        async for groups in self.generate_groups():
+            for group in groups:
+                group_descriptor = group["descriptor"]
+                group_name = group.get("displayName", "Unknown Group")
+
+                user_members = await self._get_group_members_recursive(
+                    group_descriptor,
+                    group_display_name=group_name,
+                    root_group_descriptor=group_descriptor,
+                    root_group_display_name=group_name,
+                    visited=set(),
+                    path=[],
+                    max_depth=max_depth,
+                    _depth=0,
+                )
+
+                if user_members:
+                    logger.info(
+                        f"Resolved {len(user_members)} users for group '{group_name}'"
+                    )
+                    yield user_members
+
+    @cache_iterator_result()
     async def generate_repositories(
         self, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
