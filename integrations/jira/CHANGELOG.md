@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.5.69 (2026-02-11)
+## 0.5.71 (2026-02-11)
 
 
 ### Bug Fixes
 
 - Fixed webhook processor not syncing newly created issues due to Jira search index lag. Now uses POST /search/jql with reconcileIssues for read-after-write consistency.
+
+
+## 0.5.70 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+## 0.5.69 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
 
 
 ## 0.5.68 (2026-02-01)

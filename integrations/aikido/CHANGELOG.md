@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.84-beta (2026-02-03)
+
+
+### Bug Fixes
+
+- The default blueprint was updated to remove incorrect property constraints, preventing validation errors during resource synchronization.
+
+
+## 0.1.83-beta (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+## 0.1.82-beta (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
+
+
 ## 0.1.81-beta (2026-02-01)
 
 
