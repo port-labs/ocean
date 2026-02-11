@@ -115,7 +115,9 @@ async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.GROUP_MEMBER)
 async def resync_group_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    selector = cast(AzureDevopsGroupMemberResourceConfig, event.resource_config).selector
+    selector = cast(
+        AzureDevopsGroupMemberResourceConfig, event.resource_config
+    ).selector
     async for members in azure_devops_client.generate_group_members(
         max_depth=selector.depth
     ):
