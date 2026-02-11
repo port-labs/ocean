@@ -1,5 +1,5 @@
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
-from typing import Any, Dict, cast
+from typing import Any, Dict, Optional, cast
 from github.helpers.utils import (
     enrich_with_repository,
     enrich_with_tag_name,
@@ -17,7 +17,7 @@ class RestTagExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_resource[
         ExporterOptionsT: SingleTagOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
 
         repo_name, organization, params = parse_github_options(dict(options))
         tag_name = params["tag_name"]
@@ -25,6 +25,12 @@ class RestTagExporter(AbstractGithubExporter[GithubRestClient]):
 
         endpoint = f"{self.client.base_url}/repos/{organization}/{repo_name}/git/refs/tags/{tag_name}"
         response = await self.client.send_api_request(endpoint)
+        if not response:
+            logger.warning(
+                f"No tag found with name: {tag_name} in repository: {repo_name} from {organization}"
+            )
+            return None
+
         logger.info(
             f"Fetched tag: {tag_name} for repo: {repo_name} from {organization}"
         )
