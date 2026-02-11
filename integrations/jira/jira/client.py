@@ -314,7 +314,7 @@ class JiraClient(OAuthClient):
         fields: str = "*all",
     ) -> list[dict[str, Any]]:
         """Filter known issues against a JQL query with read-after-write consistency"""
-        
+
         url = f"{self.api_url}/search/jql"
         fields_list = fields.split(",") if fields != "*all" else ["*all"]
         body = {
