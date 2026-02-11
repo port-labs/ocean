@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import cast
 from loguru import logger
 from initialize_client import create_jira_client
 from jira.overrides import JiraIssueConfig
