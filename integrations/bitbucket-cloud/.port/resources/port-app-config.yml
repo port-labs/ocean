@@ -16,7 +16,7 @@ resources:
   - kind: repository
     selector:
       query: "true"
-      attachedFiles:
+      includedFiles:
         - README.md
         - CODEOWNERS
     port:
@@ -28,8 +28,8 @@ resources:
           properties:
             url: ".links.html.href"
             defaultBranch: .mainbranch.name
-            readme: .__attachedFiles["README.md"]
-            codeowners: .__attachedFiles["CODEOWNERS"]
+            readme: .__includedFiles["README.md"]
+            codeowners: .__includedFiles["CODEOWNERS"]
           relations:
             project: '.project.uuid | gsub("[{-}]"; "")'
   - kind: pull-request
