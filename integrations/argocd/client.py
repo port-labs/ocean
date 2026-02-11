@@ -59,7 +59,7 @@ class ArgocdClient:
             try:
                 parsed_headers = json.loads(custom_http_headers)
                 if isinstance(parsed_headers, dict):
-                    logger.info(
+                    logger.debug(
                         f"Applying custom HTTP headers: {list(parsed_headers.keys())}"
                     )
                     self.http_client.headers.update(parsed_headers)
