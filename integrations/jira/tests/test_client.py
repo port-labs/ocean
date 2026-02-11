@@ -486,6 +486,56 @@ async def test_create_events_webhook_oauth(mock_jira_client: JiraClient) -> None
         mock_request.assert_called_once()  # Only checks for existence
 
 
+@pytest.mark.asyncio
+async def test_search_issues_by_ids(mock_jira_client: JiraClient) -> None:
+    """Test search_issues_by_ids uses POST with correct body shape."""
+    issues_data = {
+        "issues": [{"key": "TEST-1", "id": "10001", "fields": {"summary": "Test"}}]
+    }
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = issues_data
+
+        result = await mock_jira_client.search_issues_by_ids(
+            jql="project = TEST AND key = TEST-1",
+            issue_ids=[10001],
+            fields="*all",
+        )
+
+        mock_request.assert_called_once_with(
+            "POST",
+            f"{mock_jira_client.api_url}/search/jql",
+            json={
+                "jql": "project = TEST AND key = TEST-1",
+                "fields": ["*all"],
+                "reconcileIssues": [10001],
+                "maxResults": 1,
+            },
+        )
+        assert len(result) == 1
+        assert result[0]["key"] == "TEST-1"
+
+
+@pytest.mark.asyncio
+async def test_search_issues_by_ids_empty_response(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test search_issues_by_ids returns empty list when no issues found."""
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {"issues": []}
+
+        result = await mock_jira_client.search_issues_by_ids(
+            jql="key = NONEXISTENT-1",
+            issue_ids=[99999],
+        )
+
+        assert result == []
+
+
 def test_jira_issue_selector_default_jql() -> None:
     """Test that JiraIssueSelector uses the correct default JQL when not provided"""
     selector = JiraIssueSelector(query="true")

@@ -28,6 +28,7 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         client = create_jira_client()
         config = cast(JiraIssueConfig, resource_config)
         issue_key = payload["issue"]["key"]
+        issue_id = int(payload["issue"]["id"])
         logger.info(
             f"Fetching issue with key: {issue_key} and applying specified JQL filter"
         )
@@ -39,24 +40,22 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
                 deleted_raw_results=[payload["issue"]],
             )
 
-        params = {
-            "jql": f"key = {issue_key}",
-            "fields": config.selector.fields or "*all",
-        }
-
+        jql = f"key = {issue_key}"
         if config.selector.jql:
-            params["jql"] = f"({config.selector.jql}) AND key = {issue_key}"
+            jql = f"({config.selector.jql}) AND key = {issue_key}"
 
-        issues: list[dict[str, Any]] = []
-        async for issues_batch in client.get_paginated_issues(params):
-            issues.extend(issues_batch)
+        issues = await client.search_issues_by_ids(
+            jql=jql,
+            issue_ids=[issue_id],
+            fields=config.selector.fields or "*all",
+        )
 
         data_to_update = []
         data_to_delete = []
         if not issues:
             logger.warning(
                 f"Issue {payload['issue']['key']} not found"
-                f" using the following query: {params['jql']},"
+                f" using the following query: {jql},"
                 " trying to remove..."
             )
             data_to_delete.append(payload["issue"])
