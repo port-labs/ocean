@@ -67,6 +67,7 @@ class TestProjectWebhookProcessor:
         config.selector = MagicMock()
         config.selector.include_languages = False
         config.selector.search_queries = []
+        config.selector.included_files = []
         return config
 
     @pytest.mark.asyncio
@@ -102,6 +103,7 @@ class TestProjectWebhookProcessor:
             project_id,
             resource_config.selector.include_languages,
             search_queries=None,
+            included_files=None,
         )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == expected_project

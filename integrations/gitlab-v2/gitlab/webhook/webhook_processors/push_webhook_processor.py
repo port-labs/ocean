@@ -1,3 +1,5 @@
+from typing import cast
+
 from gitlab.webhook.webhook_processors._gitlab_abstract_webhook_processor import (
     _GitlabAbstractWebhookProcessor,
 )
@@ -8,6 +10,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 )
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from gitlab.helpers.utils import ObjectKind
+from integration import ProjectResourceConfig
 from loguru import logger
 from typing import cast
 from integration import ProjectResourceConfig
@@ -32,9 +35,11 @@ class PushWebhookProcessor(_GitlabAbstractWebhookProcessor):
             if selector.search_queries
             else None
         )
+        included_files = selector.included_files or []
         project = await self._gitlab_webhook_client.get_project(
             project_id,
             search_queries=search_queries,
+            included_files=included_files if included_files else None,
         )
 
         return WebhookEventRawResults(

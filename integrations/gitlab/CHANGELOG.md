@@ -7,12 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-0.2.180-post1 (2026-02-10)
-==========================
+## 0.2.180-post1 (2026-02-10)
+
 
 ### Improvements
 
-- Added deprecation warning when using `file://` or `search://` prefix in mappings; use `attachedFiles` / `searchQueries` selectors instead
+- Added deprecation warning when using `file://` or `search://` prefix in mappings; use `includedFiles` / `searchQueries` selectors instead
 
 
 0.2.179-post1 (2026-02-02)

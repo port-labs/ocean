@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.30 (2026-02-11)
+
+
+### Features
+
+- Added `includedFiles` selector for repository, folder and file entities to fetch file contents (e.g. README.md, CODEOWNERS) during enrichment and expose them under `__includedFiles` in the raw data
+- Added deprecation warning when using `file://` prefix in mappings, guiding users to migrate to the new `includedFiles` selector
+
+
+## 5.0.29 (2026-02-11)
+
+
+### Improvements
+
+- Improved batch processing to process tasks concurrently as repositories are fetched, optimizing resource utilization and reducing overall processing time.
+
+
+## 5.0.28 (2026-02-10)
+
+
+### Bug Fixes
+
+- Fixed empty responses not being properly handled in GitHub exporters for webhooks by returning None instead of empty objects, with updated type hints to allow None values when no item is returned.
+
+
+## 5.0.27 (2026-02-09)
+
+
+### Bug Fixes
+
+- Fixed GitHub webhook delete handling by enriching `deleted_raw_results` with repository + organization metadata across processors (branch, tag, collaborator, issue, pull request, release, workflow run).
+- Enriched workflow run exporter responses with repository + organization metadata for consistent mappings.
+
+
 ## 5.0.26 (2026-02-09)
 
 

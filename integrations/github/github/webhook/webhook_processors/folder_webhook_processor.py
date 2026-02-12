@@ -46,6 +46,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         )
 
         config = cast(GithubFolderResourceConfig, resource_config)
+        included_files = config.selector.included_files or []
         folders = await self._fetch_folders(
             config.selector.folders, repository, branch, payload
         )
@@ -55,6 +56,13 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
                 f"No folders found matching patterns for {repository['name']} of organization: {organization} at ref {ref}"
             )
         else:
+            if included_files:
+                from main import _enrich_folders_batch_with_included_files
+
+                client = create_github_client()
+                folders = await _enrich_folders_batch_with_included_files(
+                    client, folders, included_files
+                )
             logger.info(
                 f"Completed push event processing; updated {len(folders)} folders of organization: {organization}"
             )
@@ -139,26 +147,28 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
         repo_options = SingleRepositoryOptions(
             organization=organization, name=repository["name"]
         )
-        repository = await repo_exporter.get_resource(repo_options)
+        repo_data = await repo_exporter.get_resource(repo_options)
+        if not repo_data:
+            return []
 
         for pattern in folder_selector:
-            if not self._has_matched_repo(pattern, repository, branch):
+            if not self._has_matched_repo(pattern, repo_data, branch):
                 continue
 
             logger.debug(
-                f"Fetching folders for path '{pattern.path}' in {repository['name']} of organization: {organization} on branch {branch}"
+                f"Fetching folders for path '{pattern.path}' in {repo_data['name']} of organization: {organization} on branch {branch}"
             )
 
             options = [
                 ListFolderOptions(
                     organization=organization,
-                    repo_name=repository["name"],
+                    repo_name=repo_data["name"],
                     folders=[
                         FolderSearchOptions(
                             organization=organization,
                             path=pattern.path,
                             branch=branch,
-                            repo=repository,
+                            repo=repo_data,
                         )
                     ],
                 )

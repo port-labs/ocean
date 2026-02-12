@@ -41,6 +41,7 @@ class GitLabClient:
         project_path: str | int,
         include_languages: bool = False,
         search_queries: Optional[list[dict[str, Any]]] = None,
+        included_files: Optional[list[str]] = None,
     ) -> dict[str, Any]:
         encoded_path = quote(str(project_path), safe="")
         project = await self.rest.send_api_request("GET", f"projects/{encoded_path}")
@@ -49,6 +50,10 @@ class GitLabClient:
         if search_queries:
             project = await self._enrich_project_with_search_queries(
                 project, search_queries
+            )
+        if included_files:
+            project = await self.enrich_project_with_included_files(
+                project, included_files
             )
         return project
 
@@ -91,6 +96,7 @@ class GitLabClient:
         max_concurrent: int = 10,
         include_languages: bool = False,
         search_queries: Optional[list[dict[str, Any]]] = None,
+        included_files: Optional[list[str]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all projects accessible to the user.
 
@@ -99,6 +105,7 @@ class GitLabClient:
             max_concurrent: Maximum number of concurrent requests
             include_languages: Whether to enrich projects with language information
             search_queries: Optional list of search queries to execute for each project
+            included_files: List of file paths to fetch and attach to each project
         """
         request_params = {**self.DEFAULT_PARAMS}
         if params:
@@ -120,6 +127,16 @@ class GitLabClient:
                     enriched_batch,
                     lambda project: self._enrich_project_with_search_queries(
                         project, search_queries
+                    ),
+                    max_concurrent,
+                )
+
+            if included_files:
+                enriched_batch = await self._enrich_batch(
+                    enriched_batch,
+                    partial(
+                        self.enrich_project_with_included_files,
+                        file_paths=included_files,
                     ),
                     max_concurrent,
                 )
@@ -516,6 +533,32 @@ class GitLabClient:
                 search_results[name] = None
 
         project["__searchQueries"] = search_results
+        return project
+
+    async def enrich_project_with_included_files(
+        self, project: dict[str, Any], file_paths: list[str]
+    ) -> dict[str, Any]:
+        """Enrich a project with the contents of specified files.
+
+        Fetches each file from the project's default branch and stores the
+        contents in ``project["__includedFiles"]`` keyed by file path.
+        Missing files are stored as ``None``.
+        """
+        project_path = project.get("path_with_namespace", str(project["id"]))
+        ref = project.get("default_branch", "main")
+        included_files: dict[str, Optional[str]] = {}
+
+        for file_path in file_paths:
+            try:
+                content = await self.get_file_content(project_path, file_path, ref)
+                included_files[file_path] = content
+            except Exception:
+                logger.debug(
+                    f"Could not fetch file '{file_path}' from {project_path}@{ref}, storing as None"
+                )
+                included_files[file_path] = None
+
+        project["__includedFiles"] = included_files
         return project
 
     async def get_group_members(

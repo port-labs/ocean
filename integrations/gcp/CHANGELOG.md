@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.249 (2026-02-09)
+
+
+### Bug Fixes
+
+- Fixed `BACKGROUND_TASK_THRESHOLD not defined` error when live events are received in ONCE mode
+
+
 ## 0.1.248 (2026-02-02)
 
 
