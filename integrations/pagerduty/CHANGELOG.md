@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.48 (2026-02-12)
+
+
+### Features
+
+- Added support for custom fields on services and incidents via the `includeCustomFields` selector option.
+
+
 ## 0.4.47 (2026-02-12)
 
 
