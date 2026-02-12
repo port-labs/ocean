@@ -63,6 +63,7 @@ class PortAppConfig(BaseModel):
         default=True,
         title="Enable Merge Entity",
         description="Whether to merge entities when merging an entity.",
+        ui_schema={"hidden": True},
     )
     delete_dependent_entities: bool = Field(
         alias="deleteDependentEntities",
