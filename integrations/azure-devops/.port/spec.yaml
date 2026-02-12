@@ -43,6 +43,14 @@ saas:
   enabled: true
   liveEvents:
     enabled: true
+  oauthConfiguration:
+    requiredSecrets:
+      - name: personalAccessToken
+        value: '.oauthData.accessToken'
+        description: '"OAuth2 access token for Azure DevOps integration"'
+    valuesOverride:
+      integrationSpec:
+        organizationUrl: '.oauthData.organizationUrl'
 installationDocs:
   saas:
     - name: SaasOAuth2
