@@ -15,7 +15,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Added deprecation warning when using `search://` prefix in mappings; use `searchQueries` selector instead
 
 
-0.2.181-post1 (2026-02-12)
+## 0.2.181-post1 (2026-02-12)
 ==========================
 
 ### Improvements
