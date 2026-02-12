@@ -71,4 +71,4 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         return True
 
     async def validate_payload(self, payload: EventPayload) -> bool:
-        return "webhookEvent" in payload and "issue" in payload
+        return "issue" in payload
