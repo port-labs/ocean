@@ -7,6 +7,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.35.6 (2026-02-12)
+
+### Vulnerabilities
+
+- Fixed vulnerabilities for:
+  - urllib3 (2.6.0 -> 2.6.3)
+  - cryptography (44.0.3 -> 46.0.5)
+  - psutil (7.0.0 -> 7.2.1)
+
+
 ## 0.35.5 (2026-02-12)
 
 ### Bug fixes
