@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.35.5 (2026-02-12)
+
+### Bug fixes
+
+- Fixed integration mapping not being initialized when config is empty during default ocean setup, by patching the integration with the default mapping before creating resources.
+
+
 ## 0.35.4 (2026-02-02)
 
 ### Bug fixes
