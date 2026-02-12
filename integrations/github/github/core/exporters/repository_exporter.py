@@ -26,12 +26,17 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_resource[
         ExporterOptionsT: SingleRepositoryOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         name = options["name"]
         organization = options["organization"]
         included_relationships = options.get("included_relationships")
 
         response = await get_repository_metadata(self.client, organization, name)
+        if not response:
+            logger.warning(
+                f"No repository found with identifier: {name} for organization {organization}"
+            )
+            return None
 
         logger.info(
             f"Fetched repository with identifier: {name} for organization {organization}"
@@ -44,15 +49,17 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
             response, cast(list[str], included_relationships), organization
         )
 
-    @cache_iterator_result()
     async def get_paginated_resources[
         ExporterOptionsT: ListRepositoryOptions
     ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Get all repositories in the organization with pagination."""
         organization = options["organization"]
-        included_relationships = options.get("included_relationships")
+        options_dict = dict(options)
+        included_relationships = options_dict.pop("included_relationships", None)
 
-        async for repos in self._fetch_repositories(options):
+        async for repos in self._fetch_repositories(
+            cast(ListRepositoryOptions, options_dict)
+        ):
             if not included_relationships:
                 yield repos
             else:
@@ -67,6 +74,7 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
                 )
                 yield batch
 
+    @cache_iterator_result()
     async def _fetch_repositories(
         self, options: ListRepositoryOptions
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -219,7 +227,12 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
 
         url = f"{self.client.base_url}/repos/{organization}/{repo_name}/dependency-graph/sbom"
         response = await self.client.send_api_request(url)
-        sbom = response.get("sbom", {})
+        if not response:
+            logger.warning(
+                f"No SBOM found for repository {repo_name} in organization {organization}"
+            )
+            repository["__sbom"] = {}
+            return repository
 
-        repository["__sbom"] = sbom
+        repository["__sbom"] = response.get("sbom", {})
         return repository

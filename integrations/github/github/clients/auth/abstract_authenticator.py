@@ -1,6 +1,8 @@
+from http import HTTPStatus
 from typing import Any, Dict, Optional
 from datetime import datetime, timezone, timedelta
 from abc import ABC, abstractmethod
+from github.clients.auth.retry_transport import GitHubRetryTransport
 from pydantic import BaseModel, PrivateAttr, Field
 from dateutil.parser import parse
 
@@ -11,6 +13,9 @@ from port_ocean.utils.cache import cache_coroutine_result
 from loguru import logger
 
 import httpx
+
+
+GITHUB_RETRY_MAX_BACKOFF = 1800
 
 
 class GitHubToken(BaseModel):
@@ -41,6 +46,8 @@ class GitHubHeaders(BaseModel):
 
 
 class AbstractGitHubAuthenticator(ABC):
+    _http_client: Optional[httpx.AsyncClient] = None
+
     @abstractmethod
     async def get_token(self, **kwargs: Any) -> GitHubToken:
         pass
@@ -51,17 +58,21 @@ class AbstractGitHubAuthenticator(ABC):
 
     @property
     def client(self) -> httpx.AsyncClient:
-        retry_config = RetryConfig(
-            retry_after_headers=[
-                "Retry-After",
-                "X-RateLimit-Reset",
-            ]
-        )
-
-        return OceanAsyncClient(
-            retry_config=retry_config,
-            timeout=ocean.config.client_timeout,
-        )
+        if self._http_client is None:
+            retry_config = RetryConfig(
+                retry_after_headers=[
+                    "Retry-After",
+                    "X-RateLimit-Reset",
+                ],
+                additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
+                max_backoff_wait=GITHUB_RETRY_MAX_BACKOFF,
+            )
+            self._http_client = OceanAsyncClient(
+                GitHubRetryTransport,
+                retry_config=retry_config,
+                timeout=ocean.config.client_timeout,
+            )
+        return self._http_client
 
     @cache_coroutine_result()
     async def is_personal_org(self, github_host: str, organization: str) -> bool:

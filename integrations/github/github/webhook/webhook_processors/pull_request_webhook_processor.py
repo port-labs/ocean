@@ -1,7 +1,12 @@
 from typing import Any, cast
 from loguru import logger
 from github.webhook.events import PULL_REQUEST_EVENTS
-from github.helpers.utils import GithubClientType, ObjectKind
+from github.helpers.utils import (
+    GithubClientType,
+    ObjectKind,
+    enrich_with_organization,
+    enrich_with_repository,
+)
 from github.clients.client_factory import create_github_client
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -58,9 +63,13 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 f"Pull request {repo_name}/{number} was closed and will be deleted from {organization}"
             )
 
+            data_to_delete = enrich_with_organization(
+                enrich_with_repository(pull_request, repo_name, repo=repo), organization
+            )
+
             return WebhookEventRawResults(
                 updated_raw_results=[],
-                deleted_raw_results=[pull_request],
+                deleted_raw_results=[data_to_delete],
             )
 
         is_graphql_api = config.selector.api == GithubClientType.GRAPHQL
@@ -77,6 +86,10 @@ class PullRequestWebhookProcessor(BaseRepositoryWebhookProcessor):
                 repo=repo if is_graphql_api else None,
             )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         logger.debug(f"Successfully fetched pull request data for {repo_name}/{number}")
         return WebhookEventRawResults(

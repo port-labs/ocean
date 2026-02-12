@@ -1,4 +1,4 @@
-from typing import AsyncGenerator, Dict, List, Any, Tuple, cast
+from typing import AsyncGenerator, Dict, List, Any, Optional, Tuple, cast
 from urllib.parse import quote
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.clients.client_factory import create_github_client
@@ -39,7 +39,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
     async def get_resource[
         ExporterOptionsT: FileContentOptions
-    ](self, options: ExporterOptionsT) -> RAW_ITEM:
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         """
         Fetch the content of a file from a repository using the Contents API.
         """
@@ -58,7 +58,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             logger.warning(
                 f"File {file_path} not found in {repo_name}@{branch} from {organization}"
             )
-            return {}
+            return None
 
         response_size = response["size"]
         content = None
@@ -117,6 +117,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             repo_obj = await get_repository_metadata(
                 self.client, organization, repo_name
             )
+            if not repo_obj:
+                logger.warning(
+                    f"Repository {repo_name} not found in {organization}, skipping pattern '{pattern}'"
+                )
+                continue
+
             branch = spec.get("branch") or repo_obj["default_branch"]
 
             logger.debug(
@@ -173,6 +179,10 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 )
             )
 
+            if not file_data:
+                logger.warning(f"File {file_path} not found from {organization}")
+                continue
+
             decoded_content = file_data.pop("content", None)
             if decoded_content is None:
                 logger.warning(f"File {file_path} has no content from {organization}")
@@ -181,6 +191,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             repository = await get_repository_metadata(
                 self.client, organization, repo_name
             )
+            if not repository:
+                logger.warning(
+                    f"Repository {repo_name} not found in {organization}, skipping file {file_path}"
+                )
+                continue
 
             file_obj = await self.file_processor.process_file(
                 organization=organization,
@@ -210,6 +225,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
             repository_metadata = await get_repository_metadata(
                 self.client, organization, repo_name
             )
+            if not repository_metadata:
+                logger.warning(
+                    f"Repository {repo_name} not found in {organization}, skipping GraphQL batch"
+                )
+                continue
 
             logger.debug(
                 f"Retrieved {len(retrieved_files)} files from GraphQL batch from {organization}"
@@ -263,6 +283,12 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                 response = await client.send_api_request(
                     client.base_url, method="POST", json_data=query_payload
                 )
+                response_data = response.get("data")
+                if not response or not response_data:
+                    logger.warning(
+                        f"No data returned for file batch in {repo_name}@{branch} from {organization}"
+                    )
+                    continue
 
                 logger.info(
                     f"Fetched {len(batch_files)} files from {repo_name}:{branch} from {organization}"
@@ -272,7 +298,7 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
                     "organization": organization,
                     "repo": repo_name,
                     "branch": branch,
-                    "file_data": response["data"],
+                    "file_data": response_data,
                     "batch_files": batch_files,
                 }
 
@@ -336,6 +362,11 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         resource = f"{self.client.base_url}/repos/{organization}/{repo_name}/compare/{before_sha}...{after_sha}"
         response = await self.client.send_api_request(resource)
+        if not response:
+            logger.warning(
+                f"No commit diff found for {before_sha}...{after_sha} in {repo_name} from {organization}"
+            )
+            return {"files": []}
 
         logger.info(
             f"Found {len(response['files'])} files in commit diff from {organization}"

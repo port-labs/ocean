@@ -254,6 +254,16 @@ async def feed_events_callback(
     The subscription has a retry policy, so the event will be retried later if it's rejected.
     Documentation: https://cloud.google.com/pubsub/docs/handling-failures#subscription_retry_policy
     """
+    if ocean.event_listener_type == "ONCE":
+        logger.warning(
+            "Live events are not supported for the 'ONCE' event listener type. "
+            "Remove live event configuration from the integration to prevent this warning"
+        )
+        return Response(
+            status_code=http.HTTPStatus.BAD_REQUEST,
+            content="Client disconnected.",
+        )
+
     try:
         request_json = await request.json()
     except Exception as e:

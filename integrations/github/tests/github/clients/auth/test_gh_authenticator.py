@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import pytest
+import httpx
 from unittest.mock import AsyncMock, Mock, patch, PropertyMock
 
 from github.clients.auth.abstract_authenticator import GitHubToken
@@ -237,3 +238,88 @@ class TestGithubAuthenticator:
             )
 
             assert installation_id == mock_installation_id
+
+    async def test_client_returns_same_instance(
+        self, github_auth: GitHubAppAuthenticator
+    ) -> None:
+        """Test that the client property returns the same cached instance on multiple accesses."""
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+
+            # Access client multiple times
+            client_first = github_auth.client
+            client_second = github_auth.client
+            client_third = github_auth.client
+
+            # All should be the exact same instance
+            assert client_first is client_second
+            assert client_second is client_third
+            assert client_first is client_third
+
+    async def test_different_authenticators_have_different_clients(self) -> None:
+        """Test that different authenticator instances have their own cached clients."""
+        auth1 = GitHubAppAuthenticator(
+            organization="org1",
+            github_host="https://api.github.com",
+            app_id="app1",
+            installation_id="111",
+            private_key="key1",
+        )
+        auth2 = GitHubAppAuthenticator(
+            organization="org2",
+            github_host="https://api.github.com",
+            app_id="app2",
+            installation_id="222",
+            private_key="key2",
+        )
+
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+
+            client1 = auth1.client
+            client2 = auth2.client
+
+            # Different authenticators should have different client instances
+            assert client1 is not client2
+
+            # But each should still return the same instance on repeated access
+            assert auth1.client is client1
+            assert auth2.client is client2
+
+    async def test_client_retries_on_500(
+        self, github_auth: GitHubAppAuthenticator
+    ) -> None:
+        """
+        Verify the authenticator's HTTP client retries on a 500 response.
+
+        This test simulates a transient GitHub 500 followed by a 200 and asserts the
+        request was attempted more than once.
+        """
+        with patch("github.clients.auth.abstract_authenticator.ocean") as mock_ocean:
+            mock_ocean.config.client_timeout = 60
+            calls: list[int] = []
+
+            async def fake_handle_async_request(
+                self: httpx.AsyncHTTPTransport, request: httpx.Request
+            ) -> httpx.Response:
+                calls.append(1)
+                # Ensure we don't trigger response size logging reads.
+                headers = {"Content-Length": "0"}
+                if len(calls) == 1:
+                    return httpx.Response(500, headers=headers, request=request)
+                return httpx.Response(200, headers=headers, request=request)
+
+            with (
+                patch.object(
+                    httpx.AsyncHTTPTransport,
+                    "handle_async_request",
+                    fake_handle_async_request,
+                ),
+                patch("port_ocean.helpers.retry.asyncio.sleep", new=AsyncMock()),
+            ):
+                client = github_auth.client
+                resp = await client.get("https://api.github.com/test")
+                await client.aclose()
+
+            assert resp.status_code == 200
+            assert len(calls) == 2

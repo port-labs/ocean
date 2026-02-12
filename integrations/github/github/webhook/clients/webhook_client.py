@@ -30,4 +30,5 @@ class GithubWebhookClient(BaseGithubWebhookClient):
                 f"{self.base_url}/orgs/{self.organization}/hooks/{{webhook_id}}"
             ),
             log_scope={"organization": self.organization},
+            target_type="organization",
         )

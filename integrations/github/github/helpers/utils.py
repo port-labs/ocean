@@ -103,6 +103,11 @@ async def fetch_commit_diff(
     """
     resource = f"{client.base_url}/repos/{organization}/{repo_name}/compare/{before_sha}...{after_sha}"
     response = await client.send_api_request(resource)
+    if not response:
+        logger.warning(
+            f"No commit diff found for {before_sha}...{after_sha} in {repo_name} from {organization}"
+        )
+        return {"files": []}
 
     logger.info(
         f"Found {len(response['files'])} files in commit diff of organization: {organization}"
@@ -197,3 +202,16 @@ def issue_matches_labels(
     issue_label_names = {label["name"].lower() for label in issue_labels}
 
     return required_set.issubset(issue_label_names)
+
+
+def has_exhausted_rate_limit_headers(headers: Any) -> bool:
+    """
+    Return True when GitHub's rate limit headers indicate an exhausted quota.
+
+    Accepts any headers-like mapping (e.g. `httpx.Headers`, `dict[str, str]`).
+    """
+
+    return (
+        headers.get("x-ratelimit-remaining") == "0"
+        and headers.get("x-ratelimit-reset") is not None
+    )

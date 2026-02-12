@@ -63,7 +63,7 @@ class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         if current_state not in config.selector.states:
             alert = enrich_with_organization(
-                enrich_with_repository(alert, repo_name), organization
+                enrich_with_repository(alert, repo_name, repo=repo), organization
             )
 
             return WebhookEventRawResults(
@@ -80,6 +80,10 @@ class DependabotAlertWebhookProcessor(BaseRepositoryWebhookProcessor):
                 alert_number=alert_number,
             )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

@@ -1,6 +1,8 @@
+from azure_devops.webhooks.events import AdvancedSecurityAlertEvents
 import asyncio
 import functools
 import json
+import httpx
 from collections import defaultdict
 from typing import Any, AsyncGenerator, Awaitable, Optional, Callable, Iterable
 from httpx import HTTPStatusError, ReadTimeout
@@ -15,6 +17,9 @@ from azure_devops.webhooks.events import (
     PullRequestEvents,
     PushEvents,
     WorkItemEvents,
+    PipelineEvents,
+    PipelineStageEvents,
+    PipelineRunEvents,
 )
 
 from azure_devops.client.base_client import MAX_TIMEMOUT_RETRIES, HTTPBaseClient
@@ -45,6 +50,9 @@ if TYPE_CHECKING:
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
+ADVANCED_SECURITY_API_PARAMS = {"api-version": "7.2-preview.1"}
+ADVANCED_SECURITY_PUBLISHER_ID = "advsec"
+PIPELINES_PUBLISHER_ID = "pipelines"
 API_PARAMS = {"api-version": "7.1"}
 WEBHOOK_URL_SUFFIX = "/integration/webhook"
 # Maximum number of work item IDs allowed in a single API request
@@ -72,6 +80,43 @@ AZURE_DEVOPS_WEBHOOK_SUBSCRIPTIONS = [
         publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_COMMENTED
     ),
     WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_DELETED),
+    WebhookSubscription(publisherId="tfs", eventType=WorkItemEvents.WORK_ITEM_RESTORED),
+    WebhookSubscription(
+        publisherId=ADVANCED_SECURITY_PUBLISHER_ID,
+        eventType=AdvancedSecurityAlertEvents.SECURITY_ALERT_CREATED,
+    ),
+    WebhookSubscription(
+        publisherId=ADVANCED_SECURITY_PUBLISHER_ID,
+        eventType=AdvancedSecurityAlertEvents.SECURITY_ALERT_STATE_CHANGED,
+    ),
+    WebhookSubscription(
+        publisherId=ADVANCED_SECURITY_PUBLISHER_ID,
+        eventType=AdvancedSecurityAlertEvents.SECURITY_ALERT_UPDATED,
+    ),
+    WebhookSubscription(
+        publisherId=PIPELINES_PUBLISHER_ID,
+        eventType=PipelineEvents.PIPELINE_UPDATED,
+    ),
+    WebhookSubscription(
+        publisherId=PIPELINES_PUBLISHER_ID,
+        eventType=PipelineStageEvents.PIPELINE_JOB_STATE_CHANGED,
+    ),
+    WebhookSubscription(
+        publisherId=PIPELINES_PUBLISHER_ID,
+        eventType=PipelineStageEvents.PIPELINE_STAGE_STATE_CHANGED,
+    ),
+    WebhookSubscription(
+        publisherId=PIPELINES_PUBLISHER_ID,
+        eventType=PipelineStageEvents.PIPELINE_STAGE_APPROVAL_PENDING,
+    ),
+    WebhookSubscription(
+        publisherId=PIPELINES_PUBLISHER_ID,
+        eventType=PipelineStageEvents.PIPELINE_STAGE_APPROVAL_COMPLETED,
+    ),
+    WebhookSubscription(
+        publisherId=PIPELINES_PUBLISHER_ID,
+        eventType=PipelineRunEvents.PIPELINE_RUN_STATE_CHANGED,
+    ),
 ]
 
 
@@ -84,6 +129,7 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> None:
         super().__init__(personal_access_token)
         self._organization_base_url = organization_url
+        self._advsec_base_url = f"{organization_url.replace('dev.', f'{ADVANCED_SECURITY_PUBLISHER_ID}.dev.')}"
         self.webhook_auth_username = webhook_auth_username
 
     @classmethod
@@ -153,6 +199,67 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 projects = [project for project in projects_batch if project]
             yield projects
+
+    async def get_single_advanced_security_alert(
+        self,
+        project_id: str,
+        repository_id: str,
+        alert_id: str,
+    ) -> dict[str, Any] | None:
+        security_alert_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts/{alert_id}"
+        response = await self.send_request("GET", security_alert_url)
+        if not response:
+            return None
+        security_alert = response.json()
+        return security_alert
+
+    async def generate_advanced_security_alerts(
+        self,
+        repository: dict[str, Any],
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Generate security alerts from GitHub Advanced Security (GHAS) in Azure DevOps.
+        This method fetches alerts for all repositories across all projects using the Advanced Security API.
+        read more -> https://learn.microsoft.com/en-us/rest/api/azure/devops/advancedsecurity/alerts/list?view=azure-devops-rest-7.2
+        """
+        try:
+            project_id = repository["project"]["id"]
+            repository_id = repository["id"]
+            security_alerts_url = f"{self._advsec_base_url}/{project_id}/{API_URL_PREFIX}/alert/repositories/{repository_id}/alerts"
+            additional_params = {
+                **ADVANCED_SECURITY_API_PARAMS,
+            }
+
+            if params:
+                additional_params.update(params)
+            async for (
+                security_alerts
+            ) in self._get_paginated_by_top_and_continuation_token(
+                security_alerts_url, additional_params=additional_params
+            ):
+                enriched_alerts = [
+                    self._enrich_security_alert(
+                        security_alert, repository_id, project_id
+                    )
+                    for security_alert in security_alerts
+                ]
+                yield enriched_alerts
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 400:
+                logger.error(
+                    f"Advanced Security not enabled for repository {repository['name']} in project {project_id}"
+                )
+            raise
+
+    def _enrich_security_alert(
+        self, security_alert: dict[str, Any], repository_id: str, project_id: str
+    ) -> dict[str, Any]:
+        return {
+            **security_alert,
+            "__repositoryId": repository_id,
+            "__projectId": project_id,
+        }
 
     @cache_iterator_result()
     async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -415,11 +522,11 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             if not runs:
                 continue
-            self._annotate_runs(runs, project=project, pipeline=pipeline)
+            self.annotate_runs(runs, project=project, pipeline=pipeline)
             yield runs
 
     @staticmethod
-    def _annotate_runs(
+    def annotate_runs(
         runs: Iterable[dict[str, Any]],
         project: dict[str, Any],
         pipeline: dict[str, Any],
@@ -817,6 +924,45 @@ class AzureDevopsClient(HTTPBaseClient):
         repository_data = response.json()
         return repository_data
 
+    async def get_pipeline(
+        self, project_id: str, pipeline_id: str
+    ) -> dict[Any, Any] | None:
+        get_single_pipeline_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/pipelines/{pipeline_id}"
+        response = await self.send_request("GET", get_single_pipeline_url)
+        if not response:
+            return None
+        pipeline_data = response.json()
+        return pipeline_data
+
+    async def get_pipeline_run(
+        self, project_id: str, pipeline_id: str, run_id: str
+    ) -> dict[Any, Any] | None:
+        get_single_pipeline_run_url = (
+            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}"
+            f"/pipelines/{pipeline_id}/runs/{run_id}"
+        )
+        response = await self.send_request("GET", get_single_pipeline_run_url)
+        if not response:
+            return None
+        pipeline_run_data = response.json()
+        return pipeline_run_data
+
+    async def get_pipeline_stage(
+        self, project: dict[str, Any], pipeline_id: str, run_id: str, stage_id: str
+    ) -> dict[Any, Any] | None:
+        pipeline_run = await self.get_pipeline_run(project["id"], pipeline_id, run_id)
+        if not pipeline_run:
+            return None
+
+        stages = await self._fetch_stages_for_build(project, pipeline_run)
+        if not stages:
+            return None
+
+        for stage in stages:
+            if stage["id"] == stage_id:
+                return stage
+        return None
+
     async def get_columns(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for boards in self.get_boards_in_organization():
             for board in boards:
@@ -911,18 +1057,25 @@ class AzureDevopsClient(HTTPBaseClient):
         ]
 
     async def create_subscription(
-        self, webhook_subscription: WebhookSubscription
+        self,
+        webhook_subscription: WebhookSubscription,
     ) -> None:
         headers = {"Content-Type": "application/json"}
+        subscription_base_url = self._organization_base_url
+        params = WEBHOOK_API_PARAMS
+        if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
+            subscription_base_url = self._advsec_base_url
+            params = ADVANCED_SECURITY_API_PARAMS
+
         create_subscription_url = (
-            f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
+            f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
         )
         webhook_subscription_json = webhook_subscription.json()
         logger.info(f"Creating subscription to event: {webhook_subscription_json}")
         response = await self.send_request(
             "POST",
             create_subscription_url,
-            params=WEBHOOK_API_PARAMS,
+            params=params,
             headers=headers,
             data=webhook_subscription_json,
         )
@@ -937,13 +1090,19 @@ class AzureDevopsClient(HTTPBaseClient):
         self, webhook_subscription: WebhookSubscription
     ) -> None:
         headers = {"Content-Type": "application/json"}
-        delete_subscription_url = f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_subscription.id}"
+        subscription_base_url = self._organization_base_url
+        params = WEBHOOK_API_PARAMS
+        if webhook_subscription.publisherId == ADVANCED_SECURITY_PUBLISHER_ID:
+            subscription_base_url = self._advsec_base_url
+            params = ADVANCED_SECURITY_API_PARAMS
+
+        delete_subscription_url = f"{subscription_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_subscription.id}"
         logger.info(f"Deleting subscription to event: {webhook_subscription.json()}")
         await self.send_request(
             "DELETE",
             delete_subscription_url,
             headers=headers,
-            params=WEBHOOK_API_PARAMS,
+            params=params,
         )
 
     async def _get_item_content(

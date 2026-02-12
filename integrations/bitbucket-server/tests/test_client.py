@@ -1,18 +1,35 @@
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from httpx import AsyncClient, Response
 
-from client import BitbucketClient
+from client import (
+    BitbucketClient,
+    DEFAULT_MAX_CONCURRENT_REQUESTS,
+    DEFAULT_PAGE_SIZE,
+)
+
+SPEC_DEFAULT_RATE_LIMIT = 1000
+SPEC_DEFAULT_RATE_LIMIT_WINDOW = 3600
+
+
+def _build_client(**overrides: Any) -> BitbucketClient:
+    base_kwargs: dict[str, Any] = {
+        "base_url": "https://bitbucket.example.com",
+        "username": "test-user",
+        "password": "test-password",
+        "rate_limit": SPEC_DEFAULT_RATE_LIMIT,
+        "rate_limit_window": SPEC_DEFAULT_RATE_LIMIT_WINDOW,
+    }
+    base_kwargs.update(overrides)
+    return BitbucketClient(**base_kwargs)
 
 
 @pytest.fixture
 def mock_client() -> BitbucketClient:
     """Create a mocked Bitbucket Server client."""
-    client = BitbucketClient(
-        base_url="https://bitbucket.example.com",
-        username="test-user",
-        password="test-password",
+    client = _build_client(
         webhook_secret="test-secret",
         app_host="https://app.example.com",
     )
@@ -89,3 +106,152 @@ async def test_healthcheck_failure(mock_client: BitbucketClient) -> None:
     # Act & Assert
     with pytest.raises(ConnectionError):
         await mock_client.healthcheck()
+
+
+@pytest.mark.asyncio
+async def test_configurable_page_size() -> None:
+    """Test that page size is configurable and used in pagination."""
+    custom_page_size = 100
+    client = _build_client(page_size=custom_page_size)
+    client.client = MagicMock(spec=AsyncClient)
+
+    mock_response = MagicMock(spec=Response)
+    mock_response.json = MagicMock(
+        return_value={"values": [{"id": 1}], "isLastPage": True}
+    )
+    mock_response.raise_for_status = MagicMock()
+    client.client.request = AsyncMock(return_value=mock_response)
+
+    results = []
+    async for batch in client.get_paginated_resource("test"):
+        results.extend(batch)
+
+    assert client.page_size == custom_page_size
+    call_args = client.client.request.call_args
+    assert call_args is not None
+    assert call_args[1]["params"]["limit"] == custom_page_size
+
+
+@pytest.mark.asyncio
+async def test_default_page_size() -> None:
+    """Test that default page size is used when not specified."""
+    client = _build_client()
+
+    assert client.page_size == DEFAULT_PAGE_SIZE
+
+
+@pytest.mark.asyncio
+async def test_configurable_rate_limit() -> None:
+    """Test that rate limit is configurable."""
+    custom_rate_limit = 2000
+    custom_window = 7200
+
+    client = _build_client(
+        rate_limit=custom_rate_limit, rate_limit_window=custom_window
+    )
+
+    assert client.rate_limiter.max_rate == custom_rate_limit
+    assert client.rate_limiter.time_period == custom_window
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_uses_spec_defaults() -> None:
+    """Test that provided rate limit values are applied (mirrors spec defaults)."""
+    client = _build_client()
+
+    assert client.rate_limiter.max_rate == SPEC_DEFAULT_RATE_LIMIT
+    assert client.rate_limiter.time_period == SPEC_DEFAULT_RATE_LIMIT_WINDOW
+
+
+@pytest.mark.asyncio
+async def test_configurable_concurrency() -> None:
+    """Test that max concurrent requests is configurable."""
+    custom_concurrency = 50
+
+    client = _build_client(max_concurrent_requests=custom_concurrency)
+
+    assert client.max_concurrent_requests == custom_concurrency
+    assert client.semaphore._value == custom_concurrency
+
+
+@pytest.mark.asyncio
+async def test_default_concurrency() -> None:
+    """Test that default concurrency is used when not specified."""
+    client = _build_client()
+
+    assert client.max_concurrent_requests == DEFAULT_MAX_CONCURRENT_REQUESTS
+    assert client.semaphore._value == DEFAULT_MAX_CONCURRENT_REQUESTS
+
+
+@pytest.mark.asyncio
+async def test_project_filtering_with_prefix_regex() -> None:
+    """Test project filtering with prefix regex pattern."""
+    client = _build_client(project_filter_regex="^PROD-.*")
+
+    assert client._should_include_project("PROD-123") is True
+    assert client._should_include_project("PROD-ABC") is True
+    assert client._should_include_project("DEV-123") is False
+    assert client._should_include_project("TEST-ABC") is False
+
+
+@pytest.mark.asyncio
+async def test_project_filtering_with_suffix_regex() -> None:
+    """Test project filtering with suffix regex pattern."""
+    client = _build_client(project_filter_regex=".*-PROD$")
+
+    assert client._should_include_project("PROJECT-PROD") is True
+    assert client._should_include_project("TEAM-PROD") is True
+    assert client._should_include_project("PROJECT-DEV") is False
+    assert client._should_include_project("TEAM-TEST") is False
+
+
+@pytest.mark.asyncio
+async def test_project_filtering_with_combined_regex() -> None:
+    """Test project filtering with combined prefix and suffix regex."""
+    client = _build_client(project_filter_regex="^TEAM-.*-PROD$")
+
+    assert client._should_include_project("TEAM-APP-PROD") is True
+    assert client._should_include_project("TEAM-API-PROD") is True
+    assert client._should_include_project("TEAM-APP-DEV") is False
+    assert client._should_include_project("PROJECT-APP-PROD") is False
+    assert client._should_include_project("PROJECT-APP-DEV") is False
+
+
+@pytest.mark.asyncio
+async def test_project_filtering_disabled_by_default() -> None:
+    """Test that project filtering is disabled when no patterns are provided."""
+    client = _build_client()
+
+    assert client._should_include_project("ANY-PROJECT") is True
+    assert client._should_include_project("ANOTHER-ONE") is True
+    assert client._should_include_project("TEST") is True
+
+
+@pytest.mark.asyncio
+async def test_project_filtering_logic_with_regex() -> None:
+    """Test that project filtering logic works correctly with regex."""
+    client = _build_client(project_filter_regex="^PROD-.*")
+
+    test_projects = [
+        {"key": "PROD-123", "name": "Production 123"},
+        {"key": "DEV-456", "name": "Development 456"},
+        {"key": "PROD-789", "name": "Production 789"},
+        {"key": "TEST-001", "name": "Test 001"},
+    ]
+
+    filtered = [p for p in test_projects if client._should_include_project(p["key"])]
+
+    assert len(filtered) == 2
+    assert all(p["key"].startswith("PROD-") for p in filtered)
+    assert filtered[0]["key"] == "PROD-123"
+    assert filtered[1]["key"] == "PROD-789"
+
+
+@pytest.mark.asyncio
+async def test_parallel_pr_fetching_uses_semaphore() -> None:
+    """Test that PR fetching uses semaphore for concurrency control."""
+    max_concurrent = 5
+    client = _build_client(max_concurrent_requests=max_concurrent)
+
+    assert client.semaphore._value == max_concurrent
+    assert client.max_concurrent_requests == max_concurrent
