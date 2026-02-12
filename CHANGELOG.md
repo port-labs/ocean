@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug fixes
 
-- Fixed integration mapping not being initialized when config is empty during default ocean setup, by patching the integration with the default mapping before creating resources.
+- Fixed integration mapping not being initialized when integration already exists prior to ocean run
 
 
 ## 0.35.4 (2026-02-02)
