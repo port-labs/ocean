@@ -15,6 +15,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Added deprecation warning when using `file://` or `search://` prefix in mappings; use `includedFiles` / `searchQueries` selectors instead
 
 
+0.2.181-post1 (2026-02-12)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
 0.2.179-post1 (2026-02-02)
 ==========================
 
