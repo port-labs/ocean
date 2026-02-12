@@ -122,7 +122,10 @@ async def on_create_webhook_resync(kind: str) -> RAW_RESULT:
             config["terraform_cloud_host"],
             config["terraform_cloud_token"],
         )
-        await webhook_client.ensure_workspace_webhooks(base_url=base_url)
+        webhook_secret = config["webhook_secret"]
+        await webhook_client.ensure_workspace_webhooks(
+            base_url=base_url, webhook_secret=webhook_secret
+        )
 
     SKIP_WEBHOOK_CREATION = True
     return []

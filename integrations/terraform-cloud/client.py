@@ -9,6 +9,8 @@ from port_ocean.context.event import event
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils import http_async_client
 
+HEALTH_ASSESSMENT_TRIGGER_SCOPE = "assessment"
+
 
 class HealthAssessmentEvents(StrEnum):
     DRIFTED = "assessment:drifted"

@@ -9,22 +9,17 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from webhook_processors.terraform_base_webhook_processor import (
     TerraformBaseWebhookProcessor,
 )
-from client import HealthAssessmentEvents
+from client import HealthAssessmentEvents, HEALTH_ASSESSMENT_TRIGGER_SCOPE
 
 
 class AssessmentWebhookProcessor(TerraformBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.HEALTH_ASSESSMENT]
 
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        if not await super().validate_payload(payload):
-            return False
-
-        assessment_result = payload.get("details", {}).get("new_assessment_result", {})
-        return assessment_result.get("id") is not None
-
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         try:
+            if event.payload["trigger_scope"] != HEALTH_ASSESSMENT_TRIGGER_SCOPE:
+                return False
             trigger = event.payload["trigger"]
             return bool(HealthAssessmentEvents(trigger))
         except (KeyError, ValueError):

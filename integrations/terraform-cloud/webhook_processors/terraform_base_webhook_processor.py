@@ -11,6 +11,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
 )
+from client import HEALTH_ASSESSMENT_TRIGGER_SCOPE
 
 
 class TerraformBaseWebhookProcessor(AbstractWebhookProcessor):
@@ -20,11 +21,11 @@ class TerraformBaseWebhookProcessor(AbstractWebhookProcessor):
     def _is_verification_event(self, payload: EventPayload) -> bool:
         """Check if this is a Terraform Cloud webhook verification event."""
         try:
-            notifications = payload["notifications"]
+            notifications = payload.get("notifications")
             if isinstance(notifications, list) and len(notifications) > 0:
                 first_notification = notifications[0]
                 if isinstance(first_notification, dict):
-                    return first_notification["trigger"] == "verification"
+                    return first_notification.get("trigger") == "verification"
         except (KeyError, TypeError):
             return False
         return False
@@ -94,6 +95,12 @@ class TerraformBaseWebhookProcessor(AbstractWebhookProcessor):
         """Validate that payload has the required Terraform webhook structure."""
         if not isinstance(payload, dict):
             return False
+
+        if payload.get("trigger_scope") == HEALTH_ASSESSMENT_TRIGGER_SCOPE:
+            return (
+                payload.get("details", {}).get("new_assessment_result", {}).get("id")
+                is not None
+            )
 
         notifications = payload.get("notifications")
         if not isinstance(notifications, list) or not notifications:
