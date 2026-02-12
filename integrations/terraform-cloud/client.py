@@ -282,12 +282,22 @@ class TerraformClient:
             ]
             yield list(await asyncio.gather(*tasks))
 
-    async def get_paginated_health_assessments(
-        self,
-        workspace: dict[str, Any],
+    async def process_workspace_runs(
+        self, workspace: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        # TODO: 1. get workspace runs
-        # TODO: 2. filter runs by assessment status
-        # TODO: 3. get assessment for each run
-        # TODO: 4. yield results in batches
-        yield []
+        async for run_batch in self.get_paginated_runs_for_workspace(workspace["id"]):
+            if run_batch:
+                yield run_batch
+
+    async def get_current_health_assessment_for_workspace(
+        self,
+        workspace_id: str,
+    ) -> dict[str, Any]:
+        endpoint = f"workspaces/{workspace_id}/current-assessment-result"
+        assessment = await self.send_api_request(endpoint)
+        return assessment.get("data", {})
+
+    async def get_single_health_assessment(self, assessment_id: str) -> dict[str, Any]:
+        logger.info(f"Fetching health assessment with ID: {assessment_id}")
+        assessment = await self.send_api_request(f"assessment-results/{assessment_id}")
+        return assessment.get("data", {})

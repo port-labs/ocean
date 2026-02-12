@@ -1,5 +1,4 @@
 import asyncio
-from typing import Any, List
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -17,6 +16,7 @@ from webhook_processors.webhook_client import TerraformWebhookClient
 
 
 SKIP_WEBHOOK_CREATION = False
+BATCH_SIZE = 25
 
 
 @ocean.on_resync(ObjectKind.ORGANIZATION)
@@ -49,28 +49,13 @@ async def resync_workspaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.RUN)
 async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
-    BATCH_SIZE = 25  # Stay safely under 30 req/sec limit
-
-    async def process_workspace(workspace: dict[str, Any]) -> List[dict[str, Any]]:
-        runs = []
-        async for run_batch in terraform_client.get_paginated_runs_for_workspace(
-            workspace["id"]
-        ):
-            if run_batch:
-                runs.extend(run_batch)
-        return runs
-
     async for workspaces in terraform_client.get_paginated_workspaces():
-        logger.info(f"Processing batch of {len(workspaces)} workspaces")
+        logger.info(f"Processing batch of {len(workspaces)} workspaces for {kind}")
 
-        # Process in batches to stay under rate limit
         for i in range(0, len(workspaces), BATCH_SIZE):
             batch = workspaces[i : i + BATCH_SIZE]
-            tasks = [process_workspace(workspace) for workspace in batch]
-
-            for completed_task in asyncio.as_completed(tasks):
-                runs = await completed_task
-                if runs:
+            for workspace in batch:
+                async for runs in terraform_client.process_workspace_runs(workspace):
                     yield runs
 
 
@@ -100,12 +85,21 @@ async def resync_state_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_health_assessments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
     async for workspaces in terraform_client.get_paginated_workspaces():
-        for workspace in workspaces:
-            async for assessments in terraform_client.get_paginated_health_assessments(
-                workspace
-            ):
-                logger.info(f"Received batch of {len(assessments)} {kind}s")
-                yield assessments
+        logger.info(f"Processing batch of {len(workspaces)} workspaces for {kind}")
+
+        for i in range(0, len(workspaces), BATCH_SIZE):
+            batch = workspaces[i : i + BATCH_SIZE]
+            tasks = [
+                terraform_client.get_current_health_assessment_for_workspace(
+                    workspace["id"]
+                )
+                for workspace in batch
+                if workspace["attributes"]["assessments-enabled"]
+            ]
+            for assessment_task in asyncio.as_completed(tasks):
+                assessment = await assessment_task
+                if assessment:
+                    yield [assessment]
 
 
 @ocean.on_resync()
