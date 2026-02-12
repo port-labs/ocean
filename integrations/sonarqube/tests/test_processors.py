@@ -160,21 +160,16 @@ async def test_analysis_handle_event_onprem(
     resource_config: ResourceConfig,
     mock_context: MagicMock,
 ) -> None:
-    mock_context.integration_config = {"sonar_is_on_premise": True}
-
     with patch(
+        "webhook_processors.analysis_webhook_processor.ocean"
+    ) as mock_ocean, patch(
         "webhook_processors.analysis_webhook_processor.init_sonar_client"
     ) as mock_init:
+        mock_ocean.integration_config = {"sonar_is_on_premise": True}
         mock_client = AsyncMock()
         mock_client.get_single_component.return_value = {"key": "test-project-key"}
         mock_client.get_measures_for_all_pull_requests.return_value = [{"pr": "data"}]
 
-        async def mock_analysis_generator(
-            component: Dict[str, Any]
-        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-            yield []
-
-        mock_client.get_analysis_by_project = mock_analysis_generator
         mock_init.return_value = mock_client
 
         test_payload = {
