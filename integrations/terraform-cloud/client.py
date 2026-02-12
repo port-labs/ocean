@@ -9,6 +9,13 @@ from port_ocean.context.event import event
 from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils import http_async_client
 
+
+class HealthAssessmentEvents(StrEnum):
+    DRIFTED = "assessment:drifted"
+    CHECK_FAILURE = "assessment:check_failure"
+    FAILED = "assessment:failed"
+
+
 TERRAFORM_WEBHOOK_EVENTS = [
     "run:applying",
     "run:completed",
@@ -16,9 +23,9 @@ TERRAFORM_WEBHOOK_EVENTS = [
     "run:errored",
     "run:needs_attention",
     "run:planning",
-    "assessment:drifted",
-    "assessment:check_failure",
-    "assessment:failed",
+    HealthAssessmentEvents.DRIFTED,
+    HealthAssessmentEvents.CHECK_FAILURE,
+    HealthAssessmentEvents.FAILED,
 ]
 
 
@@ -297,4 +304,8 @@ class TerraformClient:
         assessment = await self.send_api_request(
             f"workspaces/{workspace_id}/current-assessment-result"
         )
+        return assessment.get("data", {})
+
+    async def get_single_health_assessment(self, assessment_id: str) -> dict[str, Any]:
+        assessment = await self.send_api_request(f"assessment-results/{assessment_id}")
         return assessment.get("data", {})

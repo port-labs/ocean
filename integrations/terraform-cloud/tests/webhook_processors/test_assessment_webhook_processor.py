@@ -17,6 +17,51 @@ def processor() -> Any:
     return AssessmentWebhookProcessor(mock_event)
 
 
+@pytest.fixture()
+def payload() -> dict[str, Any]:
+    return {
+        "payload_version": "2",
+        "notification_configuration_id": "nc-SZ3V3cLFxK6sqLKn",
+        "notification_configuration_url": "https://app.terraform.io/api/v2/notification-configurations/nc-SZ3V3cLFxK6sqLKn",
+        "trigger_scope": "assessment",
+        "trigger": "assessment:drifted",
+        "message": "Drift Detected",
+        "details": {
+            "new_assessment_result": {
+                "id": "asmtres-vRVQxpqq64EA9V5a",
+                "url": "https://app.terraform.io/api/v2/assessment-results/asmtres-vRVQxpqq64EA9V5a",
+                "succeeded": True,
+                "drifted": True,
+                "all_checks_succeeded": True,
+                "resources_drifted": 4,
+                "resources_undrifted": 55,
+                "checks_passed": 33,
+                "checks_failed": 0,
+                "checks_errored": 0,
+                "checks_unknown": 0,
+                "created_at": "2022-06-09T05:23:10Z",
+            },
+            "prior_assessment_result": {
+                "id": "asmtres-A6zEbpGArqP74fdL",
+                "url": "https://app.terraform.io/api/v2/assessment-results/asmtres-A6zEbpGArqP74fdL",
+                "succeeded": True,
+                "drifted": True,
+                "all_checks_succeeded": True,
+                "resources_drifted": 4,
+                "resources_undrifted": 55,
+                "checks_passed": 33,
+                "checks_failed": 0,
+                "checks_errored": 0,
+                "checks_unknown": 0,
+                "created_at": "2022-06-09T05:22:51Z",
+            },
+            "workspace_id": "ws-XdeUVMWShTesDMME",
+            "workspace_name": "my-workspace",
+            "organization_name": "acme-org",
+        },
+    }
+
+
 class TestGetMatchingKinds:
     @pytest.mark.asyncio
     async def test_get_matching_kinds_returns_workspace(self, processor: Any) -> None:
@@ -31,46 +76,26 @@ class TestGetMatchingKinds:
 class TestShouldProcessEvent:
     @pytest.mark.asyncio
     async def test_should_process_event_always_returns_true(
-        self, processor: Any
+        self, processor: Any, payload: dict[str, Any]
     ) -> None:
         event = MagicMock()
-        event.payload = {"notifications": [{"run_status": "planning"}]}
+        event.payload = payload
 
         result = await processor._should_process_event(event)
 
         assert result is True
 
-    @pytest.mark.asyncio
-    async def test_should_process_event_with_different_payloads(
-        self, processor: Any
-    ) -> None:
-        events = [
-            {"notifications": [{"run_status": "applied"}]},
-            {"notifications": [{"run_status": "errored"}]},
-            {"notifications": []},
-        ]
-
-        for event_payload in events:
-            event = MagicMock()
-            event.payload = event_payload
-            result = await processor._should_process_event(event)
-            assert result is True
-
 
 class TestHandleEvent:
     @pytest.mark.asyncio
-    async def test_handle_event_success(self, processor: Any) -> None:
-        payload: dict[str, Any] = {"workspace_id": "ws-123"}
+    async def test_handle_event_success(
+        self, processor: Any, payload: dict[str, Any]
+    ) -> None:
         resource_config = MagicMock()
 
-        assessment_data = {
-            "id": "ws-123",
-            "attributes": {"name": "test-workspace"},
-        }
-
         mock_client = MagicMock()
-        mock_client.get_current_health_assessment_for_workspace = AsyncMock(
-            return_value=assessment_data
+        mock_client.get_single_health_assessment = AsyncMock(
+            return_value=payload["details"]["new_assessment_result"]
         )
 
         with patch(
@@ -82,24 +107,24 @@ class TestHandleEvent:
 
             assert isinstance(result, WebhookEventRawResults)
             assert len(result.updated_raw_results) == 1
-            assert result.updated_raw_results[0] == assessment_data
+            assert (
+                result.updated_raw_results[0]
+                == payload["details"]["new_assessment_result"]
+            )
             assert result.deleted_raw_results == []
-            mock_client.get_current_health_assessment_for_workspace.assert_called_once_with(
-                "ws-123"
+            mock_client.get_single_health_assessment.assert_called_once_with(
+                payload["details"]["new_assessment_result"]["id"]
             )
 
     @pytest.mark.asyncio
     async def test_handle_event_calls_init_terraform_client(
-        self, processor: Any
+        self, processor: Any, payload: dict[str, Any]
     ) -> None:
-        payload: dict[str, Any] = {"workspace_id": "ws-123"}
         resource_config = MagicMock()
 
-        workspace_data = {"id": "ws-123"}
-
         mock_client = MagicMock()
-        mock_client.get_current_health_assessment_for_workspace = AsyncMock(
-            return_value=workspace_data
+        mock_client.get_single_health_assessment = AsyncMock(
+            return_value=payload["details"]["new_assessment_result"]
         )
 
         with patch(

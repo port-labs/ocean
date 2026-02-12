@@ -12,6 +12,7 @@ from webhook_processors.state_version_webhook_processor import (
     StateVersionWebhookProcessor,
 )
 from webhook_processors.state_file_webhook_processor import StateFileWebhookProcessor
+from webhook_processors.assessment_webhook_processor import AssessmentWebhookProcessor
 from webhook_processors.webhook_client import TerraformWebhookClient
 
 
@@ -143,3 +144,4 @@ ocean.add_webhook_processor("/webhook", RunWebhookProcessor)
 ocean.add_webhook_processor("/webhook", WorkspaceWebhookProcessor)
 ocean.add_webhook_processor("/webhook", StateVersionWebhookProcessor)
 ocean.add_webhook_processor("/webhook", StateFileWebhookProcessor)
+ocean.add_webhook_processor("/webhook", AssessmentWebhookProcessor)

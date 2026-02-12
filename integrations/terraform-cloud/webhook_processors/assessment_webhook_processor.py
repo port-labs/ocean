@@ -9,25 +9,37 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from webhook_processors.terraform_base_webhook_processor import (
     TerraformBaseWebhookProcessor,
 )
+from client import HealthAssessmentEvents
 
 
 class AssessmentWebhookProcessor(TerraformBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.HEALTH_ASSESSMENT]
 
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        if not await super().validate_payload(payload):
+            return False
+
+        assessment_result = payload.get("details", {}).get("new_assessment_result", {})
+        return assessment_result.get("id") is not None
+
     async def _should_process_event(self, event: WebhookEvent) -> bool:
-        return True
+        try:
+            trigger = event.payload["trigger"]
+            return bool(HealthAssessmentEvents(trigger))
+        except (KeyError, ValueError):
+            return False
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        workspace_id = payload["workspace_id"]
-        logger.info(f"Processing Terraform assessment event for result: {workspace_id}")
+        assessment_id = payload["details"]["new_assessment_result"]["id"]
+        logger.info(
+            f"Processing Terraform health assessment event for result: {assessment_id}"
+        )
 
         terraform_client = init_terraform_client()
-        assessment = await terraform_client.get_current_health_assessment_for_workspace(
-            workspace_id
-        )
+        assessment = await terraform_client.get_single_health_assessment(assessment_id)
         return WebhookEventRawResults(
             updated_raw_results=[assessment], deleted_raw_results=[]
         )

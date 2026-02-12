@@ -3,7 +3,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from client import TerraformClient, CacheKeys, TERRAFORM_WEBHOOK_EVENTS
+from client import (
+    TerraformClient,
+    CacheKeys,
+    TERRAFORM_WEBHOOK_EVENTS,
+    HealthAssessmentEvents,
+)
 
 
 @pytest.fixture
@@ -636,8 +641,8 @@ class TestTerraformWebhookEvents:
             "run:errored",
             "run:needs_attention",
             "run:planning",
-            "assessment:drifted",
-            "assessment:check_failure",
-            "assessment:failed",
+            HealthAssessmentEvents.DRIFTED,
+            HealthAssessmentEvents.CHECK_FAILURE,
+            HealthAssessmentEvents.FAILED,
         ]
         assert TERRAFORM_WEBHOOK_EVENTS == expected_events
