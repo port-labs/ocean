@@ -1,5 +1,6 @@
 from typing import Any, Dict, Tuple
 
+from loguru import logger
 from port_ocean.core.handlers import JQEntityProcessor
 
 from azure_devops.client.azure_devops_client import AzureDevopsClient
@@ -12,6 +13,13 @@ JSON_SUFFIX = ".json"
 class GitManipulationHandler(JQEntityProcessor):
     async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         if pattern.startswith(FILE_PROPERTY_PREFIX):
+            logger.warning(
+                f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
+                f"Pattern: '{pattern}'. "
+                f"Use the 'includedFiles' selector instead. Example: "
+                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
+                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
+            )
             return await self._search_by_file(data, pattern)
 
         return await super()._search(data, pattern)
