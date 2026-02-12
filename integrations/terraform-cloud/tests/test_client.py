@@ -607,6 +607,26 @@ class TestGetStateFileForSingleWorkspace:
             assert result[0] == state_file_content
 
 
+class TestGetHealthAssessmentsForSingleWorkspace:
+    @pytest.mark.asyncio
+    async def test_get_current_health_assessment_for_workspace_success(
+        self, terraform_client: TerraformClient
+    ) -> None:
+        with patch.object(
+            terraform_client, "send_api_request", new_callable=AsyncMock
+        ) as mock_send:
+
+            mock_send.return_value = {"data": {"id": "assessment-1"}}
+
+            assessment = (
+                await terraform_client.get_current_health_assessment_for_workspace(
+                    "test-workspace"
+                )
+            )
+
+            assert assessment == {"id": "assessment-1"}
+
+
 class TestTerraformWebhookEvents:
     def test_webhook_events_constant(self) -> None:
         expected_events = [
@@ -617,6 +637,7 @@ class TestTerraformWebhookEvents:
             "run:needs_attention",
             "run:planning",
             "assessment:drifted",
-            "assessment:completed",
+            "assessment:check_failure",
+            "assessment:failed",
         ]
         assert TERRAFORM_WEBHOOK_EVENTS == expected_events

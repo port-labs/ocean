@@ -17,7 +17,8 @@ TERRAFORM_WEBHOOK_EVENTS = [
     "run:needs_attention",
     "run:planning",
     "assessment:drifted",
-    "assessment:completed",
+    "assessment:check_failure",
+    "assessment:failed",
 ]
 
 
@@ -295,9 +296,4 @@ class TerraformClient:
     ) -> dict[str, Any]:
         endpoint = f"workspaces/{workspace_id}/current-assessment-result"
         assessment = await self.send_api_request(endpoint)
-        return assessment.get("data", {})
-
-    async def get_single_health_assessment(self, assessment_id: str) -> dict[str, Any]:
-        logger.info(f"Fetching health assessment with ID: {assessment_id}")
-        assessment = await self.send_api_request(f"assessment-results/{assessment_id}")
         return assessment.get("data", {})
