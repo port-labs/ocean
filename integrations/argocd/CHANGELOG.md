@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for custom HTTP headers for ArgoCD integration requests
 
 
+## 0.1.287 (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
 ## 0.1.286 (2026-02-02)
 
 

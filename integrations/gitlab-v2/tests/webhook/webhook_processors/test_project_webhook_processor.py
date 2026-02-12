@@ -66,6 +66,7 @@ class TestProjectWebhookProcessor:
         config = MagicMock()
         config.selector = MagicMock()
         config.selector.include_languages = False
+        config.selector.included_files = []
         return config
 
     @pytest.mark.asyncio
@@ -98,7 +99,7 @@ class TestProjectWebhookProcessor:
         result = await processor.handle_event(project_create_payload, resource_config)
 
         processor._gitlab_webhook_client.get_project.assert_called_once_with(
-            project_id, resource_config.selector.include_languages
+            project_id, resource_config.selector.include_languages, included_files=None
         )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == expected_project

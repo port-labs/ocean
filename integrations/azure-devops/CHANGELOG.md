@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.7 (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 0.7.6 (2026-02-09)
+
+
+### Features
+
+- Added `includedFiles` selector for repository and project entities to fetch file contents (e.g. README.md, CODEOWNERS) during enrichment and expose them under `__includedFiles` in the raw data
+- Added deprecation warning when using `file://` prefix in mappings, guiding users to migrate to the new `includedFiles` selector
+
+
 ## 0.7.5 (2026-02-02)
 
 
