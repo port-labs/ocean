@@ -294,6 +294,7 @@ class TerraformClient:
         self,
         workspace_id: str,
     ) -> dict[str, Any]:
-        endpoint = f"workspaces/{workspace_id}/current-assessment-result"
-        assessment = await self.send_api_request(endpoint)
+        assessment = await self.send_api_request(
+            f"workspaces/{workspace_id}/current-assessment-result"
+        )
         return assessment.get("data", {})
