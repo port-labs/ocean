@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.32 (2026-02-12)
+
+
+### Bug Fixes
+
+- Fixed dispatch workflow action - object inputs are now parsed to string
+
+
+## 5.0.31 (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 5.0.30 (2026-02-11)
+
+
+### Features
+
+- Added `includedFiles` selector for repository, folder and file entities to fetch file contents (e.g. README.md, CODEOWNERS) during enrichment and expose them under `__includedFiles` in the raw data
+- Added deprecation warning when using `file://` prefix in mappings, guiding users to migrate to the new `includedFiles` selector
+
+
 ## 5.0.29 (2026-02-11)
 
 

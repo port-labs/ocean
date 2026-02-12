@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from gitlab.webhook.webhook_processors.folder_push_webhook_processor import (
     FolderPushWebhookProcessor,
+    _enrich_folder_with_included_files,
 )
 from gitlab.helpers.utils import ObjectKind
 from port_ocean.core.handlers.webhook.webhook_event import WebhookEvent
@@ -79,6 +80,7 @@ class TestFolderPushWebhookProcessor:
         """Create a mocked GitLabFoldersResourceConfig with default no-repos config"""
         config = MagicMock(spec=ResourceConfig)
         config.selector = mock_gitlab_folder_selector
+        config.selector.included_files = []
         config.kind = "folder"
         return config
 
@@ -109,6 +111,7 @@ class TestFolderPushWebhookProcessor:
         # Mock ResourceConfig
         resource_config = MagicMock(spec=ResourceConfig)
         resource_config.selector = gitlab_folder_selector
+        resource_config.selector.included_files = []
         resource_config.kind = "folder"
 
         # Mock folder data
@@ -166,6 +169,7 @@ class TestFolderPushWebhookProcessor:
         # Mock ResourceConfig
         resource_config = MagicMock(spec=ResourceConfig)
         resource_config.selector = gitlab_folder_selector
+        resource_config.selector.included_files = []
         resource_config.kind = "folder"
 
         processor._gitlab_webhook_client = MagicMock()
@@ -199,6 +203,7 @@ class TestFolderPushWebhookProcessor:
         # Mock ResourceConfig
         resource_config = MagicMock(spec=ResourceConfig)
         resource_config.selector = gitlab_folder_selector
+        resource_config.selector.included_files = []
         resource_config.kind = "folder"
 
         processor._gitlab_webhook_client = MagicMock()
@@ -210,3 +215,73 @@ class TestFolderPushWebhookProcessor:
         processor._gitlab_webhook_client.get_repository_folders.assert_not_called()
         assert not result.updated_raw_results
         assert not result.deleted_raw_results
+
+
+@pytest.mark.asyncio
+class TestFolderEnrichWithIncludedFiles:
+    """Tests for the _enrich_folder_with_included_files function"""
+
+    async def test_enrich_folder_success(self) -> None:
+        """Test successful enrichment with included files."""
+        client = MagicMock()
+        client.get_file_content = AsyncMock(
+            side_effect=["readme content", "owners content"]
+        )
+
+        folder: dict[str, Any] = {"name": "src", "path": "src"}
+
+        result = await _enrich_folder_with_included_files(
+            client,
+            folder,
+            ["README.md", "CODEOWNERS"],
+            project_path="group/project",
+            ref="abc123",
+        )
+
+        assert result["__includedFiles"] == {
+            "README.md": "readme content",
+            "CODEOWNERS": "owners content",
+        }
+        assert client.get_file_content.call_count == 2
+        client.get_file_content.assert_any_call("group/project", "README.md", "abc123")
+        client.get_file_content.assert_any_call("group/project", "CODEOWNERS", "abc123")
+
+    async def test_enrich_folder_missing_file(self) -> None:
+        """Test enrichment when a file cannot be fetched — stores None."""
+        client = MagicMock()
+        client.get_file_content = AsyncMock(
+            side_effect=["content", Exception("Not found")]
+        )
+
+        folder: dict[str, Any] = {"name": "src", "path": "src"}
+
+        result = await _enrich_folder_with_included_files(
+            client,
+            folder,
+            ["README.md", "MISSING.md"],
+            project_path="group/project",
+            ref="abc123",
+        )
+
+        assert result["__includedFiles"] == {
+            "README.md": "content",
+            "MISSING.md": None,
+        }
+
+    async def test_enrich_folder_empty_file_list(self) -> None:
+        """Test enrichment with empty file list yields empty dict."""
+        client = MagicMock()
+        client.get_file_content = AsyncMock()
+
+        folder: dict[str, Any] = {"name": "src", "path": "src"}
+
+        result = await _enrich_folder_with_included_files(
+            client,
+            folder,
+            [],
+            project_path="group/project",
+            ref="abc123",
+        )
+
+        assert result["__includedFiles"] == {}
+        client.get_file_content.assert_not_called()

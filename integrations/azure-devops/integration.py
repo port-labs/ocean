@@ -156,6 +156,11 @@ class AzureDevopsFileSelector(Selector):
         ```
         """,
     )
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the file entity",
+    )
 
 
 class AzureDevopsFileResourceConfig(ResourceConfig):
@@ -240,6 +245,22 @@ class AzureDevopsPullRequestResourceConfig(ResourceConfig):
     selector: AzureDevopsPullRequestSelector
 
 
+class AzureDevopsRepositorySelector(Selector):
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description=(
+            "List of file paths to fetch from the repository and attach to "
+            "the raw data under __includedFiles. E.g. ['README.md', 'CODEOWNERS']"
+        ),
+    )
+
+
+class AzureDevopsRepositoryResourceConfig(ResourceConfig):
+    kind: Literal["repository"]
+    selector: AzureDevopsRepositorySelector
+
+
 class GroupMemberSelector(Selector):
     depth: int = Field(
         default=DEFAULT_GROUP_MEMBER_DEPTH,
@@ -278,6 +299,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsTestRunResourceConfig
         | AzureDevopsPullRequestResourceConfig
         | AzureDevopsAdvancedSecurityResourceConfig
+        | AzureDevopsRepositoryResourceConfig
         | AzureDevopsGroupMemberResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
