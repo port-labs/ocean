@@ -333,7 +333,7 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
                         )
                     wait_time = min(wait_time, remaining_timeout)
 
-                self._logger.debug(
+                self._logger.info(
                     f"Rate limit reached ({self._request_count}/{self._max_rate}), "
                     f"waiting {wait_time:.3f}s for window reset"
                 )

@@ -5,6 +5,7 @@ from typing import Any, Optional, Callable
 from loguru import logger
 
 DEFAULT_REQUEST_TIMEOUT: float = 120
+PAGE_SIZE: int = 100
 
 
 @async_generator_retry
@@ -29,6 +30,8 @@ async def paginated_query(
     """
     page = 0
     page_token = None
+
+    request["page_size"] = PAGE_SIZE
 
     if rate_limiter:
         logger.info(
