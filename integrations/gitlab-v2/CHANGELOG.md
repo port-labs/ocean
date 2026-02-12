@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.37 (2026-02-12)
+
+
+### Features
+
+- Added `searchQueries` selector to `ProjectSelector` for enriching projects with search query results (e.g., checking if a file exists via GitLab search API)
+- Results are stored under `__searchQueries[<name>]` as a boolean, accessible in JQ mappings
+- Added deprecation warning when using `search://` prefix in mappings; use `searchQueries` selector instead
+
+
 ## 0.5.36 (2026-02-12)
 
 
@@ -20,9 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added `searchQueries` selector to `ProjectSelector` for enriching projects with search query results (e.g., checking if a file exists via GitLab search API)
-- Results are stored under `__searchQueries[<name>]` as a boolean, accessible in JQ mappings
-- Added deprecation warning when using `search://` prefix in mappings; use `searchQueries` selector instead
 - Added `includedFiles` selector for project entities to fetch file contents (e.g. README.md, CODEOWNERS) during enrichment and expose them under `__includedFiles` in the raw data
 - Added deprecation warning when using `file://` prefix in mappings, guiding users to migrate to the new `includedFiles` selector
 
