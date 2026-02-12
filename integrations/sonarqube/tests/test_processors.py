@@ -64,7 +64,7 @@ def resource_config() -> ResourceConfig:
 @pytest.fixture
 def project_resource_config() -> SonarQubeProjectResourceConfig:
     return SonarQubeProjectResourceConfig(
-        kind="project",
+        kind="projects",
         selector=SonarQubeComponentProjectSelector(query="test", metrics=[]),
         port=PortResourceConfig(
             entity=MappingsConfig(
@@ -140,8 +140,8 @@ async def test_analysis_handle_event_cloud(
 
         async def mock_analysis_generator(
             component: Dict[str, Any]
-        ) -> AsyncGenerator[Dict[str, Any], None]:
-            yield {"analysis": "data"}
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield [{"analysis": "data"}]
 
         mock_client.get_analysis_by_project = mock_analysis_generator
         mock_init.return_value = mock_client
@@ -168,6 +168,13 @@ async def test_analysis_handle_event_onprem(
         mock_client = AsyncMock()
         mock_client.get_single_component.return_value = {"key": "test-project-key"}
         mock_client.get_measures_for_all_pull_requests.return_value = [{"pr": "data"}]
+
+        async def mock_analysis_generator(
+            component: Dict[str, Any]
+        ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+            yield []
+
+        mock_client.get_analysis_by_project = mock_analysis_generator
         mock_init.return_value = mock_client
 
         test_payload = {
