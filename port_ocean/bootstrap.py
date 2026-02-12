@@ -8,7 +8,7 @@ from port_ocean.utils.misc import get_integration_class
 
 
 def create_default_app(
-    path: str | None = None,
+    path: str,
     config_factory: Type[BaseModel] | None = None,
     config_override: Dict[str, Any] | None = None,
 ) -> Ocean:

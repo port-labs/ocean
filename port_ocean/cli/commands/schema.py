@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Type
 
 import click
-import jsonref
+import jsonref  # type: ignore[import-untyped]
 
 from port_ocean.cli.commands.main import cli_start
 from port_ocean.core.handlers import BasePortAppConfig
@@ -86,24 +86,18 @@ def _extract_integration_schema(path: str) -> dict[str, Any]:
     try:
         sys.path.append(path)
         integration_class = get_integration_class(path)
+        if integration_class is None:
+            click.echo(f"Integration class not found for {path}, omitting", err=True)
+            return {}
         config_class = _get_config_class(integration_class)
         if config_class is None:
             config_class = PortAppConfig
 
         config_schema = config_class.schema()
         spec = get_spec_file(Path(path))
-        if not spec.get("customKindsEnabled", False):
-            click.echo(f"Custom kinds disabled for {path}, omitting")
+        if spec and not spec.get("customKindsEnabled", False):
             return _omit_loose_kind_definitions(config_schema)
         return config_schema
-    except ModuleNotFoundError as e:
-        click.echo(
-            f"Failed to extract schema from {path}: {e}. "
-            "Make sure the integration's dependencies are installed "
-            "(run 'make install' or 'pip install -e .' in the integration directory).",
-            err=True,
-        )
-        sys.exit(1)
     except Exception as e:
         click.echo(f"Failed to extract schema from {path}: {e}", err=True)
         sys.exit(1)
