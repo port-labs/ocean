@@ -16,6 +16,8 @@ TERRAFORM_WEBHOOK_EVENTS = [
     "run:errored",
     "run:needs_attention",
     "run:planning",
+    "assessment:drifted",
+    "assessment:completed",
 ]
 
 
@@ -279,3 +281,13 @@ class TerraformClient:
                 for state_version in state_versions
             ]
             yield list(await asyncio.gather(*tasks))
+
+    async def get_paginated_health_assessments(
+        self,
+        workspace: dict[str, Any],
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        # TODO: 1. get workspace runs
+        # TODO: 2. filter runs by assessment status
+        # TODO: 3. get assessment for each run
+        # TODO: 4. yield results in batches
+        yield []

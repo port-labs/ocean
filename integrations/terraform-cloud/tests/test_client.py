@@ -616,5 +616,7 @@ class TestTerraformWebhookEvents:
             "run:errored",
             "run:needs_attention",
             "run:planning",
+            "assessment:drifted",
+            "assessment:completed",
         ]
         assert TERRAFORM_WEBHOOK_EVENTS == expected_events

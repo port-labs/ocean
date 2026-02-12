@@ -96,6 +96,18 @@ async def resync_state_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield state_files_batch
 
 
+@ocean.on_resync(ObjectKind.HEALTH_ASSESSMENT)
+async def resync_health_assessments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    terraform_client = init_terraform_client()
+    async for workspaces in terraform_client.get_paginated_workspaces():
+        for workspace in workspaces:
+            async for assessments in terraform_client.get_paginated_health_assessments(
+                workspace
+            ):
+                logger.info(f"Received batch of {len(assessments)} {kind}s")
+                yield assessments
+
+
 @ocean.on_resync()
 async def on_create_webhook_resync(kind: str) -> RAW_RESULT:
     global SKIP_WEBHOOK_CREATION
