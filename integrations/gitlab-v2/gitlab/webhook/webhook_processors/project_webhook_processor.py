@@ -38,8 +38,11 @@ class ProjectWebhookProcessor(_GitlabAbstractWebhookProcessor):
 
         selector = cast(ProjectResourceConfig, resource_config).selector
         include_languages = selector.include_languages
+        included_files = selector.included_files or []
         project = await self._gitlab_webhook_client.get_project(
-            project_id, include_languages
+            project_id,
+            include_languages,
+            included_files=included_files if included_files else None,
         )
         return WebhookEventRawResults(
             updated_raw_results=[project],
