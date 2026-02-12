@@ -6,13 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-
-## 0.8.0 (2026-02-02)
+## 0.8.0 (2026-02-12)
 
 
 ### Features
 
 - Added OAuth integration support for Azure DevOps
+
+
+## 0.7.5 (2026-02-02)
+
+
+### Improvements
+
+- Added live events support for `pipeline`, `pipeline-run`, and `pipeline-stage` kinds
+- Updated `work-item` live events to include `workitem.restored` event
+
+
+## 0.7.4 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+## 0.7.3 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
 
 
 ## 0.7.2 (2026-02-01)

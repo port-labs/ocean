@@ -20,15 +20,15 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
         self.config = config
 
         self._organization_role_details: dict[str, str] | None = None
-        self._valid_arns: list[str] = []
+        self._valid_arns: set[str] = set()
         self._valid_sessions: dict[str, AioSession] = {}
         self._organization_session: AioSession | None = None
         self._discovered_accounts: List[Dict[str, str]] = []
 
     @property
-    def valid_arns(self) -> list[str]:
-        """Get the list of valid ARNs that passed health check."""
-        return getattr(self, "_valid_arns", [])
+    def valid_arns(self) -> set[str]:
+        """Get the set of valid ARNs that passed health check."""
+        return self._valid_arns
 
     @property
     def valid_sessions(self) -> dict[str, AioSession]:
@@ -146,7 +146,7 @@ class OrganizationDiscoveryMixin(AWSSessionStrategy):
     ) -> None:
         """Add an account to the list of valid accounts."""
         role_arn = self._build_role_arn(account_id)
-        self._valid_arns.append(role_arn)
+        self._valid_arns.add(role_arn)
         self._valid_sessions[role_arn] = session
 
     async def _fallback_to_single_account(self) -> bool:
@@ -212,6 +212,10 @@ class OrganizationsHealthCheckMixin(OrganizationDiscoveryMixin, HealthCheckMixin
 
     async def healthcheck(self) -> bool:
         """Perform health check by discovering accounts and validating role assumption."""
+        self._valid_arns = set()
+        self._valid_sessions = {}
+        self._discovered_accounts = []
+
         try:
             # Discover accounts first
             accounts = await self.discover_accounts()
