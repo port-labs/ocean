@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_coroutine_result
@@ -16,15 +16,17 @@ from github.helpers.gql_queries import (
 class GraphQLUserExporter(AbstractGithubExporter[GithubGraphQLClient]):
     async def get_resource[
         ExporterOptionT: SingleUserOptions
-    ](self, options: ExporterOptionT) -> RAW_ITEM:
+    ](self, options: ExporterOptionT) -> Optional[RAW_ITEM]:
         organization = options["organization"]
-        variables = {"login": options["login"]}
+        login_option = options["login"]
+        variables = {"login": login_option}
         payload = self.client.build_graphql_payload(FETCH_GITHUB_USER_GQL, variables)
         response = await self.client.send_api_request(
             self.client.base_url, method="POST", json_data=payload
         )
         if not response:
-            return response
+            logger.warning(f"No user found with login: {login_option}")
+            return None
 
         user = response["data"]["user"]
 

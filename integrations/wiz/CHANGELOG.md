@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.247 (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 0.1.246 (2026-02-03)
+
+
+### Improvements
+
+- Handle selectors (`status_list`, `severity_list`, `type_list`) for `issue` kind in live events.
+
+
 ## 0.1.245 (2026-02-02)
 
 

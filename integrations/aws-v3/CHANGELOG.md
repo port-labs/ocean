@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 2.1.35-beta (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 2.1.34-beta (2026-02-10)
+
+
+### Bug Fixes
+
+- Fixed _valid_arns accumulation across resyncs by resetting state at the start of healthcheck() in both MultiAccountHealthCheckMixin and OrganizationsHealthCheckMixin
+
+
 ## 2.1.33-beta (2026-02-02)
 
 
