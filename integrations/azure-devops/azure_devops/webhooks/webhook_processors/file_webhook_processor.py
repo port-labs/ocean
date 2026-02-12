@@ -56,8 +56,18 @@ class FileWebhookProcessor(AzureDevOpsBaseWebhookProcessor):
         created, modified, deleted = await self._process_push_updates(
             matching_resource_config, payload, updates, client
         )
+
+        included_files = selector.included_files or []
+        updated = created + modified
+        if included_files and updated:
+            from main import _enrich_file_entities_batch_with_included_files
+
+            updated = await _enrich_file_entities_batch_with_included_files(
+                client, updated, included_files
+            )
+
         return WebhookEventRawResults(
-            updated_raw_results=created + modified,
+            updated_raw_results=updated,
             deleted_raw_results=deleted,
         )
 
