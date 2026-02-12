@@ -68,11 +68,16 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received batch with {len(incidents)} incidents")
 
         if selector.incident_analytics:
-            yield (
-                await pager_duty_client.enrich_incidents_with_analytics_data(incidents)
+            incidents = await pager_duty_client.enrich_incidents_with_analytics_data(
+                incidents
             )
-        else:
-            yield incidents
+
+        if selector.include_custom_fields:
+            incidents = await pager_duty_client.enrich_entities_with_custom_fields(
+                incidents, Kinds.INCIDENTS
+            )
+
+        yield incidents
 
 
 @ocean.on_resync(Kinds.SERVICES)
@@ -97,6 +102,11 @@ async def on_services_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if selector.service_analytics:
             services = await enrich_service_with_analytics_data(
                 pager_duty_client, services, selector.analytics_months_period
+            )
+
+        if selector.include_custom_fields:
+            services = await pager_duty_client.enrich_entities_with_custom_fields(
+                services, Kinds.SERVICES
             )
 
         yield await pager_duty_client.update_oncall_users(services)
