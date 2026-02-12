@@ -32,15 +32,6 @@ class HTTPBaseClient:
         self._rate_limiter = AzureDevOpsRateLimiter()
         self._auth_client = AuthClient(personal_access_token)
 
-    def is_oauth_enabled(self) -> bool:
-        """
-        Safely determine whether OAuth is enabled for the current integration.
-
-        Falls back to False when Ocean app/config are not initialized
-        to preserve existing behavior in non-OAuth environments.
-        """
-        return self._auth_client.is_oauth_enabled()
-
     def _ensure_oauth_headers(
         self, headers: Optional[dict[str, Any]]
     ) -> dict[str, Any]:
@@ -50,13 +41,6 @@ class HTTPBaseClient:
         """
         return self._auth_client.get_headers(headers)
 
-    def refresh_request_auth_creds(self, request: httpx.Request) -> httpx.Request:
-        """
-        Refresh Authorization header on retries when OAuth is enabled.
-        Falls back to PAT if OAuth token is not available (e.g., at app startup).
-        """
-        return self._auth_client.refresh_request_auth_creds(request)
-
     def _prepare_auth_and_headers(
         self, headers: Optional[dict[str, Any]]
     ) -> dict[str, Any]:
@@ -64,7 +48,7 @@ class HTTPBaseClient:
         Prepare authentication and headers for the request.
         Returns the prepared headers dictionary.
         """
-        if self.is_oauth_enabled():
+        if self._auth_client.is_oauth_enabled():
             self._client.auth = None
             headers = self._ensure_oauth_headers(headers)
             if not headers.get("Authorization"):

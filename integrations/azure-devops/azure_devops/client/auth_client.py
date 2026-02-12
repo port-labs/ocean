@@ -50,16 +50,3 @@ class AuthClient(OAuthClient):
         except ValueError:
             pass
         return request
-
-    def get_auth_for_client(self) -> Optional[httpx.BasicAuth]:
-        """
-        Get BasicAuth for httpx client when OAuth is not enabled or OAuth token is unavailable.
-        Returns None if OAuth token is available (so headers are used instead).
-        """
-        if self.is_oauth_enabled():
-            try:
-                _ = self.external_access_token
-                return None
-            except ValueError:
-                pass
-        return httpx.BasicAuth("", self.personal_access_token)
