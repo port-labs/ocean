@@ -1,5 +1,6 @@
 import asyncio
 from loguru import logger
+from aiostream import stream
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
@@ -55,8 +56,13 @@ async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         for i in range(0, len(workspaces), BATCH_SIZE):
             batch = workspaces[i : i + BATCH_SIZE]
-            for workspace in batch:
-                async for runs in terraform_client.process_workspace_runs(workspace):
+            tasks = [
+                terraform_client.process_workspace_runs(workspace)
+                for workspace in batch
+            ]
+            combined_stream = stream.merge(*tasks)
+            async with combined_stream.stream() as streamer:
+                async for runs in streamer:
                     yield runs
 
 
