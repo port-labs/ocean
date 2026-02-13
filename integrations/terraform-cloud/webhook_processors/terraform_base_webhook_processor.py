@@ -79,6 +79,11 @@ class TerraformBaseWebhookProcessor(AbstractWebhookProcessor):
             trigger = notifications[0].get("trigger") if notifications else "unknown"
             logger.info(f"Received Terraform webhook with trigger: {trigger}")
 
+        if trigger := event.payload.get("trigger"):
+            logger.info(
+                f"Received Terraform Health Assessment webhook with trigger: {trigger}"
+            )
+
         # Skip processing verification events - they're handled by responding with 200 OK
         if self._is_verification_event(event.payload):
             logger.info(

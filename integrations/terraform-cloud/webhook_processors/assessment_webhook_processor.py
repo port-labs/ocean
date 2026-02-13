@@ -18,7 +18,7 @@ class AssessmentWebhookProcessor(TerraformBaseWebhookProcessor):
 
     async def _should_process_event(self, event: WebhookEvent) -> bool:
         try:
-            if event.payload["trigger_scope"] != HEALTH_ASSESSMENT_TRIGGER_SCOPE:
+            if event.payload.get("trigger_scope") != HEALTH_ASSESSMENT_TRIGGER_SCOPE:
                 return False
             trigger = event.payload["trigger"]
             return bool(HealthAssessmentEvents(trigger))
