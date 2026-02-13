@@ -4,10 +4,12 @@ from webhook_processors.feature_flag_webhook_processor import (
 )
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.audit_log_webhook_processor import AuditLogWebhookProcessor
+from webhook_processors.segment_webhook_processor import SegmentWebhookProcessor
 
 __all__ = [
     "EnvironmentWebhookProcessor",
     "FeatureFlagWebhookProcessor",
     "ProjectWebhookProcessor",
     "AuditLogWebhookProcessor",
+    "SegmentWebhookProcessor",
 ]
