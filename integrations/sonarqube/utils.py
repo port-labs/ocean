@@ -17,18 +17,3 @@ def produce_component_params(
     if client.is_onpremise and selector:
         component_query_params.update(selector.generate_request_params())
     return component_query_params
-
-
-def get_selector_metrics(resource_config: ResourceConfig) -> List[str]:
-    """
-    Extract metrics from a resource config selector if available.
-    Args:
-        resource_config: The resource configuration containing the selector
-
-    Returns:
-        List of metric strings, empty list if no metrics are configured
-    """
-
-    if hasattr(resource_config.selector, "metrics"):
-        return resource_config.selector.metrics
-    return []
