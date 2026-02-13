@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, List
 
 from client import SonarQubeClient
 from integration import SonarQubeComponentProjectSelector
