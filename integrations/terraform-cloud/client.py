@@ -61,7 +61,11 @@ class TerraformClient:
         json_data: Optional[dict[str, Any]] = None,
         follow_redirects: bool = False,
     ) -> dict[str, Any]:
-        url = endpoint if urlparse(endpoint).scheme else f"{self.api_url}/{endpoint}"
+        url = (
+            endpoint
+            if urlparse(endpoint).scheme
+            else f"{self.api_url}/{endpoint.lstrip('/')}"
+        )
 
         try:
             async with self.rate_limiter:
