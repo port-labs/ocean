@@ -65,8 +65,6 @@ class ArgocdClient:
                     self.http_client.headers.update(parsed_headers)
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse custom HTTP headers: {e}")
-                if not self.ignore_server_error:
-                    raise
         self.streaming_client = StreamingClientWrapper(self.http_client)
         self.use_streaming = use_streaming
 
