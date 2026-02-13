@@ -1,8 +1,7 @@
-from typing import Any, List
+from typing import Any
 
 from client import SonarQubeClient
 from integration import SonarQubeComponentProjectSelector
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 
 def produce_component_params(
