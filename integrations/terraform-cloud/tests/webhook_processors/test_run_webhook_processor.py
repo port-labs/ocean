@@ -9,6 +9,7 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 from utils import ObjectKind
+from client import WorkspaceRunEvents
 
 
 @pytest.fixture
@@ -30,11 +31,15 @@ class TestGetMatchingKinds:
 
 class TestShouldProcessEvent:
     @pytest.mark.asyncio
-    async def test_should_process_event_always_returns_true(
+    async def test_should_process_event_always_returns_true_for_applying(
         self, processor: Any
     ) -> None:
         event = MagicMock()
-        event.payload = {"notifications": [{"run_status": "planning"}]}
+        event.payload = {
+            "notifications": [
+                {"run_status": "applied", "trigger": WorkspaceRunEvents.APPLYING}
+            ]
+        }
 
         result = await processor._should_process_event(event)
 
@@ -45,17 +50,46 @@ class TestShouldProcessEvent:
         self, processor: Any
     ) -> None:
         events = [
-            {"notifications": [{"run_status": "applied"}]},
-            {"notifications": [{"run_status": "errored"}]},
-            {"notifications": [{"run_status": "planning"}]},
-            {"notifications": []},
+            {
+                "notifications": [
+                    {"run_status": "applied", "trigger": WorkspaceRunEvents.APPLYING}
+                ]
+            },
+            {
+                "notifications": [
+                    {"run_status": "errored", "trigger": WorkspaceRunEvents.ERRORED}
+                ]
+            },
+            {
+                "notifications": [
+                    {"run_status": "planning", "trigger": WorkspaceRunEvents.PLANNING}
+                ]
+            },
         ]
+
+        event = MagicMock()
+        # "run status == applying" should pass
+        event.payload = events[0]
+        result = await processor._should_process_event(event)
+        assert result is True
+
+        for event_payload in events[1 : len(events)]:
+            event = MagicMock()
+            event.payload = event_payload
+            result = await processor._should_process_event(event)
+            assert result is False
+
+    @pytest.mark.asyncio
+    async def test_should_process_event_with_empty_notifications(
+        self, processor: Any
+    ) -> None:
+        events: list[dict[str, Any]] = [{"notifications": []}]
 
         for event_payload in events:
             event = MagicMock()
             event.payload = event_payload
             result = await processor._should_process_event(event)
-            assert result is True
+            assert result is False
 
 
 class TestHandleEvent:

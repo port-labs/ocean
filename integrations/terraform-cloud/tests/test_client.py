@@ -7,6 +7,7 @@ from client import (
     TerraformClient,
     CacheKeys,
     TERRAFORM_WEBHOOK_EVENTS,
+    WorkspaceRunEvents,
     HealthAssessmentEvents,
 )
 
@@ -635,12 +636,12 @@ class TestGetHealthAssessmentsForSingleWorkspace:
 class TestTerraformWebhookEvents:
     def test_webhook_events_constant(self) -> None:
         expected_events = [
-            "run:applying",
-            "run:completed",
-            "run:created",
-            "run:errored",
-            "run:needs_attention",
-            "run:planning",
+            WorkspaceRunEvents.APPLYING,
+            WorkspaceRunEvents.COMPLETED,
+            WorkspaceRunEvents.CREATED,
+            WorkspaceRunEvents.ERRORED,
+            WorkspaceRunEvents.NEEDS_ATTENTION,
+            WorkspaceRunEvents.PLANNING,
             HealthAssessmentEvents.DRIFTED,
             HealthAssessmentEvents.CHECK_FAILURE,
             HealthAssessmentEvents.FAILED,

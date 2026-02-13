@@ -5,12 +5,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from webhook_processors.terraform_base_webhook_processor import (
-    TerraformBaseWebhookProcessor,
+from webhook_processors.base_state_webhook_processor import (
+    BaseStateWebhookProcessor,
 )
 
 
-class StateFileWebhookProcessor(TerraformBaseWebhookProcessor):
+class StateFileWebhookProcessor(BaseStateWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.STATE_FILE]
 

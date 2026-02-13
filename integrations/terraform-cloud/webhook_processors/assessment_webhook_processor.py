@@ -6,13 +6,13 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEvent,
     WebhookEventRawResults,
 )
-from webhook_processors.terraform_base_webhook_processor import (
-    TerraformBaseWebhookProcessor,
+from webhook_processors.base_workspace_webhook_processor import (
+    BaseWorkspaceWebhookProcessor,
 )
 from client import HealthAssessmentEvents, HEALTH_ASSESSMENT_TRIGGER_SCOPE
 
 
-class AssessmentWebhookProcessor(TerraformBaseWebhookProcessor):
+class AssessmentWebhookProcessor(BaseWorkspaceWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.HEALTH_ASSESSMENT]
 

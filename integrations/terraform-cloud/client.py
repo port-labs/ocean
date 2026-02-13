@@ -18,13 +18,22 @@ class HealthAssessmentEvents(StrEnum):
     FAILED = "assessment:failed"
 
 
+class WorkspaceRunEvents(StrEnum):
+    APPLYING = "run:applying"
+    COMPLETED = "run:completed"
+    CREATED = "run:created"
+    ERRORED = "run:errored"
+    NEEDS_ATTENTION = "run:needs_attention"
+    PLANNING = "run:planning"
+
+
 TERRAFORM_WEBHOOK_EVENTS = [
-    "run:applying",
-    "run:completed",
-    "run:created",
-    "run:errored",
-    "run:needs_attention",
-    "run:planning",
+    WorkspaceRunEvents.APPLYING,
+    WorkspaceRunEvents.COMPLETED,
+    WorkspaceRunEvents.CREATED,
+    WorkspaceRunEvents.ERRORED,
+    WorkspaceRunEvents.NEEDS_ATTENTION,
+    WorkspaceRunEvents.PLANNING,
     HealthAssessmentEvents.DRIFTED,
     HealthAssessmentEvents.CHECK_FAILURE,
     HealthAssessmentEvents.FAILED,

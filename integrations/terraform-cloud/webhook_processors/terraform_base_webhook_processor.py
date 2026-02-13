@@ -1,3 +1,4 @@
+from abc import abstractmethod
 import hashlib
 import hmac
 from loguru import logger
@@ -82,17 +83,8 @@ class TerraformBaseWebhookProcessor(AbstractWebhookProcessor):
 
         return True
 
-    async def _should_process_event(self, event: WebhookEvent) -> bool:
-        if notifications := event.payload.get("notifications", []):
-            trigger = notifications[0].get("trigger") if notifications else "unknown"
-            logger.info(f"Received Terraform webhook with trigger: {trigger}")
-
-            for notification in notifications:
-                run_status = notification["run_status"]
-                # Only process state when run has applied changes
-                if run_status == "applied":
-                    return True
-        return False
+    @abstractmethod
+    async def _should_process_event(self, event: WebhookEvent) -> bool: ...
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
         notifications = payload.get("notifications")
