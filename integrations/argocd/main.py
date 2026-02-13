@@ -61,7 +61,7 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.info(
                 "No applications were found. Skipping managed resources ingestion"
             )
-            return
+            continue
 
         for application in app_batch:
             if application:
