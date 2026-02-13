@@ -236,7 +236,7 @@ class ArgocdClient:
         logger.info(f"Fetching managed resources for application: {application_name}")
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
 
-        for managed_resources in self.get_paginated_resources(url):
+        async for managed_resources in self.get_paginated_resources(url):
             yield [
                 {**managed_resource, "__application": application}
                 for managed_resource in managed_resources
