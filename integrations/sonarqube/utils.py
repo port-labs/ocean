@@ -19,14 +19,6 @@ def produce_component_params(
     return component_query_params
 
 
-def extract_metrics_from_payload(payload: Dict[str, Any]) -> list[str]:
-    """Extracts a list of metrics from the qualityGate conditions in the payload."""
-    return [
-        condition["metric"]
-        for condition in payload.get("qualityGate", {}).get("conditions", [])
-    ]
-
-
 def get_selector_metrics(resource_config: ResourceConfig) -> List[str]:
     """
     Extract metrics from a resource config selector if available.
