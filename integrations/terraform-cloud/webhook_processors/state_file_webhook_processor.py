@@ -14,18 +14,6 @@ class StateFileWebhookProcessor(TerraformBaseWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.STATE_FILE]
 
-    async def _should_process_event(self, event: WebhookEvent) -> bool:
-        """Check if the run has a state file change."""
-        notifications = event.payload.get("notifications", [])
-        if not notifications:
-            return False
-        for notification in notifications:
-            run_status = notification["run_status"]
-            # Only process state when run has applied changes
-            if run_status == "applied":
-                return True
-        return False
-
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:

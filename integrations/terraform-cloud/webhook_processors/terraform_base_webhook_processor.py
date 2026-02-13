@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-from abc import abstractmethod
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
@@ -11,7 +10,6 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     EventPayload,
     WebhookEvent,
 )
-from client import HEALTH_ASSESSMENT_TRIGGER_SCOPE
 
 
 class TerraformBaseWebhookProcessor(AbstractWebhookProcessor):
@@ -21,11 +19,11 @@ class TerraformBaseWebhookProcessor(AbstractWebhookProcessor):
     def _is_verification_event(self, payload: EventPayload) -> bool:
         """Check if this is a Terraform Cloud webhook verification event."""
         try:
-            notifications = payload.get("notifications")
-            if isinstance(notifications, list) and len(notifications) > 0:
-                first_notification = notifications[0]
-                if isinstance(first_notification, dict):
-                    return first_notification.get("trigger") == "verification"
+            if notifications := payload.get("notifications", []):
+                if isinstance(notifications, list) and len(notifications) > 0:
+                    first_notification = notifications[0]
+                    if isinstance(first_notification, dict):
+                        return first_notification["trigger"] == "verification"
         except (KeyError, TypeError):
             return False
         return False
@@ -75,15 +73,6 @@ class TerraformBaseWebhookProcessor(AbstractWebhookProcessor):
         ) or not await self._should_process_event(event):
             return False
 
-        if notifications := event.payload.get("notifications", []):
-            trigger = notifications[0].get("trigger") if notifications else "unknown"
-            logger.info(f"Received Terraform webhook with trigger: {trigger}")
-
-        if trigger := event.payload.get("trigger"):
-            logger.info(
-                f"Received Terraform Health Assessment webhook with trigger: {trigger}"
-            )
-
         # Skip processing verification events - they're handled by responding with 200 OK
         if self._is_verification_event(event.payload):
             logger.info(
@@ -93,20 +82,19 @@ class TerraformBaseWebhookProcessor(AbstractWebhookProcessor):
 
         return True
 
-    @abstractmethod
-    async def _should_process_event(self, event: WebhookEvent) -> bool: ...
+    async def _should_process_event(self, event: WebhookEvent) -> bool:
+        if notifications := event.payload.get("notifications", []):
+            trigger = notifications[0].get("trigger") if notifications else "unknown"
+            logger.info(f"Received Terraform webhook with trigger: {trigger}")
 
-    async def validate_payload(self, payload: EventPayload) -> bool:
-        """Validate that payload has the required Terraform webhook structure."""
-        if not isinstance(payload, dict):
-            return False
+            for notification in notifications:
+                run_status = notification["run_status"]
+                # Only process state when run has applied changes
+                if run_status == "applied":
+                    return True
+        return False
 
-        if payload.get("trigger_scope") == HEALTH_ASSESSMENT_TRIGGER_SCOPE:
-            return (
-                payload.get("details", {}).get("new_assessment_result", {}).get("id")
-                is not None
-            )
-
+    async def _validate_payload(self, payload: EventPayload) -> bool:
         notifications = payload.get("notifications")
         if not isinstance(notifications, list) or not notifications:
             logger.error("Webhook payload missing required 'notifications' array")
@@ -117,7 +105,6 @@ class TerraformBaseWebhookProcessor(AbstractWebhookProcessor):
             logger.error("Invalid notification structure")
             return False
 
-        # Schema: (data_source, required_fields, context)
         validation_schema = (
             (first_notification, ("trigger", "run_status"), "notification"),
             (payload, ("run_id", "workspace_id"), "payload"),
@@ -130,3 +117,10 @@ class TerraformBaseWebhookProcessor(AbstractWebhookProcessor):
                     logger.error(f"Webhook {context} missing required '{field}' field")
                     valid = False
         return valid
+
+    async def validate_payload(self, payload: EventPayload) -> bool:
+        """Validate that payload has the required Terraform webhook structure."""
+        if not isinstance(payload, dict):
+            return False
+
+        return await self._validate_payload(payload)
