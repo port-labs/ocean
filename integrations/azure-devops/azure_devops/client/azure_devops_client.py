@@ -384,13 +384,26 @@ class AzureDevopsClient(HTTPBaseClient):
         group_display_name: str,
         root_group_descriptor: str,
         root_group_display_name: str,
-        visited: set[str],
+        visited_groups: set[str],
+        seen_members: set[str],
         path: list[str],
         max_depth: int,
         _depth: int,
     ) -> list[dict[str, Any]]:
-        """Internal recursive method for resolving group members."""
-        if group_descriptor in visited:
+        """Internal recursive method for resolving group members.
+
+        Args:
+            group_descriptor: Current group being processed
+            group_display_name: Display name of current group
+            root_group_descriptor: Top-level group that started the recursion
+            root_group_display_name: Display name of root group
+            visited_groups: Set of group descriptors already visited (cycle detection)
+            seen_members: Set of member descriptors already processed (deduplication)
+            path: Current path of group names for building membership path
+            max_depth: Maximum recursion depth
+            _depth: Current recursion depth
+        """
+        if group_descriptor in visited_groups:
             return []
 
         if _depth > max_depth:
@@ -399,7 +412,7 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             return []
 
-        visited.add(group_descriptor)
+        visited_groups.add(group_descriptor)
         current_path = path + [group_display_name]
 
         memberships = await self._get_group_direct_members(group_descriptor)
@@ -409,26 +422,52 @@ class AzureDevopsClient(HTTPBaseClient):
         descriptors = [m["memberDescriptor"] for m in memberships]
         subject_details = await self._lookup_subjects(descriptors)
 
-        resolved_users = []
+        resolved_members = []
 
         for membership in memberships:
             member_descriptor = membership["memberDescriptor"]
+
+            # Skip if we've already processed this member (deduplication)
+            if member_descriptor in seen_members:
+                continue
+            seen_members.add(member_descriptor)
+
             subject_info = subject_details.get(member_descriptor, {})
             subject_kind = subject_info.get("subjectKind", "")
 
             if subject_kind == "group":
                 nested_group_name = subject_info.get("displayName", "Unknown Group")
-                nested_users = await self._get_group_members_recursive(
+                full_path = current_path + [nested_group_name]
+
+                # Ingest the nested group AS a member entity
+                group_member_record = {
+                    **subject_info,
+                    "memberDescriptor": member_descriptor,
+                    "__isGroup": True,
+                    # Immediate parent (the group this nested group belongs to)
+                    "__parentGroupDescriptor": group_descriptor,
+                    "__parentGroupDisplayName": group_display_name,
+                    # Root group (top-level entry point)
+                    "__rootGroupDescriptor": root_group_descriptor,
+                    "__rootGroupDisplayName": root_group_display_name,
+                    "__membershipPath": " > ".join(full_path),
+                    "__depth": _depth,
+                }
+                resolved_members.append(group_member_record)
+
+                # Then recurse into the nested group
+                nested_members = await self._get_group_members_recursive(
                     member_descriptor,
                     group_display_name=nested_group_name,
                     root_group_descriptor=root_group_descriptor,
                     root_group_display_name=root_group_display_name,
-                    visited=visited,
+                    visited_groups=visited_groups,
+                    seen_members=seen_members,
                     path=current_path,
                     max_depth=max_depth,
                     _depth=_depth + 1,
                 )
-                resolved_users.extend(nested_users)
+                resolved_members.extend(nested_members)
             else:
                 user_name = subject_info.get("displayName", "Unknown User")
                 full_path = current_path + [user_name]
@@ -436,14 +475,19 @@ class AzureDevopsClient(HTTPBaseClient):
                 user_record = {
                     **subject_info,
                     "memberDescriptor": member_descriptor,
-                    "__groupDescriptor": root_group_descriptor,
-                    "__groupDisplayName": root_group_display_name,
+                    "__isGroup": False,
+                    # Immediate parent (the group this user directly belongs to)
+                    "__parentGroupDescriptor": group_descriptor,
+                    "__parentGroupDisplayName": group_display_name,
+                    # Root group (top-level entry point)
+                    "__rootGroupDescriptor": root_group_descriptor,
+                    "__rootGroupDisplayName": root_group_display_name,
                     "__membershipPath": " > ".join(full_path),
                     "__depth": _depth,
                 }
-                resolved_users.append(user_record)
+                resolved_members.append(user_record)
 
-        return resolved_users
+        return resolved_members
 
     async def generate_group_members(
         self,
@@ -451,29 +495,39 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Generate all group memberships with recursive expansion.
-        Each group's members are expanded until only users remain.
+
+        Yields members (both users and nested groups) for each top-level group.
+        Each member includes:
+        - __isGroup: True if this member is a nested group, False if user
+        - __parentGroupDescriptor: Immediate parent group
+        - __parentGroupDisplayName: Immediate parent group name
+        - __rootGroupDescriptor: Top-level group that started the recursion
+        - __rootGroupDisplayName: Top-level group name
+        - __membershipPath: Full path like "Group A > Group B > User"
+        - __depth: How many levels deep this member was found
         """
         async for groups in self.generate_groups():
             for group in groups:
                 group_descriptor = group["descriptor"]
                 group_name = group.get("displayName", "Unknown Group")
 
-                user_members = await self._get_group_members_recursive(
+                members = await self._get_group_members_recursive(
                     group_descriptor,
                     group_display_name=group_name,
                     root_group_descriptor=group_descriptor,
                     root_group_display_name=group_name,
-                    visited=set(),
+                    visited_groups=set(),
+                    seen_members=set(),
                     path=[],
                     max_depth=max_depth,
                     _depth=0,
                 )
 
-                if user_members:
+                if members:
                     logger.info(
-                        f"Resolved {len(user_members)} users for group '{group_name}'"
+                        f"Resolved {len(members)} members for group '{group_name}'"
                     )
-                    yield user_members
+                    yield members
 
     @cache_iterator_result()
     async def generate_repositories(
