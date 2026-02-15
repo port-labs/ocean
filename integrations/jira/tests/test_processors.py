@@ -151,12 +151,12 @@ async def test_handleEvent_issueUpdated_noJqlFilterIssuesReturnedFromClient_upda
         "webhook_processors.issue_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
-        mock_client.search_issues_by_ids = AsyncMock(return_value=[mock_issue])
+        mock_client.get_reconciled_issues = AsyncMock(return_value=[mock_issue])
         mock_create_client.return_value = mock_client
 
         result = await jiraIssueWebhookProcessor.handle_event(payload, resource_config)
 
-        mock_client.search_issues_by_ids.assert_called_once_with(
+        mock_client.get_reconciled_issues.assert_called_once_with(
             jql="key = TEST-123", issue_ids=[12345], fields="*all"
         )
         assert len(result.updated_raw_results) == 1
@@ -180,12 +180,12 @@ async def test_handleEvent_issueUpdated_noJqlFilterIssuesNotReturnedFromClient_d
         "webhook_processors.issue_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
-        mock_client.search_issues_by_ids = AsyncMock(return_value=[])
+        mock_client.get_reconciled_issues = AsyncMock(return_value=[])
         mock_create_client.return_value = mock_client
 
         result = await jiraIssueWebhookProcessor.handle_event(payload, resource_config)
 
-        mock_client.search_issues_by_ids.assert_called_once_with(
+        mock_client.get_reconciled_issues.assert_called_once_with(
             jql="key = TEST-123", issue_ids=[12345], fields="*all"
         )
         assert len(result.updated_raw_results) == 0
@@ -211,12 +211,12 @@ async def test_handleEvent_issueUpdated_filterIssuesReturnedFromClient_updatedRa
         "webhook_processors.issue_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
-        mock_client.search_issues_by_ids = AsyncMock(return_value=[mock_issue])
+        mock_client.get_reconciled_issues = AsyncMock(return_value=[mock_issue])
         mock_create_client.return_value = mock_client
 
         result = await jiraIssueWebhookProcessor.handle_event(payload, resource_config)
 
-        mock_client.search_issues_by_ids.assert_called_once_with(
+        mock_client.get_reconciled_issues.assert_called_once_with(
             jql="(project = TEST) AND key = TEST-123",
             issue_ids=[12345],
             fields="*all",
@@ -240,12 +240,12 @@ async def test_handleEvent_issueUpdated_filterIssuesNotReturnedFromClient_delete
         "webhook_processors.issue_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
-        mock_client.search_issues_by_ids = AsyncMock(return_value=[])
+        mock_client.get_reconciled_issues = AsyncMock(return_value=[])
         mock_create_client.return_value = mock_client
 
         result = await jiraIssueWebhookProcessor.handle_event(payload, resource_config)
 
-        mock_client.search_issues_by_ids.assert_called_once_with(
+        mock_client.get_reconciled_issues.assert_called_once_with(
             jql="(project = TEST) AND key = TEST-123",
             issue_ids=[12345],
             fields="*all",
@@ -589,12 +589,12 @@ async def test_handleEvent_issueUpdated_jqlFilterIsWrappedWithParentheses(
         "webhook_processors.issue_webhook_processor.create_jira_client"
     ) as mock_create_client:
         mock_client = AsyncMock()
-        mock_client.search_issues_by_ids = AsyncMock(return_value=[mock_issue])
+        mock_client.get_reconciled_issues = AsyncMock(return_value=[mock_issue])
         mock_create_client.return_value = mock_client
 
         result = await jiraIssueWebhookProcessor.handle_event(payload, resource_config)
 
-        mock_client.search_issues_by_ids.assert_called_once_with(
+        mock_client.get_reconciled_issues.assert_called_once_with(
             jql="((statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)) AND key = TEST-123",
             issue_ids=[12345],
             fields="*all",

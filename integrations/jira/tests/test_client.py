@@ -487,8 +487,8 @@ async def test_create_events_webhook_oauth(mock_jira_client: JiraClient) -> None
 
 
 @pytest.mark.asyncio
-async def test_search_issues_by_ids(mock_jira_client: JiraClient) -> None:
-    """Test search_issues_by_ids uses POST with correct body shape."""
+async def test_get_reconciled_issues(mock_jira_client: JiraClient) -> None:
+    """Test get_reconciled_issues uses POST with correct body shape."""
     issues_data = {
         "issues": [{"key": "TEST-1", "id": "10001", "fields": {"summary": "Test"}}]
     }
@@ -498,7 +498,7 @@ async def test_search_issues_by_ids(mock_jira_client: JiraClient) -> None:
     ) as mock_request:
         mock_request.return_value = issues_data
 
-        result = await mock_jira_client.search_issues_by_ids(
+        result = await mock_jira_client.get_reconciled_issues(
             jql="project = TEST AND key = TEST-1",
             issue_ids=[10001],
             fields="*all",
@@ -519,16 +519,16 @@ async def test_search_issues_by_ids(mock_jira_client: JiraClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_issues_by_ids_empty_response(
+async def test_get_reconciled_issues_empty_response(
     mock_jira_client: JiraClient,
 ) -> None:
-    """Test search_issues_by_ids returns empty list when no issues found."""
+    """Test get_reconciled_issues returns empty list when no issues found."""
     with patch.object(
         mock_jira_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.return_value = {"issues": []}
 
-        result = await mock_jira_client.search_issues_by_ids(
+        result = await mock_jira_client.get_reconciled_issues(
             jql="key = NONEXISTENT-1",
             issue_ids=[99999],
         )

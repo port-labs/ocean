@@ -307,7 +307,7 @@ class JiraClient(OAuthClient):
         ):
             yield issues
 
-    async def search_issues_by_ids(
+    async def get_reconciled_issues(
         self,
         jql: str,
         issue_ids: list[int],

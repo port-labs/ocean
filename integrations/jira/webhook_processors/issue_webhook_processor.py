@@ -44,7 +44,7 @@ class IssueWebhookProcessor(AbstractWebhookProcessor):
         if config.selector.jql:
             jql = f"({config.selector.jql}) AND key = {issue_key}"
 
-        issues = await client.search_issues_by_ids(
+        issues = await client.get_reconciled_issues(
             jql=jql,
             issue_ids=[issue_id],
             fields=config.selector.fields,
