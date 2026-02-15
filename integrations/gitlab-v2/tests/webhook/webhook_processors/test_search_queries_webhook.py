@@ -85,6 +85,7 @@ class TestProjectWebhookWithSearchQueries:
         resource_config = MagicMock()
         resource_config.selector.include_languages = False
         resource_config.selector.search_queries = []
+        resource_config.selector.included_files = []
 
         expected_project = {"id": 12345, "name": "test-project"}
 
@@ -96,7 +97,7 @@ class TestProjectWebhookWithSearchQueries:
         result = await processor.handle_event(payload, resource_config)
 
         processor._gitlab_webhook_client.get_project.assert_called_once_with(
-            12345, False, search_queries=None
+            12345, False, search_queries=None, included_files=None
         )
         assert len(result.updated_raw_results) == 1
 
@@ -190,6 +191,7 @@ class TestPushWebhookWithSearchQueries:
 
         resource_config = MagicMock()
         resource_config.selector.search_queries = []
+        resource_config.selector.included_files = []
 
         expected_project = {"id": 456, "name": "test-repo"}
 
@@ -201,6 +203,6 @@ class TestPushWebhookWithSearchQueries:
         result = await processor.handle_event(payload, resource_config)
 
         processor._gitlab_webhook_client.get_project.assert_called_once_with(
-            456, search_queries=None
+            456, search_queries=None, included_files=None
         )
         assert len(result.updated_raw_results) == 1

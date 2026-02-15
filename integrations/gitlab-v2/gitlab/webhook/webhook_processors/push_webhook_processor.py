@@ -12,8 +12,6 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from gitlab.helpers.utils import ObjectKind
 from integration import ProjectResourceConfig
 from loguru import logger
-from typing import cast
-from integration import ProjectResourceConfig
 
 
 class PushWebhookProcessor(_GitlabAbstractWebhookProcessor):

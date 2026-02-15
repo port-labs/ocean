@@ -47,7 +47,7 @@ class TestDeprecationWarnings:
             warning_msg = mock_logger.warning.call_args[0][0]
             assert "DEPRECATION" in warning_msg
             assert "file://" in warning_msg
-            assert "attachedFiles" in warning_msg
+            assert "includedFiles" in warning_msg
             assert "README.md" in warning_msg
 
     async def test_search_prefix_logs_deprecation_warning(
