@@ -1,9 +1,84 @@
+
+# Changelog
+
+All notable changes to the Custom integration will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+<!-- towncrier release notes start -->
+
+## 0.3.7-beta (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 0.3.6-beta (2026-02-10)
+
+
+### Improvements
+
+- Updated requests to be made concurrently
+
+
+## 0.3.5-beta (2026-02-05)
+
+
+### Improvements
+
+- Updated endpoint resolver to yield resolved endpoints and path parameters as they're discovered
+
+
+## 0.3.4-beta (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+## 0.3.3-beta (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
+
+
+## 0.3.2-beta (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.1
+
+
+## 0.3.1-beta (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.0
+
+
+## 0.3.0-beta (2026-01-29)
+
+
+### Improvements
+
+- Added custom authentication support to the custom integration
+
+
 ## 0.2.52-beta (2026-01-29)
 
 
 ### Improvements
 
 - Bumped ocean version to ^0.34.0
+- Updated endpoint resolver to yield resolved endpoints and path parameters as they're discovered
 
 
 ## 0.2.51-beta (2026-01-27)
@@ -322,13 +397,6 @@
 
 - Bumped ocean version to ^0.29.8
 
-
-# Changelog
-
-All notable changes to the Custom integration will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.2.11-beta] - 2025-01-27
 

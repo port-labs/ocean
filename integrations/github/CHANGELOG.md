@@ -7,6 +7,140 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.32 (2026-02-12)
+
+
+### Bug Fixes
+
+- Fixed dispatch workflow action - object inputs are now parsed to string
+
+
+## 5.0.31 (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 5.0.30 (2026-02-11)
+
+
+### Features
+
+- Added `includedFiles` selector for repository, folder and file entities to fetch file contents (e.g. README.md, CODEOWNERS) during enrichment and expose them under `__includedFiles` in the raw data
+- Added deprecation warning when using `file://` prefix in mappings, guiding users to migrate to the new `includedFiles` selector
+
+
+## 5.0.29 (2026-02-11)
+
+
+### Improvements
+
+- Improved batch processing to process tasks concurrently as repositories are fetched, optimizing resource utilization and reducing overall processing time.
+
+
+## 5.0.28 (2026-02-10)
+
+
+### Bug Fixes
+
+- Fixed empty responses not being properly handled in GitHub exporters for webhooks by returning None instead of empty objects, with updated type hints to allow None values when no item is returned.
+
+
+## 5.0.27 (2026-02-09)
+
+
+### Bug Fixes
+
+- Fixed GitHub webhook delete handling by enriching `deleted_raw_results` with repository + organization metadata across processors (branch, tag, collaborator, issue, pull request, release, workflow run).
+- Enriched workflow run exporter responses with repository + organization metadata for consistent mappings.
+
+
+## 5.0.26 (2026-02-09)
+
+
+### Bug Fixes
+
+- Include `__typename` in the pull-request GraphQL query for `reviewRequests.requestedReviewer` to support reviewer type extraction.
+
+
+## 5.0.25 (2026-02-06)
+
+
+### Bug Fixes
+
+- Retry transient GitHub 500 errors across GitHub API requests, and include the GitHub request id in error logs for correlation.
+
+
+## 5.0.24 (2026-02-05)
+
+
+### Improvements
+
+- Log warnings when GitHub API rate limits are exhausted or near exhaustion (keep other quota logs at debug).
+
+
+## 5.0.23 (2026-02-05)
+
+
+### Features
+
+- Added `defaultBranchOnly` selector for branch ingestion to sync only the repository default branch (takes precedence over `branchNames`) across resync and live-events.
+
+
+## 5.0.22 (2026-02-03)
+
+
+### Bug Fixes
+
+- Fixed repository-webhook upsertion for GitHub App authentication by correctly iterating the `GET /installation/repositories` response shape.
+
+### Improvements
+
+- Improved webhook creation logs to include whether the target is an organization or repository.
+
+
+## 5.0.21 (2026-02-02)
+
+
+### Improvements
+
+- Updated embedded installation/docs links in `.port/spec.yaml` to point to the new GitHub Ocean docs routes.
+
+
+## 5.0.20 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+## 5.0.19 (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
+
+
+## 5.0.18 (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.1
+
+
+## 5.0.17 (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.0
+
+
 ## 5.0.16 (2026-01-29)
 
 
