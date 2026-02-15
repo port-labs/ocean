@@ -26,9 +26,7 @@ from github.webhook.webhook_processors.workflow_run.dispatch_workflow_webhook_pr
 )
 from port_ocean.context.ocean import ocean
 
-from port_ocean.core.models import (
-    ActionRun,
-)
+from port_ocean.core.models import ActionRun, WorkflowNodeRun
 from github.actions.abstract_github_executor import (
     AbstractGithubExecutor,
 )
@@ -108,11 +106,11 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
     WEBHOOK_PATH = DISPATCH_WEBHOOK_PATH
     _default_ref_cache: dict[str, str] = {}
 
-    async def _get_partition_key(self, run: ActionRun) -> str | None:
+    async def _get_partition_key(self, run: ActionRun | WorkflowNodeRun) -> str | None:
         """
         Get the workflow name as the partition key.
         """
-        return run.payload.integrationActionExecutionProperties.get("workflow")
+        return run.execution_properties.get("workflow")
 
     async def _get_default_ref(self, organization: str, repo_name: str) -> str:
         """
@@ -199,14 +197,14 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 inputs[key] = json.dumps(value)
         return inputs
 
-    async def execute(self, run: ActionRun) -> None:
+    async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:
         """
         Execute a workflow dispatch action by triggering a GitHub Actions workflow.
         """
         logger.info(f"Dispatching workflow for action run {run.id}", run_id=run.id)
-        organization = run.payload.integrationActionExecutionProperties.get("org")
-        repo = run.payload.integrationActionExecutionProperties.get("repo")
-        workflow = run.payload.integrationActionExecutionProperties.get("workflow")
+        organization = run.execution_properties.get("org")
+        repo = run.execution_properties.get("repo")
+        workflow = run.execution_properties.get("workflow")
 
         if not (organization and repo and workflow):
             raise InvalidActionParametersException(
@@ -214,7 +212,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
             )
 
         inputs: dict[str, str] = self._parse_inputs(
-            run.payload.integrationActionExecutionProperties.get("workflowInputs", {})
+            run.execution_properties.get("workflowInputs", {})
         )
         ref = inputs.pop("ref", None)
         if not ref:
@@ -235,8 +233,12 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 organization, repo, ref, isoDate
             )
             external_id = build_external_id(workflow_run)
-            await ocean.port_client.patch_run(
-                run.id, {"link": workflow_run["html_url"], "externalRunId": external_id}
+
+            await ocean.port_client.update_run_started(
+                run,
+                workflow_run["html_url"],
+                external_id,
+                extra_output={"workflowRunId": workflow_run["id"]},
             )
         except Exception as e:
             error_message = str(e)
