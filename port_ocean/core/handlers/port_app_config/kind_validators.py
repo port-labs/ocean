@@ -9,6 +9,56 @@ from pydantic import BaseModel
 from port_ocean.core.handlers.port_app_config.models import CUSTOM_KIND, ResourceConfig
 
 
+def validate_kind_discriminator(config_class: Type[BaseModel]) -> None:
+    """Validate that ``kind`` is a unique discriminator across the resources union.
+
+    Intended to be called at **class-definition time** (via
+    ``PortAppConfig.__init_subclass__``) so that invalid definitions are
+    caught at import time rather than at runtime.
+
+    Raises :class:`TypeError` on:
+    * duplicate ``Literal`` kind values across union members
+    * more than one union member with ``kind: str`` (custom-kind slot)
+    """
+    models = _get_resource_config_models(config_class)
+
+    seen_literal_kinds: dict[str, str] = {}  # kind_value → model_name
+    custom_kind_model: str | None = None
+
+    for model in models:
+        if not (isinstance(model, type) and issubclass(model, ResourceConfig)):
+            continue
+
+        kind_field = model.__fields__.get("kind")
+        if kind_field is None:
+            raise TypeError(f"{model.__name__} is missing the required 'kind' field")
+
+        kind_type = kind_field.outer_type_
+        kind_origin = get_origin(kind_type)
+
+        if kind_origin is Literal:
+            for value in get_args(kind_type):
+                str_value = str(value)
+                if str_value in seen_literal_kinds:
+                    raise TypeError(
+                        f"Duplicate kind '{str_value}': both "
+                        f"{seen_literal_kinds[str_value]} and {model.__name__} "
+                        f"define the same kind value. "
+                        f"'kind' must be a unique discriminator across the "
+                        f"resources union"
+                    )
+                seen_literal_kinds[str_value] = model.__name__
+        elif kind_type is str:
+            if custom_kind_model is not None:
+                raise TypeError(
+                    f"Multiple custom kind definitions: both "
+                    f"{custom_kind_model} and {model.__name__} define "
+                    f"'kind: str'. Only one ResourceConfig with "
+                    f"'kind: str' is allowed"
+                )
+            custom_kind_model = model.__name__
+
+
 def validate_and_get_resource_kinds(
     config_class: Type[BaseModel],
     allow_custom_kinds: bool = False,
@@ -110,8 +160,8 @@ def _resolve_kind_value(
 
     * ``Literal["x"]`` → ``"x"``
     * ``str`` (when allowed) → ``"__custom__"``
-    * ``str`` (when not allowed) → ``None`` (skip)
-    * anything else → ``ValueError``
+    * ``str`` (when not allowed) → raises ``ValueError``
+    * anything else → raises ``ValueError``
     """
     kind_type = kind_field.outer_type_
     kind_origin = get_origin(kind_type)

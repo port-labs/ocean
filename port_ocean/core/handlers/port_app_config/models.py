@@ -10,6 +10,19 @@ from port_ocean.clients.port.types import RequestOptions
 CUSTOM_KIND = "__custom__"
 
 
+class _KindDescriminatorEnforcer(BaseModel):
+    """Base model that enforces all models have a kind field."""
+
+    # TODO: Uncomment this when we completed sweeping on integration classes
+    # def __init_subclass__(cls, **kwargs: Any) -> None:
+    #     super().__init_subclass__(**kwargs)
+    #     from port_ocean.core.handlers.port_app_config.kind_validators import (
+    #         validate_kind_discriminator,
+    #     )
+
+    #     validate_kind_discriminator(cls)
+
+
 class _FieldMetadataEnforcer(BaseModel):
     """Base model that enforces all fields have 'title' and 'description' metadata.
 
@@ -137,7 +150,7 @@ class ResourceConfig(_FieldMetadataEnforcer):
     )
 
 
-class PortAppConfig(_FieldMetadataEnforcer):
+class PortAppConfig(_FieldMetadataEnforcer, _KindDescriminatorEnforcer):
     enable_merge_entity: bool = Field(
         alias="enableMergeEntity",
         default=True,
