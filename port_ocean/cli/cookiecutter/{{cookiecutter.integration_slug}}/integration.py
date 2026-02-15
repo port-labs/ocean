@@ -15,7 +15,7 @@ class ObjectKind(StrEnum):
     EXAMPLE_KIND = "example-kind"
 
 class ExampleKindResourceConfig(ResourceConfig):
-    kind: Literal[ObjectKind.EXAMPLE_KIND] = Field(
+    kind: Literal[ObjectKind.EXAMPLE_KIND.value] = Field(
         description="Example kind for {{ cookiecutter.integration_slug }}",
         title="Example Kind",
     )
