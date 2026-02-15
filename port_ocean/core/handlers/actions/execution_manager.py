@@ -1,10 +1,7 @@
 import time
 from typing import Dict, Set
 from loguru import logger
-from port_ocean.core.models import (
-    ActionRun,
-    RunStatus,
-)
+from port_ocean.core.models import ActionRun, WorkflowNodeRun
 import asyncio
 from port_ocean.core.handlers.actions.abstract_executor import AbstractExecutor
 from port_ocean.core.handlers.queue.abstract_queue import AbstractQueue
@@ -42,8 +39,8 @@ class ExecutionManager:
         _workers_pool (set[asyncio.Task[None]]): Pool of worker tasks processing runs
         _actions_executors (Dict[str, AbstractExecutor]): Registered action executors
         _is_shutting_down (asyncio.Event): Event flag for graceful shutdown
-        _global_queue (LocalQueue[ActionRun]): Queue for non-partitioned actions
-        _partition_queues (Dict[str, AbstractQueue[ActionRun]]): Queues for partitioned actions
+        _global_queue (LocalQueue[ActionRun | WorkflowNodeRun]): Queue for non-partitioned actions
+        _partition_queues (Dict[str, AbstractQueue[ActionRun | WorkflowNodeRun]]): Queues for partitioned actions
         _deduplication_set (Set[str]): Set of run IDs for deduplication
         _queues_locks (Dict[str, asyncio.Lock]): Locks for queue access synchronization
         _active_sources (AbstractQueue[str]): Queue of active sources (global or partition-specific) used for round-robin distribution of work among workers
@@ -89,8 +86,10 @@ class ExecutionManager:
         self._workers_pool: set[asyncio.Task[None]] = set[asyncio.Task[None]]()
         self._actions_executors: Dict[str, AbstractExecutor] = {}
         self._is_shutting_down = asyncio.Event()
-        self._global_queue = LocalQueue[ActionRun]()
-        self._partition_queues: Dict[str, AbstractQueue[ActionRun]] = {}
+        self._global_queue: LocalQueue[ActionRun | WorkflowNodeRun] = LocalQueue()
+        self._partition_queues: Dict[
+            str, AbstractQueue[ActionRun | WorkflowNodeRun]
+        ] = {}
         self._deduplication_set: Set[str] = set[str]()
         self._queues_locks: Dict[str, asyncio.Lock] = {GLOBAL_SOURCE: asyncio.Lock()}
         self._active_sources: AbstractQueue[str] = LocalQueue[str]()
@@ -165,7 +164,8 @@ class ExecutionManager:
                     continue
 
                 poll_limit = self._high_watermark - queues_size
-                runs: list[ActionRun] = await ocean.port_client.claim_pending_runs(
+
+                runs = await ocean.port_client.claim_pending_runs(
                     limit=poll_limit,
                     visibility_timeout_ms=self._visibility_timeout_ms,
                 )
@@ -182,7 +182,7 @@ class ExecutionManager:
                 logger.info(f"Adding {len(runs)} runs to queues", runs_count=len(runs))
                 for run in runs:
                     try:
-                        action_type = run.payload.integrationActionType
+                        action_type = run.action_type
                         if action_type not in self._actions_executors:
                             logger.warning(
                                 "No Executors registered to handle this action, skipping run...",
@@ -240,14 +240,14 @@ class ExecutionManager:
 
     async def _add_run_to_queue(
         self,
-        run: ActionRun,
+        run: ActionRun | WorkflowNodeRun,
         queue_name: str,
     ) -> None:
         """
         Add a run to the queue, if the queue is empty, add the source to the active sources.
         """
         if queue_name != GLOBAL_SOURCE and queue_name not in self._partition_queues:
-            self._partition_queues[queue_name] = LocalQueue[ActionRun]()
+            self._partition_queues[queue_name] = LocalQueue()
             self._queues_locks[queue_name] = asyncio.Lock()
 
         queue = (
@@ -258,7 +258,7 @@ class ExecutionManager:
         async with self._queues_locks[queue_name]:
             if await queue.size() == 0:
                 await self._active_sources.put(queue_name)
-                self._deduplication_set.add(run.id)
+            self._deduplication_set.add(run.id)
             logger.info(
                 f"Adding run to queue {queue_name}",
                 run_id=run.id,
@@ -359,16 +359,14 @@ class ExecutionManager:
             await queue.commit()
             await self._add_source_if_not_empty(partition_name)
 
-    async def _execute_run(self, run: ActionRun) -> None:
+    async def _execute_run(self, run: ActionRun | WorkflowNodeRun) -> None:
         """
         Execute a run using its registered executor.
         """
-        with logger.contextualize(
-            run_id=run.id, action=run.payload.integrationActionType
-        ):
+        with logger.contextualize(run_id=run.id, action=run.action_type):
             error_summary: str | None = None
             try:
-                executor = self._actions_executors[run.payload.integrationActionType]
+                executor = self._actions_executors[run.action_type]
                 while (
                     await executor.is_close_to_rate_limit()
                     and not self._is_shutting_down.is_set()
@@ -381,9 +379,9 @@ class ExecutionManager:
                         "Encountered rate limit, will attempt to re-run in {backoff_seconds} seconds",
                         backoff_seconds=backoff_seconds,
                     )
+                    msg = f"Delayed due to low remaining rate limit. Will attempt to re-run in {backoff_seconds} seconds"
                     await ocean.port_client.post_run_log(
-                        run.id,
-                        f"Delayed due to low remaining rate limit. Will attempt to re-run in {backoff_seconds} seconds",
+                        run, msg, level="WARNING", should_raise=False
                     )
                     await asyncio.sleep(backoff_seconds)
 
@@ -393,7 +391,7 @@ class ExecutionManager:
                     )
                     return
 
-                await ocean.port_client.acknowledge_run(run.id)
+                await ocean.port_client.acknowledge_run(run)
                 logger.info("Run acknowledged successfully")
             except RunAlreadyAcknowledgedError:
                 logger.warning(
@@ -419,13 +417,8 @@ class ExecutionManager:
                 error_summary = f"Failed to execute run: {str(e)}"
 
             if error_summary:
-                await ocean.port_client.patch_run(
-                    run.id,
-                    {
-                        "summary": error_summary,
-                        "status": RunStatus.FAILURE,
-                    },
-                    should_raise=False,
+                await ocean.port_client.report_run_failure(
+                    run, error_summary, should_raise=False
                 )
 
     async def _gracefully_cancel_task(self, task: asyncio.Task[None] | None) -> None:

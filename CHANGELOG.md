@@ -7,7 +7,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.35.6 (2026-02-12)
+## 0.35.7 (2026-02-15)
 
 ### Vulnerabilities
 
@@ -24,6 +24,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     - qs
     - lodash
     - undici
+
+## 0.35.6 (2026-02-15)
+
+### Features
+
+- Added support for workflow node runs in addition to action runs in ExecutionManager. Integrations can poll and execute both via unified run API.
 
 
 ## 0.35.5 (2026-02-12)
