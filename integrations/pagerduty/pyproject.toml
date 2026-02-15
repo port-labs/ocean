@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pagerduty"
-version = "0.4.48"
+version = "0.4.49"
 description = "PagerDuty Integration"
 authors = ["Port Team <support@getport.io>"]
 
