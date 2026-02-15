@@ -5,7 +5,7 @@ from typing import Optional, Type
 from port_ocean.core.handlers.webhook.abstract_webhook_processor import (
     AbstractWebhookProcessor,
 )
-from port_ocean.core.models import ActionRun
+from port_ocean.core.models import ActionRun, WorkflowNodeRun
 
 
 class AbstractExecutor(ABC):
@@ -56,7 +56,7 @@ class AbstractExecutor(ABC):
     WEBHOOK_PROCESSOR_CLASS: Optional[Type[AbstractWebhookProcessor]]
     WEBHOOK_PATH: str
 
-    async def _get_partition_key(self, run: ActionRun) -> str | None:
+    async def _get_partition_key(self, run: ActionRun | WorkflowNodeRun) -> str | None:
         """
         This method should return a string used to identify runs that must be executed sequentially,
         or return None to allow runs to execute in parallel.
@@ -112,12 +112,12 @@ class AbstractExecutor(ABC):
         pass
 
     @abstractmethod
-    async def execute(self, run: ActionRun) -> None:
+    async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:
         """
         Execute the integration action with the provided run configuration.
 
         Args:
-            run (ActionRun): The action run configuration
+            run (ActionRun | WorkflowNodeRun): The action or workflow node run
                 containing all necessary parameters and context for execution.
 
         Raises:
@@ -126,10 +126,10 @@ class AbstractExecutor(ABC):
 
         Example:
             ```python
-            async def execute(self, run: ActionRun) -> None:
+            async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:
                 try:
                     # Extract parameters
-                    params = run.payload.integrationActionExecutionProperties
+                    params = run.execution_properties
                     resource_id = params.get("resource_id")
                     if not resource_id:
                         raise ValueError("resource_id is required")
