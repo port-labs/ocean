@@ -27,7 +27,11 @@ def _load_integration_class(path: str) -> Type[BaseIntegration]:
     """Load the integration class from *path*, handling errors."""
     try:
         sys.path.append(path)
-        return get_integration_class(path)
+        cls = get_integration_class(path)
+        if cls is None:
+            click.echo(f"No integration class found in {path}", err=True)
+            sys.exit(1)
+        return cls
     except FileNotFoundError:
         click.echo(f"Integration class not found for {path}", err=True)
         sys.exit(1)

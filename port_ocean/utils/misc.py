@@ -85,7 +85,7 @@ def load_module(file_path: str) -> ModuleType:
     return module
 
 
-type GenericClass = TypeVar("GenericClass", bound=Any)
+GenericClass = TypeVar("GenericClass", bound=Any)
 
 
 def get_subclass_class_from_module(

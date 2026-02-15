@@ -115,6 +115,8 @@ def _build_kinds_mapping(
             raise ValueError(f"{model.__name__} is missing the required 'kind' field")
 
         kind_value = _resolve_kind_value(kind_field, model.__name__, allow_custom_kinds)
+        if kind_value is None:
+            raise ValueError(f"{model.__name__}: could not resolve kind value")
         if kind_value != CUSTOM_KIND and kind_value in kinds:
             raise ValueError(
                 f"Duplicate kind '{kind_value}' found in resource config models"
