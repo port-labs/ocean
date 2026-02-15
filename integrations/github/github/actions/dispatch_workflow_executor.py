@@ -197,7 +197,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 inputs[key] = json.dumps(value)
         return inputs
 
-    async def execute(self, run: ActionRun) -> None:
+    async def execute(self, run: ActionRun | WorkflowNodeRun) -> None:
         """
         Execute a workflow dispatch action by triggering a GitHub Actions workflow.
         """
