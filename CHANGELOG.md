@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.36.0 (2026-02-16)
+
+### Improvements
+
+- Added `port-app-config schema` and `port-app-config list-kinds` CLI commands to expose integration resource kinds and selectors, with schema validation ensuring kind uniqueness across the resources union
+
+
 ## 0.35.7 (2026-02-15)
 
 ### Vulnerabilities
