@@ -63,12 +63,7 @@ class GithubRepositorySelector(RepoSearchSelector):
 
 class GithubRepositoryConfig(ResourceConfig):
     selector: GithubRepositorySelector
-    kind: Literal["repository"] = Field(
-        title="Repository",
-        description="Repository resource",
-        const=True,
-        extra={"ui_schema": {"hidden": True}},
-    )
+    kind: Literal["repository"]
 
 
 class RepositoryBranchMapping(BaseModel):
@@ -469,8 +464,6 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
         )
         self.context.app.webhook_manager = processor_manager
         self.context.app.execution_manager._webhook_manager = processor_manager
-
-    allow_custom_kinds = True
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GithubPortAppConfig
