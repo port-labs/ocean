@@ -3,7 +3,7 @@ import signal
 from asyncio import get_running_loop, ensure_future
 from typing import Any, Callable, Awaitable
 
-from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
+from confluent_kafka import Consumer, KafkaException, Message, TopicPartition
 from loguru import logger
 from pydantic import BaseModel
 
@@ -32,6 +32,7 @@ class KafkaConsumer:
         self.config = config
 
         self.msg_process = msg_process
+        kafka_config: dict[str, str | int | float | bool | None]
         if config.kafka_security_enabled:
             kafka_config = {
                 "bootstrap.servers": config.brokers,
@@ -56,7 +57,9 @@ class KafkaConsumer:
 
         self.consumer = Consumer(kafka_config)
 
-    def _handle_partitions_assignment(self, _: Any, partitions: list[str]) -> None:
+    def _handle_partitions_assignment(
+        self, _: Consumer, partitions: list[TopicPartition]
+    ) -> None:
         logger.info(f"Assigned partitions: {partitions}")
         if not partitions and not self._assigned_partitions:
             logger.error(
