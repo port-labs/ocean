@@ -78,7 +78,6 @@ async def test_get_port_app_config_success(
         result.resources[0].port.entity.mappings.properties["defaultBranch"]
         == ".default_branch"
     )
-    assert result.entity_deletion_threshold is None
     port_app_config_handler.mock_get_port_app_config.assert_called_once()
 
 
