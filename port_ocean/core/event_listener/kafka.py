@@ -149,10 +149,9 @@ class KafkaEventListener(BaseEventListener):
         raw_value = raw_msg.value()
         if raw_value is None:
             return
+
         message = json.loads(raw_value.decode())
         topic = raw_msg.topic()
-        if topic is None:
-            return
 
         if topic is None or not self._should_be_processed(message, topic):
             return
