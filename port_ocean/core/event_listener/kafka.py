@@ -154,7 +154,7 @@ class KafkaEventListener(BaseEventListener):
         if topic is None:
             return
 
-        if not self._should_be_processed(message, topic):
+        if topic is None or not self._should_be_processed(message, topic):
             return
 
         if "change.log" in topic and message is not None:
