@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 from loguru import logger
 from github.webhook.events import REPOSITORY_DELETE_EVENTS, REPOSITORY_UPSERT_EVENTS
 from github.helpers.utils import ObjectKind
@@ -15,10 +15,12 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from integration import GithubRepositoryConfig
 from github.core.options import (
     SingleRepositoryOptions,
+    FileContentOptions,
 )
 from github.core.exporters.repository_exporter import (
     RestRepositoryExporter,
 )
+from github.core.exporters.file_exporter.core import RestFileExporter
 
 
 class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
@@ -35,6 +37,39 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
 
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.REPOSITORY]
+
+    @staticmethod
+    async def _enrich_with_included_files(
+        rest_client: Any,
+        repo_data: dict[str, Any],
+        file_paths: list[str],
+    ) -> dict[str, Any]:
+        """Enrich a repository dict with __includedFiles."""
+        repo_name = repo_data["name"]
+        organization = repo_data["owner"]["login"]
+        default_branch = repo_data.get("default_branch")
+        included: dict[str, Any] = {}
+        file_exporter = RestFileExporter(rest_client)
+
+        for file_path in file_paths:
+            try:
+                response = await file_exporter.get_resource(
+                    FileContentOptions(
+                        organization=organization,
+                        repo_name=repo_name,
+                        file_path=file_path,
+                        branch=default_branch,
+                    )
+                )
+                included[file_path] = response.get("content") if response else None
+            except Exception as e:
+                logger.debug(
+                    f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
+                )
+                included[file_path] = None
+
+        repo_data["__includedFiles"] = included
+        return repo_data
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
@@ -69,6 +104,16 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
         )
 
         data_to_upsert = await exporter.get_resource(options)
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
+        included_files = resource_config.selector.included_files or []
+        if included_files:
+            data_to_upsert = await self._enrich_with_included_files(
+                rest_client, data_to_upsert, included_files
+            )
 
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]

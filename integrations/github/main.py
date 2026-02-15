@@ -94,6 +94,7 @@ from integration import (
     GithubUserConfig,
     GithubDeploymentConfig,
 )
+from github.core.options import FileContentOptions
 
 MAX_CONCURRENT_REPOS = 10
 
@@ -166,6 +167,54 @@ async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield organizations
 
 
+async def _enrich_repo_with_included_files(
+    rest_client: Any,
+    repo: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a repository dict with __includedFiles from the given file paths."""
+    repo_name = repo["name"]
+    organization = repo["owner"]["login"]
+    default_branch = repo.get("default_branch")
+    included: dict[str, Any] = {}
+    file_exporter = RestFileExporter(rest_client)
+
+    for file_path in file_paths:
+        try:
+            response = await file_exporter.get_resource(
+                FileContentOptions(
+                    organization=organization,
+                    repo_name=repo_name,
+                    file_path=file_path,
+                    branch=default_branch,
+                )
+            )
+            included[file_path] = response.get("content") if response else None
+        except Exception as e:
+            logger.debug(
+                f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
+            )
+            included[file_path] = None
+
+    repo["__includedFiles"] = included
+    return repo
+
+
+async def _enrich_repos_batch_with_included_files(
+    rest_client: Any,
+    repositories: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of repositories with included files."""
+    import asyncio
+
+    tasks = [
+        _enrich_repo_with_included_files(rest_client, repo, file_paths)
+        for repo in repositories
+    ]
+    return list(await asyncio.gather(*tasks))
+
+
 @ocean.on_resync(ObjectKind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Resync all repositories across organizations."""
@@ -176,6 +225,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     repo_config = cast(GithubRepositoryConfig, event.resource_config)
     included_relationships = repo_config.selector.include
+    included_files = repo_config.selector.included_files or []
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -193,6 +243,10 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             for org in organizations
         )
         async for repositories in stream_async_iterators_tasks(*tasks):
+            if included_files:
+                repositories = await _enrich_repos_batch_with_included_files(
+                    rest_client, repositories, included_files
+                )
             yield repositories
 
 
@@ -283,7 +337,6 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = []
         for org in organizations:
             org_name = org["login"]
             repo_exporter = RestRepositoryExporter(rest_client)
@@ -299,6 +352,7 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for repositories in repo_exporter.get_paginated_resources(
                 options=repo_options
             ):
+                tasks = []
                 for repo in repositories:
                     tasks.append(
                         workflow_exporter.get_paginated_resources(
@@ -308,8 +362,8 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-        async for workflows in stream_async_iterators_tasks(*tasks):
-            yield workflows
+                async for workflows in stream_async_iterators_tasks(*tasks):
+                    yield workflows
 
 
 @ocean.on_resync(ObjectKind.WORKFLOW_RUN)
@@ -329,7 +383,6 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = []
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
@@ -342,6 +395,7 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for repositories in repo_exporter.get_paginated_resources(
                 options=repo_options
             ):
+                tasks = []
                 for repo in repositories:
                     repo_name = repo["name"]
                     workflow_options = ListWorkflowOptions(
@@ -362,8 +416,8 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             for workflow in workflows
                         ]
 
-                        async for runs in stream_async_iterators_tasks(*tasks):
-                            yield runs
+                    async for runs in stream_async_iterators_tasks(*tasks):
+                        yield runs
 
 
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
@@ -388,7 +442,6 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = []
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
@@ -401,6 +454,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for repos in repository_exporter.get_paginated_resources(
                 options=repo_options
             ):
+                tasks = []
                 for repo in repos:
                     tasks.append(
                         pull_request_exporter.get_paginated_resources(
@@ -415,8 +469,8 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-        async for pull_requests in stream_async_iterators_tasks(*tasks):
-            yield pull_requests
+                async for pull_requests in stream_async_iterators_tasks(*tasks):
+                    yield pull_requests
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
@@ -435,7 +489,6 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = []
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
@@ -448,6 +501,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for repos in repository_exporter.get_paginated_resources(
                 options=repo_options
             ):
+                tasks = []
                 for repo in repos:
                     tasks.append(
                         issue_exporter.get_paginated_resources(
@@ -460,8 +514,8 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-        async for issues in stream_async_iterators_tasks(*tasks):
-            yield issues
+                async for issues in stream_async_iterators_tasks(*tasks):
+                    yield issues
 
 
 @ocean.on_resync(ObjectKind.RELEASE)
@@ -480,7 +534,6 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = []
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
@@ -493,6 +546,7 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
             ):
+                tasks = []
                 for repo in repositories:
                     tasks.append(
                         release_exporter.get_paginated_resources(
@@ -502,8 +556,8 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-        async for releases in stream_async_iterators_tasks(*tasks):
-            yield releases
+                async for releases in stream_async_iterators_tasks(*tasks):
+                    yield releases
 
 
 @ocean.on_resync(ObjectKind.TAG)
@@ -522,7 +576,6 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = []
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
@@ -535,6 +588,7 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
             ):
+                tasks = []
                 for repo in repositories:
                     tasks.append(
                         tag_exporter.get_paginated_resources(
@@ -544,8 +598,8 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-        async for tags in stream_async_iterators_tasks(*tasks):
-            yield tags
+                async for tags in stream_async_iterators_tasks(*tasks):
+                    yield tags
 
 
 @ocean.on_resync(ObjectKind.BRANCH)
@@ -564,7 +618,6 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = []
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
@@ -577,6 +630,7 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
             ):
+                tasks = []
                 for repo in repositories:
                     tasks.append(
                         branch_exporter.get_paginated_resources(
@@ -586,6 +640,7 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 protection_rules=selector.protection_rules,
                                 detailed=selector.detailed,
                                 branch_names=selector.branch_names,
+                                default_branch_only=selector.default_branch_only,
                                 repo=repo,
                             )
                         )
@@ -596,9 +651,9 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             yield branches
                         tasks.clear()
 
-        if tasks:
-            async for branches in stream_async_iterators_tasks(*tasks):
-                yield branches
+                if tasks:
+                    async for branches in stream_async_iterators_tasks(*tasks):
+                        yield branches
 
 
 @ocean.on_resync(ObjectKind.ENVIRONMENT)
@@ -617,7 +672,6 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = []
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
@@ -630,6 +684,7 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
             ):
+                tasks = []
                 for repo in repositories:
                     tasks.append(
                         environment_exporter.get_paginated_resources(
@@ -640,8 +695,8 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-        async for environments in stream_async_iterators_tasks(*tasks):
-            yield environments
+                async for environments in stream_async_iterators_tasks(*tasks):
+                    yield environments
 
 
 @ocean.on_resync(ObjectKind.DEPLOYMENT)
@@ -660,7 +715,6 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = []
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
@@ -673,6 +727,7 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
             ):
+                tasks = []
                 for repo in repositories:
                     tasks.append(
                         deployment_exporter.get_paginated_resources(
@@ -685,8 +740,8 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-        async for deployments in stream_async_iterators_tasks(*tasks):
-            yield deployments
+                async for deployments in stream_async_iterators_tasks(*tasks):
+                    yield deployments
 
 
 @ocean.on_resync(ObjectKind.DEPENDABOT_ALERT)
@@ -705,7 +760,6 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = []
         for org in organizations:
             org_name = org["login"]
 
@@ -719,6 +773,7 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
             ):
+                tasks = []
                 for repo in repositories:
                     tasks.append(
                         dependabot_alert_exporter.get_paginated_resources(
@@ -732,8 +787,8 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-        async for alerts in stream_async_iterators_tasks(*tasks):
-            yield alerts
+                async for alerts in stream_async_iterators_tasks(*tasks):
+                    yield alerts
 
 
 @ocean.on_resync(ObjectKind.CODE_SCANNING_ALERT)
@@ -752,7 +807,6 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = []
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
@@ -765,6 +819,7 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
             ):
+                tasks = []
                 for repo in repositories:
                     tasks.append(
                         code_scanning_alert_exporter.get_paginated_resources(
@@ -777,8 +832,106 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-        async for alerts in stream_async_iterators_tasks(*tasks):
-            yield alerts
+                async for alerts in stream_async_iterators_tasks(*tasks):
+                    yield alerts
+
+
+async def _enrich_folder_with_included_files(
+    rest_client: Any,
+    folder: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a folder entity with __includedFiles from the given file paths."""
+    repo = folder.get("__repository", {})
+    organization = folder.get("__organization", "")
+    repo_name = repo.get("name", "")
+    default_branch = repo.get("default_branch")
+    included: dict[str, Any] = {}
+    file_exporter = RestFileExporter(rest_client)
+
+    for file_path in file_paths:
+        try:
+            response = await file_exporter.get_resource(
+                FileContentOptions(
+                    organization=organization,
+                    repo_name=repo_name,
+                    file_path=file_path,
+                    branch=default_branch,
+                )
+            )
+            included[file_path] = response.get("content") if response else None
+        except Exception as e:
+            logger.debug(
+                f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
+            )
+            included[file_path] = None
+
+    folder["__includedFiles"] = included
+    return folder
+
+
+async def _enrich_folders_batch_with_included_files(
+    rest_client: Any,
+    folders: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of folders with included files."""
+    import asyncio
+
+    tasks = [
+        _enrich_folder_with_included_files(rest_client, folder, file_paths)
+        for folder in folders
+    ]
+    return list(await asyncio.gather(*tasks))
+
+
+async def _enrich_file_entity_with_included_files(
+    rest_client: Any,
+    file_entity: dict[str, Any],
+    file_paths: list[str],
+) -> dict[str, Any]:
+    """Enrich a file entity with __includedFiles from the given file paths."""
+    organization = file_entity.get("organization", "")
+    repo = file_entity.get("repository", {})
+    repo_name = repo.get("name", "") if isinstance(repo, dict) else ""
+    branch = file_entity.get("branch")
+    included: dict[str, Any] = {}
+    file_exporter = RestFileExporter(rest_client)
+
+    for file_path in file_paths:
+        try:
+            response = await file_exporter.get_resource(
+                FileContentOptions(
+                    organization=organization,
+                    repo_name=repo_name,
+                    file_path=file_path,
+                    branch=branch,
+                )
+            )
+            included[file_path] = response.get("content") if response else None
+        except Exception as e:
+            logger.debug(
+                f"Could not fetch file {file_path} from {organization}/{repo_name}: {e}"
+            )
+            included[file_path] = None
+
+    file_entity["__includedFiles"] = included
+    return file_entity
+
+
+async def _enrich_file_entities_batch_with_included_files(
+    rest_client: Any,
+    file_entities: list[dict[str, Any]],
+    file_paths: list[str],
+) -> list[dict[str, Any]]:
+    """Enrich a batch of file entities with included files."""
+    import asyncio
+
+    tasks = [
+        _enrich_file_entity_with_included_files(rest_client, fe, file_paths)
+        for fe in file_entities
+    ]
+    return list(await asyncio.gather(*tasks))
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
@@ -790,6 +943,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     folder_exporter = RestFolderExporter(rest_client)
 
     selector = cast(GithubFolderResourceConfig, event.resource_config).selector
+    included_files = selector.included_files or []
 
     org_exporter = RestOrganizationExporter(rest_client)
     repo_exporter = RestRepositoryExporter(rest_client)
@@ -803,6 +957,10 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repo_path_map = await pattern_builder.build(selector.folders)
 
     async for folders in folder_exporter.get_paginated_resources(repo_path_map):
+        if included_files:
+            folders = await _enrich_folders_batch_with_included_files(
+                rest_client, folders, included_files
+            )
         yield folders
 
 
@@ -818,6 +976,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     config = cast(GithubFileResourceConfig, event.resource_config)
     app_config = cast(GithubPortAppConfig, event.port_app_config)
+    included_files = config.selector.included_files or []
 
     pattern_builder = FilePatternMappingBuilder(
         org_exporter=org_exporter,
@@ -827,6 +986,10 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     repo_path_map = await pattern_builder.build(config.selector.files)
 
     async for file_results in file_exporter.get_paginated_resources(repo_path_map):
+        if included_files:
+            file_results = await _enrich_file_entities_batch_with_included_files(
+                rest_client, file_results, included_files
+            )
         yield file_results
 
 
@@ -846,7 +1009,6 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = []
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
@@ -859,6 +1021,7 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
             ):
+                tasks = []
                 for repo in repositories:
                     tasks.append(
                         collaborator_exporter.get_paginated_resources(
@@ -868,8 +1031,8 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         )
                     )
 
-        async for collaborators in stream_async_iterators_tasks(*tasks):
-            yield collaborators
+                async for collaborators in stream_async_iterators_tasks(*tasks):
+                    yield collaborators
 
 
 @ocean.on_resync(ObjectKind.SECRET_SCANNING_ALERT)
@@ -888,7 +1051,6 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
-        tasks = []
         for org in organizations:
             org_name = org["login"]
             repo_options = ListRepositoryOptions(
@@ -901,6 +1063,7 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
             async for repositories in repository_exporter.get_paginated_resources(
                 repo_options
             ):
+                tasks = []
                 for repo in repositories:
                     tasks.append(
                         secret_scanning_alert_exporter.get_paginated_resources(
@@ -913,8 +1076,8 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
                         )
                     )
 
-        async for alerts in stream_async_iterators_tasks(*tasks):
-            yield alerts
+                async for alerts in stream_async_iterators_tasks(*tasks):
+                    yield alerts
 
 
 # Register webhook processors

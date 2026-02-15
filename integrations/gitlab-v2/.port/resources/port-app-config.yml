@@ -5,6 +5,9 @@ resources:
     selector:
       query: 'true'
       includeLanguages: 'true'
+      includedFiles:
+        - README.md
+        - CODEOWNERS
     port:
       entity:
         mappings:
@@ -13,9 +16,9 @@ resources:
           blueprint: '"service"'
           properties:
             url: .web_url
-            readme: file://README.md
-            codeowners: file://CODEOWNERS
-            language: .__languages | to_entries | max_by(.value) | .key
+            readme: .__includedFiles["README.md"]
+            codeowners: .__includedFiles["CODEOWNERS"]
+            language: .__languages // {} | to_entries | max_by(.value) | .key
   - kind: member
     selector:
       query: 'true'
@@ -71,4 +74,4 @@ resources:
               100) end)
             reviewers: .reviewers | map(.name)
           relations:
-            project: .references.full | gsub("!.+"; "")
+            project: .references.full // "" | gsub("!.+"; "")

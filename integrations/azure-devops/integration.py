@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union, Any
 from datetime import datetime, timedelta, timezone
 
 from pydantic import Field, BaseModel
@@ -20,17 +20,64 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.utils.signal import signal_handler
 
 
-class AzureDevopsProjectResourceConfig(ResourceConfig):
-    class AzureDevopsSelector(Selector):
-        query: str
-        default_team: bool = Field(
-            default=False,
-            description="If set to true, it ingests default team for each project to Port. This causes latency while syncing the entities to Port.  Default value is false. ",
-            alias="defaultTeam",
-        )
+class AzureDevopsSelector(Selector):
+    query: str
+    default_team: bool = Field(
+        default=False,
+        description="If set to true, it ingests default team for each project to Port. This causes latency while syncing the entities to Port.  Default value is false. ",
+        alias="defaultTeam",
+    )
 
+
+class AzureDevopsProjectResourceConfig(ResourceConfig):
     kind: Literal["project"]
     selector: AzureDevopsSelector
+
+
+class AdvancedSecurityFilter(BaseModel):
+    states: Optional[List[Literal["active", "dismissed", "fixed", "autoDismissed"]]] = (
+        Field(
+            alias="states",
+            default=None,
+            description="List of states to filter alerts by. If not provided, all states will be fetched.",
+        )
+    )
+    severities: Optional[
+        List[Literal["low", "medium", "high", "critical", "note", "warning", "error"]]
+    ] = Field(
+        alias="severity",
+        default=None,
+        description="List of severity levels to filter alerts by. If not provided, all severity levels will be fetched.",
+    )
+    alert_type: Optional[Literal["dependency", "code", "secret"]] = Field(
+        default=None,
+        alias="alertType",
+        description="Type of alerts to filter by. If not provided, all alerts will be fetched.",
+    )
+
+    @property
+    def as_params(self) -> dict[str, Any]:
+        params: dict[str, Any] = {"criteria": {}}
+        if self.states:
+            params["criteria"]["states"] = ",".join(self.states)
+        if self.severities:
+            params["criteria"]["severity"] = ",".join(self.severities)
+        if self.alert_type:
+            params["criteria"]["alertType"] = self.alert_type
+        return params
+
+
+class AzureDevopsAdvancedSecuritySelector(Selector):
+    query: str
+    criteria: Optional[AdvancedSecurityFilter] = Field(
+        default=None,
+        description="Filter criteria for alerts. If not provided, all alerts will be fetched.",
+    )
+
+
+class AzureDevopsAdvancedSecurityResourceConfig(ResourceConfig):
+    kind: Literal["advanced-security-alert"]
+    selector: AzureDevopsAdvancedSecuritySelector
 
 
 class AzureDevopsWorkItemResourceConfig(ResourceConfig):
@@ -105,6 +152,11 @@ class AzureDevopsFileSelector(Selector):
               - "my-repo-2"
         ```
         """,
+    )
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the file entity",
     )
 
 
@@ -190,6 +242,22 @@ class AzureDevopsPullRequestResourceConfig(ResourceConfig):
     selector: AzureDevopsPullRequestSelector
 
 
+class AzureDevopsRepositorySelector(Selector):
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description=(
+            "List of file paths to fetch from the repository and attach to "
+            "the raw data under __includedFiles. E.g. ['README.md', 'CODEOWNERS']"
+        ),
+    )
+
+
+class AzureDevopsRepositoryResourceConfig(ResourceConfig):
+    kind: Literal["repository"]
+    selector: AzureDevopsRepositorySelector
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -212,6 +280,8 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsPipelineResourceConfig
         | AzureDevopsTestRunResourceConfig
         | AzureDevopsPullRequestResourceConfig
+        | AzureDevopsAdvancedSecurityResourceConfig
+        | AzureDevopsRepositoryResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

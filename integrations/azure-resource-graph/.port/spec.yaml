@@ -28,3 +28,8 @@ configurations:
     required: true
     sensitive: true
     description: "The tenant ID of your Azure service principal."
+  - name: azureSubscriptionBatchSize
+    type: integer
+    required: false
+    default: 100
+    description: "The number of subscriptions to query in a single batch. Reduce if experiencing inconsistent results."

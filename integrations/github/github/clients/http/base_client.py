@@ -120,9 +120,12 @@ class AbstractGithubClient(ABC):
                     ):
                         return Response(200, content=b"{}")
 
+                github_request_id = response.headers.get(
+                    "x-github-request-id", "unknown"
+                )
                 logger.error(
                     f"GitHub API error for endpoint '{resource}': Status {response.status_code}, "
-                    f"Method: {method}, Response: {response.text}"
+                    f"Method: {method}, GitHub Request ID: {github_request_id}, Response: {response.text}"
                 )
 
                 raise
@@ -161,10 +164,6 @@ class AbstractGithubClient(ABC):
     def get_rate_limit_status(self) -> Optional[RateLimitInfo]:
         """Get current rate limit status for monitoring."""
         return self.rate_limiter.rate_limit_info
-
-    def log_rate_limit_status(self) -> None:
-        """Log current rate limit status for debugging."""
-        self.rate_limiter.log_rate_limit_status()
 
     @abstractmethod
     def send_paginated_request(

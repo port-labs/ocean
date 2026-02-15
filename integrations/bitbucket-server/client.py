@@ -1,3 +1,6 @@
+import asyncio
+import functools
+import re
 from typing import Any, AsyncGenerator, Dict, Optional, cast
 
 import httpx
@@ -5,12 +8,15 @@ from aiolimiter import AsyncLimiter
 from httpx import BasicAuth
 from loguru import logger
 from port_ocean.utils import http_async_client
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from port_ocean.utils.async_iterators import (
+    semaphore_async_iterator,
+    stream_async_iterators_tasks,
+)
 from port_ocean.utils.cache import cache_iterator_result
 
 # Rate limit docs: https://support.atlassian.com/bitbucket-cloud/docs/api-request-limits/
-BITBUCKET_RATE_LIMIT = 1000  # requests per hour
-BITBUCKET_RATE_LIMIT_WINDOW = 3600  # 1 hour
+DEFAULT_PAGE_SIZE = 100  # items per page
+DEFAULT_MAX_CONCURRENT_REQUESTS = 50  # concurrent repository PR requests
 
 
 class BitbucketClient:
@@ -24,9 +30,14 @@ class BitbucketClient:
         username: str,
         password: str,
         base_url: str,
+        rate_limit: int | None = None,
+        rate_limit_window: int | None = None,
         webhook_secret: str | None = None,
         app_host: str | None = None,
         is_version_8_7_or_older: bool = False,
+        page_size: int = DEFAULT_PAGE_SIZE,
+        max_concurrent_requests: int = DEFAULT_MAX_CONCURRENT_REQUESTS,
+        project_filter_regex: str | None = None,
     ):
         """
         Initialize the Bitbucket client with authentication and configuration.
@@ -35,26 +46,39 @@ class BitbucketClient:
             username: Bitbucket username for authentication
             password: Bitbucket password/token for authentication
             base_url: Base URL of the Bitbucket server
+            rate_limit: Maximum number of requests allowed within the rate limit window
+            rate_limit_window: Time window in seconds for rate limiting
             webhook_secret: Optional secret for webhook signature verification
             app_host: Optional host URL for webhook callbacks
             is_version_8_7_or_older: Whether the Bitbucket Server version is 8.7 or older
+            page_size: Number of items per page for paginated requests (default: 100)
+            max_concurrent_requests: Maximum number of concurrent repository PR requests (default: 10)
+            project_filter_regex: Optional regex pattern to filter project keys (e.g., "^PROJ-.*" for prefix or ".*-PROD$" for suffix)
         """
         self.username = username
         self.password = password
         self.base_url = base_url
         self.bitbucket_auth = BasicAuth(username=username, password=password)
         self.client = http_async_client
-        self.client.auth = self.bitbucket_auth
-        self.client.timeout = httpx.Timeout(60)
         self.app_host = app_host
         self.webhook_secret = webhook_secret
         self.is_version_8_7_or_older = is_version_8_7_or_older
-        # Despite this, being the rate limits, we do not reduce to the lowest common factor because we want to allow as much
-        # concurrency as possible. This is because we expect most users to have resources
-        # synced under one hour.
-        self.rate_limiter = AsyncLimiter(
-            BITBUCKET_RATE_LIMIT, BITBUCKET_RATE_LIMIT_WINDOW
+        self.page_size = page_size
+        self.max_concurrent_requests = max_concurrent_requests
+
+        self.project_filter_regex = (
+            re.compile(project_filter_regex) if project_filter_regex else None
         )
+
+        if rate_limit is None or rate_limit_window is None:
+            raise ValueError(
+                "Both rate_limit and rate_limit_window must be provided when initializing BitbucketClient."
+            )
+
+        self.rate_limiter = AsyncLimiter(rate_limit, rate_limit_window)
+
+        # Initialize semaphore for controlling concurrent API requests
+        self.semaphore = asyncio.BoundedSemaphore(max_concurrent_requests)
 
     async def _send_api_request(
         self,
@@ -81,7 +105,7 @@ class BitbucketClient:
                     f"Sending {method} request to {url} with payload: {payload}"
                 )
                 response = await self.client.request(
-                    method, url, params=params, json=payload
+                    method, url, params=params, json=payload, auth=self.bitbucket_auth
                 )
                 response.raise_for_status()
                 return response.json()
@@ -96,11 +120,28 @@ class BitbucketClient:
                 logger.error(f"Failed to send {method} request to url {url}: {str(e)}")
                 raise
 
+    def _should_include_project(self, project_key: str) -> bool:
+        """
+        Check if a project should be included based on filter patterns.
+
+        Args:
+            project_key: The project key to check
+
+        Returns:
+            True if the project should be included, False otherwise
+        """
+        # If no filters are set, include all projects
+        if not self.project_filter_regex:
+            return True
+
+        # Check regex filter
+        return bool(self.project_filter_regex.match(project_key))
+
     async def get_paginated_resource(
         self,
         path: str,
         params: Optional[Dict[str, Any]] = None,
-        page_size: int = 25,
+        page_size: Optional[int] = None,
         full_response: bool = False,
     ) -> AsyncGenerator[list[Any], None]:
         """
@@ -116,7 +157,8 @@ class BitbucketClient:
             Batches of resource items
         """
         params = params or {}
-        params["limit"] = page_size
+        effective_page_size = page_size if page_size is not None else self.page_size
+        params["limit"] = effective_page_size
         start = 0
 
         while True:
@@ -151,48 +193,62 @@ class BitbucketClient:
         async for project_batch in self.get_paginated_resource("projects"):
             yield cast(list[dict[str, Any]], project_batch)
 
-    async def _get_projects_with_filter(
-        self, projects_filter: set[str]
-    ) -> list[dict[str, Any]]:
+    def _create_regex_from_project_keys(
+        self, project_keys: set[str]
+    ) -> re.Pattern[str]:
         """
-        Internal method to fetch specific projects by their keys.
+        Convert a set of project keys to a regex pattern.
 
         Args:
-            projects_filter: Set of project keys to fetch
+            project_keys: Set of project keys to convert
 
         Returns:
-            List of filtered project data
+            Compiled regex pattern matching any of the provided keys
         """
-        projects = dict[str, dict[str, Any]]()
-        async for project_batch in self.get_projects():
-            logger.info(f"Received project batch: {project_batch}")
-            filtered_projects = filter(
-                lambda project: project["key"] in projects_filter, project_batch
-            )
-            projects.update({project["key"]: project for project in filtered_projects})
-            if len(projects) == len(projects_filter):
-                break
-        return list(projects.values())
+        # Escape special regex characters in project keys and create pattern
+        escaped_keys = [re.escape(key) for key in project_keys]
+        pattern = f"^({'|'.join(escaped_keys)})$"
+        return re.compile(pattern)
 
     @cache_iterator_result()
     async def get_projects(
         self, projects_filter: Optional[set[str]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
-        Get projects from Bitbucket, optionally filtered by project keys.
+        Get projects from Bitbucket, optionally filtered by project keys or regex pattern.
+        When projects_filter is provided, it's converted to a regex pattern.
+        If both projects_filter and project_filter_regex are set, both patterns must match (AND logic).
 
         Args:
-            projects_filter: Optional set of project keys to filter by
+            projects_filter: Optional set of project keys to filter by (converted to regex internally)
 
         Yields:
             Batches of project data
         """
-        logger.info(f"Getting projects with filter: {projects_filter}")
+        # Convert projects_filter set to regex pattern if provided
+        projects_regex = None
         if projects_filter:
-            yield await self._get_projects_with_filter(projects_filter)
-        else:
-            async for project_batch in self._get_all_projects():
-                yield project_batch
+            projects_regex = self._create_regex_from_project_keys(projects_filter)
+
+        logger.info(
+            f"Getting projects with filter: {projects_filter}, "
+            f"regex: {self.project_filter_regex}, "
+            f"projects_regex: {projects_regex}"
+        )
+
+        async for project_batch in self._get_all_projects():
+            # Apply filtering: must match projects_regex (if provided) AND project_filter_regex (if set)
+            filtered_batch = [
+                p
+                for p in project_batch
+                if (not projects_regex or projects_regex.match(p["key"]))
+                and (
+                    not self.project_filter_regex
+                    or self.project_filter_regex.match(p["key"])
+                )
+            ]
+            if filtered_batch:
+                yield filtered_batch
 
     async def get_repositories_for_project(
         self, project_key: str
@@ -217,6 +273,7 @@ class BitbucketClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get repositories across multiple projects, optionally filtered by project keys.
+        Uses semaphore to control concurrency and processes each project batch immediately.
 
         Args:
             projects_filter: Optional set of project keys to filter by
@@ -224,13 +281,18 @@ class BitbucketClient:
         Yields:
             Batches of repository data
         """
-        tasks = []
         async for project_batch in self.get_projects(projects_filter):
-            for project in project_batch:
-                tasks.append(self.get_repositories_for_project(project["key"]))
-
-        async for repo_batch in stream_async_iterators_tasks(*tasks):
-            yield repo_batch
+            tasks = [
+                semaphore_async_iterator(
+                    self.semaphore,
+                    functools.partial(
+                        self.get_repositories_for_project, project["key"]
+                    ),
+                )
+                for project in project_batch
+            ]
+            async for repo_batch in stream_async_iterators_tasks(*tasks):
+                yield repo_batch
 
     async def _get_pull_requests_for_repository(
         self, project_key: str, repo_slug: str, state: str = "OPEN"
@@ -253,12 +315,12 @@ class BitbucketClient:
         ):
             yield cast(list[dict[str, Any]], pr_batch)
 
-    @cache_iterator_result()
     async def get_pull_requests(
         self, projects_filter: set[str] | None = None, state: str = "OPEN"
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Get pull requests across multiple repositories, optionally filtered by project keys.
+        Uses semaphore to control concurrency and processes each repository batch immediately.
 
         Args:
             projects_filter: Optional set of project keys to filter by
@@ -267,17 +329,21 @@ class BitbucketClient:
         Yields:
             Batches of pull request data
         """
-        tasks = []
         async for repo_batch in self.get_repositories(projects_filter):
-            for repo in repo_batch:
-                tasks.append(
-                    self._get_pull_requests_for_repository(
-                        repo["project"]["key"], repo["slug"], state
-                    )
+            tasks = [
+                semaphore_async_iterator(
+                    self.semaphore,
+                    functools.partial(
+                        self._get_pull_requests_for_repository,
+                        repo["project"]["key"],
+                        repo["slug"],
+                        state,
+                    ),
                 )
-
-        async for pr_batch in stream_async_iterators_tasks(*tasks):
-            yield pr_batch
+                for repo in repo_batch
+            ]
+            async for pr_batch in stream_async_iterators_tasks(*tasks):
+                yield pr_batch
 
     async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """

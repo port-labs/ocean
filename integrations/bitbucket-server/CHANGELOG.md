@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.118-beta (2026-02-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.5
+
+
+## 0.1.117-beta (2026-02-11)
+
+
+### Bug Fixes
+
+- Fixed future attached to a different loop error when syncing large numbers of pull requests in multiprocess mode
+
+
+## 0.1.116-beta (2026-02-09)
+
+
+### Bug Fixes
+
+- Fixed authentication not persisting across resource kinds by passing auth per-request instead of mutating the shared HTTP client state
+
+
+## 0.1.115-beta (2025-02-05)
+
+
+### Bug Fixes
+
+- Fixed Integration takes a long time before completing resync
+
+
+## 0.1.114-beta (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.4
+
+
+## 0.1.113-beta (2026-02-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.3
+
+
+## 0.1.112-beta (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.1
+
+
+## 0.1.111-beta (2026-02-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.0
+
+
+## 0.1.110-beta (2026-01-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.34.0
+
+
 ## 0.1.109-beta (2026-01-27)
 
 
@@ -388,6 +460,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.28.19
+
 
 
 ## 0.1.62-beta (2025-10-27)

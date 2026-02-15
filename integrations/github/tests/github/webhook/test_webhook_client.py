@@ -31,6 +31,7 @@ class TestGithubWebhookClient:
             authenticator=authenticator,
         )
         target = HookTarget(
+            target_type="organization",
             hooks_url=f"{client.base_url}/orgs/test-org/hooks",
             single_hook_url_template=(
                 f"{client.base_url}/orgs/test-org/hooks/{{webhook_id}}"
@@ -84,6 +85,7 @@ class TestGithubWebhookClient:
             authenticator=authenticator,
         )
         target = HookTarget(
+            target_type="organization",
             hooks_url=f"{client.base_url}/orgs/test-org/hooks",
             single_hook_url_template=(
                 f"{client.base_url}/orgs/test-org/hooks/{{webhook_id}}"
@@ -143,6 +145,7 @@ class TestGithubWebhookClient:
             "secret": "test-secret",
         }
         target = HookTarget(
+            target_type="organization",
             hooks_url=f"{client.base_url}/orgs/test-org/hooks",
             single_hook_url_template=(
                 f"{client.base_url}/orgs/test-org/hooks/{{webhook_id}}"
@@ -217,6 +220,7 @@ class TestGithubWebhookClient:
             },
         }
         expected_target = HookTarget(
+            target_type="organization",
             hooks_url=f"{client.base_url}/orgs/test-org/hooks",
             single_hook_url_template=(
                 f"{client.base_url}/orgs/test-org/hooks/{{webhook_id}}"
@@ -266,6 +270,7 @@ class TestGithubWebhookClient:
             },
         }
         expected_target = HookTarget(
+            target_type="organization",
             hooks_url=f"{client.base_url}/orgs/test-org/hooks",
             single_hook_url_template=(
                 f"{client.base_url}/orgs/test-org/hooks/{{webhook_id}}"
@@ -341,6 +346,7 @@ class TestGithubWebhookClient:
             authenticator=authenticator,
         )
         target = HookTarget(
+            target_type="organization",
             hooks_url=f"{client.base_url}/orgs/test-org/hooks",
             single_hook_url_template=(
                 f"{client.base_url}/orgs/test-org/hooks/{{webhook_id}}"
@@ -407,6 +413,7 @@ class TestGithubWebhookClient:
             },
         }
         expected_target = HookTarget(
+            target_type="organization",
             hooks_url=f"{client.base_url}/orgs/test-org/hooks",
             single_hook_url_template=(
                 f"{client.base_url}/orgs/test-org/hooks/{{webhook_id}}"
@@ -457,6 +464,7 @@ class TestGithubWebhookClient:
             },
         }
         expected_target = HookTarget(
+            target_type="organization",
             hooks_url=f"{client.base_url}/orgs/test-org/hooks",
             single_hook_url_template=(
                 f"{client.base_url}/orgs/test-org/hooks/{{webhook_id}}"

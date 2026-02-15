@@ -31,6 +31,7 @@ class Kind(StrEnum):
     FOLDER = "folder"
     ITERATION = "iteration"
     BRANCH = "branch"
+    ADVANCED_SECURITY_ALERT = "advanced-security-alert"
 
 
 ACTIVE_PULL_REQUEST_SEARCH_CRITERIA: dict[str, Any] = {
@@ -96,6 +97,11 @@ class AzureDevopsFolderSelector(Selector):
         default_factory=list,
         alias="folders",
         description="Specify the repositories, branches and folders to include under this relative path",
+    )
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the folder entity",
     )
 
 

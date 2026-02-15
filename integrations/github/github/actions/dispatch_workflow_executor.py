@@ -132,7 +132,7 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         repo = await repoExporter.get_resource(
             SingleRepositoryOptions(organization=organization, name=repo_name)
         )
-        if not repo.get("default_branch"):
+        if not repo or not repo.get("default_branch"):
             logger.error(
                 f"Default branch not found for repository {organization}/{repo_name}",
                 organization=organization,
@@ -190,6 +190,15 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
         )
         return workflow_runs[0]
 
+    def _parse_inputs(self, raw_inputs: dict[str, Any]) -> dict[str, Any]:
+        inputs: dict[str, str] = {}
+        for key, value in raw_inputs.items():
+            if isinstance(value, str):
+                inputs[key] = value
+            else:
+                inputs[key] = json.dumps(value)
+        return inputs
+
     async def execute(self, run: ActionRun) -> None:
         """
         Execute a workflow dispatch action by triggering a GitHub Actions workflow.
@@ -204,8 +213,8 @@ class DispatchWorkflowExecutor(AbstractGithubExecutor):
                 "organization, repo and workflow are required"
             )
 
-        inputs: dict[str, Any] = run.payload.integrationActionExecutionProperties.get(
-            "workflowInputs", {}
+        inputs: dict[str, str] = self._parse_inputs(
+            run.payload.integrationActionExecutionProperties.get("workflowInputs", {})
         )
         ref = inputs.pop("ref", None)
         if not ref:

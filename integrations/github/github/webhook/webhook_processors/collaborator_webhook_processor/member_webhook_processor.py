@@ -3,7 +3,11 @@ from loguru import logger
 from github.clients.client_factory import create_github_client
 from github.core.exporters.collaborator_exporter import RestCollaboratorExporter
 from github.core.options import SingleCollaboratorOptions
-from github.helpers.utils import ObjectKind
+from github.helpers.utils import (
+    ObjectKind,
+    enrich_with_organization,
+    enrich_with_repository,
+)
 from github.webhook.events import (
     COLLABORATOR_DELETE_EVENTS,
     COLLABORATOR_EVENTS,
@@ -53,11 +57,15 @@ class CollaboratorMemberWebhookProcessor(BaseRepositoryWebhookProcessor):
             logger.info(
                 f"Collaborator {username} was removed from repository {repo_name} of organization: {organization}"
             )
-            data_to_delete = {
+            constructed_payload = {
                 "login": username,
                 "id": payload["member"]["id"],
-                "__repository": repo_name,
             }
+
+            data_to_delete = enrich_with_organization(
+                enrich_with_repository(constructed_payload, repo_name, repo=repository),
+                organization,
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[data_to_delete]
             )
@@ -73,6 +81,11 @@ class CollaboratorMemberWebhookProcessor(BaseRepositoryWebhookProcessor):
                 organization=organization, repo_name=repo_name, username=username
             )
         )
+        if not data_to_upsert:
+            return WebhookEventRawResults(
+                updated_raw_results=[], deleted_raw_results=[]
+            )
+
         return WebhookEventRawResults(
             updated_raw_results=[data_to_upsert], deleted_raw_results=[]
         )
