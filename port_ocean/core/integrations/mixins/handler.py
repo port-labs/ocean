@@ -22,10 +22,13 @@ class HandlerMixin:
     EntitiesStateApplier.
 
     Attributes:
+        allow_custom_kinds (bool): Whether to allow custom kinds.
         EntityProcessorClass (Type[BaseEntityProcessor]): The class representing the Entity Processor.
         AppConfigHandlerClass (Type[BasePortAppConfig]): The class representing the PortAppConfig Handler.
         EntitiesStateApplierClass (Type[BaseEntitiesStateApplier]): The class representing the EntitiesStateApplier.
     """
+
+    allow_custom_kinds: bool = False
 
     EntityProcessorClass: Type[BaseEntityProcessor] = JQEntityProcessor
 

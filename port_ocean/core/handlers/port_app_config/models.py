@@ -7,6 +7,9 @@ from pydantic import BaseModel, Field
 from port_ocean.clients.port.types import RequestOptions
 
 
+CUSTOM_KIND = "__custom__"
+
+
 class Rule(BaseModel):
     property: str
     operator: str
@@ -63,7 +66,7 @@ class PortAppConfig(BaseModel):
         default=True,
         title="Enable Merge Entity",
         description="Whether to merge entities when merging an entity.",
-        ui_schema={"hidden": True},
+        extra={"ui_schema": {"hidden": True}},
     )
     delete_dependent_entities: bool = Field(
         alias="deleteDependentEntities",
@@ -104,6 +107,18 @@ class PortAppConfig(BaseModel):
                 for resource in self.resources
             ],
         }
+
+    @classmethod
+    def validate_and_get_resource_kinds(
+        cls,
+        allow_custom_kinds: bool = False,
+    ) -> dict[str, dict[str, Any]]:
+        """Validate resource kind definitions and extract their attributes."""
+        from port_ocean.core.handlers.port_app_config.kind_validators import (
+            validate_and_get_resource_kinds as _validate_and_get_resource_kinds,
+        )
+
+        return _validate_and_get_resource_kinds(cls, allow_custom_kinds)
 
     class Config:
         allow_population_by_field_name = True
