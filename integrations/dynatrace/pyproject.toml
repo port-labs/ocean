@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dynatrace"
-version = "0.1.242"
+version = "0.1.243"
 description = "An integration used to import Dynatrace resources into Port"
 authors = ["Ayodeji Adeoti <<ayodeji.adeoti@getport.io>>"]
 
