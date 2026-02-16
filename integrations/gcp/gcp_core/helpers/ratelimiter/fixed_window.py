@@ -84,7 +84,6 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
         "_condition",
         "_shutdown_event",
         "_metrics",
-        "_logger",
     )
 
     def __init__(
@@ -138,9 +137,7 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
             "windows_reset": 0,
         }
 
-        self._logger = logger
-
-        self._logger.info(
+        logger.info(
             f"Created fixed window rate limiter: max_rate={max_rate}, "
             f"time_period={time_period}s, alignment={alignment.value}, "
             f"request_timeout={request_timeout}s"
@@ -211,7 +208,7 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
         self._request_count = 0
         self._metrics["windows_reset"] += 1
 
-        self._logger.debug(
+        logger.debug(
             f"Window reset: old_start={old_window}, new_start={self._window_start}, "
             f"time_period={self._time_period}s"
         )
@@ -286,7 +283,7 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
                 if effective_timeout is not None and elapsed >= effective_timeout:
                     self._metrics["timeouts"] += 1
                     self._metrics["rejected_requests"] += 1
-                    self._logger.warning(
+                    logger.warning(
                         f"Request timed out after {elapsed:.3f}s "
                         f"(timeout={effective_timeout}s)"
                     )
@@ -307,12 +304,12 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
                     self._metrics["total_wait_time"] += elapsed
 
                     if elapsed > 0.01:  # Only log if we actually waited
-                        self._logger.debug(
+                        logger.debug(
                             f"Request acquired after waiting {elapsed:.3f}s, "
                             f"count={self._request_count}/{self._max_rate}"
                         )
                     else:
-                        self._logger.debug(
+                        logger.debug(
                             f"Request acquired immediately, "
                             f"count={self._request_count}/{self._max_rate}"
                         )
@@ -333,7 +330,7 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
                         )
                     wait_time = min(wait_time, remaining_timeout)
 
-                self._logger.info(
+                logger.info(
                     f"Rate limit reached ({self._request_count}/{self._max_rate}), "
                     f"waiting {wait_time:.3f}s for window reset"
                 )
@@ -350,7 +347,7 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
                     pass
                 except asyncio.CancelledError:
                     self._metrics["rejected_requests"] += 1
-                    self._logger.debug(f"Request cancelled after {elapsed:.3f}s")
+                    logger.debug(f"Request cancelled after {elapsed:.3f}s")
                     raise
 
         # If we get here, shutdown was triggered
@@ -409,7 +406,7 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
                     return result
             finally:
                 elapsed = self._get_current_time() - start_time
-                self._logger.debug(
+                logger.debug(
                     f"Rate-limited function {func.__name__} completed in {elapsed:.3f}s"
                 )
 
@@ -466,7 +463,7 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
         Args:
             timeout: Maximum time to wait for graceful shutdown.
         """
-        self._logger.info("Shutting down rate limiter")
+        logger.info("Shutting down rate limiter")
 
         # Signal shutdown
         self._shutdown_event.set()
@@ -475,7 +472,7 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
         async with self._condition:
             self._condition.notify_all()
 
-        self._logger.info(
+        logger.info(
             f"Rate limiter shutdown completed. " f"Final metrics: {self.get_metrics()}"
         )
 
@@ -498,7 +495,7 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
 
             # Wait for window reset
             wait_time = self._time_until_reset(current_time)
-            self._logger.info(f"Waiting {wait_time:.2f}s for capacity in next window")
+            logger.info(f"Waiting {wait_time:.2f}s for capacity in next window")
 
             try:
                 await asyncio.wait_for(self._condition.wait(), timeout=wait_time)
@@ -517,7 +514,7 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
             "total_wait_time": 0.0,
             "windows_reset": 0,
         }
-        self._logger.info("Metrics reset")
+        logger.info("Metrics reset")
 
     def __repr__(self) -> str:
         """Return a string representation of the limiter."""

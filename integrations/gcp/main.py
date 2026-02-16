@@ -41,6 +41,8 @@ from gcp_core.utils import (
     get_initial_quota_for_project_via_rest,
 )
 
+RATE_LIMITER_TIME_PERIOD_SECONDS: float = 60.0
+
 PROJECT_V3_GET_REQUESTS_RATE_LIMITER: FixedWindowLimiter
 PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE: BoundedSemaphore
 BACKGROUND_TASK_THRESHOLD: float
@@ -107,7 +109,7 @@ async def setup_real_time_request_controllers() -> None:
     if not ocean.event_listener_type == "ONCE":
         effective_quota = await get_initial_quota_for_project_via_rest()
         PROJECT_V3_GET_REQUESTS_RATE_LIMITER = FixedWindowLimiter(
-            max_rate=effective_quota, time_period=60.0
+            max_rate=effective_quota, time_period=RATE_LIMITER_TIME_PERIOD_SECONDS
         )
         PROJECT_V3_GET_REQUESTS_BOUNDED_SEMAPHORE = asyncio.BoundedSemaphore(
             effective_quota
