@@ -22,7 +22,6 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-
         sonar_client = init_sonar_client()
 
         selector = cast(
@@ -33,13 +32,9 @@ class ProjectWebhookProcessor(BaseSonarQubeWebhookProcessor):
 
         project = await sonar_client.get_single_component(payload["project"])
 
-        updated_project_results = []
-
         updated_project = await sonar_client.get_single_project(project)
 
-        updated_project_results.append(updated_project)
-
         return WebhookEventRawResults(
-            updated_raw_results=updated_project_results,
+            updated_raw_results=[updated_project],
             deleted_raw_results=[],
         )
