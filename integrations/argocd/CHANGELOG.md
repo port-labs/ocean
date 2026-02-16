@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.0 (2026-02-15)
+## 0.2.0 (2026-02-16)
 
 
 ### Features
 
 - Added support for custom HTTP headers for ArgoCD integration requests
+
+
+## 0.1.289 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.7
+
+
+## 0.1.288 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.6
 
 
 ## 0.1.287 (2026-02-12)
