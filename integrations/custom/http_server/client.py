@@ -106,7 +106,7 @@ class HttpServerClient:
             raise ValueError("endpoint cannot be empty")
 
         url = f"{base_url}/{endpoint_path}"
-        params = query_params or {}
+        params = query_params  # Don't convert to {} - HTTPX strips URL params when params={}
         request_headers = headers or {}
 
         pagination_type = self.pagination_config.get("pagination_type", "none")
