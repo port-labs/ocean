@@ -94,7 +94,7 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = resource_config.selector
 
     method = getattr(selector, "method", "GET")
-    query_params = getattr(selector, "query_params", None) or {}
+    query_params = getattr(selector, "query_params", None)
     headers = getattr(selector, "headers", None) or {}
     body = getattr(selector, "body", None)
     data_path = getattr(selector, "data_path", None) or "."
