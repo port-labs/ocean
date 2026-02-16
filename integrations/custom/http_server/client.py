@@ -106,7 +106,7 @@ class HttpServerClient:
             raise ValueError("endpoint cannot be empty")
 
         url = f"{base_url}/{endpoint_path}"
-        params = query_params  # Don't convert to {} - HTTPX strips URL params when params={}
+        params = query_params or {}
         request_headers = headers or {}
 
         pagination_type = self.pagination_config.get("pagination_type", "none")
@@ -158,12 +158,16 @@ class HttpServerClient:
         }
 
         try:
+            # Convert empty params to None to preserve URL query params
+            # HTTPX strips existing URL query params when params={}, but preserves them when params=None
+            effective_params = params if params else None
+
             # Build request - include body if present
             if body:
                 response = await self.client.request(
                     method=method,
                     url=url,
-                    params=params,
+                    params=effective_params,
                     headers=merged_headers,
                     json=body,
                 )
@@ -171,7 +175,7 @@ class HttpServerClient:
                 response = await self.client.request(
                     method=method,
                     url=url,
-                    params=params,
+                    params=effective_params,
                     headers=merged_headers,
                 )
 
