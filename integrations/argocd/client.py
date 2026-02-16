@@ -4,6 +4,7 @@ from typing import Any, Optional, AsyncGenerator
 
 import httpx
 from loguru import logger
+import json
 
 from port_ocean.helpers.async_client import OceanAsyncClient, StreamingClientWrapper
 from port_ocean.utils import http_async_client
@@ -37,6 +38,7 @@ class ArgocdClient:
         server_url: str,
         ignore_server_error: bool,
         allow_insecure: bool,
+        custom_http_headers: Optional[str] = None,
         use_streaming: bool = False,
     ):
         self.token = token
@@ -54,6 +56,16 @@ class ArgocdClient:
             # Type ignore because http_async_client is typed as AsyncClient but returns OceanAsyncClient
             self.http_client = http_async_client  # type: ignore
         self.http_client.headers.update(self.api_auth_header)
+        if custom_http_headers:
+            try:
+                parsed_headers = json.loads(custom_http_headers)
+                if isinstance(parsed_headers, dict):
+                    logger.debug(
+                        f"Applying custom HTTP headers: {list(parsed_headers.keys())}"
+                    )
+                    self.http_client.headers.update(parsed_headers)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse custom HTTP headers: {e}")
         self.streaming_client = StreamingClientWrapper(self.http_client)
         self.use_streaming = use_streaming
 
