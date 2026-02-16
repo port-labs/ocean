@@ -108,6 +108,13 @@ class GitManipulationHandler(JQEntityProcessor):
             )
             entity_processor = FileEntityProcessor
         elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
+            logger.warning(
+                f"DEPRECATION: Using 'search://' prefix in mappings is deprecated and will be removed in a future version. "
+                f"Pattern: '{pattern}'. "
+                f"Use the 'searchQueries' selector instead. Example: "
+                f"selector.searchQueries: [{{name: '<queryName>', scope: '<scope>', query: '<query>'}}] "
+                f'Then map to .__searchQueries["<queryName>"]'
+            )
             entity_processor = SearchEntityProcessor
         else:
             entity_processor = JQEntityProcessor
