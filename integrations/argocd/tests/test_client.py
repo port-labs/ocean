@@ -355,6 +355,7 @@ async def test_get_managed_resources(
                 mock_stream.assert_called_with(
                     url=f"{mock_argocd_client.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources",
                     target_items_path="items",
+                    params=None,
                 )
 
 
@@ -401,7 +402,9 @@ async def test_get_clusters_with_only_available_clusters(
             for cluster in all_clusters
         )
         mock_stream.assert_called_with(
-            url=f"{mock_argocd_client.api_url}/clusters", target_items_path="items"
+            url=f"{mock_argocd_client.api_url}/clusters",
+            target_items_path="items",
+            params=None,
         )
 
 
@@ -469,7 +472,9 @@ async def test_get_clusters_filters_unavailable_clusters(
             cluster_names = [cluster["name"] for cluster in all_clusters]
             assert cluster_names == ["cluster-1", "cluster-3", "cluster-5"]
             mock_stream.assert_called_with(
-                url=f"{mock_argocd_client.api_url}/clusters", target_items_path="items"
+                url=f"{mock_argocd_client.api_url}/clusters",
+                target_items_path="items",
+                params=None,
             )
 
 
@@ -655,7 +660,8 @@ async def test_get_managed_resources_with_streaming_disabled() -> None:
 
             # Should use direct API request, not streaming
             mock_request.assert_called_once_with(
-                url=f"{client.api_url}/applications/test-app/managed-resources"
+                url=f"{client.api_url}/applications/test-app/managed-resources",
+                query_params=None,
             )
             mock_stream.assert_not_called()
             assert len(resources) == 2
