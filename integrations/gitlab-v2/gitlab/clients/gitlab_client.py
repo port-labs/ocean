@@ -37,12 +37,24 @@ class GitLabClient:
         )
 
     async def get_project(
-        self, project_path: str | int, include_languages: bool = False
+        self,
+        project_path: str | int,
+        include_languages: bool = False,
+        search_queries: Optional[list[dict[str, Any]]] = None,
+        included_files: Optional[list[str]] = None,
     ) -> dict[str, Any]:
         encoded_path = quote(str(project_path), safe="")
         project = await self.rest.send_api_request("GET", f"projects/{encoded_path}")
         if include_languages:
-            return await self._enrich_project_with_languages(project)
+            project = await self._enrich_project_with_languages(project)
+        if search_queries:
+            project = await self._enrich_project_with_search_queries(
+                project, search_queries
+            )
+        if included_files:
+            project = await self.enrich_project_with_included_files(
+                project, included_files
+            )
         return project
 
     async def get_group(self, group_id: int) -> dict[str, Any]:
@@ -83,6 +95,8 @@ class GitLabClient:
         params: Optional[dict[str, Any]] = None,
         max_concurrent: int = 10,
         include_languages: bool = False,
+        search_queries: Optional[list[dict[str, Any]]] = None,
+        included_files: Optional[list[str]] = None,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch all projects accessible to the user.
 
@@ -90,6 +104,8 @@ class GitLabClient:
             params: Optional parameters to pass to the GitLab API (e.g., min_access_level)
             max_concurrent: Maximum number of concurrent requests
             include_languages: Whether to enrich projects with language information
+            search_queries: Optional list of search queries to execute for each project
+            included_files: List of file paths to fetch and attach to each project
         """
         request_params = {**self.DEFAULT_PARAMS}
         if params:
@@ -104,6 +120,25 @@ class GitLabClient:
             if include_languages:
                 enriched_batch = await self._enrich_batch(
                     enriched_batch, self._enrich_project_with_languages, max_concurrent
+                )
+
+            if search_queries:
+                enriched_batch = await self._enrich_batch(
+                    enriched_batch,
+                    lambda project: self._enrich_project_with_search_queries(
+                        project, search_queries
+                    ),
+                    max_concurrent,
+                )
+
+            if included_files:
+                enriched_batch = await self._enrich_batch(
+                    enriched_batch,
+                    partial(
+                        self.enrich_project_with_included_files,
+                        file_paths=included_files,
+                    ),
+                    max_concurrent,
                 )
 
             yield enriched_batch
@@ -462,6 +497,68 @@ class GitLabClient:
         languages = await self.rest.get_project_languages(project_path)
         logger.info(f"Fetched languages for {project_path}: {languages}")
         project["__languages"] = languages
+        return project
+
+    async def _enrich_project_with_search_queries(
+        self, project: dict[str, Any], search_queries: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Enrich a project with search query results.
+
+        Each search query is executed against the project using the GitLab search API.
+        Results are stored under project["__searchQueries"][<name>] as a boolean.
+
+        Args:
+            project: The project data dictionary
+            search_queries: List of dicts with 'name', 'scope', and 'query' keys
+        """
+        project_id = project.get("path_with_namespace") or str(project["id"])
+        project_path = project.get("path_with_namespace", str(project["id"]))
+        logger.debug(
+            f"Enriching {project_path} with {len(search_queries)} search queries"
+        )
+
+        search_results: dict[str, Any] = {}
+        for sq in search_queries:
+            name = sq["name"]
+            scope = sq.get("scope", "blobs")
+            query = sq["query"]
+            try:
+                result = await self.file_exists(project_id, scope, query)
+                search_results[name] = result
+            except Exception as e:
+                logger.warning(
+                    f"Failed to execute search query '{name}' (scope={scope}, query={query}) "
+                    f"for project {project_path}: {e}"
+                )
+                search_results[name] = None
+
+        project["__searchQueries"] = search_results
+        return project
+
+    async def enrich_project_with_included_files(
+        self, project: dict[str, Any], file_paths: list[str]
+    ) -> dict[str, Any]:
+        """Enrich a project with the contents of specified files.
+
+        Fetches each file from the project's default branch and stores the
+        contents in ``project["__includedFiles"]`` keyed by file path.
+        Missing files are stored as ``None``.
+        """
+        project_path = project.get("path_with_namespace", str(project["id"]))
+        ref = project.get("default_branch", "main")
+        included_files: dict[str, Optional[str]] = {}
+
+        for file_path in file_paths:
+            try:
+                content = await self.get_file_content(project_path, file_path, ref)
+                included_files[file_path] = content
+            except Exception:
+                logger.debug(
+                    f"Could not fetch file '{file_path}' from {project_path}@{ref}, storing as None"
+                )
+                included_files[file_path] = None
+
+        project["__includedFiles"] = included_files
         return project
 
     async def get_group_members(

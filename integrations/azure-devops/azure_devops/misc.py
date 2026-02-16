@@ -98,6 +98,11 @@ class AzureDevopsFolderSelector(Selector):
         alias="folders",
         description="Specify the repositories, branches and folders to include under this relative path",
     )
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the folder entity",
+    )
 
 
 class AzureDevopsFolderResourceConfig(ResourceConfig):

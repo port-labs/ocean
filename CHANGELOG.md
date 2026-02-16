@@ -7,6 +7,38 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.35.7 (2026-02-15)
+
+### Vulnerabilities
+
+- Fixed vulnerabilities in
+  - Ocean core:
+    - urllib3 (2.6.0 -> 2.6.3)
+    - cryptography (44.0.3 -> 46.0.5)
+    - psutil (7.0.0 -> 7.2.1)
+    - charset-normalizer (3.4.3 -> 3.4.4)
+    - arrow (1.3.0 -> 1.4.0)
+  - Ocean docs:
+    - webpack
+    - lodash-es
+    - qs
+    - lodash
+    - undici
+
+## 0.35.6 (2026-02-15)
+
+### Features
+
+- Added support for workflow node runs in addition to action runs in ExecutionManager. Integrations can poll and execute both via unified run API.
+
+
+## 0.35.5 (2026-02-12)
+
+### Bug fixes
+
+- Fixed integration mapping not being initialized when integration already exists prior to ocean run
+
+
 ## 0.35.4 (2026-02-02)
 
 ### Bug fixes

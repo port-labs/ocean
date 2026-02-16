@@ -51,6 +51,14 @@ class GithubRepositorySelector(RepoSearchSelector):
         max_items=3,
         description="Specify the relationships to include in the repository",
     )
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description=(
+            "List of file paths to fetch from the repository and attach to "
+            "the raw data under __includedFiles. E.g. ['README.md', 'CODEOWNERS']"
+        ),
+    )
 
 
 class GithubRepositoryConfig(ResourceConfig):
@@ -79,6 +87,11 @@ class FolderSelector(BaseModel):
 
 class GithubFolderSelector(Selector):
     folders: list[FolderSelector]
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the folder entity",
+    )
 
 
 class GithubUserSelector(Selector):
@@ -281,6 +294,11 @@ class GithubFilePattern(BaseModel):
 
 class GithubFileSelector(Selector):
     files: list[GithubFilePattern]
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the file entity",
+    )
 
 
 class GithubFileResourceConfig(ResourceConfig):
@@ -358,6 +376,13 @@ class GitManipulationHandler(JQEntityProcessor):
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         entity_processor: Type[JQEntityProcessor]
         if pattern.startswith(FILE_PROPERTY_PREFIX):
+            logger.warning(
+                f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
+                f"Pattern: '{pattern}'. "
+                f"Use the 'includedFiles' selector instead. Example: "
+                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
+                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
+            )
             entity_processor = FileEntityProcessor
         else:
             entity_processor = JQEntityProcessor
