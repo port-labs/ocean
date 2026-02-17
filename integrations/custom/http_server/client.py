@@ -160,18 +160,17 @@ class HttpServerClient:
             - merged_params: Combined URL + config params, or None if no params
         """
         if not params:
-            # No config params - let HTTPX handle URL as-is (preserves query params)
             return url, None
 
         parsed_url = urlparse(url)
         if not parsed_url.query:
-            # No URL query params - use config params as-is
             return url, params
 
-        # Parse existing URL query params
-        url_params = parse_qs(parsed_url.query, keep_blank_values=True)
-        # Flatten single-value lists from parse_qs
-        url_params = {k: v[0] if len(v) == 1 else v for k, v in url_params.items()}
+        # Parse existing URL query params and flatten single-value lists
+        raw_params = parse_qs(parsed_url.query, keep_blank_values=True)
+        url_params: Dict[str, Any] = {
+            k: v[0] if len(v) == 1 else v for k, v in raw_params.items()
+        }
         # Merge: URL params as base, config params override if there's a conflict
         merged = {**url_params, **params}
         # Return clean URL without query string
