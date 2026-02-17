@@ -2,7 +2,6 @@ from typing import Type, Any, Dict
 
 from pydantic import BaseModel
 
-from loguru import logger
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_integration_class
 
@@ -15,11 +14,7 @@ def create_default_app(
 
     try:
         integration_class = get_integration_class(path)
-    except Exception as e:
-        logger.warning(
-            f"Didn't find integration class in {path}, proceeding with default settings",
-            error=str(e),
-        )
+    except Exception:
         integration_class = None
 
     return Ocean(
