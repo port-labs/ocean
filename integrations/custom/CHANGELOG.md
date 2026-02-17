@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.3.11-beta (2026-02-17)
 
 
-### Features
+### Improvements
 
-- Added dynamic query parameter support via `dynamic_query_param` field, allowing query parameters to be resolved from API endpoints at runtime (similar to `path_parameters`)
+- Bumped ocean version to ^0.36.0
 
 
 ## 0.3.10-beta (2026-02-17)
