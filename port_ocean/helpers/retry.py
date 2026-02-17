@@ -61,6 +61,7 @@ class RetryConfig:
         retry_status_codes: Optional[Iterable[int]] = None,
         retry_after_headers: Optional[List[str]] = None,
         additional_retry_status_codes: Optional[Iterable[int]] = None,
+        ignore_retry_after_status_codes: Optional[Iterable[int]] = None,
     ):
         """
         Initialize retry configuration.
@@ -75,6 +76,8 @@ class RetryConfig:
             retry_status_codes: DEPRECATED - use additional_retry_status_codes instead
             retry_after_headers: Custom headers to check for retry timing (e.g., ['X-RateLimit-Reset', 'Retry-After'])
             additional_retry_status_codes: Additional status codes to retry (extends system defaults)
+            ignore_retry_after_status_codes: Status codes that should ignore Retry-After/rate-limit headers
+                and always fall back to exponential backoff.
         """
         self.max_attempts = max_attempts
         self.max_backoff_wait = max_backoff_wait
@@ -112,6 +115,12 @@ class RetryConfig:
         # Combine defaults with additional codes for extensibility
         self.retry_status_codes = default_status_codes | additional_codes
         self.retry_after_headers = retry_after_headers or ["Retry-After"]
+
+        self.ignore_retry_after_status_codes = (
+            frozenset(ignore_retry_after_status_codes)
+            if ignore_retry_after_status_codes
+            else frozenset()
+        )
 
         if jitter_ratio < 0 or jitter_ratio > 0.5:
             raise ValueError(
@@ -436,11 +445,31 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
     async def _should_retry_async(self, response: httpx.Response) -> bool:
         return response.status_code in self._retry_config.retry_status_codes
 
+    def _ignore_retry_after_headers(self, status_code: int) -> bool:
+        """Return True if this status_code should ignore Retry-After/rate-limit headers.
+        This is useful for transient server errors (e.g., 500-series) where waiting for
+        rate-limit windows is undesirable, even if the API returns such headers.
+        """
+        return status_code in self._retry_config.ignore_retry_after_status_codes
+
     def _calculate_sleep(
-        self, attempts_made: int, headers: Union[httpx.Headers, Mapping[str, str]]
+        self,
+        attempts_made: int,
+        headers: Union[httpx.Headers, Mapping[str, str]],
+        status_code: Optional[int] = None,
     ) -> float:
-        # Check custom retry headers first, then fall back to Retry-After
-        if self._retry_config.respect_retry_after_header:
+
+        should_ignore_retry_after_headers = (
+            self._ignore_retry_after_headers(status_code)
+            if status_code is not None
+            else False
+        )
+
+        if (
+            not should_ignore_retry_after_headers
+            and self._retry_config.respect_retry_after_header
+        ):
+            # Check custom retry headers first, then fall back to Retry-After
             for header_name in self._retry_config.retry_after_headers:
                 if header_value := (headers.get(header_name) or "").strip():
                     sleep_time = self._parse_retry_header(header_value)
@@ -497,7 +526,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         while True:
             if attempts_made > 0:
                 response_headers = response.headers if response else {}
-                sleep_time = self._calculate_sleep(attempts_made, response_headers)
+                status_code = response.status_code if response else None
+
+                sleep_time = self._calculate_sleep(
+                    attempts_made, response_headers, status_code
+                )
                 self._log_before_retry(request, sleep_time, response, error)
                 await asyncio.sleep(sleep_time)
 
@@ -549,7 +582,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         while True:
             if attempts_made > 0:
                 response_headers = response.headers if response else {}
-                sleep_time = self._calculate_sleep(attempts_made, response_headers)
+                status_code = response.status_code if response else None
+
+                sleep_time = self._calculate_sleep(
+                    attempts_made, response_headers, status_code
+                )
                 self._log_before_retry(request, sleep_time, response, error)
                 time.sleep(sleep_time)
 
