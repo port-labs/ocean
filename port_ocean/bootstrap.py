@@ -15,9 +15,10 @@ def create_default_app(
 
     try:
         integration_class = get_integration_class(path)
-    except Exception:
+    except Exception as e:
         logger.warning(
-            f"Didn't find integration class in {path}, proceeding with default settings"
+            f"Didn't find integration class in {path}, proceeding with default settings",
+            error=str(e),
         )
         integration_class = None
 

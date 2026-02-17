@@ -25,8 +25,11 @@ def _get_config_class(
 
 def _load_integration_class(path: str) -> Type[BaseIntegration]:
     """Load the integration class from *path*, handling errors."""
-    try:
+    should_cleanup_sys_path = False
+    if path not in sys.path:
         sys.path.append(path)
+        should_cleanup_sys_path = True
+    try:
         cls = get_integration_class(path)
         if cls is None:
             click.echo(f"No integration class found in {path}", err=True)
@@ -38,6 +41,9 @@ def _load_integration_class(path: str) -> Type[BaseIntegration]:
     except Exception as e:
         click.echo(f"Failed to load integration from {path}: {e}", err=True)
         sys.exit(1)
+    finally:
+        if should_cleanup_sys_path:
+            sys.path.remove(path)
 
 
 def _write_json_output(
@@ -94,15 +100,10 @@ def port_app_config_schema(
 
     PATH: Path to the integration directory (default: current directory).
     """
-    try:
-        integration_class = _load_integration_class(path)
-        config_class = _get_config_class(integration_class)
-        config_class.validate_and_get_resource_kinds(
-            integration_class.allow_custom_kinds
-        )
-        result = config_class.schema()
-    finally:
-        sys.path.remove(path)
+    integration_class = _load_integration_class(path)
+    config_class = _get_config_class(integration_class)
+    config_class.validate_and_get_resource_kinds(integration_class.allow_custom_kinds)
+    result = config_class.schema()
 
     _write_json_output(result, output_file, pretty, label="Schema")
 
@@ -134,11 +135,8 @@ def port_app_config_list_kinds(
     PATH: Path to the integration directory (default: current directory).
     """
     integration_class = _load_integration_class(path)
-    try:
-        result = _get_config_class(integration_class).validate_and_get_resource_kinds(
-            integration_class.allow_custom_kinds
-        )
-    finally:
-        sys.path.remove(path)
+    result = _get_config_class(integration_class).validate_and_get_resource_kinds(
+        integration_class.allow_custom_kinds
+    )
 
     _write_json_output(result, output_file, pretty, label="Kinds")
