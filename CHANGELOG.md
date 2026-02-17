@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Vulnerabilities
 
 - Bumped types-aiofiles,aiostream & aiofiles versions
-- Bumped versions for ocean docs
+- Bumped Ocean docs JavaScript dependencies: prettier, react, react-dom, redocusaurus, sass.
 
 ## 0.35.8 (2026-02-17)
 
