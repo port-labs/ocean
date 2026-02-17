@@ -8,6 +8,7 @@ Uses Ocean's built-in HTTP client with caching and rate limiting.
 import asyncio
 import functools
 from typing import AsyncGenerator, List, Dict, Any, Optional
+from urllib.parse import urlparse, parse_qs
 import httpx
 from loguru import logger
 
@@ -141,6 +142,42 @@ class HttpServerClient:
                 return None
         return value
 
+    def _merge_url_params(
+        self, url: str, params: Optional[Dict[str, Any]]
+    ) -> tuple[str, Optional[Dict[str, Any]]]:
+        """Merge URL query params with config params.
+
+        HTTPX replaces URL query params when any params dict is passed.
+        This function extracts URL query params and merges them with config params.
+
+        Args:
+            url: The full URL (may contain query string)
+            params: Config params to merge (may be empty or None)
+
+        Returns:
+            Tuple of (clean_url, merged_params) where:
+            - clean_url: URL without query string (if params were merged)
+            - merged_params: Combined URL + config params, or None if no params
+        """
+        if not params:
+            # No config params - let HTTPX handle URL as-is (preserves query params)
+            return url, None
+
+        parsed_url = urlparse(url)
+        if not parsed_url.query:
+            # No URL query params - use config params as-is
+            return url, params
+
+        # Parse existing URL query params
+        url_params = parse_qs(parsed_url.query, keep_blank_values=True)
+        # Flatten single-value lists from parse_qs
+        url_params = {k: v[0] if len(v) == 1 else v for k, v in url_params.items()}
+        # Merge: URL params as base, config params override if there's a conflict
+        merged = {**url_params, **params}
+        # Return clean URL without query string
+        clean_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
+        return clean_url, merged
+
     async def _make_request(
         self,
         url: str,
@@ -158,26 +195,16 @@ class HttpServerClient:
         }
 
         try:
-            # Convert empty params to None to preserve URL query params
-            # HTTPX strips existing URL query params when params={}, but preserves them when params=None
-            effective_params = params if params else None
+            url, effective_params = self._merge_url_params(url, params)
 
             # Build request - include body if present
-            if body:
-                response = await self.client.request(
-                    method=method,
-                    url=url,
-                    params=effective_params,
-                    headers=merged_headers,
-                    json=body,
-                )
-            else:
-                response = await self.client.request(
-                    method=method,
-                    url=url,
-                    params=effective_params,
-                    headers=merged_headers,
-                )
+            response = await self.client.request(
+                method=method,
+                url=url,
+                params=effective_params,
+                headers=merged_headers,
+                json=body if body else None,
+            )
 
             response.raise_for_status()
             return response
