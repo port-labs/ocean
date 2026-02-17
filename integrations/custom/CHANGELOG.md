@@ -8,12 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.10-beta (2026-02-16)
+## 0.3.10-beta (2026-02-17)
 
 
-### Bug Fixes
+### Improvements
 
-- Fixed URL query parameters being stripped when using dynamic path_parameters in kind URL 
+- Bumped ocean version to ^0.35.8
 
 
 ## 0.3.9-beta (2026-02-15)
