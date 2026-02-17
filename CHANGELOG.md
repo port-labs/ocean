@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.35.9 (2026-02-17)
+
+### Vulnerabilities
+
+Bumped types-aiofiles,aiostream & aiofiles versions
+
 ## 0.35.8 (2026-02-17)
 
 ### Bug fixes
