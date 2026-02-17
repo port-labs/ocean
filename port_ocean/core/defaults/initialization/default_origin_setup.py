@@ -38,7 +38,7 @@ class DefaultOriginSetup(BaseSetup):
     def _default_mapping(self) -> PortAppConfig | None:
         return self._defaults.port_app_config
 
-    async def _setup(self) -> None:
+    async def _setup(self, current_config: dict[str, Any] | None) -> None:
         """Initialize integration with resources created by Default."""
 
         if not self.integration_config.initialize_port_resources:
@@ -48,6 +48,10 @@ class DefaultOriginSetup(BaseSetup):
         has_initialized: bool = False
         try:
             logger.info("Found default resources, starting creation process")
+            if not current_config:
+                await self.port_client.patch_integration(
+                    port_app_config=self._default_mapping,
+                )
             await self._create_resources(self._defaults)
             has_initialized = True
         except AbortDefaultCreationError as e:
@@ -88,9 +92,7 @@ class DefaultOriginSetup(BaseSetup):
             lambda item: isinstance(item, Blueprint),
         )
 
-        mapped_blueprints_exist = await self._mapped_blueprints_exist()
-
-        if blueprints_results or mapped_blueprints_exist:
+        if blueprints_results:
             logger.info(
                 f"Blueprints already exist: {[result.identifier for result in blueprints_results]}. Skipping integration default creation..."
             )
@@ -174,53 +176,6 @@ class DefaultOriginSetup(BaseSetup):
 
         except Exception as err:
             logger.error(f"Failed to create resources: {err}. continuing...")
-
-    async def _mapped_blueprints_exist(self) -> bool:
-        """Check if blueprints mapped in the integration already exist."""
-        integration = await self.port_client.get_current_integration(
-            should_log=False,
-            should_raise=False,
-        )
-        integration_config = integration.get("config", {})
-        resources = integration_config.get("resources", [])
-
-        if not isinstance(resources, list):
-            return True
-
-        mapped_blueprints = []
-        for resource in resources:
-            blueprint = (
-                resource.get("port", {})
-                .get("entity", {})
-                .get("mappings", {})
-                .get("blueprint")
-            )
-            if blueprint:
-                if (
-                    isinstance(blueprint, str)
-                    and blueprint.startswith('"')
-                    and blueprint.endswith('"')
-                ):
-                    blueprint = blueprint.strip('"')
-                mapped_blueprints.append({"identifier": blueprint})
-
-        if not mapped_blueprints:
-            return True
-
-        existing_blueprints, _ = await gather_and_split_errors_from_results(
-            [
-                self.port_client.get_blueprint(
-                    blueprint["identifier"], should_log=False
-                )
-                for blueprint in mapped_blueprints
-            ],
-            lambda item: isinstance(item, Blueprint),
-        )
-
-        if len(existing_blueprints) != len(mapped_blueprints):
-            return False
-
-        return True
 
     @staticmethod
     def _deconstruct_blueprints_to_creation_steps(

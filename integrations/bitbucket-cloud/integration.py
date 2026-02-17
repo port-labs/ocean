@@ -50,6 +50,14 @@ class RepositorySelector(Selector):
         alias="repoQuery",
         description='Query string to narrow repositories as per Bitbucket filtering (e.g., name="my-repo")',
     )
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description=(
+            "List of file paths to fetch from the repository and attach to "
+            "the raw data under __includedFiles. E.g. ['README.md', 'CODEOWNERS']"
+        ),
+    )
 
 
 class PullRequestSelector(RepositorySelector):
@@ -113,6 +121,11 @@ class BitbucketFilePattern(BaseModel):
 
 class BitbucketFileSelector(Selector):
     files: BitbucketFilePattern
+    included_files: list[str] = Field(
+        alias="includedFiles",
+        default_factory=list,
+        description="List of file paths to fetch and attach to the file entity",
+    )
 
 
 class BitbucketFileResourceConfig(ResourceConfig):
@@ -148,6 +161,13 @@ class GitManipulationHandler(JQEntityProcessor):
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         entity_processor: Type[JQEntityProcessor]
         if pattern.startswith(FILE_PROPERTY_PREFIX):
+            logger.warning(
+                f"DEPRECATION: Using 'file://' prefix in mappings is deprecated and will be removed in a future version. "
+                f"Pattern: '{pattern}'. "
+                f"Use the 'includedFiles' selector instead. Example: "
+                f"selector.includedFiles: ['{pattern[len(FILE_PROPERTY_PREFIX):]}'] "
+                f'and mapping: .__includedFiles["{pattern[len(FILE_PROPERTY_PREFIX):]}"]'
+            )
             entity_processor = FileEntityProcessor
         else:
             entity_processor = JQEntityProcessor

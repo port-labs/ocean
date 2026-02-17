@@ -307,6 +307,32 @@ class JiraClient(OAuthClient):
         ):
             yield issues
 
+    async def get_reconciled_issues(
+        self,
+        jql: str,
+        issue_ids: list[int],
+        fields: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Filter known issues against a JQL query with read-after-write consistency."""
+        url = f"{self.api_url}/search/jql"
+        fields_list = (
+            ["*all"]
+            if not fields or fields == "*all"
+            else [field.strip() for field in fields.split(",") if field.strip()]
+        )
+        body = {
+            "jql": jql,
+            "fields": fields_list,
+            "reconcileIssues": issue_ids,
+            "maxResults": len(issue_ids),
+        }
+        response_data = await self._send_api_request("POST", url, json=body)
+        issues = response_data["issues"]
+        logger.info(
+            f"Found {len(issues)} issues matching JQL filter for issue IDs: {issue_ids}"
+        )
+        return issues
+
     async def get_single_user(self, account_id: str) -> dict[str, Any]:
         return await self._send_api_request(
             "GET", f"{self.api_url}/user", params={"accountId": account_id}
