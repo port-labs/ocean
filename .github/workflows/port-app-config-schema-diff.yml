@@ -11,11 +11,6 @@ permissions:
   contents: read
   pull-requests: write
 
-env:
-  BUCKET_URI: s3://ocean-registry/
-  BASE_SCHEMA_DIR: /tmp/specs/base
-  REVISION_SCHEMA_DIR: /tmp/specs/revision
-
 jobs:
   get-checkbox-state:
     outputs:
@@ -66,26 +61,7 @@ jobs:
       matrix:
         integration: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
     steps:
-      - name: Configure AWS Credentials 🔒
-        id: aws-credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Download Base (Main) Port App Config Schema
-        id: download-base-schema
-        run: |
-          if aws s3 cp ${{ env.BUCKET_URI }}/${{ matrix.integration }}/port-app-config.json ${{ env.BASE_SCHEMA_DIR }}/${{ matrix.integration }}.json; then
-            echo "schema_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "Schema not found in S3 for ${{ matrix.integration }}, skipping diff check"
-            echo "schema_exists=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Check Schema Diff
-        if: steps.download-base-schema.outputs.schema_exists == 'true'
         uses: ./.github/actions/check-schema-diff
         with:
           integration: ${{ matrix.integration }}
