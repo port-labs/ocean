@@ -1,0 +1,51 @@
+name: Check Schema Diff
+description: Checks out the repo, installs dependencies, extracts the port-app-config schema, and compares it against the base schema from main.
+
+inputs:
+  integration:
+    description: The integration name
+    required: true
+  folder:
+    description: The integration folder
+    required: true
+  base-schema-dir:
+    description: Directory containing base schemas
+    required: true
+  revision-schema-dir:
+    description: Directory to output revision schemas
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v5
+
+    - name: Install poetry
+      shell: bash
+      run: pipx install 'poetry>=1.0.0,<2.0.0'
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'poetry'
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.folder != '.' && format('integrations/{0}', inputs.folder) || '.' }}
+      run: |
+        make install
+        poetry install jsonschema-diff
+
+    - name: Extract Port App Config Schema
+      shell: bash
+      run: |
+        poetry run port-app-config schema ${{ inputs.integration }} -o ${{ inputs.revision-schema-dir }}/${{ inputs.integration }}.json
+
+    - name: Compare Schema To Main
+      uses: oasdiff/oasdiff-action/breaking@main
+      with:
+        base: ${{ inputs.base-schema-dir }}/${{ inputs.integration }}.json
+        revision: ${{ inputs.revision-schema-dir }}/${{ inputs.integration }}.json
+        fail-on: ERR

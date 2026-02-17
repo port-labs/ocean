@@ -1,0 +1,94 @@
+name: Check API Breakage
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  BUCKET_URI: s3://ocean-registry/
+  BASE_SCHEMA_DIR: /tmp/specs/base
+  REVISION_SCHEMA_DIR: /tmp/specs/revision
+
+jobs:
+  get-checkbox-state:
+    outputs:
+      is_checked: ${{ steps.get-checkbox.outputs.IS_CHECKED }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get PR Breaking Changes Checklist Status
+        id: get-checkbox
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if echo $BODY | grep -iq "\[x\] Breaking change"; then
+            echo 'Breaking changes checkbox is checked'
+            echo "IS_CHECKED=true" >> $GITHUB_OUTPUT
+          else
+            echo 'Breaking changes checkbox is unchecked'
+            echo "IS_CHECKED=false" >> $GITHUB_OUTPUT
+          fi
+
+  detect-changes:
+    needs: [get-checkbox-state]
+    if: needs.get-checkbox-state.outputs.is_checked == 'false'
+    uses: ./.github/workflows/detect-changes-matrix.yml
+
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.changed == 'true'
+    outputs:
+      matrix: ${{ steps.prepare-matrix.outputs.matrix }}
+    steps:
+      - name: Prepare matrix
+        id: prepare-matrix
+        run: |
+          if [[ "${{ needs.detect-changes.outputs.core }}" == "true" || "${{ needs.detect-changes.outputs.core_ci_files_changed }}" == "true" ]]; then
+            files=$(find integrations/*/.port -name "spec.yaml" ! -path "integrations/_infra/*" ! -path "integrations/fake-integration/*")
+            echo "matrix=$(for file in $files; do folder=$(dirname "$file"); grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2; done | jq -R . | jq -s .)" >> $GITHUB_OUTPUT
+          else
+            echo "matrix=$(echo ${{ needs.detect-changes.outputs.integrations }} | jq -r '.')" >> $GITHUB_OUTPUT
+          fi
+
+  check-schema-diff:
+    runs-on: ubuntu-latest
+    needs: [prepare-matrix]
+    if: needs.detect-changes.outputs.changed == 'true'
+    strategy:
+      max-parallel: 5
+      matrix:
+        integration: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+    steps:
+      - name: Configure AWS Credentials 🔒
+        id: aws-credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Download Base (Main) Port App Config Schema
+        id: download-base-schema
+        run: |
+          if aws s3 cp ${{ env.BUCKET_URI }}/${{ matrix.integration }}/port-app-config.json ${{ env.BASE_SCHEMA_DIR }}/${{ matrix.integration }}.json; then
+            echo "schema_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Schema not found in S3 for ${{ matrix.integration }}, skipping diff check"
+            echo "schema_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check Schema Diff
+        if: steps.download-base-schema.outputs.schema_exists == 'true'
+        uses: ./.github/actions/check-schema-diff
+        with:
+          integration: ${{ matrix.integration }}
+          folder: ${{ matrix.folder }}
+          base-schema-dir: ${{ env.BASE_SCHEMA_DIR }}
+          revision-schema-dir: ${{ env.REVISION_SCHEMA_DIR }}
