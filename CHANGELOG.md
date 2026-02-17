@@ -7,11 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.36.0 (2026-02-16)
+## 0.36.0 (2026-02-17)
 
 ### Improvements
 
 - Added `port-app-config schema` and `port-app-config list-kinds` CLI commands to expose integration resource kinds and selectors, with schema validation ensuring kind uniqueness across the resources union
+
+
+## 0.35.8 (2026-02-17)
+
+### Bug fixes
+
+Add `ignore_retry_after_status_codes` to the retry configuration to force exponential backoff for specified status codes.
 
 
 ## 0.35.7 (2026-02-15)
