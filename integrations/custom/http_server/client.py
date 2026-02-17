@@ -166,14 +166,8 @@ class HttpServerClient:
         if not parsed_url.query:
             return url, params
 
-        # Parse existing URL query params and flatten single-value lists
-        raw_params = parse_qs(parsed_url.query, keep_blank_values=True)
-        url_params: Dict[str, Any] = {
-            k: v[0] if len(v) == 1 else v for k, v in raw_params.items()
-        }
-        # Merge: URL params as base, config params override if there's a conflict
+        url_params = parse_qs(parsed_url.query, keep_blank_values=True)
         merged = {**url_params, **params}
-        # Return clean URL without query string
         clean_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
         return clean_url, merged
 
@@ -196,7 +190,6 @@ class HttpServerClient:
         try:
             url, effective_params = self._merge_url_params(url, params)
 
-            # Build request - include body if present
             response = await self.client.request(
                 method=method,
                 url=url,
