@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.301 (2026-02-16)
+## 0.1.302 (2026-02-17)
 
 
 ### Bug fix
 
 - Added metrics check to webhook processors
+
+
+## 0.1.301 (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.8
 
 
 ## 0.1.300 (2026-02-15)
