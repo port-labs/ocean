@@ -26,12 +26,10 @@ class AssessmentWebhookProcessor(BaseWorkspaceWebhookProcessor):
             return False
 
     async def _validate_payload(self, payload: EventPayload) -> bool:
-        if payload.get("trigger_scope") == HEALTH_ASSESSMENT_TRIGGER_SCOPE:
-            return (
-                payload.get("details", {}).get("new_assessment_result", {}).get("id")
-                is not None
-            )
-        return False
+        return (
+            payload.get("details", {}).get("new_assessment_result", {}).get("id")
+            is not None
+        )
 
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
