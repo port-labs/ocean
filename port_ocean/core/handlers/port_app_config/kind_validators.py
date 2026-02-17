@@ -161,7 +161,7 @@ def _resolve_kind_value(
     kind_field: Any,
     model_name: str,
     allow_custom_kinds: bool,
-) -> str | None:
+) -> str:
     """Return the normalised kind string for a single model.
 
     * ``Literal["x"]`` → ``"x"``
