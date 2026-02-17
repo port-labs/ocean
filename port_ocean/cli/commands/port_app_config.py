@@ -10,6 +10,9 @@ import click
 
 from port_ocean.cli.commands.main import cli_start
 from port_ocean.core.handlers import BasePortAppConfig
+from port_ocean.core.handlers.port_app_config.kind_validators import (
+    validate_and_get_resource_kinds,
+)
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.utils.misc import get_integration_class
@@ -102,7 +105,7 @@ def port_app_config_schema(
     """
     integration_class = _load_integration_class(path)
     config_class = _get_config_class(integration_class)
-    config_class.validate_and_get_resource_kinds(integration_class.allow_custom_kinds)
+    validate_and_get_resource_kinds(config_class)
     result = config_class.schema()
 
     _write_json_output(result, output_file, pretty, label="Schema")
@@ -135,8 +138,6 @@ def port_app_config_list_kinds(
     PATH: Path to the integration directory (default: current directory).
     """
     integration_class = _load_integration_class(path)
-    result = _get_config_class(integration_class).validate_and_get_resource_kinds(
-        integration_class.allow_custom_kinds
-    )
+    result = validate_and_get_resource_kinds(_get_config_class(integration_class))
 
     _write_json_output(result, output_file, pretty, label="Kinds")

@@ -23,6 +23,8 @@ class ExampleKindResourceConfig(ResourceConfig):
 
 class {{ cookiecutter.integration_slug | to_camel }}PortAppConfig(PortAppConfig):
     resources: List[ExampleKindResourceConfig] = Field(
+        description="Resources for {{ cookiecutter.integration_slug }}",
+        title="Resources",
         default_factory=list
     )
 

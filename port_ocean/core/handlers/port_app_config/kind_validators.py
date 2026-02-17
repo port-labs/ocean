@@ -4,12 +4,23 @@ import json
 import types as _types
 from typing import Any, Literal, Type, Union, get_args, get_origin
 
-from pydantic import BaseModel
+from port_ocean.core.handlers.port_app_config.models import (
+    CUSTOM_KIND,
+    PortAppConfig,
+    ResourceConfig,
+)
 
-from port_ocean.core.handlers.port_app_config.models import CUSTOM_KIND, ResourceConfig
+
+def validate_and_get_resource_kinds(
+    config_class: Type[PortAppConfig],
+) -> dict[str, dict[str, Any]]:
+    """Validate kind definitions and return a mapping of kind."""
+    models = _get_resource_config_models(config_class)
+    _validate_kind_discriminator(config_class)
+    return _build_kinds_mapping(models, config_class.allow_custom_kinds)
 
 
-def validate_kind_discriminator(config_class: Type[BaseModel]) -> None:
+def _validate_kind_discriminator(config_class: Type[PortAppConfig]) -> None:
     """Validate that ``kind`` is a unique discriminator across the resources union.
 
     Intended to be called at **class-definition time** (via
@@ -33,43 +44,36 @@ def validate_kind_discriminator(config_class: Type[BaseModel]) -> None:
         if kind_field is None:
             raise TypeError(f"{model.__name__} is missing the required 'kind' field")
 
-        kind_type = kind_field.outer_type_
-        kind_origin = get_origin(kind_type)
+        try:
+            kind_value = _resolve_kind_value(
+                kind_field, model.__name__, allow_custom_kinds=True
+            )
+        except ValueError as e:
+            raise TypeError(str(e)) from e
 
-        if kind_origin is Literal:
-            for value in get_args(kind_type):
-                str_value = str(value)
-                if str_value in seen_literal_kinds:
-                    raise TypeError(
-                        f"Duplicate kind '{str_value}': both "
-                        f"{seen_literal_kinds[str_value]} and {model.__name__} "
-                        f"define the same kind value. "
-                        f"'kind' must be a unique discriminator across the "
-                        f"resources union"
-                    )
-                seen_literal_kinds[str_value] = model.__name__
-        elif kind_type is str:
+        if kind_value == CUSTOM_KIND:
             if custom_kind_model is not None:
                 raise TypeError(
-                    f"Multiple custom kind definitions: both "
+                    f"Multiple custom kind definitions detected: both "
                     f"{custom_kind_model} and {model.__name__} define "
                     f"'kind: str'. Only one ResourceConfig with "
                     f"'kind: str' is allowed"
                 )
             custom_kind_model = model.__name__
-
-
-def validate_and_get_resource_kinds(
-    config_class: Type[BaseModel],
-    allow_custom_kinds: bool = False,
-) -> dict[str, dict[str, Any]]:
-    """Validate kind definitions and return a mapping of kind."""
-    models = _get_resource_config_models(config_class)
-    return _build_kinds_mapping(models, allow_custom_kinds)
+        else:
+            if kind_value in seen_literal_kinds:
+                raise TypeError(
+                    f"Duplicate kind '{kind_value}': both "
+                    f"{seen_literal_kinds[kind_value]} and {model.__name__} "
+                    f"define the same kind value. "
+                    f"'kind' must be a unique discriminator across the "
+                    f"resources union"
+                )
+            seen_literal_kinds[kind_value] = model.__name__
 
 
 def _get_resource_config_models(
-    config_class: Type[BaseModel],
+    config_class: Type[PortAppConfig],
 ) -> list[type]:
     """Return the individual ``ResourceConfig`` model types from the
     ``resources`` field annotation.

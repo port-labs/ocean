@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -8,19 +8,6 @@ from port_ocean.clients.port.types import RequestOptions
 
 
 CUSTOM_KIND = "__custom__"
-
-
-class _KindDescriminatorEnforcer(BaseModel):
-    """Base model that enforces all models have a kind field."""
-
-    # TODO: Uncomment this when we completed sweeping on integration classes
-    # def __init_subclass__(cls, **kwargs: Any) -> None:
-    #     super().__init_subclass__(**kwargs)
-    #     from port_ocean.core.handlers.port_app_config.kind_validators import (
-    #         validate_kind_discriminator,
-    #     )
-
-    #     validate_kind_discriminator(cls)
 
 
 class _FieldMetadataEnforcer(BaseModel):
@@ -150,7 +137,9 @@ class ResourceConfig(_FieldMetadataEnforcer):
     )
 
 
-class PortAppConfig(_FieldMetadataEnforcer, _KindDescriminatorEnforcer):
+class PortAppConfig(_FieldMetadataEnforcer):
+    allow_custom_kinds: ClassVar[bool] = False
+
     enable_merge_entity: bool = Field(
         alias="enableMergeEntity",
         default=True,
@@ -202,17 +191,15 @@ class PortAppConfig(_FieldMetadataEnforcer, _KindDescriminatorEnforcer):
             ],
         }
 
-    @classmethod
-    def validate_and_get_resource_kinds(
-        cls,
-        allow_custom_kinds: bool = False,
-    ) -> dict[str, dict[str, Any]]:
-        """Validate resource kind definitions and extract their attributes."""
-        from port_ocean.core.handlers.port_app_config.kind_validators import (
-            validate_and_get_resource_kinds as _validate_and_get_resource_kinds,
-        )
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
 
-        return _validate_and_get_resource_kinds(cls, allow_custom_kinds)
+        # TODO: Uncomment this when we completed sweeping on integration classes
+        # from port_ocean.core.handlers.port_app_config.kind_validators import (
+        #     validate_and_get_resource_kinds,
+        # )
+
+        # validate_and_get_resource_kinds(cls)
 
     class Config:
         allow_population_by_field_name = True
