@@ -340,6 +340,7 @@ class GithubRepoSearchConfig(ResourceConfig):
 
 
 class GithubPortAppConfig(PortAppConfig):
+    allow_custom_kinds = True
     organizations: List[str] = Field(
         default_factory=list,
         description=(
@@ -368,7 +369,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubSecretScanningAlertConfig
         | GithubUserConfig
         | GithubRepoSearchConfig
-        | ResourceConfig
+        # | ResourceConfig
     ] = Field(default_factory=list)
 
 
@@ -464,6 +465,8 @@ class GithubIntegration(BaseIntegration, GithubHandlerMixin):
         )
         self.context.app.webhook_manager = processor_manager
         self.context.app.execution_manager._webhook_manager = processor_manager
+
+    allow_custom_kinds = True
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GithubPortAppConfig
