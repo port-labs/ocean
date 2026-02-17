@@ -35,6 +35,27 @@ class ApiPathParameter(BaseModel):
     )
 
 
+class DynamicQueryParameter(BaseModel):
+    endpoint: str = Field(description="API endpoint to discover parameter values")
+    method: str = Field(default="GET", description="HTTP method")
+    query_params: Optional[Dict[str, Any]] = Field(
+        default=None, description="Query parameters for discovery endpoint"
+    )
+    headers: Optional[Dict[str, str]] = Field(
+        default=None, description="Headers for discovery endpoint"
+    )
+    data_path: Optional[str] = Field(
+        default=None,
+        description="JQ path to extract data array from response (e.g., '.tickets', '.data')",
+    )
+    field: str = Field(
+        description="JQ expression to extract parameter value from each record"
+    )
+    filter: Optional[str] = Field(
+        default=None, description="JQ boolean expression to filter records"
+    )
+
+
 class HttpServerSelector(Selector):
     """Selector for HTTP server resources - extends base Selector"""
 
@@ -44,6 +65,9 @@ class HttpServerSelector(Selector):
     method: str = Field(default="GET", description="HTTP method")
     query_params: Optional[Dict[str, Any]] = Field(
         default=None, description="Query parameters"
+    )
+    dynamic_query_param: Optional[Dict[str, DynamicQueryParameter]] = Field(
+        default=None, description="Dynamic query parameter resolved from API endpoint"
     )
     headers: Optional[Dict[str, str]] = Field(default=None, description="HTTP headers")
     path_parameters: Optional[Dict[str, ApiPathParameter]] = Field(

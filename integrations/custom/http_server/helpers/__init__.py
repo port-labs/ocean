@@ -6,6 +6,7 @@ from http_server.helpers.endpoint_resolver import (
     generate_resolved_endpoints,
     query_api_for_parameters,
     resolve_dynamic_endpoints,
+    resolve_dynamic_query_params,
 )
 from http_server.helpers.template_utils import (
     evaluate_templates_in_dict,
@@ -26,6 +27,7 @@ __all__ = [
     "generate_resolved_endpoints",
     "query_api_for_parameters",
     "resolve_dynamic_endpoints",
+    "resolve_dynamic_query_params",
     "evaluate_templates_in_dict",
     "validate_templates_in_dict",
     "evaluate_template",

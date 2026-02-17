@@ -11,9 +11,11 @@ from http_server.helpers.endpoint_resolver import (
     generate_resolved_endpoints,
     query_api_for_parameters,
     resolve_dynamic_endpoints,
+    resolve_dynamic_query_params,
 )
 from http_server.overrides import (
     ApiPathParameter,
+    DynamicQueryParameter,
     HttpServerSelector,
 )
 
@@ -397,3 +399,89 @@ class TestResolveDynamicEndpoints:
             [("/api/v1/orgs/org-1/teams/{team_id}/members", {"org_id": "org-1"})]
         ]
         mock_query.assert_called_once()
+
+
+@pytest.mark.asyncio
+class TestResolveDynamicQueryParams:
+    async def test_static_only_yields_once(self) -> None:
+        static_params = {"type": "LOCAL", "limit": 100}
+        results = [p async for p in resolve_dynamic_query_params(static_params, None)]
+        assert results == [{"type": "LOCAL", "limit": 100}]
+
+    async def test_none_params_yields_empty_dict(self) -> None:
+        results = [p async for p in resolve_dynamic_query_params(None, None)]
+        assert results == [{}]
+
+    async def test_empty_params_yields_empty_dict(self) -> None:
+        results = [p async for p in resolve_dynamic_query_params({}, None)]
+        assert results == [{}]
+
+    @patch("http_server.helpers.endpoint_resolver.query_api_for_dynamic_query_param")
+    async def test_single_dynamic_param(self, mock_query: MagicMock) -> None:
+        async def mock_query_gen(
+            param_config: DynamicQueryParameter,
+        ) -> AsyncGenerator[List[str], None]:
+            yield ["proj-1", "proj-2"]
+
+        mock_query.side_effect = mock_query_gen
+
+        static_params = {"type": "LOCAL"}
+        dynamic_param = {
+            "project": DynamicQueryParameter(
+                endpoint="/api/projects", method="GET", field=".key"
+            )
+        }
+
+        results = [
+            p async for p in resolve_dynamic_query_params(static_params, dynamic_param)
+        ]
+
+        assert len(results) == 2
+        assert {"type": "LOCAL", "project": "proj-1"} in results
+        assert {"type": "LOCAL", "project": "proj-2"} in results
+
+    @patch("http_server.helpers.endpoint_resolver.query_api_for_dynamic_query_param")
+    async def test_dynamic_only_no_static(self, mock_query: MagicMock) -> None:
+        async def mock_query_gen(
+            param_config: DynamicQueryParameter,
+        ) -> AsyncGenerator[List[str], None]:
+            yield ["eng", "platform"]
+
+        mock_query.side_effect = mock_query_gen
+
+        dynamic_param = {
+            "project": DynamicQueryParameter(
+                endpoint="/api/projects", method="GET", field=".key"
+            )
+        }
+
+        results = [p async for p in resolve_dynamic_query_params(None, dynamic_param)]
+
+        assert len(results) == 2
+        assert {"project": "eng"} in results
+        assert {"project": "platform"} in results
+
+    @patch("http_server.helpers.endpoint_resolver.query_api_for_dynamic_query_param")
+    async def test_no_values_found_fallback_to_static(
+        self, mock_query: MagicMock
+    ) -> None:
+        async def mock_query_gen(
+            param_config: DynamicQueryParameter,
+        ) -> AsyncGenerator[List[str], None]:
+            return
+            yield
+
+        mock_query.side_effect = mock_query_gen
+
+        static_params = {"type": "LOCAL"}
+        dynamic_param = {
+            "project": DynamicQueryParameter(
+                endpoint="/api/projects", method="GET", field=".key"
+            )
+        }
+
+        results = [
+            p async for p in resolve_dynamic_query_params(static_params, dynamic_param)
+        ]
+
+        assert results == [{"type": "LOCAL"}]

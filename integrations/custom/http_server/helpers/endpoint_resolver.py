@@ -1,7 +1,7 @@
 """
 Endpoint Resolution Module
 
-Handles dynamic endpoint resolution for path parameters.
+Handles dynamic endpoint resolution for path and query parameters.
 """
 
 import re
@@ -11,7 +11,11 @@ from loguru import logger
 from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
     JQEntityProcessorSync,
 )
-from http_server.overrides import HttpServerSelector, ApiPathParameter
+from http_server.overrides import (
+    HttpServerSelector,
+    ApiPathParameter,
+    DynamicQueryParameter,
+)
 
 
 def extract_path_parameters(endpoint: str) -> List[str]:
@@ -161,6 +165,44 @@ async def query_api_for_parameters(
         )
 
 
+async def query_api_for_dynamic_query_param(
+    param_config: DynamicQueryParameter,
+) -> AsyncGenerator[List[str], None]:
+    # Lazy import to avoid circular dependency
+    from initialize_client import init_client
+
+    http_client = init_client()
+    logger.info(f"Querying API for dynamic query param from {param_config.endpoint}")
+
+    try:
+        async for batch in http_client.fetch_paginated_data(
+            endpoint=param_config.endpoint,
+            method=param_config.method,
+            query_params=param_config.query_params,
+            headers=param_config.headers,
+        ):
+            values = [
+                filtered_value
+                for response_item in batch
+                for item in _get_items_from_response(
+                    response_item, param_config.data_path
+                )
+                if (
+                    filtered_value := _get_filtered_value(
+                        item, param_config.field, param_config.filter
+                    )
+                )
+                is not None
+            ]
+            if values:
+                yield values
+
+    except Exception as e:
+        logger.error(
+            f"Error querying API for dynamic query param from {param_config.endpoint}: {e}"
+        )
+
+
 async def resolve_dynamic_endpoints(
     selector: HttpServerSelector, kind: str
 ) -> AsyncGenerator[List[tuple[str, Dict[str, str]]], None]:
@@ -218,3 +260,29 @@ async def resolve_dynamic_endpoints(
 
     if not has_values:
         logger.error(f"No valid values found for path parameter '{param_name}'")
+
+
+async def resolve_dynamic_query_params(
+    query_params: Optional[Dict[str, Any]],
+    dynamic_query_param: Optional[Dict[str, DynamicQueryParameter]],
+) -> AsyncGenerator[Dict[str, Any], None]:
+    static_params = query_params or {}
+
+    if not dynamic_query_param:
+        yield static_params
+        return
+
+    param_name, param_config = next(iter(dynamic_query_param.items()))
+
+    has_values = False
+    async for value_batch in query_api_for_dynamic_query_param(param_config):
+        for value in value_batch:
+            has_values = True
+            yield {**static_params, param_name: value}
+
+    if not has_values:
+        logger.warning(
+            f"No values found for dynamic query param '{param_name}', "
+            "using static params only"
+        )
+        yield static_params

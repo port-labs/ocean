@@ -112,7 +112,7 @@ class HttpServerClient:
         pagination_type = self.pagination_config.get("pagination_type", "none")
 
         logger.info(
-            f"Fetching data from {method} {url} with pagination: {pagination_type}"
+            f"Fetching data from {method} {url} with pagination: {pagination_type}, query_params: {params}"
         )
 
         # Get pagination handler (leverages Ocean's HTTP client)
