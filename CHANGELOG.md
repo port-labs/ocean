@@ -11,7 +11,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Vulnerabilities
 
-Bumped types-aiofiles,aiostream & aiofiles versions
+- Bumped types-aiofiles,aiostream & aiofiles versions
+- Bumped versions for ocean docs
 
 ## 0.35.8 (2026-02-17)
 
