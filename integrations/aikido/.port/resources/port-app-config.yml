@@ -1,39 +1,121 @@
+deleteDependentEntities: false
+createMissingRelatedEntities: true
+enableMergeEntity: true
 resources:
   - kind: repositories
+    selector:
+      query: 'true'
+      includeInactive: false
+    port:
+      entity:
+        mappings:
+          blueprint: '"aikido_repository_ocean_poc"'
+          identifier: .id | tostring
+          title: .name
+          properties:
+            provider: .provider
+            external_repo_id: .external_repo_id
+            active: .active
+            repository_url: .url
+            branch: .branch
+            last_scan_at: (.last_scanned_at | todate?)
+  - kind: container
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          blueprint: '"aikidoRepository"'
+          blueprint: '"aikido_container_ocean_poc"'
           identifier: .id | tostring
           title: .name
           properties:
-            name: .name
             provider: .provider
-            externalRepoId: .external_repo_id
+            cloud_id: .cloud_id
+            registry_id: .registry_id
+            registry_name: .registry_name
+            tag: .tag
+            distro: .distro
+            distro_version: .distro_version
+            last_scanned_at: .last_scanned_at
+            last_scanned_tag: .last_scanned_tag
+            last_pushed_at: .last_pushed_at
+          relations:
+            aikido_repository:
+              combinator: '"and"'
+              rules:
+                - operator: '"="'
+                  property: '"$identifier"'
+                  value: .linked_code_repo_id | tostring
+  - kind: team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"aikido_team_ocean_poc"'
+          identifier: .id | tostring
+          title: .name
+          properties:
+            external_source: .external_source
+            external_source_id: .external_source_id
+            responsibilities: .responsibilities
             active: .active
-            url: .url
-            branch: .branch
-            lastScannedAt: .last_scanned_at
+  - kind: issue_groups
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"aikido_issue_group_ocean_poc"'
+          identifier: .id | tostring
+          title: .title
+          properties:
+            description: .description
+            type: .type
+            severity_score: .severity_score
+            group_status: .group_status
+            severity: .severity
+            locations: .locations
+            priority: .priority
+            time_to_fix_minutes: .time_to_fix_minutes
+            how_to_fix: .how_to_fix
+          relations:
+            aikido_repositories: >-
+              [.locations[]? | select(.type == "code_repository") | (.id | tostring)]
   - kind: issues
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          blueprint: '"aikidoIssue"'
-          identifier: .id | tostring
-          title: .rule | tostring
+          blueprint: '"aikido_issue_ocean_poc"'
+          identifier: (.id | tostring)
+          title: (.affected_package // .rule // .cve_id // ("Issue " + (.id | tostring)))
           properties:
-            status: .status
-            severity: .severity
-            severityScore: .severity_score
-            affectedFile: .affected_file
-            attackSurface: .attack_surface
-            type: .type
+            affected_file: .affected_file
+            affected_package: .affected_package
+            attack_surface: (.attack_surface // "" | if . == "" then "not_applicable" else . end)
+            closed_at: (if .closed_at == null then null else (.closed_at | todate) end)
+            code_repo_id: .code_repo_id
+            code_repo_name: .code_repo_name
+            container_repo_name: .container_repo_name
+            cve_id: .cve_id
+            cwe_ids: .cwe_classes
+            detected_at: (if .first_detected_at == null then null else (.first_detected_at | todate) end)
+            group_id: .group_id
+            ignored_at: (if .ignored_at == null then null else (.ignored_at | todate) end)
+            remediate_by: (if .sla_remediate_by == null then null else (.sla_remediate_by | todate) end)
             rule: .rule
-            codeRepoId: .code_repo_id
-            codeRepoName: .code_repo_name
+            severity: .severity
+            severity_score: .severity_score
+            sla_days: (if .sla_days == null then null else .sla_days end)
+            snoozed_until: (if .snooze_until == null then null else (.snooze_until | todate) end)
+            status: .status
+            type: .type
           relations:
-            aikidoRepository: .code_repo_id
+            aikido_repository:
+              combinator: '"and"'
+              rules:
+                - operator: '"="'
+                  property: '"$identifier"'
+                  value: (if .code_repo_id == null then "unknown" else (.code_repo_id | tostring) end)

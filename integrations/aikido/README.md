@@ -39,6 +39,25 @@ This integration provides the following resources:
 
 - **repositories**: Aikido repositories with code scanning capabilities
 - **issues**: Security issues and vulnerabilities found in repositories
+- **issue_groups**: Open issue groups aggregated by Aikido
+- **team**: Aikido teams and their scoped responsibilities
+- **container**: Aikido container repositories and scan metadata
+
+### Repository selector filters
+
+You can control repository retrieval using `includeInactive` in the `repositories` selector.
+
+Example:
+
+```yaml
+resources:
+	- kind: repositories
+		selector:
+			query: 'true'
+			includeInactive: true
+```
+
+This maps to the Aikido repositories query parameter `include_inactive`.
 
 ## Authentication
 

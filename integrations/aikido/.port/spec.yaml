@@ -9,6 +9,9 @@ features:
     resources:
       - kind: repositories
       - kind: issues
+      - kind: issue_groups
+      - kind: team
+      - kind: container
 configurations:
   - name: aikidoClientId
     required: true

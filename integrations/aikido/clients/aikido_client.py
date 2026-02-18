@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, AsyncGenerator, List, Dict, Optional
 from httpx import HTTPStatusError, AsyncClient
 from clients.auth_client import AikidoAuth
@@ -5,11 +6,17 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 
 API_VERSION = "v1"
-PAGE_SIZE = 100
+FIRST_PAGE = 0
+PAGE_SIZE = 20
+RATE_LIMIT_RETRIES = 3
+DEFAULT_RETRY_AFTER_SECONDS = 60
+
 ISSUES_ENDPOINT = f"api/public/{API_VERSION}/issues/export"
 ISSUE_DETAILS_ENDPOINT = f"api/public/{API_VERSION}/issues"
 REPOSITORIES_ENDPOINT = f"api/public/{API_VERSION}/repositories/code"
-REPO_FIRST_PAGE = 0
+OPEN_ISSUE_GROUPS_ENDPOINT = f"api/public/{API_VERSION}/open-issue-groups"
+TEAMS_ENDPOINT = f"api/public/{API_VERSION}/teams"
+CONTAINERS_ENDPOINT = f"api/public/{API_VERSION}/containers"
 
 
 class AikidoClient:
@@ -42,36 +49,60 @@ class AikidoClient:
             "Content-Type": "application/json",
         }
 
-        try:
-            response = await self.http_client.request(
-                method=method,
-                url=url,
-                params=params,
-                json=json_data,
-                headers=headers,
-                timeout=30,
-            )
-            response.raise_for_status()
-            return response.json()
-        except HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning(
-                    f"Requested resource not found: {url}; message: {str(e)}"
-                )
-                return {}
-            logger.error(f"API request failed for {url}: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error during API request to {url}: {e}")
-            raise
+        retries = 0
 
-    async def get_repositories(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        while True:
+            try:
+                response = await self.http_client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json_data,
+                    headers=headers,
+                    timeout=30,
+                )
+                response.raise_for_status()
+                return response.json()
+            except HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    if retries >= RATE_LIMIT_RETRIES:
+                        logger.error(
+                            f"Rate limit exceeded for {url}; retries exhausted"
+                        )
+                        raise
+                    retry_after_header = e.response.headers.get("Retry-After")
+                    try:
+                        wait_time = int(retry_after_header or DEFAULT_RETRY_AFTER_SECONDS)
+                    except ValueError:
+                        wait_time = DEFAULT_RETRY_AFTER_SECONDS
+                    logger.warning(
+                        f"Rate limited by Aikido API. Waiting {wait_time} seconds before retrying {url}"
+                    )
+                    await asyncio.sleep(wait_time)
+                    retries += 1
+                    continue
+                if e.response.status_code == 404:
+                    logger.warning(
+                        f"Requested resource not found: {url}; message: {str(e)}"
+                    )
+                    return {}
+                logger.error(f"API request failed for {url}: {e}")
+                raise
+            except Exception as e:
+                logger.error(f"Unexpected error during API request to {url}: {e}")
+                raise
+
+    async def get_repositories(
+        self,
+        query_params: Optional[Dict[str, Any]] = None,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """
         Fetch repositories from the Aikido API.
         Yields batches of repositories as lists of dicts.
         """
         endpoint = REPOSITORIES_ENDPOINT
-        params = {"per_page": PAGE_SIZE, "page": REPO_FIRST_PAGE}
+        base_params = query_params.copy() if query_params else {}
+        params = {**base_params, "per_page": PAGE_SIZE, "page": FIRST_PAGE}
 
         while True:
             try:
@@ -120,6 +151,97 @@ class AikidoClient:
         all_issues = await self.get_all_issues()
         for i in range(0, len(all_issues), batch_size):
             yield all_issues[i : i + batch_size]
+
+    async def get_open_issue_groups(
+        self
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch paginated open issue groups from the Aikido API."""
+
+        params = {"per_page": PAGE_SIZE, "page": FIRST_PAGE}
+
+        while True:
+            try:
+                issue_groups = await self._send_api_request(
+                    OPEN_ISSUE_GROUPS_ENDPOINT, params=params
+                )
+
+                if not isinstance(issue_groups, list):
+                    break
+
+                if not issue_groups:
+                    logger.info(
+                        f"No open issue groups returned for page {params['page']}"
+                    )
+                    break
+
+                logger.info(
+                    f"Fetched {len(issue_groups)} open issue groups from Aikido API"
+                )
+                yield issue_groups
+
+                if len(issue_groups) < PAGE_SIZE:
+                    break
+
+                params["page"] += 1
+            except Exception as e:
+                logger.error(f"Error fetching open issue groups: {e}")
+                break
+
+    async def get_teams(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch paginated teams from the Aikido API."""
+
+        params = {"per_page": PAGE_SIZE, "page": FIRST_PAGE}
+
+        while True:
+            try:
+                teams = await self._send_api_request(TEAMS_ENDPOINT, params=params)
+
+                if not isinstance(teams, list):
+                    break
+
+                if not teams:
+                    logger.info(f"No teams returned for page {params['page']}")
+                    break
+
+                logger.info(f"Fetched {len(teams)} teams from Aikido API")
+                yield teams
+
+                if len(teams) < PAGE_SIZE:
+                    break
+
+                params["page"] += 1
+            except Exception as e:
+                logger.error(f"Error fetching teams: {e}")
+                break
+
+    async def get_containers(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Fetch paginated containers from the Aikido API."""
+
+        params = {"per_page": PAGE_SIZE, "page": FIRST_PAGE}
+
+        while True:
+            try:
+                containers = await self._send_api_request(
+                    CONTAINERS_ENDPOINT, params=params
+                )
+
+                if not isinstance(containers, list):
+                    break
+
+                if not containers:
+                    logger.info(f"No containers returned for page {params['page']}")
+                    break
+
+                logger.info(f"Fetched {len(containers)} containers from Aikido API")
+                yield containers
+
+                if len(containers) < PAGE_SIZE:
+                    break
+
+                params["page"] += 1
+            except Exception as e:
+                logger.error(f"Error fetching containers: {e}")
+                break
 
     async def get_issue(self, issue_id: str) -> Dict[str, Any]:
         """
