@@ -160,7 +160,7 @@
             }
         }
     },
-     {
+    {
         "identifier": "aikido_team_ocean_poc",
         "title": "Aikido Team",
         "icon": "Aikido",
@@ -206,7 +206,7 @@
                 "required": false,
                 "many": true
             },
-                "aikido_containers": {
+            "aikido_containers": {
                 "title": "Containers",
                 "target": "aikido_container_ocean_poc",
                 "required": false,
@@ -501,5 +501,4 @@
             }
         }
     }
-   
 ]
