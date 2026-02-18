@@ -6,6 +6,7 @@ from port_ocean.clients.port.mixins.workflow_nodes import WorkflowNodesClientMix
 from port_ocean.core.models import (
     ActionRun,
     WorkflowNodeRun,
+    WorkflowNodeRunLog,
     RunStatus,
     WorkflowNodeRunStatus,
     WorkflowNodeRunResult,
@@ -58,7 +59,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
             log_level = "WARN" if level == "WARNING" else level
             await self.post_wf_node_run_logs(
                 run.id,
-                [{"level": log_level, "message": message}],
+                [WorkflowNodeRunLog(level=log_level, message=message)],
                 should_raise=should_raise,
             )
         else:
@@ -73,7 +74,7 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         if self._is_wf_node_run(run):
             await self.post_wf_node_run_logs(
                 run.id,
-                [{"level": "ERROR", "message": error_summary}],
+                [WorkflowNodeRunLog(level="ERROR", message=error_summary)],
                 should_raise=should_raise,
             )
             await self.patch_wf_node_run(
@@ -146,9 +147,10 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
                 else WorkflowNodeRunResult.FAILED
             )
             if message:
+                log_level = "INFO" if success else "ERROR"
                 await self.post_wf_node_run_logs(
                     run.id,
-                    [{"level": "INFO" if success else "ERROR", "message": message}],
+                    [WorkflowNodeRunLog(level=log_level, message=message)],
                 )
             await self.patch_wf_node_run(
                 run.id,
