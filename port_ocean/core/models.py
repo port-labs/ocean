@@ -156,9 +156,8 @@ class WorkflowNodeRunResult(StrEnum):
 
 
 class WorkflowNodeRunLog(BaseModel):
-    logLevel: Literal["INFO", "WARN", "ERROR", "DEBUG"]
-    log: str
-    tags: dict[str, str] = Field(default_factory=dict)
+    level: Literal["INFO", "WARN", "ERROR", "DEBUG"]
+    message: str
 
 
 class IntegrationActionInvocationPayload(BaseModel):
@@ -201,3 +200,4 @@ class WorkflowNodeRun(BaseModel):
     @property
     def execution_properties(self) -> dict[str, Any]:
         return self.config.get("integrationActionExecutionProperties", {})
+

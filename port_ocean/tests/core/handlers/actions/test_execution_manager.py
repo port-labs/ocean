@@ -86,6 +86,7 @@ def mock_port_client() -> MagicMock:
     mock_port_client.acknowledge_wf_node_run = AsyncMock()
     mock_port_client.get_wf_node_run_by_external_id = AsyncMock()
     mock_port_client.patch_wf_node_run = AsyncMock()
+    mock_port_client.post_wf_node_run_logs = AsyncMock()
     mock_port_client.claim_pending_runs = AsyncMock(return_value=[])
     mock_port_client.acknowledge_run = AsyncMock()
     mock_port_client.post_run_log = AsyncMock()
@@ -899,3 +900,4 @@ class TestExecutionManager:
         assert await execution_manager._global_queue.size() == 2
         assert action_run.id in execution_manager._deduplication_set
         assert wf_node_run.id in execution_manager._deduplication_set
+

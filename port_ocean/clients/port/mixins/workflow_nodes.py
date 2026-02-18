@@ -62,3 +62,16 @@ class WorkflowNodesClientMixin:
             json=payload,
         )
         handle_port_status_code(response, should_raise=should_raise)
+
+    async def post_wf_node_run_logs(
+        self,
+        run_id: str,
+        logs: list[dict[str, str]],
+        should_raise: bool = False,
+    ) -> None:
+        response = await self.client.post(
+            f"{self.auth.api_url}/workflows/nodes/runs/{run_id}/logs",
+            headers=await self.auth.headers(),
+            json={"logs": logs},
+        )
+        handle_port_status_code(response, should_raise=should_raise)
