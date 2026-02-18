@@ -275,7 +275,8 @@ jobs:
 
               integration_spec="spec.json"
               integration_spec_dest="$version_folder/$integration_spec"
-              integration_latest_spec_dest="$type.json"
+              integration_latest_spec_dest="$integration_folder/$integration_spec"
+              integration_latest_spec_legacy_dest="$type.json" # TODO: legacy support, remove once not in use
 
               port_app_config_schema="port-app-config.json"
               port_app_config_schema_dest="$version_folder/$port_app_config_schema"
@@ -296,9 +297,15 @@ jobs:
                   aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_spec_dest"
                   echo "Successfully uploaded $integration_spec_dest to s3 bucket."
 
-                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_spec_legacy_dest" # TODO: legacy support, remove once not in use
-                  echo "Successfully uploaded $integration_spec_legacy_dest to s3 bucket."
+                  # Upload integration's latest spec to s3
+                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_latest_spec_dest" # TODO: legacy support, remove once not in use
+                  echo "Successfully uploaded $integration_latest_spec_dest to s3 bucket."
 
+                  # Upload integration's latest spec to s3 (legacy support, remove once not in use)
+                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_latest_spec_legacy_dest"
+                  echo "Successfully uploaded $integration_latest_spec_legacy_dest to s3 bucket."
+
+                  # Generate port-app-config schema and kinds schema
                   docker run --rm -v $(pwd):/artifacts "ghcr.io/port-labs/port-ocean-$type:$version" \
                     sh -c "ocean port-app-config schema -o /artifacts/$port_app_config_schema && ocean port-app-config list-kinds -o /artifacts/$kinds_schema"
 
@@ -307,13 +314,15 @@ jobs:
                       aws s3 cp "$port_app_config_schema" "s3://$aws_s3_bucket/$port_app_config_schema_dest"
                       echo "Successfully uploaded $port_app_config_schema_dest to s3 bucket."
 
+                      # Upload integration's latest port-app-config schema to s3
                       aws s3 cp "$port_app_config_schema" "s3://$aws_s3_bucket/$port_app_config_latest_schema_dest"
                       echo "Successfully uploaded $port_app_config_latest_schema_dest to s3 bucket."
 
-                      # Upload kinds schema to s3
+                      # Upload integration's kinds schema to s3
                       aws s3 cp "$kinds_schema" "s3://$aws_s3_bucket/$kinds_schema_dest"
                       echo "Successfully uploaded $kinds_schema_dest to s3 bucket."
 
+                      # Upload integration's latest kinds schema to s3
                       aws s3 cp "$kinds_schema" "s3://$aws_s3_bucket/$kinds_latest_schema_dest"
                       echo "Successfully uploaded $kinds_latest_schema_dest to s3 bucket."
                   else
