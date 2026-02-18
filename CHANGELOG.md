@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.36.1 (2026-02-18)
+
+### Bug fixes
+
+- Port's Workflows logs endpoints changes
+
 ## 0.36.0 (2026-02-17)
 
 ### Improvements
