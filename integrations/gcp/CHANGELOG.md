@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed resource overload and crashes by bounding project concurrency, sharing gRPC client singletons, and adding post-fork safety
+- Fixed resource overload and crashes by bounding project concurrency, sharing gRPC client singletons, and adding post-fork safety 
 
 
 ## 0.1.254 (2026-02-17)
