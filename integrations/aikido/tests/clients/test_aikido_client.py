@@ -346,3 +346,41 @@ async def test_get_repositories_paginates_with_query_params(
         {"include_inactive": True, "per_page": 20, "page": 0},
         {"include_inactive": True, "per_page": 20, "page": 1},
     ]
+
+
+@pytest.mark.asyncio
+async def test_get_containers_paginates_with_query_params(
+    aikido_client: AikidoClient,
+) -> None:
+    first_page = [{"id": str(i), "name": f"container-{i}"} for i in range(1, 21)]
+    second_page = [{"id": "21", "name": "container-21"}]
+    captured_params: list[dict[str, Any]] = []
+    responses = [first_page, second_page]
+
+    with patch.object(
+        aikido_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+
+        async def _side_effect(
+            endpoint: str,
+            params: dict[str, Any] | None = None,
+            **_kwargs: Any,
+        ):
+            if params is not None:
+                captured_params.append(params.copy())
+            return responses.pop(0)
+
+        mock_request.side_effect = _side_effect
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in aikido_client.get_containers(
+            query_params={"filter_status": "inactive"}
+        ):
+            batches.append(batch)
+
+    assert batches == [first_page, second_page]
+    assert mock_request.call_count == 2
+    assert captured_params == [
+        {"filter_status": "inactive", "per_page": 20, "page": 0},
+        {"filter_status": "inactive", "per_page": 20, "page": 1},
+    ]

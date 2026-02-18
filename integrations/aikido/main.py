@@ -7,7 +7,7 @@ from typing import cast
 from initialize_client import init_aikido_client
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.repository_webhook_processor import RepositoryWebhookProcessor
-from integration import ObjectKind, RepositoryResourceConfig
+from integration import ObjectKind, RepositoryResourceConfig, ContainerResourceConfig
 
 
 @ocean.on_resync(ObjectKind.REPOSITORY)
@@ -57,8 +57,10 @@ async def on_containers_resync(
     kind: str,
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     client = init_aikido_client()
+    selector = cast(ContainerResourceConfig, event.resource_config).selector
+    query_params = {"filter_status": selector.filter_status}
     logger.info("Fetching containers from Aikido API")
-    async for container_batch in client.get_containers():
+    async for container_batch in client.get_containers(query_params=query_params):
         logger.info(f"Yielding containers batch of size: {len(container_batch)}")
         yield container_batch
 

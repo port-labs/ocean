@@ -31,8 +31,21 @@ class RepositoryResourceConfig(ResourceConfig):
     selector: RepositorySelector
 
 
+class ContainerSelector(Selector):
+    filter_status: Literal["all", "active", "inactive"] = Field(
+        default="active",
+        alias="filterStatus",
+        description="Filter containers by status: all, active, or inactive",
+    )
+
+
+class ContainerResourceConfig(ResourceConfig):
+    kind: Literal["container"]
+    selector: ContainerSelector
+
+
 class AikidoPortAppConfig(PortAppConfig):
-    resources: list[RepositoryResourceConfig | ResourceConfig] = Field(
+    resources: list[RepositoryResourceConfig | ContainerResourceConfig | ResourceConfig] = Field(
         default_factory=list
     )
 

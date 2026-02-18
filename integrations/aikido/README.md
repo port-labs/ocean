@@ -59,6 +59,29 @@ resources:
 
 This maps to the Aikido repositories query parameter `include_inactive`.
 
+### Container selector filters
+
+You can control container retrieval using `filterStatus` in the `container` selector.
+
+Allowed values:
+- `all`
+- `active`
+- `inactive`
+
+Default value: `active`.
+
+Example:
+
+```yaml
+resources:
+	- kind: container
+		selector:
+			query: 'true'
+			filterStatus: active
+```
+
+This maps to the Aikido containers query parameter `filter_status`.
+
 ## Authentication
 
 The integration automatically handles OAuth2 token generation and renewal using your client credentials. Tokens are cached and refreshed as needed.

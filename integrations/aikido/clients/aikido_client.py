@@ -214,10 +214,14 @@ class AikidoClient:
                 logger.error(f"Error fetching teams: {e}")
                 break
 
-    async def get_containers(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    async def get_containers(
+        self,
+        query_params: Optional[Dict[str, Any]] = None,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch paginated containers from the Aikido API."""
 
-        params = {"per_page": PAGE_SIZE, "page": FIRST_PAGE}
+        base_params = query_params.copy() if query_params else {}
+        params = {**base_params, "per_page": PAGE_SIZE, "page": FIRST_PAGE}
 
         while True:
             try:
