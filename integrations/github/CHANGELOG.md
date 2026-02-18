@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.38 (2026-02-18)
+
+
+### Bug Fixes
+
+- Handle repository visibility transitions in `repository` webhooks by emitting delete events when a repository no longer matches the configured visibility filter.
+
+### Improvements
+
+- Simplified open pull request fetching (REST/GraphQL) and improved GraphQL logging for open and closed pull request exports.
+
+
 ## 5.0.37 (2026-02-17)
 
 
