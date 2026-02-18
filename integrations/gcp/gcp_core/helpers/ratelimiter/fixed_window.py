@@ -1,35 +1,3 @@
-"""
-Fixed Window Rate Limiter
-
-A standalone, async-safe fixed window rate limiter that allows up to `max_rate`
-operations per `time_period` seconds. The window resets completely when the
-time period expires.
-
-This implementation is designed to be:
-- Async-safe: Multiple coroutines can safely share a single instance
-- Efficient: Uses asyncio primitives for coordination without busy-waiting
-- Accurate: Precise window boundary calculations
-- Standalone: No external dependencies beyond Python standard library and loguru
-
-Usage examples:
-    # Create a limiter with 1000 operations per minute
-    limiter = FixedWindowLimiter(max_rate=1000, time_period=60.0)
-
-    # Use as an async context manager
-    async with limiter:
-        # perform a rate-limited operation
-        pass
-
-    # Use the explicit acquire method
-    await limiter.acquire()
-    # perform a rate-limited operation
-
-    # Decorate an async function
-    @limiter.limit_function
-    async def my_rate_limited_function(arg1, arg2):
-        return await some_api_call(arg1, arg2)
-"""
-
 import asyncio
 import time
 from contextlib import AbstractAsyncContextManager
@@ -64,13 +32,32 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
     a fixed window limiter uses discrete time windows. When a window expires,
     the counter resets to zero.
 
-    This limiter is async-safe: multiple coroutines can safely share a single
-    instance. It uses asyncio.Lock and asyncio.Condition for coordination.
+    This implementation is designed to be:
+    - Async-safe: Multiple coroutines can safely share a single instance.
+      Uses asyncio.Lock and asyncio.Condition for coordination.
+    - Efficient: Uses asyncio primitives for coordination without busy-waiting.
+    - Accurate: Precise window boundary calculations.
+    - Standalone: No external dependencies beyond Python standard library and loguru.
 
     Attributes:
         max_rate: Maximum number of operations allowed per window.
         time_period: Duration of each window in seconds.
         alignment: How window boundaries are calculated.
+
+    Usage examples::
+
+        limiter = FixedWindowLimiter(max_rate=1000, time_period=60.0)
+
+        async with limiter:
+            # perform a rate-limited operation
+            pass
+
+        await limiter.acquire()
+        # perform a rate-limited operation
+
+        @limiter.limit_function
+        async def my_rate_limited_function(arg1, arg2):
+            return await some_api_call(arg1, arg2)
     """
 
     __slots__ = (
