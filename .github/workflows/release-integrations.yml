@@ -272,6 +272,7 @@ jobs:
 
               integration_folder="$type"
               version_folder="$integration_folder/$version"
+
               integration_spec="spec.json"
               integration_spec_dest="$version_folder/$integration_spec"
               integration_latest_spec_dest="$type.json"
