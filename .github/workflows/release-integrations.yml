@@ -298,8 +298,8 @@ jobs:
                   aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_spec_legacy_dest" # TODO: legacy support, remove once not in use
                   echo "Successfully uploaded $integration_spec_legacy_dest to s3 bucket."
 
-                  docker run --rm -v $(pwd):/artifacts -w /artifacts "ghcr.io/port-labs/port-ocean-$type:$version" \
-                    sh -c "ocean port-app-config schema $type -o $port_app_config_schema && ocean port-app-config list-kinds -o $kinds_schema"
+                  docker run --rm -v $(pwd):/artifacts "ghcr.io/port-labs/port-ocean-$type:$version" \
+                    sh -c "ocean port-app-config schema -o /artifacts/$port_app_config_schema && ocean port-app-config list-kinds -o /artifacts/$kinds_schema"
 
                   if [ $? -eq 0 ]; then
                       # Upload port-app-config schema to s3
