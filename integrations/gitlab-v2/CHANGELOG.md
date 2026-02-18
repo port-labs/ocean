@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.5.41 (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.36.0
+
+
+## 0.5.40 (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.8
+
+
+## 0.5.39 (2026-02-15)
+
+
+### Features
+
+- Added `searchQueries` selector to `ProjectSelector` for enriching projects with search query results (e.g., checking if a file exists via GitLab search API)
+- Results are stored under `__searchQueries[<name>]` as a boolean, accessible in JQ mappings
+- Added deprecation warning when using `search://` prefix in mappings; use `searchQueries` selector instead
+
+
+## 0.5.38 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.7
+
+
+## 0.5.37 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.6
+
+
 ## 0.5.36 (2026-02-12)
 
 

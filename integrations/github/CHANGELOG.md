@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.37 (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.36.0
+
+
+## 5.0.36 (2026-02-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.8
+
+
+## 5.0.35 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.7
+
+
+## 5.0.34 (2026-02-15)
+
+
+### Features
+
+- Added support for workflow node runs in the dispatch workflow: the executor and webhook processor now handle both action runs and workflow node runs via the unified run API.
+
+
+## 5.0.33 (2026-02-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.35.6
+
+
 ## 5.0.32 (2026-02-12)
 
 

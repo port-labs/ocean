@@ -7,6 +7,46 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.186-post1 (2026-02-17)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.36.0
+
+
+0.2.185-post1 (2026-02-17)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.35.8
+
+
+## 0.2.184-post1 (2026-02-15)
+=============================
+
+### Improvements
+
+- Added deprecation warning when using `search://` prefix in mappings; use `searchQueries` selector instead
+
+
+0.2.183-post1 (2026-02-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.35.7
+
+
+0.2.182-post1 (2026-02-15)
+==========================
+
+### Improvements
+
+- Bumped ocean version to ^0.35.6
+
+
 0.2.181-post1 (2026-02-12)
 ==========================
 
@@ -16,7 +56,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 
 ## 0.2.180-post1 (2026-02-09)
-
+==========================
 
 ### Improvements
 
