@@ -386,12 +386,10 @@ class AzureDevopsClient(HTTPBaseClient):
 
         Yields members for each group. Each member includes:
         - __group: The full group object this member belongs to
-        - __isGroup: True if this member is a nested group, False if user
         """
         async for groups in self.generate_groups():
             for group in groups:
                 group_descriptor = group["descriptor"]
-                group_name = group.get("displayName", "Unknown Group")
 
                 memberships = await self._get_group_direct_members(group_descriptor)
                 if not memberships:
@@ -412,7 +410,7 @@ class AzureDevopsClient(HTTPBaseClient):
 
                 if members:
                     logger.info(
-                        f"Resolved {len(members)} direct members for group '{group_name}'"
+                        f"Resolved {len(members)} direct members for group '{group_descriptor}'"
                     )
                     yield members
 
