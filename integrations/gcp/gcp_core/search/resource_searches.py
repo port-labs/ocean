@@ -18,7 +18,6 @@ from gcp_core.search.paginated_query import paginated_query, DEFAULT_REQUEST_TIM
 from gcp_core.helpers.ratelimiter.base import MAXIMUM_CONCURRENT_REQUESTS
 from gcp_core.helpers.ratelimiter.fixed_window import FixedWindowLimiter
 from gcp_core.helpers.retry.async_retry import async_retry
-from google.cloud.resourcemanager_v3 import ProjectsAsyncClient
 from gcp_core.clients import (
     get_asset_client,
     get_projects_client,
@@ -220,18 +219,16 @@ async def get_single_project(
     semaphore: BoundedSemaphore,
     config: ProtoConfig,
 ) -> RAW_ITEM:
-    async with ProjectsAsyncClient() as projects_client:
-        async with semaphore:
-            async with rate_limiter:
-                logger.debug(
-                    f"Executing get_single_project. Current rate limit: {rate_limiter.max_rate} requests per {rate_limiter.time_period} seconds."
-                )
-                result: RAW_ITEM = parse_protobuf_message(
-                    await projects_client.get_project(
-                        name=project_name, retry=async_retry
-                    ),
-                    config,
-                )
+    projects_client = get_projects_client()
+    async with semaphore:
+        async with rate_limiter:
+            logger.debug(
+                f"Executing get_single_project. Current rate limit: {rate_limiter.max_rate} requests per {rate_limiter.time_period} seconds."
+            )
+            result: RAW_ITEM = parse_protobuf_message(
+                await projects_client.get_project(name=project_name, retry=async_retry),
+                config,
+            )
     return result
 
 
