@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Changed rate limiter algorithm from leaky bucket to fixed window
+- Changed rate limiter algorithm from leaky bucket to fixed window 
 
 
 ## 0.1.254 (2026-02-17)
