@@ -22,7 +22,7 @@ resources:
   - kind: container
     selector:
       query: 'true'
-      filterStatus: active
+      filterStatus: all
     port:
       entity:
         mappings:
