@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.36.1 (2026-02-18)
+
+### Bug fixes
+
+- Fixed OpenShift permission errors when containers run with arbitrary UIDs and read-only filesystems. Changed certificate storage from `/home/ocean/` to `/tmp/ocean/ca-certificates`, updated file ownership to use root group (GID 0) for OpenShift compatibility, and added runtime directory creation in `init.sh` for emptyDir/tmpfs mounts.
+
+
 ## 0.36.0 (2026-02-17)
 
 ### Improvements
