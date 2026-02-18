@@ -50,7 +50,7 @@ jobs:
             core_ci_files:
               - '.github/workflows/core-test.yml'
               - '.github/workflows/detect-changes-matrix.yml'
-              - '.github/workflows/actions/build-docker-image/**'
+              - '.github/actions/**'
               - 'scripts/run-smoke-test.sh'
               - 'scripts/smoke-test-base.sh'
             integrations:
