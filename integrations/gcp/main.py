@@ -8,9 +8,11 @@ from asyncio import BoundedSemaphore
 from fastapi import Request, Response
 from loguru import logger
 
+import gcp_core.clients as clients
 from gcp_core.helpers.ratelimiter.fixed_window import FixedWindowLimiter
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.signal import signal_handler
 
 from gcp_core.errors import (
     AssetHasNoProjectAncestorError,
@@ -86,6 +88,8 @@ async def _resolve_resync_method_for_resource(
 
 @ocean.on_start()
 async def setup_application_default_credentials() -> None:
+    signal_handler.register(clients.close)
+
     if not ocean.integration_config["encoded_adc_configuration"]:
         logger.info(
             "Using integration's environment Application Default Credentials configuration"
