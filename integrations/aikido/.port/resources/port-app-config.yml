@@ -14,11 +14,11 @@ resources:
           title: .name
           properties:
             provider: .provider
-            external_repo_id: .external_repo_id
+            external_repository_id: .external_repo_id
+            external_repository_url: .url
             active: .active
-            repository_url: .url
             branch: .branch
-            last_scan_at: (.last_scanned_at | todate?)
+            last_scan_at: (.last_scanned_at | select(type == "number" and . > 0) | todate?)
   - kind: container
     selector:
       query: 'true'

@@ -19,7 +19,7 @@
                     },
                     "description": "The place where the code repository is hosted."
                 },
-                "external_repo_id": {
+                "external_repository_id": {
                     "type": "string",
                     "title": "External Repository ID",
                     "description": "The id of the repository from the provider."
@@ -29,20 +29,23 @@
                     "title": "Active",
                     "description": "Whether the repository is actively being scanned."
                 },
-                "repository_url": {
+                "external_repository_url": {
                     "type": "string",
                     "title": "Repository URL",
-                    "format": "url"
+                    "format": "url",
+                    "description": "External URL to the repository."
                 },
                 "branch": {
                     "type": "string",
-                    "title": "Default Branch"
+                    "title": "Scanned Branch",
+                    "description": "The branch of the repository that Aikido will scan."
                 },
                 "last_scan_at": {
                     "icon": "ClockLoader",
                     "type": "string",
                     "format": "date-time",
-                    "title": "Last Scan At"
+                    "title": "Last Scan At",
+                    "description": "The last time a scan for this repository ended."
                 }
             },
             "required": []
