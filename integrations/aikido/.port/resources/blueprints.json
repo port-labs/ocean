@@ -160,6 +160,60 @@
             }
         }
     },
+     {
+        "identifier": "aikido_team_ocean_poc",
+        "title": "Aikido Team",
+        "icon": "Aikido",
+        "schema": {
+            "properties": {
+                "external_source": {
+                    "type": "string",
+                    "title": "External Source",
+                    "enum": ["github", "gitlab", "bitbucket", "backstage_io"],
+                    "enumColors": {
+                        "github": "darkGray",
+                        "gitlab": "orange",
+                        "bitbucket": "blue",
+                        "backstage_io": "turquoise"
+                    },
+                    "description": "Indicates if this team is linked to an external source."
+                },
+                "external_source_id": {
+                    "type": "string",
+                    "title": "External Source ID",
+                    "description": "The external source identifier for this team."
+                },
+                "responsibilities": {
+                    "type": "array",
+                    "title": "Responsibilities",
+                    "items": {
+                        "type": "object"
+                    },
+                    "description": "Resources this team is responsible for."
+                },
+                "active": {
+                    "type": "boolean",
+                    "title": "Active",
+                    "description": "Whether the team is currently active."
+                }
+            },
+            "required": []
+        },
+        "relations": {
+            "aikido_repositories": {
+                "title": "Repositories",
+                "target": "aikido_repository_ocean_poc",
+                "required": false,
+                "many": true
+            },
+                "aikido_containers": {
+                "title": "Containers",
+                "target": "aikido_container_ocean_poc",
+                "required": false,
+                "many": true
+            }
+        }
+    },
     {
         "identifier": "aikido_issue_ocean_poc",
         "title": "Aikido Issue",
@@ -446,46 +500,6 @@
                 "many": true
             }
         }
-    },
-    {
-        "identifier": "aikido_team_ocean_poc",
-        "title": "Aikido Team",
-        "icon": "Aikido",
-        "schema": {
-            "properties": {
-                "external_source": {
-                    "type": "string",
-                    "title": "External Source",
-                    "enum": ["github", "gitlab", "bitbucket", "backstage_io"],
-                    "enumColors": {
-                        "github": "darkGray",
-                        "gitlab": "orange",
-                        "bitbucket": "blue",
-                        "backstage_io": "turquoise"
-                    },
-                    "description": "Indicates if this team is linked to an external source."
-                },
-                "external_source_id": {
-                    "type": "string",
-                    "title": "External Source ID",
-                    "description": "The external source identifier for this team."
-                },
-                "responsibilities": {
-                    "type": "array",
-                    "title": "Responsibilities",
-                    "items": {
-                        "type": "object"
-                    },
-                    "description": "Resources this team is responsible for."
-                },
-                "active": {
-                    "type": "boolean",
-                    "title": "Active",
-                    "description": "Whether the team is currently active."
-                }
-            },
-            "required": []
-        },
-        "relations": {}
     }
+   
 ]

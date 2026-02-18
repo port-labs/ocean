@@ -22,6 +22,7 @@ resources:
   - kind: container
     selector:
       query: 'true'
+      filterStatus: active
     port:
       entity:
         mappings:
@@ -60,6 +61,10 @@ resources:
             external_source_id: .external_source_id
             responsibilities: .responsibilities
             active: .active
+          relations:
+            aikido_repositories: .responsibilities | map(select(.type == "code_repository") | .id | tostring)
+            aikido_containers: .responsibilities | map(select(.type == "container_repository") | .id | tostring)
+
   - kind: issue_groups
     selector:
       query: 'true'
