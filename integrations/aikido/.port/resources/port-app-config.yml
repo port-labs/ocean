@@ -18,7 +18,7 @@ resources:
             external_repository_url: .url
             active: .active
             branch: .branch
-            last_scan_at: (.last_scanned_at | select(type == "number" and . > 0) | todate?)
+            last_scan_at: (.last_scanned_at | if type == "number" and . > 0 then todate else null end)
   - kind: container
     selector:
       query: 'true'
@@ -36,9 +36,9 @@ resources:
             tag: .tag
             distro: .distro
             distro_version: .distro_version
-            last_scanned_at: .last_scanned_at
+            last_scanned_at: (.last_scanned_at | if type == "number" and . > 0 then todate else null end)
             last_scanned_tag: .last_scanned_tag
-            last_pushed_at: .last_pushed_at
+            last_pushed_at: (.last_pushed_at | if type == "number" and . > 0 then todate else null end)
           relations:
             aikido_repository:
               combinator: '"and"'

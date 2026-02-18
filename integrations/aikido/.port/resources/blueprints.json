@@ -53,6 +53,114 @@
         "relations": {}
     },
     {
+        "identifier": "aikido_container_ocean_poc",
+        "title": "Aikido Container",
+        "icon": "Aikido",
+        "schema": {
+            "properties": {
+                "provider": {
+                    "type": "string",
+                    "title": "Provider",
+                    "enum": [
+                        "aws",
+                        "aws_ecr",
+                        "gcp-artifact-registry",
+                        "gcp-container-registry",
+                        "docker-hub",
+                        "github",
+                        "quay",
+                        "acr",
+                        "gitlab",
+                        "gitlab-self",
+                        "digitalocean",
+                        "scaleway",
+                        "cloudsmith",
+                        "harbor",
+                        "artifactory",
+                        "custom_upload",
+                        "oci"
+                    ],
+                    "enumColors": {
+                        "aws": "orange",
+                        "aws_ecr": "orange",
+                        "gcp-artifact-registry": "blue",
+                        "gcp-container-registry": "blue",
+                        "docker-hub": "turquoise",
+                        "github": "darkGray",
+                        "quay": "purple",
+                        "acr": "lightGray",
+                        "gitlab": "orange",
+                        "gitlab-self": "purple",
+                        "digitalocean": "blue",
+                        "scaleway": "pink",
+                        "cloudsmith": "turquoise",
+                        "harbor": "green",
+                        "artifactory": "yellow",
+                        "custom_upload": "bronze",
+                        "oci": "darkGray"
+                    },
+                    "description": "The provider where the container repository is hosted."
+                },
+                "cloud_id": {
+                    "type": "number",
+                    "title": "Cloud ID",
+                    "description": "Cloud identifier where this container registry is located."
+                },
+                "registry_id": {
+                    "type": "number",
+                    "title": "Registry ID",
+                    "description": "The container registry identifier."
+                },
+                "registry_name": {
+                    "type": "string",
+                    "title": "Registry Name",
+                    "description": "The name of the container registry."
+                },
+                "tag": {
+                    "type": "string",
+                    "title": "Tag Filter",
+                    "description": "The tag filter used when selecting an image. If empty the latest image will be scanned."
+                },
+                "distro": {
+                    "type": "string",
+                    "title": "Distribution",
+                    "description": "The distribution of the image operating system."
+                },
+                "distro_version": {
+                    "type": "string",
+                    "title": "Distribution Version",
+                    "description": "The distribution version of the image operating system."
+                },
+                "last_scanned_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Last Scanned At",
+                    "description": "The latest completed scan."
+                },
+                "last_scanned_tag": {
+                    "type": "string",
+                    "title": "Last Scanned Tag",
+                    "description": "The image tag used in the latest scan."
+                },
+                "last_pushed_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Last Pushed At",
+                    "description": "The latest push to this container repository."
+                }
+            },
+            "required": []
+        },
+        "relations": {
+            "aikido_repository": {
+                "title": "Repository",
+                "target": "aikido_repository_ocean_poc",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
         "identifier": "aikido_issue_ocean_poc",
         "title": "Aikido Issue",
         "icon": "Aikido",
@@ -379,119 +487,5 @@
             "required": []
         },
         "relations": {}
-    },
-    {
-        "identifier": "aikido_container_ocean_poc",
-        "title": "Aikido Container",
-        "icon": "Aikido",
-        "schema": {
-            "properties": {
-                "provider": {
-                    "type": "string",
-                    "title": "Provider",
-                    "enum": [
-                        "aws",
-                        "aws_ecr",
-                        "gcp-artifact-registry",
-                        "gcp-container-registry",
-                        "docker-hub",
-                        "github",
-                        "quay",
-                        "acr",
-                        "gitlab",
-                        "gitlab-self",
-                        "digitalocean",
-                        "scaleway",
-                        "cloudsmith",
-                        "harbor",
-                        "artifactory",
-                        "custom_upload",
-                        "oci"
-                    ],
-                    "enumColors": {
-                        "aws": "orange",
-                        "aws_ecr": "orange",
-                        "gcp-artifact-registry": "blue",
-                        "gcp-container-registry": "blue",
-                        "docker-hub": "turquoise",
-                        "github": "darkGray",
-                        "quay": "purple",
-                        "acr": "lightGray",
-                        "gitlab": "orange",
-                        "gitlab-self": "purple",
-                        "digitalocean": "blue",
-                        "scaleway": "pink",
-                        "cloudsmith": "turquoise",
-                        "harbor": "green",
-                        "artifactory": "yellow",
-                        "custom_upload": "bronze",
-                        "oci": "darkGray"
-                    },
-                    "description": "The provider where the container repository is hosted."
-                },
-                "cloud_id": {
-                    "type": "number",
-                    "title": "Cloud ID",
-                    "description": "Cloud identifier where this container registry is located."
-                },
-                "registry_id": {
-                    "type": "number",
-                    "title": "Registry ID",
-                    "description": "The container registry identifier."
-                },
-                "registry_name": {
-                    "type": "string",
-                    "title": "Registry Name",
-                    "description": "The name of the container registry."
-                },
-                "tag": {
-                    "type": "string",
-                    "title": "Tag Filter",
-                    "description": "Tag filter used when selecting an image."
-                },
-                "distro": {
-                    "type": "string",
-                    "title": "Distribution",
-                    "description": "The distribution of the image operating system."
-                },
-                "distro_version": {
-                    "type": "string",
-                    "title": "Distribution Version",
-                    "description": "The distribution version of the image operating system."
-                },
-                "last_scanned_at": {
-                    "type": "string",
-                    "format": "date-time",
-                    "title": "Last Scanned At",
-                    "description": "The latest completed scan."
-                },
-                "last_scanned_tag": {
-                    "type": "string",
-                    "title": "Last Scanned Tag",
-                    "description": "The image tag used in the latest scan."
-                },
-                "last_pushed_at": {
-                    "type": "string",
-                    "format": "date-time",
-                    "title": "Last Pushed At",
-                    "description": "The latest push to this container repository."
-                }
-            },
-            "required": []
-        },
-        "relations": {
-            "aikido_repository": {
-                "title": "Repository",
-                "target": "aikido_repository_ocean_poc",
-                "required": false,
-                "many": false
-            },
-            "group_issue": {
-                "title": "Group Issue",
-                "target": "aikido_issue_group_ocean_poc",
-                "required": false,
-                "many": false
-            }
-        }
     }
 ]
