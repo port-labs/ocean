@@ -1,4 +1,4 @@
-import asyncio
+from asyncio import BoundedSemaphore
 from functools import partial
 from typing import Any
 
@@ -19,7 +19,7 @@ async def iterate_per_available_project(
     max_concurrent_projects: int = MAXIMUM_CONCURRENT_REQUESTS,
     **kwargs: Any,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    semaphore = asyncio.Semaphore(max_concurrent_projects)
+    semaphore = BoundedSemaphore(max_concurrent_projects)
     try:
         async for projects in search_all_projects():
 
