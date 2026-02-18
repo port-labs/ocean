@@ -941,6 +941,20 @@ MarkupSafe = ">=2.0"
 i18n = ["Babel (>=2.7)"]
 
 [[package]]
+name = "jinja2-strcase"
+version = "0.0.2"
+description = "A python package for converting string case in jinja2 templates"
+optional = false
+python-versions = "*"
+files = [
+    {file = "jinja2-strcase-0.0.2.tar.gz", hash = "sha256:d90c37f7bd40d345aacc8f78b087f66e6c5aa4c968ab23a791573fcf756c3379"},
+    {file = "jinja2_strcase-0.0.2-py2.py3-none-any.whl", hash = "sha256:e3067062f6158cd836ab495f805fc0d1d83cf92049e180509b004db86f6b745c"},
+]
+
+[package.dependencies]
+jinja2 = "*"
+
+[[package]]
 name = "jinja2-time"
 version = "0.2.0"
 description = "Jinja2 Extension for Dates and Times"
@@ -1309,13 +1323,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.35.7"
+version = "0.36.0"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.35.7-py3-none-any.whl", hash = "sha256:cabe3c405b643206227088c6cbd587076f200cbfcad6b0129ac721ed5ce8d64a"},
-    {file = "port_ocean-0.35.7.tar.gz", hash = "sha256:bfbf095fcbde94259125aa797c628e6e853d6d373d36fa446dff743923436b5d"},
+    {file = "port_ocean-0.36.0-py3-none-any.whl", hash = "sha256:c13f46bacc14947165bd857bea72114564a624a18c5d3900e27ef5efd6d26079"},
+    {file = "port_ocean-0.36.0.tar.gz", hash = "sha256:8e833d3357d60ac714b9c042bae710d88bd27575bfadca447ac51833c4baceed"},
 ]
 
 [package.dependencies]
@@ -1330,6 +1344,7 @@ filelock = ">=3.20.1,<4.0.0"
 httpx = ">=0.28.1,<0.29.0"
 ijson = ">=3.4.0,<4.0.0"
 jinja2 = ">=3.1.6"
+jinja2-strcase = {version = ">=0.0.2,<0.0.3", optional = true, markers = "extra == \"cli\""}
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 jmespath = ">=1.0.1,<2.0.0"
 jq = ">=1.8.0,<2.0.0"
@@ -1352,7 +1367,7 @@ virtualenv = ">=20.36.1,<21.0.0"
 werkzeug = ">=3.1.5,<4.0.0"
 
 [package.extras]
-cli = ["click (>=8.1.3,<9.0.0)", "cookiecutter (>=2.1.1,<3.0.0)", "jinja2-time (>=0.2.0,<0.3.0)", "rich (>=13.4.1,<14.0.0)"]
+cli = ["click (>=8.1.3,<9.0.0)", "cookiecutter (>=2.1.1,<3.0.0)", "jinja2-strcase (>=0.0.2,<0.0.3)", "jinja2-time (>=0.2.0,<0.3.0)", "rich (>=13.4.1,<14.0.0)"]
 
 [[package]]
 name = "prometheus-client"
@@ -2101,4 +2116,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "7ac4becd0fcad717c89af973cd559cde6e6ec0cb58d8c1d78329d4360e510105"
+content-hash = "2f0c8ffec07d68081c495b9d2f63c5a215d67f4d025a21f9c2afc99f8ebd8914"
