@@ -162,4 +162,3 @@ class ActionsAndWorkflowRunsClientMixin(ActionsClientMixin, WorkflowNodesClientM
         else:
             status = RunStatus.SUCCESS if success else RunStatus.FAILURE
             await self.patch_run(run.id, {"status": status})
-

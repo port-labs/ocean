@@ -200,4 +200,3 @@ class WorkflowNodeRun(BaseModel):
     @property
     def execution_properties(self) -> dict[str, Any]:
         return self.config.get("integrationActionExecutionProperties", {})
-
