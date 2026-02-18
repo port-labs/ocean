@@ -20,6 +20,10 @@ FROM ${BASE_RUNNER_PYTHON_IMAGE} AS prod
 ARG OCEAN_USER_ID=1001
 ARG OCEAN_GROUP_ID=1001
 
+# Create ocean user with primary group appgroup (GID 1001) to satisfy hardening requirements (GID >= 1000).
+# Note: File ownership uses root group (GID 0) for OpenShift compatibility - this is separate from the
+# user's primary group. OpenShift runs containers with arbitrary UIDs but always with GID 0, so files
+# must be group-writable by GID 0 for any random UID to access them. The process does not run as root.
 RUN groupadd -r appgroup -g ${OCEAN_GROUP_ID} && useradd -r -g appgroup -m -u ${OCEAN_USER_ID} ocean
 
 RUN mkdir -p /tmp/ocean
@@ -35,10 +39,13 @@ ENV PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR} \
 
 RUN mkdir -p ${PROMETHEUS_MULTIPROC_DIR}
 RUN mkdir -p ${STREAMING_LOCATION}
-RUN chown -R ocean:appgroup /tmp/ocean && chmod -R 755 /tmp/ocean
+# OpenShift compatibility: Grant permissions to both appgroup and root group (GID 0)
+# OpenShift runs containers with random UIDs but always with GID 0
+RUN chown -R ocean:root /tmp/ocean && chmod -R 775 /tmp/ocean
 
 RUN mkdir -p ${OAUTH_CONFIG_DIR}
-RUN chown -R ocean:appgroup ${OAUTH_CONFIG_DIR}
+# OpenShift compatibility: Grant permissions to root group (GID 0) for arbitrary UID support
+RUN chown -R ocean:root ${OAUTH_CONFIG_DIR} && chmod -R 775 ${OAUTH_CONFIG_DIR}
 
 RUN apt-get update \
     && apt-get install -y \
@@ -78,18 +85,8 @@ RUN chmod a+x /app/init.sh
 RUN chmod +x /app/sync_ca_certs.sh
 RUN ln -s /app/.venv/bin/ocean /usr/bin/ocean
 
-# Add ocean user to ssl certs group
-# Copy CA certificates to user-accessible location for unprivileged access
-RUN mkdir -p /home/ocean/.local/share/ca-certificates \
-    && cp -r /etc/ssl/certs/* /home/ocean/.local/share/ca-certificates/ 2>/dev/null || true \
-    && chown -R ocean:appgroup /home/ocean/.local/share/ca-certificates \
-    && chmod -R 644 /home/ocean/.local/share/ca-certificates \
-    && echo "export SSL_CERT_DIR=/home/ocean/.local/share/ca-certificates" >> /home/ocean/.bashrc \
-    && echo "export SSL_CERT_FILE=/home/ocean/.local/share/ca-certificates/ca-certificates.crt" >> /home/ocean/.bashrc
-
-RUN setfacl -R -m u:ocean:rX /etc/ssl/certs \
-    && setfacl -d -m u:ocean:rX /etc/ssl/certs
-
+# OpenShift compatibility: Ensure /app is owned by root group for arbitrary UID support
+RUN chown -R ocean:root /app && chmod -R 775 /app
 
 USER ocean
 
