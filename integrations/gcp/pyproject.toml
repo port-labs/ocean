@@ -11,7 +11,6 @@ google-cloud-asset = "^3.25.1"
 google-cloud-pubsub = "^2.21.1"
 google-cloud-resource-manager = "^1.12.3"
 google-cloud-quotas = "^0.1.10"
-aiolimiter = "^1.1.0"
 types-requests = "^2.32.0.20240712"
 
 [tool.poetry.group.dev.dependencies]
