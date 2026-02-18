@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional, TYPE_CHECKING, final, Type, cast
 from aiolimiter import AsyncLimiter
-from google.cloud.cloudquotas_v1 import CloudQuotasAsyncClient, GetQuotaInfoRequest
+from google.cloud.cloudquotas_v1 import GetQuotaInfoRequest
 from google.api_core.exceptions import GoogleAPICallError
 from loguru import logger
 from enum import Enum
 from port_ocean.context.ocean import ocean
 from gcp_core.cache import cache_coroutine_result
+from gcp_core.clients import get_quotas_client
 from collections.abc import MutableSequence
 import asyncio
 
@@ -120,10 +121,10 @@ class GCPResourceQuota(ABC):
             max_rate=_DEFAULT_RATE_LIMIT_QUOTA,
             time_period=_DEFAULT_RATE_LIMIT_TIME_PERIOD,
         ):
-            async with CloudQuotasAsyncClient() as quotas_client:
-                request = GetQuotaInfoRequest(name=name)
-                response = await quotas_client.get_quota_info(request=request)
-                return response.dimensions_infos
+            quotas_client = get_quotas_client()
+            request = GetQuotaInfoRequest(name=name)
+            response = await quotas_client.get_quota_info(request=request)
+            return response.dimensions_infos
 
     async def _get_quota(self, container_id: str, *args: Any) -> int:
         name = self.quota_name(container_id)
