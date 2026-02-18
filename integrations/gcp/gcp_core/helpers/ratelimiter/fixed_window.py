@@ -1,26 +1,9 @@
 import asyncio
 import time
 from contextlib import AbstractAsyncContextManager
-from enum import Enum
 from typing import Any, Callable, Coroutine, Dict, Optional, Type
 
 from loguru import logger
-
-
-class WindowAlignmentMode(Enum):
-    """
-    Defines how the fixed window boundaries are aligned.
-
-    FIRST_REQUEST: Window starts when the first request arrives.
-                   Subsequent windows start when the previous one expires.
-
-    CLOCK_ALIGNED: Window boundaries align to clock time.
-                   For a 60s window, boundaries are at :00, :01, :02, etc.
-                   This ensures consistent window boundaries across restarts.
-    """
-
-    FIRST_REQUEST = "first_request"
-    CLOCK_ALIGNED = "clock_aligned"
 
 
 class FixedWindowLimiter(AbstractAsyncContextManager[None]):
@@ -42,7 +25,6 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
     Attributes:
         max_rate: Maximum number of operations allowed per window.
         time_period: Duration of each window in seconds.
-        alignment: How window boundaries are calculated.
 
     Usage examples::
 
@@ -63,7 +45,6 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
     __slots__ = (
         "_max_rate",
         "_time_period",
-        "_alignment",
         "_request_timeout",
         "_window_start",
         "_request_count",
@@ -77,7 +58,6 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
         self,
         max_rate: int,
         time_period: float = 60.0,
-        alignment: WindowAlignmentMode = WindowAlignmentMode.FIRST_REQUEST,
         request_timeout: Optional[float] = None,
     ) -> None:
         """
@@ -86,7 +66,6 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
         Args:
             max_rate: Maximum number of operations allowed per window.
             time_period: Duration of the window in seconds.
-            alignment: How window boundaries are aligned.
             request_timeout: Default timeout for acquire() calls (None = wait forever).
 
         Raises:
@@ -99,7 +78,6 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
 
         self._max_rate = max_rate
         self._time_period = time_period
-        self._alignment = alignment
         self._request_timeout = request_timeout
 
         # Window state - will be initialized on first request or based on alignment
@@ -119,14 +97,13 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
             "successful_requests": 0,
             "rejected_requests": 0,
             "timeouts": 0,
-            "errors": 0,
             "total_wait_time": 0.0,
             "windows_reset": 0,
         }
 
         logger.info(
             f"Created fixed window rate limiter: max_rate={max_rate}, "
-            f"time_period={time_period}s, alignment={alignment.value}, "
+            f"time_period={time_period}s, "
             f"request_timeout={request_timeout}s"
         )
 
@@ -140,18 +117,15 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
         """Duration of each window in seconds."""
         return self._time_period
 
-    @property
-    def alignment(self) -> WindowAlignmentMode:
-        """How window boundaries are aligned."""
-        return self._alignment
-
     def _get_current_time(self) -> float:
         """Get the current time. Uses monotonic clock for consistency."""
         return time.monotonic()
 
     def _calculate_window_start(self, current_time: float) -> float:
         """
-        Calculate the start time of the current/next window based on alignment mode.
+        Calculate the start time of the next window.
+
+        The window starts from the current time (first-request alignment).
 
         Args:
             current_time: The current monotonic time.
@@ -159,13 +133,7 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
         Returns:
             The start time of the window containing current_time.
         """
-        if self._alignment == WindowAlignmentMode.CLOCK_ALIGNED:
-            # Align to clock boundaries
-            return (current_time // self._time_period) * self._time_period
-        else:
-            # FIRST_REQUEST mode - window starts from current time
-            # This is called when resetting, so always use current time
-            return current_time
+        return current_time
 
     def _is_window_expired(self, current_time: float) -> bool:
         """
@@ -497,7 +465,6 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
             "successful_requests": 0,
             "rejected_requests": 0,
             "timeouts": 0,
-            "errors": 0,
             "total_wait_time": 0.0,
             "windows_reset": 0,
         }
@@ -509,6 +476,5 @@ class FixedWindowLimiter(AbstractAsyncContextManager[None]):
             f"FixedWindowLimiter("
             f"max_rate={self._max_rate}, "
             f"time_period={self._time_period}, "
-            f"alignment={self._alignment.value}, "
             f"current_count={self._request_count})"
         )

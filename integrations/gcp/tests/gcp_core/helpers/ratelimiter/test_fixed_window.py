@@ -1,10 +1,7 @@
 import pytest
 import asyncio
 import time
-from gcp_core.helpers.ratelimiter.fixed_window import (
-    FixedWindowLimiter,
-    WindowAlignmentMode,
-)
+from gcp_core.helpers.ratelimiter.fixed_window import FixedWindowLimiter
 import contextlib
 from typing import Generator
 
@@ -17,18 +14,6 @@ def limiter() -> Generator[FixedWindowLimiter, None, None]:
     )  # Use shorter window for faster tests
     yield limiter_instance
     # Ensure proper cleanup
-    limiter_instance._shutdown_event.set()
-
-
-@pytest.fixture
-def clock_aligned_limiter() -> Generator[FixedWindowLimiter, None, None]:
-    """Fixture providing a clock-aligned FixedWindowLimiter."""
-    limiter_instance = FixedWindowLimiter(
-        max_rate=5,
-        time_period=0.5,
-        alignment=WindowAlignmentMode.CLOCK_ALIGNED,
-    )
-    yield limiter_instance
     limiter_instance._shutdown_event.set()
 
 
@@ -310,32 +295,9 @@ async def test_edge_cases() -> None:
 
 
 @pytest.mark.asyncio
-async def test_clock_aligned_window(clock_aligned_limiter: FixedWindowLimiter) -> None:
-    """Test clock-aligned window behavior."""
-    # Make a request to initialize the window
-    await clock_aligned_limiter.acquire()
-
-    # The window start should be aligned to clock boundaries
-    window_start = clock_aligned_limiter._window_start
-    time_period = clock_aligned_limiter._time_period
-
-    # Check that window_start is aligned (divisible by time_period)
-    assert window_start is not None
-    # For clock-aligned, window_start should be at a boundary
-    remainder = window_start % time_period
-    assert (
-        remainder < 0.01 or (time_period - remainder) < 0.01
-    ), f"Window start {window_start} should be aligned to {time_period}s boundaries"
-
-
-@pytest.mark.asyncio
 async def test_first_request_aligned_window() -> None:
-    """Test first-request-aligned window behavior."""
-    limiter = FixedWindowLimiter(
-        max_rate=5,
-        time_period=0.5,
-        alignment=WindowAlignmentMode.FIRST_REQUEST,
-    )
+    """Test that the window starts at the time of the first request."""
+    limiter = FixedWindowLimiter(max_rate=5, time_period=0.5)
 
     try:
         start_time = time.monotonic()
@@ -426,18 +388,13 @@ async def test_reset_metrics() -> None:
 @pytest.mark.asyncio
 async def test_repr() -> None:
     """Test string representation."""
-    limiter = FixedWindowLimiter(
-        max_rate=10,
-        time_period=60.0,
-        alignment=WindowAlignmentMode.CLOCK_ALIGNED,
-    )
+    limiter = FixedWindowLimiter(max_rate=10, time_period=60.0)
 
     try:
         repr_str = repr(limiter)
         assert "FixedWindowLimiter" in repr_str
         assert "max_rate=10" in repr_str
         assert "time_period=60.0" in repr_str
-        assert "clock_aligned" in repr_str
     finally:
         limiter._shutdown_event.set()
 
@@ -445,16 +402,11 @@ async def test_repr() -> None:
 @pytest.mark.asyncio
 async def test_properties() -> None:
     """Test property accessors."""
-    limiter = FixedWindowLimiter(
-        max_rate=100,
-        time_period=30.0,
-        alignment=WindowAlignmentMode.FIRST_REQUEST,
-    )
+    limiter = FixedWindowLimiter(max_rate=100, time_period=30.0)
 
     try:
         assert limiter.max_rate == 100
         assert limiter.time_period == 30.0
-        assert limiter.alignment == WindowAlignmentMode.FIRST_REQUEST
     finally:
         limiter._shutdown_event.set()
 
