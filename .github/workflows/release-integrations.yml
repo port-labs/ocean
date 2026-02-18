@@ -270,21 +270,54 @@ jobs:
               # Extract the version from pyproject.toml
               version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
-              integration_spec="$type-$version.json"
-              integration_dest="$type/$integration_spec"
-              integration_legacy_dest="$type.json" # TODO: legacy support, remove once not in use
+              integration_folder="$type"
+              version_folder="$integration_folder/$version"
+              integration_spec="spec.json"
+              integration_spec_dest="$version_folder/$integration_spec"
+              integration_latest_spec_dest="$type.json"
+
+              port_app_config_schema="port-app-config.json"
+              port_app_config_schema_dest="$version_folder/$port_app_config_schema"
+              port_app_config_latest_schema_dest="$integration_folder/$port_app_config_schema"
+
+              kinds_schema="kinds.json"
+              kinds_schema_dest="$version_folder/$kinds_schema"
+              kinds_latest_schema_dest="$integration_folder/$kinds_schema"
 
               # Convert YAML to JSON
               yq -o json "$file" >"$temp_file"
 
               # Add version attribute
-              jq --arg type "$type" --arg version "$version" '. + {type: $type, version: $version}' "$temp_file" >"$integration_spec"
+              jq --arg type "$type" --arg version "$version" '. + {type: $type, version: $version}' "$temp_file" > "$integration_spec"
 
               if [[ ! ${version} =~ ^.+-dev$ ]]; then
-                  # Upload integration's version manifest to s3
-                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_dest"
-                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_legacy_dest" # TODO: legacy support, remove once not in use
-                  echo "Successfully uploaded $integration_spec to s3 bucket."
+                  # Upload integration's spec to s3
+                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_spec_dest"
+                  echo "Successfully uploaded $integration_spec_dest to s3 bucket."
+
+                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_spec_legacy_dest" # TODO: legacy support, remove once not in use
+                  echo "Successfully uploaded $integration_spec_legacy_dest to s3 bucket."
+
+                  docker run --rm -v $(pwd):/artifacts -w /artifacts "ghcr.io/port-labs/port-ocean-$type:$version" \
+                    sh -c "ocean port-app-config schema $type -o $port_app_config_schema && ocean port-app-config list-kinds -o $kinds_schema"
+
+                  if [ $? -eq 0 ]; then
+                      # Upload port-app-config schema to s3
+                      aws s3 cp "$port_app_config_schema" "s3://$aws_s3_bucket/$port_app_config_schema_dest"
+                      echo "Successfully uploaded $port_app_config_schema_dest to s3 bucket."
+
+                      aws s3 cp "$port_app_config_schema" "s3://$aws_s3_bucket/$port_app_config_latest_schema_dest"
+                      echo "Successfully uploaded $port_app_config_latest_schema_dest to s3 bucket."
+
+                      # Upload kinds schema to s3
+                      aws s3 cp "$kinds_schema" "s3://$aws_s3_bucket/$kinds_schema_dest"
+                      echo "Successfully uploaded $kinds_schema_dest to s3 bucket."
+
+                      aws s3 cp "$kinds_schema" "s3://$aws_s3_bucket/$kinds_latest_schema_dest"
+                      echo "Successfully uploaded $kinds_latest_schema_dest to s3 bucket."
+                  else
+                      echo "Warning: Failed to generate schemas for $type:$version, skipping schema upload to s3."
+                  fi
 
                   # Get the latest version of the current integration
                   latest_version=$(jq --arg type "$type" -r '.[] | select(.type == $type) | .version' "$index_file")
