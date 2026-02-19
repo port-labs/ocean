@@ -41,7 +41,7 @@ This integration provides the following resources:
 - **issues**: Security issues and vulnerabilities found in repositories
 - **issue_groups**: Open issue groups aggregated by Aikido
 - **team**: Aikido teams and their scoped responsibilities
-- **container**: Aikido container repositories and scan metadata
+- **containers**: Aikido container repositories and scan metadata
 
 ### Repository selector filters
 
@@ -61,7 +61,7 @@ This maps to the Aikido repositories query parameter `include_inactive`.
 
 ### Container selector filters
 
-You can control container retrieval using `filterStatus` in the `container` selector.
+You can control container retrieval using `filterStatus` in the `containers` selector.
 
 Allowed values:
 - `all`
@@ -74,7 +74,7 @@ Example:
 
 ```yaml
 resources:
-	- kind: container
+	- kind: containers
 		selector:
 			query: 'true'
 			filterStatus: active

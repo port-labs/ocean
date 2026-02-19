@@ -15,7 +15,7 @@ class ObjectKind:
     ISSUES = "issues"
     ISSUE_GROUPS = "issue_groups"
     TEAM = "team"
-    CONTAINER = "container"
+    CONTAINER = "containers"
 
 
 class RepositorySelector(Selector):
@@ -40,7 +40,7 @@ class ContainerSelector(Selector):
 
 
 class ContainerResourceConfig(ResourceConfig):
-    kind: Literal["container"]
+    kind: Literal["containers"]
     selector: ContainerSelector
 
 
