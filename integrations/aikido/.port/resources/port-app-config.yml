@@ -62,7 +62,7 @@ resources:
             responsibilities: .responsibilities
             active: .active
           relations:
-            aikido_repositories: >- 
+            aikido_repositories: >-
               .responsibilities | map(select(.type == "code_repository") | .id | tostring)
             aikido_containers: >-
               .responsibilities | map(select(.type == "container_repository") | .id | tostring)

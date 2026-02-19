@@ -215,120 +215,120 @@
         }
     },
     {
-    "identifier": "aikido_issue_group_ocean_poc",
-    "title": "Aikido Issue Group",
-    "icon": "Aikido",
-    "schema": {
-        "properties": {
-            "description": {
-                "type": "string",
-                "title": "Description",
-                "description": "A small description of this issue."
-            },
-            "type": {
-                "type": "string",
-                "title": "Type",
-                "enum": [
-                    "open_source",
-                    "leaked_secret",
-                    "cloud",
-                    "iac",
-                    "sast",
-                    "surface_monitoring",
-                    "mobile",
-                    "malware",
-                    "eol",
-                    "scm_security",
-                    "ai_pentest",
-                    "license"
-                ],
-                "enumColors": {
-                    "open_source": "turquoise",
-                    "leaked_secret": "orange",
-                    "cloud": "blue",
-                    "iac": "darkGray",
-                    "sast": "green",
-                    "surface_monitoring": "bronze",
-                    "mobile": "lime",
-                    "malware": "red",
-                    "eol": "purple",
-                    "scm_security": "yellow",
-                    "ai_pentest": "pink",
-                    "license": "bronze"
+        "identifier": "aikido_issue_group_ocean_poc",
+        "title": "Aikido Issue Group",
+        "icon": "Aikido",
+        "schema": {
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "title": "Description",
+                    "description": "A small description of this issue."
                 },
-                "description": "The type of issues in this group."
-            },
-            "severity_score": {
-                "type": "number",
-                "title": "Severity Score",
-                "description": "A number indicating the importance of the vulnerability"
-            },
-            "group_status": {
-                "type": "string",
-                "title": "Group Status",
-                "enum": [
-                    "new",
-                    "todo",
-                    "task_open",
-                    "task_closed",
-                    "pull_request_open"
-                ],
-                "enumColors": {
-                    "new": "purple",
-                    "todo": "yellow",
-                    "task_open": "orange",
-                    "task_closed": "green",
-                    "pull_request_open": "blue"
+                "type": {
+                    "type": "string",
+                    "title": "Type",
+                    "enum": [
+                        "open_source",
+                        "leaked_secret",
+                        "cloud",
+                        "iac",
+                        "sast",
+                        "surface_monitoring",
+                        "mobile",
+                        "malware",
+                        "eol",
+                        "scm_security",
+                        "ai_pentest",
+                        "license"
+                    ],
+                    "enumColors": {
+                        "open_source": "turquoise",
+                        "leaked_secret": "orange",
+                        "cloud": "blue",
+                        "iac": "darkGray",
+                        "sast": "green",
+                        "surface_monitoring": "bronze",
+                        "mobile": "lime",
+                        "malware": "red",
+                        "eol": "purple",
+                        "scm_security": "yellow",
+                        "ai_pentest": "pink",
+                        "license": "bronze"
+                    },
+                    "description": "The type of issues in this group."
                 },
-                "description": "The current status of the issue group."
-            },
-            "severity": {
-                "type": "string",
-                "title": "Severity",
-                "enum": ["critical", "high", "medium", "low"],
-                "enumColors": {
-                    "critical": "red",
-                    "high": "orange",
-                    "medium": "yellow",
-                    "low": "green"
+                "severity_score": {
+                    "type": "number",
+                    "title": "Severity Score",
+                    "description": "A number indicating the importance of the vulnerability"
                 },
-                "description": "A human friendly version of the issue's importance"
-            },
-            "locations": {
-                "items": {
-                    "type": "object"
+                "group_status": {
+                    "type": "string",
+                    "title": "Group Status",
+                    "enum": [
+                        "new",
+                        "todo",
+                        "task_open",
+                        "task_closed",
+                        "pull_request_open"
+                    ],
+                    "enumColors": {
+                        "new": "purple",
+                        "todo": "yellow",
+                        "task_open": "orange",
+                        "task_closed": "green",
+                        "pull_request_open": "blue"
+                    },
+                    "description": "The current status of the issue group."
                 },
-                "title": "Locations",
-                "type": "array",
-                "description": "A list of locations where this issue was found. A vulnerability can be found in multiple types of locations eg: when a container is linked to a code repository, any vulnerabilities found in that container, will also have that code repository listed as location."
+                "severity": {
+                    "type": "string",
+                    "title": "Severity",
+                    "enum": ["critical", "high", "medium", "low"],
+                    "enumColors": {
+                        "critical": "red",
+                        "high": "orange",
+                        "medium": "yellow",
+                        "low": "green"
+                    },
+                    "description": "A human friendly version of the issue's importance"
+                },
+                "locations": {
+                    "items": {
+                        "type": "object"
+                    },
+                    "title": "Locations",
+                    "type": "array",
+                    "description": "A list of locations where this issue was found. A vulnerability can be found in multiple types of locations eg: when a container is linked to a code repository, any vulnerabilities found in that container, will also have that code repository listed as location."
+                },
+                "time_to_fix_minutes": {
+                    "type": "number",
+                    "title": "Time To Fix (Minutes)",
+                    "description": "The estimated time in minutes that it will take to fix this issue."
+                },
+                "how_to_fix": {
+                    "type": "string",
+                    "title": "How To Fix",
+                    "description": "Recommended remediation guidance."
+                }
             },
-            "time_to_fix_minutes": {
-                "type": "number",
-                "title": "Time To Fix (Minutes)",
-                "description": "The estimated time in minutes that it will take to fix this issue."
+            "required": []
+        },
+        "relations": {
+            "aikido_repositories": {
+                "title": "Repositories",
+                "target": "aikido_repository_ocean_poc",
+                "required": false,
+                "many": true
             },
-            "how_to_fix": {
-                "type": "string",
-                "title": "How To Fix",
-                "description": "Recommended remediation guidance."
+            "aikido_containers": {
+                "title": "Containers",
+                "target": "aikido_container_ocean_poc",
+                "required": false,
+                "many": true
             }
-        },
-        "required": []
-    },
-    "relations": {
-        "aikido_repositories": {
-            "title": "Repositories",
-            "target": "aikido_repository_ocean_poc",
-            "required": false,
-            "many": true
-        },
-        "aikido_containers": {
-            "title": "Containers",
-            "target": "aikido_container_ocean_poc",
-            "required": false,
-            "many": true
         }
-    }
     },
     {
         "identifier": "aikido_issue_ocean_poc",
