@@ -405,13 +405,7 @@ class JiraClient(OAuthClient):
     async def get_paginated_versions(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Iterate over all projects and yield batches of versions per project.
-
-        The JIRA versions endpoint returns all versions for a project in a single
-        response (no pagination). We enrich each version with ``__projectKey`` so
-        the Port mapping can resolve the relation to the parent project without an
-        extra API call.
-        """
+        """Yield PAGE_SIZE batches of versions across all projects, enriched with ``__projectKey``."""
         logger.info("Getting versions from Jira")
         async for projects in self._get_paginated_data(
             f"{self.api_url}/project/search", "values"
@@ -425,7 +419,8 @@ class JiraClient(OAuthClient):
                 if versions:
                     for version in versions:
                         version["__projectKey"] = project_key
-                    yield versions
+                    for i in range(0, len(versions), PAGE_SIZE):
+                        yield versions[i : i + PAGE_SIZE]
 
     async def get_single_version(self, version_id: str) -> dict[str, Any]:
         """Fetch a version by ID and enrich it with ``__projectKey``."""

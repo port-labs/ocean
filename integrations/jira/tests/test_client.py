@@ -572,8 +572,12 @@ async def test_get_paginated_versions(mock_jira_client: JiraClient) -> None:
 
         assert len(all_versions) == 3
         # Verify __projectKey enrichment
-        proj1_results = [version for version in all_versions if version["__projectKey"] == "PROJ1"]
-        proj2_results = [version for version in all_versions if version["__projectKey"] == "PROJ2"]
+        proj1_results = [
+            version for version in all_versions if version["__projectKey"] == "PROJ1"
+        ]
+        proj2_results = [
+            version for version in all_versions if version["__projectKey"] == "PROJ2"
+        ]
         assert len(proj1_results) == 2
         assert len(proj2_results) == 1
 
@@ -602,6 +606,38 @@ async def test_get_paginated_versions_skips_empty_projects(
             all_versions.extend(batch)
 
         assert all_versions == []
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_versions_batches_large_projects(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test get_paginated_versions splits large version lists into PAGE_SIZE batches."""
+    projects_response: dict[str, Any] = {
+        "values": [{"key": "BIG"}],
+        "total": 1,
+    }
+    remainder = 10
+    total = PAGE_SIZE + remainder
+    big_versions: list[dict[str, Any]] = [
+        {"id": i, "name": f"v{i}"} for i in range(total)
+    ]
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [projects_response, big_versions]
+
+        batches: list[list[dict[str, Any]]] = []
+        async for batch in mock_jira_client.get_paginated_versions():
+            batches.append(batch)
+
+        assert len(batches) == 2
+        assert len(batches[0]) == PAGE_SIZE
+        assert len(batches[1]) == remainder
+        # Ensure all versions are enriched
+        for version in batches[0] + batches[1]:
+            assert version["__projectKey"] == "BIG"
 
 
 @pytest.mark.asyncio
