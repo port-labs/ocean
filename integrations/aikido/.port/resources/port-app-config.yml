@@ -62,9 +62,10 @@ resources:
             responsibilities: .responsibilities
             active: .active
           relations:
-            aikido_repositories: .responsibilities | map(select(.type == "code_repository") | .id | tostring)
-            aikido_containers: .responsibilities | map(select(.type == "container_repository") | .id | tostring)
-
+            aikido_repositories: >- 
+              .responsibilities | map(select(.type == "code_repository") | .id | tostring)
+            aikido_containers: >-
+              .responsibilities | map(select(.type == "container_repository") | .id | tostring)
   - kind: issue_groups
     selector:
       query: 'true'
@@ -78,15 +79,16 @@ resources:
             description: .description
             type: .type
             severity_score: .severity_score
-            group_status: .group_status
             severity: .severity
-            locations: .locations
-            priority: .priority
+            group_status: .group_status
             time_to_fix_minutes: .time_to_fix_minutes
+            locations: .locations
             how_to_fix: .how_to_fix
           relations:
             aikido_repositories: >-
               [.locations[]? | select(.type == "code_repository") | (.id | tostring)]
+            aikido_containers: >-
+              [.locations[]? | select(.type == "container_repository") | (.id | tostring)]
   - kind: issues
     selector:
       query: 'true'
