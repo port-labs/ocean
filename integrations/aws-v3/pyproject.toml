@@ -12,6 +12,7 @@ boto3-stubs = {extras = ["sts"], version = "^1.39.3"}
 types-aiobotocore = {extras = ["sts"], version = "^2.23.0"}
 aiofiles = "^24.1.0"
 aioboto3 = "^15.1.0"
+aiohttp = "^3.13.3"
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
