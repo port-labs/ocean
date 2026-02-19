@@ -9,7 +9,7 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"aikido_repository_ocean_poc"'
+          blueprint: '"aikido_repository"'
           identifier: .id | tostring
           title: .name
           properties:
@@ -19,14 +19,14 @@ resources:
             active: .active
             branch: .branch
             last_scan_at: (.last_scanned_at | if type == "number" and . > 0 then todate else null end)
-  - kind: container
+  - kind: containers
     selector:
       query: 'true'
       filterStatus: all
     port:
       entity:
         mappings:
-          blueprint: '"aikido_container_ocean_poc"'
+          blueprint: '"aikido_container"'
           identifier: .id | tostring
           title: .name
           properties:
@@ -53,7 +53,7 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"aikido_team_ocean_poc"'
+          blueprint: '"aikido_team"'
           identifier: .id | tostring
           title: .name
           properties:
@@ -72,7 +72,7 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"aikido_issue_group_ocean_poc"'
+          blueprint: '"aikido_issue_group"'
           identifier: .id | tostring
           title: .title
           properties:
@@ -95,7 +95,7 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"aikido_issue_ocean_poc"'
+          blueprint: '"aikido_issue"'
           identifier: .id | tostring
           title: (.affected_package // .rule // .cve_id // ("Issue " + (.id | tostring)))
           properties:

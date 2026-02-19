@@ -1,6 +1,6 @@
 [
     {
-        "identifier": "aikido_repository_ocean_poc",
+        "identifier": "aikido_repository",
         "title": "Aikido Repository",
         "icon": "Aikido",
         "schema": {
@@ -53,7 +53,7 @@
         "relations": {}
     },
     {
-        "identifier": "aikido_container_ocean_poc",
+        "identifier": "aikido_container",
         "title": "Aikido Container",
         "icon": "Aikido",
         "schema": {
@@ -154,14 +154,14 @@
         "relations": {
             "aikido_repository": {
                 "title": "Repository",
-                "target": "aikido_repository_ocean_poc",
+                "target": "aikido_repository",
                 "required": false,
                 "many": false
             }
         }
     },
     {
-        "identifier": "aikido_team_ocean_poc",
+        "identifier": "aikido_team",
         "title": "Aikido Team",
         "icon": "Aikido",
         "schema": {
@@ -202,20 +202,20 @@
         "relations": {
             "aikido_repositories": {
                 "title": "Repositories",
-                "target": "aikido_repository_ocean_poc",
+                "target": "aikido_repository",
                 "required": false,
                 "many": true
             },
             "aikido_containers": {
                 "title": "Containers",
-                "target": "aikido_container_ocean_poc",
+                "target": "aikido_container",
                 "required": false,
                 "many": true
             }
         }
     },
     {
-        "identifier": "aikido_issue_group_ocean_poc",
+        "identifier": "aikido_issue_group",
         "title": "Aikido Issue Group",
         "icon": "Aikido",
         "schema": {
@@ -318,20 +318,20 @@
         "relations": {
             "aikido_repositories": {
                 "title": "Repositories",
-                "target": "aikido_repository_ocean_poc",
+                "target": "aikido_repository",
                 "required": false,
                 "many": true
             },
             "aikido_containers": {
                 "title": "Containers",
-                "target": "aikido_container_ocean_poc",
+                "target": "aikido_container",
                 "required": false,
                 "many": true
             }
         }
     },
     {
-        "identifier": "aikido_issue_ocean_poc",
+        "identifier": "aikido_issue",
         "title": "Aikido Issue",
         "icon": "Aikido",
         "schema": {
@@ -526,19 +526,19 @@
         "relations": {
             "aikido_repository": {
                 "title": "Repository",
-                "target": "aikido_repository_ocean_poc",
+                "target": "aikido_repository",
                 "required": false,
                 "many": false
             },
             "aikido_container": {
                 "title": "Container",
-                "target": "aikido_container_ocean_poc",
+                "target": "aikido_container",
                 "required": false,
                 "many": false
             },
             "issue_group": {
                 "title": "Issue Group",
-                "target": "aikido_issue_group_ocean_poc",
+                "target": "aikido_issue_group",
                 "required": false,
                 "many": false
             }
