@@ -192,12 +192,15 @@ class GraphQLPullRequestExporter(AbstractGithubExporter[GithubGraphQLClient]):
         max_results = extras["max_results"]
         updated_after = extras["updated_after"]
         repo = extras["repo"]
+        repo_name = repo["name"]
 
         if "open" in states:
+            logger.info(f"Fetching open PRs from {organization}/{repo_name}")
             async for batch in self._fetch_open_pull_requests(organization, repo):
                 yield batch
 
         if "closed" in states:
+            logger.info(f"Fetching closed PRs from {organization}/{repo_name}")
             async for batch in self._fetch_closed_pull_requests(
                 organization, repo, max_results, updated_after
             ):
