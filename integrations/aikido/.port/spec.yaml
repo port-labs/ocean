@@ -11,7 +11,7 @@ features:
       - kind: issues
       - kind: issue_groups
       - kind: team
-      - kind: container
+      - kind: containers
 configurations:
   - name: aikidoClientId
     required: true
