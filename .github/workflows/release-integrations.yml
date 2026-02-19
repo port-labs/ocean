@@ -227,11 +227,9 @@ jobs:
         id: generate-schemas
         continue-on-error: true
         run: |
-          echo "port_app_config_schema=port-app-config.json" >> $GITHUB_OUTPUT
-          echo "ui_schema=ui-schema.json" >> $GITHUB_OUTPUT
-
-          docker run --platform linux/amd64 --rm -v $(pwd):/artifacts "${{ steps.prepare_tags.outputs.image }}" \
-            sh -c "ocean port-app-config schema -o '/artifacts/$port_app_config_schema' && ocean port-app-config ui-schema -o '/artifacts/$ui_schema'"
+         docker run --platform linux/amd64 --rm -v $(pwd):/artifacts \
+            "${{ steps.prepare_tags.outputs.image }}" \
+            sh -c "ocean port-app-config schema -f json-schema -o '/artifacts/port_app_config.json' && ocean port-app-config schema --format port -o '/artifacts/schema.json'"
 
       - name: Upload schemas as artifacts
         if: steps.generate-schemas.outcome == 'success'
@@ -265,8 +263,8 @@ jobs:
         with:
           name: schemas
           path: |
-            ${{ steps.generate-schemas.outputs.port_app_config_schema }}
-            ${{ steps.generate-schemas.outputs.ui_schema }}
+            ${{ needs.release-integration.outputs.port_app_config_schema }}
+            ${{ needs.release-integration.outputs.ui_schema }}
 
       - name: Upload specifications to s3
         run: |

@@ -64,7 +64,6 @@ def _write_json_output(
     data: dict[str, Any],
     output_file: str | None,
     pretty: bool,
-    label: str,
 ) -> None:
     """Serialise *data* as JSON to *output_file* or stdout."""
     indent = 2 if pretty else None
@@ -75,7 +74,7 @@ def _write_json_output(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(json_output)
         click.echo(
-            click.style(f"{label} written to {output_file}", fg="green"),
+            click.style(f"Output written to {output_file}", fg="green"),
             err=True,
         )
     else:
@@ -90,6 +89,14 @@ def port_app_config() -> None:
 
 @port_app_config.command("schema")
 @click.argument("path", default=".", type=click.Path(exists=True))
+@click.option(
+    "-f",
+    "--format",
+    "format",
+    type=click.Choice(["json-schema", "port"]),
+    default="json-schema",
+    help="Schema format: json-schema (default) or port (UI-compatible schema).",
+)
 @click.option(
     "-o",
     "--output",
@@ -106,51 +113,26 @@ def port_app_config() -> None:
 )
 def port_app_config_schema(
     path: str,
+    format: str,
     output_file: str | None,
     pretty: bool,
 ) -> None:
     """
-    Extract the PortAppConfig JSON schema for an integration.
+    Extract the PortAppConfig schema for an integration.
 
     PATH: Path to the integration directory (default: current directory).
+
+    Format: json-schema (default) outputs raw JSON Schema; port outputs
+    UI-compatible schema with dereferenced selectors.
     """
     integration_class = _load_integration_class(path)
     config_class = _get_config_class(integration_class)
-    validate_and_get_config_schema(config_class)
-    result = config_class.schema()
 
-    _write_json_output(result, output_file, pretty, label="Schema")
+    if format == "json-schema":
+        validate_and_get_config_schema(config_class)
+        result = config_class.schema()
+    else:
+        result = validate_and_get_config_schema(config_class)
+        result = _dereference_schema(result)
 
-
-@port_app_config.command("ui-schema")
-@click.argument("path", default=".", type=click.Path(exists=True))
-@click.option(
-    "-o",
-    "--output",
-    "output_file",
-    default=None,
-    type=click.Path(),
-    help="Output file path. If not specified, prints to stdout.",
-)
-@click.option(
-    "--pretty/--compact",
-    "pretty",
-    default=True,
-    help="Pretty print JSON output (default: pretty).",
-)
-def port_app_config_ui_schema(
-    path: str,
-    output_file: str | None,
-    pretty: bool,
-) -> None:
-    """
-    Extract UI compatible schema for an integration.
-
-    PATH: Path to the integration directory (default: current directory).
-    """
-    integration_class = _load_integration_class(path)
-    config_class = _get_config_class(integration_class)
-    result = validate_and_get_config_schema(config_class)
-    result = _dereference_schema(result)
-
-    _write_json_output(result, output_file, pretty, label="UI Schema")
+    _write_json_output(result, output_file, pretty)
