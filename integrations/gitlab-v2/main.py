@@ -379,14 +379,11 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
 
     files_cache: dict[str, dict[str, Any]] = {}
+    found_any_files = False
 
-    async for files_batch in client.search_files(
-        scope,
-        search_path,
-        repositories,
-        skip_parsing,
-        build_group_params(include_only_active_groups=include_only_active_groups),
-    ):
+    async def _enrich_and_yield(
+        files_batch: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
         enriched_batch = await client._enrich_files_with_repos(files_batch)
         if included_files:
             for file_entity in enriched_batch:
@@ -397,7 +394,30 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         client, repo, included_files
                     )
                 file_entity["__includedFiles"] = files_cache[repo_key]
-        yield enriched_batch
+        return enriched_batch
+
+    async for files_batch in client.search_files(
+        scope,
+        search_path,
+        repositories,
+        skip_parsing,
+        build_group_params(include_only_active_groups=include_only_active_groups),
+    ):
+        found_any_files = True
+        yield await _enrich_and_yield(files_batch)
+
+    if not found_any_files and not repositories:
+        logger.info(
+            "Group-level file search returned no results. "
+            "Falling back to project-level file search."
+        )
+        async for files_batch in client.search_files_in_projects(
+            scope,
+            search_path,
+            skip_parsing,
+            build_group_params(include_only_active_groups=include_only_active_groups),
+        ):
+            yield await _enrich_and_yield(files_batch)
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
