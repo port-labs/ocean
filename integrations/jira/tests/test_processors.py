@@ -13,6 +13,7 @@ from webhook_processors.project_webhook_processor import (
     ProjectWebhookProcessor,
 )
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
+from webhook_processors.version_webhook_processor import VersionWebhookProcessor
 from typing import Any
 
 
@@ -34,6 +35,11 @@ def jiraUserWebhookProcessor(event: WebhookEvent) -> UserWebhookProcessor:
 @pytest.fixture
 def jiraProjectWebhookProcessor(event: WebhookEvent) -> ProjectWebhookProcessor:
     return ProjectWebhookProcessor(event)
+
+
+@pytest.fixture
+def jiraVersionWebhookProcessor(event: WebhookEvent) -> VersionWebhookProcessor:
+    return VersionWebhookProcessor(event)
 
 
 @pytest.fixture
@@ -601,3 +607,143 @@ async def test_handleEvent_issueUpdated_jqlFilterIsWrappedWithParentheses(
         )
         assert len(result.updated_raw_results) == 1
         assert result.updated_raw_results[0] == mock_issue
+
+
+# ---------------------------------------------------------------------------
+# VersionWebhookProcessor tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_should_process_event_version(
+    jiraVersionWebhookProcessor: VersionWebhookProcessor,
+) -> None:
+    for version_event in (
+        "jira:version_created",
+        "jira:version_updated",
+        "jira:version_deleted",
+        "jira:version_released",
+        "jira:version_unreleased",
+        "jira:version_archived",
+        "jira:version_unarchived",
+        "jira:version_moved",
+        "jira:version_merged",
+    ):
+        event = WebhookEvent(
+            trace_id="test-trace-id",
+            payload={"webhookEvent": version_event},
+            headers={},
+        )
+        assert await jiraVersionWebhookProcessor.should_process_event(event) is True
+
+    for non_version_event in ("jira:issue_created", "project_created", "user_updated"):
+        event = WebhookEvent(
+            trace_id="test-trace-id",
+            payload={"webhookEvent": non_version_event},
+            headers={},
+        )
+        assert await jiraVersionWebhookProcessor.should_process_event(event) is False
+
+
+@pytest.mark.asyncio
+async def test_get_matching_kinds_version(
+    jiraVersionWebhookProcessor: VersionWebhookProcessor,
+) -> None:
+    event = WebhookEvent(trace_id="test-trace-id", payload={}, headers={})
+    assert await jiraVersionWebhookProcessor.get_matching_kinds(event) == ["version"]
+
+
+@pytest.mark.asyncio
+async def test_authenticate_version(
+    jiraVersionWebhookProcessor: VersionWebhookProcessor,
+) -> None:
+    assert await jiraVersionWebhookProcessor.authenticate({}, {}) is True
+
+
+@pytest.mark.asyncio
+async def test_validate_payload_version(
+    jiraVersionWebhookProcessor: VersionWebhookProcessor,
+) -> None:
+    assert (
+        await jiraVersionWebhookProcessor.validate_payload({"version": {"id": 1001}})
+        is True
+    )
+    assert await jiraVersionWebhookProcessor.validate_payload({}) is False
+    assert await jiraVersionWebhookProcessor.validate_payload({"version": {}}) is False
+
+
+@pytest.mark.asyncio
+async def test_handleEvent_versionUpdated_versionReturnedFromClient_updatedRawResultsReturnedCorrectly(
+    jiraVersionWebhookProcessor: VersionWebhookProcessor,
+    resource_config: ResourceConfig,
+) -> None:
+    payload: dict[str, Any] = {
+        "webhookEvent": "jira:version_updated",
+        "version": {"id": 1001, "name": "v1.0"},
+    }
+    mock_version: dict[str, Any] = {"id": 1001, "name": "v1.0", "released": False}
+
+    with patch(
+        "webhook_processors.version_webhook_processor.create_jira_client"
+    ) as mock_create_client:
+        mock_client = AsyncMock()
+        mock_client.get_single_version = AsyncMock(return_value=mock_version)
+        mock_create_client.return_value = mock_client
+
+        result = await jiraVersionWebhookProcessor.handle_event(
+            payload, resource_config
+        )
+
+        mock_client.get_single_version.assert_called_once_with("1001")
+        assert len(result.updated_raw_results) == 1
+        assert len(result.deleted_raw_results) == 0
+        assert result.updated_raw_results[0] == mock_version
+
+
+@pytest.mark.asyncio
+async def test_handleEvent_versionUpdated_versionNotReturnedFromClient_noRawResultsReturned(
+    jiraVersionWebhookProcessor: VersionWebhookProcessor,
+    resource_config: ResourceConfig,
+) -> None:
+    payload: dict[str, Any] = {
+        "webhookEvent": "jira:version_updated",
+        "version": {"id": 1001, "name": "v1.0"},
+    }
+
+    with patch(
+        "webhook_processors.version_webhook_processor.create_jira_client"
+    ) as mock_create_client:
+        mock_client = AsyncMock()
+        mock_client.get_single_version = AsyncMock(return_value=None)
+        mock_create_client.return_value = mock_client
+
+        result = await jiraVersionWebhookProcessor.handle_event(
+            payload, resource_config
+        )
+
+        assert len(result.updated_raw_results) == 0
+        assert len(result.deleted_raw_results) == 0
+
+
+@pytest.mark.asyncio
+async def test_handleEvent_versionDeleted_deletedRawResultsReturnedCorrectly(
+    jiraVersionWebhookProcessor: VersionWebhookProcessor,
+    resource_config: ResourceConfig,
+) -> None:
+    payload: dict[str, Any] = {
+        "webhookEvent": "jira:version_deleted",
+        "version": {"id": 1001, "name": "v1.0"},
+    }
+
+    with patch(
+        "webhook_processors.version_webhook_processor.create_jira_client"
+    ) as mock_create_client:
+        mock_create_client.return_value = AsyncMock()
+
+        result = await jiraVersionWebhookProcessor.handle_event(
+            payload, resource_config
+        )
+
+        assert len(result.updated_raw_results) == 0
+        assert len(result.deleted_raw_results) == 1
+        assert result.deleted_raw_results[0] == payload["version"]
