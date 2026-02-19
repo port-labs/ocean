@@ -24,12 +24,9 @@ from gcp_core.utils import (
     parse_protobuf_messages,
     parse_latest_resource_from_asset,
 )
-from aiolimiter import AsyncLimiter
 from gcp_core.search.paginated_query import paginated_query, DEFAULT_REQUEST_TIMEOUT
-from gcp_core.helpers.ratelimiter.base import (
-    MAXIMUM_CONCURRENT_REQUESTS,
-    PersistentAsyncLimiter,
-)
+from gcp_core.helpers.ratelimiter.base import MAXIMUM_CONCURRENT_REQUESTS
+from gcp_core.helpers.ratelimiter.fixed_window import FixedWindowLimiter
 from gcp_core.helpers.retry.async_retry import async_retry
 
 from asyncio import BoundedSemaphore
@@ -221,7 +218,7 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 async def get_single_project(
     project_name: str,
-    rate_limiter: AsyncLimiter,
+    rate_limiter: FixedWindowLimiter,
     semaphore: BoundedSemaphore,
     config: ProtoConfig,
 ) -> RAW_ITEM:
@@ -231,12 +228,13 @@ async def get_single_project(
                 logger.debug(
                     f"Executing get_single_project. Current rate limit: {rate_limiter.max_rate} requests per {rate_limiter.time_period} seconds."
                 )
-                return parse_protobuf_message(
+                result: RAW_ITEM = parse_protobuf_message(
                     await projects_client.get_project(
                         name=project_name, retry=async_retry
                     ),
                     config,
                 )
+    return result
 
 
 async def get_single_folder(folder_name: str, config: ProtoConfig) -> RAW_ITEM:
@@ -320,7 +318,7 @@ async def feed_event_to_resource(
     asset_name: str,
     project_id: str,
     asset_data: dict[str, Any],
-    project_rate_limiter: PersistentAsyncLimiter,
+    project_rate_limiter: FixedWindowLimiter,
     project_semaphore: BoundedSemaphore,
     config: ProtoConfig,
 ) -> RAW_ITEM:
