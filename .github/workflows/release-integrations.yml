@@ -222,6 +222,14 @@ jobs:
             exit 1
           fi
 
+      - name: Generate schemas
+        id: generate-schemas
+        continue-on-error: true
+        run: |
+          image="${{ needs.release-integration.outputs.tags | split(',') | first }}"
+          docker run --platform linux/amd64 --rm -v $(pwd):/artifacts "${{ env.IMAGE }}" \
+            sh -c "ocean port-app-config schema -o /artifacts/port-app-config.json && ocean port-app-config list-kinds -o /artifacts/kinds.json"
+
   upload-specs:
     runs-on: ubuntu-latest
     permissions:
@@ -231,6 +239,7 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v5
+
       - name: Configure AWS Credentials 🔒
         id: aws-credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -238,6 +247,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Upload specifications to s3
         run: |
           # Temporary file
@@ -305,12 +315,8 @@ jobs:
                   aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_latest_spec_legacy_dest"
                   echo "Successfully uploaded $integration_latest_spec_legacy_dest to s3 bucket."
 
-                  # Generate port-app-config schema and kinds schema
-                  docker run --rm -v $(pwd):/artifacts "ghcr.io/port-labs/port-ocean-$type:$version" \
-                    sh -c "ocean port-app-config schema -o /artifacts/$port_app_config_schema && ocean port-app-config list-kinds -o /artifacts/$kinds_schema"
-
                   # Check if the port-app-config schema and kinds schema were generated successfully
-                  if [ $? -eq 0 ]; then
+                  if [ "${{ steps.generate-schemas.outcome }}" == "success" ]; then
                       # Upload port-app-config schema to s3
                       aws s3 cp "$port_app_config_schema" "s3://$aws_s3_bucket/$port_app_config_schema_dest"
                       echo "Successfully uploaded $port_app_config_schema_dest to s3 bucket."
@@ -327,7 +333,7 @@ jobs:
                       aws s3 cp "$kinds_schema" "s3://$aws_s3_bucket/$kinds_latest_schema_dest"
                       echo "Successfully uploaded $kinds_latest_schema_dest to s3 bucket."
                   else
-                      echo "Warning: Failed to generate schemas for $type:$version, skipping schema upload to s3."
+                      echo "::warning:: Failed to generate schemas for $type:$version, skipping schema upload to s3."
                   fi
 
                   # Get the latest version of the current integration

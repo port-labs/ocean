@@ -7,11 +7,12 @@ from pathlib import Path
 from typing import Any, Type
 
 import click
+from jsonref import replace_refs
 
 from port_ocean.cli.commands.main import cli_start
 from port_ocean.core.handlers import BasePortAppConfig
-from port_ocean.core.handlers.port_app_config.kind_validators import (
-    validate_and_get_resource_kinds,
+from port_ocean.core.handlers.port_app_config.validators import (
+    validate_and_get_config_schema,
 )
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
@@ -47,6 +48,16 @@ def _load_integration_class(path: str) -> Type[BaseIntegration]:
     finally:
         if should_cleanup_sys_path:
             sys.path.remove(path)
+
+
+def _dereference_schema(result: dict[str, Any]) -> dict[str, Any]:
+    """Dereference all $ref in the UI schema and remove definitions. Uses jsonref."""
+    for kind_data in result.get("kinds", {}).values():
+        selectors = kind_data.get("selectors")
+        if isinstance(selectors, dict) and "definitions" in selectors:
+            kind_data["selectors"] = replace_refs(selectors, proxies=False)
+            kind_data["selectors"].pop("definitions", None)
+    return result
 
 
 def _write_json_output(
@@ -105,13 +116,13 @@ def port_app_config_schema(
     """
     integration_class = _load_integration_class(path)
     config_class = _get_config_class(integration_class)
-    validate_and_get_resource_kinds(config_class)
+    validate_and_get_config_schema(config_class)
     result = config_class.schema()
 
     _write_json_output(result, output_file, pretty, label="Schema")
 
 
-@port_app_config.command("list-kinds")
+@port_app_config.command("ui-schema")
 @click.argument("path", default=".", type=click.Path(exists=True))
 @click.option(
     "-o",
@@ -127,17 +138,19 @@ def port_app_config_schema(
     default=True,
     help="Pretty print JSON output (default: pretty).",
 )
-def port_app_config_list_kinds(
+def port_app_config_ui_schema(
     path: str,
     output_file: str | None,
     pretty: bool,
 ) -> None:
     """
-    List the resource kinds defined by an integration.
+    Extract UI compatible schema for an integration.
 
     PATH: Path to the integration directory (default: current directory).
     """
     integration_class = _load_integration_class(path)
-    result = validate_and_get_resource_kinds(_get_config_class(integration_class))
+    config_class = _get_config_class(integration_class)
+    result = validate_and_get_config_schema(config_class)
+    result = _dereference_schema(result)
 
-    _write_json_output(result, output_file, pretty, label="Kinds")
+    _write_json_output(result, output_file, pretty, label="UI Schema")

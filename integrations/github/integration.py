@@ -63,7 +63,9 @@ class GithubRepositorySelector(RepoSearchSelector):
 
 class GithubRepositoryConfig(ResourceConfig):
     selector: GithubRepositorySelector
-    kind: Literal["repository"]
+    kind: Literal["repository"] = Field(
+        title="Repository", description="Repository resource"
+    )
 
 
 class RepositoryBranchMapping(BaseModel):
@@ -354,6 +356,7 @@ class GithubPortAppConfig(PortAppConfig):
         description="Include the authenticated user's personal account",
     )
     repository_type: str = Field(alias="repositoryType", default="all")
+    allow_custom_kinds = True
     resources: list[
         GithubRepositoryConfig
         | GithubPullRequestConfig
@@ -368,7 +371,7 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubSecretScanningAlertConfig
         | GithubUserConfig
         | GithubRepoSearchConfig
-        | ResourceConfig
+        # | ResourceConfig
     ] = Field(default_factory=list)
 
 
