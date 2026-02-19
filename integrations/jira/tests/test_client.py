@@ -536,6 +536,97 @@ async def test_get_reconciled_issues_empty_response(
         assert result == []
 
 
+@pytest.mark.asyncio
+async def test_get_paginated_versions(mock_jira_client: JiraClient) -> None:
+    """Test get_paginated_versions iterates over projects and yields enriched version batches.
+
+    _get_paginated_data calls _send_api_request once per page.  Because both
+    projects fit in a single page (total == len(values)), pagination stops after
+    the first call.  The next two calls are for the versions endpoints.
+    """
+    projects_response: dict[str, Any] = {
+        "values": [{"key": "PROJ1"}, {"key": "PROJ2"}],
+        "total": 2,
+    }
+    proj1_versions: list[dict[str, Any]] = [
+        {"id": 1001, "name": "v1.0"},
+        {"id": 1002, "name": "v1.1"},
+    ]
+    proj2_versions: list[dict[str, Any]] = [
+        {"id": 2001, "name": "v2.0"},
+    ]
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        # Call order: project/search (1 page, total reached) → versions PROJ1 → versions PROJ2
+        mock_request.side_effect = [
+            projects_response,
+            proj1_versions,
+            proj2_versions,
+        ]
+
+        all_versions: list[dict[str, Any]] = []
+        async for batch in mock_jira_client.get_paginated_versions():
+            all_versions.extend(batch)
+
+        assert len(all_versions) == 3
+        # Verify __projectKey enrichment
+        proj1_results = [v for v in all_versions if v.get("__projectKey") == "PROJ1"]
+        proj2_results = [v for v in all_versions if v.get("__projectKey") == "PROJ2"]
+        assert len(proj1_results) == 2
+        assert len(proj2_results) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_paginated_versions_skips_empty_projects(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test get_paginated_versions skips projects that have no versions."""
+    projects_response: dict[str, Any] = {
+        "values": [{"key": "EMPTY"}],
+        "total": 1,
+    }
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        # Call order: project/search (1 page, total reached) → versions EMPTY (empty list)
+        mock_request.side_effect = [
+            projects_response,
+            [],  # no versions for EMPTY project
+        ]
+
+        all_versions: list[dict[str, Any]] = []
+        async for batch in mock_jira_client.get_paginated_versions():
+            all_versions.extend(batch)
+
+        assert all_versions == []
+
+
+@pytest.mark.asyncio
+async def test_get_single_version(mock_jira_client: JiraClient) -> None:
+    """Test get_single_version fetches the version and enriches it with __projectKey."""
+    version_data: dict[str, Any] = {
+        "id": 1001,
+        "name": "v1.0",
+        "released": False,
+        "projectId": 10600,
+    }
+    project_data: dict[str, Any] = {"id": 10600, "key": "PROJ1", "name": "Project 1"}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [version_data, project_data]
+        result = await mock_jira_client.get_single_version("1001")
+
+        assert mock_request.call_count == 2
+        mock_request.assert_any_call("GET", f"{mock_jira_client.api_url}/version/1001")
+        mock_request.assert_any_call("GET", f"{mock_jira_client.api_url}/project/10600")
+        assert result["__projectKey"] == "PROJ1"
+
+
 def test_jira_issue_selector_default_jql() -> None:
     """Test that JiraIssueSelector uses the correct default JQL when not provided"""
     selector = JiraIssueSelector(query="true")

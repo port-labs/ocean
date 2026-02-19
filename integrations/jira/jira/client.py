@@ -19,6 +19,15 @@ WEBHOOK_EVENTS = [
     "jira:issue_created",
     "jira:issue_updated",
     "jira:issue_deleted",
+    "jira:version_created",
+    "jira:version_updated",
+    "jira:version_deleted",
+    "jira:version_released",
+    "jira:version_unreleased",
+    "jira:version_archived",
+    "jira:version_unarchived",
+    "jira:version_moved",
+    "jira:version_merged",
     "project_created",
     "project_updated",
     "project_deleted",
@@ -392,3 +401,41 @@ class JiraClient(OAuthClient):
             team["__members"] = members
 
         return teams
+
+    async def get_paginated_versions(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Iterate over all projects and yield batches of versions per project.
+
+        The JIRA versions endpoint returns all versions for a project in a single
+        response (no pagination). We enrich each version with ``__projectKey`` so
+        the Port mapping can resolve the relation to the parent project without an
+        extra API call.
+        """
+        logger.info("Getting versions from Jira")
+        async for projects in self._get_paginated_data(
+            f"{self.api_url}/project/search", "values"
+        ):
+            for project in projects:
+                project_key = project["key"]
+                logger.debug(f"Fetching versions for project: {project_key}")
+                versions: list[dict[str, Any]] = await self._send_api_request(
+                    "GET", f"{self.api_url}/project/{project_key}/versions"
+                )
+                if versions:
+                    for version in versions:
+                        version["__projectKey"] = project_key
+                    yield versions
+
+    async def get_single_version(self, version_id: str) -> dict[str, Any]:
+        """Fetch a version by ID and enrich it with ``__projectKey``."""
+        version = await self._send_api_request(
+            "GET", f"{self.api_url}/version/{version_id}"
+        )
+        if version:
+            project_id = version["projectId"]
+            project = await self._send_api_request(
+                "GET", f"{self.api_url}/project/{project_id}"
+            )
+            version["__projectKey"] = project["key"]
+        return version

@@ -17,6 +17,7 @@ from jira.overrides import (
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
+from webhook_processors.version_webhook_processor import VersionWebhookProcessor
 
 
 async def setup_application() -> None:
@@ -88,6 +89,15 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield users_batch
 
 
+@ocean.on_resync(Kinds.VERSION)
+async def on_resync_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = create_jira_client()
+
+    async for versions_batch in client.get_paginated_versions():
+        logger.info(f"Received versions batch with {len(versions_batch)} versions")
+        yield versions_batch
+
+
 # Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
@@ -103,3 +113,4 @@ async def on_start() -> None:
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
+ocean.add_webhook_processor("/webhook", VersionWebhookProcessor)
