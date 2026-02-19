@@ -49,10 +49,6 @@
         "git_hub_org": {
           "type": "string",
           "title": "GitHub Org"
-        },
-        "git_hub_team": {
-          "type": "string",
-          "title": "GitHub Team"
         }
       },
       "required": []
