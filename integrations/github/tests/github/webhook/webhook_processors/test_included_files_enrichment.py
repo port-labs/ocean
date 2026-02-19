@@ -39,6 +39,7 @@ def sample_repo() -> dict[str, Any]:
         "full_name": "test-org/test-repo",
         "owner": {"login": "test-org"},
         "default_branch": "main",
+        "visibility": "public",
         "description": "A test repository",
     }
 
@@ -189,6 +190,11 @@ class TestGithubIncludedFilesEnrichment:
         ]
 
         with (
+            patch.object(
+                repository_webhook_processor,
+                "validate_repository_visibility",
+                new=AsyncMock(return_value=True),
+            ),
             patch(
                 "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
                 return_value=mock_exporter,
@@ -228,9 +234,16 @@ class TestGithubIncludedFilesEnrichment:
         mock_exporter = AsyncMock()
         mock_exporter.get_resource.return_value = sample_repo
 
-        with patch(
-            "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
-            return_value=mock_exporter,
+        with (
+            patch.object(
+                repository_webhook_processor,
+                "validate_repository_visibility",
+                new=AsyncMock(return_value=True),
+            ),
+            patch(
+                "github.webhook.webhook_processors.repository_webhook_processor.RestRepositoryExporter",
+                return_value=mock_exporter,
+            ),
         ):
             result = await repository_webhook_processor.handle_event(
                 payload, resource_config_without_included_files
