@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## v0.2.39 (2026-20-02)
+
+### Improvements
+
+- append workspace and state version metadata to state files
+
+
 ## 0.2.38 (2026-02-12)
 
 
