@@ -96,7 +96,7 @@ resources:
       entity:
         mappings:
           blueprint: '"aikido_issue_ocean_poc"'
-          identifier: (.id | tostring)
+          identifier: .id | tostring
           title: (.affected_package // .rule // .cve_id // ("Issue " + (.id | tostring)))
           properties:
             affected_file: .affected_file
@@ -105,6 +105,7 @@ resources:
             closed_at: (if .closed_at == null then null else (.closed_at | todate) end)
             code_repo_id: .code_repo_id
             code_repo_name: .code_repo_name
+            container_repo_id: .container_repo_id
             container_repo_name: .container_repo_name
             cve_id: .cve_id
             cwe_ids: .cwe_classes
@@ -112,13 +113,16 @@ resources:
             group_id: .group_id
             ignored_at: (if .ignored_at == null then null else (.ignored_at | todate) end)
             remediate_by: (if .sla_remediate_by == null then null else (.sla_remediate_by | todate) end)
+            ignored_by: .ignored_by
             rule: .rule
             severity: .severity
             severity_score: .severity_score
-            sla_days: (if .sla_days == null then null else .sla_days end)
+            sla_days: (.sla_days // null)
             snoozed_until: (if .snooze_until == null then null else (.snooze_until | todate) end)
             status: .status
             type: .type
+            license_type: .license_type
+            programming_language: .programming_language
           relations:
             aikido_repository:
               combinator: '"and"'
@@ -126,3 +130,15 @@ resources:
                 - operator: '"="'
                   property: '"$identifier"'
                   value: (if .code_repo_id == null then "unknown" else (.code_repo_id | tostring) end)
+            aikido_container:
+              combinator: '"and"'
+              rules:
+                - operator: '"="'
+                  property: '"$identifier"'
+                  value: (if .container_repo_id == null then "unknown" else (.container_repo_id | tostring) end)
+            issue_group:
+              combinator: '"and"'
+              rules:
+                - operator: '"="'
+                  property: '"$identifier"'
+                  value: (if .group_id == null then "unknown" else (.group_id | tostring) end)

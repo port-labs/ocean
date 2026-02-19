@@ -214,119 +214,121 @@
             }
         }
     },
-        {
-        "identifier": "aikido_issue_group_ocean_poc",
-        "title": "Aikido Issue Group",
-        "icon": "Aikido",
-        "schema": {
-            "properties": {
-                "description": {
-                    "type": "string",
-                    "title": "Description",
-                    "description": "A small description of this issue."
-                },
-                "type": {
-                    "type": "string",
-                    "title": "Type",
-                    "enum": [
-                        "open_source",
-                        "leaked_secret",
-                        "cloud",
-                        "iac",
-                        "sast",
-                        "surface_monitoring",
-                        "malware",
-                        "eol",
-                        "scm_security",
-                        "ai_pentest",
-                        "license"
-                    ],
-                    "enumColors": {
-                        "open_source": "turquoise",
-                        "leaked_secret": "orange",
-                        "cloud": "blue",
-                        "iac": "darkGray",
-                        "sast": "green",
-                        "surface_monitoring": "bronze",
-                        "malware": "red",
-                        "eol": "purple",
-                        "scm_security": "yellow",
-                        "ai_pentest": "pink",
-                        "license": "bronze"
-                    },
-                    "description": "The type of issues in this group."
-                },
-                "severity_score": {
-                    "type": "number",
-                    "title": "Severity Score",
-                    "description": "A number indicating the importance of the vulnerability"
-                },
-                "group_status": {
-                    "type": "string",
-                    "title": "Group Status",
-                    "enum": [
-                        "new",
-                        "todo",
-                        "task_open",
-                        "task_closed",
-                        "pull_request_open"
-                    ],
-                    "enumColors": {
-                        "new": "purple",
-                        "todo": "yellow",
-                        "task_open": "orange",
-                        "task_closed": "green",
-                        "pull_request_open": "blue"
-                    },
-                    "description": "The current status of the issue group."
-                },
-                "severity": {
-                    "type": "string",
-                    "title": "Severity",
-                    "enum": ["critical", "high", "medium", "low"],
-                    "enumColors": {
-                        "critical": "red",
-                        "high": "orange",
-                        "medium": "yellow",
-                        "low": "green"
-                    },
-                    "description": "A human friendly version of the issue's importance"
-                },
-                "locations": {
-                    "items": {
-                        "type": "object"
-                    },
-                    "title": "Locations",
-                    "type": "array",
-                    "description": "A list of locations where this issue was found. A vulnerability can be found in multiple types of locations eg: when a container is linked to a code repository, any vulnerabilities found in that container, will also have that code repository listed as location."
-                },
-                "time_to_fix_minutes": {
-                    "type": "number",
-                    "title": "Time To Fix (Minutes)",
-                    "description": "The estimated time in minutes that it will take to fix this issue."
-                },
-                "how_to_fix": {
-                    "type": "string",
-                    "title": "How To Fix",
-                    "description": "Recommended remediation guidance."
-                }
+    {
+    "identifier": "aikido_issue_group_ocean_poc",
+    "title": "Aikido Issue Group",
+    "icon": "Aikido",
+    "schema": {
+        "properties": {
+            "description": {
+                "type": "string",
+                "title": "Description",
+                "description": "A small description of this issue."
             },
-            "required": []
-        },
-        "relations": {
-            "aikido_repositories": {
-                "title": "Repositories",
-                "target": "aikido_repository_ocean_poc",
-                "required": false,
-                "many": true
+            "type": {
+                "type": "string",
+                "title": "Type",
+                "enum": [
+                    "open_source",
+                    "leaked_secret",
+                    "cloud",
+                    "iac",
+                    "sast",
+                    "surface_monitoring",
+                    "mobile",
+                    "malware",
+                    "eol",
+                    "scm_security",
+                    "ai_pentest",
+                    "license"
+                ],
+                "enumColors": {
+                    "open_source": "turquoise",
+                    "leaked_secret": "orange",
+                    "cloud": "blue",
+                    "iac": "darkGray",
+                    "sast": "green",
+                    "surface_monitoring": "bronze",
+                    "mobile": "lime",
+                    "malware": "red",
+                    "eol": "purple",
+                    "scm_security": "yellow",
+                    "ai_pentest": "pink",
+                    "license": "bronze"
+                },
+                "description": "The type of issues in this group."
             },
-            "aikido_containers": {
-                "title": "Containers",
-                "target": "aikido_container_ocean_poc",
-                "required": false,
-                "many": true
+            "severity_score": {
+                "type": "number",
+                "title": "Severity Score",
+                "description": "A number indicating the importance of the vulnerability"
+            },
+            "group_status": {
+                "type": "string",
+                "title": "Group Status",
+                "enum": [
+                    "new",
+                    "todo",
+                    "task_open",
+                    "task_closed",
+                    "pull_request_open"
+                ],
+                "enumColors": {
+                    "new": "purple",
+                    "todo": "yellow",
+                    "task_open": "orange",
+                    "task_closed": "green",
+                    "pull_request_open": "blue"
+                },
+                "description": "The current status of the issue group."
+            },
+            "severity": {
+                "type": "string",
+                "title": "Severity",
+                "enum": ["critical", "high", "medium", "low"],
+                "enumColors": {
+                    "critical": "red",
+                    "high": "orange",
+                    "medium": "yellow",
+                    "low": "green"
+                },
+                "description": "A human friendly version of the issue's importance"
+            },
+            "locations": {
+                "items": {
+                    "type": "object"
+                },
+                "title": "Locations",
+                "type": "array",
+                "description": "A list of locations where this issue was found. A vulnerability can be found in multiple types of locations eg: when a container is linked to a code repository, any vulnerabilities found in that container, will also have that code repository listed as location."
+            },
+            "time_to_fix_minutes": {
+                "type": "number",
+                "title": "Time To Fix (Minutes)",
+                "description": "The estimated time in minutes that it will take to fix this issue."
+            },
+            "how_to_fix": {
+                "type": "string",
+                "title": "How To Fix",
+                "description": "Recommended remediation guidance."
             }
+        },
+        "required": []
+    },
+    "relations": {
+        "aikido_repositories": {
+            "title": "Repositories",
+            "target": "aikido_repository_ocean_poc",
+            "required": false,
+            "many": true
+        },
+        "aikido_containers": {
+            "title": "Containers",
+            "target": "aikido_container_ocean_poc",
+            "required": false,
+            "many": true
         }
+    }
     },
     {
         "identifier": "aikido_issue_ocean_poc",
@@ -382,6 +384,11 @@
                     "title": "Code Repository Name",
                     "description": "The name of code repository where this issue was found."
                 },
+                "container_repo_id": {
+                    "type": "string",
+                    "title": "Container Repository ID",
+                    "description": "The id of the container image where this issue was found."
+                },
                 "container_repo_name": {
                     "type": "string",
                     "title": "Container Repository Name",
@@ -403,7 +410,8 @@
                 "detected_at": {
                     "type": "string",
                     "title": "First Detected At",
-                    "format": "date-time"
+                    "format": "date-time",
+                    "description": "When the issue was first detected."
                 },
                 "group_id": {
                     "type": "number",
@@ -412,16 +420,24 @@
                 "ignored_at": {
                     "type": "string",
                     "title": "Ignored At",
-                    "format": "date-time"
+                    "format": "date-time",
+                    "description": "When the issue was ignored."
+                },
+                "ignored_by": {
+                    "type": "string",
+                    "title": "Ignored By",
+                    "description": "Who ignored the issue."
                 },
                 "remediate_by": {
                     "type": "string",
                     "title": "Remediate By",
-                    "format": "date-time"
+                    "format": "date-time",
+                    "description": "When this issue should be fixed following the configured SLA for this severity."
                 },
                 "rule": {
                     "type": "string",
-                    "title": "Rule Name"
+                    "title": "Rule Name",
+                    "description": "The name of the rule that caused this finding (eg 'SQL injection')."
                 },
                 "severity": {
                     "type": "string",
@@ -436,16 +452,29 @@
                 },
                 "severity_score": {
                     "type": "number",
-                    "title": "Severity Score"
+                    "title": "Severity Score",
+                    "description": "A number indicating the importance of the vulnerability."
                 },
                 "sla_days": {
                     "type": "number",
-                    "title": "SLA (Days)"
+                    "title": "SLA (Days)",
+                    "description": "The amount of days wherein this issue should be fixed following the configured SLA for this severity."
                 },
                 "snoozed_until": {
                     "type": "string",
                     "title": "Snoozed Until",
-                    "format": "date-time"
+                    "format": "date-time",
+                    "description": "Until when the issue will be snoozed."
+                },
+                "license_type": {
+                    "type": "string",
+                    "title": "License",
+                    "description": "The license type related to this issue. This is only applicable for issues of type 'license'."
+                },
+                "programming_language": {
+                    "type": "string",
+                    "title": "Programming Language",
+                    "description": "The programming language related to this issue. This is only applicable for issues of type 'open_source' and 'sast'."
                 },
                 "status": {
                     "type": "string",
@@ -500,8 +529,19 @@
                 "target": "aikido_repository_ocean_poc",
                 "required": false,
                 "many": false
+            },
+            "aikido_container": {
+                "title": "Container",
+                "target": "aikido_container_ocean_poc",
+                "required": false,
+                "many": false
+            },
+            "issue_group": {
+                "title": "Issue Group",
+                "target": "aikido_issue_group_ocean_poc",
+                "required": false,
+                "many": false
             }
         }
     }
-
 ]
