@@ -572,8 +572,8 @@ async def test_get_paginated_versions(mock_jira_client: JiraClient) -> None:
 
         assert len(all_versions) == 3
         # Verify __projectKey enrichment
-        proj1_results = [v for v in all_versions if v.get("__projectKey") == "PROJ1"]
-        proj2_results = [v for v in all_versions if v.get("__projectKey") == "PROJ2"]
+        proj1_results = [version for version in all_versions if version["__projectKey"] == "PROJ1"]
+        proj2_results = [version for version in all_versions if version["__projectKey"] == "PROJ2"]
         assert len(proj1_results) == 2
         assert len(proj2_results) == 1
 
