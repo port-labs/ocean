@@ -7,7 +7,7 @@ from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
 
 import aiofiles  # type: ignore[import-untyped]
 
-from http_server.overrides import HttpServerResourceConfig
+from http_server.overrides import HttpServerResourceConfig, HttpServerSelector
 
 CACHE_DIR = "/tmp/ocean/.endpoint_response_cache"
 
@@ -51,19 +51,18 @@ def analyze_cacheable_endpoints(
     key_to_endpoint: Dict[str, str] = {}
 
     for resource in resources:
-        selector = resource.selector
-        method = getattr(selector, "method", "GET")
+        selector: HttpServerSelector = resource.selector
         kind_key = make_cache_key(
             endpoint=resource.kind,
-            method=method,
-            query_params=getattr(selector, "query_params", None),
-            headers=getattr(selector, "headers", None),
+            method=selector.method,
+            query_params=selector.query_params,
+            headers=selector.headers,
             body=getattr(selector, "body", None),
         )
         key_counts[kind_key] += 1
-        key_to_endpoint[kind_key] = f"{method.upper()} {resource.kind}"
+        key_to_endpoint[kind_key] = f"{selector.method.upper()} {resource.kind}"
 
-        path_parameters = getattr(selector, "path_parameters", None) or {}
+        path_parameters = selector.path_parameters or {}
         for param_config in path_parameters.values():
             param_key = make_cache_key(
                 endpoint=param_config.endpoint,
