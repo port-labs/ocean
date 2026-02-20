@@ -8,6 +8,7 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
     stream_async_iterators_tasks,
 )
+from port_ocean.utils.cache import cache_iterator_result
 from urllib.parse import quote
 from wcmatch import glob
 
@@ -362,6 +363,7 @@ class GitLabClient:
         if top_level_groups:
             yield top_level_groups
 
+    # AI! when repositories are not passed, we need to fallback to searching trees of repositories in all top level groups. use `get_parent_groups` to fetch groups
     async def search_files_using_tree(
         self,
         path: str,
@@ -417,7 +419,9 @@ class GitLabClient:
             async with semaphore:
                 return await process_project(p)
 
-        tasks = [asyncio.create_task(process_with_semaphore(p)) for p in projects_to_scan]
+        tasks = [
+            asyncio.create_task(process_with_semaphore(p)) for p in projects_to_scan
+        ]
         for completed_task in asyncio.as_completed(tasks):
             if result := await completed_task:
                 yield result
@@ -458,6 +462,7 @@ class GitLabClient:
                     ):
                         yield batch
 
+    @cache_iterator_result()
     async def get_repository_tree(
         self,
         project: dict[str, Any],
@@ -466,6 +471,8 @@ class GitLabClient:
         folders_only: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch repository tree for a project."""
+
+        logger.info(f"fetching repository tree for project {project['name']}")
 
         project_path = project["path_with_namespace"]
         is_wildcard = any(c in path for c in "*?[]")
