@@ -416,7 +416,7 @@ class TestResolveDynamicQueryParams:
         results = [p async for p in resolve_dynamic_query_params({}, None)]
         assert results == [{}]
 
-    @patch("http_server.helpers.endpoint_resolver.query_api_for_dynamic_query_param")
+    @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
     async def test_single_dynamic_param(self, mock_query: MagicMock) -> None:
         async def mock_query_gen(
             param_config: DynamicQueryParameter,
@@ -440,7 +440,7 @@ class TestResolveDynamicQueryParams:
         assert {"type": "LOCAL", "project": "proj-1"} in results
         assert {"type": "LOCAL", "project": "proj-2"} in results
 
-    @patch("http_server.helpers.endpoint_resolver.query_api_for_dynamic_query_param")
+    @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
     async def test_dynamic_only_no_static(self, mock_query: MagicMock) -> None:
         async def mock_query_gen(
             param_config: DynamicQueryParameter,
@@ -461,7 +461,7 @@ class TestResolveDynamicQueryParams:
         assert {"project": "eng"} in results
         assert {"project": "platform"} in results
 
-    @patch("http_server.helpers.endpoint_resolver.query_api_for_dynamic_query_param")
+    @patch("http_server.helpers.endpoint_resolver.query_api_for_parameters")
     async def test_no_values_found_fallback_to_static(
         self, mock_query: MagicMock
     ) -> None:

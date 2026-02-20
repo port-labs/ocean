@@ -12,48 +12,39 @@ from http_server.exceptions import (
 )
 
 
-class ApiPathParameter(BaseModel):
+class ApiParameterConfig(BaseModel):
+    """Base configuration for API-discovered parameters (path or query)"""
+
+    endpoint: str = Field(description="API endpoint to discover parameter values")
+    method: str = Field(default="GET", description="HTTP method")
+    query_params: Optional[Dict[str, Any]] = Field(
+        default=None, description="Query parameters for discovery endpoint"
+    )
+    headers: Optional[Dict[str, str]] = Field(
+        default=None, description="Headers for discovery endpoint"
+    )
+    data_path: Optional[str] = Field(
+        default=None,
+        description="JQ path to extract data array from response (e.g., '.tickets', '.data')",
+    )
+    field: str = Field(
+        description="JQ expression to extract parameter value from each record"
+    )
+    filter: Optional[str] = Field(
+        default=None, description="JQ boolean expression to filter records"
+    )
+
+
+class ApiPathParameter(ApiParameterConfig):
     """Configuration for API-discovered path parameters"""
 
-    endpoint: str = Field(description="API endpoint to discover parameter values")
-    method: str = Field(default="GET", description="HTTP method")
-    query_params: Optional[Dict[str, Any]] = Field(
-        default=None, description="Query parameters for discovery endpoint"
-    )
-    headers: Optional[Dict[str, str]] = Field(
-        default=None, description="Headers for discovery endpoint"
-    )
-    data_path: Optional[str] = Field(
-        default=None,
-        description="JQ path to extract data array from response (e.g., '.tickets', '.data')",
-    )
-    field: str = Field(
-        description="JQ expression to extract parameter value from each record"
-    )
-    filter: Optional[str] = Field(
-        default=None, description="JQ boolean expression to filter records"
-    )
+    pass
 
 
-class DynamicQueryParameter(BaseModel):
-    endpoint: str = Field(description="API endpoint to discover parameter values")
-    method: str = Field(default="GET", description="HTTP method")
-    query_params: Optional[Dict[str, Any]] = Field(
-        default=None, description="Query parameters for discovery endpoint"
-    )
-    headers: Optional[Dict[str, str]] = Field(
-        default=None, description="Headers for discovery endpoint"
-    )
-    data_path: Optional[str] = Field(
-        default=None,
-        description="JQ path to extract data array from response (e.g., '.tickets', '.data')",
-    )
-    field: str = Field(
-        description="JQ expression to extract parameter value from each record"
-    )
-    filter: Optional[str] = Field(
-        default=None, description="JQ boolean expression to filter records"
-    )
+class DynamicQueryParameter(ApiParameterConfig):
+    """Configuration for API-discovered query parameters"""
+
+    pass
 
 
 class HttpServerSelector(Selector):
