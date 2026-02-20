@@ -362,6 +362,7 @@ class GitLabClient:
         if top_level_groups:
             yield top_level_groups
 
+    # AI! write an alternative for this function that uses repository. That is, it returns all tree blobs that match the path, also add unit tests
     async def search_files(
         self,
         scope: str,
@@ -455,9 +456,7 @@ class GitLabClient:
                 project, path, effective_branch, folders_only=True
             ):
                 # Remap 'item' to 'folder' for backward compatibility with older consumers of get_repository_folders
-                yield [
-                    {**item, "folder": item.pop("item")} for item in folders_batch
-                ]
+                yield [{**item, "folder": item.pop("item")} for item in folders_batch]
 
     async def _enrich_batch(
         self,
