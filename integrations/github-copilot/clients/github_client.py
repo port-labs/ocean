@@ -18,7 +18,6 @@ class GitHubClient:
         self.NEXT_PATTERN = re.compile(r'<([^>]+)>; rel="next"')
         self.pagination_page_size_limit = 100
         self.pagination_header_name = "Link"
-        self.copilot_disabled_status_code = 422
         self.forbidden_status_code = 403
 
     async def get_organizations(self) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -27,49 +26,49 @@ class GitHubClient:
         ):
             yield organizations
 
-    async def get_teams_of_organization(
-        self, organization: dict[str, Any]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        url = self._resolve_route_params(
-            GithubEndpoints.LIST_TEAMS.value, {"org": organization["login"]}
-        )
-        async for teams in self._get_paginated_data(
-            url,
-            ignore_status_code=[self.forbidden_status_code],
-        ):
-            yield teams
-
     async def get_metrics_for_organization(
         self, organization: dict[str, Any]
     ) -> list[dict[str, Any]] | None:
         url = self._resolve_route_params(
-            GithubEndpoints.COPILOT_ORGANIZATION_METRICS.value,
+            GithubEndpoints.COPILOT_ORGANIZATION_METRICS_28_DAY.value,
             {"org": organization["login"]},
         )
-        return await self.send_api_request(
-            "get",
-            url,
-            ignore_status_code=[
-                self.copilot_disabled_status_code,
-                self.forbidden_status_code,
-            ],
+        response = await self._send_api_request(
+            method="get",
+            path=url,
+            ignore_status_code=[self.forbidden_status_code],
         )
+        if not response:
+            return None
 
-    async def get_metrics_for_team(
-        self, organization: dict[str, Any], team: dict[str, Any]
+        report_manifest = response.json()
+        download_links: list[str] = report_manifest.get("download_links", [])
+
+        results: list[dict[str, Any]] = []
+        for signed_url in download_links:
+            report_data = await self._fetch_report_from_signed_url(signed_url)
+            if report_data:
+                results.extend(
+                    report_data if isinstance(report_data, list) else [report_data]
+                )
+
+        return results or None
+
+    async def _fetch_report_from_signed_url(
+        self, signed_url: str
     ) -> list[dict[str, Any]] | None:
-        url = self._resolve_route_params(
-            GithubEndpoints.COPILOT_TEAM_METRICS.value,
-            {"org": organization["login"], "team": team["slug"]},
-        )
-        return await self.send_api_request(
-            "get",
-            url,
-            ignore_status_code=[
-                self.copilot_disabled_status_code,
-                self.forbidden_status_code,
-            ],
-        )
+        # Signed URLs carry auth in the URL itself -- no GitHub headers needed
+        logger.debug(f"Fetching report from signed URL: {signed_url}")
+        try:
+            response = await self._client.request(method="get", url=signed_url)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Failed to fetch report from signed URL: {e}")
+            raise
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error fetching report from signed URL: {e}")
+            raise
 
     async def _get_paginated_data(
         self,

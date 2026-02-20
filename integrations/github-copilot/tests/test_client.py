@@ -5,7 +5,13 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from clients.github_client import GitHubClient
-from tests.mocks import organizations_response, teams_response, copilot_metrics_response
+from tests.mocks import (
+    organizations_response,
+    copilot_usage_report_manifest,
+    copilot_usage_report_part_1,
+    copilot_usage_report_part_2,
+)
+
 
 BASE_URL = "https://api.github.com"
 TOKEN = "test-token"
@@ -52,62 +58,125 @@ async def test_get_organizations_single_page(github_client: GitHubClient) -> Non
 
 
 @pytest.mark.asyncio
-async def test_get_teams_of_organization_403_ignored(
+async def test_get_metrics_for_organization_fetches_and_combines_all_report_parts(
     github_client: GitHubClient,
 ) -> None:
-    error_response = httpx.Response(
-        status_code=403, request=httpx.Request("GET", "https://fake")
-    )
-    async_mock = AsyncMock(
-        side_effect=httpx.HTTPStatusError(
-            "Forbidden", request=error_response.request, response=error_response
-        )
+    manifest_response = MagicMock()
+    manifest_response.status_code = 200
+    manifest_response.json.return_value = copilot_usage_report_manifest
+
+    signed_url_response_part_1 = MagicMock()
+    signed_url_response_part_1.status_code = 200
+    signed_url_response_part_1.json.return_value = copilot_usage_report_part_1
+
+    signed_url_response_part_2 = MagicMock()
+    signed_url_response_part_2.status_code = 200
+    signed_url_response_part_2.json.return_value = copilot_usage_report_part_2
+
+    request_mock = AsyncMock(
+        side_effect=[
+            manifest_response,
+            signed_url_response_part_1,
+            signed_url_response_part_2,
+        ]
     )
 
-    with patch.object(github_client._client, "request", new=async_mock):
-        results = []
-        async for teams in github_client.get_teams_of_organization(
+    with patch.object(github_client._client, "request", new=request_mock):
+        result = await github_client.get_metrics_for_organization(
             organizations_response[0]
-        ):
-            results.extend(teams)
+        )
 
-        assert results == []
+    assert result == copilot_usage_report_part_1 + copilot_usage_report_part_2
 
 
 @pytest.mark.asyncio
-async def test_get_metrics_for_organization(github_client: GitHubClient) -> None:
-    expected_response = copilot_metrics_response
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = expected_response
+async def test_get_metrics_for_organization_returns_none_when_forbidden(
+    github_client: GitHubClient,
+) -> None:
+    forbidden_response = httpx.Response(
+        status_code=403, request=httpx.Request("GET", BASE_URL)
+    )
+    request_mock = AsyncMock(
+        side_effect=httpx.HTTPStatusError(
+            "Forbidden",
+            request=forbidden_response.request,
+            response=forbidden_response,
+        )
+    )
+
+    with patch.object(github_client._client, "request", new=request_mock):
+        result = await github_client.get_metrics_for_organization(
+            organizations_response[0]
+        )
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_metrics_for_organization_returns_none_when_manifest_has_no_download_links(
+    github_client: GitHubClient,
+) -> None:
+    empty_manifest_response = MagicMock()
+    empty_manifest_response.status_code = 200
+    empty_manifest_response.json.return_value = {
+        "download_links": [],
+        "report_start_day": "2025-07-01",
+        "report_end_day": "2025-07-28",
+    }
 
     with patch.object(
-        github_client._client, "request", new=AsyncMock(return_value=mock_response)
+        github_client._client,
+        "request",
+        new=AsyncMock(return_value=empty_manifest_response),
     ):
         result = await github_client.get_metrics_for_organization(
             organizations_response[0]
         )
-        assert result == expected_response
+
+    assert result is None
 
 
 @pytest.mark.asyncio
-async def test_get_metrics_for_team_422_ignored(github_client: GitHubClient) -> None:
-    error_response = httpx.Response(
-        status_code=422, request=httpx.Request("get", "https://fake")
+async def test_fetch_report_from_signed_url_returns_parsed_report_data(
+    github_client: GitHubClient,
+) -> None:
+    signed_url = "https://signed.example.com/copilot-report-part-1.json"
+    expected_report_data = copilot_usage_report_part_1
+
+    signed_url_response = MagicMock()
+    signed_url_response.status_code = 200
+    signed_url_response.json.return_value = expected_report_data
+
+    with patch.object(
+        github_client._client,
+        "request",
+        new=AsyncMock(return_value=signed_url_response),
+    ):
+        result = await github_client._fetch_report_from_signed_url(signed_url)
+
+    assert result == expected_report_data
+
+
+@pytest.mark.asyncio
+async def test_fetch_report_from_signed_url_raises_on_http_error(
+    github_client: GitHubClient,
+) -> None:
+    signed_url = "https://signed.example.com/copilot-report-expired.json"
+
+    expired_url_response = httpx.Response(
+        status_code=403, request=httpx.Request("GET", signed_url)
     )
-    async_mock = AsyncMock(
+    request_mock = AsyncMock(
         side_effect=httpx.HTTPStatusError(
-            "Unprocessable Entity",
-            request=error_response.request,
-            response=error_response,
+            "Forbidden",
+            request=expired_url_response.request,
+            response=expired_url_response,
         )
     )
 
-    with patch.object(github_client._client, "request", new=async_mock):
-        result = await github_client.get_metrics_for_team(
-            organizations_response[0], teams_response[0]
-        )
-        assert result == []
+    with patch.object(github_client._client, "request", new=request_mock):
+        with pytest.raises(httpx.HTTPStatusError):
+            await github_client._fetch_report_from_signed_url(signed_url)
 
 
 @pytest.mark.asyncio
