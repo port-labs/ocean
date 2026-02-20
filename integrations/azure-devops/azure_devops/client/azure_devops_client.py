@@ -342,8 +342,14 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def _get_group_direct_members(
         self, group_descriptor: str
-    ) -> list[dict[str, Any]]:
-        """Get direct members of a group."""
+    ) -> Optional[list[dict[str, Any]]]:
+        """Get direct members of a group.
+
+        Note: The Memberships API does not support pagination. For groups with
+        very large membership (10,000+), this could timeout. A future improvement
+        could use the GroupEntitlements Members API which supports pagination,
+        but requires an additional UUID lookup per group.
+        """
         members_url = (
             self._format_service_url("vssps")
             + f"/{API_URL_PREFIX}/graph/Memberships/{group_descriptor}"
@@ -352,16 +358,13 @@ class AzureDevopsClient(HTTPBaseClient):
             "GET", members_url, params={"direction": "Down"}
         )
         if not response:
-            return []
-        return response.json().get("value", [])
+            return None
+        return response.json()["value"]
 
     async def _lookup_subjects(
         self, descriptors: list[str]
-    ) -> dict[str, dict[str, Any]]:
+    ) -> Optional[dict[str, dict[str, Any]]]:
         """Batch lookup subject details for multiple descriptors."""
-        if not descriptors:
-            return {}
-
         lookup_url = (
             self._format_service_url("vssps") + f"/{API_URL_PREFIX}/graph/subjectlookup"
         )
@@ -375,8 +378,8 @@ class AzureDevopsClient(HTTPBaseClient):
             params={"api-version": "7.1-preview.1"},
         )
         if not response:
-            return {}
-        return response.json().get("value", {})
+            return None
+        return response.json()["value"]
 
     async def generate_group_members(
         self,
@@ -399,6 +402,8 @@ class AzureDevopsClient(HTTPBaseClient):
                     membership["memberDescriptor"] for membership in memberships
                 ]
                 subject_details = await self._lookup_subjects(descriptors)
+                if not subject_details:
+                    continue
 
                 members = []
                 for membership in memberships:
@@ -408,11 +413,10 @@ class AzureDevopsClient(HTTPBaseClient):
                     member_record = {**subject_info, "__group": group}
                     members.append(member_record)
 
-                if members:
-                    logger.info(
-                        f"Resolved {len(members)} direct members for group '{group_descriptor}'"
-                    )
-                    yield members
+                logger.info(
+                    f"Resolved {len(members)} direct members for group '{group_descriptor}'"
+                )
+                yield members
 
     @cache_iterator_result()
     async def generate_repositories(
