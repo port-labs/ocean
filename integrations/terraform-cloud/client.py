@@ -267,18 +267,11 @@ class TerraformClient:
                     "workspace"
                 )
                 state_version_id = state_version.get("id")
-                if isinstance(content, dict):
-                    item = {
-                        **content,
-                        "__workspace": workspace_data,
-                        "__state_version_id": state_version_id,
-                    }
-                else:
-                    item = {
-                        "state": content,
-                        "__workspace": workspace_data,
-                        "__state_version_id": state_version_id,
-                    }
+                item = {
+                    **content,
+                    "__workspace": workspace_data,
+                    "__state_version_id": state_version_id,
+                }
                 combined.append(item)
             yield combined
 
