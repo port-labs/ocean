@@ -1,6 +1,8 @@
 from http_server.overrides import (
     CustomAuthRequestConfig,
     CustomAuthRequestTemplateConfig,
+    DynamicQueryParameter,
+    HttpServerSelector,
 )
 from http_server.exceptions import (
     CustomAuthRequestError,
@@ -112,3 +114,55 @@ class TestCustomAuthRequestConfigValidation:
             endpoint="/oauth/token", bodyForm="grant_type=client_credentials"
         )
         assert config2.bodyForm == "grant_type=client_credentials"
+
+
+class TestHttpServerSelectorQueryParams:
+    def test_static_query_params(self) -> None:
+        selector = HttpServerSelector(
+            query="true", query_params={"type": "LOCAL", "limit": 100}
+        )
+        assert selector.query_params == {"type": "LOCAL", "limit": 100}
+
+    def test_dynamic_query_param(self) -> None:
+        selector = HttpServerSelector(
+            query="true",
+            dynamic_query_param={
+                "project": DynamicQueryParameter(
+                    endpoint="/api/projects",
+                    method="GET",
+                    field=".project_key",
+                )
+            },
+        )
+        assert selector.dynamic_query_param is not None
+        assert "project" in selector.dynamic_query_param
+        assert selector.dynamic_query_param["project"].endpoint == "/api/projects"
+        assert selector.dynamic_query_param["project"].field == ".project_key"
+
+    def test_static_and_dynamic_query_param_separate(self) -> None:
+        selector = HttpServerSelector(
+            query="true",
+            query_params={"type": "LOCAL"},
+            dynamic_query_param={
+                "project": DynamicQueryParameter(
+                    endpoint="/api/projects",
+                    method="GET",
+                    field=".project_key",
+                )
+            },
+        )
+        assert selector.query_params == {"type": "LOCAL"}
+        assert selector.dynamic_query_param is not None
+        assert selector.dynamic_query_param["project"].endpoint == "/api/projects"
+
+    def test_none_query_params(self) -> None:
+        selector = HttpServerSelector(query="true", query_params=None)
+        assert selector.query_params is None
+
+    def test_none_dynamic_query_param(self) -> None:
+        selector = HttpServerSelector(query="true", dynamic_query_param=None)
+        assert selector.dynamic_query_param is None
+
+    def test_empty_query_params(self) -> None:
+        selector = HttpServerSelector(query="true", query_params={})
+        assert selector.query_params == {}

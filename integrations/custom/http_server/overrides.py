@@ -12,8 +12,8 @@ from http_server.exceptions import (
 )
 
 
-class ApiPathParameter(BaseModel):
-    """Configuration for API-discovered path parameters"""
+class ApiParameterConfig(BaseModel):
+    """Base configuration for API-discovered parameters (path or query)"""
 
     endpoint: str = Field(description="API endpoint to discover parameter values")
     method: str = Field(default="GET", description="HTTP method")
@@ -35,6 +35,18 @@ class ApiPathParameter(BaseModel):
     )
 
 
+class ApiPathParameter(ApiParameterConfig):
+    """Configuration for API-discovered path parameters"""
+
+    pass
+
+
+class DynamicQueryParameter(ApiParameterConfig):
+    """Configuration for API-discovered query parameters"""
+
+    pass
+
+
 class HttpServerSelector(Selector):
     """Selector for HTTP server resources - extends base Selector"""
 
@@ -44,6 +56,9 @@ class HttpServerSelector(Selector):
     method: str = Field(default="GET", description="HTTP method")
     query_params: Optional[Dict[str, Any]] = Field(
         default=None, description="Query parameters"
+    )
+    dynamic_query_param: Optional[Dict[str, DynamicQueryParameter]] = Field(
+        default=None, description="Dynamic query parameter resolved from API endpoint"
     )
     headers: Optional[Dict[str, str]] = Field(default=None, description="HTTP headers")
     path_parameters: Optional[Dict[str, ApiPathParameter]] = Field(
