@@ -362,7 +362,66 @@ class GitLabClient:
         if top_level_groups:
             yield top_level_groups
 
-    # AI! write an alternative for this function that uses repository tree (use existing repository tree method).. That is, it returns all tree blobs that match the path. Function should be as concise as possible, don't add too many comments, also add unit tests
+    async def search_files_using_tree(
+        self,
+        path: str,
+        repositories: list[str] | None = None,
+        skip_parsing: bool = False,
+        params: Optional[dict[str, Any]] = None,
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        async def process_project(project: dict[str, Any]) -> list[dict[str, Any]]:
+            results = []
+            try:
+                async for tree_batch in self.get_repository_tree(
+                    project, path, ref=project.get("default_branch", "main")
+                ):
+                    for entry in tree_batch:
+                        item = entry["item"]
+                        if item["type"] != "blob":
+                            continue
+                        file_obj = {
+                            "path": item["path"],
+                            "project_id": project["id"],
+                            "ref": entry["__branch"],
+                            "id": item["id"],
+                            "mode": item["mode"],
+                            "name": item["name"],
+                        }
+                        results.append(
+                            await self._process_file(
+                                file_obj,
+                                project["path_with_namespace"],
+                                skip_parsing=skip_parsing,
+                            )
+                        )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to process project {project.get('path_with_namespace', project.get('id'))}: {e}"
+                )
+            return results
+
+        projects_to_scan = []
+        if repositories:
+            for repo in repositories:
+                try:
+                    projects_to_scan.append(await self.get_project(repo))
+                except Exception as e:
+                    logger.warning(f"Could not fetch project {repo}: {e}")
+        else:
+            async for batch in self.get_projects(params=params):
+                projects_to_scan.extend(batch)
+
+        semaphore = asyncio.Semaphore(10)
+
+        async def process_with_semaphore(p: dict[str, Any]) -> list[dict[str, Any]]:
+            async with semaphore:
+                return await process_project(p)
+
+        tasks = [asyncio.create_task(process_with_semaphore(p)) for p in projects_to_scan]
+        for completed_task in asyncio.as_completed(tasks):
+            if result := await completed_task:
+                yield result
+
     async def search_files(
         self,
         scope: str,

@@ -35,7 +35,90 @@ class TestGitLabClient:
     @pytest.fixture
     def client(self) -> GitLabClient:
         """Initialize GitLab client with test configuration"""
-        return GitLabClient("https://gitlab.example.com", "test-token")
+        client = GitLabClient("https://gitlab.example.com", "test-token")
+        client._process_file = AsyncMock(side_effect=lambda f, c, **k: f)  # type: ignore
+        return client
+
+    async def test_search_files_using_tree(self, client: GitLabClient) -> None:
+        """Test search_files_using_tree"""
+        mock_project = {
+            "id": 1,
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        mock_tree_item = {
+            "item": {
+                "type": "blob",
+                "path": "test.json",
+                "id": "blob1",
+                "mode": "100644",
+                "name": "test.json",
+            },
+            "repo": mock_project,
+            "__branch": "main",
+        }
+
+        with (
+            patch.object(
+                client, "get_project", AsyncMock(return_value=mock_project)
+            ) as mock_get_project,
+            patch.object(
+                client,
+                "get_repository_tree",
+                return_value=async_mock_generator([[mock_tree_item]]),
+            ) as mock_get_tree,
+        ):
+            results = []
+            async for batch in client.search_files_using_tree(
+                "*.json", repositories=["group/project"]
+            ):
+                results.extend(batch)
+
+            assert len(results) == 1
+            assert results[0]["path"] == "test.json"
+            mock_get_project.assert_called_with("group/project")
+            mock_get_tree.assert_called()
+
+    async def test_search_files_using_tree_all_projects(
+        self, client: GitLabClient
+    ) -> None:
+        """Test search_files_using_tree with no specific repos"""
+        mock_project = {
+            "id": 1,
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+        mock_tree_item = {
+            "item": {
+                "type": "blob",
+                "path": "test.json",
+                "id": "blob1",
+                "mode": "100644",
+                "name": "test.json",
+            },
+            "repo": mock_project,
+            "__branch": "main",
+        }
+
+        with (
+            patch.object(
+                client,
+                "get_projects",
+                return_value=async_mock_generator([[mock_project]]),
+            ) as mock_get_projects,
+            patch.object(
+                client,
+                "get_repository_tree",
+                return_value=async_mock_generator([[mock_tree_item]]),
+            ) as mock_get_tree,
+        ):
+            results = []
+            async for batch in client.search_files_using_tree("*.json"):
+                results.extend(batch)
+
+            assert len(results) == 1
+            mock_get_projects.assert_called()
+            mock_get_tree.assert_called()
 
     async def test_get_projects(self, client: GitLabClient) -> None:
         """Test project fetching and enrichment with languages and labels via REST."""
