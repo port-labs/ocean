@@ -399,7 +399,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 subject_details = await self._lookup_subjects(descriptors)
 
                 members = [
-                    {**subject_details[membership["memberDescriptor"]], {}), "__group": group}
+                    {**subject_details[membership["memberDescriptor"]], "__group": group}
                     for membership in memberships
                 ]
 
