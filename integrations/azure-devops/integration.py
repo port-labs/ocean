@@ -258,6 +258,10 @@ class AzureDevopsRepositoryResourceConfig(ResourceConfig):
     selector: AzureDevopsRepositorySelector
 
 
+class AzureDevopsGroupMemberResourceConfig(ResourceConfig):
+    kind: Literal["group-member"]
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -282,6 +286,7 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsPullRequestResourceConfig
         | AzureDevopsAdvancedSecurityResourceConfig
         | AzureDevopsRepositoryResourceConfig
+        | AzureDevopsGroupMemberResourceConfig
         | ResourceConfig
     ] = Field(default_factory=list)
 

@@ -32,6 +32,8 @@ class Kind(StrEnum):
     ITERATION = "iteration"
     BRANCH = "branch"
     ADVANCED_SECURITY_ALERT = "advanced-security-alert"
+    GROUP = "group"
+    GROUP_MEMBER = "group-member"
 
 
 ACTIVE_PULL_REQUEST_SEARCH_CRITERIA: dict[str, Any] = {
