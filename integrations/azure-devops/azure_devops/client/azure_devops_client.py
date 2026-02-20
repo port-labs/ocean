@@ -343,13 +343,7 @@ class AzureDevopsClient(HTTPBaseClient):
     async def _get_group_direct_members(
         self, group_descriptor: str
     ) -> Optional[list[dict[str, Any]]]:
-        """Get direct members of a group.
-
-        Note: The Memberships API does not support pagination. For groups with
-        very large membership (10,000+), this could timeout. A future improvement
-        could use the GroupEntitlements Members API which supports pagination,
-        but requires an additional UUID lookup per group.
-        """
+        """Get direct members of a group."""
         members_url = (
             self._format_service_url("vssps")
             + f"/{API_URL_PREFIX}/graph/Memberships/{group_descriptor}"
