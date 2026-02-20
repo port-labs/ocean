@@ -272,6 +272,12 @@ async def resolve_dynamic_query_params(
         yield static_params
         return
 
+    if len(dynamic_query_param) > 1:
+        logger.warning(
+            "Multiple dynamic query parameters were found. "
+            "Only the first one will be used."
+        )
+
     param_name, param_config = next(iter(dynamic_query_param.items()))
 
     has_values = False
