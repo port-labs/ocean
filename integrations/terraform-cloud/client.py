@@ -270,14 +270,14 @@ class TerraformClient:
                 if isinstance(content, dict):
                     item = {
                         **content,
-                        "workspace": workspace_data,
-                        "state_version_id": state_version_id,
+                        "__workspace": workspace_data,
+                        "__state_version_id": state_version_id,
                     }
                 else:
                     item = {
                         "state": content,
-                        "workspace": workspace_data,
-                        "state_version_id": state_version_id,
+                        "__workspace": workspace_data,
+                        "__state_version_id": state_version_id,
                     }
                 combined.append(item)
             yield combined
