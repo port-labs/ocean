@@ -67,7 +67,9 @@ class TestMakeCacheKey:
         assert key1 == key2
 
     def test_none_and_empty_dict_produce_same_key(self) -> None:
-        key_none = make_cache_key("/api/tickets", "GET", query_params=None, headers=None)
+        key_none = make_cache_key(
+            "/api/tickets", "GET", query_params=None, headers=None
+        )
         key_empty = make_cache_key("/api/tickets", "GET", query_params={}, headers={})
         assert key_none == key_empty
 
@@ -154,7 +156,9 @@ class TestEndpointCacheWriteAndRead:
         return EndpointCache(cacheable_keys={key}, cache_dir=str(tmp_path))
 
     @pytest.mark.asyncio
-    async def test_write_through_and_read_stream_roundtrip(self, cache: EndpointCache) -> None:
+    async def test_write_through_and_read_stream_roundtrip(
+        self, cache: EndpointCache
+    ) -> None:
         key = make_cache_key("/api/tickets", "GET")
         batches = [[{"id": 1}, {"id": 2}], [{"id": 3}]]
 
@@ -173,7 +177,9 @@ class TestEndpointCacheWriteAndRead:
         assert read_back == batches
 
     @pytest.mark.asyncio
-    async def test_has_cached_returns_true_after_write(self, cache: EndpointCache) -> None:
+    async def test_has_cached_returns_true_after_write(
+        self, cache: EndpointCache
+    ) -> None:
         key = make_cache_key("/api/tickets", "GET")
         assert not cache.has_cached(key)
 
@@ -207,7 +213,9 @@ class TestGetOrFetch:
         return EndpointCache(cacheable_keys={key}, cache_dir=str(tmp_path))
 
     @pytest.mark.asyncio
-    async def test_non_cacheable_endpoint_calls_fetch_directly(self, tmp_path: Path) -> None:
+    async def test_non_cacheable_endpoint_calls_fetch_directly(
+        self, tmp_path: Path
+    ) -> None:
         cache = EndpointCache(cacheable_keys=set(), cache_dir=str(tmp_path))
         call_count = 0
 

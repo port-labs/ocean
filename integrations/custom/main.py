@@ -33,9 +33,7 @@ from http_server.helpers.utils import (
 async def on_resync_start() -> None:
     """Pre-analyze resource configs and initialize the endpoint response cache."""
     app_config = event.port_app_config
-    resources = [
-        cast(HttpServerResourceConfig, r) for r in app_config.resources
-    ]
+    resources = [cast(HttpServerResourceConfig, r) for r in app_config.resources]
     initialize_endpoint_cache(resources)
 
 

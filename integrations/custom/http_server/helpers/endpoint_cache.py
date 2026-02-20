@@ -13,7 +13,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
 
-import aiofiles
+import aiofiles  # type: ignore[import-untyped]
 
 from http_server.overrides import HttpServerResourceConfig
 
@@ -84,7 +84,10 @@ def analyze_cacheable_endpoints(
     if cacheable:
         logger.info(
             "endpoint_cache.analyzed",
-            extra={"cacheable_count": len(cacheable), "total_endpoints": len(key_counts)},
+            extra={
+                "cacheable_count": len(cacheable),
+                "total_endpoints": len(key_counts),
+            },
         )
     return cacheable
 
