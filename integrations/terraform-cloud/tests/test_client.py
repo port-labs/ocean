@@ -566,8 +566,8 @@ class TestGetPaginatedStateFiles:
                 result.extend(batch)
 
             assert len(result) == 1
-            assert result[0]["state_version_id"] == "sv-1"
-            assert result[0]["workspace"] == {
+            assert result[0]["__state_version_id"] == "sv-1"
+            assert result[0]["__workspace"] == {
                 "data": {"id": "ws-123", "type": "workspaces"}
             }
             assert result[0]["version"] == state_file_content["version"]
