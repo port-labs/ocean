@@ -398,6 +398,7 @@ class GitLabClient:
                     ):
                         yield batch
 
+    # AI! update this function so it doesn't fetch just folders unless explicit told to fetch just folders. Update tests and references as well
     async def get_repository_tree(
         self,
         project: dict[str, Any],
