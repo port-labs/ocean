@@ -1,14 +1,6 @@
-"""
-Endpoint Response Cache
-
-File-based streaming cache for API responses that are reused across
-multiple resource kinds during a single resync. Writes batches as NDJSON
-lines and streams them back on cache hits, keeping memory usage constant.
-"""
-
 import hashlib
 import json
-import logging
+from loguru import logger
 from collections import Counter
 from pathlib import Path
 from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
@@ -16,8 +8,6 @@ from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
 import aiofiles  # type: ignore[import-untyped]
 
 from http_server.overrides import HttpServerResourceConfig
-
-logger = logging.getLogger(__name__)
 
 CACHE_DIR = "/tmp/ocean/.endpoint_response_cache"
 
@@ -58,17 +48,20 @@ def analyze_cacheable_endpoints(
     Counts both direct kind endpoints and path_parameter discovery endpoints.
     """
     key_counts: Counter[str] = Counter()
+    key_to_endpoint: Dict[str, str] = {}
 
     for resource in resources:
         selector = resource.selector
+        method = getattr(selector, "method", "GET")
         kind_key = make_cache_key(
             endpoint=resource.kind,
-            method=getattr(selector, "method", "GET"),
+            method=method,
             query_params=getattr(selector, "query_params", None),
             headers=getattr(selector, "headers", None),
             body=getattr(selector, "body", None),
         )
         key_counts[kind_key] += 1
+        key_to_endpoint[kind_key] = f"{method.upper()} {resource.kind}"
 
         path_parameters = getattr(selector, "path_parameters", None) or {}
         for param_config in path_parameters.values():
@@ -79,16 +72,28 @@ def analyze_cacheable_endpoints(
                 headers=param_config.headers,
             )
             key_counts[param_key] += 1
+            key_to_endpoint[param_key] = (
+                f"{param_config.method.upper()} {param_config.endpoint}"
+            )
 
     cacheable = {key for key, count in key_counts.items() if count >= 2}
-    if cacheable:
-        logger.info(
-            "endpoint_cache.analyzed",
-            extra={
-                "cacheable_count": len(cacheable),
-                "total_endpoints": len(key_counts),
-            },
-        )
+
+    for key, count in key_counts.items():
+        endpoint_label = key_to_endpoint.get(key, key)
+        if key in cacheable:
+            logger.info(
+                f"Caching enabled for '{endpoint_label}' — referenced {count} times across resource configs"
+            )
+        else:
+            logger.info(
+                f"Caching skipped for '{endpoint_label}' — only referenced {count} time"
+            )
+
+    logger.info(
+        f"Endpoint cache analysis complete: {len(cacheable)} endpoint(s) will be cached, "
+        f"{len(key_counts) - len(cacheable)} skipped, "
+        f"{len(key_counts)} total"
+    )
     return cacheable
 
 
@@ -99,6 +104,18 @@ class EndpointCache:
         self._cacheable_keys = cacheable_keys
         self._cache_dir = Path(cache_dir)
         self._cache_dir.mkdir(parents=True, exist_ok=True)
+        self._clear_stale_files()
+
+    def _clear_stale_files(self) -> None:
+        """Remove leftover cache files from a previous resync (e.g. after a crash or Ctrl+C)."""
+        stale = list(self._cache_dir.glob("*.ndjson"))
+        if stale:
+            for f in stale:
+                try:
+                    f.unlink()
+                except OSError:
+                    pass
+            logger.info(f"Cleared {len(stale)} stale cache file(s) from a previous run")
 
     def _cache_path(self, key: str) -> Path:
         return self._cache_dir / f"{key}.ndjson"
@@ -147,33 +164,35 @@ class EndpointCache:
         key = make_cache_key(endpoint, method, query_params, headers, body)
 
         if not self.is_cacheable(key):
+            logger.info(f"Fetching '{method} {endpoint}' directly (not cached)")
             async for batch in fetch_fn():
                 yield batch
             return
 
         if self.has_cached(key):
-            logger.info(
-                "endpoint_cache.hit",
-                extra={"endpoint": endpoint, "method": method},
-            )
+            logger.info(f"Serving '{method} {endpoint}' from cache")
             async for batch in self.read_stream(key):
                 yield batch
             return
 
         logger.info(
-            "endpoint_cache.miss",
-            extra={"endpoint": endpoint, "method": method},
+            f"Cache miss for '{method} {endpoint}', fetching and caching response"
         )
         async for batch in self.write_through(key, fetch_fn()):
             yield batch
+        logger.info(f"Cached response for '{method} {endpoint}' written to disk")
 
     def clear(self) -> None:
         """Remove all NDJSON cache files."""
+        removed = 0
         for cache_file in self._cache_dir.glob("*.ndjson"):
             try:
                 cache_file.unlink()
+                removed += 1
             except OSError:
                 pass
+        if removed:
+            logger.info(f"Removed {removed} cached response file(s)")
 
 
 _cache: Optional[EndpointCache] = None
@@ -186,8 +205,7 @@ def initialize_endpoint_cache(
     cacheable = analyze_cacheable_endpoints(resources)
     _cache = EndpointCache(cacheable_keys=cacheable)
     logger.info(
-        "endpoint_cache.initialized",
-        extra={"cacheable_endpoints": len(cacheable)},
+        f"Endpoint cache initialized with {len(cacheable)} cacheable endpoint(s)"
     )
     return _cache
 
@@ -201,4 +219,4 @@ def clear_endpoint_cache() -> None:
     if _cache is not None:
         _cache.clear()
         _cache = None
-        logger.info("endpoint_cache.cleared")
+        logger.info("Endpoint cache cleared")
