@@ -363,6 +363,7 @@ class GitLabClient:
         if top_level_groups:
             yield top_level_groups
 
+    # AI! amazing job here, can you make this cleaner?
     async def search_files_using_tree(
         self,
         path: str,
