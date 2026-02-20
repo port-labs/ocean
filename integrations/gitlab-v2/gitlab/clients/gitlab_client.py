@@ -398,14 +398,14 @@ class GitLabClient:
                     ):
                         yield batch
 
-    # AI! update this function so it doesn't fetch just folders unless explicit told to fetch just folders. Update tests and references as well
     async def get_repository_tree(
         self,
         project: dict[str, Any],
         path: str,
         ref: str = "main",
+        folders_only: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
-        """Fetch repository tree (folders only) for a project."""
+        """Fetch repository tree for a project."""
 
         project_path = project["path_with_namespace"]
         is_wildcard = any(c in path for c in "*?[]")
@@ -417,18 +417,18 @@ class GitLabClient:
             async for batch in self.rest.get_paginated_project_resource(
                 project_path, "repository/tree", params
             ):
-                folders_batch = [
+                items_batch = [
                     item
                     for item in batch
-                    if item["type"] == "tree"
+                    if (not folders_only or item["type"] == "tree")
                     and glob.globmatch(
                         item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
                     )
                 ]
-                if folders_batch:
+                if items_batch:
                     yield [
-                        {"folder": folder, "repo": project, "__branch": ref}
-                        for folder in folders_batch
+                        {"item": item, "repo": project, "__branch": ref}
+                        for item in items_batch
                     ]
         else:
             # For exact paths, use non-recursive search
@@ -436,10 +436,12 @@ class GitLabClient:
             async for batch in self.rest.get_paginated_project_resource(
                 project_path, "repository/tree", params
             ):
-                if folders_batch := [item for item in batch if item["type"] == "tree"]:
+                if items_batch := [
+                    item for item in batch if not folders_only or item["type"] == "tree"
+                ]:
                     yield [
-                        {"folder": folder, "repo": project, "__branch": ref}
-                        for folder in folders_batch
+                        {"item": item, "repo": project, "__branch": ref}
+                        for item in items_batch
                     ]
 
     async def get_repository_folders(
@@ -450,9 +452,12 @@ class GitLabClient:
         if project:
             effective_branch = branch or project["default_branch"]
             async for folders_batch in self.get_repository_tree(
-                project, path, effective_branch
+                project, path, effective_branch, folders_only=True
             ):
-                yield folders_batch
+                # Remap 'item' to 'folder' for backward compatibility with older consumers of get_repository_folders
+                yield [
+                    {**item, "folder": item.pop("item")} for item in folders_batch
+                ]
 
     async def _enrich_batch(
         self,
