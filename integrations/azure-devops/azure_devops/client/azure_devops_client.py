@@ -390,22 +390,18 @@ class AzureDevopsClient(HTTPBaseClient):
 
                 memberships = await self._get_group_direct_members(group_descriptor)
                 if not memberships:
+                    logger.info(f"No membership found for {group_descriptor}, skipping ...")
                     continue
 
                 descriptors = [
                     membership["memberDescriptor"] for membership in memberships
                 ]
                 subject_details = await self._lookup_subjects(descriptors)
-                if not subject_details:
-                    continue
 
-                members = []
-                for membership in memberships:
-                    member_descriptor = membership["memberDescriptor"]
-                    subject_info = subject_details.get(member_descriptor, {})
-
-                    member_record = {**subject_info, "__group": group}
-                    members.append(member_record)
+                members = [
+                    {**subject_details.get(membership["memberDescriptor"], {}), "__group": group}
+                    for membership in memberships
+                ]
 
                 logger.info(
                     f"Resolved {len(members)} direct members for group '{group_descriptor}'"
