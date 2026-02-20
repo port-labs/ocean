@@ -363,7 +363,6 @@ class GitLabClient:
         if top_level_groups:
             yield top_level_groups
 
-    # AI! when repositories are not passed, we need to fallback to searching trees of repositories in all top level groups. use `get_parent_groups` to fetch groups
     async def search_files_using_tree(
         self,
         path: str,
@@ -410,8 +409,13 @@ class GitLabClient:
                 except Exception as e:
                     logger.warning(f"Could not fetch project {repo}: {e}")
         else:
-            async for batch in self.get_projects(params=params):
-                projects_to_scan.extend(batch)
+            async for groups_batch in self.get_parent_groups(params=params):
+                for group in groups_batch:
+                    async for projects_batch in self.rest.get_paginated_resource(
+                        f"groups/{group['id']}/projects",
+                        params={"include_subgroups": True},
+                    ):
+                        projects_to_scan.extend(projects_batch)
 
         semaphore = asyncio.Semaphore(10)
 
