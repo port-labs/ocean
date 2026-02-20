@@ -362,7 +362,7 @@ class GitLabClient:
         if top_level_groups:
             yield top_level_groups
 
-    # AI! write an alternative for this function that uses repository. That is, it returns all tree blobs that match the path, also add unit tests
+    # AI! write an alternative for this function that uses repository tree (use existing repository tree method).. That is, it returns all tree blobs that match the path. Function should be as concise as possible, don't add too many comments, also add unit tests
     async def search_files(
         self,
         scope: str,
