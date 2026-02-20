@@ -17,11 +17,50 @@ from initialize_client import get_client
 from http_server.overrides import HttpServerResourceConfig
 from http_server.client import HttpServerClient
 from http_server.helpers.endpoint_resolver import resolve_dynamic_endpoints
+from http_server.helpers.endpoint_cache import (
+    get_endpoint_cache,
+    initialize_endpoint_cache,
+    clear_endpoint_cache,
+)
 from http_server.helpers.utils import (
     extract_and_enrich_batch,
     process_endpoints_concurrently,
     DEFAULT_CONCURRENCY_LIMIT,
 )
+
+
+@ocean.on_resync_start()
+async def on_resync_start() -> None:
+    """Pre-analyze resource configs and initialize the endpoint response cache."""
+    app_config = event.port_app_config
+    resources = [
+        cast(HttpServerResourceConfig, r) for r in app_config.resources
+    ]
+    initialize_endpoint_cache(resources)
+
+
+@ocean.on_resync_complete()
+async def on_resync_complete() -> None:
+    """Clean up cached endpoint response files after resync."""
+    clear_endpoint_cache()
+
+
+def _raw_fetch(
+    http_client: HttpServerClient,
+    endpoint: str,
+    method: str,
+    query_params: Dict[str, Any],
+    headers: Dict[str, str],
+    body: Optional[Dict[str, Any]],
+) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    """Return an async generator over raw paginated API pages."""
+    return http_client.fetch_paginated_data(
+        endpoint=endpoint,
+        method=method,
+        query_params=query_params,
+        headers=headers,
+        body=body,
+    )
 
 
 async def fetch_endpoint_data(
@@ -51,14 +90,26 @@ async def fetch_endpoint_data(
     """
     logger.info(f"Fetching data from: {method} {endpoint}")
 
-    try:
-        async for batch in http_client.fetch_paginated_data(
+    cache = get_endpoint_cache()
+    raw_source: AsyncGenerator[List[Dict[str, Any]], None]
+    if cache is not None:
+        raw_source = cache.get_or_fetch(
             endpoint=endpoint,
             method=method,
             query_params=query_params,
             headers=headers,
             body=body,
-        ):
+            fetch_fn=functools.partial(
+                _raw_fetch, http_client, endpoint, method, query_params, headers, body
+            ),
+        )
+    else:
+        raw_source = _raw_fetch(
+            http_client, endpoint, method, query_params, headers, body
+        )
+
+    try:
+        async for batch in raw_source:
             logger.info(f"Received {len(batch)} records from {endpoint}")
 
             if data_path == "." and batch and not isinstance(batch[0], list):

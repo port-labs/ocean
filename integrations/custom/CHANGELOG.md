@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.0-beta (2026-02-20)
+
+
+### Improvements
+
+- Added support for smart file based caching of API responses
+
+
 ## 0.3.11-beta (2026-02-17)
 
 
