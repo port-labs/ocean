@@ -77,7 +77,6 @@ jobs:
           type=$(grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "type=$type" >> $GITHUB_OUTPUT
-          echo "image=ghcr.io/port-labs/port-ocean-$type:$version" >> $GITHUB_OUTPUT
 
           dockerfile_path=integrations/_infra/Dockerfile
           if test -e $folder/../Dockerfile; then
@@ -115,22 +114,24 @@ jobs:
         continue-on-error: true
         id: image_size
         run: |
+          IMAGE="ghcr.io/port-labs/port-ocean-${{ steps.prepare_tags.outputs.type }}:${{ steps.prepare_tags.outputs.version }}"
+
           for arch in amd64 arm64; do
             echo "📦 Pulling ${arch} image..."
-            docker pull --platform "linux/${arch}" "${{ steps.prepare_tags.outputs.image }}"
+            docker pull --platform "linux/${arch}" "$IMAGE"
             if [[ $? -ne 0 ]]; then
               echo "⚠️ Failed to pull ${arch} image"
               exit 1
             fi
 
             # `docker images` can output multiple rows for the same reference; pick a single deterministic value.
-            RAW_SIZE="$(docker images "${{ steps.prepare_tags.outputs.image }}" --format '{{.VirtualSize}}' | head -n 1)"
+            RAW_SIZE="$(docker images "$IMAGE" --format '{{.VirtualSize}}' | head -n 1)"
             if [[ -z "${RAW_SIZE}" ]]; then
               echo "⚠️ Failed to get virtual size for ${arch}"
               exit 1
             fi
 
-            echo "🔎 Debug: raw 'docker images ${{ steps.prepare_tags.outputs.image }}' output (${arch}): ${RAW_SIZE}"
+            echo "🔎 Debug: raw 'docker images $IMAGE' output (${arch}): ${RAW_SIZE}"
 
             SIZE="$(
               awk -v s="${RAW_SIZE}" 'BEGIN{IGNORECASE=1
@@ -239,14 +240,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Download schemas as artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: schemas
-          path: |
-            ${{ needs.release-integration.outputs.port_app_config_schema }}
-            ${{ needs.release-integration.outputs.ui_schema }}
-
       - name: Upload specifications to s3
         run: |
           # Temporary file
@@ -317,7 +310,7 @@ jobs:
                   SCHEMA_CLI_COMMANDS=(
                     docker run --platform linux/amd64 --rm
                       -v "$(pwd)":/artifacts
-                      "${{ env.IMAGE }}"
+                      "ghcr.io/port-labs/port-ocean-$type:$version"
                       sh -c "ocean port-app-config schema -f json-schema -o /artifacts/$port_app_config_json_schema && \
                               ocean port-app-config schema -f interface-schema -o /artifacts/$port_app_config_interface_schema"
                     )
