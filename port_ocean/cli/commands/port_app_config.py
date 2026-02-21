@@ -93,9 +93,9 @@ def port_app_config() -> None:
     "-f",
     "--format",
     "format",
-    type=click.Choice(["json-schema", "interface-schema"]),
-    default="json-schema",
-    help="Schema format: json-schema (default) or interface-schema (UI-compatible schema).",
+    type=click.Choice(["json", "ui"]),
+    default="json",
+    help="Schema format: json (default) or ui (UI-compatible schema).",
 )
 @click.option(
     "-o",
@@ -122,17 +122,17 @@ def port_app_config_schema(
 
     PATH: Path to the integration directory (default: current directory).
 
-    Format: json-schema (default) outputs raw JSON Schema; interface-schema outputs
+    Format: json (default) outputs raw JSON Schema; ui outputs
     UI-compatible schema with dereferenced selectors.
     """
     integration_class = _load_integration_class(path)
     config_class = _get_config_class(integration_class)
 
     match format:
-        case "json-schema":
+        case "json":
             validate_and_get_config_schema(config_class)
             result = config_class.schema()
-        case "interface-schema":
+        case "ui":
             result = validate_and_get_config_schema(config_class)
             result = _dereference_schema(result)
         case _:

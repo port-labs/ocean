@@ -280,13 +280,13 @@ jobs:
               integration_latest_spec_dest="$integration_folder/$integration_spec"
               integration_latest_spec_legacy_dest="$type.json" # TODO: legacy support, remove once not in use
 
-              port_app_config_json_schema="port_app_config_json_schema.json"
-              port_app_config_json_schema_dest="$version_folder/$port_app_config_json_schema"
-              port_app_config_json_schema_latest_dest="$integration_folder/$port_app_config_json_schema"
+              port_app_config_schema="port_app_config.json"
+              port_app_config_schema_dest="$version_folder/$port_app_config_schema"
+              port_app_config_schema_latest_dest="$integration_folder/$port_app_config_schema"
 
-              port_app_config_interface_schema="port_app_config_interface_schema.json"
-              port_app_config_interface_schema_dest="$version_folder/$port_app_config_interface_schema"
-              port_app_config_interface_schema_latest_dest="$integration_folder/$port_app_config_interface_schema"
+              port_app_config_ui_schema="port_app_config.ui.json"
+              port_app_config_ui_schema_dest="$version_folder/$port_app_config_ui_schema"
+              port_app_config_ui_schema_latest_dest="$integration_folder/$port_app_config_ui_schema"
 
               # Convert YAML to JSON
               yq -o json "$file" >"$temp_file"
@@ -336,8 +336,8 @@ jobs:
                     docker run --platform linux/amd64 --rm
                       -v "$(pwd)":/artifacts
                       "ghcr.io/port-labs/port-ocean-$type:$version"
-                      sh -c "ocean port-app-config schema -f json-schema -o /artifacts/$port_app_config_json_schema && \
-                              ocean port-app-config schema -f interface-schema -o /artifacts/$port_app_config_interface_schema"
+                      sh -c "ocean port-app-config schema -o /artifacts/$port_app_config_schema && \
+                              ocean port-app-config schema -f ui -o /artifacts/$port_app_config_ui_schema"
                     )
 
                   # Execute the schema CLI commands in a subshell to capture the exit code
@@ -346,18 +346,18 @@ jobs:
                       aws s3 cp "$port_app_config_json_schema" "s3://$aws_s3_bucket/$port_app_config_json_schema_dest"
                       echo "Successfully uploaded $port_app_config_json_schema_dest to s3 bucket."
 
-                      # Upload integration's interface schema to s3
-                      aws s3 cp "$port_app_config_interface_schema" "s3://$aws_s3_bucket/$port_app_config_interface_schema_dest"
-                      echo "Successfully uploaded $port_app_config_interface_schema_dest to s3 bucket."
+                      # Upload port-app-config UI schema to s3
+                      aws s3 cp "$port_app_config_ui_schema" "s3://$aws_s3_bucket/$port_app_config_ui_schema_dest"
+                      echo "Successfully uploaded $port_app_config_ui_schema_dest to s3 bucket."
 
                       if [ "$should_release_latest_version" = true ]; then
-                        # Upload integration's latest port-app-config schema to s3
+                        # Upload latest port-app-config schema to s3
                         aws s3 cp "$port_app_config_json_schema" "s3://$aws_s3_bucket/$port_app_config_json_schema_latest_dest"
                         echo "Successfully uploaded $port_app_config_json_schema_latest_dest to s3 bucket."
 
-                        # Upload integration's latest interface schema to s3
-                        aws s3 cp "$port_app_config_interface_schema" "s3://$aws_s3_bucket/$port_app_config_interface_schema_latest_dest"
-                        echo "Successfully uploaded $port_app_config_interface_schema_latest_dest to s3 bucket."
+                        # Upload latest port-app-config UI schema to s3
+                        aws s3 cp "$port_app_config_ui_schema" "s3://$aws_s3_bucket/$port_app_config_ui_schema_latest_dest"
+                        echo "Successfully uploaded $port_app_config_ui_schema_latest_dest to s3 bucket."
                       fi
                   else
                     echo "::warning:: Docker port-app-config schema command failed for $type:$version, skipping schema upload to s3."
