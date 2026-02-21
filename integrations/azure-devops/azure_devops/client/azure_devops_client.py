@@ -1785,8 +1785,12 @@ class AzureDevopsClient(HTTPBaseClient):
 
         coverage_tasks: list[Awaitable[dict[str, Any]]] = (
             [
-                self._fetch_code_coverage(
-                    project_id, run["build"]["id"], coverage_config
+                (
+                    self._fetch_code_coverage(
+                        project_id, run["build"]["id"], coverage_config
+                    )
+                    if run.get("build") and run["build"].get("id")
+                    else self._no_coverage()
                 )
                 for run in test_runs
             ]
@@ -1831,3 +1835,7 @@ class AzureDevopsClient(HTTPBaseClient):
             return {}
 
         return response.json()
+
+    async def _no_coverage(self) -> dict[str, Any]:
+        """Return empty coverage for test runs without a build (e.g., manual test runs)."""
+        return {}
