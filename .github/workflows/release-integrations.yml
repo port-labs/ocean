@@ -50,8 +50,6 @@ jobs:
     if: needs.prepare-matrix.outputs.matrix != '[]'
     outputs:
       is_dev_version: ${{ steps.prepare_tags.outputs.is_dev_version }}
-      port_app_config_schema: ${{ steps.generate-schemas.outputs.port_app_config_schema }}
-      ui_schema: ${{ steps.generate-schemas.outputs.ui_schema }}
     permissions:
       id-token: write
       packages: write
@@ -223,23 +221,6 @@ jobs:
             exit 1
           fi
 
-      - name: Generate schemas
-        id: generate-schemas
-        continue-on-error: true
-        run: |
-         docker run --platform linux/amd64 --rm -v $(pwd):/artifacts \
-            "${{ steps.prepare_tags.outputs.image }}" \
-            sh -c "ocean port-app-config schema -f json-schema -o '/artifacts/port_app_config.json' && ocean port-app-config schema --format port -o '/artifacts/schema.json'"
-
-      - name: Upload schemas as artifacts
-        if: steps.generate-schemas.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: schemas
-          path: |
-            ${{ steps.generate-schemas.outputs.port_app_config_schema }}
-            ${{ steps.generate-schemas.outputs.ui_schema }}
-
   upload-specs:
     runs-on: ubuntu-latest
     permissions:
@@ -306,11 +287,13 @@ jobs:
               integration_latest_spec_dest="$integration_folder/$integration_spec"
               integration_latest_spec_legacy_dest="$type.json" # TODO: legacy support, remove once not in use
 
-              port_app_config_schema_dest="$version_folder/${{ steps.generate-schemas.outputs.port_app_config_schema }}"
-              port_app_config_latest_schema_dest="$integration_folder/${{ steps.generate-schemas.outputs.port_app_config_schema }}"
+              port_app_config_json_schema="port_app_config_json_schema.json"
+              port_app_config_json_schema_dest="$version_folder/$port_app_config_json_schema"
+              port_app_config_json_schema_latest_dest="$integration_folder/$port_app_config_json_schema"
 
-              ui_schema_dest="$version_folder/${{ steps.generate-schemas.outputs.ui_schema }}"
-              ui_latest_schema_dest="$integration_folder/${{ steps.generate-schemas.outputs.ui_schema }}"
+              port_app_config_interface_schema="port_app_config_interface_schema.json"
+              port_app_config_interface_schema_dest="$version_folder/$port_app_config_interface_schema"
+              port_app_config_interface_schema_latest_dest="$integration_folder/$port_app_config_interface_schema"
 
               # Convert YAML to JSON
               yq -o json "$file" >"$temp_file"
@@ -331,25 +314,32 @@ jobs:
                   aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_latest_spec_legacy_dest"
                   echo "Successfully uploaded $integration_latest_spec_legacy_dest to s3 bucket."
 
-                  # Check if the port-app-config schema and kinds schema were generated successfully
-                  if [ "${{ steps.generate-schemas.outcome }}" == "success" ]; then
+                  SCHEMA_CLI_COMMANDS=(
+                    docker run --platform linux/amd64 --rm
+                      -v "$(pwd)":/artifacts
+                      "${{ env.IMAGE }}"
+                      sh -c "ocean port-app-config schema -f json-schema -o /artifacts/$port_app_config_json_schema && \
+                              ocean port-app-config schema -f interface-schema -o /artifacts/$port_app_config_interface_schema"
+                    )
+
+                  if "${SCHEMA_CLI_COMMANDS[@]}"; then
                       # Upload port-app-config schema to s3
-                      aws s3 cp "${{ steps.generate-schemas.outputs.port_app_config_schema }}" "s3://$aws_s3_bucket/$port_app_config_schema_dest"
-                      echo "Successfully uploaded $port_app_config_schema_dest to s3 bucket."
+                      aws s3 cp "$port_app_config_json_schema" "s3://$aws_s3_bucket/$port_app_config_json_schema_dest"
+                      echo "Successfully uploaded $port_app_config_json_schema_dest to s3 bucket."
 
                       # Upload integration's latest port-app-config schema to s3
-                      aws s3 cp "${{ steps.generate-schemas.outputs.port_app_config_schema }}" "s3://$aws_s3_bucket/$port_app_config_latest_schema_dest"
-                      echo "Successfully uploaded $port_app_config_latest_schema_dest to s3 bucket."
+                      aws s3 cp "$port_app_config_json_schema" "s3://$aws_s3_bucket/$port_app_config_json_schema_latest_dest"
+                      echo "Successfully uploaded $port_app_config_json_schema_latest_dest to s3 bucket."
 
-                      # Upload integration's kinds schema to s3
-                      aws s3 cp "${{ steps.generate-schemas.outputs.ui_schema }}" "s3://$aws_s3_bucket/$ui_schema_dest"
-                      echo "Successfully uploaded $kinds_schema_dest to s3 bucket."
+                      # Upload integration's interface schema to s3
+                      aws s3 cp "$port_app_config_interface_schema" "s3://$aws_s3_bucket/$port_app_config_interface_schema_dest"
+                      echo "Successfully uploaded $port_app_config_interface_schema_dest to s3 bucket."
 
-                      # Upload integration's latest kinds schema to s3
-                      aws s3 cp "${{ steps.generate-schemas.outputs.ui_schema }}" "s3://$aws_s3_bucket/$ui_latest_schema_dest"
-                      echo "Successfully uploaded $kinds_latest_schema_dest to s3 bucket."
+                      # Upload integration's latest interface schema to s3
+                      aws s3 cp "$port_app_config_interface_schema" "s3://$aws_s3_bucket/$port_app_config_interface_schema_latest_dest"
+                      echo "Successfully uploaded $port_app_config_interface_schema_latest_dest to s3 bucket."
                   else
-                      echo "::warning:: Failed to generate schemas for $type:$version, skipping schema upload to s3."
+                    echo "::warning:: Docker port-app-config schema command failed for $type:$version, skipping schema upload to s3."
                   fi
 
                   # Get the latest version of the current integration

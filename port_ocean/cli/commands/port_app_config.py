@@ -93,9 +93,9 @@ def port_app_config() -> None:
     "-f",
     "--format",
     "format",
-    type=click.Choice(["json-schema", "port"]),
+    type=click.Choice(["json-schema", "interface-schema"]),
     default="json-schema",
-    help="Schema format: json-schema (default) or port (UI-compatible schema).",
+    help="Schema format: json-schema (default) or interface-schema (UI-compatible schema).",
 )
 @click.option(
     "-o",
@@ -122,17 +122,21 @@ def port_app_config_schema(
 
     PATH: Path to the integration directory (default: current directory).
 
-    Format: json-schema (default) outputs raw JSON Schema; port outputs
+    Format: json-schema (default) outputs raw JSON Schema; interface-schema outputs
     UI-compatible schema with dereferenced selectors.
     """
     integration_class = _load_integration_class(path)
     config_class = _get_config_class(integration_class)
 
-    if format == "json-schema":
-        validate_and_get_config_schema(config_class)
-        result = config_class.schema()
-    else:
-        result = validate_and_get_config_schema(config_class)
-        result = _dereference_schema(result)
+    match format:
+        case "json-schema":
+            validate_and_get_config_schema(config_class)
+            result = config_class.schema()
+        case "interface-schema":
+            result = validate_and_get_config_schema(config_class)
+            result = _dereference_schema(result)
+        case _:
+            click.echo(f"Invalid format: {format}", err=True)
+            sys.exit(1)
 
     _write_json_output(result, output_file, pretty)
