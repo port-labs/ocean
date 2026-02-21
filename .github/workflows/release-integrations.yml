@@ -299,13 +299,38 @@ jobs:
                   aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_spec_dest"
                   echo "Successfully uploaded $integration_spec_dest to s3 bucket."
 
-                  # Upload integration's latest spec to s3
-                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_latest_spec_dest" # TODO: legacy support, remove once not in use
-                  echo "Successfully uploaded $integration_latest_spec_dest to s3 bucket."
+                  # Get the latest version of the current integration
+                  latest_version=$(jq --arg type "$type" -r '.[] | select(.type == $type) | .version' "$index_file")
 
-                  # Upload integration's latest spec to s3 (legacy support, remove once not in use)
-                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_latest_spec_legacy_dest"
-                  echo "Successfully uploaded $integration_latest_spec_legacy_dest to s3 bucket."
+                  # Add integration's spec to global index file
+                  regexp="^([0-9.]+|[0-9.]+[.-]post[0-9]+)$"
+                  should_release_latest_version=false
+                  if [[ ! "$latest_version" ]]; then
+                      # Add new integration spec if latest tag doesn't exist
+                      jq --argjson new_spec "[$(cat "$integration_spec")]" '. += $new_spec' "$index_file" >"$temp_file"
+                      mv "$temp_file" "$index_file"
+                      should_release_latest_version=true
+                  elif [[ ! "$latest_version" =~ $regexp ]] || [[ "$version" =~ $regexp ]]; then
+                      # Override global index file if released non-dev version or integration doesn't have non-dev latest tag
+                      jq --argjson updated_spec "$(cat "$integration_spec")" --arg type "$type" \
+                          'map(if .type == $type then $updated_spec else . end)' "$index_file" >"$temp_file"
+                      mv "$temp_file" "$index_file"
+                      should_release_latest_version=true
+                  fi
+
+                  if [ "$should_release_latest_version" = true ]; then
+                    # Upload integration's latest spec to s3
+                    aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_latest_spec_dest"
+                    echo "Successfully uploaded $integration_latest_spec_dest to s3 bucket."
+
+                    # Upload integration's latest spec to s3 (legacy support, remove once not in use)
+                    aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_latest_spec_legacy_dest"
+                    echo "Successfully uploaded $integration_latest_spec_legacy_dest to s3 bucket."
+
+                    # Upload global index file to s3
+                    aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
+                    echo "Successfully uploaded $index_file to s3 bucket."
+                  fi
 
                   SCHEMA_CLI_COMMANDS=(
                     docker run --platform linux/amd64 --rm
@@ -320,40 +345,22 @@ jobs:
                       aws s3 cp "$port_app_config_json_schema" "s3://$aws_s3_bucket/$port_app_config_json_schema_dest"
                       echo "Successfully uploaded $port_app_config_json_schema_dest to s3 bucket."
 
-                      # Upload integration's latest port-app-config schema to s3
-                      aws s3 cp "$port_app_config_json_schema" "s3://$aws_s3_bucket/$port_app_config_json_schema_latest_dest"
-                      echo "Successfully uploaded $port_app_config_json_schema_latest_dest to s3 bucket."
-
                       # Upload integration's interface schema to s3
                       aws s3 cp "$port_app_config_interface_schema" "s3://$aws_s3_bucket/$port_app_config_interface_schema_dest"
                       echo "Successfully uploaded $port_app_config_interface_schema_dest to s3 bucket."
 
-                      # Upload integration's latest interface schema to s3
-                      aws s3 cp "$port_app_config_interface_schema" "s3://$aws_s3_bucket/$port_app_config_interface_schema_latest_dest"
-                      echo "Successfully uploaded $port_app_config_interface_schema_latest_dest to s3 bucket."
+                      if [ "$should_release_latest_version" = true ]; then
+                        # Upload integration's latest port-app-config schema to s3
+                        aws s3 cp "$port_app_config_json_schema" "s3://$aws_s3_bucket/$port_app_config_json_schema_latest_dest"
+                        echo "Successfully uploaded $port_app_config_json_schema_latest_dest to s3 bucket."
+
+                        # Upload integration's latest interface schema to s3
+                        aws s3 cp "$port_app_config_interface_schema" "s3://$aws_s3_bucket/$port_app_config_interface_schema_latest_dest"
+                        echo "Successfully uploaded $port_app_config_interface_schema_latest_dest to s3 bucket."
+                      fi
                   else
                     echo "::warning:: Docker port-app-config schema command failed for $type:$version, skipping schema upload to s3."
                   fi
-
-                  # Get the latest version of the current integration
-                  latest_version=$(jq --arg type "$type" -r '.[] | select(.type == $type) | .version' "$index_file")
-
-                  # Add integration's spec to global index file
-                  regexp="^([0-9.]+|[0-9.]+[.-]post[0-9]+)$"
-                  if [[ ! "$latest_version" ]]; then
-                      # Add new integration spec if latest tag doesn't exist
-                      jq --argjson new_spec "[$(cat "$integration_spec")]" '. += $new_spec' "$index_file" >"$temp_file"
-                      mv "$temp_file" "$index_file"
-                  elif [[ ! "$latest_version" =~ $regexp ]] || [[ "$version" =~ $regexp ]]; then
-                      # Override global index file if released non-dev version or integration doesn't have non-dev latest tag
-                      jq --argjson updated_spec "$(cat "$integration_spec")" --arg type "$type" \
-                          'map(if .type == $type then $updated_spec else . end)' "$index_file" >"$temp_file"
-                      mv "$temp_file" "$index_file"
-                  fi
-
-                  # Upload global index file to s3
-                  aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
-                  echo "Successfully uploaded $index_file to s3 bucket."
               else
                   echo "Did not upload integration spec since the version was in development ('${version}')"
               fi
