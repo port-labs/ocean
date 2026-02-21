@@ -118,20 +118,20 @@ jobs:
 
           for arch in amd64 arm64; do
             echo "📦 Pulling ${arch} image..."
-            docker pull --platform "linux/${arch}" "$IMAGE"
+            docker pull --platform "linux/${arch}" "${IMAGE}"
             if [[ $? -ne 0 ]]; then
               echo "⚠️ Failed to pull ${arch} image"
               exit 1
             fi
 
             # `docker images` can output multiple rows for the same reference; pick a single deterministic value.
-            RAW_SIZE="$(docker images "$IMAGE" --format '{{.VirtualSize}}' | head -n 1)"
+            RAW_SIZE="$(docker images "${IMAGE}" --format '{{.VirtualSize}}' | head -n 1)"
             if [[ -z "${RAW_SIZE}" ]]; then
               echo "⚠️ Failed to get virtual size for ${arch}"
               exit 1
             fi
 
-            echo "🔎 Debug: raw 'docker images $IMAGE' output (${arch}): ${RAW_SIZE}"
+            echo "🔎 Debug: raw 'docker images ${IMAGE}' output (${arch}): ${RAW_SIZE}"
 
             SIZE="$(
               awk -v s="${RAW_SIZE}" 'BEGIN{IGNORECASE=1
