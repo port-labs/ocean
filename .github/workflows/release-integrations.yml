@@ -340,6 +340,7 @@ jobs:
                               ocean port-app-config schema -f interface-schema -o /artifacts/$port_app_config_interface_schema"
                     )
 
+                  # Execute the schema CLI commands in a subshell to capture the exit code
                   if "${SCHEMA_CLI_COMMANDS[@]}"; then
                       # Upload port-app-config schema to s3
                       aws s3 cp "$port_app_config_json_schema" "s3://$aws_s3_bucket/$port_app_config_json_schema_dest"
