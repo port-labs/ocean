@@ -343,8 +343,8 @@ jobs:
                   # Execute the schema CLI commands in a subshell to capture the exit code
                   if "${SCHEMA_CLI_COMMANDS[@]}"; then
                       # Upload port-app-config schema to s3
-                      aws s3 cp "$port_app_config_json_schema" "s3://$aws_s3_bucket/$port_app_config_json_schema_dest"
-                      echo "Successfully uploaded $port_app_config_json_schema_dest to s3 bucket."
+                      aws s3 cp "$port_app_config_schema" "s3://$aws_s3_bucket/$port_app_config_schema_dest"
+                      echo "Successfully uploaded $port_app_config_schema_dest to s3 bucket."
 
                       # Upload port-app-config UI schema to s3
                       aws s3 cp "$port_app_config_ui_schema" "s3://$aws_s3_bucket/$port_app_config_ui_schema_dest"
@@ -352,8 +352,8 @@ jobs:
 
                       if [ "$should_release_latest_version" = true ]; then
                         # Upload latest port-app-config schema to s3
-                        aws s3 cp "$port_app_config_json_schema" "s3://$aws_s3_bucket/$port_app_config_json_schema_latest_dest"
-                        echo "Successfully uploaded $port_app_config_json_schema_latest_dest to s3 bucket."
+                        aws s3 cp "$port_app_config_schema" "s3://$aws_s3_bucket/$port_app_config_schema_latest_dest"
+                        echo "Successfully uploaded $port_app_config_schema_latest_dest to s3 bucket."
 
                         # Upload latest port-app-config UI schema to s3
                         aws s3 cp "$port_app_config_ui_schema" "s3://$aws_s3_bucket/$port_app_config_ui_schema_latest_dest"
