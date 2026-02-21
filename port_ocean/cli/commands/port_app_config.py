@@ -7,11 +7,12 @@ from pathlib import Path
 from typing import Any, Type
 
 import click
+from jsonref import replace_refs  # type: ignore[import-untyped]
 
 from port_ocean.cli.commands.main import cli_start
 from port_ocean.core.handlers import BasePortAppConfig
-from port_ocean.core.handlers.port_app_config.kind_validators import (
-    validate_and_get_resource_kinds,
+from port_ocean.core.handlers.port_app_config.validators import (
+    validate_and_get_config_schema,
 )
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
@@ -49,11 +50,20 @@ def _load_integration_class(path: str) -> Type[BaseIntegration]:
             sys.path.remove(path)
 
 
+def _dereference_schema(result: dict[str, Any]) -> dict[str, Any]:
+    """Dereference all $ref in the UI schema and remove definitions. Uses jsonref."""
+    for kind_data in result.get("kinds", {}).values():
+        selectors = kind_data.get("selectors")
+        if isinstance(selectors, dict) and "definitions" in selectors:
+            kind_data["selectors"] = replace_refs(selectors, proxies=False)
+            kind_data["selectors"].pop("definitions", None)
+    return result
+
+
 def _write_json_output(
     data: dict[str, Any],
     output_file: str | None,
     pretty: bool,
-    label: str,
 ) -> None:
     """Serialise *data* as JSON to *output_file* or stdout."""
     indent = 2 if pretty else None
@@ -64,7 +74,7 @@ def _write_json_output(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(json_output)
         click.echo(
-            click.style(f"{label} written to {output_file}", fg="green"),
+            click.style(f"Output written to {output_file}", fg="green"),
             err=True,
         )
     else:
@@ -79,6 +89,14 @@ def port_app_config() -> None:
 
 @port_app_config.command("schema")
 @click.argument("path", default=".", type=click.Path(exists=True))
+@click.option(
+    "-f",
+    "--format",
+    "format",
+    type=click.Choice(["json", "ui"]),
+    default="json",
+    help="Schema format: json (default) or ui (UI-compatible schema).",
+)
 @click.option(
     "-o",
     "--output",
@@ -95,49 +113,30 @@ def port_app_config() -> None:
 )
 def port_app_config_schema(
     path: str,
+    format: str,
     output_file: str | None,
     pretty: bool,
 ) -> None:
     """
-    Extract the PortAppConfig JSON schema for an integration.
+    Extract the PortAppConfig schema for an integration.
 
     PATH: Path to the integration directory (default: current directory).
+
+    Format: json (default) outputs raw JSON Schema; ui outputs
+    UI-compatible schema with dereferenced selectors.
     """
     integration_class = _load_integration_class(path)
     config_class = _get_config_class(integration_class)
-    validate_and_get_resource_kinds(config_class)
-    result = config_class.schema()
 
-    _write_json_output(result, output_file, pretty, label="Schema")
+    match format:
+        case "json":
+            validate_and_get_config_schema(config_class)
+            result = config_class.schema()
+        case "ui":
+            result = validate_and_get_config_schema(config_class)
+            result = _dereference_schema(result)
+        case _:
+            click.echo(f"Invalid format: {format}", err=True)
+            sys.exit(1)
 
-
-@port_app_config.command("list-kinds")
-@click.argument("path", default=".", type=click.Path(exists=True))
-@click.option(
-    "-o",
-    "--output",
-    "output_file",
-    default=None,
-    type=click.Path(),
-    help="Output file path. If not specified, prints to stdout.",
-)
-@click.option(
-    "--pretty/--compact",
-    "pretty",
-    default=True,
-    help="Pretty print JSON output (default: pretty).",
-)
-def port_app_config_list_kinds(
-    path: str,
-    output_file: str | None,
-    pretty: bool,
-) -> None:
-    """
-    List the resource kinds defined by an integration.
-
-    PATH: Path to the integration directory (default: current directory).
-    """
-    integration_class = _load_integration_class(path)
-    result = validate_and_get_resource_kinds(_get_config_class(integration_class))
-
-    _write_json_output(result, output_file, pretty, label="Kinds")
+    _write_json_output(result, output_file, pretty)

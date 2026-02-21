@@ -11,13 +11,6 @@ CUSTOM_KIND = "__custom__"
 
 
 class _FieldMetadataEnforcer(BaseModel):
-    """Base model that enforces all fields have 'title' and 'description' metadata.
-
-    Any model inheriting from this class (directly or transitively) will be
-    validated at class-creation time to ensure every ``Field`` includes both a
-    ``title`` and a ``description``.
-    """
-
     pass
 
     # TODO: Uncomment this when we completed assigning all the titles and descriptions
@@ -195,8 +188,8 @@ class PortAppConfig(_FieldMetadataEnforcer):
         super().__init_subclass__(**kwargs)
 
         # TODO: Uncomment this when we completed sweeping on integration classes
-        # from port_ocean.core.handlers.port_app_config.kind_validators import (
-        #     validate_and_get_resource_kinds,
+        # from port_ocean.core.handlers.port_app_config.validators import (
+        #     validate_and_get_config_schema,
         # )
 
         # validate_and_get_resource_kinds(cls)
