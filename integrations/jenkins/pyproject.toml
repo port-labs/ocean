@@ -7,7 +7,7 @@ authors = ["Albert Luganga <ahosea15@gmail.com>"]
 [tool.poetry.dependencies]
 python = "^3.12"
 port_ocean = {version = "^0.36.0", extras = ["cli"]}
-pip = "^25.3"
+pip = "^26.0"
 python-dotenv = "^1.0.0"
 loguru = "^0.7.2"
 
