@@ -1,4 +1,3 @@
-import asyncio
 from typing import Any, AsyncGenerator, List, Dict, Optional
 from httpx import HTTPStatusError, AsyncClient
 from clients.auth_client import AikidoAuth
@@ -8,8 +7,6 @@ from port_ocean.utils import http_async_client
 API_VERSION = "v1"
 FIRST_PAGE = 0
 PAGE_SIZE = 20
-RATE_LIMIT_RETRIES = 3
-DEFAULT_RETRY_AFTER_SECONDS = 60
 
 ISSUES_ENDPOINT = f"api/public/{API_VERSION}/issues/export"
 ISSUE_DETAILS_ENDPOINT = f"api/public/{API_VERSION}/issues"
@@ -49,48 +46,26 @@ class AikidoClient:
             "Content-Type": "application/json",
         }
 
-        retries = 0
-
-        while True:
-            try:
-                response = await self.http_client.request(
-                    method=method,
-                    url=url,
-                    params=params,
-                    json=json_data,
-                    headers=headers,
-                    timeout=30,
-                )
-                response.raise_for_status()
-                return response.json()
-            except HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    if retries >= RATE_LIMIT_RETRIES:
-                        logger.error(
-                            f"Rate limit exceeded for {url}; retries exhausted"
-                        )
-                        raise
-                    retry_after_header = e.response.headers.get("Retry-After")
-                    try:
-                        wait_time = int(retry_after_header or DEFAULT_RETRY_AFTER_SECONDS)
-                    except ValueError:
-                        wait_time = DEFAULT_RETRY_AFTER_SECONDS
-                    logger.warning(
-                        f"Rate limited by Aikido API. Waiting {wait_time} seconds before retrying {url}"
-                    )
-                    await asyncio.sleep(wait_time)
-                    retries += 1
-                    continue
-                if e.response.status_code == 404:
-                    logger.warning(
-                        f"Requested resource not found: {url}; message: {str(e)}"
-                    )
-                    return {}
-                logger.error(f"API request failed for {url}: {e}")
-                raise
-            except Exception as e:
-                logger.error(f"Unexpected error during API request to {url}: {e}")
-                raise
+        try:
+            response = await self.http_client.request(
+                method=method,
+                url=url,
+                params=params,
+                json=json_data,
+                headers=headers,
+                timeout=30,
+            )
+            response.raise_for_status()
+            return response.json()
+        except HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning(f"Requested resource not found: {url}; message: {str(e)}")
+                return {}
+            logger.error(f"API request failed for {url}: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during API request to {url}: {e}")
+            raise
 
     async def get_repositories(
         self,
