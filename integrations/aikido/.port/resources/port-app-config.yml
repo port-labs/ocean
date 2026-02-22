@@ -107,6 +107,7 @@ resources:
             ignoredAt: .ignored_at
             slaDays: .sla_days
             status: .status
+            severity: .severity
             type: .type
           relations:
             aikidoRepository: .code_repo_id | tostring
