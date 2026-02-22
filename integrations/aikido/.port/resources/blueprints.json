@@ -1,6 +1,6 @@
 [
     {
-        "identifier": "aikido_repository",
+        "identifier": "aikidoRepository",
         "title": "Aikido Repository",
         "icon": "Aikido",
         "schema": {
@@ -8,52 +8,34 @@
                 "provider": {
                     "type": "string",
                     "title": "Provider",
-                    "enum": ["github", "gitlab", "gitlab-server", "bitbucket", "azure_devops", "selfscan"],
-                    "enumColors": {
-                        "github": "darkGray",
-                        "gitlab": "orange",
-                        "gitlab-server": "purple",
-                        "bitbucket": "blue",
-                        "azure_devops": "turquoise",
-                        "selfscan": "lightGray"
-                    },
-                    "description": "The place where the code repository is hosted."
+                    "enum": ["github", "gitlab", "gitlab-server", "bitbucket", "azure_devops", "selfscan"]
                 },
-                "external_repository_id": {
+                "externalRepoId": {
                     "type": "string",
-                    "title": "External Repository ID",
-                    "description": "The id of the repository from the provider."
+                    "title": "External Repository ID"
                 },
                 "active": {
                     "type": "boolean",
-                    "title": "Active",
-                    "description": "Whether the repository is actively being scanned."
+                    "title": "Active"
                 },
-                "external_repository_url": {
+                "url": {
                     "type": "string",
-                    "title": "Repository URL",
-                    "format": "url",
-                    "description": "External URL to the repository."
+                    "title": "Repository URL"
                 },
                 "branch": {
                     "type": "string",
-                    "title": "Scanned Branch",
-                    "description": "The branch of the repository that Aikido will scan."
+                    "title": "Default Branch"
                 },
-                "last_scan_at": {
-                    "icon": "ClockLoader",
-                    "type": "string",
-                    "format": "date-time",
-                    "title": "Last Scan At",
-                    "description": "The last time a scan for this repository ended."
+                "lastScannedAt": {
+                    "type": "number",
+                    "title": "Last Scanned At"
                 }
             },
-            "required": []
-        },
-        "relations": {}
+            "required": ["provider"]
+        }
     },
     {
-        "identifier": "aikido_container",
+        "identifier": "aikidoContainer",
         "title": "Aikido Container",
         "icon": "Aikido",
         "schema": {
@@ -79,151 +61,111 @@
                         "artifactory",
                         "custom_upload",
                         "oci"
-                    ],
-                    "enumColors": {
-                        "aws": "orange",
-                        "aws_ecr": "orange",
-                        "gcp-artifact-registry": "blue",
-                        "gcp-container-registry": "blue",
-                        "docker-hub": "turquoise",
-                        "github": "darkGray",
-                        "quay": "purple",
-                        "acr": "lightGray",
-                        "gitlab": "orange",
-                        "gitlab-self": "purple",
-                        "digitalocean": "blue",
-                        "scaleway": "pink",
-                        "cloudsmith": "turquoise",
-                        "harbor": "green",
-                        "artifactory": "yellow",
-                        "custom_upload": "bronze",
-                        "oci": "darkGray"
-                    },
-                    "description": "The provider where the container repository is hosted."
+                    ]
                 },
-                "cloud_id": {
+                "cloudId": {
                     "type": "number",
-                    "title": "Cloud ID",
-                    "description": "Cloud identifier where this container registry is located."
+                    "title": "Cloud ID"
                 },
-                "registry_id": {
+                "registryId": {
                     "type": "number",
-                    "title": "Registry ID",
-                    "description": "The container registry identifier."
+                    "title": "Registry ID"
                 },
-                "registry_name": {
+                "registryName": {
                     "type": "string",
-                    "title": "Registry Name",
-                    "description": "The name of the container registry."
+                    "title": "Registry Name"
                 },
                 "tag": {
                     "type": "string",
-                    "title": "Tag Filter",
-                    "description": "The tag filter used when selecting an image. If empty the latest image will be scanned."
+                    "title": "Tag Filter"
                 },
                 "distro": {
                     "type": "string",
-                    "title": "Distribution",
-                    "description": "The distribution of the image operating system."
+                    "title": "Distribution"
                 },
-                "distro_version": {
+                "distroVersion": {
                     "type": "string",
-                    "title": "Distribution Version",
-                    "description": "The distribution version of the image operating system."
+                    "title": "Distribution Version"
                 },
-                "last_scanned_at": {
+                "lastScannedAt": {
                     "type": "string",
                     "format": "date-time",
-                    "title": "Last Scanned At",
-                    "description": "The latest completed scan."
+                    "title": "Last Scanned At"
                 },
-                "last_scanned_tag": {
+                "lastScannedTag": {
                     "type": "string",
-                    "title": "Last Scanned Tag",
-                    "description": "The image tag used in the latest scan."
+                    "title": "Last Scanned Tag"
                 },
-                "last_pushed_at": {
+                "lastPushedAt": {
                     "type": "string",
                     "format": "date-time",
-                    "title": "Last Pushed At",
-                    "description": "The latest push to this container repository."
+                    "title": "Last Pushed At"
                 }
             },
-            "required": []
+            "required": ["provider"]
         },
         "relations": {
-            "aikido_repository": {
+            "aikidoRepository": {
                 "title": "Repository",
-                "target": "aikido_repository",
+                "target": "aikidoRepository",
                 "required": false,
                 "many": false
             }
         }
     },
     {
-        "identifier": "aikido_team",
+        "identifier": "aikidoTeam",
         "title": "Aikido Team",
         "icon": "Aikido",
         "schema": {
             "properties": {
-                "external_source": {
+                "externalSource": {
                     "type": "string",
                     "title": "External Source",
-                    "enum": ["github", "gitlab", "bitbucket", "backstage_io"],
-                    "enumColors": {
-                        "github": "darkGray",
-                        "gitlab": "orange",
-                        "bitbucket": "blue",
-                        "backstage_io": "turquoise"
-                    },
-                    "description": "Indicates if this team is linked to an external source."
+                    "enum": ["github", "gitlab", "bitbucket", "backstage_io"]
                 },
-                "external_source_id": {
+                "externalSourceId": {
                     "type": "string",
-                    "title": "External Source ID",
-                    "description": "The external source identifier for this team."
+                    "title": "External Source ID"
                 },
                 "responsibilities": {
                     "type": "array",
                     "title": "Responsibilities",
                     "items": {
                         "type": "object"
-                    },
-                    "description": "Resources this team is responsible for."
+                    }
                 },
                 "active": {
                     "type": "boolean",
-                    "title": "Active",
-                    "description": "Whether the team is currently active."
+                    "title": "Active"
                 }
             },
             "required": []
         },
         "relations": {
-            "aikido_repositories": {
+            "aikidoRepositories": {
                 "title": "Repositories",
-                "target": "aikido_repository",
+                "target": "aikidoRepository",
                 "required": false,
                 "many": true
             },
-            "aikido_containers": {
+            "aikidoContainers": {
                 "title": "Containers",
-                "target": "aikido_container",
+                "target": "aikidoContainer",
                 "required": false,
                 "many": true
             }
         }
     },
     {
-        "identifier": "aikido_issue_group",
+        "identifier": "aikidoIssueGroup",
         "title": "Aikido Issue Group",
         "icon": "Aikido",
         "schema": {
             "properties": {
                 "description": {
                     "type": "string",
-                    "title": "Description",
-                    "description": "A small description of this issue."
+                    "title": "Description"
                 },
                 "type": {
                     "type": "string",
@@ -241,29 +183,13 @@
                         "scm_security",
                         "ai_pentest",
                         "license"
-                    ],
-                    "enumColors": {
-                        "open_source": "turquoise",
-                        "leaked_secret": "orange",
-                        "cloud": "blue",
-                        "iac": "darkGray",
-                        "sast": "green",
-                        "surface_monitoring": "bronze",
-                        "mobile": "lime",
-                        "malware": "red",
-                        "eol": "purple",
-                        "scm_security": "yellow",
-                        "ai_pentest": "pink",
-                        "license": "bronze"
-                    },
-                    "description": "The type of issues in this group."
+                    ]
                 },
-                "severity_score": {
+                "severityScore": {
                     "type": "number",
-                    "title": "Severity Score",
-                    "description": "A number indicating the importance of the vulnerability"
+                    "title": "Severity Score"
                 },
-                "group_status": {
+                "groupStatus": {
                     "type": "string",
                     "title": "Group Status",
                     "enum": [
@@ -272,15 +198,7 @@
                         "task_open",
                         "task_closed",
                         "pull_request_open"
-                    ],
-                    "enumColors": {
-                        "new": "purple",
-                        "todo": "yellow",
-                        "task_open": "orange",
-                        "task_closed": "green",
-                        "pull_request_open": "blue"
-                    },
-                    "description": "The current status of the issue group."
+                    ]
                 },
                 "severity": {
                     "type": "string",
@@ -291,190 +209,56 @@
                         "high": "orange",
                         "medium": "yellow",
                         "low": "green"
-                    },
-                    "description": "A human friendly version of the issue's importance"
+                    }
                 },
                 "locations": {
                     "items": {
                         "type": "object"
                     },
                     "title": "Locations",
-                    "type": "array",
-                    "description": "A list of locations where this issue was found. A vulnerability can be found in multiple types of locations eg: when a container is linked to a code repository, any vulnerabilities found in that container, will also have that code repository listed as location."
+                    "type": "array"
                 },
-                "time_to_fix_minutes": {
+                "timeToFixMinutes": {
                     "type": "number",
-                    "title": "Time To Fix (Minutes)",
-                    "description": "The estimated time in minutes that it will take to fix this issue."
+                    "title": "Time To Fix (Minutes)"
                 },
-                "how_to_fix": {
+                "howToFix": {
                     "type": "string",
-                    "title": "How To Fix",
-                    "description": "Recommended remediation guidance."
+                    "title": "How To Fix"
                 }
             },
             "required": []
         },
         "relations": {
-            "aikido_repositories": {
+            "aikidoRepositories": {
                 "title": "Repositories",
-                "target": "aikido_repository",
+                "target": "aikidoRepository",
                 "required": false,
                 "many": true
             },
-            "aikido_containers": {
+            "aikidoContainers": {
                 "title": "Containers",
-                "target": "aikido_container",
+                "target": "aikidoContainer",
                 "required": false,
                 "many": true
             }
         }
     },
     {
-        "identifier": "aikido_issue",
+        "identifier": "aikidoIssue",
         "title": "Aikido Issue",
         "icon": "Aikido",
         "schema": {
             "properties": {
-                "affected_file": {
-                    "type": "string",
-                    "title": "Affected File",
-                    "description": "The name of affected file, if any."
-                },
-                "affected_package": {
-                    "type": "string",
-                    "title": "Affected Package",
-                    "description": "The name of affected open-source package, if any."
-                },
-                "attack_surface": {
-                    "title": "Attack Surface",
-                    "description": "The attack surface of this issue.",
-                    "type": "string",
-                    "default": "not_applicable",
-                    "enum": [
-                        "backend",
-                        "frontend",
-                        "infrastructure",
-                        "docker_container",
-                        "cloud",
-                        "not_applicable"
-                    ],
-                    "enumColors": {
-                        "backend": "brown",
-                        "frontend": "pink",
-                        "infrastructure": "darkGray",
-                        "docker_container": "blue",
-                        "cloud": "lightGray",
-                        "not_applicable": "red"
-                    }
-                },
-                "closed_at": {
-                    "type": "string",
-                    "title": "Closed At",
-                    "format": "date-time",
-                    "description": "When the issue was closed/resolved."
-                },
-                "code_repo_id": {
-                    "type": "string",
-                    "title": "Code Repository ID",
-                    "description": "The id of the code repository where this issue was found."
-                },
-                "code_repo_name": {
-                    "type": "string",
-                    "title": "Code Repository Name",
-                    "description": "The name of code repository where this issue was found."
-                },
-                "container_repo_id": {
-                    "type": "string",
-                    "title": "Container Repository ID",
-                    "description": "The id of the container image where this issue was found."
-                },
-                "container_repo_name": {
-                    "type": "string",
-                    "title": "Container Repository Name",
-                    "description": "The name of the container image where this issue was found."
-                },
-                "cve_id": {
-                    "type": "string",
-                    "title": "CVE ID",
-                    "description": "CVE ID in case of an issue of type open_source."
-                },
-                "cwe_ids": {
-                    "type": "array",
-                    "title": "CWE Classes",
-                    "items": {
-                        "type": "string"
-                    },
-                    "description": "A list of CWE classes that apply to this issue."
-                },
-                "detected_at": {
-                    "type": "string",
-                    "title": "First Detected At",
-                    "format": "date-time",
-                    "description": "When the issue was first detected."
-                },
-                "group_id": {
+                "groupId": {
                     "type": "number",
                     "title": "Group ID"
                 },
-                "ignored_at": {
+                "attackSurface": {
                     "type": "string",
-                    "title": "Ignored At",
-                    "format": "date-time",
-                    "description": "When the issue was ignored."
-                },
-                "ignored_by": {
-                    "type": "string",
-                    "title": "Ignored By",
-                    "description": "Who ignored the issue."
-                },
-                "remediate_by": {
-                    "type": "string",
-                    "title": "Remediate By",
-                    "format": "date-time",
-                    "description": "When this issue should be fixed following the configured SLA for this severity."
-                },
-                "rule": {
-                    "type": "string",
-                    "title": "Rule Name",
-                    "description": "The name of the rule that caused this finding (eg 'SQL injection')."
-                },
-                "severity": {
-                    "type": "string",
-                    "title": "Severity",
-                    "enum": ["critical", "high", "medium", "low"],
-                    "enumColors": {
-                        "critical": "red",
-                        "high": "orange",
-                        "medium": "yellow",
-                        "low": "green"
-                    }
-                },
-                "severity_score": {
-                    "type": "number",
-                    "title": "Severity Score",
-                    "description": "A number indicating the importance of the vulnerability."
-                },
-                "sla_days": {
-                    "type": "number",
-                    "title": "SLA (Days)",
-                    "description": "The amount of days wherein this issue should be fixed following the configured SLA for this severity."
-                },
-                "snoozed_until": {
-                    "type": "string",
-                    "title": "Snoozed Until",
-                    "format": "date-time",
-                    "description": "Until when the issue will be snoozed."
-                },
-                "license_type": {
-                    "type": "string",
-                    "title": "License",
-                    "description": "The license type related to this issue. This is only applicable for issues of type 'license'."
-                },
-                "programming_language": {
-                    "type": "string",
-                    "title": "Programming Language",
-                    "description": "The programming language related to this issue. This is only applicable for issues of type 'open_source' and 'sast'."
+                    "title": "Attack Surface",
+                    "enum": ["backend", "frontend", "infrastructure", "docker_container", "cloud", "not_applicable"],
+                    "default": "not_applicable"
                 },
                 "status": {
                     "type": "string",
@@ -487,58 +271,89 @@
                         "snoozed": "blue"
                     }
                 },
-                "type": {
-                    "icon": "DefaultProperty",
-                    "title": "Issue Type",
+                "severity": {
                     "type": "string",
-                    "enum": [
-                        "open_source",
-                        "leaked_secret",
-                        "cloud",
-                        "iac",
-                        "sast",
-                        "mobile",
-                        "surface_monitoring",
-                        "malware",
-                        "eol",
-                        "scm_security",
-                        "ai_pentest",
-                        "license"
-                    ],
+                    "title": "Severity",
+                    "enum": ["critical", "high", "medium", "low"],
                     "enumColors": {
-                        "open_source": "turquoise",
-                        "leaked_secret": "orange",
-                        "cloud": "blue",
-                        "iac": "darkGray",
-                        "sast": "green",
-                        "mobile": "lime",
-                        "surface_monitoring": "olive",
-                        "malware": "red",
-                        "eol": "purple",
-                        "scm_security": "yellow",
-                        "ai_pentest": "pink",
-                        "license": "gold"
+                        "critical": "red",
+                        "high": "orange",
+                        "medium": "yellow",
+                        "low": "green"
                     }
+                },
+                "severityScore": {
+                    "type": "number",
+                    "title": "Severity Score"
+                },
+                "type": {
+                    "type": "string",
+                    "title": "Issue Type",
+                    "enum": ["open_source", "leaked_secret", "cloud", "iac", "sast", "mobile", "surface_monitoring", "malware", "eol", "scm_security", "ai_pentest", "license"]
+                },
+                "rule": {
+                    "type": "string",
+                    "title": "Rule Name"
+                },
+                "affectedFile": {
+                    "type": "string",
+                    "title": "Affected File"
+                },
+                "affectedPackage": {
+                    "type": "string",
+                    "title": "Affected Package"
+                },
+                "codeRepoName": {
+                    "type": "string",
+                    "title": "Code Repository Name"
+                },
+                "codeRepoId": {
+                    "type": "number",
+                    "title": "Code Repository ID"
+                },
+                "containerRepoId": {
+                    "type": "string",
+                    "title": "Container Repository ID"
+                },
+                "containerRepoName": {
+                    "type": "string",
+                    "title": "Container Repository Name"
+                },
+                "firstDetectedAt": {
+                    "type": "number",
+                    "title": "First Detected At"
+                },
+                "ignoredAt": {
+                    "type": "number",
+                    "title": "Ignored At"
+                },
+                "closedAt": {
+                    "type": "number",
+                    "title": "Closed At"
+                },
+                "sla_days": {
+                    "type": "number",
+                    "title": "SLA (Days)"
                 }
             },
             "required": ["status", "severity", "type"]
         },
         "relations": {
-            "aikido_repository": {
+            "aikidoRepository": {
                 "title": "Repository",
-                "target": "aikido_repository",
+                "target": "aikidoRepository",
                 "required": false,
                 "many": false
             },
-            "aikido_container": {
+            "aikidoContainer": {
                 "title": "Container",
-                "target": "aikido_container",
+                "target": "aikidoContainer",
                 "required": false,
                 "many": false
             },
-            "issue_group": {
+            "aikidoIssueGroup": {
                 "title": "Issue Group",
-                "target": "aikido_issue_group",
+                "target": "aikidoIssueGroup",
                 "required": false,
                 "many": false
             }

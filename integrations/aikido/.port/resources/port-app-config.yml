@@ -9,16 +9,16 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"aikido_repository"'
+          blueprint: '"aikidoRepository"'
           identifier: .id | tostring
           title: .name
           properties:
             provider: .provider
-            external_repository_id: .external_repo_id
-            external_repository_url: .url
+            externalRepoId: .external_repo_id
+            url: .url
             active: .active
             branch: .branch
-            last_scan_at: (.last_scanned_at | if type == "number" and . > 0 then todate else null end)
+            lastScannedAt: (.last_scanned_at | if type == "number" and . > 0 then todate else null end)
   - kind: containers
     selector:
       query: 'true'
@@ -26,22 +26,22 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"aikido_container"'
+          blueprint: '"aikidoContainer"'
           identifier: .id | tostring
           title: .name
           properties:
             provider: .provider
-            cloud_id: .cloud_id
-            registry_id: .registry_id
-            registry_name: .registry_name
+            cloudId: .cloud_id
+            registryId: .registry_id
+            registryName: .registry_name
             tag: .tag
             distro: .distro
-            distro_version: .distro_version
-            last_scanned_at: (.last_scanned_at | if type == "number" and . > 0 then todate else null end)
-            last_scanned_tag: .last_scanned_tag
-            last_pushed_at: (.last_pushed_at | if type == "number" and . > 0 then todate else null end)
+            distroVersion: .distro_version
+            lastScannedAt: (.last_scanned_at | if type == "number" and . > 0 then todate else null end)
+            lastScannedTag: .last_scanned_tag
+            lastPushedAt: (.last_pushed_at | if type == "number" and . > 0 then todate else null end)
           relations:
-            aikido_repository:
+            aikidoRepository:
               combinator: '"and"'
               rules:
                 - operator: '"="'
@@ -53,18 +53,18 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"aikido_team"'
+          blueprint: '"aikidoTeam"'
           identifier: .id | tostring
           title: .name
           properties:
-            external_source: .external_source
-            external_source_id: .external_source_id
+            externalSource: .external_source
+            externalSourceId: .external_source_id
             responsibilities: .responsibilities
             active: .active
           relations:
-            aikido_repositories: >-
+            aikidoRepositories: >-
               .responsibilities | map(select(.type == "code_repository") | .id | tostring)
-            aikido_containers: >-
+            aikidoContainers: >-
               .responsibilities | map(select(.type == "container_repository") | .id | tostring)
   - kind: issue_groups
     selector:
@@ -72,22 +72,22 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"aikido_issue_group"'
+          blueprint: '"aikidoIssueGroup"'
           identifier: .id | tostring
           title: .title
           properties:
             description: .description
             type: .type
-            severity_score: .severity_score
+            severityScore: .severity_score
             severity: .severity
-            group_status: .group_status
-            time_to_fix_minutes: .time_to_fix_minutes
+            groupStatus: .group_status
+            timeToFixMinutes: .time_to_fix_minutes
             locations: .locations
-            how_to_fix: .how_to_fix
+            howToFix: .how_to_fix
           relations:
-            aikido_repositories: >-
+            aikidoRepositories: >-
               [.locations[]? | select(.type == "code_repository") | (.id | tostring)]
-            aikido_containers: >-
+            aikidoContainers: >-
               [.locations[]? | select(.type == "container_repository") | (.id | tostring)]
   - kind: issues
     selector:
@@ -95,50 +95,40 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"aikido_issue"'
+          blueprint: '"aikidoIssue"'
           identifier: .id | tostring
-          title: (.affected_package // .rule // .cve_id // ("Issue " + (.id | tostring)))
+          title: (.affected_package // .rule ("Issue " + (.id | tostring)))
           properties:
-            affected_file: .affected_file
-            affected_package: .affected_package
-            attack_surface: (.attack_surface // "" | if . == "" then "not_applicable" else . end)
-            closed_at: (if .closed_at == null then null else (.closed_at | todate) end)
-            code_repo_id: .code_repo_id
-            code_repo_name: .code_repo_name
-            container_repo_id: .container_repo_id
-            container_repo_name: .container_repo_name
-            cve_id: .cve_id
-            cwe_ids: .cwe_classes
-            detected_at: (if .first_detected_at == null then null else (.first_detected_at | todate) end)
-            group_id: .group_id
-            ignored_at: (if .ignored_at == null then null else (.ignored_at | todate) end)
-            remediate_by: (if .sla_remediate_by == null then null else (.sla_remediate_by | todate) end)
-            ignored_by: .ignored_by
-            rule: .rule
-            severity: .severity
-            severity_score: .severity_score
-            sla_days: (.sla_days // null)
-            snoozed_until: (if .snooze_until == null then null else (.snooze_until | todate) end)
+            affectedFile: .affected_file
+            affectedPackage: .affected_package
+            attackSurface: (.attack_surface // "" | if . == "" then "not_applicable" else . end)
+            closedAt: .closed_at
+            codeRepoId: .code_repo_id
+            codeRepoName: .code_repo_name
+            containerRepoId: .container_repo_id
+            containerRepoName: .container_repo_name
+            firstDetectedAt: .first_detected_at
+            groupId: .group_id
+            ignoredAt: .ignored_at
+            sla_days: .sla_days
             status: .status
             type: .type
-            license_type: .license_type
-            programming_language: .programming_language
           relations:
-            aikido_repository:
+            aikidoRepository:
               combinator: '"and"'
               rules:
                 - operator: '"="'
                   property: '"$identifier"'
-                  value: (if .code_repo_id == null then "unknown" else (.code_repo_id | tostring) end)
-            aikido_container:
+                  value: (if .code_repo_id == null then null else (.code_repo_id | tostring) end)
+            aikidoContainer:
               combinator: '"and"'
               rules:
                 - operator: '"="'
                   property: '"$identifier"'
-                  value: (if .container_repo_id == null then "unknown" else (.container_repo_id | tostring) end)
-            issue_group:
+                  value: (if .container_repo_id == null then null else (.container_repo_id | tostring) end)
+            aikidoIssueGroup:
               combinator: '"and"'
               rules:
                 - operator: '"="'
                   property: '"$identifier"'
-                  value: (if .group_id == null then "unknown" else (.group_id | tostring) end)
+                  value: (if .group_id == null then null else (.group_id | tostring) end)
