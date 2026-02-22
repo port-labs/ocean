@@ -20,7 +20,7 @@ FROM ${BASE_RUNNER_PYTHON_IMAGE} AS prod
 ARG OCEAN_USER_ID=1001
 ARG OCEAN_GROUP_ID=1001
 
-RUN groupadd -r appgroup -g ${OCEAN_GROUP_ID} && useradd -r -g appgroup -u ${OCEAN_USER_ID} -p '' ocean
+RUN groupadd -r appgroup -g ${OCEAN_GROUP_ID} && useradd -r -g appgroup -u ${OCEAN_USER_ID} ocean
 
 RUN mkdir -p /tmp/ocean
 
