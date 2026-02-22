@@ -329,7 +329,7 @@
                     "type": "number",
                     "title": "Closed At"
                 },
-                "sla_days": {
+                "slaDays": {
                     "type": "number",
                     "title": "SLA (Days)"
                 }

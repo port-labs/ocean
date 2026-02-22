@@ -105,7 +105,7 @@ resources:
             firstDetectedAt: .first_detected_at
             groupId: .group_id
             ignoredAt: .ignored_at
-            sla_days: .sla_days
+            slaDays: .sla_days
             status: .status
             type: .type
           relations:
