@@ -15,23 +15,38 @@ from http_server.exceptions import (
 class ApiPathParameter(BaseModel):
     """Configuration for API-discovered path parameters"""
 
-    endpoint: str = Field(description="API endpoint to discover parameter values")
-    method: str = Field(default="GET", description="HTTP method")
+    endpoint: str = Field(
+        title="Endpoint", description="API endpoint to discover parameter values"
+    )
+    method: str = Field(
+        title="Method",
+        enum=["OPTIONS", "GET", "POST", "PUT", "PATCH"],
+        description="HTTP method",
+        default="GET",
+    )
     query_params: Optional[Dict[str, Any]] = Field(
-        default=None, description="Query parameters for discovery endpoint"
+        title="Query Parameters",
+        description="Query parameters for discovery endpoint",
+        default=None,
     )
     headers: Optional[Dict[str, str]] = Field(
-        default=None, description="Headers for discovery endpoint"
+        title="Headers",
+        description="Headers for discovery endpoint",
+        default=None,
     )
     data_path: Optional[str] = Field(
-        default=None,
+        title="Data Path",
         description="JQ path to extract data array from response (e.g., '.tickets', '.data')",
+        default=None,
     )
     field: str = Field(
-        description="JQ expression to extract parameter value from each record"
+        title="Field",
+        description="JQ expression to extract parameter value from each record",
     )
     filter: Optional[str] = Field(
-        default=None, description="JQ boolean expression to filter records"
+        title="Filter",
+        description="JQ boolean expression to filter records",
+        default=None,
     )
 
 
@@ -39,19 +54,35 @@ class HttpServerSelector(Selector):
     """Selector for HTTP server resources - extends base Selector"""
 
     endpoint: Optional[str] = Field(
-        default=None, description="HTTP endpoint path (supports {param} templates)"
+        title="Endpoint",
+        description="HTTP endpoint path (supports {param} templates)",
+        default=None,
     )
-    method: str = Field(default="GET", description="HTTP method")
+    method: str = Field(
+        title="Method",
+        enum=["OPTIONS", "GET", "POST", "PUT", "PATCH", "DELETE"],
+        description="HTTP method",
+        default="GET",
+    )
     query_params: Optional[Dict[str, Any]] = Field(
-        default=None, description="Query parameters"
+        title="Query Parameters",
+        description="Query parameters",
+        default=None,
     )
-    headers: Optional[Dict[str, str]] = Field(default=None, description="HTTP headers")
+    headers: Optional[Dict[str, str]] = Field(
+        title="Headers",
+        description="HTTP headers",
+        default=None,
+    )
     path_parameters: Optional[Dict[str, ApiPathParameter]] = Field(
-        default=None, description="Dynamic path parameters"
+        title="Path Parameters",
+        description="Dynamic path parameters",
+        default=None,
     )
     data_path: Optional[str] = Field(
-        default=None,
+        title="Data Path",
         description="JQ path to extract data array from response (e.g., '.members', '.data.items')",
+        default=None,
     )
 
     class Config:
@@ -66,43 +97,57 @@ class HttpServerResourceConfig(ResourceConfig):
     This allows each endpoint to be tracked separately in Port's UI.
     """
 
-    selector: HttpServerSelector
-    kind: str  # Dynamic - the endpoint path
+    selector: HttpServerSelector = Field(
+        title="Selector",
+        description="Selector for HTTP server resources",
+    )
+    kind: str = Field(
+        title="Custom Kind",
+        description="Endpoint path (e.g., '/api/v1/users', '/api/conversations.list')",
+    )
 
 
 class CustomAuthRequestConfig(BaseModel):
     """Configuration for custom authentication request - defines how to make the auth request"""
 
     endpoint: str = Field(
-        description="Endpoint path or full URL for authentication request (e.g., '/oauth/token' or 'https://auth.example.com/token')"
+        title="Endpoint",
+        description="Endpoint path or full URL for authentication request (e.g., '/oauth/token' or 'https://auth.example.com/token')",
     )
     method: str = Field(
+        title="Method",
         default="POST",
+        enum=["GET", "POST", "PUT", "PATCH", "DELETE"],
         description="HTTP method for authentication request",
     )
     headers: Optional[Dict[str, str]] = Field(
-        default=None,
+        title="Headers",
         description="HTTP headers to send with authentication request",
+        default=None,
     )
     body: Optional[Dict[str, Any]] = Field(
-        default=None,
+        title="Body",
         description="JSON request body for authentication request (mutually exclusive with bodyForm)",
+        default=None,
     )
     bodyForm: Optional[str] = Field(
-        default=None,
+        title="Body Form",
         alias="bodyForm",
         description="Form-encoded request body for authentication request (mutually exclusive with body)",
+        default=None,
     )
     queryParams: Optional[Dict[str, Any]] = Field(
-        default=None,
+        title="Query Parameters",
         alias="queryParams",
         description="Query parameters to send with authentication request",
+        default=None,
     )
     reauthenticate_interval_seconds: Optional[int] = Field(
-        default=None,
+        title="Re-authenticate Interval Seconds",
         alias="reauthenticateIntervalSeconds",
         description="How long (in seconds) each authentication is valid before re-authenticating. If not provided, expiration checking is disabled and tokens will only be refreshed on 401 errors. A 60-second buffer is applied to refresh proactively before expiration.",
         ge=1,
+        default=None,
     )
 
     @root_validator
@@ -116,18 +161,6 @@ class CustomAuthRequestConfig(BaseModel):
             )
         return values
 
-    @root_validator
-    def validate_method(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        """Validate HTTP method"""
-        method = values.get("method", "POST").upper()
-        allowed_methods = {"GET", "POST", "PUT", "PATCH", "DELETE"}
-        if method not in allowed_methods:
-            raise CustomAuthRequestError(
-                f"Method must be one of {allowed_methods}, got: {method}"
-            )
-        values["method"] = method
-        return values
-
     class Config:
         allow_population_by_field_name = True
 
@@ -136,17 +169,20 @@ class CustomAuthRequestTemplateConfig(BaseModel):
     """Configuration for using authentication response - defines how to apply auth values to subsequent requests"""
 
     headers: Optional[Dict[str, str]] = Field(
-        default=None,
+        title="Headers",
         description="HTTP headers to apply to subsequent API requests. Use template syntax {{.jq_path}} to extract values from auth response (e.g., 'Authorization': 'Bearer {{.access_token}}')",
+        default=None,
     )
     queryParams: Optional[Dict[str, Any]] = Field(
-        default=None,
+        title="Query Parameters",
         alias="queryParams",
         description="Query parameters to apply to subsequent API requests. Use template syntax {{.jq_path}} to extract values from auth response (e.g., 'api_key': '{{.access_token}}')",
+        default=None,
     )
     body: Optional[Dict[str, Any]] = Field(
-        default=None,
+        title="Body",
         description="Request body to merge into subsequent API requests. Use template syntax {{.jq_path}} to extract values from auth response. Merged with request body if present (e.g., {'api_key': '{{.accessToken}}'})",
+        default=None,
     )
 
     @root_validator
@@ -172,4 +208,5 @@ class CustomAuthRequestTemplateConfig(BaseModel):
 class HttpServerPortAppConfig(PortAppConfig):
     """Port app configuration for HTTP server integration"""
 
+    allow_custom_kinds = True
     resources: list[HttpServerResourceConfig] = Field(default_factory=list)  # type: ignore[assignment]

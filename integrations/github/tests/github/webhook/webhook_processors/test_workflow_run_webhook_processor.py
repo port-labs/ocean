@@ -18,13 +18,12 @@ from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.workflow_run.workflow_run_webhook_processor import (
     WorkflowRunWebhookProcessor,
 )
-from integration import GithubRepoSearchConfig, RepoSearchSelector
+from integration import GithubWorkflowRunConfig, RepoSearchSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
-    return GithubRepoSearchConfig(
-        kind=ObjectKind.WORKFLOW_RUN,
+    return GithubWorkflowRunConfig(
         selector=RepoSearchSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(

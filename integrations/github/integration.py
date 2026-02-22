@@ -335,7 +335,52 @@ class GithubBranchConfig(ResourceConfig):
     selector: GithubBranchSelector
 
 
-class GithubRepoSearchConfig(ResourceConfig):
+class GithubOrganizationConfig(ResourceConfig):
+    kind: Literal[ObjectKind.ORGANIZATION] = Field(
+        default=ObjectKind.ORGANIZATION, description="Resource kind (organization)."
+    )
+    selector: RepoSearchSelector
+
+
+class GithubWorkflowConfig(ResourceConfig):
+    kind: Literal[ObjectKind.WORKFLOW] = Field(
+        default=ObjectKind.WORKFLOW, description="Resource kind (workflow)."
+    )
+    selector: RepoSearchSelector
+
+
+class GithubWorkflowRunConfig(ResourceConfig):
+    kind: Literal[ObjectKind.WORKFLOW_RUN] = Field(
+        default=ObjectKind.WORKFLOW_RUN, description="Resource kind (workflow-run)."
+    )
+    selector: RepoSearchSelector
+
+
+class GithubReleaseConfig(ResourceConfig):
+    kind: Literal[ObjectKind.RELEASE] = Field(
+        default=ObjectKind.RELEASE, description="Resource kind (release)."
+    )
+    selector: RepoSearchSelector
+
+
+class GithubTagConfig(ResourceConfig):
+    kind: Literal[ObjectKind.TAG] = Field(
+        default=ObjectKind.TAG, description="Resource kind (tag)."
+    )
+    selector: RepoSearchSelector
+
+
+class GithubEnvironmentConfig(ResourceConfig):
+    kind: Literal[ObjectKind.ENVIRONMENT] = Field(
+        default=ObjectKind.ENVIRONMENT, description="Resource kind (environment)."
+    )
+    selector: RepoSearchSelector
+
+
+class GithubCollaboratorConfig(ResourceConfig):
+    kind: Literal[ObjectKind.COLLABORATOR] = Field(
+        default=ObjectKind.COLLABORATOR, description="Resource kind (collaborator)."
+    )
     selector: RepoSearchSelector
 
 
@@ -367,9 +412,23 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubBranchConfig
         | GithubSecretScanningAlertConfig
         | GithubUserConfig
-        | GithubRepoSearchConfig
-        | ResourceConfig
-    ] = Field(default_factory=list)
+        | GithubOrganizationConfig
+        | GithubWorkflowConfig
+        | GithubWorkflowRunConfig
+        | GithubReleaseConfig
+        | GithubTagConfig
+        | GithubEnvironmentConfig
+        | GithubCollaboratorConfig
+    ] = Field(
+        default_factory=list,
+        description=(
+            "Resource mappings. Repository-dependent kinds without custom selector options "
+            "(organization, workflow, workflow-run, release, tag, environment, collaborator) "
+            "use GithubOrganizationConfig, GithubWorkflowConfig, GithubWorkflowRunConfig, "
+            "GithubReleaseConfig, GithubTagConfig, GithubEnvironmentConfig, GithubCollaboratorConfig "
+            "with RepoSearchSelector only."
+        ),
+    )
 
 
 class GitManipulationHandler(JQEntityProcessor):

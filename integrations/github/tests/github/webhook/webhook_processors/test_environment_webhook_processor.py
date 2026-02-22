@@ -15,13 +15,12 @@ from github.helpers.utils import ObjectKind
 from github.webhook.webhook_processors.environment_webhook_processor import (
     EnvironmentWebhookProcessor,
 )
-from integration import GithubRepoSearchConfig, RepoSearchSelector
+from integration import GithubEnvironmentConfig, RepoSearchSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
-    return GithubRepoSearchConfig(
-        kind=ObjectKind.ENVIRONMENT,
+    return GithubEnvironmentConfig(
         selector=RepoSearchSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
