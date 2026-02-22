@@ -45,9 +45,9 @@ class ContainerResourceConfig(ResourceConfig):
 
 
 class AikidoPortAppConfig(PortAppConfig):
-    resources: list[RepositoryResourceConfig | ContainerResourceConfig | ResourceConfig] = Field(
-        default_factory=list
-    )
+    resources: list[
+        RepositoryResourceConfig | ContainerResourceConfig | ResourceConfig
+    ] = Field(default_factory=list)
 
 
 class AikidoIntegration(BaseIntegration):

@@ -1,6 +1,7 @@
 from typing import Any, AsyncGenerator, List, Dict, Optional
 from httpx import HTTPStatusError, AsyncClient
 from clients.auth_client import AikidoAuth
+from clients.options import ListRepositoriesOptions, ListContainersOptions
 from loguru import logger
 from port_ocean.utils import http_async_client
 
@@ -59,7 +60,9 @@ class AikidoClient:
             return response.json()
         except HTTPStatusError as e:
             if e.response.status_code == 404:
-                logger.warning(f"Requested resource not found: {url}; message: {str(e)}")
+                logger.warning(
+                    f"Requested resource not found: {url}; message: {str(e)}"
+                )
                 return {}
             logger.error(f"API request failed for {url}: {e}")
             raise
@@ -69,14 +72,14 @@ class AikidoClient:
 
     async def get_repositories(
         self,
-        query_params: Optional[Dict[str, Any]] = None,
+        options: Optional[ListRepositoriesOptions] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """
         Fetch repositories from the Aikido API.
         Yields batches of repositories as lists of dicts.
         """
         endpoint = REPOSITORIES_ENDPOINT
-        base_params = query_params.copy() if query_params else {}
+        base_params = dict(options) if options else {}
         params = {**base_params, "per_page": PAGE_SIZE, "page": FIRST_PAGE}
 
         while True:
@@ -127,9 +130,7 @@ class AikidoClient:
         for i in range(0, len(all_issues), batch_size):
             yield all_issues[i : i + batch_size]
 
-    async def get_open_issue_groups(
-        self
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    async def get_open_issue_groups(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch paginated open issue groups from the Aikido API."""
 
         params = {"per_page": PAGE_SIZE, "page": FIRST_PAGE}
@@ -191,11 +192,11 @@ class AikidoClient:
 
     async def get_containers(
         self,
-        query_params: Optional[Dict[str, Any]] = None,
+        options: Optional[ListContainersOptions] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """Fetch paginated containers from the Aikido API."""
 
-        base_params = query_params.copy() if query_params else {}
+        base_params = dict(options) if options else {}
         params = {**base_params, "per_page": PAGE_SIZE, "page": FIRST_PAGE}
 
         while True:

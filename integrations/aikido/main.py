@@ -5,6 +5,7 @@ from loguru import logger
 from typing import cast
 
 from initialize_client import init_aikido_client
+from clients.options import ListRepositoriesOptions, ListContainersOptions
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.repository_webhook_processor import RepositoryWebhookProcessor
 from integration import ObjectKind, RepositoryResourceConfig, ContainerResourceConfig
@@ -16,9 +17,9 @@ async def on_repositories_resync(
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     client = init_aikido_client()
     selector = cast(RepositoryResourceConfig, event.resource_config).selector
-    query_params = {"include_inactive": selector.include_inactive}
+    options: ListRepositoriesOptions = {"include_inactive": selector.include_inactive}
     logger.info("Fetching repositories from Aikido API")
-    async for repos_batch in client.get_repositories(query_params=query_params):
+    async for repos_batch in client.get_repositories(options=options):
         logger.info(f"Yielding repositories batch of size: {len(repos_batch)}")
         yield repos_batch
 
@@ -39,7 +40,9 @@ async def on_issue_groups_resync(
     client = init_aikido_client()
     logger.info("Fetching open issue groups from Aikido API")
     async for issue_group_batch in client.get_open_issue_groups():
-        logger.info(f"Yielding open issue groups batch of size: {len(issue_group_batch)}")
+        logger.info(
+            f"Yielding open issue groups batch of size: {len(issue_group_batch)}"
+        )
         yield issue_group_batch
 
 
@@ -58,9 +61,9 @@ async def on_containers_resync(
 ) -> AsyncGenerator[list[dict[str, Any]], None]:
     client = init_aikido_client()
     selector = cast(ContainerResourceConfig, event.resource_config).selector
-    query_params = {"filter_status": selector.filter_status}
+    options: ListContainersOptions = {"filter_status": selector.filter_status}
     logger.info("Fetching containers from Aikido API")
-    async for container_batch in client.get_containers(query_params=query_params):
+    async for container_batch in client.get_containers(options=options):
         logger.info(f"Yielding containers batch of size: {len(container_batch)}")
         yield container_batch
 
