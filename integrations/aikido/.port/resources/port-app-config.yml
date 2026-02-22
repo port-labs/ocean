@@ -41,12 +41,7 @@ resources:
             lastScannedTag: .last_scanned_tag
             lastPushedAt: .last_pushed_at
           relations:
-            aikidoRepository:
-              combinator: '"and"'
-              rules:
-                - operator: '"="'
-                  property: '"$identifier"'
-                  value: .linked_code_repo_id | tostring
+            aikidoRepository: .linked_code_repo_id
   - kind: team
     selector:
       query: 'true'
@@ -114,21 +109,6 @@ resources:
             status: .status
             type: .type
           relations:
-            aikidoRepository:
-              combinator: '"and"'
-              rules:
-                - operator: '"="'
-                  property: '"$identifier"'
-                  value: (if .code_repo_id == null then null else (.code_repo_id | tostring) end)
-            aikidoContainer:
-              combinator: '"and"'
-              rules:
-                - operator: '"="'
-                  property: '"$identifier"'
-                  value: (if .container_repo_id == null then null else (.container_repo_id | tostring) end)
-            aikidoIssueGroup:
-              combinator: '"and"'
-              rules:
-                - operator: '"="'
-                  property: '"$identifier"'
-                  value: (if .group_id == null then null else (.group_id | tostring) end)
+            aikidoRepository: .code_repo_id
+            aikidoContainer: .container_repo_id
+            aikidoIssueGroup: .group_id
