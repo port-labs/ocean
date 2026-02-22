@@ -41,7 +41,7 @@ resources:
             lastScannedTag: .last_scanned_tag
             lastPushedAt: .last_pushed_at
           relations:
-            aikidoRepository: .linked_code_repo_id
+            aikidoRepository: .linked_code_repo_id | tostring
   - kind: team
     selector:
       query: 'true'
@@ -92,7 +92,7 @@ resources:
         mappings:
           blueprint: '"aikidoIssue"'
           identifier: .id | tostring
-          title: (.affected_package // .rule ("Issue " + (.id | tostring)))
+          title: .id | tostring
           properties:
             affectedFile: .affected_file
             affectedPackage: .affected_package
@@ -109,6 +109,6 @@ resources:
             status: .status
             type: .type
           relations:
-            aikidoRepository: .code_repo_id
-            aikidoContainer: .container_repo_id
-            aikidoIssueGroup: .group_id
+            aikidoRepository: .code_repo_id | tostring
+            aikidoContainer: .container_repo_id | tostring
+            aikidoIssueGroup: .group_id | tostring

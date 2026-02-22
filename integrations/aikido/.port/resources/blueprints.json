@@ -310,7 +310,7 @@
                     "title": "Code Repository ID"
                 },
                 "containerRepoId": {
-                    "type": "string",
+                    "type": "number",
                     "title": "Container Repository ID"
                 },
                 "containerRepoName": {
