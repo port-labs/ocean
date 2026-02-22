@@ -88,8 +88,7 @@
                     "title": "Distribution Version"
                 },
                 "lastScannedAt": {
-                    "type": "string",
-                    "format": "date-time",
+                    "type": "number",
                     "title": "Last Scanned At"
                 },
                 "lastScannedTag": {
@@ -97,8 +96,7 @@
                     "title": "Last Scanned Tag"
                 },
                 "lastPushedAt": {
-                    "type": "string",
-                    "format": "date-time",
+                    "type": "number",
                     "title": "Last Pushed At"
                 }
             },

@@ -18,7 +18,7 @@ resources:
             url: .url
             active: .active
             branch: .branch
-            lastScannedAt: (.last_scanned_at | if type == "number" and . > 0 then todate else null end)
+            lastScannedAt: .last_scanned_at
   - kind: containers
     selector:
       query: 'true'
@@ -37,9 +37,9 @@ resources:
             tag: .tag
             distro: .distro
             distroVersion: .distro_version
-            lastScannedAt: (.last_scanned_at | if type == "number" and . > 0 then todate else null end)
+            lastScannedAt: .last_scanned_at
             lastScannedTag: .last_scanned_tag
-            lastPushedAt: (.last_pushed_at | if type == "number" and . > 0 then todate else null end)
+            lastPushedAt: .last_pushed_at
           relations:
             aikidoRepository:
               combinator: '"and"'
