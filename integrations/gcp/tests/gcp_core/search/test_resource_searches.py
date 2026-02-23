@@ -5,6 +5,7 @@ import sys
 from port_ocean.context.event import event_context
 import port_ocean.context.ocean as ocean_module
 from port_ocean.context.ocean import initialize_port_ocean_context, PortOceanContext
+import gcp_core.clients as clients
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from google.pubsub_v1.types import pubsub
@@ -56,13 +57,16 @@ def clean_module_cache() -> Generator[None, None, None]:
 def mock_shared_clients(monkeypatch: pytest.MonkeyPatch) -> None:
     """Pre-populate singleton client slots so lazy-init getters return mocks."""
     default_mock = AsyncMock()
-    monkeypatch.setattr("gcp_core.clients._asset_client", default_mock)
-    monkeypatch.setattr("gcp_core.clients._projects_client", default_mock)
-    monkeypatch.setattr("gcp_core.clients._folders_client", default_mock)
-    monkeypatch.setattr("gcp_core.clients._organizations_client", default_mock)
-    monkeypatch.setattr("gcp_core.clients._publisher_client", default_mock)
-    monkeypatch.setattr("gcp_core.clients._subscriber_client", default_mock)
-    monkeypatch.setattr("gcp_core.clients._quotas_client", default_mock)
+    for name in (
+        "AssetServiceAsyncClient",
+        "ProjectsAsyncClient",
+        "FoldersAsyncClient",
+        "OrganizationsAsyncClient",
+        "PublisherAsyncClient",
+        "SubscriberAsyncClient",
+        "CloudQuotasAsyncClient",
+    ):
+        monkeypatch.setitem(clients._instances, name, default_mock)
 
 
 @pytest.fixture(autouse=True)
@@ -117,7 +121,7 @@ async def test_get_single_subscription(
     mock_subscriber.get_subscription = AsyncMock(
         return_value=pubsub.Subscription({"name": "subscription_name"})
     )
-    monkeypatch.setattr("gcp_core.clients._subscriber_client", mock_subscriber)
+    monkeypatch.setitem(clients._instances, "SubscriberAsyncClient", mock_subscriber)
 
     # Mock the resource config
     mock_resource_config = MagicMock()
@@ -163,13 +167,13 @@ async def test_feed_to_resource(
     mock_projects_client.get_project = AsyncMock(
         return_value=Project({"name": "project_name"})
     )
-    monkeypatch.setattr("gcp_core.clients._projects_client", mock_projects_client)
+    monkeypatch.setitem(clients._instances, "ProjectsAsyncClient", mock_projects_client)
 
     mock_publisher_client = AsyncMock()
     mock_publisher_client.get_topic = AsyncMock(
         return_value=pubsub.Topic({"name": "topic_name"})
     )
-    monkeypatch.setattr("gcp_core.clients._publisher_client", mock_publisher_client)
+    monkeypatch.setitem(clients._instances, "PublisherAsyncClient", mock_publisher_client)
 
     # Mock the resource config
     mock_resource_config = MagicMock()
@@ -254,7 +258,7 @@ async def test_preserve_case_style_combined(
             }
         )
     )
-    monkeypatch.setattr("gcp_core.clients._subscriber_client", mock_subscriber)
+    monkeypatch.setitem(clients._instances, "SubscriberAsyncClient", mock_subscriber)
 
     # Mock the resource config with preserve_api_response_case_style set to True
     mock_resource_config_true = MagicMock()

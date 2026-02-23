@@ -6,14 +6,8 @@ from gcp_core import clients
 
 @pytest.fixture(autouse=True)
 def reset_clients() -> None:
-    """Reset all client module-level vars and orphaned list before each test."""
-    clients._asset_client = None
-    clients._projects_client = None
-    clients._folders_client = None
-    clients._organizations_client = None
-    clients._publisher_client = None
-    clients._subscriber_client = None
-    clients._quotas_client = None
+    """Reset all client instances and orphaned list before each test."""
+    clients._instances.clear()
     clients._orphaned.clear()
 
 
@@ -98,13 +92,13 @@ async def test_close_closes_all_clients_and_resets() -> None:
     mock_subscriber = _make_client_with_transport()
     mock_quotas = _make_client_with_transport()
 
-    clients._asset_client = mock_asset
-    clients._projects_client = mock_projects
-    clients._folders_client = mock_folders
-    clients._organizations_client = mock_orgs
-    clients._publisher_client = mock_publisher
-    clients._subscriber_client = mock_subscriber
-    clients._quotas_client = mock_quotas
+    clients._instances["AssetServiceAsyncClient"] = mock_asset
+    clients._instances["ProjectsAsyncClient"] = mock_projects
+    clients._instances["FoldersAsyncClient"] = mock_folders
+    clients._instances["OrganizationsAsyncClient"] = mock_orgs
+    clients._instances["PublisherAsyncClient"] = mock_publisher
+    clients._instances["SubscriberAsyncClient"] = mock_subscriber
+    clients._instances["CloudQuotasAsyncClient"] = mock_quotas
 
     await clients.close()
 
@@ -116,45 +110,45 @@ async def test_close_closes_all_clients_and_resets() -> None:
     mock_subscriber.transport.close.assert_called_once()
     mock_quotas.transport.close.assert_called_once()
 
-    assert clients._asset_client is None
-    assert clients._projects_client is None
-    assert clients._quotas_client is None
+    assert "AssetServiceAsyncClient" not in clients._instances
+    assert "ProjectsAsyncClient" not in clients._instances
+    assert "CloudQuotasAsyncClient" not in clients._instances
 
 
 @pytest.mark.asyncio
 async def test_close_handles_errors_gracefully() -> None:
     mock_asset = _make_client_with_transport()
     mock_asset.transport.close.side_effect = Exception("channel error")
-    clients._asset_client = mock_asset
+    clients._instances["AssetServiceAsyncClient"] = mock_asset
 
     mock_projects = _make_client_with_transport()
-    clients._projects_client = mock_projects
+    clients._instances["ProjectsAsyncClient"] = mock_projects
 
     await clients.close()
 
     mock_asset.transport.close.assert_called_once()
     mock_projects.transport.close.assert_called_once()
-    assert clients._asset_client is None
-    assert clients._projects_client is None
+    assert "AssetServiceAsyncClient" not in clients._instances
+    assert "ProjectsAsyncClient" not in clients._instances
 
 
 @pytest.mark.asyncio
 async def test_close_when_no_clients_initialized() -> None:
     await clients.close()
-    assert clients._asset_client is None
-    assert clients._projects_client is None
+    assert "AssetServiceAsyncClient" not in clients._instances
+    assert "ProjectsAsyncClient" not in clients._instances
 
 
 def test_reset_after_fork_orphans_and_clears() -> None:
     sentinel_asset = MagicMock()
     sentinel_pub = MagicMock()
-    clients._asset_client = sentinel_asset
-    clients._publisher_client = sentinel_pub
+    clients._instances["AssetServiceAsyncClient"] = sentinel_asset
+    clients._instances["PublisherAsyncClient"] = sentinel_pub
 
     clients._reset_clients_after_fork()
 
-    assert clients._asset_client is None
-    assert clients._publisher_client is None
+    assert "AssetServiceAsyncClient" not in clients._instances
+    assert "PublisherAsyncClient" not in clients._instances
     assert sentinel_asset in clients._orphaned
     assert sentinel_pub in clients._orphaned
 

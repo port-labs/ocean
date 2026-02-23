@@ -7,6 +7,8 @@ import port_ocean.context.ocean as ocean_module
 from port_ocean.context.ocean import initialize_port_ocean_context, PortOceanContext
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
+import gcp_core.clients as clients
+
 
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> Generator[None, None, None]:
@@ -22,13 +24,16 @@ def mock_ocean_context() -> Generator[None, None, None]:
 @pytest.fixture(autouse=True)
 def mock_shared_clients(monkeypatch: pytest.MonkeyPatch) -> None:
     default_mock = AsyncMock()
-    monkeypatch.setattr("gcp_core.clients._asset_client", default_mock)
-    monkeypatch.setattr("gcp_core.clients._projects_client", default_mock)
-    monkeypatch.setattr("gcp_core.clients._folders_client", default_mock)
-    monkeypatch.setattr("gcp_core.clients._organizations_client", default_mock)
-    monkeypatch.setattr("gcp_core.clients._publisher_client", default_mock)
-    monkeypatch.setattr("gcp_core.clients._subscriber_client", default_mock)
-    monkeypatch.setattr("gcp_core.clients._quotas_client", default_mock)
+    for name in (
+        "AssetServiceAsyncClient",
+        "ProjectsAsyncClient",
+        "FoldersAsyncClient",
+        "OrganizationsAsyncClient",
+        "PublisherAsyncClient",
+        "SubscriberAsyncClient",
+        "CloudQuotasAsyncClient",
+    ):
+        monkeypatch.setitem(clients._instances, name, default_mock)
 
 
 @pytest.mark.asyncio
