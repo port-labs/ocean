@@ -10,6 +10,11 @@ on:
         description: 'RC version (e.g., 0.38.0-rc1)'
         required: true
         type: string
+      dry_run:
+        description: 'Dry run - validate and build without publishing'
+        required: false
+        type: boolean
+        default: false
 
 env:
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
@@ -27,6 +32,11 @@ jobs:
         with:
           ref: ${{ inputs.source_branch }}
           fetch-depth: 1
+
+      - name: Log dry run mode
+        if: inputs.dry_run
+        run: |
+          echo "::notice::🧪 DRY RUN MODE - No artifacts will be published"
 
       - name: Validate version format and pyproject.toml
         id: validate
@@ -52,10 +62,15 @@ jobs:
       - name: Check tag doesn't exist
         run: |
           if git ls-remote --tags origin | grep -q "refs/tags/v${{ inputs.rc_version }}$"; then
-            echo "::error::Tag v${{ inputs.rc_version }} already exists. Use a different RC version."
-            exit 1
+            if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+              echo "::warning::Tag v${{ inputs.rc_version }} already exists (ignored in dry run)"
+            else
+              echo "::error::Tag v${{ inputs.rc_version }} already exists. Use a different RC version."
+              exit 1
+            fi
+          else
+            echo "Tag v${{ inputs.rc_version }} does not exist. Proceeding..."
           fi
-          echo "Tag v${{ inputs.rc_version }} does not exist. Proceeding..."
 
   publish-core-rc:
     name: Publish RC core to PyPI
@@ -76,15 +91,26 @@ jobs:
         run: |
           make install
           make build
+          echo "Package built successfully"
+          ls -la dist/
 
       - name: Publish package to PyPI
+        if: inputs.dry_run != true
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: ${{ env.PYPI_USERNAME }}
           password: ${{ env.PYPI_PASSWORD }}
           packages-dir: ${{ github.workspace }}/dist
 
+      - name: '[DRY RUN] Skip PyPI publish'
+        if: inputs.dry_run
+        run: |
+          echo "::notice::🧪 DRY RUN: Would publish to PyPI:"
+          ls -la dist/
+          echo "Package: port-ocean==${{ inputs.rc_version }}"
+
       - name: Wait for package to be available on PyPI
+        if: inputs.dry_run != true
         run: |
           VERSION="${{ inputs.rc_version }}"
           MAX_ATTEMPTS=30
@@ -104,6 +130,11 @@ jobs:
 
           echo "Package port-ocean==$VERSION is now available on PyPI"
 
+      - name: '[DRY RUN] Skip PyPI availability check'
+        if: inputs.dry_run
+        run: |
+          echo "::notice::🧪 DRY RUN: Skipping PyPI availability check"
+
   tag-source-branch:
     name: Tag source branch and create release
     needs: [validate-inputs, publish-core-rc]
@@ -118,6 +149,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create and push tag
+        if: inputs.dry_run != true
         run: |
           VERSION="${{ inputs.rc_version }}"
           git config --local user.email "action@github.com"
@@ -126,7 +158,14 @@ jobs:
           git push origin "refs/tags/v${VERSION}"
           echo "Created and pushed tag v${VERSION}"
 
+      - name: '[DRY RUN] Skip tag creation'
+        if: inputs.dry_run
+        run: |
+          echo "::notice::🧪 DRY RUN: Would create tag v${{ inputs.rc_version }}"
+          echo "Current commit: $(git rev-parse HEAD)"
+
       - name: Create GitHub Release (Pre-release)
+        if: inputs.dry_run != true
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ inputs.rc_version }}
@@ -136,6 +175,11 @@ jobs:
           prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: '[DRY RUN] Skip GitHub release'
+        if: inputs.dry_run
+        run: |
+          echo "::notice::🧪 DRY RUN: Would create GitHub pre-release: Ocean Framework ${{ inputs.rc_version }} (RC)"
 
   prepare-matrix:
     name: Prepare integration matrix
@@ -248,13 +292,22 @@ jobs:
           grep "port_ocean" "$PYPROJECT_FILE"
 
       - name: Regenerate poetry.lock with RC core
+        if: inputs.dry_run != true
         run: |
           cd ${{ steps.prepare_tags.outputs.context_dir }}
           echo "Regenerating poetry.lock for ${{ steps.prepare_tags.outputs.type }}..."
           poetry lock --no-update || poetry lock
           echo "poetry.lock regenerated successfully"
 
+      - name: '[DRY RUN] Skip poetry lock regeneration'
+        if: inputs.dry_run
+        run: |
+          echo "::notice::🧪 DRY RUN: Would regenerate poetry.lock for ${{ steps.prepare_tags.outputs.type }}"
+          echo "Integration: ${{ steps.prepare_tags.outputs.type }}"
+          echo "RC Core Version: ${{ inputs.rc_version }}"
+
       - name: Build Docker Image
+        if: inputs.dry_run != true
         uses: ./.github/workflows/actions/build-docker-image
         with:
           dockerfile: ${{ steps.prepare_tags.outputs.dockerfile_path }}
@@ -266,6 +319,15 @@ jobs:
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
 
+      - name: '[DRY RUN] Skip Docker build and push'
+        if: inputs.dry_run
+        run: |
+          echo "::notice::🧪 DRY RUN: Would build and push Docker image"
+          echo "Image: ${{ steps.prepare_tags.outputs.tags }}"
+          echo "Dockerfile: ${{ steps.prepare_tags.outputs.dockerfile_path }}"
+          echo "Build context: ${{ steps.prepare_tags.outputs.context_dir }}"
+          echo "Integration version: ${{ steps.prepare_tags.outputs.version }}"
+
   summary:
     name: RC Release Summary
     runs-on: ubuntu-latest
@@ -276,6 +338,13 @@ jobs:
         run: |
           echo "## RC Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            echo "### 🧪 DRY RUN MODE" >> $GITHUB_STEP_SUMMARY
+            echo "No artifacts were published. This was a validation run only." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
           echo "**Version:** ${{ inputs.rc_version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Source Branch:** ${{ inputs.source_branch }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -289,9 +358,14 @@ jobs:
           echo "| Build RC Integrations | ${{ needs.build-rc-integrations.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [[ "${{ needs.publish-core-rc.result }}" == "success" ]]; then
+          if [[ "${{ inputs.dry_run }}" != "true" && "${{ needs.publish-core-rc.result }}" == "success" ]]; then
             echo "### Published Artifacts" >> $GITHUB_STEP_SUMMARY
             echo "- **PyPI:** \`pip install port-ocean==${{ inputs.rc_version }}\`" >> $GITHUB_STEP_SUMMARY
             echo "- **Docker Images:** \`ghcr.io/port-labs/port-ocean-{integration}:rc-${{ inputs.rc_version }}\`" >> $GITHUB_STEP_SUMMARY
             echo "- **GitHub Release:** [v${{ inputs.rc_version }}](https://github.com/${{ github.repository }}/releases/tag/v${{ inputs.rc_version }})" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            echo "### Would Have Published (Dry Run)" >> $GITHUB_STEP_SUMMARY
+            echo "- **PyPI:** \`pip install port-ocean==${{ inputs.rc_version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Docker Images:** \`ghcr.io/port-labs/port-ocean-{integration}:rc-${{ inputs.rc_version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **GitHub Release:** v${{ inputs.rc_version }} (pre-release)" >> $GITHUB_STEP_SUMMARY
           fi
