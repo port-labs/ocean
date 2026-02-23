@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.7.12 (2026-02-21)
+## 0.7.13 (2026-02-22)
 
 
-### Bug Fixes
+### Improvements
 
-- Fixed KeyError crash when syncing manual test runs that lack a 'build' field. Manual test runs (created via Test Plans UI/API) don't have associated pipeline builds, so code coverage fetch is now skipped for these runs.
+- Bumped ocean version to ^0.37.1
+
+
+## 0.7.12 (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.0
 
 
 ## 0.7.11 (2026-02-17)
