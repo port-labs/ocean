@@ -83,6 +83,7 @@ class TestGitLabClient:
         self, client: GitLabClient
     ) -> None:
         """Test search_files_using_tree with no specific repos"""
+        mock_group = {"id": 123, "name": "group"}
         mock_project = {
             "id": 1,
             "path_with_namespace": "group/project",
@@ -103,7 +104,12 @@ class TestGitLabClient:
         with (
             patch.object(
                 client,
-                "get_projects",
+                "get_parent_groups",
+                return_value=async_mock_generator([[mock_group]]),
+            ) as mock_get_groups,
+            patch.object(
+                client.rest,
+                "get_paginated_resource",
                 return_value=async_mock_generator([[mock_project]]),
             ) as mock_get_projects,
             patch.object(
@@ -117,6 +123,7 @@ class TestGitLabClient:
                 results.extend(batch)
 
             assert len(results) == 1
+            mock_get_groups.assert_called()
             mock_get_projects.assert_called()
             mock_get_tree.assert_called()
 
@@ -698,7 +705,7 @@ class TestGitLabClient:
 
     async def test_get_repository_tree(self, client: GitLabClient) -> None:
         """Test fetching repository tree (folders only) for a project"""
-        project = {"path_with_namespace": "group/project"}
+        project = {"path_with_namespace": "group/project", "name": "project", "id": 1}
         path = "src"
         ref = "main"
         mock_tree = [
@@ -737,6 +744,7 @@ class TestGitLabClient:
             "id": "1",
             "path_with_namespace": "group/project1",
             "default_branch": "main",
+            "name": "project1",
         }
 
         mock_tree = [
@@ -775,6 +783,9 @@ class TestGitLabClient:
     async def test_process_file_with_file_reference(self, client: GitLabClient) -> None:
         """Test that parsed file content with file:// reference fetches and resolves content."""
         # Arrange
+        # Unmock _process_file for this test since we want to test its logic
+        del client._process_file
+
         file = {
             "path": "config.yaml",
             "project_id": "123",
