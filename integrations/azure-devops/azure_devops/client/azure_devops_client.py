@@ -587,7 +587,8 @@ class AzureDevopsClient(HTTPBaseClient):
         """Yield paginated builds for a single project, enriched with project data."""
         builds_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/build/builds"
         async for builds in self._get_paginated_by_top_and_continuation_token(
-            builds_url
+            builds_url,
+            additional_params={"queryOrder": "queueTimeDescending"},
         ):
             yield self._enrich_builds_with_project_data(builds, project)
 
