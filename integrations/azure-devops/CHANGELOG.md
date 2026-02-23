@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.7.14 (2026-02-23)
+
+
+### Features
+
+- Added group and group-member kind
+
+
 ## 0.7.13 (2026-02-22)
 
 
