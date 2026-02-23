@@ -72,7 +72,7 @@ class GithubRepositoryConfig(ResourceConfig):
         title="Repository Selector",
         description="Selector for the repository resource.",
     )
-    kind: Literal["repository"] = Field(
+    kind: Literal[ObjectKind.REPOSITORY] = Field(
         title="Github Repository",
         description="Github repository resource kind.",
     )
@@ -194,7 +194,7 @@ class GithubPullRequestConfig(ResourceConfig):
         title="Pull request selector",
         description="Selector for the pull request resource.",
     )
-    kind: Literal["pull-request"] = Field(
+    kind: Literal[ObjectKind.PULL_REQUEST] = Field(
         title="Github Pull Request",
         description="Github pull request resource kind.",
     )
@@ -223,7 +223,7 @@ class GithubIssueConfig(ResourceConfig):
         title="Issue selector",
         description="Selector for the issue resource.",
     )
-    kind: Literal["issue"] = Field(
+    kind: Literal[ObjectKind.ISSUE] = Field(
         title="Github Issue",
         description="Github issue resource kind.",
     )
@@ -238,8 +238,14 @@ class GithubTeamSector(Selector):
 
 
 class GithubTeamConfig(ResourceConfig):
-    selector: GithubTeamSector
-    kind: Literal[ObjectKind.TEAM]
+    selector: GithubTeamSector = Field(
+        title="Team selector",
+        description="Selector for the team resource.",
+    )
+    kind: Literal[ObjectKind.TEAM] = Field(
+        title="Github Team",
+        description="Github team resource kind.",
+    )
 
 
 class GithubDependabotAlertSelector(RepoSearchSelector):
@@ -289,7 +295,7 @@ class GithubDependabotAlertConfig(ResourceConfig):
         title="Dependabot alert selector",
         description="Selector for the dependabot alert resource.",
     )
-    kind: Literal["dependabot-alert"] = Field(
+    kind: Literal[ObjectKind.DEPENDABOT_ALERT] = Field(
         title="Github Dependabot Alert",
         description="Github dependabot alert resource kind.",
     )
@@ -315,7 +321,7 @@ class GithubCodeScanningAlertConfig(ResourceConfig):
         title="Code scanning alert selector",
         description="Selector for the code scanning alert resource.",
     )
-    kind: Literal["code-scanning-alerts"] = Field(
+    kind: Literal[ObjectKind.CODE_SCANNING_ALERT] = Field(
         title="Github Code Scanning Alert",
         description="Github code scanning alert resource kind.",
     )
@@ -339,7 +345,7 @@ class GithubDeploymentConfig(ResourceConfig):
         title="Deployment selector",
         description="Selector for the deployment resource.",
     )
-    kind: Literal["deployment"] = Field(
+    kind: Literal[ObjectKind.DEPLOYMENT] = Field(
         title="Github Deployment",
         description="Github deployment resource kind.",
     )
@@ -364,7 +370,7 @@ class GithubSecretScanningAlertConfig(ResourceConfig):
         title="Secret scanning alert selector",
         description="Selector for the secret scanning alert resource.",
     )
-    kind: Literal["secret-scanning-alerts"] = Field(
+    kind: Literal[ObjectKind.SECRET_SCANNING_ALERT] = Field(
         title="Github Secret Scanning Alert",
         description="Github secret scanning alert resource kind.",
     )
@@ -418,7 +424,7 @@ class GithubFileSelector(Selector):
 
 
 class GithubFileResourceConfig(ResourceConfig):
-    kind: Literal["file"] = Field(
+    kind: Literal[ObjectKind.FILE] = Field(
         title="Github File",
         description="Github file resource kind.",
     )
@@ -455,7 +461,7 @@ class GithubBranchSelector(RepoSearchSelector):
 
 
 class GithubBranchConfig(ResourceConfig):
-    kind: Literal["branch"] = Field(
+    kind: Literal[ObjectKind.BRANCH] = Field(
         title="Github Branch",
         description="Github branch resource kind.",
     )
@@ -589,7 +595,7 @@ class GithubPortAppConfig(PortAppConfig):
         title="Resources",
         default_factory=list,
         description=("Resource mappings"),
-    )
+    )  # type: ignore[assignment]
 
 
 class GitManipulationHandler(JQEntityProcessor):

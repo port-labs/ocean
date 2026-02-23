@@ -490,7 +490,7 @@ class GitPortAppConfig(PortAppConfig):
         default_factory=list,
         title="Resources",
         description="The list of resource configurations for the integration.",
-    )
+    )  # type: ignore[assignment]
 
 
 class AzureDevopsHandlerMixin(HandlerMixin):
