@@ -130,9 +130,6 @@ class ResourceConfig(_FieldMetadataEnforcer):
         description="Defines the mapping from the raw data to the entity and relations.",
     )
 
-    class Config:
-        extra = "forbid"
-
 
 class PortAppConfig(_FieldMetadataEnforcer):
     allow_custom_kinds: ClassVar[bool] = False
