@@ -109,14 +109,9 @@ def _unwrap_union(annotation: Any) -> list[type]:
 
 
 def _get_advanced_config(config_class: Type[PortAppConfig]) -> dict[str, Any]:
-    """Return metadata for all root PortAppConfig fields except 'resources'."""
-    advanced: dict[str, Any] = {}
-    for field_name, field in config_class.__fields__.items():
-        if field_name == "resources":
-            continue
-        key = field.alias or field_name
-        advanced[key] = _field_info_to_dict(field.field_info)
-    return advanced
+    """Return metadata for root PortAppConfig fields (except 'resources') from JSON schema."""
+    schema = config_class.schema()
+    return {k: v for k, v in schema.get("properties", {}).items() if k != "resources"}
 
 
 def _get_selector_schema(selector_type: Any, model: type) -> dict[str, Any]:
