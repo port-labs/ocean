@@ -76,22 +76,54 @@ class RepositoryBranchMapping(BaseModel):
     )
 
 
-class FolderSelector(BaseModel):
+class RepositorySourceModel(BaseModel):
     organization: Optional[str] = Field(default=None)
-    path: str = Field(default="*")
     repos: Optional[list[RepositoryBranchMapping]] = Field(
         description="Specify the repositories and branches to fetch files from",
         default=None,
     )
 
 
-class GithubFolderSelector(Selector):
-    folders: list[FolderSelector]
+class IncludedFilesConfig(BaseModel):
     included_files: list[str] = Field(
         alias="includedFiles",
         default_factory=list,
-        description="List of file paths to fetch and attach to the folder entity",
+        description=(
+            "List of file paths to fetch from the repository and attach to "
+            "the raw data under __includedFiles. E.g. ['README.md', 'CODEOWNERS']"
+        ),
     )
+
+
+class FolderSelector(RepositorySourceModel, IncludedFilesConfig):
+    path: str = Field(default="*")
+
+
+class GithubFolderSelector(Selector, IncludedFilesConfig):
+    folders: list[FolderSelector]
+
+
+class GithubFilePattern(RepositorySourceModel):
+    path: str = Field(description="Specify the path to match files from")
+    skip_parsing: bool = Field(
+        default=False,
+        alias="skipParsing",
+        description="Skip parsing the files and just return the raw file content",
+    )
+    validation_check: bool = Field(
+        default=False,
+        alias="validationCheck",
+        description="Enable validation for this file pattern during pull request processing",
+    )
+
+
+class GithubFileSelector(Selector, IncludedFilesConfig):
+    files: list[GithubFilePattern]
+
+
+class GithubFileResourceConfig(ResourceConfig):
+    kind: Literal["file"]
+    selector: GithubFileSelector
 
 
 class GithubUserSelector(Selector):
@@ -267,43 +299,6 @@ class GithubSecretScanningAlertSelector(RepoSearchSelector):
 class GithubSecretScanningAlertConfig(ResourceConfig):
     selector: GithubSecretScanningAlertSelector
     kind: Literal["secret-scanning-alerts"]
-
-
-class GithubFilePattern(BaseModel):
-    organization: Optional[str] = Field(default=None)
-    path: str = Field(
-        alias="path",
-        description="Specify the path to match files from",
-    )
-    repos: Optional[list[RepositoryBranchMapping]] = Field(
-        alias="repos",
-        description="Specify the repositories and branches to fetch files from",
-        default=None,
-    )
-    skip_parsing: bool = Field(
-        default=False,
-        alias="skipParsing",
-        description="Skip parsing the files and just return the raw file content",
-    )
-    validation_check: bool = Field(
-        default=False,
-        alias="validationCheck",
-        description="Enable validation for this file pattern during pull request processing",
-    )
-
-
-class GithubFileSelector(Selector):
-    files: list[GithubFilePattern]
-    included_files: list[str] = Field(
-        alias="includedFiles",
-        default_factory=list,
-        description="List of file paths to fetch and attach to the file entity",
-    )
-
-
-class GithubFileResourceConfig(ResourceConfig):
-    kind: Literal["file"]
-    selector: GithubFileSelector
 
 
 class GithubBranchSelector(RepoSearchSelector):
