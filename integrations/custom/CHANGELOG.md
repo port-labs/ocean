@@ -16,6 +16,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for smart file based caching of API responses
 
 
+## 0.3.13-beta (2026-02-22)
+
+
+### Improvements
+
+
+- Bumped ocean version to ^0.37.1
+
+
+## 0.3.12-beta (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.0
+
+
 ## 0.3.11-beta (2026-02-17)
 
 
