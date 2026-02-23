@@ -463,7 +463,6 @@ class GitLabClient:
                         yield batch
 
     @cache_iterator_result()
-    # AI! improve this function. I'm looking for clean and concise
     async def get_repository_tree(
         self,
         project: dict[str, Any],
@@ -472,44 +471,39 @@ class GitLabClient:
         folders_only: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch repository tree for a project."""
-
         logger.info(f"fetching repository tree for project {project['name']}")
         project_path = project["id"]
         is_wildcard = any(c in path for c in "*?[]")
 
-        if is_wildcard or not folders_only:
-            # For wildcard patterns, we need to recursively search and filter using globmatch
-            params = {"ref": ref, "path": "", "recursive": True}
+        # If using wildcards, we must fetch recursively from root to match against pattern.
+        # Otherwise, we can use the path directly in the API call.
+        params = {
+            "ref": ref,
+            "path": "" if is_wildcard else path,
+            "recursive": is_wildcard,
+        }
 
-            async for batch in self.rest.get_paginated_project_resource(
-                project_path, "repository/tree", params
-            ):
-                items_batch = [
-                    item
-                    for item in batch
-                    if (not folders_only or item["type"] == "tree")
-                    and glob.globmatch(
+        async for batch in self.rest.get_paginated_project_resource(
+            project_path, "repository/tree", params
+        ):
+            filtered_batch = [
+                item
+                for item in batch
+                if (not folders_only or item["type"] == "tree")
+                and (
+                    glob.globmatch(
                         item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
                     )
+                    if is_wildcard
+                    else True
+                )
+            ]
+
+            if filtered_batch:
+                yield [
+                    {"item": item, "repo": project, "__branch": ref}
+                    for item in filtered_batch
                 ]
-                if items_batch:
-                    yield [
-                        {"item": item, "repo": project, "__branch": ref}
-                        for item in items_batch
-                    ]
-        else:
-            # For exact paths, use non-recursive search
-            params = {"ref": ref, "path": path, "recursive": False}
-            async for batch in self.rest.get_paginated_project_resource(
-                project_path, "repository/tree", params
-            ):
-                if items_batch := [
-                    item for item in batch if not folders_only or item["type"] == "tree"
-                ]:
-                    yield [
-                        {"item": item, "repo": project, "__branch": ref}
-                        for item in items_batch
-                    ]
 
     async def get_repository_folders(
         self, path: str, repository: str, branch: Optional[str] = None
