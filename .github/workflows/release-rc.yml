@@ -71,18 +71,13 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version validation passed: $VERSION (base: $BASE_VERSION, rc: $RC_NUMBER)"
 
-      - name: Check tag doesn't exist
+      - name: Check tag status
         run: |
           VERSION="${{ steps.validate.outputs.version }}"
           if git ls-remote --tags origin | grep -q "refs/tags/v${VERSION}$"; then
-            if [[ "${{ inputs.dry_run }}" == "true" ]]; then
-              echo "::warning::Tag v${VERSION} already exists (ignored in dry run)"
-            else
-              echo "::error::Tag v${VERSION} already exists. Use a different RC version."
-              exit 1
-            fi
+            echo "::warning::Tag v${VERSION} already exists - will skip tag/release creation if re-running"
           else
-            echo "Tag v${VERSION} does not exist. Proceeding..."
+            echo "Tag v${VERSION} does not exist. Will create during release."
           fi
 
   publish-core-rc:
@@ -100,7 +95,20 @@ jobs:
         with:
           ref: ${{ inputs.source_branch || github.ref_name }}
 
+      - name: Check if package already exists on PyPI
+        id: check-pypi
+        run: |
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          if curl -sH "Cache-Control: no-cache" "https://pypi.org/pypi/port-ocean/${VERSION}/json" -o /dev/null -w "%{http_code}" | grep -q "200"; then
+            echo "::notice::Package port-ocean==$VERSION already exists on PyPI, skipping publish"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Package port-ocean==$VERSION not found on PyPI, will publish"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Update version in pyproject.toml to RC version
+        if: steps.check-pypi.outputs.exists != 'true'
         run: |
           RC_VERSION="${{ needs.validate-inputs.outputs.version }}"
           sed -i "s/^version = \".*\"/version = \"$RC_VERSION\"/" pyproject.toml
@@ -108,6 +116,7 @@ jobs:
           grep "^version" pyproject.toml
 
       - name: Build package
+        if: steps.check-pypi.outputs.exists != 'true'
         run: |
           make install
           make build
@@ -115,7 +124,7 @@ jobs:
           ls -la dist/
 
       - name: Publish package to PyPI
-        if: inputs.dry_run != true
+        if: inputs.dry_run != true && steps.check-pypi.outputs.exists != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: ${{ env.PYPI_USERNAME }}
@@ -123,14 +132,14 @@ jobs:
           packages-dir: ${{ github.workspace }}/dist
 
       - name: '[DRY RUN] Skip PyPI publish'
-        if: inputs.dry_run
+        if: inputs.dry_run && steps.check-pypi.outputs.exists != 'true'
         run: |
           echo "::notice::🧪 DRY RUN: Would publish to PyPI:"
           ls -la dist/
           echo "Package: port-ocean==${{ needs.validate-inputs.outputs.version }}"
 
       - name: Wait for package to be available on PyPI
-        if: inputs.dry_run != true
+        if: inputs.dry_run != true && steps.check-pypi.outputs.exists != 'true'
         run: |
           VERSION="${{ needs.validate-inputs.outputs.version }}"
           MAX_ATTEMPTS=30
@@ -138,7 +147,10 @@ jobs:
 
           echo "Waiting for port-ocean==$VERSION to be available on PyPI..."
 
-          while ! curl -s https://pypi.org/pypi/port-ocean/json | jq -e ".releases | has(\"$VERSION\")" > /dev/null; do
+          # Initial delay to allow PyPI to process the upload
+          sleep 30
+
+          while ! curl -sH "Cache-Control: no-cache" "https://pypi.org/pypi/port-ocean/${VERSION}/json" -o /dev/null -w "%{http_code}" | grep -q "200"; do
             ATTEMPT=$((ATTEMPT + 1))
             if [ $ATTEMPT -ge $MAX_ATTEMPTS ]; then
               echo "::error::Timeout waiting for package $VERSION to be available on PyPI after $((MAX_ATTEMPTS * 10)) seconds"
@@ -167,9 +179,22 @@ jobs:
         with:
           ref: ${{ inputs.source_branch || github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Check if tag already exists
+        id: check-tag
+        run: |
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          if git ls-remote --tags origin | grep -q "refs/tags/v${VERSION}$"; then
+            echo "::notice::Tag v${VERSION} already exists, skipping tag creation"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Tag v${VERSION} does not exist, will create"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create and push tag
-        if: inputs.dry_run != true
+        if: inputs.dry_run != true && steps.check-tag.outputs.exists != 'true'
         run: |
           VERSION="${{ needs.validate-inputs.outputs.version }}"
           git config --local user.email "action@github.com"
@@ -185,7 +210,7 @@ jobs:
           echo "Current commit: $(git rev-parse HEAD)"
 
       - name: Create GitHub Release (Pre-release)
-        if: inputs.dry_run != true
+        if: inputs.dry_run != true && steps.check-tag.outputs.exists != 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.validate-inputs.outputs.version }}
