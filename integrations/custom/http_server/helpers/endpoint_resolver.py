@@ -5,7 +5,7 @@ Handles dynamic endpoint resolution for path and query parameters.
 """
 
 import re
-from typing import AsyncGenerator, List, Dict, Any, Optional
+from typing import AsyncGenerator, List, Dict, Any, Optional, Union
 from loguru import logger
 
 from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
@@ -13,7 +13,7 @@ from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
 )
 from http_server.overrides import (
     HttpServerSelector,
-    ApiParameterConfig,
+    ApiPathParameter,
     DynamicQueryParameter,
 )
 
@@ -120,7 +120,7 @@ def _get_filtered_value(
 
 
 async def query_api_for_parameters(
-    param_config: ApiParameterConfig,
+    param_config: Union[ApiPathParameter, DynamicQueryParameter],
 ) -> AsyncGenerator[List[str], None]:
     """Query an API to get values for a parameter (path or query)
 
