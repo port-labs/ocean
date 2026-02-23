@@ -369,7 +369,6 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     included_files = selector.included_files or []
 
     search_path = selector.files.path
-    scope = "blobs"
     skip_parsing = selector.files.skip_parsing
 
     repositories = (
@@ -380,8 +379,7 @@ async def on_resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     files_cache: dict[str, dict[str, Any]] = {}
 
-    async for files_batch in client.search_files(
-        scope,
+    async for files_batch in client.search_files_using_tree(
         search_path,
         repositories,
         skip_parsing,

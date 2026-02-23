@@ -138,9 +138,7 @@ class TestGitLabClient:
         }
 
         with (
-            patch.object(
-                client, "get_project", AsyncMock(return_value=mock_project)
-            ),
+            patch.object(client, "get_project", AsyncMock(return_value=mock_project)),
             patch.object(
                 client,
                 "get_repository_tree",
@@ -161,7 +159,7 @@ class TestGitLabClient:
         """Test search_files_using_tree falls back to groups when no repos provided"""
         mock_group = {"id": 123, "name": "group"}
         mock_project = {"id": 1, "path_with_namespace": "group/project"}
-        
+
         with (
             patch.object(
                 client,
@@ -182,7 +180,7 @@ class TestGitLabClient:
             results = []
             async for batch in client.search_files_using_tree("*.json"):
                 results.extend(batch)
-            
+
             mock_get_groups.assert_called()
             mock_get_projects.assert_called_with(
                 "groups/123/projects", params={"include_subgroups": True}
