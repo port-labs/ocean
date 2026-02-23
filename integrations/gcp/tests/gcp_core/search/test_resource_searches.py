@@ -173,7 +173,9 @@ async def test_feed_to_resource(
     mock_publisher_client.get_topic = AsyncMock(
         return_value=pubsub.Topic({"name": "topic_name"})
     )
-    monkeypatch.setitem(clients._instances, "PublisherAsyncClient", mock_publisher_client)
+    monkeypatch.setitem(
+        clients._instances, "PublisherAsyncClient", mock_publisher_client
+    )
 
     # Mock the resource config
     mock_resource_config = MagicMock()
