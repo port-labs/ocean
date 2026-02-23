@@ -89,6 +89,9 @@ class RepositoryBranchMapping(BaseModel):
         description="Branch to use; repo's default branch will be used if not specified.",
     )
 
+    class Config:
+        extra = "forbid"
+
 
 class FolderSelector(BaseModel):
     organization: Optional[str] = Field(
@@ -106,6 +109,9 @@ class FolderSelector(BaseModel):
         description="Repositories and branches to fetch folders from.",
         default=None,
     )
+
+    class Config:
+        extra = "forbid"
 
 
 class GithubFolderSelector(Selector):
@@ -371,6 +377,9 @@ class GithubFilePattern(BaseModel):
         alias="validationCheck",
         description="Enable validation for this file pattern during pull request processing.",
     )
+
+    class Config:
+        extra = "forbid"
 
 
 class GithubFileSelector(Selector):

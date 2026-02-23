@@ -1,4 +1,5 @@
-from typing import Dict, Any, Optional
+from enum import StrEnum
+from typing import ClassVar, Dict, Any, Optional
 from pydantic import Field, BaseModel, root_validator
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -12,17 +13,28 @@ from http_server.exceptions import (
 )
 
 
+class AuthHttpMethod(StrEnum):
+    """Allowed HTTP methods for custom auth request."""
+
+    OPTIONS = "OPTIONS"
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+    PATCH = "PATCH"
+    DELETE = "DELETE"
+
+
 class ApiPathParameter(BaseModel):
     """Configuration for API-discovered path parameters"""
 
     endpoint: str = Field(
         title="Endpoint", description="API endpoint to discover parameter values"
     )
-    method: str = Field(
+    method: AuthHttpMethod = Field(
         title="Method",
-        enum=["OPTIONS", "GET", "POST", "PUT", "PATCH"],
+        enum=AuthHttpMethod,
         description="HTTP method",
-        default="GET",
+        default=AuthHttpMethod.GET,
     )
     query_params: Optional[Dict[str, Any]] = Field(
         title="Query Parameters",
@@ -49,6 +61,9 @@ class ApiPathParameter(BaseModel):
         default=None,
     )
 
+    class Config:
+        extra = "forbid"
+
 
 class HttpServerSelector(Selector):
     """Selector for HTTP server resources - extends base Selector"""
@@ -58,11 +73,11 @@ class HttpServerSelector(Selector):
         description="HTTP endpoint path (supports {param} templates)",
         default=None,
     )
-    method: str = Field(
+    method: AuthHttpMethod = Field(
         title="Method",
-        enum=["OPTIONS", "GET", "POST", "PUT", "PATCH", "DELETE"],
+        enum=AuthHttpMethod,
         description="HTTP method",
-        default="GET",
+        default=AuthHttpMethod.GET,
     )
     query_params: Optional[Dict[str, Any]] = Field(
         title="Query Parameters",
@@ -114,11 +129,11 @@ class CustomAuthRequestConfig(BaseModel):
         title="Endpoint",
         description="Endpoint path or full URL for authentication request (e.g., '/oauth/token' or 'https://auth.example.com/token')",
     )
-    method: str = Field(
+    method: AuthHttpMethod = Field(
         title="Method",
-        default="POST",
-        enum=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        enum=AuthHttpMethod,
         description="HTTP method for authentication request",
+        default=AuthHttpMethod.POST,
     )
     headers: Optional[Dict[str, str]] = Field(
         title="Headers",
@@ -162,6 +177,7 @@ class CustomAuthRequestConfig(BaseModel):
         return values
 
     class Config:
+        extra = "forbid"
         allow_population_by_field_name = True
 
 
@@ -202,11 +218,12 @@ class CustomAuthRequestTemplateConfig(BaseModel):
         return values
 
     class Config:
+        extra = "forbid"
         allow_population_by_field_name = True
 
 
 class HttpServerPortAppConfig(PortAppConfig):
     """Port app configuration for HTTP server integration"""
 
-    allow_custom_kinds = True
+    allow_custom_kinds: ClassVar[bool] = True
     resources: list[HttpServerResourceConfig] = Field(default_factory=list)  # type: ignore[assignment]

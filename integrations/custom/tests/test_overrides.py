@@ -1,3 +1,4 @@
+from pydantic import ValidationError
 from http_server.overrides import (
     CustomAuthRequestConfig,
     CustomAuthRequestTemplateConfig,
@@ -72,12 +73,12 @@ class TestCustomAuthRequestConfigValidation:
 
     def test_invalid_method(self) -> None:
         """Test that invalid HTTP method raises CustomAuthRequestError"""
-        with pytest.raises(CustomAuthRequestError) as exc_info:
+        with pytest.raises(ValidationError) as exc_info:
             CustomAuthRequestConfig(
                 endpoint="/oauth/token",
                 method="INVALID",
             )
-        assert "Method must be one of" in str(exc_info.value)
+        assert "value is not a valid enumeration member" in str(exc_info.value)
 
     def test_valid_methods(self) -> None:
         """Test that all valid HTTP methods pass validation"""
@@ -85,11 +86,6 @@ class TestCustomAuthRequestConfigValidation:
         for method in valid_methods:
             config = CustomAuthRequestConfig(endpoint="/oauth/token", method=method)
             assert config.method == method
-
-    def test_method_case_insensitive(self) -> None:
-        """Test that method is converted to uppercase"""
-        config = CustomAuthRequestConfig(endpoint="/oauth/token", method="post")
-        assert config.method == "POST"
 
     def test_body_and_bodyform_exclusive(self) -> None:
         """Test that body and bodyForm cannot both be specified"""

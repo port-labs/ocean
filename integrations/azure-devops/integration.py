@@ -75,6 +75,9 @@ class AdvancedSecurityFilter(BaseModel):
             params["criteria"]["alertType"] = self.alert_type
         return params
 
+    class Config:
+        extra = "forbid"
+
 
 class AzureDevopsAdvancedSecuritySelector(Selector):
     criteria: Optional[AdvancedSecurityFilter] = Field(
@@ -129,6 +132,9 @@ class FilePattern(BaseModel):
         title="Repositories",
         description="List of repository names to scan. If None, scans all repositories.",
     )
+
+    class Config:
+        extra = "forbid"
 
 
 class AzureDevopsFileSelector(Selector):
@@ -201,6 +207,9 @@ class CodeCoverageConfig(BaseModel):
         title="Flags",
         description="Flags to control how detailed the coverage response will be",
     )
+
+    class Config:
+        extra = "forbid"
 
 
 class AzureDevopsTestRunSelector(Selector):
