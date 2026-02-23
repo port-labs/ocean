@@ -206,7 +206,6 @@ class TestGitLabClient:
                 AsyncMock(return_value=mock_languages),
             ) as mock_get_languages,
         ):
-
             # Mock get_resource to yield projects
             mock_get_resource.return_value = async_mock_generator([mock_projects])
 
@@ -248,7 +247,6 @@ class TestGitLabClient:
                 AsyncMock(return_value=mock_languages),
             ) as mock_get_languages,
         ):
-
             # Mock get_resource to yield projects
             mock_get_resource.return_value = async_mock_generator([mock_projects])
 
@@ -726,7 +724,7 @@ class TestGitLabClient:
             assert all(r["repo"] == project for r in results)
             assert all(r["__branch"] == ref for r in results)
             mock_get_paginated.assert_called_once_with(
-                1,
+                "1",
                 "repository/tree",
                 {"ref": "main", "path": "", "recursive": True},
             )

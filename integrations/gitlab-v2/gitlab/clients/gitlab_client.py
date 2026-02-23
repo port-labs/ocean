@@ -438,7 +438,7 @@ class GitLabClient:
         logger.info(
             f"fetching repository tree for project {project.get('name', project.get('id'))}"
         )
-        project_path = project["id"]
+        project_path = str(project["id"])
 
         is_wildcard_or_file = any(c in path for c in "*?[]") or not folders_only
 
