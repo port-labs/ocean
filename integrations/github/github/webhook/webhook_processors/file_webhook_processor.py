@@ -87,7 +87,9 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
 
         included_files = selector.included_files or []
         if included_files and updated_raw_results:
-            from github.helpers.enrich_utils import _enrich_file_entities_batch_with_included_files
+            from github.helpers.enrich_utils import (
+                _enrich_file_entities_batch_with_included_files,
+            )
 
             rest_client = create_github_client()
             updated_raw_results = await _enrich_file_entities_batch_with_included_files(

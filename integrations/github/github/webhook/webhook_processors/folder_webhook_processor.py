@@ -57,7 +57,9 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
             )
         else:
             if included_files:
-                from github.helpers.enrich_utils import _enrich_folders_batch_with_included_files
+                from github.helpers.enrich_utils import (
+                    _enrich_folders_batch_with_included_files,
+                )
 
                 client = create_github_client()
                 folders = await _enrich_folders_batch_with_included_files(
