@@ -152,13 +152,10 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     body = getattr(selector, "body", None)
     data_path = getattr(selector, "data_path", None) or "."
 
-    all_resolved_params = [
-        p async for p in resolve_dynamic_query_params(query_params, dynamic_query_param)
-    ]
-
-    async for endpoint_batch in resolve_dynamic_endpoints(selector, kind):
-        for resolved_query_params in all_resolved_params:
-            # Create fetch function with resolved query params for this iteration
+    async for resolved_query_params in resolve_dynamic_query_params(
+        query_params, dynamic_query_param
+    ):
+        async for endpoint_batch in resolve_dynamic_endpoints(selector, kind):
             fetch_fn = functools.partial(
                 fetch_endpoint_data,
                 http_client=http_client,

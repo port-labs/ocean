@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.1-beta (2026-02-23)
+
+
+### Features
+
+- Added dynamic query parameter support via `dynamic_query_param` field, allowing query parameters to be resolved from API endpoints at runtime (similar to `path_parameters`)
+
+
 ## 0.4.0-beta (2026-02-20)
 
 
