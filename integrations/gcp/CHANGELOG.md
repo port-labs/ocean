@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.257 (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.1
+
+
+## 0.1.256 (2026-02-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.0
+
+
 ## 0.1.255 (2026-02-18)
 
 
 ### Improvements
 
-- Changed rate limiter algorithm from leaky bucket to fixed window 
+- Changed rate limiter algorithm from leaky bucket to fixed window
 
 
 ## 0.1.254 (2026-02-17)
