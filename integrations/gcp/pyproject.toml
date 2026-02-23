@@ -1,17 +1,16 @@
 [tool.poetry]
 name = "gcp"
-version = "0.1.250"
+version = "0.1.257"
 description = "A GCP ocean integration"
 authors = ["Matan Geva <matang@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.35.5", extras = ["cli"]}
+port_ocean = {version = "^0.37.1", extras = ["cli"]}
 google-cloud-asset = "^3.25.1"
 google-cloud-pubsub = "^2.21.1"
 google-cloud-resource-manager = "^1.12.3"
 google-cloud-quotas = "^0.1.10"
-aiolimiter = "^1.1.0"
 types-requests = "^2.32.0.20240712"
 
 [tool.poetry.group.dev.dependencies]
@@ -26,7 +25,6 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
-cryptography = "^44.0.1"
 
 [tool.towncrier]
 directory = "changelog"

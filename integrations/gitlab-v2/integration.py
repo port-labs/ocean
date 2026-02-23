@@ -24,6 +24,21 @@ FILE_PROPERTY_PREFIX = "file://"
 SEARCH_PROPERTY_PREFIX = "search://"
 
 
+class SearchQuery(BaseModel):
+    """A search query to execute against a GitLab project during enrichment."""
+
+    name: str = Field(
+        description="A unique name for this search query, used as the key in __searchQueries",
+    )
+    scope: str = Field(
+        default="blobs",
+        description="The GitLab search scope (e.g. blobs, commits, wiki_blobs, etc.)",
+    )
+    query: str = Field(
+        description="The search query string (e.g. filename:port.yml)",
+    )
+
+
 class GroupSelector(Selector):
     include_only_active_groups: Optional[bool] = Field(
         default=None,
@@ -42,6 +57,14 @@ class ProjectSelector(Selector):
         default=None,
         alias="includeOnlyActiveProjects",
         description="Filter projects by active status",
+    )
+    search_queries: list[SearchQuery] = Field(
+        alias="searchQueries",
+        default_factory=list,
+        description=(
+            "List of search queries to execute against each project during enrichment. "
+            "Results are stored under __searchQueries[<name>] as a boolean (True if matches found)."
+        ),
     )
     included_files: list[str] = Field(
         alias="includedFiles",
@@ -301,6 +324,13 @@ class GitManipulationHandler(JQEntityProcessor):
             )
             entity_processor = FileEntityProcessor
         elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
+            logger.warning(
+                f"DEPRECATION: Using 'search://' prefix in mappings is deprecated and will be removed in a future version. "
+                f"Pattern: '{pattern}'. "
+                f"Use the 'searchQueries' selector instead. Example: "
+                f"selector.searchQueries: [{{name: '<queryName>', scope: '<scope>', query: '<query>'}}] "
+                f'Then map to .__searchQueries["<queryName>"]'
+            )
             entity_processor = SearchEntityProcessor
         else:
             entity_processor = JQEntityProcessor
