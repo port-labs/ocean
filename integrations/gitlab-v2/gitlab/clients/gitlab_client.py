@@ -463,6 +463,7 @@ class GitLabClient:
                         yield batch
 
     @cache_iterator_result()
+    # AI! improve this function. I'm looking for clean and concise
     async def get_repository_tree(
         self,
         project: dict[str, Any],
@@ -473,11 +474,10 @@ class GitLabClient:
         """Fetch repository tree for a project."""
 
         logger.info(f"fetching repository tree for project {project['name']}")
-
-        project_path = project["path_with_namespace"]
+        project_path = project["id"]
         is_wildcard = any(c in path for c in "*?[]")
 
-        if is_wildcard:
+        if is_wildcard or not folders_only:
             # For wildcard patterns, we need to recursively search and filter using globmatch
             params = {"ref": ref, "path": "", "recursive": True}
 
