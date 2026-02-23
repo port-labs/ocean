@@ -1,11 +1,12 @@
 import asyncio
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Optional
 
 from loguru import logger
 
 from github.core.exporters.file_exporter.core import RestFileExporter
 from github.core.options import FileContentOptions
+from github.clients.http.base_client import AbstractGithubClient
 
 
 @dataclass(frozen=True)
@@ -25,8 +26,8 @@ class IncludedFilesFetcher:
     - Concurrency handled by RestFileExporter rate limiter
     """
 
-    def __init__(self, *, rest_client: Any) -> None:
-        self._exporter = RestFileExporter(rest_client)
+    def __init__(self, *, client: AbstractGithubClient) -> None:
+        self._exporter = RestFileExporter(client)
         self._results: dict[IncludedFileFetchKey, Optional[str]] = {}
         self._inflight: dict[IncludedFileFetchKey, asyncio.Task[Optional[str]]] = {}
 

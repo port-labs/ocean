@@ -51,7 +51,7 @@ class TestIncludedFilesRelativeResolution:
             return_value=mock_file_exporter,
         ):
             enricher = IncludedFilesEnricher(
-                rest_client=MagicMock(),
+                client=MagicMock(),
                 strategy=FolderIncludedFilesStrategy(folder_selectors=folder_selectors),
             )
             enriched = await enricher.enrich_batch(folders)
@@ -93,7 +93,7 @@ class TestIncludedFilesRelativeResolution:
             return_value=mock_file_exporter,
         ):
             enricher = IncludedFilesEnricher(
-                rest_client=MagicMock(),
+                client=MagicMock(),
                 strategy=FolderIncludedFilesStrategy(folder_selectors=folder_selectors),
             )
             enriched = await enricher.enrich_batch(folders)
@@ -134,7 +134,7 @@ class TestIncludedFilesRelativeResolution:
             return_value=mock_file_exporter,
         ):
             enricher = IncludedFilesEnricher(
-                rest_client=MagicMock(),
+                client=MagicMock(),
                 strategy=FolderIncludedFilesStrategy(
                     folder_selectors=folder_selectors,
                     global_included_files=["README.md"],
@@ -180,7 +180,7 @@ class TestIncludedFilesRelativeResolution:
             return_value=mock_file_exporter,
         ):
             enricher = IncludedFilesEnricher(
-                rest_client=MagicMock(),
+                client=MagicMock(),
                 strategy=FolderIncludedFilesStrategy(
                     folder_selectors=folder_selectors,
                     global_included_files=["/README.md"],
@@ -210,7 +210,7 @@ class TestIncludedFilesRelativeResolution:
             return_value=mock_file_exporter,
         ):
             enricher = IncludedFilesEnricher(
-                rest_client=MagicMock(),
+                client=MagicMock(),
                 strategy=FileIncludedFilesStrategy(included_files=["README.md"]),
             )
             enriched = await enricher.enrich_batch(files)

@@ -130,7 +130,7 @@ class TestIncludedFilesFetcher:
             "github.enrichments.included_files.fetcher.RestFileExporter",
             return_value=mock_file_exporter,
         ):
-            fetcher = IncludedFilesFetcher(rest_client=MagicMock())
+            fetcher = IncludedFilesFetcher(client=MagicMock())
 
             t1 = asyncio.create_task(fetcher.get(key))
             t2 = asyncio.create_task(fetcher.get(key))

@@ -92,7 +92,7 @@ class FileWebhookProcessor(BaseRepositoryWebhookProcessor):
         if updated_raw_results and selector.included_files:
             rest_client = create_github_client()
             enricher = IncludedFilesEnricher(
-                rest_client=rest_client,
+                client=rest_client,
                 strategy=FileIncludedFilesStrategy(
                     included_files=selector.included_files,
                 ),

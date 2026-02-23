@@ -64,7 +64,7 @@ class FolderWebhookProcessor(_GithubAbstractWebhookProcessor):
             ):
                 client = create_github_client()
                 enricher = IncludedFilesEnricher(
-                    rest_client=client,
+                    client=client,
                     strategy=FolderIncludedFilesStrategy(
                         folder_selectors=config.selector.folders,
                         global_included_files=config.selector.included_files,

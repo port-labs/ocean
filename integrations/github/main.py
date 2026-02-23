@@ -185,7 +185,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     included_files = repo_config.selector.included_files or []
     included_files_enricher = (
         IncludedFilesEnricher(
-            rest_client=rest_client,
+            client=rest_client,
             strategy=RepositoryIncludedFilesStrategy(included_files=included_files),
         )
         if included_files
@@ -816,7 +816,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     included_files_enricher = (
         IncludedFilesEnricher(
-            rest_client=rest_client,
+            client=rest_client,
             strategy=FolderIncludedFilesStrategy(
                 folder_selectors=selector.folders,
                 global_included_files=selector.included_files,
@@ -858,7 +858,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     should_enrich_with_included_files = bool(config.selector.included_files)
     included_files_enricher = (
         IncludedFilesEnricher(
-            rest_client=rest_client,
+            client=rest_client,
             strategy=FileIncludedFilesStrategy(
                 included_files=config.selector.included_files,
             ),

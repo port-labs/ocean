@@ -4,7 +4,7 @@ from typing import Any, Protocol, Sequence
 from integration import FolderSelector
 from github.helpers.utils import matches_glob_pattern
 
-from .utils import (
+from github.enrichments.included_files.utils import (
     FolderIncludedFilesRequests,
     IncludedFilesEntityContext,
     IncludedFilesPlanItem,

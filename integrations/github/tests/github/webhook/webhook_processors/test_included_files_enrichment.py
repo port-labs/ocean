@@ -106,7 +106,7 @@ class TestGithubIncludedFilesEnrichment:
             return_value=mock_file_exporter,
         ):
             enricher = IncludedFilesEnricher(
-                rest_client=mock_rest_client,
+                client=mock_rest_client,
                 strategy=RepositoryIncludedFilesStrategy(
                     included_files=["README.md", "CODEOWNERS"]
                 ),
@@ -134,7 +134,7 @@ class TestGithubIncludedFilesEnrichment:
             return_value=mock_file_exporter,
         ):
             enricher = IncludedFilesEnricher(
-                rest_client=mock_rest_client,
+                client=mock_rest_client,
                 strategy=RepositoryIncludedFilesStrategy(
                     included_files=["README.md", "MISSING.md"]
                 ),
@@ -151,7 +151,7 @@ class TestGithubIncludedFilesEnrichment:
         mock_rest_client = MagicMock()
 
         enricher = IncludedFilesEnricher(
-            rest_client=mock_rest_client,
+            client=mock_rest_client,
             strategy=RepositoryIncludedFilesStrategy(included_files=[]),
         )
         [result] = await enricher.enrich_batch([sample_repo])
@@ -171,7 +171,7 @@ class TestGithubIncludedFilesEnrichment:
             return_value=mock_file_exporter,
         ):
             enricher = IncludedFilesEnricher(
-                rest_client=mock_rest_client,
+                client=mock_rest_client,
                 strategy=RepositoryIncludedFilesStrategy(included_files=["README.md"]),
             )
             await enricher.enrich_batch([sample_repo])

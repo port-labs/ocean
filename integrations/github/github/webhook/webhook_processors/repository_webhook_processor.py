@@ -79,7 +79,7 @@ class RepositoryWebhookProcessor(BaseRepositoryWebhookProcessor):
         included_files = resource_config.selector.included_files or []
         if included_files:
             enricher = IncludedFilesEnricher(
-                rest_client=rest_client,
+                client=rest_client,
                 strategy=RepositoryIncludedFilesStrategy(included_files=included_files),
             )
             [data_to_upsert] = await enricher.enrich_batch([data_to_upsert])

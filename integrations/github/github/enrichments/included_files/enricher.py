@@ -3,10 +3,16 @@ from typing import Any
 
 from loguru import logger
 
-from .fetcher import IncludedFileFetchKey, IncludedFilesFetcher
-from .strategies import IncludedFilesStrategy
-from .utils import IncludedFilesTarget
-from .utils import resolve_included_file_path
+from github.enrichments.included_files.fetcher import (
+    IncludedFileFetchKey,
+    IncludedFilesFetcher,
+)
+from github.enrichments.included_files.strategies import IncludedFilesStrategy
+from github.enrichments.included_files.utils import (
+    IncludedFilesTarget,
+    resolve_included_file_path,
+)
+from github.clients.http.base_client import AbstractGithubClient
 
 
 class IncludedFilesEnricher:
@@ -20,11 +26,11 @@ class IncludedFilesEnricher:
     def __init__(
         self,
         *,
-        rest_client: Any,
+        client: AbstractGithubClient,
         strategy: IncludedFilesStrategy,
     ) -> None:
         self._strategy = strategy
-        self._fetcher = IncludedFilesFetcher(rest_client=rest_client)
+        self._fetcher = IncludedFilesFetcher(client=client)
 
     async def enrich_batch(
         self, entities: list[dict[str, Any]]
