@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from pydantic import Field, BaseModel
 
 from azure_devops.gitops.file_entity_processor import GitManipulationHandler
-from azure_devops.misc import AzureDevopsFolderResourceConfig
+from azure_devops.misc import AzureDevopsFolderResourceConfig, Kind
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -258,6 +258,124 @@ class AzureDevopsRepositoryResourceConfig(ResourceConfig):
     selector: AzureDevopsRepositorySelector
 
 
+# Kinds that use AzureDevopsSelector only (no custom selector options).
+class AzureDevopsUserConfig(ResourceConfig):
+    kind: Literal[Kind.USER] = Field(default=Kind.USER, description="Resource kind (user).")
+    selector: AzureDevopsSelector
+
+
+class AzureDevopsMemberConfig(ResourceConfig):
+    kind: Literal[Kind.MEMBER] = Field(
+        default=Kind.MEMBER, description="Resource kind (member)."
+    )
+    selector: AzureDevopsSelector
+
+
+class AzureDevopsBranchConfig(ResourceConfig):
+    kind: Literal[Kind.BRANCH] = Field(
+        default=Kind.BRANCH, description="Resource kind (branch)."
+    )
+    selector: AzureDevopsSelector
+
+
+class AzureDevopsRepositoryPolicyConfig(ResourceConfig):
+    kind: Literal[Kind.REPOSITORY_POLICY] = Field(
+        default=Kind.REPOSITORY_POLICY, description="Resource kind (repository-policy)."
+    )
+    selector: AzureDevopsSelector
+
+
+class AzureDevopsBoardConfig(ResourceConfig):
+    kind: Literal[Kind.BOARD] = Field(
+        default=Kind.BOARD, description="Resource kind (board)."
+    )
+    selector: AzureDevopsSelector
+
+
+class AzureDevopsColumnConfig(ResourceConfig):
+    kind: Literal[Kind.COLUMN] = Field(
+        default=Kind.COLUMN, description="Resource kind (column)."
+    )
+    selector: AzureDevopsSelector
+
+
+class AzureDevopsReleaseConfig(ResourceConfig):
+    kind: Literal[Kind.RELEASE] = Field(
+        default=Kind.RELEASE, description="Resource kind (release)."
+    )
+    selector: AzureDevopsSelector
+
+
+class AzureDevopsBuildConfig(ResourceConfig):
+    kind: Literal[Kind.BUILD] = Field(
+        default=Kind.BUILD, description="Resource kind (build)."
+    )
+    selector: AzureDevopsSelector
+
+
+class AzureDevopsPipelineStageConfig(ResourceConfig):
+    kind: Literal[Kind.PIPELINE_STAGE] = Field(
+        default=Kind.PIPELINE_STAGE, description="Resource kind (pipeline-stage)."
+    )
+    selector: AzureDevopsSelector
+
+
+class AzureDevopsPipelineRunConfig(ResourceConfig):
+    kind: Literal[Kind.PIPELINE_RUN] = Field(
+        default=Kind.PIPELINE_RUN, description="Resource kind (pipeline-run)."
+    )
+    selector: AzureDevopsSelector
+
+
+class AzureDevopsEnvironmentConfig(ResourceConfig):
+    kind: Literal[Kind.ENVIRONMENT] = Field(
+        default=Kind.ENVIRONMENT, description="Resource kind (environment)."
+    )
+    selector: AzureDevopsSelector
+
+
+class AzureDevopsReleaseDeploymentConfig(ResourceConfig):
+    kind: Literal[Kind.RELEASE_DEPLOYMENT] = Field(
+        default=Kind.RELEASE_DEPLOYMENT,
+        description="Resource kind (release-deployment).",
+    )
+    selector: AzureDevopsSelector
+
+
+class AzureDevopsPipelineDeploymentConfig(ResourceConfig):
+    kind: Literal[Kind.PIPELINE_DEPLOYMENT] = Field(
+        default=Kind.PIPELINE_DEPLOYMENT,
+        description="Resource kind (pipeline-deployment).",
+    )
+    selector: AzureDevopsSelector
+
+
+class AzureDevopsIterationConfig(ResourceConfig):
+    kind: Literal[Kind.ITERATION] = Field(
+        default=Kind.ITERATION, description="Resource kind (iteration)."
+    )
+    selector: AzureDevopsSelector
+
+
+# Type alias for kinds that only use AzureDevopsSelector (used in resync/webhook handlers when needed).
+AzureDevopsSelectorConfigs = (
+    AzureDevopsUserConfig
+    | AzureDevopsMemberConfig
+    | AzureDevopsBranchConfig
+    | AzureDevopsRepositoryPolicyConfig
+    | AzureDevopsBoardConfig
+    | AzureDevopsColumnConfig
+    | AzureDevopsReleaseConfig
+    | AzureDevopsBuildConfig
+    | AzureDevopsPipelineStageConfig
+    | AzureDevopsPipelineRunConfig
+    | AzureDevopsEnvironmentConfig
+    | AzureDevopsReleaseDeploymentConfig
+    | AzureDevopsPipelineDeploymentConfig
+    | AzureDevopsIterationConfig
+)
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     use_default_branch: bool | None = Field(
@@ -282,7 +400,20 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsPullRequestResourceConfig
         | AzureDevopsAdvancedSecurityResourceConfig
         | AzureDevopsRepositoryResourceConfig
-        | ResourceConfig
+        | AzureDevopsUserConfig
+        | AzureDevopsMemberConfig
+        | AzureDevopsBranchConfig
+        | AzureDevopsRepositoryPolicyConfig
+        | AzureDevopsBoardConfig
+        | AzureDevopsColumnConfig
+        | AzureDevopsReleaseConfig
+        | AzureDevopsBuildConfig
+        | AzureDevopsPipelineStageConfig
+        | AzureDevopsPipelineRunConfig
+        | AzureDevopsEnvironmentConfig
+        | AzureDevopsReleaseDeploymentConfig
+        | AzureDevopsPipelineDeploymentConfig
+        | AzureDevopsIterationConfig
     ] = Field(default_factory=list)
 
 

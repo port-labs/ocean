@@ -42,16 +42,22 @@ FILE_PROPERTY_PREFIX = "file://"
 
 
 class RepoSearchSelector(Selector):
-    repo_search: Optional[RepoSearchParams] = Field(default=None, alias="repoSearch")
+    repo_search: Optional[RepoSearchParams] = Field(
+        title="Repositories",
+        alias="repoSearch",
+        description="Ingest specific repositories using <a target='_blank' href='https://docs.github.com/en/search-github/searching-on-github/searching-for-repositories'>Github repository search API</a>",
+        default=None,
+    )
 
 
 class GithubRepositorySelector(RepoSearchSelector):
     include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
+        title="Additional Repository Data",
+        description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>",
         default_factory=list,
-        max_items=3,
-        description="Specify the relationships to include in the repository",
     )
     included_files: list[str] = Field(
+        title="Included Files",
         alias="includedFiles",
         default_factory=list,
         description=(
@@ -62,43 +68,65 @@ class GithubRepositorySelector(RepoSearchSelector):
 
 
 class GithubRepositoryConfig(ResourceConfig):
-    selector: GithubRepositorySelector
-    kind: Literal["repository"]
+    selector: GithubRepositorySelector = Field(
+        title="Repository Selector",
+        description="Selector for the repository resource.",
+    )
+    kind: Literal["repository"] = Field(
+        title="Github Repository",
+        description="Github repository resource kind.",
+    )
 
 
 class RepositoryBranchMapping(BaseModel):
     name: str = Field(
-        description="Specify the repository name",
+        title="Repository Name",
+        description="The repository name to fetch from.",
     )
     branch: Optional[str] = Field(
+        title="Branch",
         default=None,
-        description="Specify the branch to bring the folders from, repo's default branch will be used if none is passed",
+        description="Branch to use; repo's default branch will be used if not specified.",
     )
 
 
 class FolderSelector(BaseModel):
-    organization: Optional[str] = Field(default=None)
-    path: str = Field(default="*")
+    organization: Optional[str] = Field(
+        title="Organization",
+        default=None,
+        description="GitHub organization name.",
+    )
+    path: str = Field(
+        title="Path",
+        default="*",
+        description="Glob path for folders (e.g. '*' or 'src/**').",
+    )
     repos: Optional[list[RepositoryBranchMapping]] = Field(
-        description="Specify the repositories and branches to fetch files from",
+        title="Repositories",
+        description="Repositories and branches to fetch folders from.",
         default=None,
     )
 
 
 class GithubFolderSelector(Selector):
-    folders: list[FolderSelector]
+    folders: list[FolderSelector] = Field(
+        title="Folders",
+        description="Folder definitions (path and repos) to ingest.",
+    )
     included_files: list[str] = Field(
+        title="Included Files",
         alias="includedFiles",
         default_factory=list,
-        description="List of file paths to fetch and attach to the folder entity",
+        description="File paths to fetch and attach to the folder entity.",
     )
 
 
 class GithubUserSelector(Selector):
     include_bots: bool = Field(
+        title="Include Bots",
         default=True,
         alias="includeBots",
-        description="Include bots in the list of users",
+        description="Include bot accounts in the list of users.",
     )
 
 
@@ -114,23 +142,27 @@ class GithubFolderResourceConfig(ResourceConfig):
 
 class GithubPullRequestSelector(RepoSearchSelector):
     states: list[Literal["open", "closed"]] = Field(
+        title="Pull requests states",
         default=["open"],
-        description="Filter by pull request state (e.g., open, closed)",
+        description="Filter pull requests by states (e.g. ['open']).",
     )
     max_results: int = Field(
+        title="Max pull requests to return",
         alias="maxResults",
         default=100,
         ge=1,
-        description="Limit the number of pull requests returned",
+        description="Maximum number of pull requests to return per repository.",
     )
     since: int = Field(
+        title="Since (Days)",
         default=60,
         ge=1,
-        description="Only fetch pull requests updated within the last N days",
+        description="Only fetch pull requests updated within the last N days.",
     )
     api: Literal["rest", "graphql"] = Field(
+        title="API",
         default="rest",
-        description="Select the API to use for fetching pull requests",
+        description="API to use for fetching pull requests (REST or GraphQL).",
     )
 
     @property
@@ -140,18 +172,26 @@ class GithubPullRequestSelector(RepoSearchSelector):
 
 
 class GithubPullRequestConfig(ResourceConfig):
-    selector: GithubPullRequestSelector
-    kind: Literal["pull-request"]
+    selector: GithubPullRequestSelector = Field(
+        title="Pull request selector",
+        description="Selector for the pull request resource.",
+    )
+    kind: Literal["pull-request"] = Field(
+        title="Github Pull Request",
+        description="Github pull request resource kind.",
+    )
 
 
 class GithubIssueSelector(RepoSearchSelector):
     state: Literal["open", "closed", "all"] = Field(
+        title="State",
         default="open",
-        description="Filter by issue state (open, closed, all)",
+        description="Filter by issue state (open, closed, or all).",
     )
     labels: Optional[list[str]] = Field(
+        title="Labels",
         default=None,
-        description="Filter issues by labels. Issues must have ALL of the specified labels. Example: ['bug', 'enhancement']",
+        description="Filter issues by labels; issues must have ALL specified labels (e.g. ['bug', 'enhancement']).",
     )
 
     @property
@@ -166,7 +206,11 @@ class GithubIssueConfig(ResourceConfig):
 
 
 class GithubTeamSector(Selector):
-    members: bool = Field(default=True)
+    members: bool = Field(
+        title="Include Members",
+        default=True,
+        description="Include team members in the exported data.",
+    )
 
 
 class GithubTeamConfig(ResourceConfig):
@@ -176,12 +220,14 @@ class GithubTeamConfig(ResourceConfig):
 
 class GithubDependabotAlertSelector(RepoSearchSelector):
     states: list[Literal["auto_dismissed", "dismissed", "fixed", "open"]] = Field(
+        title="States",
+        description="Filter alerts by states (e.g. ['auto_dismissed', 'dismissed', 'fixed', 'open']).",
         default=["open"],
-        description="Filter alerts by state (auto_dismissed, dismissed, fixed, open)",
     )
     severity: Optional[list[Literal["low", "medium", "high", "critical"]]] = Field(
+        title="Severity",
+        description="Filter alerts by severity (e.g. ['low', 'medium']).",
         default=None,
-        description="Filter alerts by severities. A comma-separated list of severities. If specified, only alerts with these severities will be returned. Example: ['low', 'medium']",
     )
     ecosystems: Optional[
         list[
@@ -198,8 +244,9 @@ class GithubDependabotAlertSelector(RepoSearchSelector):
             ]
         ]
     ] = Field(
+        title="Ecosystems",
+        description="Filter alerts by package ecosystem (e.g. ['npm', 'pip']).",
         default=None,
-        description="Filter alerts by ecosystems. Only alerts for these ecosystems will be returned. Example: ['npm', 'pip']",
     )
 
     @property
@@ -220,172 +267,253 @@ class GithubDependabotAlertConfig(ResourceConfig):
 
 class GithubCodeScanningAlertSelector(RepoSearchSelector):
     state: Literal["open", "closed", "dismissed", "fixed"] = Field(
+        title="State",
+        description="Filter alerts by state (e.g. 'open', 'closed', 'dismissed', 'fixed').",
         default="open",
-        description="Filter alerts by state (open, closed, dismissed, fixed)",
     )
     severity: Optional[
         Literal["critical", "high", "medium", "low", "warning", "note", "error"]
     ] = Field(
+        title="Severity",
+        description="Filter alerts by severity level (e.g. 'critical', 'high', 'medium', 'low', 'warning', 'note', 'error').",
         default=None,
-        description="Filter alerts by severity level. If specified, only code scanning alerts with this severity will be returned.",
     )
 
 
 class GithubCodeScanningAlertConfig(ResourceConfig):
-    selector: GithubCodeScanningAlertSelector
-    kind: Literal["code-scanning-alerts"]
+    selector: GithubCodeScanningAlertSelector = Field(
+        title="Code scanning alert selector",
+        description="Selector for the code scanning alert resource.",
+    )
+    kind: Literal["code-scanning-alerts"] = Field(
+        title="Github Code Scanning Alert",
+        description="Github code scanning alert resource kind.",
+    )
 
 
 class GithubDeploymentSelector(RepoSearchSelector):
     task: Optional[str] = Field(
+        title="Task name",
+        description="Filter deployments by task name (e.g. deploy, deploy:migrations).",
         default=None,
-        description="Filter deployments by task name (e.g., deploy or deploy:migrations)",
     )
     environment: Optional[str] = Field(
+        title="Environment name",
+        description="Filter deployments by environment name (e.g. staging, production).",
         default=None,
-        description="Filter deployments by environment name (e.g., staging or production)",
     )
 
 
 class GithubDeploymentConfig(ResourceConfig):
-    selector: GithubDeploymentSelector
+    selector: GithubDeploymentSelector = Field(
+        title="Deployment selector",
+        description="Selector for the deployment resource.",
+    )
+    kind: Literal["deployment"] = Field(
+        title="Github Deployment",
+        description="Github deployment resource kind.",
+    )
     kind: Literal["deployment"]
 
 
 class GithubSecretScanningAlertSelector(RepoSearchSelector):
     state: Literal["open", "resolved", "all"] = Field(
+        title="State",
+        description="Filter alerts by state (open, resolved, all).",
         default="open",
-        description="Filter alerts by state (open, resolved, all)",
     )
     hide_secret: bool = Field(
+        title="Hide Secret",
         alias="hideSecret",
+        description="Control whether the secret content is included.",
         default=True,
-        description="Whether to hide the actual secret content in the alert data for security purposes",
     )
 
 
 class GithubSecretScanningAlertConfig(ResourceConfig):
-    selector: GithubSecretScanningAlertSelector
+    selector: GithubSecretScanningAlertSelector = Field(
+        title="Secret scanning alert selector",
+        description="Selector for the secret scanning alert resource.",
+    )
+    kind: Literal["secret-scanning-alerts"] = Field(
+        title="Github Secret Scanning Alert",
+        description="Github secret scanning alert resource kind.",
+    )
     kind: Literal["secret-scanning-alerts"]
 
 
 class GithubFilePattern(BaseModel):
-    organization: Optional[str] = Field(default=None)
+    organization: Optional[str] = Field(
+        title="Organization",
+        default=None,
+        description="GitHub organization (optional).",
+    )
     path: str = Field(
+        title="Path",
         alias="path",
-        description="Specify the path to match files from",
+        description="Glob path to match files (e.g. '**/*.yaml').",
     )
     repos: Optional[list[RepositoryBranchMapping]] = Field(
+        title="Repositories",
         alias="repos",
-        description="Specify the repositories and branches to fetch files from",
+        description="Repositories and branches to fetch files from.",
         default=None,
     )
     skip_parsing: bool = Field(
+        title="Skip Parsing",
         default=False,
         alias="skipParsing",
-        description="Skip parsing the files and just return the raw file content",
+        description="Return raw file content without parsing.",
     )
     validation_check: bool = Field(
+        title="Validation Check",
         default=False,
         alias="validationCheck",
-        description="Enable validation for this file pattern during pull request processing",
+        description="Enable validation for this file pattern during pull request processing.",
     )
 
 
 class GithubFileSelector(Selector):
-    files: list[GithubFilePattern]
+    files: list[GithubFilePattern] = Field(
+        title="Files",
+        description="File patterns (path, repos) to ingest.",
+    )
     included_files: list[str] = Field(
+        title="Included Files",
         alias="includedFiles",
         default_factory=list,
-        description="List of file paths to fetch and attach to the file entity",
+        description="Additional file paths to fetch and attach to the file entity.",
     )
 
 
 class GithubFileResourceConfig(ResourceConfig):
-    kind: Literal["file"]
-    selector: GithubFileSelector
+    kind: Literal["file"] = Field(
+        title="Github File",
+        description="Github file resource kind.",
+    )
+    selector: GithubFileSelector = Field(
+        title="File selector",
+        description="Selector for the file resource.",
+    )
 
 
 class GithubBranchSelector(RepoSearchSelector):
     detailed: bool = Field(
-        default=False, description="Include extra details about the branch"
+        title="Detailed",
+        default=False,
+        description="Whether to include the latest commit details for each branch.",
     )
     default_branch_only: bool = Field(
+        title="Default Branch Only",
         default=False,
         alias="defaultBranchOnly",
-        description=(
-            "If true, only the repository's default branch will be synced. "
-            "If provided, it takes precedence and branchNames will be ignored."
-        ),
+        description="Sync only the repository's default branch; overrides branchNames if set.",
     )
     protection_rules: bool = Field(
+        title="Protection Rules",
         default=False,
         alias="protectionRules",
-        description="Include protection rules for the branch",
+        description="Whether to include branch protection rules for each branch.",
     )
     branch_names: List[str] = Field(
+        title="Branch Names",
         default_factory=list,
         alias="branchNames",
-        description="List of branch names to fetch. If provided, the branch names will be fetched explicitly and not using pagination.",
+        description="Branches to fetch (e.g. ['main', 'develop']).",
     )
 
 
 class GithubBranchConfig(ResourceConfig):
-    kind: Literal["branch"]
-    selector: GithubBranchSelector
+    kind: Literal["branch"] = Field(
+        title="Github Branch",
+        description="Github branch resource kind.",
+    )
+    selector: GithubBranchSelector = Field(
+        title="Branch selector",
+        description="Selector for the branch resource.",
+    )
 
 
 class GithubOrganizationConfig(ResourceConfig):
     kind: Literal[ObjectKind.ORGANIZATION] = Field(
-        default=ObjectKind.ORGANIZATION, description="Resource kind (organization)."
+        title="Github Organization",
+        description="Github organization resource kind.",
     )
-    selector: RepoSearchSelector
+    selector: RepoSearchSelector = Field(
+        title="Organization selector",
+        description="Selector for the organization resource.",
+    )
 
 
 class GithubWorkflowConfig(ResourceConfig):
     kind: Literal[ObjectKind.WORKFLOW] = Field(
-        default=ObjectKind.WORKFLOW, description="Resource kind (workflow)."
+        title="Github Workflow",
+        description="Github workflow resource kind.",
     )
-    selector: RepoSearchSelector
+    selector: RepoSearchSelector = Field(
+        title="Workflow selector",
+        description="Selector for the workflow resource.",
+    )
 
 
 class GithubWorkflowRunConfig(ResourceConfig):
     kind: Literal[ObjectKind.WORKFLOW_RUN] = Field(
-        default=ObjectKind.WORKFLOW_RUN, description="Resource kind (workflow-run)."
+        title="Github Workflow Run",
+        description="Github workflow run resource kind.",
     )
-    selector: RepoSearchSelector
+    selector: RepoSearchSelector = Field(
+        title="Workflow run selector",
+        description="Selector for the workflow run resource.",
+    )
 
 
 class GithubReleaseConfig(ResourceConfig):
     kind: Literal[ObjectKind.RELEASE] = Field(
-        default=ObjectKind.RELEASE, description="Resource kind (release)."
+        title="Github Release",
+        description="Github release resource kind.",
     )
-    selector: RepoSearchSelector
+    selector: RepoSearchSelector = Field(
+        title="Release selector",
+        description="Selector for the release resource.",
+    )
 
 
 class GithubTagConfig(ResourceConfig):
     kind: Literal[ObjectKind.TAG] = Field(
-        default=ObjectKind.TAG, description="Resource kind (tag)."
+        title="Github Tag",
+        description="Github tag resource kind.",
     )
-    selector: RepoSearchSelector
+    selector: RepoSearchSelector = Field(
+        title="Tag selector",
+        description="Selector for the tag resource.",
+    )
 
 
 class GithubEnvironmentConfig(ResourceConfig):
     kind: Literal[ObjectKind.ENVIRONMENT] = Field(
-        default=ObjectKind.ENVIRONMENT, description="Resource kind (environment)."
+        title="Github Environment",
+        description="Github environment resource kind.",
     )
-    selector: RepoSearchSelector
+    selector: RepoSearchSelector = Field(
+        title="Environment selector",
+        description="Selector for the environment resource.",
+    )
 
 
 class GithubCollaboratorConfig(ResourceConfig):
     kind: Literal[ObjectKind.COLLABORATOR] = Field(
-        default=ObjectKind.COLLABORATOR, description="Resource kind (collaborator)."
+        title="Github Collaborator",
+        description="Github collaborator resource kind.",
     )
-    selector: RepoSearchSelector
+    selector: RepoSearchSelector = Field(
+        title="Collaborator selector",
+        description="Selector for the collaborator resource.",
+    )
 
 
 class GithubPortAppConfig(PortAppConfig):
     organizations: List[str] = Field(
+        title="Organizations",
         default_factory=list,
         description=(
             "List of GitHub organization names (optional - if not provided, "
@@ -394,11 +522,18 @@ class GithubPortAppConfig(PortAppConfig):
         ),
     )
     include_authenticated_user: bool = Field(
+        title="Include Authenticated User",
         default=False,
         alias="includeAuthenticatedUser",
-        description="Include the authenticated user's personal account",
+        description="Include the authenticated user's personal account.",
     )
-    repository_type: str = Field(alias="repositoryType", default="all")
+    repository_type: str = Field(
+        title="Repository Type",
+        alias="repositoryType",
+        enum=["all", "public", "private"],
+        default="all",
+        description="Filter repositories by visibility.",
+    )
     resources: list[
         GithubRepositoryConfig
         | GithubPullRequestConfig
@@ -420,14 +555,9 @@ class GithubPortAppConfig(PortAppConfig):
         | GithubEnvironmentConfig
         | GithubCollaboratorConfig
     ] = Field(
+        title="Resources",
         default_factory=list,
-        description=(
-            "Resource mappings. Repository-dependent kinds without custom selector options "
-            "(organization, workflow, workflow-run, release, tag, environment, collaborator) "
-            "use GithubOrganizationConfig, GithubWorkflowConfig, GithubWorkflowRunConfig, "
-            "GithubReleaseConfig, GithubTagConfig, GithubEnvironmentConfig, GithubCollaboratorConfig "
-            "with RepoSearchSelector only."
-        ),
+        description=("Resource mappings"),
     )
 
 
