@@ -368,7 +368,6 @@ class GithubSecretScanningAlertConfig(ResourceConfig):
         title="Github Secret Scanning Alert",
         description="Github secret scanning alert resource kind.",
     )
-    kind: Literal["secret-scanning-alerts"]
 
 
 class GithubFilePattern(BaseModel):

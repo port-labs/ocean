@@ -420,7 +420,10 @@ class AzureDevopsReleaseDeploymentConfig(ResourceConfig):
         default=Kind.RELEASE_DEPLOYMENT,
         description="Resource kind (release-deployment).",
     )
-    selector: AzureDevopsSelector
+    selector: AzureDevopsSelector = Field(
+        title="Release deployment selector",
+        description="Selector for the release deployment resource.",
+    )
 
 
 class AzureDevopsPipelineDeploymentConfig(ResourceConfig):
