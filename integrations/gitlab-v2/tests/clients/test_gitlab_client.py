@@ -709,9 +709,9 @@ class TestGitLabClient:
         path = "src"
         ref = "main"
         mock_tree = [
-            {"type": "tree", "name": "folder1"},
-            {"type": "blob", "name": "file.txt"},
-            {"type": "tree", "name": "folder2"},
+            {"type": "tree", "name": "folder1", "path": "src/folder1"},
+            {"type": "blob", "name": "file.txt", "path": "src/file.txt"},
+            {"type": "tree", "name": "folder2", "path": "src/folder2"},
         ]
         with patch.object(
             client.rest,
@@ -748,8 +748,8 @@ class TestGitLabClient:
         }
 
         mock_tree = [
-            {"type": "tree", "name": "folder1"},
-            {"type": "blob", "name": "file.txt"},
+            {"type": "tree", "name": "folder1", "path": "src/folder1"},
+            {"type": "blob", "name": "file.txt", "path": "src/file.txt"},
         ]
 
         with patch.object(
@@ -775,7 +775,7 @@ class TestGitLabClient:
 
                 mock_get_project.assert_called_once_with("group/project1")
                 mock_get_paginated.assert_called_once_with(
-                    "group/project1",
+                    "1",
                     "repository/tree",
                     {"ref": "develop", "path": "src", "recursive": False},
                 )
