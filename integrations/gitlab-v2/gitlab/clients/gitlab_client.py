@@ -363,7 +363,6 @@ class GitLabClient:
         if top_level_groups:
             yield top_level_groups
 
-    # AI! add unit tests for this function
     async def search_files_using_tree(
         self,
         path: str,

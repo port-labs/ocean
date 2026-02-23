@@ -120,6 +120,67 @@ class TestGitLabClient:
             mock_get_projects.assert_called()
             mock_get_tree.assert_called()
 
+    async def test_search_files_using_tree_with_error(
+        self, client: GitLabClient
+    ) -> None:
+        """Test search_files_using_tree handles project processing errors gracefully"""
+        mock_project = {
+            "id": 1,
+            "path_with_namespace": "group/project",
+            "default_branch": "main",
+        }
+
+        with (
+            patch.object(
+                client, "get_project", AsyncMock(return_value=mock_project)
+            ),
+            patch.object(
+                client,
+                "get_repository_tree",
+                side_effect=Exception("Tree error"),
+            ),
+        ):
+            results = []
+            async for batch in client.search_files_using_tree(
+                "*.json", repositories=["group/project"]
+            ):
+                results.extend(batch)
+
+            assert len(results) == 0
+
+    async def test_search_files_using_tree_fallback_groups(
+        self, client: GitLabClient
+    ) -> None:
+        """Test search_files_using_tree falls back to groups when no repos provided"""
+        mock_group = {"id": 123, "name": "group"}
+        mock_project = {"id": 1, "path_with_namespace": "group/project"}
+        
+        with (
+            patch.object(
+                client,
+                "get_parent_groups",
+                return_value=async_mock_generator([[mock_group]]),
+            ) as mock_get_groups,
+            patch.object(
+                client.rest,
+                "get_paginated_resource",
+                return_value=async_mock_generator([[mock_project]]),
+            ) as mock_get_projects,
+            patch.object(
+                client,
+                "get_repository_tree",
+                return_value=async_mock_generator([]),
+            ),
+        ):
+            results = []
+            async for batch in client.search_files_using_tree("*.json"):
+                results.extend(batch)
+            
+            mock_get_groups.assert_called()
+            mock_get_projects.assert_called_with(
+                "groups/123/projects", params={"include_subgroups": True}
+            )
+
     async def test_get_projects(self, client: GitLabClient) -> None:
         """Test project fetching and enrichment with languages and labels via REST."""
         # Arrange
