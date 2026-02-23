@@ -426,42 +426,6 @@ class GitLabClient:
             if result := await completed_task:
                 yield result
 
-    # AI! remove this function and associated unit tests
-    async def search_files(
-        self,
-        scope: str,
-        path: str,
-        repositories: list[str] | None = None,
-        skip_parsing: bool = False,
-        params: Optional[dict[str, Any]] = None,
-    ) -> AsyncIterator[list[dict[str, Any]]]:
-        search_query = f"path:{path}"
-        logger.info(f"Starting file search with path pattern: '{path}'")
-
-        if repositories:
-            logger.info(f"Searching across {len(repositories)} specific repositories")
-            for repo in repositories:
-                logger.debug(f"Processing repository: {repo}")
-                async for batch in self._search_files_in_repository(
-                    repo, scope, search_query, skip_parsing
-                ):
-                    yield batch
-        else:
-            logger.info("Searching across groups")
-            async for top_level_groups in self.get_parent_groups(
-                params=params,
-            ):
-                logger.info(
-                    f"Found {len(top_level_groups)} top-level searchable groups"
-                )
-
-                for group in top_level_groups:
-                    group_id = str(group["id"])
-                    logger.debug(f"Processing group: {group_id}")
-                    async for batch in self._search_files_in_group(
-                        group_id, scope, search_query, skip_parsing
-                    ):
-                        yield batch
 
     @cache_iterator_result()
     async def get_repository_tree(
