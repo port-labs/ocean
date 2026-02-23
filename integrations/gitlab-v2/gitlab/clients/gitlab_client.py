@@ -426,6 +426,7 @@ class GitLabClient:
             if result := await completed_task:
                 yield result
 
+    # AI! remove this function and associated unit tests
     async def search_files(
         self,
         scope: str,
