@@ -74,8 +74,7 @@ def decode_content(content: str, encoding: str) -> str:
 
     try:
         content = base64.b64decode(content).decode("utf-8", errors="replace")
-        cleaned_content = content.replace("\x00", "")
-        return cleaned_content
+        return content.replace("\x00", "")
 
     except (binascii.Error, UnicodeDecodeError) as e:
         logger.error(f"Failed to decode content: {str(e)}")

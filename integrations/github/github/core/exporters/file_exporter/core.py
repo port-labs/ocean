@@ -37,9 +37,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
         super().__init__(*args, **kwargs)
         self.file_processor = FileProcessor(self)
 
-    async def get_resource[ExporterOptionsT: FileContentOptions](
-        self, options: ExporterOptionsT
-    ) -> Optional[RAW_ITEM]:
+    async def get_resource[
+        ExporterOptionsT: FileContentOptions
+    ](self, options: ExporterOptionsT) -> Optional[RAW_ITEM]:
         """
         Fetch the content of a file from a repository using the Contents API.
         """
@@ -74,9 +74,9 @@ class RestFileExporter(AbstractGithubExporter[GithubRestClient]):
 
         return {**response, "content": content}
 
-    async def get_paginated_resources[ExporterOptionsT: List[ListFileSearchOptions]](
-        self, options: ExporterOptionsT
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def get_paginated_resources[
+        ExporterOptionsT: List[ListFileSearchOptions]
+    ](self, options: ExporterOptionsT) -> ASYNC_GENERATOR_RESYNC_TYPE:
         """Search for files across repositories and fetch their content."""
 
         graphql_files = []
