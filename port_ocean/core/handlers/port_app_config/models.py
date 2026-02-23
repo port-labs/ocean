@@ -11,8 +11,7 @@ CUSTOM_KIND = "__custom__"
 
 
 class _FieldMetadataEnforcer(BaseModel):
-    class Config:
-        extra = "forbid"
+    pass
 
     # TODO: Uncomment this when we completed assigning all the titles and descriptions
     # def __init_subclass__(cls, **kwargs: Any) -> None:
@@ -130,9 +129,6 @@ class ResourceConfig(_FieldMetadataEnforcer):
         description="Defines the mapping from the raw data to the entity and relations.",
     )
 
-    class Config:
-        extra = "forbid"
-
 
 class PortAppConfig(_FieldMetadataEnforcer):
     allow_custom_kinds: ClassVar[bool] = False
@@ -199,6 +195,5 @@ class PortAppConfig(_FieldMetadataEnforcer):
         # validate_and_get_resource_kinds(cls)
 
     class Config:
-        extra = "forbid"
         allow_population_by_field_name = True
         validate_assignment = True

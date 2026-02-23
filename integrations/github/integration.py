@@ -137,13 +137,25 @@ class GithubUserSelector(Selector):
 
 
 class GithubUserConfig(ResourceConfig):
-    selector: GithubUserSelector
-    kind: Literal[ObjectKind.USER]
+    selector: GithubUserSelector = Field(
+        title="User selector",
+        description="Selector for the user resource.",
+    )
+    kind: Literal[ObjectKind.USER] = Field(
+        title="Github User",
+        description="Github user resource kind.",
+    )
 
 
 class GithubFolderResourceConfig(ResourceConfig):
-    selector: GithubFolderSelector
-    kind: Literal[ObjectKind.FOLDER]
+    selector: GithubFolderSelector = Field(
+        title="Folder selector",
+        description="Selector for the folder resource.",
+    )
+    kind: Literal[ObjectKind.FOLDER] = Field(
+        title="Github Folder",
+        description="Github folder resource kind.",
+    )
 
 
 class GithubPullRequestSelector(RepoSearchSelector):
@@ -207,8 +219,14 @@ class GithubIssueSelector(RepoSearchSelector):
 
 
 class GithubIssueConfig(ResourceConfig):
-    selector: GithubIssueSelector
-    kind: Literal["issue"]
+    selector: GithubIssueSelector = Field(
+        title="Issue selector",
+        description="Selector for the issue resource.",
+    )
+    kind: Literal["issue"] = Field(
+        title="Github Issue",
+        description="Github issue resource kind.",
+    )
 
 
 class GithubTeamSector(Selector):
@@ -267,8 +285,14 @@ class GithubDependabotAlertSelector(RepoSearchSelector):
 
 
 class GithubDependabotAlertConfig(ResourceConfig):
-    selector: GithubDependabotAlertSelector
-    kind: Literal["dependabot-alert"]
+    selector: GithubDependabotAlertSelector = Field(
+        title="Dependabot alert selector",
+        description="Selector for the dependabot alert resource.",
+    )
+    kind: Literal["dependabot-alert"] = Field(
+        title="Github Dependabot Alert",
+        description="Github dependabot alert resource kind.",
+    )
 
 
 class GithubCodeScanningAlertSelector(RepoSearchSelector):
@@ -319,7 +343,6 @@ class GithubDeploymentConfig(ResourceConfig):
         title="Github Deployment",
         description="Github deployment resource kind.",
     )
-    kind: Literal["deployment"]
 
 
 class GithubSecretScanningAlertSelector(RepoSearchSelector):
