@@ -10,7 +10,7 @@ from github.helpers.models import RepoSearchParams
 from github.webhook.webhook_processors.github_abstract_webhook_processor import (
     _GithubAbstractWebhookProcessor,
 )
-from integration import GithubPortAppConfig, RepoSearchSelector
+from integration import GithubPortAppConfig, GithubRepoSearchConfig, RepoSearchSelector
 from loguru import logger
 
 
@@ -28,7 +28,7 @@ class BaseRepositoryWebhookProcessor(_GithubAbstractWebhookProcessor):
     async def should_process_repo_search(
         self, payload: EventPayload, config: ResourceConfig
     ) -> bool:
-        repo_search = cast(RepoSearchSelector, config.selector).repo_search
+        repo_search = cast(GithubRepoSearchConfig, config).selector.repo_search
 
         if repo_search is not None:
             logger.info(

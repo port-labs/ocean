@@ -17,12 +17,13 @@ from port_ocean.core.handlers.port_app_config.models import (
     MappingsConfig,
 )
 from github.helpers.utils import ObjectKind
-from integration import GithubReleaseConfig, RepoSearchSelector
+from integration import GithubRepoSearchConfig, RepoSearchSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
-    return GithubReleaseConfig(
+    return GithubRepoSearchConfig(
+        kind=ObjectKind.RELEASE,
         selector=RepoSearchSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(

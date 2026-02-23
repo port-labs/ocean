@@ -4,7 +4,7 @@ Custom authentication configuration validation helpers.
 
 from typing import Any
 
-from pydantic import parse_raw_as, parse_obj_as, ValidationError
+from pydantic import parse_raw_as, parse_obj_as
 
 from http_server.overrides import (
     CustomAuthRequestConfig,
@@ -32,21 +32,15 @@ def validate_custom_auth_request_config(
     Raises:
         CustomAuthRequestError: If custom authentication request configuration is invalid or missing
     """
-    if not custom_auth_request_config:
-        raise CustomAuthRequestError(
-            "customAuthRequest is required when authType is 'custom'"
-        )
-    try:
+    if custom_auth_request_config:
         if isinstance(custom_auth_request_config, str):
             return parse_raw_as(CustomAuthRequestConfig, custom_auth_request_config)
         else:
             return parse_obj_as(CustomAuthRequestConfig, custom_auth_request_config)
-    except CustomAuthRequestError:
-        raise
-    except ValidationError as e:
+    else:
         raise CustomAuthRequestError(
-            f"Invalid customAuthRequest configuration: {e}"
-        ) from e
+            "customAuthRequest is required when authType is 'custom'"
+        )
 
 
 def validate_custom_auth_request_template_config(

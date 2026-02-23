@@ -19,12 +19,13 @@ from github.webhook.webhook_processors.workflow_webhook_processor import (
 )
 from github.core.exporters.workflows_exporter import RestWorkflowExporter
 from github.core.options import SingleWorkflowOptions
-from integration import GithubWorkflowConfig, RepoSearchSelector
+from integration import GithubRepoSearchConfig, RepoSearchSelector
 
 
 @pytest.fixture
 def resource_config() -> ResourceConfig:
-    return GithubWorkflowConfig(
+    return GithubRepoSearchConfig(
+        kind=ObjectKind.WORKFLOW,
         selector=RepoSearchSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
