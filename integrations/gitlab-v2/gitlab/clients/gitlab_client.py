@@ -436,7 +436,9 @@ class GitLabClient:
         folders_only: bool = False,
     ) -> AsyncIterator[list[dict[str, Any]]]:
         """Fetch repository tree for a project."""
-        logger.info(f"fetching repository tree for project {project['name']}")
+        logger.info(
+            f"fetching repository tree for project {project.get('name', project.get('id'))}"
+        )
         project_path = project["id"]
 
         is_wildcard_or_file = any(c in path for c in "*?[]") or not folders_only
