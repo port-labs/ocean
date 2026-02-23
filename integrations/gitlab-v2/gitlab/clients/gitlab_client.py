@@ -363,6 +363,7 @@ class GitLabClient:
         if top_level_groups:
             yield top_level_groups
 
+    # AI! add unit tests for this function
     async def search_files_using_tree(
         self,
         path: str,
@@ -473,14 +474,15 @@ class GitLabClient:
         """Fetch repository tree for a project."""
         logger.info(f"fetching repository tree for project {project['name']}")
         project_path = project["id"]
-        is_wildcard = any(c in path for c in "*?[]")
 
-        # If using wildcards, we must fetch recursively from root to match against pattern.
+        is_wildcard_or_file = any(c in path for c in "*?[]") or not folders_only
+
+        # If using wildcards or fetching files, we must fetch recursively from root to match against pattern.
         # Otherwise, we can use the path directly in the API call.
         params = {
             "ref": ref,
-            "path": "" if is_wildcard else path,
-            "recursive": is_wildcard,
+            "path": "" if is_wildcard_or_file else path,
+            "recursive": is_wildcard_or_file,
         }
 
         async for batch in self.rest.get_paginated_project_resource(
@@ -494,7 +496,7 @@ class GitLabClient:
                     glob.globmatch(
                         item["path"], path, flags=glob.GLOBSTAR | glob.DOTGLOB
                     )
-                    if is_wildcard
+                    if is_wildcard_or_file
                     else True
                 )
             ]
