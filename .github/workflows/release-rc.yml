@@ -15,6 +15,11 @@ on:
         required: false
         type: boolean
         default: false
+      integration_filter:
+        description: 'Build specific integration(s) only (comma-separated, e.g., "aws,github"). Leave empty for all.'
+        required: false
+        type: string
+        default: ''
 
 env:
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
@@ -193,12 +198,25 @@ jobs:
         with:
           ref: ${{ inputs.source_branch }}
 
-      - name: Prepare matrix of all integrations
+      - name: Prepare matrix of integrations
         id: prepare-matrix
         run: |
+          FILTER="${{ inputs.integration_filter }}"
           integrations=()
+
           # Get the list of all integrations
           files=$(find integrations/*/.port -name "spec.yaml")
+
+          # Parse filter into array if provided
+          if [[ -n "$FILTER" ]]; then
+            IFS=',' read -ra FILTER_ARRAY <<< "$FILTER"
+            # Trim whitespace from each filter
+            for i in "${!FILTER_ARRAY[@]}"; do
+              FILTER_ARRAY[$i]=$(echo "${FILTER_ARRAY[$i]}" | xargs)
+            done
+            echo "Filtering integrations: ${FILTER_ARRAY[*]}"
+          fi
+
           for file in $files; do
             folder=$(dirname "$file")
             # Skip fake-integration (test integration)
@@ -206,12 +224,35 @@ jobs:
               echo "Skipping fake-integration"
               continue
             fi
+
+            # Get integration name from pyproject.toml
+            type=$(grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
+
+            # If filter is set, check if this integration matches
+            if [[ -n "$FILTER" ]]; then
+              match_found=false
+              for filter_item in "${FILTER_ARRAY[@]}"; do
+                if [[ "$type" == "$filter_item" ]]; then
+                  match_found=true
+                  break
+                fi
+              done
+              if [[ "$match_found" == "false" ]]; then
+                continue
+              fi
+              echo "Including filtered integration: $type"
+            fi
+
             integrations+=("$file")
           done
 
           if [ ${#integrations[@]} -eq 0 ]; then
             matrix_json='[]'
-            echo "No integrations found"
+            if [[ -n "$FILTER" ]]; then
+              echo "::warning::No integrations matched filter: $FILTER"
+            else
+              echo "No integrations found"
+            fi
           else
             matrix_json=$(printf '%s\n' "${integrations[@]}" | jq -R -s -c 'split("\n")[:-1]')
             echo "Found ${#integrations[@]} integrations to build"
@@ -347,6 +388,11 @@ jobs:
 
           echo "**Version:** ${{ inputs.rc_version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Source Branch:** ${{ inputs.source_branch }}" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "${{ inputs.integration_filter }}" ]]; then
+            echo "**Integration Filter:** ${{ inputs.integration_filter }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Integrations:** All" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
 
           echo "### Job Results" >> $GITHUB_STEP_SUMMARY
