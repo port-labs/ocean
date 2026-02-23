@@ -16,6 +16,8 @@ from http_server.overrides import (
     ApiPathParameter,
     DynamicQueryParameter,
 )
+from http_server.overrides import HttpServerSelector, ApiPathParameter
+from http_server.helpers.endpoint_cache import get_endpoint_cache
 
 
 def extract_path_parameters(endpoint: str) -> List[str]:
@@ -130,19 +132,36 @@ async def query_api_for_parameters(
     Yields:
         Batches of parameter values extracted from API response
     """
-    # Lazy import to avoid circular dependency
     from initialize_client import init_client
 
     http_client = init_client()
     logger.info(f"Querying API for parameter values from {param_config.endpoint}")
 
-    try:
-        async for batch in http_client.fetch_paginated_data(
+    cache = get_endpoint_cache()
+
+    def _fetch() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        return http_client.fetch_paginated_data(
             endpoint=param_config.endpoint,
             method=param_config.method,
             query_params=param_config.query_params,
             headers=param_config.headers,
-        ):
+        )
+
+    raw_source: AsyncGenerator[List[Dict[str, Any]], None]
+    if cache is not None:
+        raw_source = cache.get_or_fetch(
+            endpoint=param_config.endpoint,
+            method=param_config.method,
+            query_params=param_config.query_params,
+            headers=param_config.headers,
+            body=None,
+            fetch_fn=_fetch,
+        )
+    else:
+        raw_source = _fetch()
+
+    try:
+        async for batch in raw_source:
             values = [
                 filtered_value
                 for response_item in batch

@@ -8,18 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.3.14-beta (2026-02-23)
+## 0.4.0-beta (2026-02-20)
 
 
-### Features
+### Improvements
 
-- Added dynamic query parameter support via `dynamic_query_param` field, allowing query parameters to be resolved from API endpoints at runtime (similar to `path_parameters`)
+- Added support for smart file based caching of API responses
 
 
 ## 0.3.13-beta (2026-02-22)
 
 
 ### Improvements
+
 
 - Bumped ocean version to ^0.37.1
 
