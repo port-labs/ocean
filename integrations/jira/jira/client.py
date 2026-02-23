@@ -412,7 +412,7 @@ class JiraClient(OAuthClient):
         ):
             for project in projects:
                 project_key = project["key"]
-                logger.debug(f"Fetching versions for project: {project_key}")
+                logger.info(f"Fetching versions for project: {project_key}")
                 versions: list[dict[str, Any]] = await self._send_api_request(
                     "GET", f"{self.api_url}/project/{project_key}/versions"
                 )
