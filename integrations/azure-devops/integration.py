@@ -491,7 +491,6 @@ class GitPortAppConfig(PortAppConfig):
         | AzureDevopsPipelineDeploymentConfig
         | AzureDevopsIterationConfig
         | AzureDevopsGroupMemberResourceConfig
-        | ResourceConfig
     ] = Field(
         default_factory=list,
         title="Resources",
