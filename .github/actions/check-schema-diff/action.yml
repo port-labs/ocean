@@ -29,17 +29,23 @@ runs:
         aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
         aws-region: ${{ inputs.aws_region }}
 
+    - name: Install poetry
+      shell: bash
+      run: pipx install 'poetry>=1.0.0,<2.0.0'
+
     - name: Set up Python 3.12
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
         cache: 'poetry'
 
+    - name: Install Rust
+      uses: dtolnay/rust-action@stable
+
     - name: Install dependencies
       shell: bash
       working-directory: ${{ inputs.integration_folder }}
       run: |
-        pipx install 'poetry>=1.0.0,<2.0.0'
         make install
         cargo install json-schema-diff
 
