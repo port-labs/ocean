@@ -38,7 +38,7 @@ jobs:
   prepare-matrix:
     runs-on: ubuntu-latest
     needs: [detect-changes]
-    if: needs.detect-changes.outputs.changed == 'true'
+    if: needs.detect-changes.outputs.core == 'true' || needs.detect-changes.outputs.core_ci_files_changed == 'true' || needs.detect-changes.outputs.integrations != '[]'
     outputs:
       matrix: ${{ steps.prepare-matrix.outputs.matrix }}
     steps:
