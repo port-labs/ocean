@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.41 (2026-02-24)
+
+
+### Improvements
+
+- PortAppConfig model strict kinds enforcements
+
+
 ## 5.0.40 (2026-02-23)
 
 
