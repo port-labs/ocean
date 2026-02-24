@@ -179,9 +179,10 @@
           "description": "What triggered this deployment (git, api, redeploy, etc.)"
         },
         "inspectorUrl": {
-          "title": "Inspector URL",
+          "title": "Build Logs",
           "type": "string",
-          "format": "url"
+          "format": "url",
+          "description": "Vercel deployment inspector — build output, logs, and deployment details"
         }
       },
       "required": []
@@ -192,7 +193,15 @@
         "path": "project.$title"
       }
     },
-    "calculationProperties": {},
+    "calculationProperties": {
+      "runtimeLogsUrl": {
+        "title": "Runtime Logs",
+        "type": "string",
+        "format": "url",
+        "description": "Live function and edge runtime logs for this deployment's project",
+        "calculation": ".properties.inspectorUrl | if . then (split(\"/\") | .[0:5] | join(\"/\")) + \"/logs\" else null end"
+      }
+    },
     "relations": {
       "project": {
         "title": "Project",

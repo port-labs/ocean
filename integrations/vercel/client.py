@@ -62,9 +62,7 @@ class VercelClient:
 
     async def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         if self._client is None:
-            raise RuntimeError(
-                "Client not initialised — use as async context manager"
-            )
+            raise RuntimeError("Client not initialised — use as async context manager")
         response = await self._client.get(path, params=params)
         response.raise_for_status()
         return response.json()

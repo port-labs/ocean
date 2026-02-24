@@ -17,6 +17,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import VercelClient, create_client
+from utils import extract_entity
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +151,7 @@ async def handle_vercel_webhook(request: Request) -> Response:
     # Vercel webhook payload shape:
     # { "type": "deployment.created", "payload": { "deployment": {...} } }
     event_payload = payload.get("payload", {})
-    entity_data = _extract_entity(kind, event_payload)
+    entity_data = extract_entity(kind, event_payload)
 
     if event_type in _DELETION_EVENTS:
         await _handle_deletion(kind, entity_data)
@@ -161,17 +162,6 @@ async def handle_vercel_webhook(request: Request) -> Response:
 
 
 # ── Webhook helpers ────────────────────────────────────────────────────────────
-
-
-def _extract_entity(kind: str, event_payload: dict[str, Any]) -> dict[str, Any]:
-    """Pull the primary entity dict out of a Vercel webhook payload."""
-    if kind == "deployment":
-        return event_payload.get("deployment", event_payload)
-    if kind == "project":
-        return event_payload.get("project", event_payload)
-    if kind == "domain":
-        return event_payload.get("domain", event_payload)
-    return event_payload
 
 
 async def _handle_upsert(

@@ -176,6 +176,33 @@ async def test_pagination_follows_cursor(
     assert pages[1][0]["id"] == "prj_second"
 
 
+# ── get_all_projects_flat tests ────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_all_projects_flat_yields_individual_dicts(
+    httpx_mock: pytest_httpx.HTTPXMock,
+    vercel_token: str,
+    sample_project: dict[str, Any],
+) -> None:
+    """get_all_projects_flat should yield individual project dicts, not pages."""
+    second_project = {**sample_project, "id": "prj_second", "name": "second-app"}
+
+    httpx_mock.add_response(
+        url=f"https://api.vercel.com/v9/projects?limit={PAGE_LIMIT}",
+        json=_paginated_response([sample_project, second_project], "projects"),
+    )
+
+    async with VercelClient(token=vercel_token) as client:
+        projects = [p async for p in client.get_all_projects_flat()]
+
+    assert len(projects) == 2
+    assert projects[0]["id"] == sample_project["id"]
+    assert projects[1]["id"] == "prj_second"
+    # Each item should be a dict, not a list (i.e. not a page).
+    assert isinstance(projects[0], dict)
+
+
 # ── Webhook signature tests ────────────────────────────────────────────────────
 
 
