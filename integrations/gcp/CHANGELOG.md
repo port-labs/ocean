@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.1.259 (2026-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
+  
+=======
+## 0.1.258 (2026-02-23)
+
+
+### Bug Fixes
+
+- Fixed resource overload and crashes by bounding project concurrency, sharing gRPC client singletons, and adding post-fork safety
+
 
 ## 0.1.257 (2026-02-22)
 

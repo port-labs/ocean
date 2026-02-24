@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.7.15 (2026-02-24)
 
 
-### Features
+### Improvements
 
-- Added group and group-member kind
+- Bumped ocean version to ^0.37.2
 
 
 ## 0.7.14 (2026-02-24)
