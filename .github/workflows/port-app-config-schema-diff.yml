@@ -59,6 +59,9 @@ jobs:
       matrix:
         integration_folder: ${{ fromJson(needs.detect-changes.outputs.integrations) }}
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v5
+
       - name: Check Schema Diff
         uses: ./.github/actions/check-schema-diff
         with:
