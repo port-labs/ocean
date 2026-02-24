@@ -56,7 +56,7 @@ runs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        integration_type=$(grep -E '^name = ".*"' "${{ inputs.integration_folder }}/../pyproject.toml" | cut -d'"' -f2)
+        integration_type=$(grep -E '^name = ".*"' "${{ inputs.integration_folder }}/pyproject.toml" | cut -d'"' -f2)
         poetry run port-app-config schema . -o "$integration_type.revision.json"
         aws s3 cp "s3://ocean-registry/$integration_type/port-app-config.json" "$integration_type.base.json"
 
