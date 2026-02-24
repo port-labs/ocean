@@ -10,7 +10,9 @@ from port_ocean.core.handlers.webhook.webhook_event import (
     WebhookEventRawResults,
 )
 
-from github.core.exporters.deployment_status_exporter import RestDeploymentStatusExporter
+from github.core.exporters.deployment_status_exporter import (
+    RestDeploymentStatusExporter,
+)
 from github.webhook.webhook_processors.base_deployment_webhook_processor import (
     BaseDeploymentWebhookProcessor,
 )
@@ -34,21 +36,18 @@ class DeploymentStatusWebhookProcessor(BaseDeploymentWebhookProcessor):
     async def handle_event(
         self, payload: EventPayload, resource_config: ResourceConfig
     ) -> WebhookEventRawResults:
-        action = payload["action"]
         deployment = payload["deployment"]
         deployment_status = payload["deployment_status"]
+        repository = payload["repository"]
         deployment_id = str(deployment["id"])
         status_id = str(deployment_status["id"])
-        repo = payload["repository"]["name"]
-        resource_config_kind = resource_config.kind
+        repo = repository["name"]
         organization = self.get_webhook_payload_organization(payload)["login"]
-
-        logger.info(
-            f"Processing deployment status event: {action} for {resource_config_kind} in {repo} from {organization}"
-        )
-
         config = cast(GithubDeploymentStatusConfig, resource_config)
 
+        logger.info(
+            f"Processing deployment status event: for {resource_config.kind} in {repo} from {organization}"
+        )
         if not self._check_deployment_filters(config.selector, deployment):
             logger.info(
                 f"Deployment status {repo}/{status_id} filtered out by selector criteria"
@@ -86,10 +85,21 @@ class DeploymentStatusWebhookProcessor(BaseDeploymentWebhookProcessor):
     ) -> bool:
         """Check if deployment matches selector task and environment filters."""
 
-        if selector.task and deployment["task"] != selector.task:
+        deployment_task = deployment["task"]
+        deployment_environment = deployment["environment"]
+
+        if selector.task and deployment_task != selector.task:
+            logger.debug(
+                f"Deployment filtered: task mismatch "
+                f"(selector={selector.task}, deployment={deployment_task})"
+            )
             return False
 
-        if selector.environment and deployment["environment"] != selector.environment:
+        if selector.environment and deployment_environment != selector.environment:
+            logger.debug(
+                f"Deployment filtered: environment mismatch "
+                f"(selector={selector.environment}, deployment={deployment_environment})"
+            )
             return False
 
         return True

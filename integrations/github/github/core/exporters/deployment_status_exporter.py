@@ -1,4 +1,4 @@
-from typing import cast, Optional
+from typing import Optional
 from github.clients.http.rest_client import GithubRestClient
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.utils import (
@@ -32,12 +32,8 @@ class RestDeploymentStatusExporter(AbstractGithubExporter[GithubRestClient]):
             )
             return None
 
-        logger.info(
-            f"Fetched deployment status {status_id} for deployment {deployment_id} from repository {repo_name} from {organization}"
-        )
-
         enriched = enrich_with_organization(
-            enrich_with_repository(response, cast(str, repo_name)), organization
+            enrich_with_repository(response, repo_name), organization
         )
         enriched["__deployment_id"] = deployment_id
         return enriched
@@ -59,7 +55,7 @@ class RestDeploymentStatusExporter(AbstractGithubExporter[GithubRestClient]):
             batch = []
             for status in statuses:
                 enriched = enrich_with_organization(
-                    enrich_with_repository(status, cast(str, repo_name)),
+                    enrich_with_repository(status, repo_name),
                     organization,
                 )
                 enriched["__deployment_id"] = deployment_id
