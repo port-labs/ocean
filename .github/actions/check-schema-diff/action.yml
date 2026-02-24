@@ -38,12 +38,6 @@ runs:
       with:
         python-version: '3.12'
 
-    - name: Cache integration venv
-      uses: actions/cache@v4
-      with:
-        path: ${{ inputs.integration_folder }}/.venv
-        key: venv-${{ hashFiles(format('{0}/poetry.lock', inputs.integration_folder)) }}
-
     - name: Install dependencies
       shell: bash
       working-directory: ${{ inputs.integration_folder }}
@@ -63,7 +57,7 @@ runs:
       run: |
         integration_type=$(grep -E '^name = ".*"' "pyproject.toml" | cut -d'"' -f2)
         poetry run ocean port-app-config schema . -o "$integration_type.revision.json"
-        aws s3 cp "s3://ocean-registry/$integration_type/port-app-config.json" "$integration_type.base.json"
+        aws s3 cp "s3://ocean-registry/$integration_type/port_app_config.json" "$integration_type.base.json"
 
         DIFF_OUTPUT=$(json-schema-diff "$integration_type.base.json" "$integration_type.revision.json" 2>&1) || true
 
