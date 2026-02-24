@@ -3599,6 +3599,56 @@ async def test_enrich_test_runs_with_results_and_coverage() -> None:
 
 
 @pytest.mark.asyncio
+async def test_enrich_test_runs_without_build() -> None:
+    """Test enriching test runs when some runs don't have a build (manual test runs)."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    test_runs = [
+        {
+            "id": 1,
+            "name": "Automated Run",
+            "build": {"id": 123},
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+        {
+            "id": 2,
+            "name": "Manual Run",
+            "project": {"id": "proj1", "name": "Project One"},
+        },
+    ]
+
+    from integration import CodeCoverageConfig
+
+    coverage_config = CodeCoverageConfig(flags=1)
+
+    async def mock_fetch_code_coverage(
+        project_id: str, build_id: int, config: CodeCoverageConfig
+    ) -> Dict[str, Any]:
+        return {"coverageData": {"linesCovered": 100, "linesNotCovered": 50}}
+
+    with patch.object(
+        client,
+        "_fetch_code_coverage",
+        side_effect=mock_fetch_code_coverage,
+    ):
+        enriched_test_runs = await client._enrich_test_runs(
+            test_runs, "proj1", include_results=False, coverage_config=coverage_config
+        )
+
+        assert len(enriched_test_runs) == 2
+
+        assert "__codeCoverage" in enriched_test_runs[0]
+        assert (
+            enriched_test_runs[0]["__codeCoverage"]["coverageData"]["linesCovered"]
+            == 100
+        )
+        assert "__codeCoverage" in enriched_test_runs[1]
+        assert enriched_test_runs[1]["__codeCoverage"] == {}
+
+
+@pytest.mark.asyncio
 async def test_fetch_code_coverage() -> None:
     """Test fetching code coverage data."""
     client = AzureDevopsClient(
