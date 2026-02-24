@@ -3,13 +3,15 @@ on:
   workflow_dispatch:
     inputs:
       source_branch:
-        description: 'Source branch containing core changes'
-        required: true
+        description: 'Source branch containing core changes (defaults to the branch workflow is run from)'
+        required: false
         type: string
-      rc_version:
-        description: 'RC version (e.g., 0.38.0-rc1)'
+        default: ''
+      rc_number:
+        description: 'RC number (e.g., 1 for -rc1)'
         required: true
-        type: string
+        type: number
+        default: 1
       dry_run:
         description: 'Dry run - validate and build without publishing'
         required: false
@@ -35,7 +37,7 @@ jobs:
       - name: Check out source branch
         uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.source_branch }}
+          ref: ${{ inputs.source_branch || github.ref_name }}
           fetch-depth: 1
 
       - name: Log dry run mode
@@ -46,35 +48,36 @@ jobs:
       - name: Validate version format and pyproject.toml
         id: validate
         run: |
-          VERSION="${{ inputs.rc_version }}"
+          RC_NUMBER="${{ inputs.rc_number }}"
 
-          # Validate RC version format (X.Y.Z-rcN)
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+$ ]]; then
-            echo "::error::Invalid RC version format. Expected: X.Y.Z-rcN (e.g., 0.38.0-rc1)"
+          # Validate RC number is a positive integer
+          if [[ ! "$RC_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::Invalid RC number. Expected a positive integer (e.g., 1, 2, 3)"
             exit 1
           fi
 
-          # Check version in pyproject.toml matches
-          PYPROJECT_VERSION=$(grep -E '^version = ".*"' pyproject.toml | cut -d'"' -f2)
-          if [[ "$PYPROJECT_VERSION" != "$VERSION" ]]; then
-            echo "::error::Version in pyproject.toml ($PYPROJECT_VERSION) doesn't match input ($VERSION). Please update pyproject.toml on the source branch first."
+          # Get base version from pyproject.toml
+          BASE_VERSION=$(grep -E '^version = ".*"' pyproject.toml | cut -d'"' -f2)
+
+          # Validate base version format (X.Y.Z)
+          if [[ ! "$BASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version format in pyproject.toml ($BASE_VERSION). Expected: X.Y.Z"
             exit 1
           fi
+
+          # Construct full RC version
+          VERSION="${BASE_VERSION}-rc${RC_NUMBER}"
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version validation passed: $VERSION"
+          echo "Version validation passed: $VERSION (base: $BASE_VERSION, rc: $RC_NUMBER)"
 
-      - name: Check tag doesn't exist
+      - name: Check tag status
         run: |
-          if git ls-remote --tags origin | grep -q "refs/tags/v${{ inputs.rc_version }}$"; then
-            if [[ "${{ inputs.dry_run }}" == "true" ]]; then
-              echo "::warning::Tag v${{ inputs.rc_version }} already exists (ignored in dry run)"
-            else
-              echo "::error::Tag v${{ inputs.rc_version }} already exists. Use a different RC version."
-              exit 1
-            fi
+          VERSION="${{ steps.validate.outputs.version }}"
+          if git ls-remote --tags origin | grep -q "refs/tags/v${VERSION}$"; then
+            echo "::warning::Tag v${VERSION} already exists - will skip tag/release creation if re-running"
           else
-            echo "Tag v${{ inputs.rc_version }} does not exist. Proceeding..."
+            echo "Tag v${VERSION} does not exist. Will create during release."
           fi
 
   publish-core-rc:
@@ -90,9 +93,30 @@ jobs:
       - name: Checkout source branch
         uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.source_branch }}
+          ref: ${{ inputs.source_branch || github.ref_name }}
+
+      - name: Check if package already exists on PyPI
+        id: check-pypi
+        run: |
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          if curl -sH "Cache-Control: no-cache" "https://pypi.org/pypi/port-ocean/${VERSION}/json" -o /dev/null -w "%{http_code}" | grep -q "200"; then
+            echo "::notice::Package port-ocean==$VERSION already exists on PyPI, skipping publish"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Package port-ocean==$VERSION not found on PyPI, will publish"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update version in pyproject.toml to RC version
+        if: steps.check-pypi.outputs.exists != 'true'
+        run: |
+          RC_VERSION="${{ needs.validate-inputs.outputs.version }}"
+          sed -i "s/^version = \".*\"/version = \"$RC_VERSION\"/" pyproject.toml
+          echo "Updated pyproject.toml version to: $RC_VERSION"
+          grep "^version" pyproject.toml
 
       - name: Build package
+        if: steps.check-pypi.outputs.exists != 'true'
         run: |
           make install
           make build
@@ -100,7 +124,7 @@ jobs:
           ls -la dist/
 
       - name: Publish package to PyPI
-        if: inputs.dry_run != true
+        if: inputs.dry_run != true && steps.check-pypi.outputs.exists != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: ${{ env.PYPI_USERNAME }}
@@ -108,22 +132,25 @@ jobs:
           packages-dir: ${{ github.workspace }}/dist
 
       - name: '[DRY RUN] Skip PyPI publish'
-        if: inputs.dry_run
+        if: inputs.dry_run && steps.check-pypi.outputs.exists != 'true'
         run: |
           echo "::notice::🧪 DRY RUN: Would publish to PyPI:"
           ls -la dist/
-          echo "Package: port-ocean==${{ inputs.rc_version }}"
+          echo "Package: port-ocean==${{ needs.validate-inputs.outputs.version }}"
 
       - name: Wait for package to be available on PyPI
-        if: inputs.dry_run != true
+        if: inputs.dry_run != true && steps.check-pypi.outputs.exists != 'true'
         run: |
-          VERSION="${{ inputs.rc_version }}"
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
           MAX_ATTEMPTS=30
           ATTEMPT=0
 
           echo "Waiting for port-ocean==$VERSION to be available on PyPI..."
 
-          while ! curl -s https://pypi.org/pypi/port-ocean/json | jq -e ".releases | has(\"$VERSION\")" > /dev/null; do
+          # Initial delay to allow PyPI to process the upload
+          sleep 30
+
+          while ! curl -sH "Cache-Control: no-cache" "https://pypi.org/pypi/port-ocean/${VERSION}/json" -o /dev/null -w "%{http_code}" | grep -q "200"; do
             ATTEMPT=$((ATTEMPT + 1))
             if [ $ATTEMPT -ge $MAX_ATTEMPTS ]; then
               echo "::error::Timeout waiting for package $VERSION to be available on PyPI after $((MAX_ATTEMPTS * 10)) seconds"
@@ -150,13 +177,26 @@ jobs:
       - name: Checkout source branch
         uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.source_branch }}
+          ref: ${{ inputs.source_branch || github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Check if tag already exists
+        id: check-tag
+        run: |
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          if git ls-remote --tags origin | grep -q "refs/tags/v${VERSION}$"; then
+            echo "::notice::Tag v${VERSION} already exists, skipping tag creation"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Tag v${VERSION} does not exist, will create"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create and push tag
-        if: inputs.dry_run != true
+        if: inputs.dry_run != true && steps.check-tag.outputs.exists != 'true'
         run: |
-          VERSION="${{ inputs.rc_version }}"
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git tag -a "v${VERSION}" -m "Release Candidate ${VERSION}"
@@ -166,15 +206,15 @@ jobs:
       - name: '[DRY RUN] Skip tag creation'
         if: inputs.dry_run
         run: |
-          echo "::notice::🧪 DRY RUN: Would create tag v${{ inputs.rc_version }}"
+          echo "::notice::🧪 DRY RUN: Would create tag v${{ needs.validate-inputs.outputs.version }}"
           echo "Current commit: $(git rev-parse HEAD)"
 
       - name: Create GitHub Release (Pre-release)
-        if: inputs.dry_run != true
+        if: inputs.dry_run != true && steps.check-tag.outputs.exists != 'true'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ inputs.rc_version }}
-          name: Ocean Framework ${{ inputs.rc_version }} (RC)
+          tag_name: v${{ needs.validate-inputs.outputs.version }}
+          name: Ocean Framework ${{ needs.validate-inputs.outputs.version }} (RC)
           generate_release_notes: true
           draft: false
           prerelease: true
@@ -184,7 +224,7 @@ jobs:
       - name: '[DRY RUN] Skip GitHub release'
         if: inputs.dry_run
         run: |
-          echo "::notice::🧪 DRY RUN: Would create GitHub pre-release: Ocean Framework ${{ inputs.rc_version }} (RC)"
+          echo "::notice::🧪 DRY RUN: Would create GitHub pre-release: Ocean Framework ${{ needs.validate-inputs.outputs.version }} (RC)"
 
   prepare-matrix:
     name: Prepare integration matrix
@@ -196,7 +236,7 @@ jobs:
       - name: Check out source branch
         uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.source_branch }}
+          ref: ${{ inputs.source_branch || github.ref_name }}
 
       - name: Prepare matrix of integrations
         id: prepare-matrix
@@ -263,7 +303,7 @@ jobs:
   build-rc-integrations:
     name: Build RC integration images
     runs-on: ubuntu-latest
-    needs: [prepare-matrix, publish-core-rc]
+    needs: [validate-inputs, prepare-matrix, publish-core-rc]
     if: needs.prepare-matrix.outputs.matrix != '[]'
     permissions:
       packages: write
@@ -277,7 +317,7 @@ jobs:
       - name: Check out source branch
         uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.source_branch }}
+          ref: ${{ inputs.source_branch || github.ref_name }}
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -310,19 +350,22 @@ jobs:
           echo "dockerfile_path=$dockerfile_path" >> $GITHUB_OUTPUT
 
           # RC tag format: rc-{rc_version}
-          RC_VERSION="${{ inputs.rc_version }}"
+          RC_VERSION="${{ needs.validate-inputs.outputs.version }}"
           tags="ghcr.io/port-labs/port-ocean-$type:rc-$RC_VERSION"
           echo "tags=$tags" >> $GITHUB_OUTPUT
 
           echo "Building $type with RC tag: rc-$RC_VERSION"
 
-      - name: Update integration to use RC core version
+      - name: Update integration to use RC version
         run: |
-          RC_VERSION="${{ inputs.rc_version }}"
+          RC_VERSION="${{ needs.validate-inputs.outputs.version }}"
           INTEGRATION_DIR="${{ steps.prepare_tags.outputs.context_dir }}"
           PYPROJECT_FILE="$INTEGRATION_DIR/pyproject.toml"
 
-          echo "Updating $PYPROJECT_FILE to use port-ocean==$RC_VERSION"
+          echo "Updating $PYPROJECT_FILE to RC version $RC_VERSION"
+
+          # Update the integration's own version to RC version
+          sed -i "s/^version = \".*\"/version = \"$RC_VERSION\"/" "$PYPROJECT_FILE"
 
           # Replace the port_ocean dependency line with exact RC version
           # Match patterns like: port_ocean = {version = "^0.37.1", extras = ["cli"]}
@@ -330,7 +373,7 @@ jobs:
           sed -i "s/port_ocean = {version = \"[^\"]*\"/port_ocean = {version = \"==$RC_VERSION\"/g" "$PYPROJECT_FILE"
 
           echo "Updated pyproject.toml:"
-          grep "port_ocean" "$PYPROJECT_FILE"
+          grep -E "^version|port_ocean" "$PYPROJECT_FILE"
 
       - name: Regenerate poetry.lock with RC core
         if: inputs.dry_run != true
@@ -345,7 +388,7 @@ jobs:
         run: |
           echo "::notice::🧪 DRY RUN: Would regenerate poetry.lock for ${{ steps.prepare_tags.outputs.type }}"
           echo "Integration: ${{ steps.prepare_tags.outputs.type }}"
-          echo "RC Core Version: ${{ inputs.rc_version }}"
+          echo "RC Core Version: ${{ needs.validate-inputs.outputs.version }}"
 
       - name: Build Docker Image
         if: inputs.dry_run != true
@@ -356,7 +399,7 @@ jobs:
           tags: ${{ steps.prepare_tags.outputs.tags }}
           build-args: |
             BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
-            INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
+            INTEGRATION_VERSION=${{ needs.validate-inputs.outputs.version }}
           docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
           docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
 
@@ -367,7 +410,7 @@ jobs:
           echo "Image: ${{ steps.prepare_tags.outputs.tags }}"
           echo "Dockerfile: ${{ steps.prepare_tags.outputs.dockerfile_path }}"
           echo "Build context: ${{ steps.prepare_tags.outputs.context_dir }}"
-          echo "Integration version: ${{ steps.prepare_tags.outputs.version }}"
+          echo "Integration version: ${{ needs.validate-inputs.outputs.version }}"
 
   summary:
     name: RC Release Summary
@@ -386,8 +429,8 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
 
-          echo "**Version:** ${{ inputs.rc_version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Source Branch:** ${{ inputs.source_branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ needs.validate-inputs.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Source Branch:** ${{ inputs.source_branch || github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           if [[ -n "${{ inputs.integration_filter }}" ]]; then
             echo "**Integration Filter:** ${{ inputs.integration_filter }}" >> $GITHUB_STEP_SUMMARY
           else
@@ -406,12 +449,12 @@ jobs:
 
           if [[ "${{ inputs.dry_run }}" != "true" && "${{ needs.publish-core-rc.result }}" == "success" ]]; then
             echo "### Published Artifacts" >> $GITHUB_STEP_SUMMARY
-            echo "- **PyPI:** \`pip install port-ocean==${{ inputs.rc_version }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- **Docker Images:** \`ghcr.io/port-labs/port-ocean-{integration}:rc-${{ inputs.rc_version }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- **GitHub Release:** [v${{ inputs.rc_version }}](https://github.com/${{ github.repository }}/releases/tag/v${{ inputs.rc_version }})" >> $GITHUB_STEP_SUMMARY
+            echo "- **PyPI:** \`pip install port-ocean==${{ needs.validate-inputs.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Docker Images:** \`ghcr.io/port-labs/port-ocean-{integration}:rc-${{ needs.validate-inputs.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **GitHub Release:** [v${{ needs.validate-inputs.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate-inputs.outputs.version }})" >> $GITHUB_STEP_SUMMARY
           elif [[ "${{ inputs.dry_run }}" == "true" ]]; then
             echo "### Would Have Published (Dry Run)" >> $GITHUB_STEP_SUMMARY
-            echo "- **PyPI:** \`pip install port-ocean==${{ inputs.rc_version }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- **Docker Images:** \`ghcr.io/port-labs/port-ocean-{integration}:rc-${{ inputs.rc_version }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- **GitHub Release:** v${{ inputs.rc_version }} (pre-release)" >> $GITHUB_STEP_SUMMARY
+            echo "- **PyPI:** \`pip install port-ocean==${{ needs.validate-inputs.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Docker Images:** \`ghcr.io/port-labs/port-ocean-{integration}:rc-${{ needs.validate-inputs.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **GitHub Release:** v${{ needs.validate-inputs.outputs.version }} (pre-release)" >> $GITHUB_STEP_SUMMARY
           fi

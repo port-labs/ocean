@@ -23,7 +23,7 @@ from wcmatch import glob
 from github.clients.utils import get_mono_repo_organization
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.core.options import FileSearchOptions, ListFileSearchOptions
-from github.helpers.utils import GithubClientType
+from github.helpers.utils import GithubClientType, matches_glob_pattern
 from github.helpers.repo_selectors import (
     CompositeRepositorySelector,
     OrganizationLoginAndTypeGenerator,
@@ -171,9 +171,7 @@ def match_file_path_against_glob_pattern(path: str, pattern: str) -> bool:
     Match file path against a glob pattern using wcmatch's globmatch.
     Supports ** and other extended glob syntax.
     """
-    return glob.globmatch(
-        path, pattern, flags=glob.GLOBSTAR | glob.IGNORECASE | glob.DOTGLOB
-    )
+    return matches_glob_pattern(path, pattern, flags=glob.DOTGLOB)
 
 
 def determine_api_client_type_by_file_size(size: int) -> GithubClientType:

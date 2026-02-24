@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.43 (2026-02-24)
+
+
+### Improvements
+
+- Improved `includedFiles` enrichment for GitHub repository/folder/file kinds by introducing a reusable enrichment module, adding batch fetch caching/in-flight deduplication, and expanding test coverage.
+
+- Improved `includedFiles` path resolution for monorepos to resolve relative to each matched folder/file (and avoid accidental double-joining of base paths).
+
+
+## 5.0.42 (2026-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
+
+
 ## 5.0.41 (2026-02-24)
 
 
