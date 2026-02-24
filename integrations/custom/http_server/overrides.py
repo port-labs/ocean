@@ -1,5 +1,6 @@
-from enum import StrEnum
-from typing import ClassVar, Dict, Any, Optional
+from typing import ClassVar, Dict, Any, Literal, Optional
+
+HTTP_METHOD = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
 from pydantic import Field, BaseModel, root_validator
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -13,28 +14,16 @@ from http_server.exceptions import (
 )
 
 
-class AuthHttpMethod(StrEnum):
-    """Allowed HTTP methods for custom auth request."""
-
-    OPTIONS = "OPTIONS"
-    GET = "GET"
-    POST = "POST"
-    PUT = "PUT"
-    PATCH = "PATCH"
-    DELETE = "DELETE"
-
-
 class ApiPathParameter(BaseModel):
     """Configuration for API-discovered path parameters"""
 
     endpoint: str = Field(
         title="Endpoint", description="API endpoint to discover parameter values"
     )
-    method: AuthHttpMethod = Field(
+    method: HTTP_METHOD = Field(
         title="Method",
-        enum=AuthHttpMethod,
         description="HTTP method",
-        default=AuthHttpMethod.GET,
+        default="GET",
     )
     query_params: Optional[Dict[str, Any]] = Field(
         title="Query Parameters",
@@ -73,11 +62,11 @@ class HttpServerSelector(Selector):
         description="HTTP endpoint path (supports {param} templates)",
         default=None,
     )
-    method: AuthHttpMethod = Field(
+    method: str = Field(
+        enum=["GET", "POST", "PUT", "PATCH", "DELETE"],
         title="Method",
-        enum=AuthHttpMethod,
         description="HTTP method",
-        default=AuthHttpMethod.GET,
+        default="GET",
     )
     query_params: Optional[Dict[str, Any]] = Field(
         title="Query Parameters",
@@ -129,11 +118,10 @@ class CustomAuthRequestConfig(BaseModel):
         title="Endpoint",
         description="Endpoint path or full URL for authentication request (e.g., '/oauth/token' or 'https://auth.example.com/token')",
     )
-    method: AuthHttpMethod = Field(
+    method: HTTP_METHOD = Field(
         title="Method",
-        enum=AuthHttpMethod,
         description="HTTP method for authentication request",
-        default=AuthHttpMethod.POST,
+        default="POST",
     )
     headers: Optional[Dict[str, str]] = Field(
         title="Headers",

@@ -78,7 +78,7 @@ class TestCustomAuthRequestConfigValidation:
                 endpoint="/oauth/token",
                 method="INVALID",
             )
-        assert "value is not a valid enumeration member" in str(exc_info.value)
+        assert "1 validation error for CustomAuthRequestConfig" in str(exc_info.value)
 
     def test_valid_methods(self) -> None:
         """Test that all valid HTTP methods pass validation"""
