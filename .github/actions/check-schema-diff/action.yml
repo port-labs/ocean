@@ -62,7 +62,7 @@ runs:
         GH_TOKEN: ${{ github.token }}
       run: |
         integration_type=$(grep -E '^name = ".*"' "pyproject.toml" | cut -d'"' -f2)
-        poetry run port-app-config schema . -o "$integration_type.revision.json"
+        poetry run ocean port-app-config schema . -o "$integration_type.revision.json"
         aws s3 cp "s3://ocean-registry/$integration_type/port-app-config.json" "$integration_type.base.json"
 
         DIFF_OUTPUT=$(json-schema-diff "$integration_type.base.json" "$integration_type.revision.json" 2>&1) || true
