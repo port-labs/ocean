@@ -16,6 +16,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 from github.webhook.webhook_processors.repository_webhook_processor import (
     RepositoryWebhookProcessor,
 )
+from github.helpers.utils import ObjectKind
 from integration import GithubRepositoryConfig, GithubRepositorySelector
 
 
@@ -46,7 +47,7 @@ def sample_repo() -> dict[str, Any]:
 @pytest.fixture
 def resource_config_with_included_files() -> GithubRepositoryConfig:
     return GithubRepositoryConfig(
-        kind="repository",
+        kind=ObjectKind.REPOSITORY,
         selector=GithubRepositorySelector(
             query="true",
             includedFiles=["README.md", "CODEOWNERS"],
@@ -67,7 +68,7 @@ def resource_config_with_included_files() -> GithubRepositoryConfig:
 @pytest.fixture
 def resource_config_without_included_files() -> GithubRepositoryConfig:
     return GithubRepositoryConfig(
-        kind="repository",
+        kind=ObjectKind.REPOSITORY,
         selector=GithubRepositorySelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
