@@ -1,7 +1,7 @@
 """
 Async Vercel REST API client.
 
-Handles authentication, pagination, and rate-limit back-off for all resources
+Handles authentication and cursor-based pagination for all resources
 surfaced by this Ocean integration (teams, projects, deployments, domains).
 
 Vercel API docs: https://vercel.com/docs/rest-api
@@ -61,9 +61,10 @@ class VercelClient:
         return params
 
     async def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
-        assert (
-            self._client is not None
-        ), "Client not initialised — use as async context manager"
+        if self._client is None:
+            raise RuntimeError(
+                "Client not initialised — use as async context manager"
+            )
         response = await self._client.get(path, params=params)
         response.raise_for_status()
         return response.json()
