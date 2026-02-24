@@ -1,16 +1,20 @@
+from http import HTTPStatus
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, cast
 from _pytest.fixtures import SubRequest
 import pytest
 import asyncio
 import gzip
 import time
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 import httpx
 
 from github.clients.auth.abstract_authenticator import AbstractGitHubAuthenticator
+from github.clients.auth.retry_transport import GitHubRetryTransport
 from github.clients.http.base_client import AbstractGithubClient
 from github.clients.rate_limiter.utils import GitHubRateLimiterConfig, RateLimitInfo
 from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
+from github.helpers.utils import IgnoredError
+from port_ocean.helpers.retry import RetryConfig
 
 
 @pytest.fixture(params=[("rest", 5), ("graphql", 5), ("search", 5)])
@@ -88,6 +92,89 @@ class _DummyBaseClient(AbstractGithubClient):
         params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
         ignored_errors: Optional[List[Any]] = None,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if False:
+            yield []
+
+
+# Helpers and constants for rate-limit issue TDD tests (see GITHUB_RATE_LIMIT_ISSUES.md)
+RATE_LIMIT_HEADERS = {
+    "x-ratelimit-limit": "5000",
+    "x-ratelimit-remaining": "0",
+    "x-ratelimit-reset": str(int(time.time()) + 3600),
+}
+SECONDARY_RATE_LIMIT_HEADERS = {"Retry-After": "60"}
+GITHUB_HOST = "https://api.github.com"
+REST_CONFIG = GitHubRateLimiterConfig(api_type="rest", max_concurrent=10)
+
+
+def _make_response(
+    status_code: int,
+    headers: dict[str, str],
+    url: str = "https://api.github.com/repos",
+) -> httpx.Response:
+    request = httpx.Request("GET", url)
+    return httpx.Response(status_code, request=request, headers=headers, content=b"{}")
+
+
+class _SequenceAuthenticator:
+    """Authenticator whose .client.request() returns responses from a pre-set list."""
+
+    def __init__(
+        self,
+        responses: list[httpx.Response],
+        delay_before_return: Optional[asyncio.Event] = None,
+    ) -> None:
+        self._responses = list(responses)
+        self._call_count = 0
+        self._delay_before_return = delay_before_return
+        self.client = self
+
+    async def get_headers(self, **kwargs: Any) -> _DummyHeaders:
+        return _DummyHeaders()
+
+    async def request(self, **kwargs: Any) -> httpx.Response:
+        idx = min(self._call_count, len(self._responses) - 1)
+        resp = self._responses[idx]
+        self._call_count += 1
+        if self._delay_before_return is not None:
+            await self._delay_before_return.wait()
+        return resp
+
+    @property
+    def call_count(self) -> int:
+        return self._call_count
+
+
+class _DummyClient(AbstractGithubClient):
+    """Concrete client for rate-limit issue tests (base_url = github_host)."""
+
+    def __init__(
+        self,
+        github_host: str,
+        authenticator: Any,
+        config: GitHubRateLimiterConfig,
+    ) -> None:
+        self._config = config
+        super().__init__(
+            github_host=github_host,
+            authenticator=cast(AbstractGitHubAuthenticator, authenticator),
+        )
+
+    @property
+    def base_url(self) -> str:
+        return self.github_host
+
+    @property
+    def rate_limiter_config(self) -> GitHubRateLimiterConfig:
+        return self._config
+
+    async def send_paginated_request(
+        self,
+        resource: str,
+        params: Optional[Dict[str, Any]] = None,
+        method: str = "GET",
+        ignored_errors: Optional[List[IgnoredError]] = None,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         if False:
             yield []
@@ -345,3 +432,235 @@ class TestBaseClientRateLimit403Mapping:
 
         with pytest.raises(httpx.HTTPStatusError):
             await client.make_request(resource, ignore_default_errors=False)
+
+
+# ---------------------------------------------------------------------------
+# TDD tests for the three rate-limit issues (GITHUB_RATE_LIMIT_ISSUES.md).
+# They assert desired behavior and FAIL until the code is fixed; when an issue
+# is fixed, the corresponding test passes and the name documents what was fixed.
+# ---------------------------------------------------------------------------
+
+
+class TestIssue1_RateLimiterUpdatedTooLate:
+    """
+    Issue 1: Rate limiter is only updated in the finally block, so concurrent
+    requests see stale info. When fixed: the limiter is updated as soon as we
+    receive a rate-limit response.
+    """
+
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_see_exhausted_quota_when_other_has_403(
+        self,
+    ) -> None:
+        """When fixed: request B sees remaining <= 1 while A is stuck in transport with 403."""
+        limiter = GitHubRateLimiterRegistry.get_limiter(GITHUB_HOST, REST_CONFIG)
+        limiter.rate_limit_info = RateLimitInfo(
+            remaining=100, limit=5000, reset_time=int(time.time()) + 3600
+        )
+
+        transport_gate = asyncio.Event()
+        rate_limit_403 = _make_response(403, RATE_LIMIT_HEADERS)
+        request_a_inside_transport = asyncio.Event()
+        request_b_result: dict[str, Any] = {}
+
+        async def request_a() -> None:
+            auth = _SequenceAuthenticator(
+                [rate_limit_403], delay_before_return=transport_gate
+            )
+            client = _DummyClient(GITHUB_HOST, auth, REST_CONFIG)
+            request_a_inside_transport.set()
+            try:
+                await client.make_request("https://api.github.com/repos")
+            except httpx.HTTPStatusError:
+                pass
+
+        async def request_b() -> None:
+            await request_a_inside_transport.wait()
+            await asyncio.sleep(0)
+            request_b_result["remaining_before"] = (
+                limiter.rate_limit_info.remaining if limiter.rate_limit_info else None
+            )
+            transport_gate.set()
+
+        await asyncio.gather(
+            asyncio.create_task(request_a()),
+            asyncio.create_task(request_b()),
+        )
+
+        assert request_b_result["remaining_before"] is not None
+        assert request_b_result["remaining_before"] <= 1, (
+            "Rate limiter should be updated as soon as a 403 rate-limit response is "
+            "received, so other concurrent requests see remaining <= 1."
+        )
+
+    @pytest.mark.asyncio
+    async def test_limiter_updated_eagerly_while_transport_retries(self) -> None:
+        """When fixed: limiter shows remaining=0 while request is still in transport."""
+        transport_gate = asyncio.Event()
+        rate_limit_403 = _make_response(403, RATE_LIMIT_HEADERS)
+        auth = _SequenceAuthenticator(
+            [rate_limit_403], delay_before_return=transport_gate
+        )
+        client = _DummyClient(GITHUB_HOST, auth, REST_CONFIG)
+        client.rate_limiter.rate_limit_info = RateLimitInfo(
+            remaining=500, limit=5000, reset_time=int(time.time()) + 3600
+        )
+
+        remaining_snapshots: list[int] = []
+
+        async def run_request() -> None:
+            try:
+                await client.make_request("https://api.github.com/repos")
+            except httpx.HTTPStatusError:
+                pass
+
+        async def monitor_limiter() -> None:
+            await asyncio.sleep(0)
+            info = client.rate_limiter.rate_limit_info
+            remaining_snapshots.append(info.remaining if info else -1)
+            transport_gate.set()
+
+        await asyncio.gather(
+            asyncio.create_task(run_request()),
+            asyncio.create_task(monitor_limiter()),
+        )
+
+        assert remaining_snapshots == [0], (
+            "Rate limiter should be updated from rate-limit response headers "
+            "as soon as the response is received, not only in the finally block."
+        )
+
+
+class TestIssue2_PostNotRetried:
+    """
+    Issue 2: POST is not in retryable_methods, so GraphQL requests are never retried.
+    When fixed: POST is retried like GET.
+    """
+
+    @pytest.mark.asyncio
+    async def test_github_retry_transport_retries_post_requests(self) -> None:
+        """When fixed: a POST that gets 429 is retried and eventually succeeds."""
+        call_count = 0
+
+        async def mock_transport_handler(request: httpx.Request) -> httpx.Response:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return httpx.Response(
+                    429,
+                    request=request,
+                    headers={"Retry-After": "1"},
+                    content=b"{}",
+                )
+            return httpx.Response(200, request=request, content=b"{}")
+
+        inner_transport = MagicMock(spec=httpx.AsyncBaseTransport)
+        inner_transport.handle_async_request = mock_transport_handler
+
+        retry_config = RetryConfig(
+            retry_after_headers=["Retry-After", "X-RateLimit-Reset"],
+            additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
+            max_backoff_wait=1800,
+        )
+        transport = GitHubRetryTransport(
+            wrapped_transport=inner_transport,
+            retry_config=retry_config,
+        )
+
+        request = httpx.Request("POST", "https://api.github.com/graphql")
+        response = await transport.handle_async_request(request)
+
+        assert response.status_code == 200, (
+            "POST requests should be retried on 429/403 rate-limit and succeed."
+        )
+        assert call_count >= 2, (
+            "Transport should retry POST (at least 2 calls: first 429, then success)."
+        )
+
+
+class TestIssue3_SecondaryRateLimitSwallowed:
+    """
+    Issue 3: 403 with only Retry-After (secondary rate limit) is treated as
+    "permission denied" and returns empty data. When fixed: secondary rate-limit
+    403 is either retried or raised, not silently ignored.
+    """
+
+    @pytest.mark.asyncio
+    async def test_secondary_rate_limit_403_raises_instead_of_empty_response(
+        self,
+    ) -> None:
+        """When fixed: 403 with Retry-After (secondary rate limit) is not silently ignored."""
+        secondary_403 = _make_response(403, SECONDARY_RATE_LIMIT_HEADERS)
+        auth = _SequenceAuthenticator([secondary_403])
+        client = _DummyClient(GITHUB_HOST, auth, REST_CONFIG)
+
+        with pytest.raises(httpx.HTTPStatusError) as exc_info:
+            await client.make_request("https://api.github.com/repos")
+
+        assert exc_info.value.response.status_code == 403
+        assert exc_info.value.response.headers.get("Retry-After") == "60", (
+            "Secondary rate-limit 403 (with Retry-After) should be treated as a "
+            "rate limit error and raised (or retried), not returned as empty 200."
+        )
+
+
+class TestRateLimitIssuesControl:
+    """Current correct behavior; these pass and should stay passing."""
+
+    @pytest.mark.asyncio
+    async def test_primary_rate_limit_403_is_raised(self) -> None:
+        """403 with x-ratelimit-remaining: 0 is correctly raised (not ignored)."""
+        primary_403 = _make_response(403, RATE_LIMIT_HEADERS)
+        auth = _SequenceAuthenticator([primary_403])
+        client = _DummyClient(GITHUB_HOST, auth, REST_CONFIG)
+
+        with pytest.raises(httpx.HTTPStatusError) as exc:
+            await client.make_request("https://api.github.com/repos")
+        assert exc.value.response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_plain_permission_403_is_ignored(self) -> None:
+        """403 with no rate-limit headers is correctly ignored (permission error)."""
+        permission_403 = _make_response(403, {})
+        auth = _SequenceAuthenticator([permission_403])
+        client = _DummyClient(GITHUB_HOST, auth, REST_CONFIG)
+
+        response = await client.make_request("https://api.github.com/repos")
+        assert response.status_code == 200
+        assert response.content == b"{}"
+
+    @pytest.mark.asyncio
+    async def test_get_request_is_retried(self) -> None:
+        """GET that gets 429 is retried and succeeds (baseline)."""
+        call_count = 0
+
+        async def mock_transport_handler(request: httpx.Request) -> httpx.Response:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return httpx.Response(
+                    429,
+                    request=request,
+                    headers={"Retry-After": "1"},
+                    content=b"{}",
+                )
+            return httpx.Response(200, request=request, content=b"{}")
+
+        inner_transport = MagicMock(spec=httpx.AsyncBaseTransport)
+        inner_transport.handle_async_request = mock_transport_handler
+
+        retry_config = RetryConfig(
+            retry_after_headers=["Retry-After", "X-RateLimit-Reset"],
+            additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
+            max_backoff_wait=1800,
+        )
+        transport = GitHubRetryTransport(
+            wrapped_transport=inner_transport,
+            retry_config=retry_config,
+        )
+
+        request = httpx.Request("GET", "https://api.github.com/repos")
+        response = await transport.handle_async_request(request)
+
+        assert response.status_code == 200
+        assert call_count == 2
