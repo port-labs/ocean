@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.7.14 (2026-02-24)
+## 0.7.15 (2026-02-24)
 
 
 ### Bug Fixes
 
 - Fixed bug with pipeline builds pagination returning only the first page
+
+
+## 0.7.14 (2026-02-24)
+
+
+### Improvements
+
+- PortAppConfig model strict kinds enforcements
 
 
 ## 0.7.13 (2026-02-22)
