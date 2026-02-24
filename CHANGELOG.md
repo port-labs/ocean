@@ -7,6 +7,26 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.37.2 (2026-02-22)
+
+### Bug fixes
+
+- Extended read-only filesystem support to work with arbitrary UID and GID combinations.
+
+## 0.37.1 (2026-02-22)
+
+### Bug fixes
+
+Fixed advanced config structure in ui schema generation
+
+
+## 0.37.0 (2026-02-22)
+
+### Improvements
+
+- Release workflow now uploads integration specs to versioned S3 paths (`integration/version/spec.json`) and uploads port-app-config and UI schemas to S3 per integration version (generated via `ocean port-app-config schema` in release)
+
+
 ## 0.36.0 (2026-02-17)
 
 ### Improvements
