@@ -926,6 +926,20 @@ MarkupSafe = ">=2.0"
 i18n = ["Babel (>=2.7)"]
 
 [[package]]
+name = "jinja2-strcase"
+version = "0.0.2"
+description = "A python package for converting string case in jinja2 templates"
+optional = false
+python-versions = "*"
+files = [
+    {file = "jinja2-strcase-0.0.2.tar.gz", hash = "sha256:d90c37f7bd40d345aacc8f78b087f66e6c5aa4c968ab23a791573fcf756c3379"},
+    {file = "jinja2_strcase-0.0.2-py2.py3-none-any.whl", hash = "sha256:e3067062f6158cd836ab495f805fc0d1d83cf92049e180509b004db86f6b745c"},
+]
+
+[package.dependencies]
+jinja2 = "*"
+
+[[package]]
 name = "jinja2-time"
 version = "0.2.0"
 description = "Jinja2 Extension for Dates and Times"
@@ -1053,6 +1067,17 @@ files = [
     {file = "jq-1.8.0-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:57e8bcdf2a744ee702542f3441fb2583db7f28602a6a2ff4a6d7009a11fafc86"},
     {file = "jq-1.8.0-pp39-pypy39_pp73-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:b6f61ea995c11dd1877f0452d12aad2b2a617b965e31033d2e62db4a530e87c0"},
     {file = "jq-1.8.0.tar.gz", hash = "sha256:53141eebca4bf8b4f2da5e44271a8a3694220dfd22d2b4b2cfb4816b2b6c9057"},
+]
+
+[[package]]
+name = "jsonref"
+version = "1.1.0"
+description = "jsonref is a library for automatic dereferencing of JSON Reference objects for Python."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "jsonref-1.1.0-py3-none-any.whl", hash = "sha256:590dc7773df6c21cbf948b5dac07a72a251db28b0238ceecce0a2abfa8ec30a9"},
+    {file = "jsonref-1.1.0.tar.gz", hash = "sha256:32fe8e1d85af0fdefbebce950af85590b22b60f9e95443176adbde4e1ecea552"},
 ]
 
 [[package]]
@@ -1307,13 +1332,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.35.8"
+version = "0.37.2"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.35.8-py3-none-any.whl", hash = "sha256:067fa078a367d841b7a5ead2d610c6eb6b312b6f5e99e83fda782e6e112c03c6"},
-    {file = "port_ocean-0.35.8.tar.gz", hash = "sha256:af8d29fdf26b65870b5457bed084fbc072acf1ea28740f22f76bb0bff7bac748"},
+    {file = "port_ocean-0.37.2-py3-none-any.whl", hash = "sha256:9fcb35c1817bb1b749d7035bd07842a207ce20102d318e37f33ccbb12600cd83"},
+    {file = "port_ocean-0.37.2.tar.gz", hash = "sha256:28fd26e1c5da97cf8a4420c7fbee8935b814ed0a081a2bbf6871c8a0873a1b37"},
 ]
 
 [package.dependencies]
@@ -1328,9 +1353,11 @@ filelock = ">=3.20.1,<4.0.0"
 httpx = ">=0.28.1,<0.29.0"
 ijson = ">=3.4.0,<4.0.0"
 jinja2 = ">=3.1.6"
+jinja2-strcase = {version = ">=0.0.2,<0.0.3", optional = true, markers = "extra == \"cli\""}
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 jmespath = ">=1.0.1,<2.0.0"
 jq = ">=1.8.0,<2.0.0"
+jsonref = {version = ">=1.1.0,<2.0.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
 prometheus-client = ">=0.21.1,<0.22.0"
 psutil = ">=7.2.1,<8.0.0"
@@ -1350,7 +1377,7 @@ virtualenv = ">=20.36.1,<21.0.0"
 werkzeug = ">=3.1.5,<4.0.0"
 
 [package.extras]
-cli = ["click (>=8.1.3,<9.0.0)", "cookiecutter (>=2.1.1,<3.0.0)", "jinja2-time (>=0.2.0,<0.3.0)", "rich (>=13.4.1,<14.0.0)"]
+cli = ["click (>=8.1.3,<9.0.0)", "cookiecutter (>=2.1.1,<3.0.0)", "jinja2-strcase (>=0.0.2,<0.0.3)", "jinja2-time (>=0.2.0,<0.3.0)", "jsonref (>=1.1.0,<2.0.0)", "rich (>=13.4.1,<14.0.0)"]
 
 [[package]]
 name = "prometheus-client"
@@ -2041,4 +2068,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "0657f822800917b6c8e6094c74ec4610a3b8dbccec22732ed109321e57c9da40"
+content-hash = "f8d78f8b66cd6552f4efc11f8aaee7b2d507217bbcd6cebf11ef28d00a9e0714"
