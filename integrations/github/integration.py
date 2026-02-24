@@ -50,20 +50,23 @@ class RepoSearchSelector(Selector):
     )
 
 
-class GithubRepositorySelector(RepoSearchSelector):
-    include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
-        title="Additional Repository Data",
-        description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>",
-        default_factory=list,
-    )
+class IncludedFilesConfig(BaseModel):
     included_files: list[str] = Field(
         title="Included Files",
         alias="includedFiles",
         default_factory=list,
-        description=(
-            "List of file paths to fetch from the repository and attach to "
-            "the raw data under __includedFiles. E.g. ['README.md', 'CODEOWNERS']"
-        ),
+        description="File paths to fetch and attach to the folder entity.",
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GithubRepositorySelector(RepoSearchSelector, IncludedFilesConfig):
+    include: Optional[List[Literal["collaborators", "teams", "sbom"]]] = Field(
+        title="Additional Repository Data",
+        description="Fetch additional data related to the repository. The accepted values are: <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=teams%20with%20access%20to%20the%20repository'>teams</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=collaborators%20of%20the%20repository'>collaborators</a>, <a target='_blank' href='https://docs.port.io/build-your-software-catalog/sync-data-to-catalog/git/github-ocean/examples#:~:text=%3A%20Ingests%20the-,Software%20Bill%20of%20Materials%20(SBOM),-for%20the%20repository'>sbom</a>",
+        default_factory=list,
     )
 
 
@@ -93,16 +96,11 @@ class RepositoryBranchMapping(BaseModel):
         extra = "forbid"
 
 
-class FolderSelector(BaseModel):
+class RepositorySourceModel(BaseModel):
     organization: Optional[str] = Field(
         title="Organization",
         default=None,
         description="GitHub organization name.",
-    )
-    path: str = Field(
-        title="Path",
-        default="*",
-        description="Glob path for folders (e.g. '*' or 'src/**').",
     )
     repos: Optional[list[RepositoryBranchMapping]] = Field(
         title="Repositories",
@@ -112,50 +110,65 @@ class FolderSelector(BaseModel):
 
     class Config:
         extra = "forbid"
+  
+class FolderSelector(RepositorySourceModel, IncludedFilesConfig):
+    path: str = Field(default="*")
 
+    class Config:
+        extra = "forbid"
 
-class GithubFolderSelector(Selector):
+class GithubFolderSelector(Selector, IncludedFilesConfig):
     folders: list[FolderSelector] = Field(
         title="Folders",
         description="Folder definitions (path and repos) to ingest.",
+    )
+
+
+class GithubFilePattern(RepositorySourceModel):
+    path: str = Field(
+        title="Path",
+        alias="path",
+        description="Glob path to match files (e.g. '**/*.yaml').",
+    )
+    skip_parsing: bool = Field(
+        title="Skip Parsing",
+        default=False,
+        alias="skipParsing",
+        description="Return raw file content without parsing.",
+    )
+    validation_check: bool = Field(
+        title="Validation Check",
+        default=False,
+        alias="validationCheck",
+        description="Enable validation for this file pattern during pull request processing.",
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class GithubFileSelector(Selector, IncludedFilesConfig):
+    files: list[GithubFilePattern] = Field(
+        title="Files",
+        description="File patterns (path, repos) to ingest.",
     )
     included_files: list[str] = Field(
         title="Included Files",
         alias="includedFiles",
         default_factory=list,
-        description="File paths to fetch and attach to the folder entity.",
+        description="Additional file paths to fetch and attach to the file entity.",
     )
-
-
-class FolderSelector(RepositorySourceModel, IncludedFilesConfig):
-    path: str = Field(default="*")
-
-
-class GithubFolderSelector(Selector, IncludedFilesConfig):
-    folders: list[FolderSelector]
-
-
-class GithubFilePattern(RepositorySourceModel):
-    path: str = Field(description="Specify the path to match files from")
-    skip_parsing: bool = Field(
-        default=False,
-        alias="skipParsing",
-        description="Skip parsing the files and just return the raw file content",
-    )
-    validation_check: bool = Field(
-        default=False,
-        alias="validationCheck",
-        description="Enable validation for this file pattern during pull request processing",
-    )
-
-
-class GithubFileSelector(Selector, IncludedFilesConfig):
-    files: list[GithubFilePattern]
 
 
 class GithubFileResourceConfig(ResourceConfig):
-    kind: Literal["file"]
-    selector: GithubFileSelector
+    kind: Literal[ObjectKind.FILE] = Field(
+        title="Github File",
+        description="Github file resource kind.",
+    )
+    selector: GithubFileSelector = Field(
+        title="File selector",
+        description="Selector for the file resource.",
+    )
 
 
 class GithubUserSelector(Selector):
@@ -404,64 +417,6 @@ class GithubSecretScanningAlertConfig(ResourceConfig):
     kind: Literal[ObjectKind.SECRET_SCANNING_ALERT] = Field(
         title="Github Secret Scanning Alert",
         description="Github secret scanning alert resource kind.",
-    )
-
-
-class GithubFilePattern(BaseModel):
-    organization: Optional[str] = Field(
-        title="Organization",
-        default=None,
-        description="GitHub organization (optional).",
-    )
-    path: str = Field(
-        title="Path",
-        alias="path",
-        description="Glob path to match files (e.g. '**/*.yaml').",
-    )
-    repos: Optional[list[RepositoryBranchMapping]] = Field(
-        title="Repositories",
-        alias="repos",
-        description="Repositories and branches to fetch files from.",
-        default=None,
-    )
-    skip_parsing: bool = Field(
-        title="Skip Parsing",
-        default=False,
-        alias="skipParsing",
-        description="Return raw file content without parsing.",
-    )
-    validation_check: bool = Field(
-        title="Validation Check",
-        default=False,
-        alias="validationCheck",
-        description="Enable validation for this file pattern during pull request processing.",
-    )
-
-    class Config:
-        extra = "forbid"
-
-
-class GithubFileSelector(Selector):
-    files: list[GithubFilePattern] = Field(
-        title="Files",
-        description="File patterns (path, repos) to ingest.",
-    )
-    included_files: list[str] = Field(
-        title="Included Files",
-        alias="includedFiles",
-        default_factory=list,
-        description="Additional file paths to fetch and attach to the file entity.",
-    )
-
-
-class GithubFileResourceConfig(ResourceConfig):
-    kind: Literal[ObjectKind.FILE] = Field(
-        title="Github File",
-        description="Github file resource kind.",
-    )
-    selector: GithubFileSelector = Field(
-        title="File selector",
-        description="Selector for the file resource.",
     )
 
 
