@@ -39,15 +39,16 @@ runs:
         python-version: '3.12'
         cache: 'poetry'
 
-    - name: Install Rust
-      uses: dtolnay/rust-action@stable
-
     - name: Install dependencies
       shell: bash
       working-directory: ${{ inputs.integration_folder }}
       run: |
         make install
-        cargo install json-schema-diff
+
+    - name: Install Diff tool
+      uses: baptiste0928/cargo-install@v3
+      with:
+        crate: json-schema-diff
 
     - name: Compare Schemas and Report
       shell: bash
