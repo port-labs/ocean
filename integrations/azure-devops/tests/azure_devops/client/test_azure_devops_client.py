@@ -1077,7 +1077,10 @@ async def test_get_group_direct_members() -> None:
 
     expected_memberships = [
         {"memberDescriptor": "msa.user1", "containerDescriptor": "vssgp.group1"},
-        {"memberDescriptor": "vssgp.nested_group", "containerDescriptor": "vssgp.group1"},
+        {
+            "memberDescriptor": "vssgp.nested_group",
+            "containerDescriptor": "vssgp.group1",
+        },
     ]
 
     mock_response = MagicMock()
@@ -1190,7 +1193,9 @@ async def test_generate_group_members(mock_event_context: MagicMock) -> None:
 
     with (
         patch.object(client, "generate_groups", side_effect=mock_generate_groups),
-        patch.object(client, "_get_group_direct_members", return_value=mock_memberships),
+        patch.object(
+            client, "_get_group_direct_members", return_value=mock_memberships
+        ),
         patch.object(client, "_lookup_subjects", return_value=mock_subjects),
     ):
         async with event_context("test_event"):
@@ -1256,7 +1261,9 @@ async def test_generate_group_members_skips_failed_subject_lookup(
 
     with (
         patch.object(client, "generate_groups", side_effect=mock_generate_groups),
-        patch.object(client, "_get_group_direct_members", return_value=mock_memberships),
+        patch.object(
+            client, "_get_group_direct_members", return_value=mock_memberships
+        ),
         patch.object(client, "_lookup_subjects", return_value=None),
     ):
         async with event_context("test_event"):
