@@ -7,20 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.5.78 (unreleased)
+## 0.5.77 (2026-02-24)
 
 
 ### Features
 
-- Version webhooks (`jira:version_*`) now refresh the corresponding project's releases when the project resource has `includeReleases` enabled, so project payloads stay up to date on version create, update, or delete.
-
-
-## 0.5.77 (2026-02-19)
-
-
-### Features
-
-- Added support for Jira releases (versions) enriched directly on the project payload, exposing release properties (such as `url`, `released`, `archived`, `startDate`, `releaseDate`, `description`) from the project resource to simplify usage in the catalog.
+- Added support for Jira releases (versions) enriched directly on the project payload via an opt-in `includeReleases` selector. When enabled, each project is enriched with a `__releases` field containing its versions (with properties such as `url`, `released`, `archived`, `startDate`, `releaseDate`, `description`). Version webhook events (`jira:version_*`) also trigger an automatic refresh of the parent project's releases, keeping payloads up to date on version create, update, or delete.
 
 
 ## 0.5.76 (2026-02-17)
