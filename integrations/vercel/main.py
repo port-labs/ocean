@@ -205,5 +205,14 @@ async def _handle_deletion(kind: str, entity_data: dict[str, Any]) -> None:
         logger.warning("Could not determine identifier for deleted %s — skipping", kind)
         return
 
+    # Construct a minimal payload that guarantees the expected identifier key
+    # is present for the unregister operation.
+    if kind == "deployment":
+        deletion_payload = {"uid": identifier}
+    elif kind == "domain":
+        deletion_payload = {"name": identifier}
+    else:
+        deletion_payload = {"id": identifier}
+
     logger.info("Deleting %s entity: %s", kind, identifier)
-    await ocean.unregister_raw(kind, [entity_data])
+    await ocean.unregister_raw(kind, [deletion_payload])

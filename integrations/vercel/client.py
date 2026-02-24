@@ -117,7 +117,6 @@ class VercelClient:
     async def get_deployments(
         self,
         project_id: str | None = None,
-        limit: int = PAGE_LIMIT,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Yield pages of deployments.
