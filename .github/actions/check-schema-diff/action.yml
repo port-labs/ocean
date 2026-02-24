@@ -37,7 +37,12 @@ runs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-        cache: 'poetry'
+
+    - name: Cache integration venv
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.integration_folder }}/.venv
+        key: venv-${{ hashFiles(format('{0}/poetry.lock', inputs.integration_folder)) }}
 
     - name: Install dependencies
       shell: bash
@@ -56,7 +61,7 @@ runs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        integration_type=$(grep -E '^name = ".*"' "${{ inputs.integration_folder }}/pyproject.toml" | cut -d'"' -f2)
+        integration_type=$(grep -E '^name = ".*"' "pyproject.toml" | cut -d'"' -f2)
         poetry run port-app-config schema . -o "$integration_type.revision.json"
         aws s3 cp "s3://ocean-registry/$integration_type/port-app-config.json" "$integration_type.base.json"
 
