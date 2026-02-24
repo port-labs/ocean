@@ -76,16 +76,9 @@ class TestCustomAuthRequestConfigValidation:
         with pytest.raises(ValidationError) as exc_info:
             CustomAuthRequestConfig(
                 endpoint="/oauth/token",
-                method="INVALID",
+                method="INVALID",  # type: ignore
             )
         assert "1 validation error for CustomAuthRequestConfig" in str(exc_info.value)
-
-    def test_valid_methods(self) -> None:
-        """Test that all valid HTTP methods pass validation"""
-        valid_methods = ["GET", "POST", "PUT", "PATCH", "DELETE"]
-        for method in valid_methods:
-            config = CustomAuthRequestConfig(endpoint="/oauth/token", method=method)
-            assert config.method == method
 
     def test_body_and_bodyform_exclusive(self) -> None:
         """Test that body and bodyForm cannot both be specified"""

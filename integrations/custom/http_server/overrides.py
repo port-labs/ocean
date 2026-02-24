@@ -1,6 +1,4 @@
 from typing import ClassVar, Dict, Any, Literal, Optional
-
-HTTP_METHOD = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
 from pydantic import Field, BaseModel, root_validator
 
 from port_ocean.core.handlers.port_app_config.models import (
@@ -12,6 +10,8 @@ from http_server.exceptions import (
     CustomAuthRequestError,
     CustomAuthRequestTemplateError,
 )
+
+HTTP_METHOD = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
 
 
 class ApiPathParameter(BaseModel):
