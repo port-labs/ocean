@@ -64,7 +64,5 @@ jobs:
       - name: Check Schema Diff
         uses: ./.github/actions/check-schema-diff
         with:
-          integration: ${{ matrix.integration }}
-          folder: ${{ matrix.folder }}
-          base-schema-dir: ${{ env.BASE_SCHEMA_DIR }}
-          revision-schema-dir: ${{ env.REVISION_SCHEMA_DIR }}
+          integration_type: ${{ matrix.integration }}
+          integration_folder: ${{ matrix.integration }}

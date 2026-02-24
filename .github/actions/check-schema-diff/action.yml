@@ -43,7 +43,7 @@ runs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        poetry run port-app-config schema . -o ${{ inputs.integration }}.revision..json
+        poetry run port-app-config schema . -o ${{ inputs.integration_type }}.revision.json
         aws s3 cp s3://ocean-registry/${{ inputs.integration_type }}/port-app-config.json ${{ inputs.integration_type }}.base.json
 
         DIFF_OUTPUT=$(json-schema-diff "${{ inputs.integration_type }}.base.json" "${{ inputs.integration_type }}.revision.json" 2>&1) || true
