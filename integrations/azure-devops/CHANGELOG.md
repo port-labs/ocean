@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.7.15 (2026-02-24)
 
 
-### Bug Fixes
+### Improvements
 
-- Fixed KeyError crash when syncing manual test runs that lack a 'build' field. Manual test runs (created via Test Plans UI/API) don't have associated pipeline builds, so code coverage fetch is now skipped for these runs.
+- Bumped ocean version to ^0.37.2
 
 
 ## 0.7.14 (2026-02-24)
