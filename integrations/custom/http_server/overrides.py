@@ -66,18 +66,6 @@ class DynamicQueryParameter(ApiParameterConfig):
     pass
 
 
-class ApiPathParameter(ApiParameterConfig):
-    """Configuration for API-discovered path parameters"""
-
-    pass
-
-
-class DynamicQueryParameter(ApiParameterConfig):
-    """Configuration for API-discovered query parameters"""
-
-    pass
-
-
 class HttpServerSelector(Selector):
     """Selector for HTTP server resources - extends base Selector"""
 

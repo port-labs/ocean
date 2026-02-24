@@ -6,6 +6,7 @@ from typing import Dict, Any
 from unittest.mock import MagicMock
 
 from http_server.auth.custom import CustomAuth
+from pydantic import ValidationError
 
 
 @pytest.mark.asyncio
@@ -65,8 +66,5 @@ class TestCustomAuthHandler:
                 "method": "INVALID",  # Invalid method
             },
         }
-
-        from http_server.exceptions import CustomAuthRequestError
-
-        with pytest.raises(CustomAuthRequestError):
+        with pytest.raises(ValidationError):
             CustomAuth(mock_client, invalid_config)
