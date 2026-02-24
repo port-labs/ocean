@@ -11,8 +11,6 @@ CUSTOM_KIND = "__custom__"
 
 
 class _FieldMetadataEnforcer(BaseModel):
-    pass
-
     # TODO: Uncomment this when we completed assigning all the titles and descriptions
     # def __init_subclass__(cls, **kwargs: Any) -> None:
     #     super().__init_subclass__(**kwargs)
@@ -25,6 +23,9 @@ class _FieldMetadataEnforcer(BaseModel):
     #             raise TypeError(
     #                 f"Field '{field_name}' in '{cls.__name__}' must have a 'description'"
     #             )
+
+    class Config:
+        extra = "forbid"
 
 
 class Rule(_FieldMetadataEnforcer):
@@ -195,5 +196,6 @@ class PortAppConfig(_FieldMetadataEnforcer):
         # validate_and_get_resource_kinds(cls)
 
     class Config:
+        extra = "forbid"
         allow_population_by_field_name = True
         validate_assignment = True
