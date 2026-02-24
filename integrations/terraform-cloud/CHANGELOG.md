@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - append workspace and state version metadata to state files
 
+
 ## 0.2.44 (2026-02-22)
 
 
