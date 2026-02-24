@@ -2,9 +2,6 @@ name: Check Schema Diff
 description: Checks out the repo, installs dependencies, extracts the port-app-config schema, and compares it against the base schema from main.
 
 inputs:
-  integration_type:
-    description: The integration type
-    required: true
   integration_folder:
     description: The integration folder
     required: true
@@ -31,7 +28,7 @@ runs:
 
     - name: Install dependencies
       shell: bash
-      working-directory: ${{ format('integrations/{0}', inputs.integration_folder) }}
+      working-directory: ${{ inputs.integration_folder }}
       run: |
         pipx install 'poetry>=1.0.0,<2.0.0'
         make install
@@ -39,17 +36,18 @@ runs:
 
     - name: Compare Schemas and Report
       shell: bash
-      working-directory: ${{ format('integrations/{0}', inputs.integration_folder) }}
+      working-directory: ${{ inputs.integration_folder }}
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        poetry run port-app-config schema . -o ${{ inputs.integration_type }}.revision.json
-        aws s3 cp s3://ocean-registry/${{ inputs.integration_type }}/port-app-config.json ${{ inputs.integration_type }}.base.json
+        integration_type=$(grep -E '^name = ".*"' "${{ inputs.integration_folder }}/../pyproject.toml" | cut -d'"' -f2)
+        poetry run port-app-config schema . -o "$integration_type.revision.json"
+        aws s3 cp "s3://ocean-registry/$integration_type/port-app-config.json" "$integration_type.base.json"
 
-        DIFF_OUTPUT=$(json-schema-diff "${{ inputs.integration_type }}.base.json" "${{ inputs.integration_type }}.revision.json" 2>&1) || true
+        DIFF_OUTPUT=$(json-schema-diff "$integration_type.base.json" "$integration_type.revision.json" 2>&1) || true
 
         if [ -z "$DIFF_OUTPUT" ]; then
-          echo "✅ No schema changes detected for ${INTEGRATION}"
+          echo "✅ No schema changes detected for ${integration_type}"
           exit 0
         fi
 
@@ -76,7 +74,7 @@ runs:
         done <<< "$DIFF_OUTPUT"
 
         {
-          echo "## 🔍 Port App Config Schema Changes — \`${{ inputs.integration_type }}\`"
+          echo "## 🔍 Port App Config Schema Changes — \`${integration_type}\`"
           echo ""
 
           if [ -n "$BREAKING_ROWS" ]; then
@@ -99,7 +97,7 @@ runs:
 
           if [ "$HAS_BREAKING" = "true" ]; then
             echo "---"
-            echo "> **⚠️ Action Required:** This PR introduces breaking changes to the \`${{ inputs.integration_type }}\` port-app-config schema."
+            echo "> **⚠️ Action Required:** This PR introduces breaking changes to the \`${integration_type}\` port-app-config schema."
             echo "> Please verify these changes are intentional and check the **Breaking change** checkbox in the PR description to acknowledge."
           fi
         } > /tmp/schema-diff-comment.md
@@ -113,6 +111,6 @@ runs:
         fi
 
         if [ "$HAS_BREAKING" = "true" ]; then
-          echo "::error::Breaking schema changes detected for ${{ inputs.integration_type }}"
+          echo "::error::Breaking schema changes detected for $integration_type"
           exit 1
         fi

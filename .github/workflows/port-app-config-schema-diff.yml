@@ -48,12 +48,7 @@ jobs:
       - name: Prepare matrix
         id: prepare-matrix
         run: |
-          if [[ "${{ needs.detect-changes.outputs.core }}" == "true" || "${{ needs.detect-changes.outputs.core_ci_files_changed }}" == "true" ]]; then
-            files=$(find integrations/*/.port -name "spec.yaml" ! -path "integrations/_infra/*" ! -path "integrations/fake-integration/*")
-            echo "matrix=$(for file in $files; do folder=$(dirname "$file"); grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2; done | jq -R . | jq -s .)" >> $GITHUB_OUTPUT
-          else
-            echo "matrix=$(echo ${{ needs.detect-changes.outputs.integrations }} | jq -r '.')" >> $GITHUB_OUTPUT
-          fi
+          echo "matrix=$(echo ${{ needs.detect-changes.outputs.integrations }} | jq -r '.')" >> $GITHUB_OUTPUT
 
   check-schema-diff:
     runs-on: ubuntu-latest
