@@ -66,3 +66,6 @@ jobs:
         uses: ./.github/actions/check-schema-diff
         with:
           integration_folder: ${{ matrix.integration_folder }}
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ secrets.AWS_REGION }}

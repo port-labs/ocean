@@ -5,6 +5,15 @@ inputs:
   integration_folder:
     description: The integration folder
     required: true
+  aws_access_key_id:
+    description: The AWS access key ID
+    required: true
+  aws_secret_access_key:
+    description: The AWS secret access key
+    required: true
+  aws_region:
+    description: The AWS region
+    required: true
 
 runs:
   using: composite
@@ -16,9 +25,9 @@ runs:
       id: aws-credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+        aws-access-key-id: ${{ inputs.aws_access_key_id }}
+        aws-secret-access-key: ${{ inputs.aws_secret_access_key }}
+        aws-region: ${{ inputs.aws_region }}
 
     - name: Set up Python 3.12
       uses: actions/setup-python@v5
