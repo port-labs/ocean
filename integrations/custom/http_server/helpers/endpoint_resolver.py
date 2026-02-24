@@ -1,16 +1,20 @@
 """
 Endpoint Resolution Module
 
-Handles dynamic endpoint resolution for path parameters.
+Handles dynamic endpoint resolution for path and query parameters.
 """
 
 import re
-from typing import AsyncGenerator, List, Dict, Any, Optional
-
+from typing import AsyncGenerator, List, Dict, Any, Optional, Union
 from loguru import logger
 
 from port_ocean.core.handlers.entity_processor.jq_entity_processor_sync import (
     JQEntityProcessorSync,
+)
+from http_server.overrides import (
+    HttpServerSelector,
+    ApiPathParameter,
+    DynamicQueryParameter,
 )
 from http_server.overrides import HttpServerSelector, ApiPathParameter
 from http_server.helpers.endpoint_cache import get_endpoint_cache
@@ -118,9 +122,9 @@ def _get_filtered_value(
 
 
 async def query_api_for_parameters(
-    param_config: ApiPathParameter,
+    param_config: Union[ApiPathParameter, DynamicQueryParameter],
 ) -> AsyncGenerator[List[str], None]:
-    """Query an API to get values for a path parameter
+    """Query an API to get values for a parameter (path or query)
 
     Args:
         param_config: Configuration for fetching parameter values
@@ -237,3 +241,35 @@ async def resolve_dynamic_endpoints(
 
     if not has_values:
         logger.error(f"No valid values found for path parameter '{param_name}'")
+
+
+async def resolve_dynamic_query_params(
+    query_params: Optional[Dict[str, Any]],
+    dynamic_query_param: Optional[Dict[str, DynamicQueryParameter]],
+) -> AsyncGenerator[Dict[str, Any], None]:
+    static_params = query_params or {}
+
+    if not dynamic_query_param:
+        yield static_params
+        return
+
+    if len(dynamic_query_param) > 1:
+        logger.warning(
+            "Multiple dynamic query parameters were found. "
+            "Only the first one will be used."
+        )
+
+    param_name, param_config = next(iter(dynamic_query_param.items()))
+
+    has_values = False
+    async for value_batch in query_api_for_parameters(param_config):
+        for value in value_batch:
+            has_values = True
+            yield {**static_params, param_name: value}
+
+    if not has_values:
+        logger.warning(
+            f"No values found for dynamic query param '{param_name}', "
+            "using static params only"
+        )
+        yield static_params

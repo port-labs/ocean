@@ -14,8 +14,8 @@ from http_server.exceptions import (
 HTTP_METHOD = Literal["GET", "POST", "PUT", "PATCH", "DELETE"]
 
 
-class ApiPathParameter(BaseModel):
-    """Configuration for API-discovered path parameters"""
+class ApiParameterConfig(BaseModel):
+    """Base configuration for API-discovered parameters (path or query)"""
 
     endpoint: str = Field(
         title="Endpoint", description="API endpoint to discover parameter values"
@@ -52,6 +52,18 @@ class ApiPathParameter(BaseModel):
 
     class Config:
         extra = "forbid"
+
+
+class ApiPathParameter(ApiParameterConfig):
+    """Configuration for API-discovered path parameters"""
+
+    pass
+
+
+class DynamicQueryParameter(ApiParameterConfig):
+    """Configuration for API-discovered query parameters"""
+
+    pass
 
 
 class HttpServerSelector(Selector):
