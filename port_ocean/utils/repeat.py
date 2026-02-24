@@ -69,7 +69,7 @@ def repeat_every(
                             format_exception(type(exc), exc, exc.__traceback__)
                         )
                         logger.bind(traceback=formatted_exception).error(
-                            f"Repeated task failed: {repr(exc)}"
+                            f"Repeated task failed: {str(exc)}"
                         )
                         if raise_exceptions:
                             raise exc

@@ -202,7 +202,7 @@ async def event_context(
                 )
             else:
                 logger.bind(traceback=traceback.format_exc()).error(
-                    f"Event failed with error: {repr(e)}"
+                    f"Event failed with error: {str(e)}"
                 )
             raise
         else:
