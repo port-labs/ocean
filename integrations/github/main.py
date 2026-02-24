@@ -79,20 +79,25 @@ from github.helpers.utils import (
 )
 
 from integration import (
+    GithubCollaboratorConfig,
+    GithubEnvironmentConfig,
     GithubFolderResourceConfig,
-    GithubRepoSearchConfig,
+    GithubReleaseConfig,
     GithubIssueConfig,
     GithubPortAppConfig,
     GithubPullRequestConfig,
     GithubDependabotAlertConfig,
     GithubCodeScanningAlertConfig,
     GithubRepositoryConfig,
+    GithubTagConfig,
     GithubTeamConfig,
     GithubFileResourceConfig,
     GithubBranchConfig,
     GithubSecretScanningAlertConfig,
     GithubUserConfig,
     GithubDeploymentConfig,
+    GithubWorkflowConfig,
+    GithubWorkflowRunConfig,
 )
 from github.enrichments.included_files import (
     IncludedFilesEnricher,
@@ -295,7 +300,7 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     rest_client = create_github_client()
     org_exporter = RestOrganizationExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    config = cast(GithubRepoSearchConfig, event.resource_config)
+    config = cast(GithubWorkflowConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -341,7 +346,7 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     workflow_run_exporter = RestWorkflowRunExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    config = cast(GithubRepoSearchConfig, event.resource_config)
+    config = cast(GithubWorkflowRunConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -492,7 +497,7 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     release_exporter = RestReleaseExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    config = cast(GithubRepoSearchConfig, event.resource_config)
+    config = cast(GithubReleaseConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -534,7 +539,7 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     tag_exporter = RestTagExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    config = cast(GithubRepoSearchConfig, event.resource_config)
+    config = cast(GithubTagConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -630,7 +635,7 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     environment_exporter = RestEnvironmentExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    config = cast(GithubRepoSearchConfig, event.resource_config)
+    config = cast(GithubEnvironmentConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -891,7 +896,7 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     collaborator_exporter = RestCollaboratorExporter(rest_client)
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
-    config = cast(GithubRepoSearchConfig, event.resource_config)
+    config = cast(GithubCollaboratorConfig, event.resource_config)
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
