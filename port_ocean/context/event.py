@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import (
@@ -180,21 +181,29 @@ async def event_context(
         try:
             yield event
         except EmptyPortAppConfigError as e:
-            logger.error(
-                f"Skipping resync due to empty mapping: {str(e)}", exc_info=True
+            logger.bind(traceback=traceback.format_exc()).error(
+                f"Skipping resync due to empty mapping: {str(e)}"
             )
             raise
         except WebhookEventNotSupportedError as e:
             success = False
-            logger.warning(f"Webhook event not supported: {str(e)}", exc_info=True)
+            logger.bind(traceback=traceback.format_exc()).warning(
+                f"Webhook event not supported: {str(e)}"
+            )
         except BaseException as e:
             success = False
             if isinstance(e, KeyboardInterrupt):
-                logger.warning("Operation interrupted by user", exc_info=True)
+                logger.bind(traceback=traceback.format_exc()).warning(
+                    "Operation interrupted by user"
+                )
             elif isinstance(e, asyncio.CancelledError):
-                logger.warning("Operation was cancelled", exc_info=True)
+                logger.bind(traceback=traceback.format_exc()).warning(
+                    "Operation was cancelled"
+                )
             else:
-                logger.error(f"Event failed with error: {repr(e)}", exc_info=True)
+                logger.bind(traceback=traceback.format_exc()).error(
+                    f"Event failed with error: {repr(e)}"
+                )
             raise
         else:
             success = True
