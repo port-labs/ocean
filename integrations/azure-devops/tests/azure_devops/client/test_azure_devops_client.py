@@ -1029,6 +1029,265 @@ async def test_generate_users_will_skip_404(
 
 
 @pytest.mark.asyncio
+async def test_generate_groups(mock_event_context: MagicMock) -> None:
+    """Test generating security groups from the Graph API."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    expected_groups = [
+        {
+            "descriptor": "vssgp.group1",
+            "displayName": "Project Admins",
+            "description": "Project administrators",
+        },
+        {
+            "descriptor": "vssgp.group2",
+            "displayName": "Contributors",
+            "description": "Project contributors",
+        },
+    ]
+
+    async def mock_get_paginated(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield expected_groups
+
+    with patch.object(
+        client,
+        "_get_paginated_by_top_and_continuation_token",
+        side_effect=mock_get_paginated,
+    ):
+        async with event_context("test_event"):
+            groups: List[Dict[str, Any]] = []
+            async for group_batch in client.generate_groups():
+                groups.extend(group_batch)
+
+            assert len(groups) == 2
+            assert groups[0]["descriptor"] == "vssgp.group1"
+            assert groups[1]["displayName"] == "Contributors"
+
+
+@pytest.mark.asyncio
+async def test_get_group_direct_members() -> None:
+    """Test fetching direct members of a group."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    expected_memberships = [
+        {"memberDescriptor": "msa.user1", "containerDescriptor": "vssgp.group1"},
+        {"memberDescriptor": "vssgp.nested_group", "containerDescriptor": "vssgp.group1"},
+    ]
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"value": expected_memberships}
+
+    with patch.object(client, "send_request", return_value=mock_response) as mock_send:
+        result = await client._get_group_direct_members("vssgp.group1")
+
+        assert result == expected_memberships
+        mock_send.assert_called_once()
+        call_args = mock_send.call_args
+        assert "direction" in call_args.kwargs.get("params", {})
+        assert call_args.kwargs["params"]["direction"] == "Down"
+
+
+@pytest.mark.asyncio
+async def test_get_group_direct_members_returns_none_on_404() -> None:
+    """Test that _get_group_direct_members returns None when group not found."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    with patch.object(client, "send_request", return_value=None):
+        result = await client._get_group_direct_members("vssgp.nonexistent")
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_lookup_subjects() -> None:
+    """Test batch lookup of subject details."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    expected_subjects = {
+        "msa.user1": {
+            "descriptor": "msa.user1",
+            "displayName": "John Doe",
+            "mailAddress": "john@example.com",
+            "subjectKind": "user",
+        },
+        "vssgp.nested_group": {
+            "descriptor": "vssgp.nested_group",
+            "displayName": "Nested Group",
+            "subjectKind": "group",
+        },
+    }
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"value": expected_subjects}
+
+    with patch.object(client, "send_request", return_value=mock_response) as mock_send:
+        result = await client._lookup_subjects(["msa.user1", "vssgp.nested_group"])
+
+        assert result == expected_subjects
+        mock_send.assert_called_once()
+        call_args = mock_send.call_args
+        assert call_args.args[0] == "POST"
+
+
+@pytest.mark.asyncio
+async def test_lookup_subjects_returns_none_on_error() -> None:
+    """Test that _lookup_subjects returns None on API error."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    with patch.object(client, "send_request", return_value=None):
+        result = await client._lookup_subjects(["msa.user1"])
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_generate_group_members(mock_event_context: MagicMock) -> None:
+    """Test generating group members with full enrichment."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    mock_groups = [
+        {
+            "descriptor": "vssgp.group1",
+            "displayName": "Test Group",
+            "url": "https://vssps.dev.azure.com/org/_apis/Graph/Groups/vssgp.group1",
+        }
+    ]
+
+    mock_memberships = [
+        {"memberDescriptor": "msa.user1", "containerDescriptor": "vssgp.group1"},
+        {"memberDescriptor": "msa.user2", "containerDescriptor": "vssgp.group1"},
+    ]
+
+    mock_subjects = {
+        "msa.user1": {
+            "descriptor": "msa.user1",
+            "displayName": "User One",
+            "mailAddress": "user1@example.com",
+            "subjectKind": "user",
+        },
+        "msa.user2": {
+            "descriptor": "msa.user2",
+            "displayName": "User Two",
+            "mailAddress": "user2@example.com",
+            "subjectKind": "user",
+        },
+    }
+
+    async def mock_generate_groups() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield mock_groups
+
+    with (
+        patch.object(client, "generate_groups", side_effect=mock_generate_groups),
+        patch.object(client, "_get_group_direct_members", return_value=mock_memberships),
+        patch.object(client, "_lookup_subjects", return_value=mock_subjects),
+    ):
+        async with event_context("test_event"):
+            members: List[Dict[str, Any]] = []
+            async for member_batch in client.generate_group_members():
+                members.extend(member_batch)
+
+            assert len(members) == 2
+            assert members[0]["displayName"] == "User One"
+            assert members[0]["subjectKind"] == "user"
+            assert members[0]["__group"]["descriptor"] == "vssgp.group1"
+            assert members[1]["displayName"] == "User Two"
+            assert members[1]["__group"]["displayName"] == "Test Group"
+
+
+@pytest.mark.asyncio
+async def test_generate_group_members_skips_empty_memberships(
+    mock_event_context: MagicMock,
+) -> None:
+    """Test that groups with no members are skipped."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    mock_groups = [
+        {"descriptor": "vssgp.empty_group", "displayName": "Empty Group"},
+    ]
+
+    async def mock_generate_groups() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield mock_groups
+
+    with (
+        patch.object(client, "generate_groups", side_effect=mock_generate_groups),
+        patch.object(client, "_get_group_direct_members", return_value=None),
+    ):
+        async with event_context("test_event"):
+            members: List[Dict[str, Any]] = []
+            async for member_batch in client.generate_group_members():
+                members.extend(member_batch)
+
+            assert len(members) == 0
+
+
+@pytest.mark.asyncio
+async def test_generate_group_members_skips_failed_subject_lookup(
+    mock_event_context: MagicMock,
+) -> None:
+    """Test that groups with failed subject lookup are skipped."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    mock_groups = [
+        {"descriptor": "vssgp.group1", "displayName": "Test Group"},
+    ]
+
+    mock_memberships = [
+        {"memberDescriptor": "msa.user1", "containerDescriptor": "vssgp.group1"},
+    ]
+
+    async def mock_generate_groups() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield mock_groups
+
+    with (
+        patch.object(client, "generate_groups", side_effect=mock_generate_groups),
+        patch.object(client, "_get_group_direct_members", return_value=mock_memberships),
+        patch.object(client, "_lookup_subjects", return_value=None),
+    ):
+        async with event_context("test_event"):
+            members: List[Dict[str, Any]] = []
+            async for member_batch in client.generate_group_members():
+                members.extend(member_batch)
+
+            assert len(members) == 0
+
+
+@pytest.mark.asyncio
+async def test_generate_groups_will_skip_404(
+    mock_event_context: MagicMock,
+) -> None:
+    """Test that generate_groups handles 404 gracefully."""
+    client = AzureDevopsClient(
+        MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN, MOCK_AUTH_USERNAME
+    )
+
+    async def mock_make_request(**kwargs: Any) -> Response:
+        return Response(status_code=404, request=Request("GET", "https://google.com"))
+
+    async with event_context("test_event"):
+        with patch.object(client._client, "request", side_effect=mock_make_request):
+            groups: List[Dict[str, Any]] = []
+            async for group_batch in client.generate_groups():
+                groups.extend(group_batch)
+            assert not groups
+
+
+@pytest.mark.asyncio
 async def test_generate_pull_requests_will_skip_404(
     mock_event_context: MagicMock,
 ) -> None:
