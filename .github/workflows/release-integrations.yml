@@ -231,6 +231,7 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v5
+
       - name: Configure AWS Credentials 🔒
         id: aws-credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -238,6 +239,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Upload specifications to s3
         run: |
           # Temporary file
@@ -270,41 +272,96 @@ jobs:
               # Extract the version from pyproject.toml
               version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
-              integration_spec="$type-$version.json"
-              integration_dest="$type/$integration_spec"
-              integration_legacy_dest="$type.json" # TODO: legacy support, remove once not in use
+              integration_folder="$type"
+              version_folder="$integration_folder/$version"
+
+              integration_spec="spec.json"
+              integration_spec_dest="$version_folder/$integration_spec"
+              integration_latest_spec_dest="$integration_folder/$integration_spec"
+              integration_latest_spec_legacy_dest="$type.json" # TODO: legacy support, remove once not in use
+
+              port_app_config_schema="port_app_config.json"
+              port_app_config_schema_dest="$version_folder/$port_app_config_schema"
+              port_app_config_schema_latest_dest="$integration_folder/$port_app_config_schema"
+
+              port_app_config_ui_schema="port_app_config.ui.json"
+              port_app_config_ui_schema_dest="$version_folder/$port_app_config_ui_schema"
+              port_app_config_ui_schema_latest_dest="$integration_folder/$port_app_config_ui_schema"
 
               # Convert YAML to JSON
               yq -o json "$file" >"$temp_file"
 
               # Add version attribute
-              jq --arg type "$type" --arg version "$version" '. + {type: $type, version: $version}' "$temp_file" >"$integration_spec"
+              jq --arg type "$type" --arg version "$version" '. + {type: $type, version: $version}' "$temp_file" > "$integration_spec"
 
               if [[ ! ${version} =~ ^.+-dev$ ]]; then
-                  # Upload integration's version manifest to s3
-                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_dest"
-                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_legacy_dest" # TODO: legacy support, remove once not in use
-                  echo "Successfully uploaded $integration_spec to s3 bucket."
+                  # Upload integration's spec to s3
+                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_spec_dest"
+                  echo "Successfully uploaded $integration_spec_dest to s3 bucket."
 
                   # Get the latest version of the current integration
                   latest_version=$(jq --arg type "$type" -r '.[] | select(.type == $type) | .version' "$index_file")
 
                   # Add integration's spec to global index file
                   regexp="^([0-9.]+|[0-9.]+[.-]post[0-9]+)$"
+                  should_release_latest_version=false
                   if [[ ! "$latest_version" ]]; then
                       # Add new integration spec if latest tag doesn't exist
                       jq --argjson new_spec "[$(cat "$integration_spec")]" '. += $new_spec' "$index_file" >"$temp_file"
                       mv "$temp_file" "$index_file"
+                      should_release_latest_version=true
                   elif [[ ! "$latest_version" =~ $regexp ]] || [[ "$version" =~ $regexp ]]; then
                       # Override global index file if released non-dev version or integration doesn't have non-dev latest tag
                       jq --argjson updated_spec "$(cat "$integration_spec")" --arg type "$type" \
                           'map(if .type == $type then $updated_spec else . end)' "$index_file" >"$temp_file"
                       mv "$temp_file" "$index_file"
+                      should_release_latest_version=true
                   fi
 
-                  # Upload global index file to s3
-                  aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
-                  echo "Successfully uploaded $index_file to s3 bucket."
+                  if [ "$should_release_latest_version" = true ]; then
+                    # Upload integration's latest spec to s3
+                    aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_latest_spec_dest"
+                    echo "Successfully uploaded $integration_latest_spec_dest to s3 bucket."
+
+                    # Upload integration's latest spec to s3 (legacy support, remove once not in use)
+                    aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_latest_spec_legacy_dest"
+                    echo "Successfully uploaded $integration_latest_spec_legacy_dest to s3 bucket."
+
+                    # Upload global index file to s3
+                    aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
+                    echo "Successfully uploaded $index_file to s3 bucket."
+                  fi
+
+                  SCHEMA_CLI_COMMANDS=(
+                    docker run --platform linux/amd64 --rm
+                      -v "$(pwd)":/artifacts
+                      "ghcr.io/port-labs/port-ocean-$type:$version"
+                      sh -c "ocean port-app-config schema -o /artifacts/$port_app_config_schema && \
+                              ocean port-app-config schema -f ui -o /artifacts/$port_app_config_ui_schema"
+                    )
+
+                  # Execute the schema CLI commands in a subshell to capture the exit code
+                  if "${SCHEMA_CLI_COMMANDS[@]}"; then
+                      # Upload port-app-config schema to s3
+                      aws s3 cp "$port_app_config_schema" "s3://$aws_s3_bucket/$port_app_config_schema_dest"
+                      echo "Successfully uploaded $port_app_config_schema_dest to s3 bucket."
+
+                      # Upload port-app-config UI schema to s3
+                      aws s3 cp "$port_app_config_ui_schema" "s3://$aws_s3_bucket/$port_app_config_ui_schema_dest"
+                      echo "Successfully uploaded $port_app_config_ui_schema_dest to s3 bucket."
+
+                      if [ "$should_release_latest_version" = true ]; then
+                        # Upload latest port-app-config schema to s3
+                        aws s3 cp "$port_app_config_schema" "s3://$aws_s3_bucket/$port_app_config_schema_latest_dest"
+                        echo "Successfully uploaded $port_app_config_schema_latest_dest to s3 bucket."
+
+                        # Upload latest port-app-config UI schema to s3
+                        aws s3 cp "$port_app_config_ui_schema" "s3://$aws_s3_bucket/$port_app_config_ui_schema_latest_dest"
+                        echo "Successfully uploaded $port_app_config_ui_schema_latest_dest to s3 bucket."
+                      fi
+                  else
+                    echo "::warning:: Docker port-app-config schema command failed for $type:$version, skipping schema upload to s3."
+                  fi
               else
                   echo "Did not upload integration spec since the version was in development ('${version}')"
               fi
