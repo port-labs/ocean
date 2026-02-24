@@ -110,12 +110,14 @@ class RepositorySourceModel(BaseModel):
 
     class Config:
         extra = "forbid"
-  
+
+
 class FolderSelector(RepositorySourceModel, IncludedFilesConfig):
     path: str = Field(default="*")
 
     class Config:
         extra = "forbid"
+
 
 class GithubFolderSelector(Selector, IncludedFilesConfig):
     folders: list[FolderSelector] = Field(
