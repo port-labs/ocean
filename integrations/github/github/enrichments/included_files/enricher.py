@@ -8,11 +8,11 @@ from github.enrichments.included_files.fetcher import (
     IncludedFilesFetcher,
 )
 from github.enrichments.included_files.strategies import IncludedFilesStrategy
+from github.clients.http.base_client import AbstractGithubClient
 from github.enrichments.included_files.utils import (
     IncludedFilesTarget,
     resolve_included_file_path,
 )
-from github.clients.http.base_client import AbstractGithubClient
 
 
 class IncludedFilesEnricher:
