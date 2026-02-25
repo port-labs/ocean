@@ -167,6 +167,7 @@ jobs:
           echo "STMTS_COVERAGE=$stmts" >> $GITHUB_OUTPUT
 
       - name: Comment PR with code coverage summary
+        if: ${{ steps.pr-number.outputs.PR_NUMBER != 0 }}
         uses: actions/github-script@v7
         env:
           CODE_COVERAGE_ARTIFACT_URL: ${{ steps.upload-coverage.outputs.artifact-url }}
