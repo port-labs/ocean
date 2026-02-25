@@ -47,6 +47,9 @@ class _DummyAuthenticator:
         self._response = response
         self.client = self
 
+    def set_rate_limit_notifier(self, notifier: Any) -> None:
+        pass
+
     async def get_headers(self, **kwargs: Any) -> _DummyHeaders:
         return _DummyHeaders()
 
@@ -133,9 +136,7 @@ class MockGitHubClient:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.headers = self._success_headers(remaining=remaining_override)
-            self.rate_limiter.update_rate_limits(
-                httpx.Headers(mock_response.headers), resource
-            )
+            await self.rate_limiter.on_response(mock_response, resource)
             return mock_response
 
 
@@ -190,6 +191,7 @@ class TestRateLimiter:
             limit=1000, remaining=1, reset_time=int(time.time()) + reset_in
         )
         client.rate_limiter.rate_limit_info = info  # trusted internal seed for the test
+        client.rate_limiter._initialized = True
 
         # This call should sleep on __aenter__
         mock_sleep.reset_mock()
@@ -222,9 +224,7 @@ class TestRateLimiter:
                 await asyncio.sleep(0.01)
                 headers = client._success_headers()
                 mock_resp = Mock(status_code=200, headers=headers)
-                client.rate_limiter.update_rate_limits(
-                    httpx.Headers(headers), f"/r/{i}"
-                )
+                await client.rate_limiter.on_response(mock_resp, f"/r/{i}")
             concurrent -= 1
             return mock_resp
 
@@ -260,11 +260,43 @@ class TestRateLimiter:
         mock_sleep.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_notify_rate_limited_updates_state(
+        self, client_config: GitHubRateLimiterConfig, github_host: str, mock_sleep: Mock
+    ) -> None:
+        """
+        notify_rate_limited (called synchronously from the transport) must update the
+        limiter state so that the next __aenter__ sleeps.
+        """
+        client = MockGitHubClient(github_host, client_config)
+        reset_in = 30
+
+        mock_response = Mock()
+        mock_response.status_code = 429
+        mock_response.headers = {
+            "x-ratelimit-limit": "1000",
+            "x-ratelimit-remaining": "0",
+            "x-ratelimit-reset": str(int(time.time()) + reset_in),
+        }
+
+        client.rate_limiter.notify_rate_limited(mock_response)
+
+        assert client.rate_limiter._initialized is True
+        assert client.rate_limiter.rate_limit_info is not None
+        assert client.rate_limiter.rate_limit_info.remaining == 0
+
+        # The next __aenter__ should sleep because remaining == 0
+        mock_sleep.reset_mock()
+        resp = await client.make_request("/user", remaining_override=999)
+        assert resp.status_code == 200
+        assert mock_sleep.call_count >= 1
+        assert any(args[0] >= reset_in - 1 for args, _ in mock_sleep.call_args_list)
+
+    @pytest.mark.asyncio
     async def test_pause_under_lock_blocks_others(
         self, github_host: str, mock_sleep: Mock
     ) -> None:
         """
-        Because sleep happens while holding _block_lock, a task that triggers the pause blocks others.
+        Because sleep happens while holding _lock, a task that triggers the pause blocks others.
         """
         config = GitHubRateLimiterConfig(api_type="rest", max_concurrent=5)
         limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
@@ -277,6 +309,7 @@ class TestRateLimiter:
             limiter.rate_limit_info = RateLimitInfo(
                 remaining=0, limit=1000, reset_time=int(time.time()) + 5
             )
+            limiter._initialized = True
             async with limiter:
                 order.append("A-acquired")
                 # any small work

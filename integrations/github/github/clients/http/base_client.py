@@ -31,6 +31,9 @@ class AbstractGithubClient(ABC):
         self.rate_limiter: GitHubRateLimiter = GitHubRateLimiterRegistry.get_limiter(
             host=github_host, config=self.rate_limiter_config
         )
+        self.authenticator.set_rate_limit_notifier(
+            self.rate_limiter.notify_rate_limited
+        )
 
     _DEFAULT_IGNORED_ERRORS = [
         IgnoredError(
@@ -109,10 +112,12 @@ class AbstractGithubClient(ABC):
                 response.raise_for_status()
 
                 logger.debug(f"Successfully fetched {method} {resource}")
+                await self.rate_limiter.on_response(response, resource)
                 return response
 
             except httpx.HTTPStatusError as e:
                 response = e.response
+                await self.rate_limiter.on_response(response, resource)
 
                 if not self.rate_limiter.is_rate_limit_response(response):
                     if self._should_ignore_error(
@@ -127,16 +132,11 @@ class AbstractGithubClient(ABC):
                     f"GitHub API error for endpoint '{resource}': Status {response.status_code}, "
                     f"Method: {method}, GitHub Request ID: {github_request_id}, Response: {response.text}"
                 )
-
                 raise
 
             except httpx.HTTPError as e:
                 logger.error(f"HTTP error for endpoint '{resource}': {str(e)}")
                 raise
-
-            finally:
-                if "response" in locals():
-                    self.rate_limiter.update_rate_limits(response.headers, resource)
 
     async def send_api_request(
         self,

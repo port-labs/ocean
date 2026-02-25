@@ -43,6 +43,7 @@ class RateLimiterRequiredHeaders(BaseModel):
     x_ratelimit_limit: Optional[str] = Field(alias="x-ratelimit-limit")
     x_ratelimit_remaining: Optional[str] = Field(alias="x-ratelimit-remaining")
     x_ratelimit_reset: Optional[str] = Field(alias="x-ratelimit-reset")
+    retry_after: Optional[str] = Field(alias="retry-after")
 
     def as_dict(self) -> Dict[str, str]:
         return self.dict(by_alias=True)
