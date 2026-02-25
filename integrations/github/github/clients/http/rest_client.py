@@ -57,6 +57,9 @@ class GithubRestClient(AbstractGithubClient):
             )
 
             if not response or not (items := response.json()):
+                logger.debug(
+                    f"Pagination ended with empty response for {method} {resource} "
+                )
                 break
 
             yield items

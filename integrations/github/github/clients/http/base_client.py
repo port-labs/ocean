@@ -115,9 +115,17 @@ class AbstractGithubClient(ABC):
                 response = e.response
 
                 if not self.rate_limiter.is_rate_limit_response(response):
+                    if response.status_code == 403:
+                        logger.debug(
+                            f"GitHub 403 for {resource} treated as 'not rate limit' "
+                            "ignoring if in ignored errors"
+                        )
                     if self._should_ignore_error(
                         e, resource, method, ignored_errors, ignore_default_errors
                     ):
+                        logger.info(
+                            f"Ignored error for {method} {resource} — returning empty body. "
+                        )
                         return Response(200, content=b"{}")
 
                 github_request_id = response.headers.get(

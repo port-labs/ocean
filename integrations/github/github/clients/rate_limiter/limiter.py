@@ -50,7 +50,16 @@ class GitHubRateLimiter:
         if status_code not in self.get_rate_limit_status_codes():
             return False
 
-        return status_code == 429 or has_exhausted_rate_limit_headers(headers)
+        is_rate_limit = status_code == 429 or has_exhausted_rate_limit_headers(headers)
+        if status_code == 403:
+            if is_rate_limit:
+                logger.debug(
+                    "GitHub 403 treated as rate limit"
+                    "request will be retried or raised as rate limit error"
+                )
+            else:
+                logger.debug("GitHub 403 not treated as rate limit")
+        return is_rate_limit
 
     def _parse_rate_limit_headers(
         self, headers: RateLimiterRequiredHeaders

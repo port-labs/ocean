@@ -1,4 +1,5 @@
 import httpx
+from loguru import logger
 
 from port_ocean.helpers.retry import RetryTransport
 from github.helpers.utils import has_exhausted_rate_limit_headers
@@ -26,4 +27,12 @@ class GitHubRetryTransport(RetryTransport):
         if response.status_code != 403:
             return False
 
-        return has_exhausted_rate_limit_headers(response.headers)
+        is_retryable = has_exhausted_rate_limit_headers(response.headers)
+        url = getattr(response.request, "url", None) if response.request else None
+        if is_retryable:
+            logger.debug(
+                f"GitHub 403 for {url} has rate limit headers exhausted, will retry with backoff"
+            )
+        else:
+            logger.debug(f"GitHub 403 for {url} not treated as rate limit, no retry.")
+        return is_retryable
