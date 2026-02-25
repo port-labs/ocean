@@ -1,5 +1,4 @@
 import asyncio
-import time
 from typing import List, Optional, Any, Type
 import httpx
 from loguru import logger
@@ -18,38 +17,20 @@ class GitHubRateLimiter:
         self.rate_limit_info: Optional[RateLimitInfo] = None
 
         self._block_lock = asyncio.Lock()
-
-        self._budget: Optional[int] = None
-        self._budget_limit: Optional[int] = None
-        self._budget_reset_time: Optional[int] = None
+        self._current_resource: Optional[str] = None
 
     async def __aenter__(self) -> "GitHubRateLimiter":
         await self._semaphore.acquire()
 
         async with self._block_lock:
-            if self._budget is not None and self._budget <= 0:
-                await self._wait_for_reset()
-
-            if self._budget is not None:
-                self._budget -= 1
-
+            if self.rate_limit_info and (self.rate_limit_info.remaining <= 1):
+                delay = self.rate_limit_info.seconds_until_reset
+                if delay > 0:
+                    logger.warning(
+                        f"{self.api_type} requests paused for {delay:.1f}s due to earlier rate limit"
+                    )
+                    await asyncio.sleep(delay)
         return self
-
-    async def _wait_for_reset(self) -> None:
-        """Sleep until the rate limit window resets, then restore the budget."""
-        delay = max(0, (self._budget_reset_time or 0) - int(time.time()))
-        if delay > 0:
-            logger.warning(
-                f"{self.api_type} requests paused for {delay}s "
-                f"— proactive rate limit budget exhausted"
-            )
-            await asyncio.sleep(delay)
-
-        self._budget = self._budget_limit
-        logger.info(
-            f"{self.api_type} rate limit window reset — "
-            f"budget restored to {self._budget}"
-        )
 
     async def __aexit__(
         self,
@@ -97,13 +78,6 @@ class GitHubRateLimiter:
             return None
 
         self.rate_limit_info = info
-        self._budget_limit = info.limit
-        self._budget_reset_time = info.reset_time
-        self._budget = min(
-            info.remaining,
-            self._budget if self._budget is not None else info.remaining,
-        )
-
         self._log_rate_limit_status(info, resource)
         return info
 
@@ -111,8 +85,7 @@ class GitHubRateLimiter:
         resets_in = info.seconds_until_reset
         message = (
             f"GitHub rate limit status on {resource} for {self.api_type}: "
-            f"{info.remaining}/{info.limit} remaining "
-            f"(budget: {self._budget}, resets in {resets_in}s)"
+            f"{info.remaining}/{info.limit} remaining (resets in {resets_in}s)"
         )
 
         if info.remaining <= 0:

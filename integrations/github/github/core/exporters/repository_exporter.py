@@ -1,5 +1,6 @@
 import asyncio
 from typing import Any, Dict, TYPE_CHECKING, Optional, cast, ClassVar
+
 from github.core.exporters.abstract_exporter import AbstractGithubExporter
 from github.helpers.models import RepoSearchParams
 from github.helpers.utils import parse_github_options, get_repository_metadata
@@ -15,7 +16,6 @@ from github.clients.http.rest_client import GithubRestClient
 
 if TYPE_CHECKING:
     from github.clients.http.rest_client import GithubRestClient
-
 
 class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     _ENRICHMENT_METHODS: ClassVar[dict[str, str]] = {
@@ -172,10 +172,6 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
         for relationship in included_relationships:
             method_name = self._ENRICHMENT_METHODS.get(relationship)
             if method_name:
-                logger.debug(
-                    f"Applying relationship '{relationship}' using '{method_name}' "
-                    f"for repository '{repo_name}'"
-                )
                 method = getattr(self, method_name)
                 repository = await method(repository, organization)
 
