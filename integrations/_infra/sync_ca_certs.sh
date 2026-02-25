@@ -2,9 +2,11 @@
 
 # Script to sync CA certificates from privileged locations to unprivileged user directory
 # This handles cases where CA certificates are mounted or updated at runtime
+# OpenShift compatibility: Uses /tmp/ocean which can be mounted as emptyDir volume
+# and supports arbitrary UID assignment (GID 0 always has permissions)
 
 CERT_SOURCE_DIRS="/etc/ssl/certs /usr/share/ca-certificates /usr/local/share/ca-certificates"
-USER_CERT_DIR="/home/ocean/.local/share/ca-certificates"
+USER_CERT_DIR="/tmp/ocean/ca-certificates"
 
 # Create user certificate directory if it doesn't exist
 mkdir -p "$USER_CERT_DIR"

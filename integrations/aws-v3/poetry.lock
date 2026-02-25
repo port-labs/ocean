@@ -1866,6 +1866,17 @@ files = [
 ]
 
 [[package]]
+name = "jsonref"
+version = "1.1.0"
+description = "jsonref is a library for automatic dereferencing of JSON Reference objects for Python."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "jsonref-1.1.0-py3-none-any.whl", hash = "sha256:590dc7773df6c21cbf948b5dac07a72a251db28b0238ceecce0a2abfa8ec30a9"},
+    {file = "jsonref-1.1.0.tar.gz", hash = "sha256:32fe8e1d85af0fdefbebce950af85590b22b60f9e95443176adbde4e1ecea552"},
+]
+
+[[package]]
 name = "loguru"
 version = "0.7.3"
 description = "Python logging made (stupidly) simple"
@@ -2253,13 +2264,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.36.0"
+version = "0.37.3"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.36.0-py3-none-any.whl", hash = "sha256:c13f46bacc14947165bd857bea72114564a624a18c5d3900e27ef5efd6d26079"},
-    {file = "port_ocean-0.36.0.tar.gz", hash = "sha256:8e833d3357d60ac714b9c042bae710d88bd27575bfadca447ac51833c4baceed"},
+    {file = "port_ocean-0.37.3-py3-none-any.whl", hash = "sha256:3d44923a9d9c8c0d17ecf9b2e52db85e21e14c1bcacd793eba148bf1af847bb4"},
+    {file = "port_ocean-0.37.3.tar.gz", hash = "sha256:072483274f691645589538e45e95ab73f46e80884234f5c792833b4dfd7f2d6d"},
 ]
 
 [package.dependencies]
@@ -2278,6 +2289,7 @@ jinja2-strcase = {version = ">=0.0.2,<0.0.3", optional = true, markers = "extra 
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 jmespath = ">=1.0.1,<2.0.0"
 jq = ">=1.8.0,<2.0.0"
+jsonref = {version = ">=1.1.0,<2.0.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
 prometheus-client = ">=0.21.1,<0.22.0"
 psutil = ">=7.2.1,<8.0.0"
@@ -2297,7 +2309,7 @@ virtualenv = ">=20.36.1,<21.0.0"
 werkzeug = ">=3.1.5,<4.0.0"
 
 [package.extras]
-cli = ["click (>=8.1.3,<9.0.0)", "cookiecutter (>=2.1.1,<3.0.0)", "jinja2-strcase (>=0.0.2,<0.0.3)", "jinja2-time (>=0.2.0,<0.3.0)", "rich (>=13.4.1,<14.0.0)"]
+cli = ["click (>=8.1.3,<9.0.0)", "cookiecutter (>=2.1.1,<3.0.0)", "jinja2-strcase (>=0.0.2,<0.0.3)", "jinja2-time (>=0.2.0,<0.3.0)", "jsonref (>=1.1.0,<2.0.0)", "rich (>=13.4.1,<14.0.0)"]
 
 [[package]]
 name = "prometheus-client"
@@ -3854,4 +3866,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "5a00a5015a33f32e33f0c34605d7ae44aebcb31dee094b127e0edc9546bf586b"
+content-hash = "3b3d7711b7dbfa961edbd0f8b37fcf8d81902dc3a1c4a41a662270048cade660"

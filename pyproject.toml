@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.36.0"
+version = "0.37.3"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -74,9 +74,10 @@ rich = { version = "^13.4.1", optional = true }
 cookiecutter = { version = "^2.1.1", optional = true }
 jinja2-time = { version = "^0.2.0", optional = true }
 jinja2-strcase = { version = "^0.0.2", optional = true }
+jsonref = { version = "^1.1.0", optional = true }
 
 [tool.poetry.extras]
-cli = ["click", "rich", "cookiecutter", "jinja2-time", "jinja2-strcase"]
+cli = ["click", "rich", "cookiecutter", "jinja2-time", "jinja2-strcase", "jsonref"]
 
 
 [tool.poetry.group.dev.dependencies]

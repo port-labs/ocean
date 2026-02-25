@@ -22,7 +22,7 @@ from integration import GithubDeploymentConfig, GithubDeploymentSelector
 @pytest.fixture
 def resource_config() -> GithubDeploymentConfig:
     return GithubDeploymentConfig(
-        kind="deployment",
+        kind=ObjectKind.DEPLOYMENT,
         selector=GithubDeploymentSelector(query="true"),
         port=PortResourceConfig(
             entity=MappingsConfig(
