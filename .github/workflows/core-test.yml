@@ -43,7 +43,7 @@ jobs:
           make build
 
       - name: Build fake-integration image for smoke test
-        uses: ./.github/workflows/actions/build-docker-image
+        uses: ./.github/actions/build-docker-image
         with:
           dockerfile: integrations/_infra/Dockerfile
           platforms: linux/amd64

@@ -253,11 +253,11 @@ class JQEntityProcessor(BaseEntityProcessor):
         entity_mapping_fault_counter: int,
     ) -> None:
         if len(entity_misconfigurations) > 0:
-            logger.error(
+            logger.warning(
                 f"Unable to find valid data for: {entity_misconfigurations} (null, missing, or misconfigured)"
             )
         if missing_required_fields:
-            logger.error(
+            logger.warning(
                 f"{entity_mapping_fault_counter} transformations of batch failed due to empty, null or missing values"
             )
 
