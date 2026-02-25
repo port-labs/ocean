@@ -17,7 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rate limit state resets automatically on epoch expiry or after sleeping through an exhausted window, ensuring a fresh server read at the start of each new window.
 - Restored REST API page size to 100.
 
-
 ## 5.0.47 (2026-02-25)
 
 
