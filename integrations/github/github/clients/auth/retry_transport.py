@@ -32,7 +32,7 @@ class GitHubRetryTransport(RetryTransport):
                     "url": str(request.url),
                     "sleep_time": sleep_time,
                 }
-                logger.bind(rate_limit=rate_limit_obj).info(
+                logger.bind(**rate_limit_obj).info(
                     f"GitHub rate limit: {remaining}/{limit} tokens remaining{reset_msg} — "
                     f"retrying {request.method} {request.url} in {sleep_time}s"
                 )
