@@ -54,7 +54,7 @@ jobs:
           git push origin refs/tags/v${CURRENT_TAG}
       - name: Create GitHub Release
         if: steps.get_current_version.outputs.current_tag != steps.get_previous_version.outputs.prev_tag
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.get_current_version.outputs.current_tag }}
           name: Ocean Framework ${{ steps.get_current_version.outputs.current_tag }}
