@@ -89,17 +89,22 @@ class JQEntityProcessor(BaseEntityProcessor):
             return None
 
     async def _search_as_bool(self, data: dict[str, Any] | str, pattern: str) -> bool:
-
-        compiled_pattern = self._compile(pattern)
-
-        func = compiled_pattern.input_value(data)
-
-        value = func.first()
-        if isinstance(value, bool):
-            return value
-        raise EntityProcessorException(
-            f"Expected boolean value, got value:{value} of type: {type(value)} instead"
-        )
+        try:
+            compiled_pattern = self._compile(pattern)
+            func = compiled_pattern.input_value(data)
+            value = func.first()
+            if isinstance(value, bool):
+                return value
+            raise EntityProcessorException(
+                f"Expected boolean value, got value:{value} of type: {type(value)} instead"
+            )
+        except EntityProcessorException:
+            raise
+        except ValueError as exc:
+            logger.warning(
+                f"Selector query failed for pattern '{pattern}', treating as false. Error: {exc}"
+            )
+            return False
 
     async def _search_as_object(
         self,
