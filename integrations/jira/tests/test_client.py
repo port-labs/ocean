@@ -536,6 +536,97 @@ async def test_get_reconciled_issues_empty_response(
         assert result == []
 
 
+@pytest.mark.asyncio
+async def test_enrich_projects_with_releases(mock_jira_client: JiraClient) -> None:
+    """Test enrich_projects_with_releases attaches __releases to each project."""
+    projects: list[dict[str, Any]] = [{"key": "PROJ1"}, {"key": "PROJ2"}]
+
+    async def mock_api_request(method: str, url: str, **kwargs: Any) -> dict[str, Any]:
+        if "PROJ1" in url:
+            return {
+                "values": [{"id": 1001, "name": "v1.0"}, {"id": 1002, "name": "v1.1"}],
+                "total": 2,
+            }
+        return {"values": [{"id": 2001, "name": "v2.0"}], "total": 1}
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", side_effect=mock_api_request
+    ):
+        result = await mock_jira_client.enrich_projects_with_releases(projects)
+
+    assert len(result) == 2
+    proj1 = next(p for p in result if p["key"] == "PROJ1")
+    proj2 = next(p for p in result if p["key"] == "PROJ2")
+    assert len(proj1["__releases"]) == 2
+    assert all(r["__projectKey"] == "PROJ1" for r in proj1["__releases"])
+    assert len(proj2["__releases"]) == 1
+    assert all(r["__projectKey"] == "PROJ2" for r in proj2["__releases"])
+
+
+@pytest.mark.asyncio
+async def test_enrich_projects_with_releases_empty(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test enrich_projects_with_releases attaches an empty list for projects with no releases."""
+    projects: list[dict[str, Any]] = [{"key": "EMPTY"}]
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {"values": [], "total": 0}
+        result = await mock_jira_client.enrich_projects_with_releases(projects)
+
+    assert result[0]["__releases"] == []
+
+
+@pytest.mark.asyncio
+async def test_enrich_projects_with_releases_pagination(
+    mock_jira_client: JiraClient,
+) -> None:
+    """Test enrich_projects_with_releases collects releases across multiple pages."""
+    projects: list[dict[str, Any]] = [{"key": "BIG"}]
+    remainder = 10
+    total = PAGE_SIZE + remainder
+    page1 = {
+        "values": [{"id": i, "name": f"v{i}"} for i in range(PAGE_SIZE)],
+        "total": total,
+    }
+    page2 = {
+        "values": [{"id": i, "name": f"v{i}"} for i in range(PAGE_SIZE, total)],
+        "total": total,
+    }
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [page1, page2]
+        result = await mock_jira_client.enrich_projects_with_releases(projects)
+
+    assert len(result[0]["__releases"]) == total
+    assert all(r["__projectKey"] == "BIG" for r in result[0]["__releases"])
+
+
+@pytest.mark.asyncio
+async def test_get_project_with_releases(mock_jira_client: JiraClient) -> None:
+    """Test get_project_with_releases fetches a project and enriches it with __releases."""
+    project_data: dict[str, Any] = {"id": 100, "key": "PROJ1", "name": "Project 1"}
+    versions_response: dict[str, Any] = {
+        "values": [{"id": 1001, "name": "v1.0"}],
+        "total": 1,
+    }
+
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [project_data, versions_response]
+        result = await mock_jira_client.get_project_with_releases("PROJ1")
+
+    assert result is not None
+    assert result["key"] == "PROJ1"
+    assert len(result["__releases"]) == 1
+    assert result["__releases"][0]["__projectKey"] == "PROJ1"
+
+
 def test_jira_issue_selector_default_jql() -> None:
     """Test that JiraIssueSelector uses the correct default JQL when not provided"""
     selector = JiraIssueSelector(query="true")

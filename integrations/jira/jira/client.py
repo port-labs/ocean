@@ -19,6 +19,15 @@ WEBHOOK_EVENTS = [
     "jira:issue_created",
     "jira:issue_updated",
     "jira:issue_deleted",
+    "jira:version_created",
+    "jira:version_updated",
+    "jira:version_deleted",
+    "jira:version_released",
+    "jira:version_unreleased",
+    "jira:version_archived",
+    "jira:version_unarchived",
+    "jira:version_moved",
+    "jira:version_merged",
     "project_created",
     "project_updated",
     "project_deleted",
@@ -256,6 +265,16 @@ class JiraClient(OAuthClient):
             "GET", f"{self.api_url}/project/{project_key}"
         )
 
+    async def get_project_with_releases(
+        self, project_identifier: str
+    ) -> dict[str, Any]:
+        """Fetch a single project and enrich it with ``__releases``.
+
+        Jira API accepts either a project key or numeric id.
+        """
+        project = await self.get_single_project(project_identifier)
+        return (await self.enrich_projects_with_releases([project]))[0]
+
     async def get_paginated_projects(
         self, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -381,9 +400,9 @@ class JiraClient(OAuthClient):
         self, teams: list[dict[str, Any]], org_id: str
     ) -> list[dict[str, Any]]:
         logger.debug(f"Fetching members for {len(teams)} teams")
-
-        team_tasks = [self.fetch_team_members(team["teamId"], org_id) for team in teams]
-        results = await asyncio.gather(*team_tasks)
+        results = await asyncio.gather(
+            *[self.fetch_team_members(t["teamId"], org_id) for t in teams]
+        )
 
         total_members = sum(len(members) for members in results)
         logger.info(f"Retrieved {total_members} members across {len(teams)} teams")
@@ -392,3 +411,33 @@ class JiraClient(OAuthClient):
             team["__members"] = members
 
         return teams
+
+    async def fetch_project_releases(self, project_key: str) -> list[dict[str, Any]]:
+        """Fetch all releases (versions) for a single project."""
+        releases: list[dict[str, Any]] = []
+        async for page in self._get_project_version_pages(project_key):
+            releases.extend(page)
+        return releases
+
+    async def enrich_projects_with_releases(
+        self, projects: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Enrich projects with their releases under ``__releases``."""
+        logger.debug(f"Fetching releases for {len(projects)} projects")
+        results = await asyncio.gather(
+            *[self.fetch_project_releases(project["key"]) for project in projects]
+        )
+
+        enriched = [
+            {**project, "__releases": releases}
+            for project, releases in zip(projects, results)
+        ]
+        return enriched
+
+    async def _get_project_version_pages(
+        self, project_key: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Yield paginated version batches for one project (paginated API)."""
+        url = f"{self.api_url}/project/{project_key}/version"
+        async for page in self._get_paginated_data(url, extract_key="values"):
+            yield [{**version, "__projectKey": project_key} for version in page]

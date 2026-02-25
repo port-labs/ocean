@@ -17,6 +17,7 @@ from jira.overrides import (
 from webhook_processors.issue_webhook_processor import IssueWebhookProcessor
 from webhook_processors.project_webhook_processor import ProjectWebhookProcessor
 from webhook_processors.user_webhook_processor import UserWebhookProcessor
+from webhook_processors.version_webhook_processor import VersionWebhookProcessor
 
 
 async def setup_application() -> None:
@@ -36,7 +37,9 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     params = {"expand": selector.expand}
 
     async for projects in client.get_paginated_projects(params):
-        logger.info(f"Received project batch with {len(projects)} issues")
+        logger.info(f"Received project batch with {len(projects)} projects")
+        if selector.include_releases:
+            projects = await client.enrich_projects_with_releases(projects)
         yield projects
 
 
@@ -103,3 +106,4 @@ async def on_start() -> None:
 ocean.add_webhook_processor("/webhook", IssueWebhookProcessor)
 ocean.add_webhook_processor("/webhook", ProjectWebhookProcessor)
 ocean.add_webhook_processor("/webhook", UserWebhookProcessor)
+ocean.add_webhook_processor("/webhook", VersionWebhookProcessor)
