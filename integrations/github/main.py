@@ -77,6 +77,7 @@ from github.helpers.utils import (
     GithubClientType,
     enrich_user_with_primary_email,
 )
+from github.helpers.dlq import RateLimitDLQ, with_dlq_on_rate_limit
 
 from integration import (
     GithubCollaboratorConfig,
@@ -197,18 +198,26 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else None
     )
 
+    dlq = RateLimitDLQ()
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
         tasks = (
-            RestRepositoryExporter(rest_client).get_paginated_resources(
-                options=ListRepositoryOptions(
-                    organization=org["login"],
-                    organization_type=org["type"],
-                    type=port_app_config.repository_type,
-                    included_relationships=cast(list[str], included_relationships),
-                    search_params=repo_config.selector.repo_search,
-                )
+            with_dlq_on_rate_limit(
+                factory=lambda o=org: RestRepositoryExporter(  # type: ignore[misc]
+                    rest_client
+                ).get_paginated_resources(
+                    options=ListRepositoryOptions(
+                        organization=o["login"],
+                        organization_type=o["type"],
+                        type=port_app_config.repository_type,
+                        included_relationships=cast(list[str], included_relationships),
+                        search_params=repo_config.selector.repo_search,
+                    )
+                ),
+                dlq=dlq,
+                description=f"repositories for org '{org['login']}'",
             )
             for org in organizations
         )
@@ -216,6 +225,11 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             if included_files_enricher:
                 repositories = await included_files_enricher.enrich_batch(repositories)
             yield repositories
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.USER)
@@ -228,7 +242,9 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     org_exporter = RestOrganizationExporter(rest_client)
     user_config = cast(GithubUserConfig, event.resource_config)
     include_bots = user_config.selector.include_bots
-    exporter = GraphQLUserExporter(graphql_client)
+    user_exporter = GraphQLUserExporter(graphql_client)
+
+    dlq = RateLimitDLQ()
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -236,11 +252,14 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         tasks = []
         for org in organizations:
             if org["type"] == "Organization":
+                opts = ListUserOptions(
+                    organization=org["login"], include_bots=include_bots
+                )
                 tasks.append(
-                    exporter.get_paginated_resources(
-                        options=ListUserOptions(
-                            organization=org["login"], include_bots=include_bots
-                        )
+                    with_dlq_on_rate_limit(
+                        lambda o=opts: user_exporter.get_paginated_resources(options=o),  # type: ignore[misc]
+                        dlq,
+                        f"users for org '{org['login']}'",
                     )
                 )
                 continue
@@ -252,6 +271,11 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if tasks:
             async for users in stream_async_iterators_tasks(*tasks):
                 yield users
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.TEAM)
@@ -267,6 +291,8 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     config = cast(GithubTeamConfig, event.resource_config)
     selector = config.selector
 
+    dlq = RateLimitDLQ()
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -274,22 +300,30 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for org in organizations:
             if org["type"] == "Organization":
                 org_name = org["login"]
-                exporter: AbstractGithubExporter[Any]
+                team_exporter: AbstractGithubExporter[Any]
 
                 if selector.members:
-                    exporter = GraphQLTeamWithMembersExporter(graphql_client)
+                    team_exporter = GraphQLTeamWithMembersExporter(graphql_client)
                 else:
-                    exporter = RestTeamExporter(rest_client)
+                    team_exporter = RestTeamExporter(rest_client)
 
+                opts = ListTeamOptions(organization=org_name)
                 tasks.append(
-                    exporter.get_paginated_resources(
-                        ListTeamOptions(organization=org_name)
+                    with_dlq_on_rate_limit(
+                        lambda e=team_exporter, o=opts: e.get_paginated_resources(o),  # type: ignore[misc]
+                        dlq,
+                        f"teams for org '{org_name}'",
                     )
                 )
 
         if tasks:
             async for teams in stream_async_iterators_tasks(*tasks):
                 yield teams
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.WORKFLOW)
@@ -301,6 +335,8 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     org_exporter = RestOrganizationExporter(rest_client)
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubWorkflowConfig, event.resource_config)
+
+    dlq = RateLimitDLQ()
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -322,16 +358,26 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 tasks = []
                 for repo in repositories:
+                    opts = ListWorkflowOptions(
+                        organization=org_name, repo_name=repo["name"]
+                    )
                     tasks.append(
-                        workflow_exporter.get_paginated_resources(
-                            options=ListWorkflowOptions(
-                                organization=org_name, repo_name=repo["name"]
-                            )
+                        with_dlq_on_rate_limit(
+                            lambda o=opts: workflow_exporter.get_paginated_resources(  # type: ignore[misc]
+                                options=o
+                            ),
+                            dlq,
+                            f"workflows for '{repo['name']}' in '{org_name}'",
                         )
                     )
 
                 async for workflows in stream_async_iterators_tasks(*tasks):
                     yield workflows
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.WORKFLOW_RUN)
@@ -347,6 +393,8 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubWorkflowRunConfig, event.resource_config)
+
+    dlq = RateLimitDLQ()
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -372,20 +420,30 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     async for workflows in workflow_exporter.get_paginated_resources(
                         workflow_options
                     ):
-                        tasks = [
-                            workflow_run_exporter.get_paginated_resources(
-                                ListWorkflowRunOptions(
-                                    organization=org_name,
-                                    repo_name=repo_name,
-                                    workflow_id=workflow["id"],
-                                    max_runs=100,
+                        for workflow in workflows:
+                            opts = ListWorkflowRunOptions(
+                                organization=org_name,
+                                repo_name=repo_name,
+                                workflow_id=workflow["id"],
+                                max_runs=100,
+                            )
+                            tasks.append(
+                                with_dlq_on_rate_limit(
+                                    lambda o=opts: workflow_run_exporter.get_paginated_resources(  # type: ignore[misc]
+                                        o
+                                    ),
+                                    dlq,
+                                    f"workflow runs for workflow {workflow['id']} in '{repo_name}/{org_name}'",
                                 )
                             )
-                            for workflow in workflows
-                        ]
 
                     async for runs in stream_async_iterators_tasks(*tasks):
                         yield runs
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.PULL_REQUEST)
@@ -407,6 +465,8 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         else RestPullRequestExporter(rest_client)
     )
 
+    dlq = RateLimitDLQ()
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -424,21 +484,31 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 tasks = []
                 for repo in repos:
+                    opts = ListPullRequestOptions(
+                        organization=org_name,
+                        repo_name=repo["name"],
+                        states=list(config.selector.states),
+                        max_results=config.selector.max_results,
+                        updated_after=config.selector.updated_after,
+                        repo=repo if is_graphql_api else None,
+                    )
                     tasks.append(
-                        pull_request_exporter.get_paginated_resources(
-                            ListPullRequestOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                                states=list(config.selector.states),
-                                max_results=config.selector.max_results,
-                                updated_after=config.selector.updated_after,
-                                repo=repo if is_graphql_api else None,
-                            )
+                        with_dlq_on_rate_limit(
+                            lambda o=opts: pull_request_exporter.get_paginated_resources(  # type: ignore[misc]
+                                o
+                            ),
+                            dlq,
+                            f"pull requests for '{repo['name']}' in '{org_name}'",
                         )
                     )
 
                 async for pull_requests in stream_async_iterators_tasks(*tasks):
                     yield pull_requests
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
@@ -454,6 +524,8 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubIssueConfig, event.resource_config)
 
+    dlq = RateLimitDLQ()
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -471,19 +543,27 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 tasks = []
                 for repo in repos:
+                    opts = ListIssueOptions(
+                        organization=org_name,
+                        repo_name=repo["name"],
+                        state=config.selector.state,
+                        labels=config.selector.labels_str,
+                    )
                     tasks.append(
-                        issue_exporter.get_paginated_resources(
-                            ListIssueOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                                state=config.selector.state,
-                                labels=config.selector.labels_str,
-                            )
+                        with_dlq_on_rate_limit(
+                            lambda o=opts: issue_exporter.get_paginated_resources(o),  # type: ignore[misc]
+                            dlq,
+                            f"issues for '{repo['name']}' in '{org_name}'",
                         )
                     )
 
                 async for issues in stream_async_iterators_tasks(*tasks):
                     yield issues
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.RELEASE)
@@ -499,6 +579,8 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubReleaseConfig, event.resource_config)
 
+    dlq = RateLimitDLQ()
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -516,16 +598,24 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 tasks = []
                 for repo in repositories:
+                    opts = ListReleaseOptions(
+                        organization=org_name, repo_name=repo["name"]
+                    )
                     tasks.append(
-                        release_exporter.get_paginated_resources(
-                            ListReleaseOptions(
-                                organization=org_name, repo_name=repo["name"]
-                            )
+                        with_dlq_on_rate_limit(
+                            lambda o=opts: release_exporter.get_paginated_resources(o),  # type: ignore[misc]
+                            dlq,
+                            f"releases for '{repo['name']}' in '{org_name}'",
                         )
                     )
 
                 async for releases in stream_async_iterators_tasks(*tasks):
                     yield releases
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.TAG)
@@ -541,6 +631,8 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubTagConfig, event.resource_config)
 
+    dlq = RateLimitDLQ()
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -558,16 +650,24 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 tasks = []
                 for repo in repositories:
+                    opts = ListTagOptions(
+                        organization=org_name, repo_name=repo["name"], repo=repo
+                    )
                     tasks.append(
-                        tag_exporter.get_paginated_resources(
-                            ListTagOptions(
-                                organization=org_name, repo_name=repo["name"], repo=repo
-                            )
+                        with_dlq_on_rate_limit(
+                            lambda o=opts: tag_exporter.get_paginated_resources(o),  # type: ignore[misc]
+                            dlq,
+                            f"tags for '{repo['name']}' in '{org_name}'",
                         )
                     )
 
                 async for tags in stream_async_iterators_tasks(*tasks):
                     yield tags
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.BRANCH)
@@ -582,6 +682,8 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     selector = cast(GithubBranchConfig, event.resource_config).selector
+
+    dlq = RateLimitDLQ()
 
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
@@ -600,17 +702,20 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 tasks = []
                 for repo in repositories:
+                    opts = ListBranchOptions(
+                        organization=org_name,
+                        repo_name=repo["name"],
+                        protection_rules=selector.protection_rules,
+                        detailed=selector.detailed,
+                        branch_names=selector.branch_names,
+                        default_branch_only=selector.default_branch_only,
+                        repo=repo,
+                    )
                     tasks.append(
-                        branch_exporter.get_paginated_resources(
-                            ListBranchOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                                protection_rules=selector.protection_rules,
-                                detailed=selector.detailed,
-                                branch_names=selector.branch_names,
-                                default_branch_only=selector.default_branch_only,
-                                repo=repo,
-                            )
+                        with_dlq_on_rate_limit(
+                            lambda o=opts: branch_exporter.get_paginated_resources(o),  # type: ignore[misc]
+                            dlq,
+                            f"branches for '{repo['name']}' in '{org_name}'",
                         )
                     )
 
@@ -622,6 +727,11 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 if tasks:
                     async for branches in stream_async_iterators_tasks(*tasks):
                         yield branches
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.ENVIRONMENT)
@@ -637,6 +747,8 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubEnvironmentConfig, event.resource_config)
 
+    dlq = RateLimitDLQ()
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -654,17 +766,27 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 tasks = []
                 for repo in repositories:
+                    opts = ListEnvironmentsOptions(
+                        organization=org_name,
+                        repo_name=repo["name"],
+                    )
                     tasks.append(
-                        environment_exporter.get_paginated_resources(
-                            ListEnvironmentsOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                            )
+                        with_dlq_on_rate_limit(
+                            lambda o=opts: environment_exporter.get_paginated_resources(  # type: ignore[misc]
+                                o
+                            ),
+                            dlq,
+                            f"environments for '{repo['name']}' in '{org_name}'",
                         )
                     )
 
                 async for environments in stream_async_iterators_tasks(*tasks):
                     yield environments
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.DEPLOYMENT)
@@ -680,6 +802,8 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDeploymentConfig, event.resource_config)
 
+    dlq = RateLimitDLQ()
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -697,19 +821,29 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 tasks = []
                 for repo in repositories:
+                    opts = ListDeploymentsOptions(
+                        organization=org_name,
+                        repo_name=repo["name"],
+                        task=config.selector.task,
+                        environment=config.selector.environment,
+                    )
                     tasks.append(
-                        deployment_exporter.get_paginated_resources(
-                            ListDeploymentsOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                                task=config.selector.task,
-                                environment=config.selector.environment,
-                            )
+                        with_dlq_on_rate_limit(
+                            lambda o=opts: deployment_exporter.get_paginated_resources(  # type: ignore[misc]
+                                o
+                            ),
+                            dlq,
+                            f"deployments for '{repo['name']}' in '{org_name}'",
                         )
                     )
 
                 async for deployments in stream_async_iterators_tasks(*tasks):
                     yield deployments
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.DEPENDABOT_ALERT)
@@ -725,6 +859,8 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubDependabotAlertConfig, event.resource_config)
 
+    dlq = RateLimitDLQ()
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -743,20 +879,30 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 tasks = []
                 for repo in repositories:
+                    opts = ListDependabotAlertOptions(
+                        organization=org_name,
+                        repo_name=repo["name"],
+                        state=list(config.selector.states),
+                        severity=config.selector.severity_str,
+                        ecosystem=config.selector.ecosystems_str,
+                    )
                     tasks.append(
-                        dependabot_alert_exporter.get_paginated_resources(
-                            ListDependabotAlertOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                                state=list(config.selector.states),
-                                severity=config.selector.severity_str,
-                                ecosystem=config.selector.ecosystems_str,
-                            )
+                        with_dlq_on_rate_limit(
+                            lambda o=opts: dependabot_alert_exporter.get_paginated_resources(  # type: ignore[misc]
+                                o
+                            ),
+                            dlq,
+                            f"dependabot alerts for '{repo['name']}' in '{org_name}'",
                         )
                     )
 
                 async for alerts in stream_async_iterators_tasks(*tasks):
                     yield alerts
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.CODE_SCANNING_ALERT)
@@ -772,6 +918,8 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubCodeScanningAlertConfig, event.resource_config)
 
+    dlq = RateLimitDLQ()
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -789,19 +937,29 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 tasks = []
                 for repo in repositories:
+                    opts = ListCodeScanningAlertOptions(
+                        organization=org_name,
+                        repo_name=repo["name"],
+                        state=config.selector.state,
+                        severity=config.selector.severity,
+                    )
                     tasks.append(
-                        code_scanning_alert_exporter.get_paginated_resources(
-                            ListCodeScanningAlertOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                                state=config.selector.state,
-                                severity=config.selector.severity,
-                            )
+                        with_dlq_on_rate_limit(
+                            lambda o=opts: code_scanning_alert_exporter.get_paginated_resources(  # type: ignore[misc]
+                                o
+                            ),
+                            dlq,
+                            f"code scanning alerts for '{repo['name']}' in '{org_name}'",
                         )
                     )
 
                 async for alerts in stream_async_iterators_tasks(*tasks):
                     yield alerts
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
@@ -842,10 +1000,21 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     repo_path_map = await pattern_builder.build(selector.folders)
 
-    async for folders in folder_exporter.get_paginated_resources(repo_path_map):
+    dlq = RateLimitDLQ()
+
+    async for folders in with_dlq_on_rate_limit(
+        lambda: folder_exporter.get_paginated_resources(repo_path_map),
+        dlq,
+        "folders",
+    ):
         if included_files_enricher:
             folders = await included_files_enricher.enrich_batch(folders)
         yield folders
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.FILE)
@@ -879,10 +1048,21 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     repo_path_map = await pattern_builder.build(config.selector.files)
 
-    async for file_results in file_exporter.get_paginated_resources(repo_path_map):
+    dlq = RateLimitDLQ()
+
+    async for file_results in with_dlq_on_rate_limit(
+        lambda: file_exporter.get_paginated_resources(repo_path_map),
+        dlq,
+        "files",
+    ):
         if included_files_enricher:
             file_results = await included_files_enricher.enrich_batch(file_results)
         yield file_results
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.COLLABORATOR)
@@ -898,6 +1078,8 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubCollaboratorConfig, event.resource_config)
 
+    dlq = RateLimitDLQ()
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -915,16 +1097,26 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 tasks = []
                 for repo in repositories:
+                    opts = ListCollaboratorOptions(
+                        organization=org_name, repo_name=repo["name"]
+                    )
                     tasks.append(
-                        collaborator_exporter.get_paginated_resources(
-                            ListCollaboratorOptions(
-                                organization=org_name, repo_name=repo["name"]
-                            )
+                        with_dlq_on_rate_limit(
+                            lambda o=opts: collaborator_exporter.get_paginated_resources(  # type: ignore[misc]
+                                o
+                            ),
+                            dlq,
+                            f"collaborators for '{repo['name']}' in '{org_name}'",
                         )
                     )
 
                 async for collaborators in stream_async_iterators_tasks(*tasks):
                     yield collaborators
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 @ocean.on_resync(ObjectKind.SECRET_SCANNING_ALERT)
@@ -940,6 +1132,8 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     port_app_config = cast(GithubPortAppConfig, event.port_app_config)
     config = cast(GithubSecretScanningAlertConfig, event.resource_config)
 
+    dlq = RateLimitDLQ()
+
     async for organizations in org_exporter.get_paginated_resources(
         get_github_organizations()
     ):
@@ -957,19 +1151,29 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
             ):
                 tasks = []
                 for repo in repositories:
+                    opts = ListSecretScanningAlertOptions(
+                        organization=org_name,
+                        repo_name=repo["name"],
+                        state=config.selector.state,
+                        hide_secret=config.selector.hide_secret,
+                    )
                     tasks.append(
-                        secret_scanning_alert_exporter.get_paginated_resources(
-                            ListSecretScanningAlertOptions(
-                                organization=org_name,
-                                repo_name=repo["name"],
-                                state=config.selector.state,
-                                hide_secret=config.selector.hide_secret,
-                            )
+                        with_dlq_on_rate_limit(
+                            lambda o=opts: secret_scanning_alert_exporter.get_paginated_resources(  # type: ignore[misc]
+                                o
+                            ),
+                            dlq,
+                            f"secret scanning alerts for '{repo['name']}' in '{org_name}'",
                         )
                     )
 
                 async for alerts in stream_async_iterators_tasks(*tasks):
                     yield alerts
+
+    if not dlq.is_empty:
+        for batch in await dlq.retry_all():
+            if batch:
+                yield batch
 
 
 # Register webhook processors
