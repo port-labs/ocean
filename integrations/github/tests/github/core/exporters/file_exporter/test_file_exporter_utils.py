@@ -3,7 +3,7 @@ import pytest
 from github.core.exporters.file_exporter.utils import decode_content
 
 
-def test_decode_content_removes_null_bytes():
+def test_decode_content_removes_null_bytes() -> None:
     # "hello\x00world" encoded in base64
     original_content = b"hello\x00world"
     encoded = base64.b64encode(original_content).decode("utf-8")
@@ -14,7 +14,7 @@ def test_decode_content_removes_null_bytes():
     assert "\x00" not in result
 
 
-def test_decode_content_normal_string():
+def test_decode_content_normal_string() -> None:
     original_content = b"hello world"
     encoded = base64.b64encode(original_content).decode("utf-8")
 
@@ -23,12 +23,12 @@ def test_decode_content_normal_string():
     assert result == "hello world"
 
 
-def test_decode_content_invalid_encoding():
+def test_decode_content_invalid_encoding() -> None:
     with pytest.raises(ValueError, match="Unsupported encoding"):
         decode_content("content", "utf-8")
 
 
-def test_decode_content_fallback_invalid_utf8():
+def test_decode_content_fallback_invalid_utf8() -> None:
     # Construct invalid UTF-8 bytes: b'\x80' is a continuation byte without a start byte
     invalid_utf8 = b"hello \x80 world"
     encoded = base64.b64encode(invalid_utf8).decode("utf-8")
@@ -41,7 +41,7 @@ def test_decode_content_fallback_invalid_utf8():
     assert result == "hello \ufffd world"
 
 
-def test_decode_content_utf16_fallback():
+def test_decode_content_utf16_fallback() -> None:
     # "hello world" encoded in UTF-16LE
     # b'h\x00e\x00l\x00l\x00o\x00 \x00w\x00o\x00r\x00l\x00d\x00'
     utf16_content = "hello world".encode("utf-16le")
