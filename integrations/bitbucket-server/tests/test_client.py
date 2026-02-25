@@ -314,7 +314,9 @@ async def test_get_projects_with_specific_filter(mock_client: BitbucketClient) -
 
     results: list[dict[str, Any]] = []
     async with mock_cache():
-        async for batch in mock_client.get_projects(projects_filter={"PROJ-A", "DEV-C"}):
+        async for batch in mock_client.get_projects(
+            projects_filter={"PROJ-A", "DEV-C"}
+        ):
             results.extend(batch)
 
     assert len(results) == 2
@@ -412,8 +414,13 @@ async def test_project_filter_regex_match_anchors_at_start_only() -> None:
     """
     regex_no_end_anchor = re.compile("PROD")
     assert BitbucketClient._should_include_project("PROD", regex_no_end_anchor) is True
-    assert BitbucketClient._should_include_project("PRODUCTION", regex_no_end_anchor) is True
-    assert BitbucketClient._should_include_project("MY-PROD", regex_no_end_anchor) is False
+    assert (
+        BitbucketClient._should_include_project("PRODUCTION", regex_no_end_anchor)
+        is True
+    )
+    assert (
+        BitbucketClient._should_include_project("MY-PROD", regex_no_end_anchor) is False
+    )
 
     regex_exact = re.compile("^PROD$")
     assert BitbucketClient._should_include_project("PROD", regex_exact) is True
