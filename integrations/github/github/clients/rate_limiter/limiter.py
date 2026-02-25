@@ -1,6 +1,7 @@
 import asyncio
 import time
 from typing import List, Optional, Any, Type
+
 import httpx
 from loguru import logger
 from github.clients.rate_limiter.utils import (
@@ -63,51 +64,6 @@ class GitHubRateLimiter:
             response.headers
         )
 
-    def on_response(self, response: httpx.Response, resource: str) -> None:
-        if self.is_rate_limit_response(response):
-            self._handle_rate_limit_response(response, resource)
-            return
-
-        if not self._initialized:
-            self._initialize_from_response(response, resource)
-
-    def _handle_rate_limit_response(
-        self, response: httpx.Response, resource: str
-    ) -> None:
-        headers = RateLimiterRequiredHeaders(**response.headers)
-        info = self._parse_rate_limit_headers(headers)
-        retry_after = self._parse_retry_after(headers)
-
-        if info is None and retry_after is not None:
-            info = RateLimitInfo(
-                limit=self.rate_limit_info.limit if self.rate_limit_info else 0,
-                remaining=0,
-                reset_time=int(time.time()) + retry_after,
-            )
-        elif info is not None:
-            info.remaining = 0
-            if retry_after is not None:
-                info.reset_time = int(time.time()) + retry_after
-
-        if info is not None:
-            self.rate_limit_info = info
-            self._initialized = True
-            logger.warning(
-                f"GitHub rate limit exhausted for {self.api_type} on {resource}: "
-                f"resets in {info.seconds_until_reset}s"
-            )
-
-    def _initialize_from_response(
-        self, response: httpx.Response, resource: str
-    ) -> None:
-        headers = RateLimiterRequiredHeaders(**response.headers)
-        info = self._parse_rate_limit_headers(headers)
-        if info is None:
-            return
-        self.rate_limit_info = info
-        self._initialized = True
-        self._log_rate_limit_status(info, resource)
-
     def _parse_rate_limit_headers(
         self, headers: RateLimiterRequiredHeaders
     ) -> Optional[RateLimitInfo]:
@@ -132,16 +88,71 @@ class GitHubRateLimiter:
         except ValueError:
             return None
 
+    def notify_rate_limited(self, response: httpx.Response) -> None:
+        headers = RateLimiterRequiredHeaders(**response.headers)
+        self._handle_rate_limit_response(headers, "transport-retry")
+
+    async def on_response(self, response: httpx.Response, resource: str) -> None:
+        rate_limit_headers = RateLimiterRequiredHeaders(**response.headers)
+
+        async with self._lock:
+            if self.is_rate_limit_response(response):
+                self._handle_rate_limit_response(rate_limit_headers, resource)
+                return
+
+            epoch_passed = (
+                self.rate_limit_info is not None
+                and int(time.time()) >= self.rate_limit_info.reset_time
+            )
+            if not self._initialized or epoch_passed:
+                self._initialize_from_response(rate_limit_headers, resource)
+
+    def _handle_rate_limit_response(
+        self, headers: RateLimiterRequiredHeaders, resource: str
+    ) -> None:
+        info = self._parse_rate_limit_headers(headers)
+        retry_after_seconds = self._parse_retry_after(headers)
+
+        if info is None and retry_after_seconds is not None:
+            info = RateLimitInfo(
+                limit=self.rate_limit_info.limit if self.rate_limit_info else 0,
+                remaining=0,
+                reset_time=int(time.time()) + retry_after_seconds,
+            )
+        elif info is not None:
+            if retry_after_seconds is not None:
+                info.reset_time = int(time.time()) + retry_after_seconds
+            info.remaining = 0
+
+        if info is not None:
+            self.rate_limit_info = info
+            self._initialized = True
+            logger.warning(
+                f"GitHub rate limit exhausted for {self.api_type} on {resource}: "
+                f"resets in {info.seconds_until_reset}s"
+            )
+
+    def _initialize_from_response(
+        self, headers: RateLimiterRequiredHeaders, resource: str
+    ) -> None:
+        info = self._parse_rate_limit_headers(headers)
+        if info is None:
+            return
+
+        self.rate_limit_info = info
+        self._initialized = True
+        self._log_rate_limit_status(info, resource)
+
     def _log_rate_limit_status(self, info: RateLimitInfo, resource: str) -> None:
-        base = (
-            f"GitHub rate limit for {self.api_type} on {resource}: "
-            f"{info.remaining}/{info.limit} remaining "
-            f"(resets in {info.seconds_until_reset}s)"
+        resets_in = info.seconds_until_reset
+        base_message = (
+            f"GitHub rate limit on {resource} for {self.api_type}: "
+            f"{info.remaining}/{info.limit} remaining (resets in {resets_in}s)"
         )
 
         if info.remaining <= 0:
-            logger.warning(f"Exhausted — {base}")
+            logger.warning(f"Exhausted {base_message}")
         elif info.remaining <= info.limit * 0.1:
-            logger.warning(f"Near exhaustion — {base}")
+            logger.warning(f"Near exhaustion {base_message}")
         else:
-            logger.debug(f"Initialized — {base}")
+            logger.debug(f"Status {base_message}")
