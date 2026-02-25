@@ -254,13 +254,13 @@ pycparser = {version = "*", markers = "implementation_name != \"PyPy\""}
 
 [[package]]
 name = "chardet"
-version = "6.0.0"
+version = "6.0.0.post1"
 description = "Universal encoding detector for Python 3"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "chardet-6.0.0-py3-none-any.whl", hash = "sha256:502eee44c943b21e178cb537980b1331b42abf99505085e8ae881e27245083bb"},
-    {file = "chardet-6.0.0.tar.gz", hash = "sha256:aaa00ede13dd39a582de2b1254221a1f3e1c77e7738036431b6cb7e6a05b4f19"},
+    {file = "chardet-6.0.0.post1-py3-none-any.whl", hash = "sha256:c894a36800549adf7bb5f2af47033281b75fdfcd2aa0f0243be0ad22a52e2dcb"},
+    {file = "chardet-6.0.0.post1.tar.gz", hash = "sha256:6b78048c3c97c7b2ed1fbad7a18f76f5a6547f7d34dbab536cc13887c9a92fa4"},
 ]
 
 [[package]]
@@ -1912,13 +1912,13 @@ testing = ["coverage", "pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.37.1"
+version = "0.37.3"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "port_ocean-0.37.1-py3-none-any.whl", hash = "sha256:2f3e30ca9275e411148b885f849df8ec6082b7eed351c46f4c04d6e40a01bd35"},
-    {file = "port_ocean-0.37.1.tar.gz", hash = "sha256:acdb2b08b7c085cf825e853e25f6f1a0838b7a7a63f052561e49d5670812b64d"},
+    {file = "port_ocean-0.37.3-py3-none-any.whl", hash = "sha256:3d44923a9d9c8c0d17ecf9b2e52db85e21e14c1bcacd793eba148bf1af847bb4"},
+    {file = "port_ocean-0.37.3.tar.gz", hash = "sha256:072483274f691645589538e45e95ab73f46e80884234f5c792833b4dfd7f2d6d"},
 ]
 
 [package.dependencies]
@@ -2787,4 +2787,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "810980e0aa655d38d476f71b4e841e015a50a055e4ee17e0ed1210efb3d72093"
+content-hash = "361b8db5e07545526504eee235dede33b381a8cd111ce218afbc35be0676103d"
