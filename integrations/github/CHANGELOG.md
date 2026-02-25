@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 5.0.44 (2026-02-24)
+## 5.0.46 (2026-02-25)
 
 
-### Features
+### Improvements
 
-- Added `deployment-status` kind to track GitHub deployment statuses with full resync and real-time webhook support. Includes task and environment filters via selector configuration.
+- Added structured rate limit logging on retry for easier debugging.
+
+
+## 5.0.45 (2026-02-25)
+
+
+### Bug Fixes
+
+- Replace null control characters with "[null]" string
+
+
+## 5.0.44 (2026-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
 
 
 ## 5.0.43 (2026-02-24)
