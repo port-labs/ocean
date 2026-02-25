@@ -8,10 +8,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.4.3-beta (2026-02-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.3
+
+
+## 0.4.2-beta (2026-02-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.37.2
+
+
+## 0.4.1-beta (2026-02-24)
+
+
+### Improvements
+
+- PortAppConfig model strict kinds enforcements
+
+
+## 0.4.0-beta (2026-02-20)
+
+
+### Improvements
+
+- Added support for smart file based caching of API responses
+
+
 ## 0.3.13-beta (2026-02-22)
 
 
 ### Improvements
+
 
 - Bumped ocean version to ^0.37.1
 
