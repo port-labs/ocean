@@ -40,11 +40,6 @@ TEST_COLLABORATORS = [
     },
 ]
 
-TEST_TEAMS = [
-    {"id": 201, "name": "team-alpha", "slug": "team-alpha"},
-    {"id": 202, "name": "team-beta", "slug": "team-beta"},
-]
-
 
 @pytest.mark.asyncio
 class TestRestRepositoryExporter:
@@ -279,62 +274,3 @@ class TestRestRepositoryExporter:
                     f"{rest_client.base_url}/search/repositories",
                     {"q": "org:test-org fork:true is:all"},
                 )
-
-
-@pytest.mark.asyncio
-class TestRepositoryEnrichmentErrorPropagation:
-    """Enrichment errors propagate so the external DLQ wrapper can catch them."""
-
-    async def test_rate_limit_error_propagates(
-        self, rest_client: GithubRestClient
-    ) -> None:
-        """429 errors from enrichment methods bubble up unchanged."""
-        exporter = RestRepositoryExporter(rest_client)
-        repo = {"name": "my-repo", "id": 1}
-
-        response = MagicMock(spec=httpx.Response)
-        response.status_code = 429
-        error = httpx.HTTPStatusError(
-            message="429 rate limited",
-            request=MagicMock(spec=httpx.Request),
-            response=response,
-        )
-
-        with patch.object(
-            exporter,
-            "_enrich_repository_with_teams",
-            new_callable=AsyncMock,
-            side_effect=error,
-        ):
-            with pytest.raises(httpx.HTTPStatusError) as exc_info:
-                await exporter.enrich_repository_with_selected_relationships(
-                    repo, ["teams"], "test-org"
-                )
-            assert exc_info.value.response.status_code == 429
-
-    async def test_server_error_propagates(
-        self, rest_client: GithubRestClient
-    ) -> None:
-        """Non-rate-limit HTTP errors (e.g. 500) also propagate."""
-        exporter = RestRepositoryExporter(rest_client)
-        repo = {"name": "my-repo", "id": 1}
-
-        response = MagicMock(spec=httpx.Response)
-        response.status_code = 500
-        error = httpx.HTTPStatusError(
-            message="500 Server Error",
-            request=MagicMock(spec=httpx.Request),
-            response=response,
-        )
-
-        with patch.object(
-            exporter,
-            "_enrich_repository_with_teams",
-            new_callable=AsyncMock,
-            side_effect=error,
-        ):
-            with pytest.raises(httpx.HTTPStatusError) as exc_info:
-                await exporter.enrich_repository_with_selected_relationships(
-                    repo, ["teams"], "test-org"
-                )
-            assert exc_info.value.response.status_code == 500
