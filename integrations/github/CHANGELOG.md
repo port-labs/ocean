@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 5.0.45 (2026-02-25)
 
 
-### Improvements
+### Bug Fixes
 
-- Added structured rate limit logging on retry for easier debugging.
+- Replace null control characters with "[null]" string
 
 
 ## 5.0.44 (2026-02-25)
