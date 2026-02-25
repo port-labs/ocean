@@ -3,6 +3,16 @@ from loguru import logger
 
 from port_ocean.helpers.retry import RetryTransport
 from github.helpers.utils import has_exhausted_rate_limit_headers
+from github.clients.rate_limiter.registry import GitHubRateLimiterRegistry
+
+
+def _infer_github_api_type(path: str) -> str:
+    """Infer GitHub API type from the request path."""
+    if "/graphql" in path:
+        return "graphql"
+    if "/search" in path:
+        return "search"
+    return "rest"
 
 
 class GitHubRetryTransport(RetryTransport):
@@ -36,7 +46,27 @@ class GitHubRetryTransport(RetryTransport):
                     f"GitHub rate limit: {remaining}/{limit} tokens remaining{reset_msg} — "
                     f"retrying {request.method} {request.url} in {sleep_time}s"
                 )
+            if self._is_rate_limit_response(response):
+                self._notify_rate_limiter(request, response)
         super()._log_before_retry(request, sleep_time, response, error)
+
+    def _is_rate_limit_response(self, response: httpx.Response) -> bool:
+        """True if this response indicates a rate limit (429 or 403 with exhausted headers)."""
+        return (
+            response.status_code == 429
+            or self._is_403_rate_limit(response)
+        )
+
+    def _notify_rate_limiter(
+        self, request: httpx.Request, response: httpx.Response
+    ) -> None:
+        """Update the rate limiter immediately so other requests block until reset."""
+        host = request.url.host or ""
+        api_type = _infer_github_api_type(request.url.path or "")
+        limiter = GitHubRateLimiterRegistry.get_limiter_if_exists(host, api_type)
+        if limiter:
+            resource = request.url.path or str(request.url)
+            limiter.update_rate_limits(response.headers, resource)
 
     async def _should_retry_async(self, response: httpx.Response) -> bool:
         return await super()._should_retry_async(response) or self._is_403_rate_limit(
