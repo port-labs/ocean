@@ -133,9 +133,7 @@ class MockGitHubClient:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_response.headers = self._success_headers(remaining=remaining_override)
-            self.rate_limiter.update_rate_limits(
-                httpx.Headers(mock_response.headers), resource
-            )
+            self.rate_limiter.on_response(mock_response, resource)
             return mock_response
 
 
@@ -190,6 +188,7 @@ class TestRateLimiter:
             limit=1000, remaining=1, reset_time=int(time.time()) + reset_in
         )
         client.rate_limiter.rate_limit_info = info  # trusted internal seed for the test
+        client.rate_limiter._initialized = True
 
         # This call should sleep on __aenter__
         mock_sleep.reset_mock()
@@ -222,9 +221,7 @@ class TestRateLimiter:
                 await asyncio.sleep(0.01)
                 headers = client._success_headers()
                 mock_resp = Mock(status_code=200, headers=headers)
-                client.rate_limiter.update_rate_limits(
-                    httpx.Headers(headers), f"/r/{i}"
-                )
+                client.rate_limiter.on_response(mock_resp, f"/r/{i}")
             concurrent -= 1
             return mock_resp
 
@@ -264,7 +261,7 @@ class TestRateLimiter:
         self, github_host: str, mock_sleep: Mock
     ) -> None:
         """
-        Because sleep happens while holding _block_lock, a task that triggers the pause blocks others.
+        Because sleep happens while holding _lock, a task that triggers the pause blocks others.
         """
         config = GitHubRateLimiterConfig(api_type="rest", max_concurrent=5)
         limiter = GitHubRateLimiterRegistry.get_limiter(github_host, config)
@@ -277,6 +274,7 @@ class TestRateLimiter:
             limiter.rate_limit_info = RateLimitInfo(
                 remaining=0, limit=1000, reset_time=int(time.time()) + 5
             )
+            limiter._initialized = True
             async with limiter:
                 order.append("A-acquired")
                 # any small work
