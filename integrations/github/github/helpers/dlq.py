@@ -91,6 +91,7 @@ async def with_dlq_on_rate_limit(
             yield batch
     except httpx.HTTPStatusError as e:
         if e.response.status_code in _RATE_LIMIT_STATUS_CODES:
+
             async def _retry() -> list[Any]:
                 results: list[Any] = []
                 async for batch in factory():

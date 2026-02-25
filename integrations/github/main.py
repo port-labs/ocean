@@ -77,6 +77,7 @@ from github.helpers.utils import (
     GithubClientType,
     enrich_user_with_primary_email,
 )
+from github.helpers.dlq import RateLimitDLQ, with_dlq_on_rate_limit
 
 from integration import (
     GithubCollaboratorConfig,
@@ -211,9 +212,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         organization=o["login"],
                         organization_type=o["type"],
                         type=port_app_config.repository_type,
-                        included_relationships=cast(
-                            list[str], included_relationships
-                        ),
+                        included_relationships=cast(list[str], included_relationships),
                         search_params=repo_config.selector.repo_search,
                     )
                 ),
@@ -257,9 +256,7 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 )
                 tasks.append(
                     with_dlq_on_rate_limit(
-                        lambda o=opts: user_exporter.get_paginated_resources(
-                            options=o
-                        ),
+                        lambda o=opts: user_exporter.get_paginated_resources(options=o),
                         dlq,
                         f"users for org '{org['login']}'",
                     )
@@ -431,7 +428,9 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             )
                             tasks.append(
                                 with_dlq_on_rate_limit(
-                                    lambda o=opts: workflow_run_exporter.get_paginated_resources(o),
+                                    lambda o=opts: workflow_run_exporter.get_paginated_resources(
+                                        o
+                                    ),
                                     dlq,
                                     f"workflow runs for workflow {workflow['id']} in '{repo_name}/{org_name}'",
                                 )
@@ -494,7 +493,9 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: pull_request_exporter.get_paginated_resources(o),
+                            lambda o=opts: pull_request_exporter.get_paginated_resources(
+                                o
+                            ),
                             dlq,
                             f"pull requests for '{repo['name']}' in '{org_name}'",
                         )
@@ -770,7 +771,9 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: environment_exporter.get_paginated_resources(o),
+                            lambda o=opts: environment_exporter.get_paginated_resources(
+                                o
+                            ),
                             dlq,
                             f"environments for '{repo['name']}' in '{org_name}'",
                         )
@@ -825,7 +828,9 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: deployment_exporter.get_paginated_resources(o),
+                            lambda o=opts: deployment_exporter.get_paginated_resources(
+                                o
+                            ),
                             dlq,
                             f"deployments for '{repo['name']}' in '{org_name}'",
                         )
@@ -882,7 +887,9 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: dependabot_alert_exporter.get_paginated_resources(o),
+                            lambda o=opts: dependabot_alert_exporter.get_paginated_resources(
+                                o
+                            ),
                             dlq,
                             f"dependabot alerts for '{repo['name']}' in '{org_name}'",
                         )
@@ -937,7 +944,9 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: code_scanning_alert_exporter.get_paginated_resources(o),
+                            lambda o=opts: code_scanning_alert_exporter.get_paginated_resources(
+                                o
+                            ),
                             dlq,
                             f"code scanning alerts for '{repo['name']}' in '{org_name}'",
                         )
@@ -1092,7 +1101,9 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: collaborator_exporter.get_paginated_resources(o),
+                            lambda o=opts: collaborator_exporter.get_paginated_resources(
+                                o
+                            ),
                             dlq,
                             f"collaborators for '{repo['name']}' in '{org_name}'",
                         )
@@ -1147,7 +1158,9 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: secret_scanning_alert_exporter.get_paginated_resources(o),
+                            lambda o=opts: secret_scanning_alert_exporter.get_paginated_resources(
+                                o
+                            ),
                             dlq,
                             f"secret scanning alerts for '{repo['name']}' in '{org_name}'",
                         )
