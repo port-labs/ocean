@@ -1,5 +1,7 @@
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+import re
+from contextlib import asynccontextmanager
+from typing import Any, AsyncGenerator
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import AsyncClient, Response
@@ -186,51 +188,49 @@ async def test_default_concurrency() -> None:
 @pytest.mark.asyncio
 async def test_project_filtering_with_prefix_regex() -> None:
     """Test project filtering with prefix regex pattern."""
-    client = _build_client(project_filter_regex="^PROD-.*")
+    regex = re.compile("^PROD-.*")
 
-    assert client._should_include_project("PROD-123") is True
-    assert client._should_include_project("PROD-ABC") is True
-    assert client._should_include_project("DEV-123") is False
-    assert client._should_include_project("TEST-ABC") is False
+    assert BitbucketClient._should_include_project("PROD-123", regex) is True
+    assert BitbucketClient._should_include_project("PROD-ABC", regex) is True
+    assert BitbucketClient._should_include_project("DEV-123", regex) is False
+    assert BitbucketClient._should_include_project("TEST-ABC", regex) is False
 
 
 @pytest.mark.asyncio
 async def test_project_filtering_with_suffix_regex() -> None:
     """Test project filtering with suffix regex pattern."""
-    client = _build_client(project_filter_regex=".*-PROD$")
+    regex = re.compile(".*-PROD$")
 
-    assert client._should_include_project("PROJECT-PROD") is True
-    assert client._should_include_project("TEAM-PROD") is True
-    assert client._should_include_project("PROJECT-DEV") is False
-    assert client._should_include_project("TEAM-TEST") is False
+    assert BitbucketClient._should_include_project("PROJECT-PROD", regex) is True
+    assert BitbucketClient._should_include_project("TEAM-PROD", regex) is True
+    assert BitbucketClient._should_include_project("PROJECT-DEV", regex) is False
+    assert BitbucketClient._should_include_project("TEAM-TEST", regex) is False
 
 
 @pytest.mark.asyncio
 async def test_project_filtering_with_combined_regex() -> None:
     """Test project filtering with combined prefix and suffix regex."""
-    client = _build_client(project_filter_regex="^TEAM-.*-PROD$")
+    regex = re.compile("^TEAM-.*-PROD$")
 
-    assert client._should_include_project("TEAM-APP-PROD") is True
-    assert client._should_include_project("TEAM-API-PROD") is True
-    assert client._should_include_project("TEAM-APP-DEV") is False
-    assert client._should_include_project("PROJECT-APP-PROD") is False
-    assert client._should_include_project("PROJECT-APP-DEV") is False
+    assert BitbucketClient._should_include_project("TEAM-APP-PROD", regex) is True
+    assert BitbucketClient._should_include_project("TEAM-API-PROD", regex) is True
+    assert BitbucketClient._should_include_project("TEAM-APP-DEV", regex) is False
+    assert BitbucketClient._should_include_project("PROJECT-APP-PROD", regex) is False
+    assert BitbucketClient._should_include_project("PROJECT-APP-DEV", regex) is False
 
 
 @pytest.mark.asyncio
 async def test_project_filtering_disabled_by_default() -> None:
     """Test that project filtering is disabled when no patterns are provided."""
-    client = _build_client()
-
-    assert client._should_include_project("ANY-PROJECT") is True
-    assert client._should_include_project("ANOTHER-ONE") is True
-    assert client._should_include_project("TEST") is True
+    assert BitbucketClient._should_include_project("ANY-PROJECT", None) is True
+    assert BitbucketClient._should_include_project("ANOTHER-ONE", None) is True
+    assert BitbucketClient._should_include_project("TEST", None) is True
 
 
 @pytest.mark.asyncio
 async def test_project_filtering_logic_with_regex() -> None:
     """Test that project filtering logic works correctly with regex."""
-    client = _build_client(project_filter_regex="^PROD-.*")
+    regex = re.compile("^PROD-.*")
 
     test_projects = [
         {"key": "PROD-123", "name": "Production 123"},
@@ -239,7 +239,11 @@ async def test_project_filtering_logic_with_regex() -> None:
         {"key": "TEST-001", "name": "Test 001"},
     ]
 
-    filtered = [p for p in test_projects if client._should_include_project(p["key"])]
+    filtered = [
+        p
+        for p in test_projects
+        if BitbucketClient._should_include_project(p["key"], regex)
+    ]
 
     assert len(filtered) == 2
     assert all(p["key"].startswith("PROD-") for p in filtered)
@@ -255,3 +259,163 @@ async def test_parallel_pr_fetching_uses_semaphore() -> None:
 
     assert client.semaphore._value == max_concurrent
     assert client.max_concurrent_requests == max_concurrent
+
+
+@asynccontextmanager
+async def mock_cache() -> AsyncGenerator[None, None]:
+    """Patch ocean's cache provider so cache_iterator_result-decorated methods work in tests."""
+    cache_provider = AsyncMock()
+    cache_provider.get.return_value = None
+    with patch("port_ocean.utils.cache.ocean") as mock_ocean:
+        mock_ocean.app.cache_provider = cache_provider
+        yield
+
+
+@pytest.mark.asyncio
+async def test_create_regex_from_project_keys_exact_match() -> None:
+    """Test that _create_regex_from_project_keys produces an exact-match pattern (anchored at both ends)."""
+    client = _build_client()
+    regex = client._create_regex_from_project_keys({"PROJ-A", "PROJ-B"})
+
+    assert regex.match("PROJ-A") is not None
+    assert regex.match("PROJ-B") is not None
+    assert regex.match("PROJ-C") is None
+    assert regex.match("PROJ-A-EXTRA") is None
+    assert regex.match("MY-PROJ-A") is None
+
+
+@pytest.mark.asyncio
+async def test_create_regex_from_project_keys_escapes_special_chars() -> None:
+    """Test that special regex characters in project keys are properly escaped."""
+    client = _build_client()
+    regex = client._create_regex_from_project_keys({"PROJ.KEY", "PROJ+ONE"})
+
+    assert regex.match("PROJ.KEY") is not None
+    assert regex.match("PROJxKEY") is None
+    assert regex.match("PROJ+ONE") is not None
+
+
+@pytest.mark.asyncio
+async def test_get_projects_with_specific_filter(mock_client: BitbucketClient) -> None:
+    """Test get_projects with a projects_filter set returns only matching projects."""
+    batches = [
+        [
+            {"key": "PROJ-A", "name": "Project A"},
+            {"key": "PROJ-B", "name": "Project B"},
+            {"key": "DEV-C", "name": "Dev C"},
+        ]
+    ]
+
+    async def mock_get_all_projects() -> AsyncGenerator[list[dict[str, Any]], None]:
+        for batch in batches:
+            yield batch
+
+    mock_client._get_all_projects = mock_get_all_projects  # type: ignore[method-assign]
+
+    results: list[dict[str, Any]] = []
+    async with mock_cache():
+        async for batch in mock_client.get_projects(projects_filter={"PROJ-A", "DEV-C"}):
+            results.extend(batch)
+
+    assert len(results) == 2
+    assert {p["key"] for p in results} == {"PROJ-A", "DEV-C"}
+
+
+@pytest.mark.asyncio
+async def test_get_projects_with_regex_filter(mock_client: BitbucketClient) -> None:
+    """Test get_projects with a project_filter_regex returns only matching projects."""
+    batches = [
+        [
+            {"key": "PROJ-A", "name": "Project A"},
+            {"key": "PROJ-B", "name": "Project B"},
+            {"key": "DEV-C", "name": "Dev C"},
+        ]
+    ]
+
+    async def mock_get_all_projects() -> AsyncGenerator[list[dict[str, Any]], None]:
+        for batch in batches:
+            yield batch
+
+    mock_client._get_all_projects = mock_get_all_projects  # type: ignore[method-assign]
+
+    results: list[dict[str, Any]] = []
+    async with mock_cache():
+        async for batch in mock_client.get_projects(project_filter_regex="^PROJ-.*"):
+            results.extend(batch)
+
+    assert len(results) == 2
+    assert all(p["key"].startswith("PROJ-") for p in results)
+
+
+@pytest.mark.asyncio
+async def test_get_projects_both_filters_apply_and_logic(
+    mock_client: BitbucketClient,
+) -> None:
+    """Test get_projects with both projects_filter and project_filter_regex uses AND logic."""
+    batches = [
+        [
+            {"key": "PROJ-A", "name": "Project A"},
+            {"key": "PROJ-B", "name": "Project B"},
+            {"key": "DEV-C", "name": "Dev C"},
+            {"key": "DEV-D", "name": "Dev D"},
+        ]
+    ]
+
+    async def mock_get_all_projects() -> AsyncGenerator[list[dict[str, Any]], None]:
+        for batch in batches:
+            yield batch
+
+    mock_client._get_all_projects = mock_get_all_projects  # type: ignore[method-assign]
+
+    results: list[dict[str, Any]] = []
+    async with mock_cache():
+        async for batch in mock_client.get_projects(
+            projects_filter={"PROJ-A", "DEV-C"},
+            project_filter_regex="^PROJ-.*",
+        ):
+            results.extend(batch)
+
+    assert len(results) == 1
+    assert results[0]["key"] == "PROJ-A"
+
+
+@pytest.mark.asyncio
+async def test_get_projects_no_filter_returns_all(mock_client: BitbucketClient) -> None:
+    """Test that get_projects with no filters yields all projects."""
+    batches = [
+        [
+            {"key": "PROJ-A", "name": "Project A"},
+            {"key": "DEV-B", "name": "Dev B"},
+            {"key": "TEST-C", "name": "Test C"},
+        ]
+    ]
+
+    async def mock_get_all_projects() -> AsyncGenerator[list[dict[str, Any]], None]:
+        for batch in batches:
+            yield batch
+
+    mock_client._get_all_projects = mock_get_all_projects  # type: ignore[method-assign]
+
+    results: list[dict[str, Any]] = []
+    async with mock_cache():
+        async for batch in mock_client.get_projects():
+            results.extend(batch)
+
+    assert len(results) == 3
+
+
+@pytest.mark.asyncio
+async def test_project_filter_regex_match_anchors_at_start_only() -> None:
+    """
+    Document that project_filter_regex uses re.match(), which anchors at the start only.
+    Users must add a trailing $ to enforce end anchoring.
+    """
+    regex_no_end_anchor = re.compile("PROD")
+    assert BitbucketClient._should_include_project("PROD", regex_no_end_anchor) is True
+    assert BitbucketClient._should_include_project("PRODUCTION", regex_no_end_anchor) is True
+    assert BitbucketClient._should_include_project("MY-PROD", regex_no_end_anchor) is False
+
+    regex_exact = re.compile("^PROD$")
+    assert BitbucketClient._should_include_project("PROD", regex_exact) is True
+    assert BitbucketClient._should_include_project("PRODUCTION", regex_exact) is False
+    assert BitbucketClient._should_include_project("MY-PROD", regex_exact) is False
