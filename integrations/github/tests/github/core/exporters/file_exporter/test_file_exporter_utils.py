@@ -36,3 +36,41 @@ def test_decode_content_fallback_invalid_utf8():
     # Depending on implementation it might be replaced by space or question mark,
     # but python's errors="replace" usually uses U+FFFD.
     assert result == "hello  world"
+
+
+def test_decode_content_utf16_fallback():
+    # "hello world" encoded in UTF-16LE
+    # b'h\x00e\x00l\x00l\x00o\x00 \x00w\x00o\x00r\x00l\x00d\x00'
+    utf16_content = "hello world".encode("utf-16le")
+    encoded = base64.b64encode(utf16_content).decode("utf-8")
+
+    result = decode_content(encoded, "base64")
+
+    # When decoding UTF-16 bytes as UTF-8 with replacement:
+    # 'h' (0x68) is valid ascii/utf-8 -> 'h'
+    # '\x00' is valid ascii/utf-8 -> '\x00' (which is then stripped by replace("\x00", ""))
+    # So "h\x00e\x00..." becomes "h\x00e\x00..." in UTF-8 interpretation because ASCII bytes match.
+    # The stripping of null bytes happens at the end.
+    # Let's use a character that produces bytes invalid in UTF-8 to trigger the exception.
+
+    # ☃ (Snowman) is U+2603.
+    # In UTF-16LE: b'\x03\x26'
+    # In UTF-8: b'\xe2\x98\x83'
+
+    # If we encode ☃ in UTF-16LE, we get b'\x03\x26'.
+    # Trying to decode b'\x03\x26' as UTF-8:
+    # \x03 is valid (control char).
+    # \x26 is valid (&).
+    # This doesn't trigger UnicodeDecodeError.
+
+    # We need a sequence that is invalid UTF-8.
+    # 0xFF is invalid in UTF-8 unless part of a multibyte sequence, but never as a start byte if it's 0xFF.
+    # Actually 0xFF is never valid in UTF-8.
+
+    # Let's create content with 0xFF.
+    bad_bytes = b"hello\xffworld"
+    encoded_bad = base64.b64encode(bad_bytes).decode("utf-8")
+
+    result = decode_content(encoded_bad, "base64")
+    # \xff is replaced by U+FFFD
+    assert result == "hello\ufffdworld"
