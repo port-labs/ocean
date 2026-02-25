@@ -7,12 +7,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.37.2 (2026-02-24)
+## 0.37.3 (2026-02-24)
 
 ### Improvements
 
 - Removed traceback from exception log messages to reduce log noise
 
+## 0.37.2 (2026-02-22)
+
+### Bug fixes
+
+- Extended read-only filesystem support to work with arbitrary UID and GID combinations.
 
 ## 0.37.1 (2026-02-22)
 
