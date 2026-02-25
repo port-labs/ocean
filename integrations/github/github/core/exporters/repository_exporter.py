@@ -206,13 +206,12 @@ class RestRepositoryExporter(AbstractGithubExporter[GithubRestClient]):
     ) -> RAW_ITEM:
         """Enrich repository with teams."""
         repo_name = repository["name"]
-        teams_url = f"{self.client.base_url}/repos/{organization}/{repo_name}/teams"
         all_teams = []
 
-        logger.info(
-            f"Fetching teams for repository {repo_name} in organization {organization} from {teams_url}"
-        )
-        async for teams in self.client.send_paginated_request(teams_url, {}):
+        async for teams in self.client.send_paginated_request(
+            f"{self.client.base_url}/repos/{organization}/{repo_name}/teams",
+            {},
+        ):
             logger.info(
                 f"Fetched batch of {len(teams)} teams for repository {repo_name} in repository relationship"
             )
