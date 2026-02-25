@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 import uuid
 from logging import LogRecord
 from logging.handlers import QueueHandler, QueueListener
@@ -14,7 +15,43 @@ from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.utils.signal import signal_handler
 
 
+def _patch_exception_logging() -> None:
+    """
+    Patch logger.exception to log only the error message in the main log,
+    while putting the full traceback in the record's extra context.
+    This avoids cluttering customer logs with tracebacks while keeping
+    them available for debugging (e.g. in DEBUG level or log aggregators).
+    """
+
+    def _patched_exception(message: str, *args: object, **kwargs: object) -> None:
+        exc_info = kwargs.pop("exc_info", True)
+        tb_str: str | None = None
+        bind_extra: dict[str, object] = {}
+        if exc_info is True:
+            tb_str = traceback.format_exc()
+        elif exc_info and exc_info is not False:
+            # exc_info is an exception or (type, value, tb) tuple - preserve for serialization
+            bind_extra["exc_info"] = exc_info
+            if isinstance(exc_info, BaseException):
+                tb_str = "".join(
+                    traceback.format_exception(
+                        type(exc_info), exc_info, exc_info.__traceback__
+                    )
+                )
+            elif isinstance(exc_info, tuple) and len(exc_info) == 3:
+                tb_str = "".join(traceback.format_exception(*exc_info))
+        if tb_str and "NoneType: None" not in tb_str:
+            bind_extra["traceback"] = tb_str
+        if bind_extra:
+            logger.bind(**bind_extra).error(message, *args, **kwargs)
+        else:
+            logger.error(message, *args, **kwargs)
+
+    logger.exception = _patched_exception  # type: ignore[assignment]
+
+
 def setup_logger(level: LogLevelType, enable_http_handler: bool) -> None:
+    _patch_exception_logging()  # hotfix: hide traceback in exception logs
     logger.remove()
     logger.configure(
         extra={"hostname": resolve_hostname(), "instance": str(uuid.uuid4())}
