@@ -35,7 +35,7 @@ def test_decode_content_fallback_invalid_utf8():
     # The invalid byte should be replaced by the replacement character  (U+FFFD)
     # Depending on implementation it might be replaced by space or question mark,
     # but python's errors="replace" usually uses U+FFFD.
-    assert result == "hello  world"
+    assert result == "hello \ufffd world"
 
 
 def test_decode_content_utf16_fallback():
