@@ -205,7 +205,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         tasks = (
             with_dlq_on_rate_limit(
-                factory=lambda o=org: RestRepositoryExporter(
+                factory=lambda o=org: RestRepositoryExporter(  # type: ignore[misc]
                     rest_client
                 ).get_paginated_resources(
                     options=ListRepositoryOptions(
@@ -216,6 +216,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         search_params=repo_config.selector.repo_search,
                     )
                 ),
+                dlq=dlq,
                 description=f"repositories for org '{org['login']}'",
             )
             for org in organizations
@@ -256,7 +257,7 @@ async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 )
                 tasks.append(
                     with_dlq_on_rate_limit(
-                        lambda o=opts: user_exporter.get_paginated_resources(options=o),
+                        lambda o=opts: user_exporter.get_paginated_resources(options=o),  # type: ignore[misc]
                         dlq,
                         f"users for org '{org['login']}'",
                     )
@@ -309,7 +310,7 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 opts = ListTeamOptions(organization=org_name)
                 tasks.append(
                     with_dlq_on_rate_limit(
-                        lambda e=team_exporter, o=opts: e.get_paginated_resources(o),
+                        lambda e=team_exporter, o=opts: e.get_paginated_resources(o),  # type: ignore[misc]
                         dlq,
                         f"teams for org '{org_name}'",
                     )
@@ -362,7 +363,7 @@ async def resync_workflows(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: workflow_exporter.get_paginated_resources(
+                            lambda o=opts: workflow_exporter.get_paginated_resources(  # type: ignore[misc]
                                 options=o
                             ),
                             dlq,
@@ -428,7 +429,7 @@ async def resync_workflow_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             )
                             tasks.append(
                                 with_dlq_on_rate_limit(
-                                    lambda o=opts: workflow_run_exporter.get_paginated_resources(
+                                    lambda o=opts: workflow_run_exporter.get_paginated_resources(  # type: ignore[misc]
                                         o
                                     ),
                                     dlq,
@@ -493,7 +494,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: pull_request_exporter.get_paginated_resources(
+                            lambda o=opts: pull_request_exporter.get_paginated_resources(  # type: ignore[misc]
                                 o
                             ),
                             dlq,
@@ -550,7 +551,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: issue_exporter.get_paginated_resources(o),
+                            lambda o=opts: issue_exporter.get_paginated_resources(o),  # type: ignore[misc]
                             dlq,
                             f"issues for '{repo['name']}' in '{org_name}'",
                         )
@@ -602,7 +603,7 @@ async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: release_exporter.get_paginated_resources(o),
+                            lambda o=opts: release_exporter.get_paginated_resources(o),  # type: ignore[misc]
                             dlq,
                             f"releases for '{repo['name']}' in '{org_name}'",
                         )
@@ -654,7 +655,7 @@ async def resync_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: tag_exporter.get_paginated_resources(o),
+                            lambda o=opts: tag_exporter.get_paginated_resources(o),  # type: ignore[misc]
                             dlq,
                             f"tags for '{repo['name']}' in '{org_name}'",
                         )
@@ -712,7 +713,7 @@ async def resync_branches(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: branch_exporter.get_paginated_resources(o),
+                            lambda o=opts: branch_exporter.get_paginated_resources(o),  # type: ignore[misc]
                             dlq,
                             f"branches for '{repo['name']}' in '{org_name}'",
                         )
@@ -771,7 +772,7 @@ async def resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: environment_exporter.get_paginated_resources(
+                            lambda o=opts: environment_exporter.get_paginated_resources(  # type: ignore[misc]
                                 o
                             ),
                             dlq,
@@ -828,7 +829,7 @@ async def resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: deployment_exporter.get_paginated_resources(
+                            lambda o=opts: deployment_exporter.get_paginated_resources(  # type: ignore[misc]
                                 o
                             ),
                             dlq,
@@ -887,7 +888,7 @@ async def resync_dependabot_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: dependabot_alert_exporter.get_paginated_resources(
+                            lambda o=opts: dependabot_alert_exporter.get_paginated_resources(  # type: ignore[misc]
                                 o
                             ),
                             dlq,
@@ -944,7 +945,7 @@ async def resync_code_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: code_scanning_alert_exporter.get_paginated_resources(
+                            lambda o=opts: code_scanning_alert_exporter.get_paginated_resources(  # type: ignore[misc]
                                 o
                             ),
                             dlq,
@@ -1101,7 +1102,7 @@ async def resync_collaborators(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: collaborator_exporter.get_paginated_resources(
+                            lambda o=opts: collaborator_exporter.get_paginated_resources(  # type: ignore[misc]
                                 o
                             ),
                             dlq,
@@ -1158,7 +1159,7 @@ async def resync_secret_scanning_alerts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
                     )
                     tasks.append(
                         with_dlq_on_rate_limit(
-                            lambda o=opts: secret_scanning_alert_exporter.get_paginated_resources(
+                            lambda o=opts: secret_scanning_alert_exporter.get_paginated_resources(  # type: ignore[misc]
                                 o
                             ),
                             dlq,
