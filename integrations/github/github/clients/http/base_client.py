@@ -97,15 +97,7 @@ class AbstractGithubClient(ABC):
     ) -> Response:
         """Make a request to the GitHub API with GitHub rate limiting and error handling."""
 
-        logger.info(
-            f"[GitHubClient] preparing {method} {resource} — "
-            f"waiting to acquire rate limiter ({self.rate_limiter.api_type})"
-        )
-
         async with self.rate_limiter:
-            logger.info(
-                f"[GitHubClient] rate limiter acquired for {method} {resource} — sending request"
-            )
             try:
                 response = await self.authenticator.client.request(
                     method=method,
@@ -116,14 +108,7 @@ class AbstractGithubClient(ABC):
                 )
                 response.raise_for_status()
 
-                rate_remaining = response.headers.get("x-ratelimit-remaining", "?")
-                rate_limit = response.headers.get("x-ratelimit-limit", "?")
-                rate_reset = response.headers.get("x-ratelimit-reset", "?")
-                logger.info(
-                    f"[GitHubClient] {method} {resource} succeeded — "
-                    f"status={response.status_code}, "
-                    f"rate_limit={rate_remaining}/{rate_limit}, reset={rate_reset}"
-                )
+                logger.debug(f"Successfully fetched {method} {resource}")
                 return response
 
             except httpx.HTTPStatusError as e:
