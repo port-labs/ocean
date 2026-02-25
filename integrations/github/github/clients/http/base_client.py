@@ -113,25 +113,39 @@ class AbstractGithubClient(ABC):
 
             except httpx.HTTPStatusError as e:
                 response = e.response
+                is_rate_limit = self.rate_limiter.is_rate_limit_response(response)
+                rate_remaining = response.headers.get("x-ratelimit-remaining", "?")
+                rate_limit = response.headers.get("x-ratelimit-limit", "?")
+                rate_reset = response.headers.get("x-ratelimit-reset", "?")
+                github_request_id = response.headers.get(
+                    "x-github-request-id", "unknown"
+                )
 
-                if not self.rate_limiter.is_rate_limit_response(response):
+                logger.error(
+                    f"[GitHubClient] {method} {resource} failed — "
+                    f"status={response.status_code}, is_rate_limit={is_rate_limit}, "
+                    f"rate_limit={rate_remaining}/{rate_limit}, reset={rate_reset}, "
+                    f"github_request_id={github_request_id}"
+                )
+
+                if not is_rate_limit:
                     if self._should_ignore_error(
                         e, resource, method, ignored_errors, ignore_default_errors
                     ):
                         return Response(200, content=b"{}")
 
-                github_request_id = response.headers.get(
-                    "x-github-request-id", "unknown"
-                )
                 logger.error(
-                    f"GitHub API error for endpoint '{resource}': Status {response.status_code}, "
-                    f"Method: {method}, GitHub Request ID: {github_request_id}, Response: {response.text}"
+                    f"[GitHubClient] raising HTTPStatusError for {method} {resource}: "
+                    f"status={response.status_code}, response_body={response.text[:500]}"
                 )
 
                 raise
 
             except httpx.HTTPError as e:
-                logger.error(f"HTTP error for endpoint '{resource}': {str(e)}")
+                logger.error(
+                    f"[GitHubClient] non-status HTTP error for {method} {resource}: "
+                    f"{type(e).__name__} - {e}"
+                )
                 raise
 
             finally:
