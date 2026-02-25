@@ -542,15 +542,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 if remaining_attempts < 1 or not (
                     await self._should_retry_async(response)
                 ):
-                    if (
-                        attempts_made > 0
-                        and response.status_code >= 400
-                        and self._logger
-                    ):
-                        self._logger.warning(
-                            f"All retry attempts exhausted for {request.method} {request.url}: "
-                            f"final status {response.status_code}"
-                        )
                     return response
                 await response.aclose()
             except httpx.ConnectTimeout as e:
@@ -605,15 +596,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 response = send_method(request)
                 response.request = request
                 if remaining_attempts < 1 or not self._should_retry(response):
-                    if (
-                        attempts_made > 0
-                        and response.status_code >= 400
-                        and self._logger
-                    ):
-                        self._logger.warning(
-                            f"All retry attempts exhausted for {request.method} {request.url}: "
-                            f"final status {response.status_code}"
-                        )
                     return response
                 response.close()
             except httpx.ConnectTimeout as e:

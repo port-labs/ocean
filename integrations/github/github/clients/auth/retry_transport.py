@@ -11,6 +11,25 @@ class GitHubRetryTransport(RetryTransport):
     that are clearly rate-limit related (based on GitHub rate limit headers).
     """
 
+    def _log_before_retry(
+        self,
+        request: httpx.Request,
+        sleep_time: float,
+        response: httpx.Response | None,
+        error: Exception | None,
+    ) -> None:
+        if response and response.headers:
+            remaining = response.headers.get("x-ratelimit-remaining")
+            limit = response.headers.get("x-ratelimit-limit")
+            reset = response.headers.get("x-ratelimit-reset")
+            if remaining is not None and limit is not None:
+                reset_msg = f", resets at {reset}" if reset else ""
+                logger.info(
+                    f"GitHub rate limit: {remaining}/{limit} tokens remaining {reset_msg} — "
+                    f"retrying {request.method} {request.url} in {sleep_time}s)"
+                )
+        super()._log_before_retry(request, sleep_time, response, error)
+
     async def _should_retry_async(self, response: httpx.Response) -> bool:
         return await super()._should_retry_async(response) or self._is_403_rate_limit(
             response
@@ -27,12 +46,4 @@ class GitHubRetryTransport(RetryTransport):
         if response.status_code != 403:
             return False
 
-        is_retryable = has_exhausted_rate_limit_headers(response.headers)
-        url = getattr(response.request, "url", None) if response.request else None
-        if is_retryable:
-            logger.debug(
-                f"GitHub 403 for {url} has rate limit headers exhausted, will retry with backoff"
-            )
-        else:
-            logger.debug(f"GitHub 403 for {url} not treated as rate limit, no retry.")
-        return is_retryable
+        return has_exhausted_rate_limit_headers(response.headers)
