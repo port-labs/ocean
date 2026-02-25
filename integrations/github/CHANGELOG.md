@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 5.0.47 (2026-02-25)
+
+
+### Improvements
+
+- Lock rate_limit_info setting to avoid race conditions during concurrency
+
+
 ## 5.0.46 (2026-02-25)
 
 

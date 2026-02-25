@@ -1,4 +1,5 @@
 import asyncio
+import time
 from typing import List, Optional, Any, Type
 import httpx
 from loguru import logger
@@ -15,9 +16,7 @@ class GitHubRateLimiter:
         self.api_type = config.api_type
         self._semaphore = asyncio.Semaphore(config.max_concurrent)
         self.rate_limit_info: Optional[RateLimitInfo] = None
-
         self._block_lock = asyncio.Lock()
-        self._current_resource: Optional[str] = None
 
     async def __aenter__(self) -> "GitHubRateLimiter":
         await self._semaphore.acquire()
@@ -68,16 +67,16 @@ class GitHubRateLimiter:
             reset_time=int(headers.x_ratelimit_reset),
         )
 
-    def update_rate_limits(
+    async def update_rate_limits(
         self, headers: httpx.Headers, resource: str
     ) -> Optional[RateLimitInfo]:
         rate_limit_headers = RateLimiterRequiredHeaders(**headers)
-
         info = self._parse_rate_limit_headers(rate_limit_headers)
         if not info:
             return None
 
-        self.rate_limit_info = info
+        async with self._block_lock:
+            self.rate_limit_info = info
         self._log_rate_limit_status(info, resource)
         return info
 

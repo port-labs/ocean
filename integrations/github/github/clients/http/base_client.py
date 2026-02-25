@@ -136,7 +136,12 @@ class AbstractGithubClient(ABC):
 
             finally:
                 if "response" in locals():
-                    self.rate_limiter.update_rate_limits(response.headers, resource)
+                    info = await self.rate_limiter.update_rate_limits(
+                    response.headers, resource
+                )
+                    if info is None:
+                        logger.warning(f"Rate limit hit without headers for {resource}")
+
 
     async def send_api_request(
         self,
