@@ -123,7 +123,7 @@ class TestGithubRestClient:
                 results.append(page)
 
             # Verify params were passed with per_page added
-            expected_params = {"type": "public", "per_page": 100}
+            expected_params = {"type": "public", "per_page": 50}
             mock_send.assert_called_once_with(
                 "orgs/test-org/repos",
                 method="GET",

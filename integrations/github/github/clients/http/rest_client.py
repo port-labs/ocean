@@ -7,7 +7,7 @@ from github.clients.rate_limiter.utils import GitHubRateLimiterConfig
 from loguru import logger
 
 
-PAGE_SIZE = 100
+PAGE_SIZE = 50
 
 
 class GithubRestClient(AbstractGithubClient):
