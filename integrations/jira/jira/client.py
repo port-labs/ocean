@@ -400,9 +400,9 @@ class JiraClient(OAuthClient):
         self, teams: list[dict[str, Any]], org_id: str
     ) -> list[dict[str, Any]]:
         logger.debug(f"Fetching members for {len(teams)} teams")
-        results = await asyncio.gather(
-            *[self.fetch_team_members(t["teamId"], org_id) for t in teams]
-        )
+
+        team_tasks = [self.fetch_team_members(team["teamId"], org_id) for team in teams]
+        results = await asyncio.gather(*team_tasks)
 
         total_members = sum(len(members) for members in results)
         logger.info(f"Retrieved {total_members} members across {len(teams)} teams")
