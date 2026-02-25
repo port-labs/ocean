@@ -13,14 +13,14 @@ from port_ocean.core.handlers.webhook.webhook_event import (
 from github.core.exporters.deployment_status_exporter import (
     RestDeploymentStatusExporter,
 )
-from github.webhook.webhook_processors.base_deployment_webhook_processor import (
-    BaseDeploymentWebhookProcessor,
+from github.webhook.webhook_processors.base_repository_webhook_processor import (
+    BaseRepositoryWebhookProcessor,
 )
 from integration import GithubDeploymentStatusConfig, GithubDeploymentStatusSelector
 from typing import cast, Any
 
 
-class DeploymentStatusWebhookProcessor(BaseDeploymentWebhookProcessor):
+class DeploymentStatusWebhookProcessor(BaseRepositoryWebhookProcessor):
     async def get_matching_kinds(self, event: WebhookEvent) -> list[str]:
         return [ObjectKind.DEPLOYMENT_STATUS]
 
@@ -57,6 +57,9 @@ class DeploymentStatusWebhookProcessor(BaseDeploymentWebhookProcessor):
             )
 
         if not await self.should_process_repo_search(payload, resource_config):
+            logger.info(
+                f"Repository {repo} not matched by repo_search query, skipping deployment status {status_id}"
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
@@ -72,6 +75,9 @@ class DeploymentStatusWebhookProcessor(BaseDeploymentWebhookProcessor):
             )
         )
         if not data_to_upsert:
+            logger.info(
+                f"No deployment status data found for {repo}/{status_id} from {organization}"
+            )
             return WebhookEventRawResults(
                 updated_raw_results=[], deleted_raw_results=[]
             )
