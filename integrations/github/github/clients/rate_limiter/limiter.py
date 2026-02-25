@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import List, Optional, Any, Type
+from typing import Optional, Any, Type
 
 import httpx
 from loguru import logger
@@ -8,8 +8,8 @@ from github.clients.rate_limiter.utils import (
     GitHubRateLimiterConfig,
     RateLimitInfo,
     RateLimiterRequiredHeaders,
+    is_rate_limit_response,
 )
-from github.helpers.utils import has_exhausted_rate_limit_headers
 
 
 class GitHubRateLimiter:
@@ -54,15 +54,8 @@ class GitHubRateLimiter:
 
         self.rate_limit_info.remaining -= 1
 
-    def get_rate_limit_status_codes(self) -> List[int]:
-        return [403, 429]
-
     def is_rate_limit_response(self, response: httpx.Response) -> bool:
-        if response.status_code not in self.get_rate_limit_status_codes():
-            return False
-        return response.status_code == 429 or has_exhausted_rate_limit_headers(
-            response.headers
-        )
+        return is_rate_limit_response(response)
 
     def _parse_rate_limit_headers(
         self, headers: RateLimiterRequiredHeaders

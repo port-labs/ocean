@@ -2,6 +2,19 @@ import time
 from typing import Optional, Dict, Literal
 from dataclasses import dataclass
 from pydantic import BaseModel, Field
+import httpx
+
+from github.helpers.utils import has_exhausted_rate_limit_headers
+
+RATE_LIMIT_STATUS_CODES = {403, 429}
+
+
+def is_rate_limit_response(response: httpx.Response) -> bool:
+    if response.status_code not in RATE_LIMIT_STATUS_CODES:
+        return False
+    return response.status_code == 429 or has_exhausted_rate_limit_headers(
+        response.headers
+    )
 
 
 @dataclass

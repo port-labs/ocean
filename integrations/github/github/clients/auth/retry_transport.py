@@ -3,7 +3,7 @@ from typing import Any, Callable, Iterable, Optional, Union
 import httpx
 
 from port_ocean.helpers.retry import RetryConfig, RetryTransport
-from github.helpers.utils import has_exhausted_rate_limit_headers
+from github.clients.rate_limiter.utils import is_rate_limit_response
 
 
 class GitHubRetryTransport(RetryTransport):
@@ -49,19 +49,14 @@ class GitHubRetryTransport(RetryTransport):
         response: Optional[httpx.Response],
         error: Optional[Exception],
     ) -> None:
-        if response and self._rate_limit_notifier and response.status_code == 429:
+        if response and self._rate_limit_notifier and is_rate_limit_response(response):
             self._rate_limit_notifier(response)
         super()._log_before_retry(request, sleep_time, response, error)
 
     async def _should_retry_async(self, response: httpx.Response) -> bool:
-        return await super()._should_retry_async(response) or self._is_403_rate_limit(
+        return await super()._should_retry_async(response) or is_rate_limit_response(
             response
         )
 
     def _should_retry(self, response: httpx.Response) -> bool:
-        return super()._should_retry(response) or self._is_403_rate_limit(response)
-
-    def _is_403_rate_limit(self, response: httpx.Response) -> bool:
-        if response.status_code != 403:
-            return False
-        return has_exhausted_rate_limit_headers(response.headers)
+        return super()._should_retry(response) or is_rate_limit_response(response)
