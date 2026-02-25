@@ -67,7 +67,7 @@ class AbstractGitHubAuthenticator(ABC):
                 additional_retry_status_codes=[HTTPStatus.INTERNAL_SERVER_ERROR],
                 max_backoff_wait=GITHUB_RETRY_MAX_BACKOFF,
                 base_delay=1.0,
-                max_attempts=15
+                max_attempts=20
             )
             self._http_client = OceanAsyncClient(
                 GitHubRetryTransport,
