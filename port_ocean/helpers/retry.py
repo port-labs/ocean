@@ -69,8 +69,7 @@ class RetryConfig:
         Args:
             max_attempts: Maximum number of retry attempts
             max_backoff_wait: Maximum backoff wait time in seconds
-            base_delay: Base delay for exponential backoff. Also serves as the minimum
-                sleep floor — _calculate_sleep will never return less than this value.
+            base_delay: Base delay for exponential backoff
             jitter_ratio: Jitter ratio for backoff (0-0.5)
             respect_retry_after_header: Whether to respect Retry-After header
             retryable_methods: HTTP methods that can be retried (overrides defaults if provided)
