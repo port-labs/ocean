@@ -150,7 +150,7 @@ class AbstractGithubClient(ABC):
 
             finally:
                 if "response" in locals():
-                    self.rate_limiter.update_rate_limits(response.headers, resource)
+                    self.rate_limiter.on_response(response, resource)
 
     async def send_api_request(
         self,
