@@ -72,6 +72,7 @@ def decode_content(content: str, encoding: str) -> str:
     if encoding != "base64":
         raise ValueError(f"Unsupported encoding: {encoding}")
 
+    # AI! start with strict decoding, if that fails then a warning should be logged, then the decoding should retried but with invalid characters replaced
     try:
         content = base64.b64decode(content).decode("utf-8")
         return content.replace("\x00", "")
